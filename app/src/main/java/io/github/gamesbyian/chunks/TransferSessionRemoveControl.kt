@@ -150,9 +150,12 @@ fun TransferSessionRemoveControl(
                                         }
                                     }
                                 } else {
+                                    // The gate refused BEFORE any remote command. Restore the
+                                    // original actionable state rather than consuming an attempt.
+                                    attempted = false
+                                    verified = false
+                                    pending = false
                                     confirming = false
-                                    // A denied gate sent NO command. Never permanently lock
-                                    // Remove because another mutation was already pending.
                                     feedback = "No Remove command was sent. Refresh and try again after the current command settles."
                                 }
                             },
