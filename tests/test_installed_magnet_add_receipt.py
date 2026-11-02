@@ -92,8 +92,8 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="0")
         data = self.controlled_log().replace(
             "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-registered",
-            "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=metadata-already-resolved\\n"
-            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-metadata-already-resolved\\n"
+            "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=metadata-already-resolved\n"
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-metadata-already-resolved\n"
             "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-registered"
         )
         result = parse(data, 0, env)
