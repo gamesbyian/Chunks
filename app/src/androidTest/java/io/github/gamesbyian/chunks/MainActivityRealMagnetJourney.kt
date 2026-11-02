@@ -190,14 +190,26 @@ internal class MainActivityRealMagnetJourney(
                 stage(label, "ui-verified")
                 val placeholder = requireNotNull(row(hash))
                 assertTrue(placeholder.directory in setOf(parent, "$parent/${preview.name}"))
-                if (!publicDiscovery) assertEquals(1, (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt())
+                val initialMetaFlag = (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt()
+                require(initialMetaFlag == 0 || initialMetaFlag == 1) { "Invalid exact metadata state" }
+                if (!publicDiscovery) {
+                    // Disposable peer-isolated Add must still exercise BEP9; the
+                    // live published trackers may already have resolved metadata.
+                    if (disposable) assertEquals(1, initialMetaFlag)
+                    if (initialMetaFlag == 0) {
+                        assertEquals("Immediately resolved metadata name", preview.name, placeholder.name)
+                        assertEquals("Immediately resolved metadata size", preview.sizeBytes, placeholder.sizeBytes)
+                        report("chunks_real_add_app_stage", "metadata-already-resolved")
+                    }
+                }
                 assertTrue(placeholder.started)
                 assertEquals(true, runBlocking { remote.readActivity(hash).active })
                 stage(label, "registered")
                 val source = runBlocking { remote.peerSource(hash) }
                 val host = if (disposable) "127.0.0.1" else "5.79.112.219"
                 require(source.boundAddress == host || (disposable && source.rpcHost == host))
-                if (!publicDiscovery) controller("/$label/metadata", source.listenPort)
+                if (!publicDiscovery && initialMetaFlag == 1)
+                    controller("/$label/metadata", source.listenPort)
                 await(90) {
                     val exact = row(hash)
                     exact?.name == preview.name && exact.sizeBytes == preview.sizeBytes &&
