@@ -154,5 +154,32 @@ class DigestTests(unittest.TestCase):
         self.assertEqual("A?B?Secret", d["timing"]["slowest_classes"][0]["class"])
 
 
+    def test_complete_case_receipt_is_opaque_and_identifies_all_cases(self):
+        self.path.write_text(
+            '<testsuite>'
+            '<testcase classname="A" name="one" time="1"/>'
+            '<testcase classname="A" name="two" time="2"><skipped/></testcase>'
+            '<testcase classname="B" name="three" time="3"><failure message="must-never-appear"/></testcase>'
+            '</testsuite>')
+        result = make_digest([str(self.path)], "failure", "unit", self.env)
+        self.assertTrue(result["test_identity_coverage_complete"])
+        self.assertEqual(3, result["test_identity_count"])
+        self.assertEqual(["passed", "skipped", "failed"],
+                         [x["outcome"] for x in result["test_cases"]])
+        for case in result["test_cases"]:
+            self.assertRegex(case["id_sha256"], r"^[a-f0-9]{64}$")
+        self.assertNotIn("must-never-appear", str(result["test_cases"]))
+
+    def test_duplicate_junit_identity_fails_closed(self):
+        self.path.write_text(
+            '<testsuite><testcase classname="A" name="same"/>'
+            '<testcase classname="A" name="same"/></testsuite>')
+        result = make_digest([str(self.path)], "success", "unit", self.env)
+        self.assertEqual("harness_report", result["phase"])
+        self.assertEqual("DuplicateTestIdentity", result["invalid_reports"][0]["problem"])
+        self.assertFalse(result["evidence_executed"])
+        self.assertTrue(rejects_unverified_green(result, "success", True))
+
+
 if __name__ == "__main__":
     unittest.main()

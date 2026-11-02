@@ -41,6 +41,10 @@ on:
       - 'tools/ci_failure_digest.py'
       - 'tools/parse_real_magnet_peer_receipt.py'
       - 'tests/test_real_magnet_peer_receipt.py'
+      - 'tools/verify_native_add_shards.py'
+      - 'tests/test_native_add_shards.py'
+      - 'tools/parse_installed_magnet_add_receipt.py'
+      - 'tests/test_installed_magnet_add_receipt.py'
       - 'tests/test_ci_failure_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
@@ -114,6 +118,10 @@ on:
       - 'tools/ci_failure_digest.py'
       - 'tools/parse_real_magnet_peer_receipt.py'
       - 'tests/test_real_magnet_peer_receipt.py'
+      - 'tools/verify_native_add_shards.py'
+      - 'tests/test_native_add_shards.py'
+      - 'tools/parse_installed_magnet_add_receipt.py'
+      - 'tests/test_installed_magnet_add_receipt.py'
       - 'tests/test_ci_failure_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
@@ -192,6 +200,12 @@ jobs:
         run: |
           bash tools/test_phone_intake_journey.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_phone_intake.py
+      - name: Validate installed real-source magnet reporting without secrets or emulator
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
+      - name: Test complete native Add sharding and CI evidence contracts offline
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_add_shards.py
       - name: Validate protected magnet test evidence receipts without credentials
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_magnet_peer_receipt.py
       - name: Validate native atlas names offline (no Android)

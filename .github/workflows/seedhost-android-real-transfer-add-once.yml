@@ -33,7 +33,7 @@ jobs:
            (github.event_name == 'push' &&
             contains(github.event.head_commit.message, 'one-time magnet-only two-source Seedhost qualification'))) }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 24
     env:
       CHUNKS_LIVE_RUTORRENT_URL: https://ianseeds.wood.seedhost.eu/rutorrent/
     steps:
@@ -79,6 +79,14 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/seedhost_android_real_transfer_add_once.sh
+      - name: Upload sanitized source-specific live magnet acceptance receipt, even on red
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-installed-real-magnet-evidence
+          path: ${{ runner.temp }}/chunks-real-android-add/RECEIPT.json
+          retention-days: 14
+          if-no-files-found: warn
       - name: Attach qualified exact binary and cryptographic evidence only on success
         uses: actions/upload-artifact@v4
         with:
