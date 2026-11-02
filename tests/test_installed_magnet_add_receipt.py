@@ -34,7 +34,7 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
 
     def test_missing_exact_hash_blocks_otherwise_green_completion(self):
         data = self.success_log().replace(
-            "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40 + "\\n", "")
+            "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40 + "\n", "")
         result = parse(data, 0, self.env)
         self.assertNotEqual("passed", result["result"])
         self.assertEqual("missing", result["sources"]["magnet2"]["hash_receipt"])
