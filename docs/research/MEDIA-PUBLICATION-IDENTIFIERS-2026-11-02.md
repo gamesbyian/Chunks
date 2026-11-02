@@ -1,0 +1,13 @@
+# Checksum-validated publication identifiers (2026-11-02)
+
+**Status:** parked independent source/test branch, no production adapter/lookup, no API calls, no changes to torrent or file state. Tracks [#403](https://github.com/gamesbyian/Chunks/issues/403) and the [shared identity contract](../SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md).
+
+A future book/serial metadata adapter can use `MediaPublicationIdentifiers` only on **exactly supplied structured identifier fields**, never regex-scraped filenames. The utility checks standard ISBN-10, ISBN-13 (978/979) and ISSN checksums, normalizes hyphens/spaces/case, and converts verified ISBN-10 representations to their mathematically equivalent 978 ISBN-13 codes. An ISBN 979 prefix is **not** rewritten to an invented ISBN-10. Prefix-length contradictions, bad control digits, titles with embedded numbers, URLs, paths and obvious all-zero placeholder identifiers are rejected.
+
+**Identity scope is deliberately limited:** ISBN usually identifies a specific publication edition/product/format, not an abstract novel; separate ISBNs can belong to different editions, formats or languages. ISSN identifies a **continuing publication/key title** and does not establish which issue or volume is present. Checksum validity is *not* proof that a real authority assigned the identifier, and neither identifier is a license to join ambiguous or conflicting provider work/entity records automatically. Source records, user corrections, provider rights and provenance remain required.
+
+Primary references: [International ISBN Agency: What is an ISBN?](https://www.isbn-international.org/index.php/node/10) (13-digit prefixes 978/979, edition/format semantics, weighted 1/3 check digit), [ISBN.org standard](https://www.isbn.org/about_ISBN_standard) (10-to-13 conversion changes check digit), [Library of Congress ISSN check-digit calculation](https://www.loc.gov/issn/basics/basics-checkdigit.html) (modulus 11, 8-to-2 weights, X), and [ISSN International Centre](https://www.issn.org/faq/what-is-an-issn/) (continuing-resource/key-title semantics).
+
+**Tests:** seven local host Kotlin tests passed, including valid conversion `0-306-40615-2 → 9780306406157`, 979 preservation, ISBN-10 X, invalid control digits, declared-length mismatch, path/URL/text negatives, ISSN `0317-8471` and `1092-003X`, and ISBN/ISSN namespace isolation. Not a live Open Library/Crossref query, registration proof, Gradle/Android CI, or full international catalog acceptance.
+
+**Integration:** Only after P0 and source approval, validated IDs can become a *candidate external identifier* for Open Library work/edition reconciliation; never overwrite existing user identities or infer a duplicate torrent based solely on matching text.
