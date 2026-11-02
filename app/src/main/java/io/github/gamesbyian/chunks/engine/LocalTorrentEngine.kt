@@ -521,6 +521,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val key = identity(info)
         if (handles.containsKey(key) || session.find(info.infoHash())?.isValid == true)
             return LocalAddResult.Refused("This torrent is already in the local engine")
+        // Production .torrent Add reserves file paths BEFORE calling
+        // addStopped(). Drain the exact old native tombstone here or its
+        // surviving checked reservation would always reject same-hash re-Add,
+        // even after libtorrent invalidates the old handle.
+        releaseDrainedNativeRetirements()
         // Register BEFORE native Add. A failed resume-file fsync may throw after
         // libtorrent registered a stopped handle: the UI can still discover it.
         // That partially admitted handle must never evade the first-Start fence.
