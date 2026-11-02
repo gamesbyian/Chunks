@@ -1,6 +1,6 @@
 # Shared name interpretation, media identity and Similar Transfers
 
-**Status:** owner-approved specification, unimplemented. This contract extends [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md), [MEDIA-INSPECTION](MEDIA-INSPECTION.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), and [UX](UX.md). No runtime correctness implied.
+**Status:** binding owner-approved feature contract. Standalone name parsing, provider-neutral media evidence/cache/dispatch policies and the read-only exact-transfer related index have merged source-level implementations; **Similar Transfers UI, real provider adapters, durable derived index and installed-device feature acceptance remain unimplemented**. This contract extends [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [PLEX-FILENAME-REPAIR](PLEX-FILENAME-REPAIR.md), [MEDIA-INSPECTION](MEDIA-INSPECTION.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), and [UX](UX.md). No runtime correctness implied.
 
 ## One universal interpretation service
 
@@ -101,7 +101,7 @@ Negative controls: distinct unrelated people named Peter David; generic AI keywo
 
 **Stage D:** Add cross-format relationship traversal, explainability, collection coverage and user corrections; integrate shared identity facts with Smart/Bulk Rename and Plex repair, maintaining smallest-change and action safety. Explore related UI only after confidence/precision metrics support it.
 
-All stages are **planned/unimplemented** until exact-source code, device/API, provider-contract and positive/negative evidence are recorded in SPEC-COVERAGE and QUALITY-LEDGER.
+Stages A–D remain **incomplete as end-user workflows**. Pure local parser, graph/cache, dispatch-planner and read-only transfer-index foundations are merged and JVM/Android CI-compiled, but they are **not an integrated SQLite-backed or provider-fed user feature**. Product acceptance requires exact-source, device/API, licensed-provider and positive/negative receipts in SPEC-COVERAGE and QUALITY-LEDGER.
 
 
 ### Verified cross-provider ID-bridge fixture (research snapshot 2026-11-01)
