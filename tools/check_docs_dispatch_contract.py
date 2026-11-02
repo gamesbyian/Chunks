@@ -14,7 +14,7 @@ import re
 
 EVENT = re.compile(r"^  (push|pull_request|workflow_dispatch):(?:\s*#.*)?$")
 PATHS = re.compile(r"^    (paths|paths-ignore):$")
-ITEM = re.compile(r"^      - ['\\"]([^'\\"]+)['\\"]\s*$")
+ITEM = re.compile(r"""^      - ['"]([^'"]+)['"]\s*$""")
 
 
 def event_filters(text: str, event: str) -> list[str]:
