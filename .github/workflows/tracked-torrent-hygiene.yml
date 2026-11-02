@@ -1,0 +1,38 @@
+name: Reject tracked raw torrent metainfo
+
+on:
+  pull_request:
+    paths:
+      - '*.torrent'
+      - '**/*.torrent'
+      - '.gitignore'
+      - 'tools/check_tracked_torrent_metainfo.py'
+      - 'tests/test_tracked_torrent_metainfo.py'
+      - '.github/workflows/tracked-torrent-hygiene.yml'
+  push:
+    branches: [main]
+    paths:
+      - '*.torrent'
+      - '**/*.torrent'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-tracked-metainfo-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check out the tested commit without persisted credentials
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Test fail-closed git-index hygiene controls without secrets
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_tracked_torrent_metainfo.py'
+      - name: Refuse tracked torrent metainfo
+        run: python3 tools/check_tracked_torrent_metainfo.py
