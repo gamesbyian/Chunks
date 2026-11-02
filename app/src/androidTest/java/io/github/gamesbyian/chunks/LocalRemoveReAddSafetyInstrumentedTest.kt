@@ -63,8 +63,8 @@ class LocalRemoveReAddSafetyInstrumentedTest {
         try {
             val initial = LocalTorrentEngine(config).also { it.start() }
             first = initial
-            val removed = initial.addStopped(removedTorrent, downloads)
-            val kept = initial.addStopped(otherTorrent, downloads)
+            val removed = initial.addStoppedChecked(removedTorrent, downloads)
+            val kept = initial.addStoppedChecked(otherTorrent, downloads)
             assertTrue("Initial native Add failed: $removed", removed is LocalAddResult.AddedStopped)
             assertTrue("Second native Add failed: $kept", kept is LocalAddResult.AddedStopped)
             val oldHash = (removed as LocalAddResult.AddedStopped).status.infoHash
@@ -78,7 +78,7 @@ class LocalRemoveReAddSafetyInstrumentedTest {
             // handle has *already* become invalid. Both are safe outcomes.
             // The new engine must eventually release only this hash's claim,
             // with NO restart and NO interruption to the other torrent.
-            var attempted: LocalAddResult = initial.addStopped(removedTorrent, downloads)
+            var attempted: LocalAddResult = initial.addStoppedChecked(removedTorrent, downloads)
             val deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(20)
             var rejectedWhileDraining = 0
             while (attempted is LocalAddResult.Refused && System.nanoTime() < deadline) {
@@ -87,7 +87,7 @@ class LocalRemoveReAddSafetyInstrumentedTest {
                     initial.status(otherHash))
                 assertArrayEquals(digest(removedBytes), digest(removedFile.readBytes()))
                 Thread.sleep(100)
-                attempted = initial.addStopped(removedTorrent, downloads)
+                attempted = initial.addStoppedChecked(removedTorrent, downloads)
             }
             assertTrue("Drained old native handle must permit same-session re-Add: $attempted",
                 attempted is LocalAddResult.AddedStopped)
@@ -117,7 +117,7 @@ class LocalRemoveReAddSafetyInstrumentedTest {
             assertTrue("Restored job must not start sharing without fresh user consent",
                 restoredOther!!.stopped)
 
-            val readded = newSession.addStopped(removedTorrent, downloads)
+            val readded = newSession.addStoppedChecked(removedTorrent, downloads)
             assertTrue("Explicit re-Add after native shutdown must be allowed: $readded",
                 readded is LocalAddResult.AddedStopped)
             val readdedStatus = (readded as LocalAddResult.AddedStopped).status
