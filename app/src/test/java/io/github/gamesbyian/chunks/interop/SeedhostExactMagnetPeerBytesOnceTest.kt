@@ -22,6 +22,9 @@ import java.io.File
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.StandardOpenOption
 import java.net.URI
 import java.security.MessageDigest
 import java.util.Random
@@ -147,10 +150,23 @@ class SeedhostExactMagnetPeerBytesOnceTest {
         }
     }
 
+    // Persist allowlisted evidence even when a JVM drops its JUnit stdout.
+    private fun record(kind: String, value: String) {
+        val destination = System.getenv("CHUNKS_MAGNET_RECEIPT_PATH") ?: return
+        val temp = requireNotNull(System.getenv("RUNNER_TEMP"))
+        val path = Path.of(destination).toAbsolutePath().normalize()
+        require(path.parent == Path.of(temp).toAbsolutePath().normalize())
+        require(kind in setOf("stage", "hash"))
+        if (kind == "hash") require(Regex("[a-f0-9]{40}").matches(value))
+        Files.writeString(path, "$kind:$value\n",
+            StandardOpenOption.CREATE, StandardOpenOption.APPEND)
+    }
+
     private fun stage(value: String) {
-        require(value in setOf("preflight", "destination", "peer", "seed-ready", "metadata-verified",
+        require(value in setOf("runner-ready", "preflight", "destination", "peer", "seed-ready", "metadata-verified",
             "added-stopped", "added-started", "started", "bytes-verified", "stopped", "removed",
-            "inventory-restored"))
+            "inventory-restored", "manual-reconciliation-required"))
+        record("stage", value)
         println("CHUNKS_HOST_BYTES_STAGE: $value")
     }
 
@@ -177,6 +193,7 @@ class SeedhostExactMagnetPeerBytesOnceTest {
         val user = System.getenv("CHUNKS_LIVE_RTORRENT_USER").orEmpty()
         val pass = System.getenv("CHUNKS_LIVE_RTORRENT_PASS").orEmpty()
         require(user.isNotEmpty() && pass.isNotEmpty()) { "Protected login unavailable" }
+        stage("runner-ready")
         DesktopLibtorrent.ensureLoaded()
         val verified = RemoteSmartConnect.connect(urlText, user, pass) { credentials ->
             val connection = RTorrentRemote(credentials)
@@ -239,6 +256,7 @@ class SeedhostExactMagnetPeerBytesOnceTest {
             .pieceSize(64 * 1024).addTracker("http://127.0.0.1:1/announce")
             .generate().entry().bencode()
         val hash = TorrentMetainfoReader.preview(metainfo).infoHashV1
+        record("hash", hash)
         println("CHUNKS_HOST_BYTES_HASH: $hash") // Synthetic-only, never a tracker/passkey.
         require(remote.listTransfers("main").none { it.hash.equals(hash, true) } &&
             remote.lookupName(hash) == null) { "Fresh synthetic hash already exists; no replay" }
@@ -374,7 +392,7 @@ class SeedhostExactMagnetPeerBytesOnceTest {
             // manual read-only reconciliation without risking a duplicate Add
             // or another d.erase after a lost acknowledgement.
             if (addMayHaveApplied && !exactSessionRemovedAndInventoryRestored)
-                println("CHUNKS_HOST_BYTES_STAGE: manual-reconciliation-required")
+                stage("manual-reconciliation-required")
             if (seedCloseFailure != null) {
                 // No exception details: native diagnostics can contain paths.
                 // Remote cleanup above was still attempted exactly once.

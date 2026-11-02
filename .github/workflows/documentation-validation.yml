@@ -39,6 +39,8 @@ on:
       - 'tools/test_physical_android_preflight.sh'
       - 'tests/test_ci_trigger_contract.py'
       - 'tools/ci_failure_digest.py'
+      - 'tools/parse_real_magnet_peer_receipt.py'
+      - 'tests/test_real_magnet_peer_receipt.py'
       - 'tools/verify_native_add_shards.py'
       - 'tests/test_native_add_shards.py'
       - 'tools/parse_installed_magnet_add_receipt.py'
@@ -114,6 +116,8 @@ on:
       - 'tools/test_physical_android_preflight.sh'
       - 'tests/test_ci_trigger_contract.py'
       - 'tools/ci_failure_digest.py'
+      - 'tools/parse_real_magnet_peer_receipt.py'
+      - 'tests/test_real_magnet_peer_receipt.py'
       - 'tools/verify_native_add_shards.py'
       - 'tests/test_native_add_shards.py'
       - 'tools/parse_installed_magnet_add_receipt.py'
@@ -202,6 +206,8 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_add_shards.py
+      - name: Validate protected magnet test evidence receipts without credentials
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_magnet_peer_receipt.py
       - name: Validate native atlas names offline (no Android)
         run: |
           python3 tools/check_native_atlas_contract.py
