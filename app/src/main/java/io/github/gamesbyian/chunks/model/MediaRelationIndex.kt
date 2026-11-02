@@ -3,9 +3,14 @@ package io.github.gamesbyian.chunks.model
 /** Offline-only candidates over exact existing transfer keys. Never authorize file/RPC mutations. */
 enum class MediaCreditRole { WRITER, ACTOR, PERFORMER, BIOGRAPHICAL_SUBJECT }
 
+/** Only normalized provider-qualified identifiers may become exact identity facets. */
+private val mediaFacetId = Regex("[a-z][a-z0-9-]*:(?:[A-Za-z0-9][A-Za-z0-9_.-]*:)*[A-Za-z0-9][A-Za-z0-9_.-]*")
+private fun validMediaFacetId(value: String): Boolean =
+    value.length in 3..256 && mediaFacetId.matches(value)
+
 data class MediaPersonCredit(val personId: String, val role: MediaCreditRole, val displayName: String) {
     init {
-        require(personId.contains(':') && personId.substringAfter(':').isNotBlank())
+        require(validMediaFacetId(personId)) { "Person identity requires a qualified, nonblank provider ID" }
         require(displayName.isNotBlank())
     }
 }
@@ -23,11 +28,11 @@ data class MediaContentMember(
 ) {
     init {
         require(memberId.isNotBlank())
-        require(workId == null || ':' in workId)
-        require(seriesId == null || ':' in seriesId)
+        require(workId == null || validMediaFacetId(workId))
+        require(seriesId == null || validMediaFacetId(seriesId))
         require((season == null) == (episode == null))
         require(season == null || (season >= 0 && episode!! >= 0))
-        require(specificTopics.all { ':' in it && it.substringAfter(':').isNotBlank() })
+        require(specificTopics.all(::validMediaFacetId))
     }
 }
 
@@ -54,7 +59,11 @@ data class RelatedTransferCandidate(
     val evidence: List<MediaRelationEvidence>,
     /** Matched members are a proven subset, never a claim about an entire collection. */
     val matchedMembers: Int,
-    val observedMembers: Int
+    val observedMembers: Int,
+    /** Stable IDs of verified matched target members; opaque internal keys, not display filenames. */
+    val matchedMemberIds: List<String> = emptyList(),
+    /** True when member-level evidence exceeds the explicit bounded preview. */
+    val memberEvidenceTruncated: Boolean = false
 ) {
     val strongestRelation: MediaRelationKind get() = evidence.first().kind
 }
@@ -67,6 +76,9 @@ class MediaRelationIndex private constructor(
     private val byInfohash: Map<String, List<UnifiedTransferKey>>
 ) {
     companion object {
+        /** Detail previews are bounded even for multi-thousand-member collections. */
+        private const val MAX_MEMBER_EVIDENCE_IDS = 256
+
         fun build(transfers: Collection<MediaTransferMembers>): MediaRelationIndex {
             require(transfers.map { it.key }.distinct().size == transfers.size) {
                 "Ambiguous duplicate transfer identities"
@@ -168,8 +180,13 @@ class MediaRelationIndex private constructor(
             val evidence = match.evidence.distinctBy { it.kind to it.identifier }
                 .sortedWith(compareByDescending<MediaRelationEvidence> { it.kind.rank }
                     .thenBy { it.identifier }.thenBy { it.matchedMemberId })
-            RelatedTransferCandidate(key, evidence, match.memberIds.size,
-                records[key]?.members?.size ?: return@mapNotNull null)
+            // An explanation is deliberately collapsed per relation, but the exact
+            // matched issue/episode identities must remain auditable and bounded.
+            val matchedIds = match.memberIds.sorted()
+            RelatedTransferCandidate(key, evidence, matchedIds.size,
+                records[key]?.members?.size ?: return@mapNotNull null,
+                matchedIds.take(MAX_MEMBER_EVIDENCE_IDS),
+                matchedIds.size > MAX_MEMBER_EVIDENCE_IDS)
         }.sortedWith(compareByDescending<RelatedTransferCandidate> { it.strongestRelation.rank }
             .thenByDescending { it.matchedMembers }
             .thenBy { it.key.environment.value }.thenBy { it.key.infoHash }).take(limit)
