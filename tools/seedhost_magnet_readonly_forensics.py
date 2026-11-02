@@ -49,6 +49,38 @@ def item(data, start, depth=0):
     raise ValueError("invalid bencode type")
 
 
+def decode_bencode(data, start=0, depth=0):
+    if depth > 64 or start >= len(data):
+        raise ValueError("invalid metainfo nesting")
+    token = data[start]
+    if token == 105:
+        end = data.index(b"e", start + 1)
+        return int(data[start + 1:end]), end + 1
+    if token == 108:
+        result, pos = [], start + 1
+        while data[pos] != 101:
+            element, pos = decode_bencode(data, pos, depth + 1)
+            result.append(element)
+        return result, pos + 1
+    if token == 100:
+        result, pos = {}, start + 1
+        while data[pos] != 101:
+            key, pos = decode_bencode(data, pos, depth + 1)
+            if not isinstance(key, bytes) or key in result:
+                raise ValueError("invalid dictionary")
+            val, pos = decode_bencode(data, pos, depth + 1)
+            result[key] = val
+        return result, pos + 1
+    if 48 <= token <= 57:
+        colon = data.index(b":", start)
+        size = int(data[start:colon])
+        end = colon + 1 + size
+        if size < 0 or end > len(data):
+            raise ValueError("invalid byte string")
+        return data[colon + 1:end], end
+    raise ValueError("invalid type")
+
+
 def source_hash(url):
     with urllib.request.urlopen(url, timeout=25) as response:
         if response.status != 200 or response.geturl() != url:
@@ -56,7 +88,7 @@ def source_hash(url):
         data = response.read(1_048_577)
     if not data or len(data) > 1_048_576 or data[0] != 100:
         raise ValueError("invalid metainfo")
-    i, found = 1, None
+    i, found, info_name, info_size = 1, None, None, None
     while i < len(data) and data[i] != 101:
         if not 48 <= data[i] <= 57:
             raise ValueError("non-string key")
@@ -69,9 +101,19 @@ def source_hash(url):
             if found:
                 raise ValueError("duplicate info")
             found = hashlib.sha1(data[start:i]).hexdigest()
+            info, consumed = decode_bencode(data, start)
+            if consumed != i or not isinstance(info, dict):
+                raise ValueError("invalid info dictionary")
+            raw_name = info.get(b"name.utf-8") or info.get(b"name")
+            if not isinstance(raw_name, bytes):
+                raise ValueError("missing name")
+            info_name = raw_name.decode("utf-8")
+            info_size = info[b"length"] if b"length" in info else sum(x[b"length"] for x in info[b"files"])
+            if not isinstance(info_size, int) or info_size <= 0:
+                raise ValueError("invalid total size")
     if found is None or i != len(data) - 1:
         raise ValueError("missing info")
-    return found
+    return found, info_name, info_size
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -131,7 +173,7 @@ def main():
         raise ValueError("no protected credentials")
     opener = rpc_opener()
     try:
-        inventory = call(opener, "download_list", "main")
+        inventory = call(opener, "download_list")
         indexed = {str(h).lower() for h in inventory}
         print("MAGNET_FORENSICS inventory=ok available_hashes=" + str(len(indexed)))
     except Exception:
@@ -143,7 +185,7 @@ def main():
         default = None
     for label, url in SOURCES:
         try:
-            target = source_hash(url)
+            target, expected_name, expected_size = source_hash(url)
         except Exception:
             print("MAGNET_FORENSICS source=" + label + " upstream=unavailable")
             continue
@@ -157,11 +199,14 @@ def main():
             registered = registered and target in indexed
         known_name = value("d.name")
         size = value("d.size_bytes")
-        expected_name = url.rsplit("/", 1)[-1].removesuffix(".torrent")
+        expected_filename = url.rsplit("/", 1)[-1].removesuffix(".torrent")
         print(
             "MAGNET_FORENSICS source=" + label +
             " upstream=ok registered=" + str(registered).lower() +
-            " name_matches_source=" + str(known_name == expected_name).lower() +
+            " name_matches_source_filename=" + str(known_name == expected_filename).lower() +
+            " name_matches_metainfo=" + str(known_name == expected_name).lower() +
+            " size_matches_metainfo=" + str(size == expected_size).lower() +
+            " size_class=" + ("under-1mb" if isinstance(size, int) and size < 1_048_576 else "over-1mb" if isinstance(size, int) else "unknown") +
             " metadata_size_positive=" + boolean_number(size) +
             " started=" + boolean_number(value("d.state")) +
             " active=" + boolean_number(value("d.is_active")) +
