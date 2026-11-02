@@ -36,7 +36,7 @@ The dependency-free Node 22 converter runs in `--check` mode in Android build/re
 
 ## Downloadable APK in GitHub Releases
 
-A dedicated [Publish Chunks installable Android debug APK](../.github/workflows/publish-debug-apk.yml) workflow builds and JVM-tests the exact checked-out `main` SHA, verifies the Android versionName suffix, produces a paired SHA-256 receipt and publishes both files as assets of an immutable pre-release tag `android-debug-<12-character-source-SHA>`. The workflow is **manual-only on `main`**. Editing its YAML or merging source does not automatically create a public pre-release; use an explicit dispatch after the relevant exact-head tests pass. The release asset URL is stable, unlike the seven-day Actions artifact.
+A dedicated [Publish Chunks installable Android debug APK](../.github/workflows/publish-debug-apk.yml) workflow builds and JVM-tests the exact checked-out `main` SHA, verifies the Android versionName suffix, produces a paired SHA-256 receipt and publishes both files as assets of an immutable pre-release tag `android-debug-<12-character-source-SHA>`. The workflow is **manual-only on `main`**. Editing its YAML or merging source does not automatically create a public pre-release; use an explicit dispatch after the relevant exact-head tests pass. The release asset URL remains valid until a newer manually requested debug test release replaces it; routine CI APKs are never uploaded.
 
 The GitHub release files are `chunks-debug.apk`, `chunks-preview.apk` (side-by-side install), and `CHUNKS-BUILD-SHA256.txt`. Gradle itself may still produce `app-debug.apk` internally; publication workflows copy and rename the distributable APKs. All uploaded APK filenames must contain `chunks`. They must be kept together when running `sha256sum -c CHUNKS-BUILD-SHA256.txt` or the physical-handset preflight. These are development builds **signed with the Android debug key**, not signed publisher-authentic releases, verified handset compatibility, or ready-for-production APKs. Do not expose server credentials or infer real torrent/seeding acceptance merely because the APK installs.
 
@@ -44,18 +44,15 @@ The GitHub release files are `chunks-debug.apk`, `chunks-preview.apk` (side-by-s
 
 The `Chunks Android foundation` workflow embeds the **exact Git commit checked out by the runner** into the debug APK's Android `versionName` as `0.1.0-dev+<12 hex digits>`. Developer-built APKs without `CHUNKS_SOURCE_SHA` keep `0.1.0-dev`, which intentionally carries no source claim.
 
-The seven-day `chunks-debug-prealpha` Android foundation Actions artifact contains two files (the publishing workflow also includes `chunks-preview.apk`):
+Routine `Chunks Android foundation` CI verifies the compiled APK's embedded source version and computes a SHA-256 receipt, but **does not upload an APK**. Build and test results remain in the workflow logs and summaries. Only the manually dispatched `publish-debug-apk.yml` produces downloadable owner-test APKs in GitHub Releases: `chunks-debug.apk`, the separately installable `chunks-preview.apk`, and `CHUNKS-BUILD-SHA256.txt`. Keep the files together and run `sha256sum -c CHUNKS-BUILD-SHA256.txt` before installing.
 
-- `chunks-debug.apk`: installable debug-only Android package.
-- `CHUNKS-BUILD-SHA256.txt`: independent SHA-256 checksum for the extracted APK, with commented full checked-out commit and Actions run ID. From the directory containing both files, run `sha256sum -c CHUNKS-BUILD-SHA256.txt`.
-
-The workflow verifies that the APK manifest exposes the expected revision **before** publishing the artifact. On a handset, Android Settings → Apps → Chunks → App info reports its version. Compare the suffix with the receipt and record the device model, actual Android release/API, artifact workflow run, APK digest, tested remote/engine mode and the sequence of visible outcomes. The suffix identifies the **built checkout**, which for pull requests is GitHub's temporary merge-ref commit; it is not automatically the PR head or the eventual squash-merge commit. For a beta APK corresponding directly to a commit on `main`, manually dispatch the workflow on that commit/ref and verify the receipt.
+Each successfully published owner-test release supersedes older `android-debug-<sha12>` prereleases. The workflow retires only older matching debug test releases after the new release is verified present; no source commit, test evidence, signed production release or unrelated tag is deleted. Previously uploaded Actions artifacts continue to expire on their original schedules. The workflow verifies that the APK manifest exposes the expected revision **before** publishing the requested test release. On a handset, Android Settings → Apps → Chunks → App info reports its version. Compare the suffix with the receipt and record the device model, actual Android release/API, artifact workflow run, APK digest, tested remote/engine mode and the sequence of visible outcomes. The suffix identifies the **built checkout**, which for pull requests is GitHub's temporary merge-ref commit; it is not automatically the PR head or the eventual squash-merge commit. For a beta APK corresponding directly to a commit on `main`, manually dispatch the workflow on that commit/ref and verify the receipt.
 
 Debug signing is unsuitable for production distribution. The exact APK receipt proves source/artifact traceability only; installation, SSL connection, actual bytes, foreground-service survival, and usability on a physical phone require separate recorded acceptance.
 
 ## Receipt-checked install on a physical Android handset
 
-After downloading and extracting **both** files from one `chunks-debug-prealpha` Actions artifact, attach one authorized handset with USB debugging enabled. Run:
+After downloading `chunks-debug.apk` and its matching `CHUNKS-BUILD-SHA256.txt` from the current explicitly requested GitHub debug prerelease, attach one authorized handset with USB debugging enabled. Run:
 
 ```bash
 bash tools/test_physical_android_preflight.sh

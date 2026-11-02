@@ -115,13 +115,10 @@ jobs:
           # Emit a relative filename so a tester can verify extracted bytes.
           (cd "$(dirname "$apk")" && sha256sum "$(basename "$apk")") > "$receipt"
           printf '# built_commit=%s\n# workflow_run=%s\n' "$CHUNKS_SOURCE_SHA" "$GITHUB_RUN_ID" >> "$receipt"
-      - uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: chunks-debug-prealpha
-          path: |
-            app/build/outputs/apk/debug/chunks-debug.apk
-            app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt
-          # Automatic PR builds churn rapidly; owner-requested test builds remain
-          # available for seven days from publish-debug-apk.yml.
-          retention-days: 3
+      # The APK is compiled, source-verified and checksumed, but ordinary CI
+      # does not upload disposable binaries. Owner test builds are published
+      # only by the manually dispatched publish-debug-apk.yml workflow.
+      - name: Summarize exact-source APK verification
+        run: |
+          cat app/build/outputs/apk/debug/CHUNKS-BUILD-SHA256.txt
+          echo "Android debug APK compiled and verified from $CHUNKS_SOURCE_SHA; binary intentionally not uploaded." >> "$GITHUB_STEP_SUMMARY"

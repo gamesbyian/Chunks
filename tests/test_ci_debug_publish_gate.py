@@ -9,7 +9,6 @@ PINS = (
     "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020",
     "actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3",
     "gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a",
-    "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
 )
 
 
@@ -25,7 +24,18 @@ class DebugPublicationTests(unittest.TestCase):
         s = FILE.read_text()
         job_env = s.split("jobs:\n  publish:", 1)[1].split("    steps:", 1)[0]
         self.assertNotIn("GH_TOKEN", job_env)
-        self.assertEqual(2, s.count("GH_TOKEN: " + "$" + "{{ github.token }}"))
+        # Read/write credentials are only injected in the three explicit
+        # main-only publication steps, never as job-level or PR credentials.
+        authorized = {
+            "Refuse duplicate debug release before Android SDK and Gradle",
+            "Publish immutable pre-release assets inside this repository",
+            "Retire superseded owner-test APK releases after successful publication",
+        }
+        steps = s.split("      - name: ")[1:]
+        scoped = {step.split("\n", 1)[0]
+                  for step in steps
+                  if "GH_TOKEN: " + "$" + "{{ github.token }}" in step}
+        self.assertEqual(authorized, scoped)
         self.assertIn("persist-credentials: false", s)
 
     def test_redundant_release_refused_before_sdk(self):
@@ -36,6 +46,12 @@ class DebugPublicationTests(unittest.TestCase):
         self.assertIn('gh release create "$tag"', s)
         self.assertIn("sha256sum -c CHUNKS-BUILD-SHA256.txt", s)
         self.assertIn("chunks-preview.apk", s)
+        self.assertLess(s.index('gh release create "$tag"'),
+                        s.index('gh release list --repo "$GITHUB_REPOSITORY"'))
+        self.assertIn('test("^android-debug-[0-9a-f]{12}$")', s)
+        self.assertIn('gh release delete "$obsolete"', s)
+        self.assertIn('"$obsolete" != "$current"', s)
+        self.assertNotIn("actions/upload-artifact@", s)
 
     def test_reviewed_immutable_action_revisions(self):
         s = FILE.read_text()
