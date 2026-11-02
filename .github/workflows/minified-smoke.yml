@@ -12,6 +12,10 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/MinifiedBuildSmokeInstrumentedTest.kt"
       - ".github/workflows/minified-smoke.yml"
       - "tools/minified_smoke.sh"
+      - "tools/ci_failure_digest.py"
+      - "tools/require_minified_smoke_digest.py"
+      - "tests/test_ci_failure_digest.py"
+      - "tests/test_minified_smoke_digest.py"
   workflow_dispatch:
 
 permissions:
@@ -27,6 +31,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Prove the R8 JUnit receipt gate before allocating Android toolchain
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_minified_smoke_digest.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -69,21 +75,18 @@ jobs:
           disable-animations: true
           # A hung instrumentation fails within 15 minutes with diagnostics.
           script: bash tools/minified_smoke.sh
-      - name: Require that the smoke test actually ran
+      - name: Produce source-bound JUnit evidence even if setup or emulator failed
+        if: always()
+        env:
+          CHUNKS_JOB_STATUS: ${{ job.status }}
         run: |
-          python3 - <<'PY'
-          import glob, sys, xml.etree.ElementTree as ET
-          reports = glob.glob("app/build/outputs/androidTest-results/connected/**/TEST-*.xml", recursive=True)
-          assert reports, "no instrumentation report"
-          total = failed = skipped = 0
-          for path in reports:
-              suite = ET.parse(path).getroot()
-              total += int(suite.get("tests", 0))
-              failed += int(suite.get("failures", 0)) + int(suite.get("errors", 0))
-              skipped += int(suite.get("skipped", 0))
-          print(f"tests={total} failed={failed} skipped={skipped}")
-          sys.exit(0 if (total, failed, skipped) == (1, 0, 0) else 1)
-          PY
+          python3 tools/ci_failure_digest.py --suite r8-qa-minified \
+            --status "$CHUNKS_JOB_STATUS" --require-executed \
+            --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' \
+            --output "$RUNNER_TEMP/chunks-r8-ci-digest.json"
+      - name: Require exactly one real executed passing R8 smoke case
+        if: success()
+        run: python3 tools/require_minified_smoke_digest.py "$RUNNER_TEMP/chunks-r8-ci-digest.json"
       - name: Upload R8 mapping and test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -95,5 +98,6 @@ jobs:
             app/build/outputs/androidTest-results/
             app/build/outputs/qaminified-logcat.txt
             app/build/outputs/qaminified-gradle.txt
+            ${{ runner.temp }}/chunks-r8-ci-digest.json
           retention-days: 14
           if-no-files-found: warn
