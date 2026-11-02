@@ -26,7 +26,7 @@
 
 1. Acquire legal, small **actual JSON** fixture responses from approved TV-episode crew, comic-issue credit and Wikidata entity endpoints. Record source dates, schema variants, nullable fields, attribution and caching restrictions. Current public webpage evidence is not this fixture.
 2. Parse and assert exact source-specific writer role, credited comic story and person ID. Differentiate script from cover/letter columns, base issue from variant/reprint, episode writer from show crew and collection name from actual member inventory.
-3. Verify Q1351554 provider ID bridge and negative conflicting QID; pass typed resolved IDs to the pure [offline media relation index](../../app/src/main/java/io/github/gamesbyian/chunks/model/MediaRelationIndex.kt), which is proposed in [PR #1031](https://github.com/gamesbyian/Chunks/pull/1031), not yet a working feature.
+3. Verify Q1351554 provider ID bridge and negative conflicting QID; pass typed resolved IDs to the pure [offline media relation index](https://github.com/gamesbyian/Chunks/pull/1031/files), which is proposed in [PR #1031](https://github.com/gamesbyian/Chunks/pull/1031), not yet a working feature.
 4. Integrate only into the existing consent-aware artwork/media enrichment pipeline, with cache/TTL, source-specific quotas, negative cache, provider errors, locked/offline states and no automatic third-party lookups solely on opening transfer details.
 5. Test installed Android devices/API tiers and accessible UX; report false-positive rates and costs, warm index benchmark and real performance. No name inference authorizes physical rename or torrent mutation.
 
