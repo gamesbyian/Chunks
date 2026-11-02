@@ -61,11 +61,11 @@ fun TransferSessionRemoveControl(
     performErase: suspend (String, String, String) -> SessionEraseOutcome = remote::eraseFromSession,
     recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase
 ) {
-    val validHash = remember(transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
-    var confirming by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+    val validHash = remember(remote, transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
+    var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
-    var attempted by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+    var attempted by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
     var pending by remember(remote, transfer.hash, transfer.name, transfer.directory) {
@@ -74,10 +74,10 @@ fun TransferSessionRemoveControl(
     var checking by remember(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
-    var feedback by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+    var feedback by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf<String?>(null)
     }
-    var verified by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+    var verified by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
     val scope = rememberCoroutineScope()
