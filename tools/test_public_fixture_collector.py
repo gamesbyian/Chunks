@@ -145,6 +145,41 @@ class CollectorTest(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     f.parse_bencode(raw)
 
+    def test_bep3_requires_sorted_dictionary_keys_at_every_depth(self):
+        # A raw byte span can be hashed even when a client must reject its
+        # noncanonical dictionary ordering. Test root, info and nested files.
+        def unsorted_dict(*pairs):
+            return b"d" + b"".join(enc(key) + enc(value)
+                                   for key, value in pairs) + b"e"
+
+        bad_root = b"d4:info" + enc(self.info) + enc(b"announce") + enc(
+            b"https://bt1.archive.org:6969/announce") + b"e"
+        bad_info = unsorted_dict(
+            (b"pieces", bytes(20)), (b"length", 5),
+            (b"piece length", 16384), (b"name", b"Public test.txt"))
+        bad_nested_entry = unsorted_dict(
+            (b"path", [b"file.txt"]), (b"length", 5))
+        bad_nested_info = (
+            b"d5:filesl" + bad_nested_entry + b"e"
+            + enc(b"name") + enc(b"root")
+            + enc(b"piece length") + enc(16384)
+            + enc(b"pieces") + enc(bytes(20)) + b"e"
+        )
+        for raw in (bad_root, b"d4:info" + bad_info + b"e",
+                    b"d4:info" + bad_nested_info + b"e"):
+            with self.subTest(raw_prefix=repr(raw[:20])):
+                with self.assertRaisesRegex(ValueError, "Noncanonical"):
+                    f.parse_bencode(raw)
+
+    def test_bep3_accepts_sorted_dictionary_keys_and_preserves_source_identity(self):
+        raw = enc({b"announce": b"https://bt1.archive.org:6969/announce",
+                   b"comment": b"public test", b"info": self.info})
+        source_root, original_info = f.parse_bencode(raw)
+        self.assertIn(b"info", source_root)
+        safe, details = f.torrent_summary(raw, 100)
+        self.assertEqual(original_info, f.parse_bencode(safe)[1])
+        self.assertEqual(hashlib.sha1(original_info).hexdigest(), details["infohash_v1"])
+
     def test_real_archive_metadata_requires_license_and_real_torrent(self):
         metadata = {
             "metadata": {"title": "Public fixture", "licenseurl": self.license_url},
