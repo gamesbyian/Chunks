@@ -1,5 +1,13 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-02 media-identity partial implementation receipt (nonblocking P3)
+
+**Source and exact-head CI:** [#1031](https://github.com/gamesbyian/Chunks/pull/1031) merged at `ab64c5fa9817cc7e493739474ab1a86962110c30`, from source head `67dd1d97ef88b475f2f680f0518b80674185a681`. Its [Android foundation 41546392018](https://github.com/gamesbyian/Chunks/actions/runs/41546392018), [R8 smoke 41546392039](https://github.com/gamesbyian/Chunks/actions/runs/41546392039), and [native Add two-shard 41546392015](https://github.com/gamesbyian/Chunks/actions/runs/41546392015) were all **successful** before main merge. Includes source-neutral exact `UnifiedTransferKey` inverted index, typed person-ID crosswalk, source-visibility/same-environment gates, malformed-identifier rejection and deterministic max-256 member-evidence preview with honest full matched count. The native Add workflows exercise pre-existing Add UI, **not a Similar Transfers UI**.
+
+**Other merged component sources:** [#1061](https://github.com/gamesbyian/Chunks/pull/1061) lossless conservative name hints, [#1053](https://github.com/gamesbyian/Chunks/pull/1053) typed graph/cache policy, [#1090](https://github.com/gamesbyian/Chunks/pull/1090) source-evidence and edition-conflict repair, [#1070](https://github.com/gamesbyian/Chunks/pull/1070) consented-provider dispatch decisions and [#1103](https://github.com/gamesbyian/Chunks/pull/1103) due-time priority fix. Source verification covers pure Kotlin contract tests and normal Android CI compile; no real external provider traffic or user-facing workflow has been exercised. ISBN/ISSN [#1071](https://github.com/gamesbyian/Chunks/pull/1071) was still in final CI at this dated checkpoint.
+
+**Not accepted:** No provider license or API payload adapter, actual episode 43454 guest-crew or comic writer JSON, validated TVmaze↔Wikidata person crosswalk, SQLite persistence/migration, integrated Similar Transfers screen, battery/traffic/performance budget, owner Pixel 6 Pro acceptance or real metadata production behavior. Feature remains P3 deferred behind normal supported daily-use P0.
+
 ## 2026-11-02 Pixel 6 Pro daily-use UI qualification and exact-source progress
 
 **Owner priority overrides the old small-viewport gate:** the physical Pixel 6 Pro is the release P0 display; exact 320×700 / 412×892 and 200% text across uncommon device matrices remain nonblocking P1 compatibility research unless a true primary-handset barrier appears. The current normative owner correction is in `docs/UX.md` and `docs/WORK-QUEUE.md`; this record retains the P1 #992 failure rather than pretending it passed.
