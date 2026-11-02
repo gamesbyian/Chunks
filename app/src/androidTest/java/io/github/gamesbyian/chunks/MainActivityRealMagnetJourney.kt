@@ -208,8 +208,17 @@ internal class MainActivityRealMagnetJourney(
             click("Refresh")
             type("Search names or Places", hash)
         }
+        fun ensureTransferDetails() {
+            // Since the compact Transfers redesign, Start/Stop/Remove
+            // live behind an explicit per-row disclosure. On an exact-hash
+            // filtered queue this is the one selected job; do not mistake
+            // an undisclosed control for a rejected engine mutation.
+            if (!visible("Hide details")) click("More details")
+            rule.onNodeWithText("Hide details").assertExists()
+        }
         fun lifecycle(hash: String, start: Boolean, refresh: Boolean = true) {
             if (refresh) refreshAndFind(hash)
+            ensureTransferDetails()
             click(if (start) "Start transfer…" else "Stop transfer…")
             click(if (start) "Confirm start" else "Confirm stop")
             await { row(hash)?.started == start && runBlocking { remote.readActivity(hash).active } == start }
@@ -217,6 +226,7 @@ internal class MainActivityRealMagnetJourney(
         fun remove(hash: String) {
             if (row(hash)?.started == true) lifecycle(hash, false)
             refreshAndFind(hash)
+            ensureTransferDetails()
             click("Remove from rTorrent…"); click("Remove transfer, keep data")
             await { runBlocking { remote.lookupName(hash) } == null }
             assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
