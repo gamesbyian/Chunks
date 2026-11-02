@@ -7,12 +7,17 @@ adb shell wm density 420
 adb shell settings put system font_scale 2.0
 scale="$(adb shell settings get system font_scale | tr -d '\r')"
 test "$scale" = "2.0" || { echo "Android rejected system font scale: $scale" >&2; exit 1; }
+test_exit=0
 gradle --no-daemon :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest
+  -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest || test_exit=$?
 dest="${RUNNER_TEMP:?}/chunks-compose-system-font-200pct"
 mkdir -p "$dest"
-adb shell ls -la /sdcard/Pictures/ChunksCompose200Pct
-adb pull /sdcard/Pictures/ChunksCompose200Pct/. "$dest"
+# Keep partial real pixels after an assertion; they explain the last completed
+# screen. Preserve the original test failure and never qualify partial output.
+pull_exit=0
+adb pull /sdcard/Pictures/ChunksCompose200Pct/. "$dest" || pull_exit=$?
+if [ "$test_exit" -ne 0 ]; then exit "$test_exit"; fi
+if [ "$pull_exit" -ne 0 ]; then exit "$pull_exit"; fi
 for screen in connection transfers-initial places organize server transfers-return combined; do
   file="$dest/chunks-compose-200pct-$screen.png"
   test -s "$file" || { echo "Missing real 200% Compose capture $screen" >&2; exit 1; }

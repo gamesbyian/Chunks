@@ -299,9 +299,14 @@ class SystemFontScaleComposeInstrumentedTest {
         rule.onNodeWithText("All environments").assertIsDisplayed()
         // One lazy list: scroll by semantics so items below the fold get composed first.
         val combinedList = rule.onNode(hasScrollToIndexAction())
+        // Sort/grouping options are deliberately collapsed in the production
+        // screen. Exercise the visible disclosure before testing its controls.
+        combinedList.performScrollToNode(hasText("Change sort & grouping", substring = true))
+        rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         combinedList.performScrollToNode(hasText("Group by environment"))
         rule.onNodeWithText("Group by environment").assertIsDisplayed()
-        rule.onNodeWithContentDescription("Sorted by Name, A–Z. Reverse order").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Sorted by Name, A–Z. Reverse order")
+            .performScrollTo().assertIsDisplayed()
         combinedList.performScrollToNode(hasText("Big Buck Bunny public demo"))
         rule.onNodeWithText("Big Buck Bunny public demo").assertIsDisplayed()
         combinedList.performScrollToNode(hasText("Select…"))
