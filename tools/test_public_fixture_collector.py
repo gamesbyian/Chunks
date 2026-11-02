@@ -342,6 +342,12 @@ class LinuxTrackerBep12Test(unittest.TestCase):
                          linux.safe_trackers({b"announce-list": many}))
 
 
+
+class V1PieceCountTest(unittest.TestCase):
+    def setUp(self):
+        self.info = {b"name": b"Public test.txt", b"length": 5,
+                     b"piece length": 16384, b"pieces": b"\\x00" * 20}
+
     def test_v1_piece_hash_count_must_match_payload_not_just_be_multiple_of_20(self):
         cases = (
             {**self.info, b"piece length": 2},
