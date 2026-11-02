@@ -99,6 +99,95 @@ jobs:
         self.assertTrue(rows["redundant.yml"]["self_trigger_on_pr"])
         self.assertFalse(rows["intended.yml"]["self_trigger_on_main_push"])
 
+    def test_multiline_main_push_is_reported_without_false_branch_matches(self):
+        cases = {
+            "multiline.yml": """name: Multiline main
+on:
+  push:
+    branches:
+      - development
+      # Inline comments and quotes are valid.
+      - "main" # merged main
+    paths:
+      - '.github/workflows/multiline.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/multiline.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+""",
+            "inline.yml": """name: Quoted inline
+on:
+  push:
+    branches: [release, 'main'] # both refs
+    paths:
+      - '.github/workflows/inline.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/inline.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+""",
+            "different.yml": """name: Different branch
+on:
+  push:
+    branches:
+      - main-release
+    paths:
+      - '.github/workflows/different.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/different.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+""",
+            "ignored.yml": """name: Branch ignore does not include main
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - '.github/workflows/ignored.yml'
+  pull_request:
+    paths:
+      - '.github/workflows/ignored.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+""",
+            "unrelated.yml": """name: Path name must not count as a branch
+on:
+  push:
+    branches:
+      - development
+    paths:
+      - '.github/workflows/unrelated.yml'
+      - 'main'
+  pull_request:
+    paths:
+      - '.github/workflows/unrelated.yml'
+jobs:
+  check:
+    runs-on: ubuntu-latest
+""",
+        }
+        for name, source in cases.items():
+            self.fixture(name, source)
+        report = collect(self.root)
+        self.assertEqual(
+            [".github/workflows/inline.yml", ".github/workflows/multiline.yml"],
+            report["main_self_trigger_candidates"],
+        )
+        self.assertEqual(5, report["workflow_count"])
+        for row in report["workflows"]:
+            self.assertTrue(row["self_trigger_on_pr"])
+        self.assertFalse(next(row for row in report["workflows"]
+                              if row["path"].endswith("different.yml"))[
+                                  "self_trigger_on_main_push"])
+
     def test_feature_push_is_not_flagged_as_main_duplicate(self):
         path = self.fixture("feature.yml", """name: Feature
 on:
