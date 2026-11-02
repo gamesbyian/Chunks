@@ -271,17 +271,12 @@ class SystemFontScaleComposeInstrumentedTest {
             rule.onAllNodesWithText("It's all here.")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        // A green connection assertion alone is insufficient: Android's
-        // just-dismissed IME can retain a shortened viewport for several
-        // frames, cutting the lower controls in the first screenshot.
-        // Require the actual bottom Transfer action to be composed and
-        // visible before accepting these real 200% screen pixels.
-        rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("More tools")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        rule.onNodeWithText("More tools").assertIsDisplayed()
+        // At 200% text, secondary actions may be below the first viewport.
+        // Preserve the actual initial pixels, then require ordinary vertical
+        // scrolling to make the existing More tools action visible/reachable.
+        // Node composition alone is not a visibility assertion.
         savePixels("transfers-initial")
+        rule.onNodeWithText("More tools").performScrollTo().assertIsDisplayed()
         // Occasional tools are collapsed behind More tools; they must still
         // open and show their actions at 200% type.
         rule.onNodeWithText("More tools").performClick()

@@ -57,6 +57,13 @@ def prepare(root):
     fixtures = {}
     for label, (raw, payload_source, source, license_text) in sources.items():
         ti = lt.torrent_info(raw)
+        if ti.priv():
+            raise ValueError("Only the fixed non-private public fixtures may be used")
+        trackers = [t.url for t in ti.trackers() if urllib.parse.urlsplit(t.url).scheme in ("http", "https", "udp")]
+        if not trackers:
+            raise ValueError("Public source has no standard tracker")
+        magnet = "magnet:?xt=urn:btih:" + str(ti.info_hashes().v1) + "".join("&tr=" + urllib.parse.quote(t, safe="") for t in trackers)
+        (root / (label + ".magnet")).write_text(magnet)
         fs = ti.files()
         total = ti.total_size()
         if not ti.info_hashes().has_v1() or total <= 0 or total > 2 * 1024**3:
@@ -143,15 +150,18 @@ class Peer:
             handle.resume()
             deadline = time.monotonic() + 45
             while time.monotonic() < deadline:
-                status = handle.status()
+                status = handle.status(lt.status_flags_t.query_pieces)
+                verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
                 if status.error:
                     raise ValueError("Native source recheck failed")
-                if status.total_done >= item["prefix_bytes"]:
+                if verified >= item["prefix_bytes"]:
                     break
                 time.sleep(.1)
-            if handle.status().total_done < item["prefix_bytes"]:
+            status = handle.status(lt.status_flags_t.query_pieces)
+            verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
+            if verified < item["prefix_bytes"]:
                 raise ValueError("Original source pieces are unavailable")
-            item["native_verified_bytes"] = handle.status().total_done
+            item["native_verified_bytes"] = verified
             self.active[label] = session, handle
             item["stages"].append(stage)
             if stage != "preflight":
@@ -196,7 +206,7 @@ def main():
             def do_GET(self):
                 if self.path == "/ready":
                     body = json.dumps(peer.fixtures).encode()
-                elif self.path in ("/magnet.torrent", "/magnet2.torrent"):
+                elif self.path in ("/magnet.torrent", "/magnet2.torrent", "/magnet.magnet", "/magnet2.magnet"):
                     body = (args.root / self.path[1:]).read_bytes()
                 else:
                     self.send_error(404)

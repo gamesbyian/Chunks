@@ -52,6 +52,8 @@ jobs:
           fi
       - name: Build testable native debug APK
         run: gradle --no-daemon :app:assembleDebug
+      - name: Reclaim unrelated toolchains before emulator allocation
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
       - name: Enable Android emulator KVM
         run: |
           if [ ! -c /dev/kvm ]; then
@@ -67,6 +69,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
           script: |

@@ -21,6 +21,12 @@ on:
         options: [disposable, live]
         default: disposable
         required: true
+      discovery:
+        description: "Known real metadata peer, or ordinary public tracker/DHT discovery"
+        type: choice
+        options: [controlled, public]
+        default: controlled
+        required: true
       apply:
         description: "Authorize exact-hash live public magnet Add/Stop/Start/session Remove and peerless negative"
         type: boolean
@@ -45,6 +51,7 @@ jobs:
     timeout-minutes: 24
     env:
       CHUNKS_CONTROLLED_PEER: "1"
+      CHUNKS_PUBLIC_DISCOVERY: ${{ inputs.discovery == 'public' && '1' || '0' }}
       CHUNKS_DISPOSABLE: ${{ inputs.environment == 'live' && '0' || '1' }}
       CHUNKS_SOURCE_SHA: ${{ github.sha }}
       CHUNKS_SIDE_BY_SIDE: "1"
