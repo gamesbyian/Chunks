@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from urllib.parse import urlencode, quote
 
-from validate_public_magnet_catalog import validate
+from validate_public_magnet_catalog import validate, license_evidence_tier
 
 
 class PublicMagnetCatalogIdentityTest(unittest.TestCase):
@@ -43,6 +43,57 @@ class PublicMagnetCatalogIdentityTest(unittest.TestCase):
             else:
                 with self.assertRaises(ValueError):
                     validate(self.catalog, self.magnets)
+
+    def test_source_license_claims_are_tiered_not_equated_to_peer_or_rights_proof(self):
+        variants = (
+            ("https://archive.org/details/cc", "https://creativecommons.org/licenses/by-sa/3.0/ca/",
+             "cc_license_claim_not_rightsholder_verified"),
+            ("https://archive.org/details/cc0", "https://creativecommons.org/publicdomain/zero/1.0/",
+             "cc0_declaration_not_rightsholder_verified"),
+            ("https://archive.org/details/pdm", "http://creativecommons.org/publicdomain/mark/1.0/",
+             "public_domain_mark_claim_not_license"),
+            ("https://archive.org/details/old", "http://creativecommons.org/licenses/publicdomain/",
+             "retired_us_public_domain_certification"),
+            ("https://linuxtracker.org/torrents/abc", "Public Linux distribution torrent; per-release licence needs review",
+             "linux_distribution_release_review"),
+            ("https://archive.org/details/unverified", "https://example.com/?next=https://creativecommons.org/licenses/by/4.0/",
+             "missing_or_unrecognized_license_claim"),
+            ("https://archive.org/details/no-claim", None,
+             "missing_or_unrecognized_license_claim"),
+        )
+        for source, license_text, expected in variants:
+            with self.subTest(evidence=expected):
+                self.assertEqual(expected, license_evidence_tier(
+                    {"source_url": source, "license": license_text}))
+
+    def test_license_evidence_report_is_advisory_and_never_affects_identity(self):
+        fixture = dict(self.item)
+        fixture["license"] = "http://creativecommons.org/licenses/publicdomain/"
+        self.catalog.write_text(json.dumps({
+            "schema": "chunks.public-magnet-catalog.v1",
+            "requested": 1, "verified_metadata_count": 1,
+            "fixtures": [fixture],
+        }), encoding="utf-8")
+        self.magnets.write_text(fixture["magnet"] + "\n", encoding="utf-8")
+        output = StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(1, validate(self.catalog, self.magnets))
+        report = json.loads(output.getvalue())
+        self.assertEqual(1, report["count"])
+        self.assertEqual({"retired_us_public_domain_certification": 1},
+                         report["license_claim_evidence_tiers"])
+        self.assertIn("no rights-holder verification", report["license_proof_boundary"])
+
+    def test_legacy_license_classification_does_not_trust_redirect_spoofing(self):
+        for spoof in (
+            "https://creativecommons.org@evil.example/licenses/publicdomain/",
+            "https://evil.example/?next=http://creativecommons.org/licenses/publicdomain/",
+            "https://creativecommons.org/licenses/publicdomain/?token=unsafe",
+            "https://creativecommons.org/publicdomain/mark/1.0/?token=unsafe",
+        ):
+            with self.subTest(spoof_class="untrusted legacy URI"):
+                self.assertEqual("missing_or_unrecognized_license_claim",
+                                 license_evidence_tier({**self.item, "license": spoof}))
 
     def test_verified_v1_and_hybrid_magnet_identity(self):
         self.check(self.item, accepted=True)
