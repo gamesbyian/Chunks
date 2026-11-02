@@ -25,6 +25,7 @@ def verify(root, count, sha, screenshot_manifest=None):
         manifest = required_images((REPO / "tools/native_add_review.sh").read_text())
     totals = {"executed": 0, "failed": 0, "skipped": 0, "reports": 0}
     summaries = []
+    known_test_ids = set()
     for index in range(count):
         path = root / f"chunks-native-add-receipt-shard-{index}" / "digest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -40,6 +41,16 @@ def verify(root, count, sha, screenshot_manifest=None):
                 int(j.get("executed", 0)) <= 0 or
                 int(j.get("failed", 0)) != 0):
             raise ValueError(f"shard {index} lacks clean executed JUnit evidence")
+        cases = data.get("test_cases", [])
+        if not data.get("test_identity_coverage_complete") or len(cases) != int(j.get("tests", -1)):
+            raise ValueError("incomplete per-test receipt")
+        for case in cases:
+            ident = case.get("id_sha256", "")
+            if len(ident) != 64 or any(ch not in "0123456789abcdef" for ch in ident) or ident in known_test_ids:
+                raise ValueError("invalid or overlapping shard identity")
+            known_test_ids.add(ident)
+            if case.get("outcome") not in ("passed", "skipped"):
+                raise ValueError("failed test in accepted shard")
         for key in totals:
             totals[key] += int(j[key])
         summaries.append({
@@ -47,6 +58,8 @@ def verify(root, count, sha, screenshot_manifest=None):
             "skipped": j["skipped"], "failed": j["failed"],
             "top_slow_classes": data.get("timing", {}).get("slowest_classes", [])[:3],
         })
+    if len(known_test_ids) != totals['executed'] + totals['skipped']:
+        raise ValueError('missing test-case identities')
     screenshots = {}
     for name in manifest:
         candidates = []
