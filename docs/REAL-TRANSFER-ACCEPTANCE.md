@@ -75,3 +75,67 @@ it is not the primary engine-start discovery tool. No protected secret access fr
 - See [public torrent fixtures](PUBLIC-TORRENT-FIXTURES.md) and [user-supplied test inputs](USER-SUPPLIED-TORRENT-TEST-INPUTS.md). Non-secret user-provided torrent files are reusable testing inputs; do not publish tracker passkeys from any metainfo/announce URL.
 
 **Completion rule:** A feature's evidence should be expressed as an independently reproducible *working journey*, rather than the number of passing tests. If an acceptance tier is missing, say exactly which tier, and leave that acceptance open.
+
+## Update: actual installed Android and isolated magnet metadata (2026-11-02)
+
+The earlier 2026-11-01 open gates are superseded **only** where the new
+positive or negative receipts below establish actual behavior. A green unit
+test or a started bit never substitutes for a download.
+
+- **Installed Android .torrent Add has positive end-to-end evidence.** Protected
+  API35 installed/emulated production `VerifiedAddScreen` to development
+  Seedhost run [41363266446](https://github.com/gamesbyian/Chunks/actions/runs/41363266446)
+  passed the original genuine public Ubuntu .torrent Add, exact-hash real
+  received and verified peer bytes, Stop -> Start, and scoped session cleanup.
+  The overall workflow was **red** because the subsequent magnet failed; do
+  not discard the earlier narrow file-positive receipt, imply whole APK
+  qualification, or rerun that passing path without a specific regression.
+- **Installed Android public magnets still fail.** That same run's magnet
+  progressed through UI's exact-hash "verified Add+Start" but no real metadata
+  or peer/piece receipt. The different Ubuntu 25.10 two-magnet run
+  [41365427039](https://github.com/gamesbyian/Chunks/actions/runs/41365427039)
+  also failed both. Per-magnet safe checkpoints have since been added in
+  [#1007](https://github.com/gamesbyian/Chunks/pull/1007) after its full native
+  Android instrumentation run
+  [41367486529](https://github.com/gamesbyian/Chunks/actions/runs/41367486529)
+  passed. Preserve those separate evidence categories.
+- **Direct read-only rTorrent forensics proves unresolved metadata, rather than
+  a stopped/inactive or missing Add.** The credentialed trusted-main
+  [41368630531](https://github.com/gamesbyian/Chunks/actions/runs/41368630531)
+  independently derives original public v1 metainfo hashes, names and sizes.
+  All three previously added public magnet identities were still present
+  in the server's 458-job session, started=1, active=1, open=1, with trackers
+  but name/size disagreeing with original bencoded metadata, reported size
+  under 1MiB, connected peers=0, received bytes=0 and verified bytes=0.
+  Read-only inventory/getter failures and unsupported optional methods are
+  never misreported as successful metadata resolution.
+- **The extra directory command alone is not sufficient to explain failure.**
+  A one-shot direct Transdroid-style two-argument `load.start("", magnet)`
+  control using the previously seeded Ubuntu server fixture also registered
+  its hash but never resolved metadata or got bytes, and was safely session
+  removed: [41369021386](https://github.com/gamesbyian/Chunks/actions/runs/41369021386).
+  Similarly the actual ruTorrent `addtorrent.php` form registered the same
+  hash with an uncertain HTTP acknowledgement; the corrected no-retry
+  180-second observation reported no metadata, peer or verified bytes, then
+  exact cleanup: [41369847790](https://github.com/gamesbyian/Chunks/actions/runs/41369847790).
+  These are **not** proof that all clients' magnet Adds are broken globally;
+  the relevant public magnet and tracker/metadata peers may be unavailable
+  to this particular seedbox. Never compare this to the .torrent receipt
+  as though a .torrent upload required BEP9 peer metadata discovery.
+- **Control public-swarm variability with an actual metadata-serving seeder.**
+  [#1013](https://github.com/gamesbyian/Chunks/pull/1013) adds a separate
+  unique real 512KiB V1 magnet-only host/JVM experiment using the previously
+  accepted runner-side libtorrent seeder, approved real rTorrent TCP listener,
+  independent BEP9 metainfo readback, actual peer bytes, piece verification
+  and exact session-only cleanup. Its protected trusted-main live run is
+  [41370450181](https://github.com/gamesbyian/Chunks/actions/runs/41370450181).
+  Evaluate that **actual completed result**, never a queue/running indicator,
+  before marking this host-side magnet acceptance positive. Even a genuine
+  positive host/JVM result does not on its own qualify an installed Android
+  magnet UI or a physical handset.
+
+**Operational rule:** Read-only reconcile leftover exact test hashes before
+any repeat Add. For any ambiguous ACK, prohibit replay and only perform
+independent readback until exact identity/state allows a safe single session
+cleanup. When a run is red, retain the sanitized last-phase receipt and never
+publish the candidate APK as qualified.
