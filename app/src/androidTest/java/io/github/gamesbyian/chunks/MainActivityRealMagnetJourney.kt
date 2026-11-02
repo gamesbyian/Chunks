@@ -133,7 +133,14 @@ internal class MainActivityRealMagnetJourney(
             click("+ Add torrent")
             rule.waitUntil(30_000) { visible("Add a download to this server") }
             report("chunks_real_add_app_stage", "add-open")
-            val link = if (publicDiscovery && label != null) String(controller("/$label.magnet"), Charsets.UTF_8)
+            // Preserve the original source's published trackers in BOTH modes.
+            // The previous controlled-host test rewrote real public magnets to
+            // a dead loopback tracker and then depended entirely on one injected
+            // peer. A failed peer handshake consequently looked like a broken
+            // production magnet Add even when the public source was available.
+            // Controlled mode still demands independent uploader/piece evidence;
+            // public-discovery mode must never inject our test peer.
+            val link = if (label != null) String(controller("/$label.magnet"), Charsets.UTF_8)
                 else "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
             require(StoppedRemoteAddPlan.fromMagnet(link, parent).expectedInfoHash == hash)
             type("Magnet link", link)
