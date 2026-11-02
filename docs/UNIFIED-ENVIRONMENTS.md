@@ -1,5 +1,10 @@
 # Unified local and remote experience (owner contract, 2026-10-28)
 
+## Planned sharing and paired file membership across environments
+
+Use the same Details > Share affordance for local and native rTorrent transfers, with unambiguous source environment name/colour and exact torrent identity. A share operation exports metadata only and does not move files, launch a second Add or redirect a source mutation. Expository pairing separately selects one verified Chunks remote profile and one mapped Expository file root; it cannot inherit the combined-view filter as an authorization scope. [Transfer sharing](TRANSFER-SHARING.md) · [Expository file associations](EXPOSITORY-FILE-ASSOCIATIONS.md). **Both planned, not shipped.**
+
+
 **Normative principle:** Chunks is one torrent manager with interchangeable local-phone and rTorrent-backed environments. User-facing workflows, layout, terminology, information hierarchy, navigation and control placement MUST be shared wherever the verified capabilities allow. A divergence requires a concrete engine/server/security/storage capability reason; different implementation technologies alone are not an excuse to create separate applications.
 
 ## Environment colours and combined Transfers views (owner contract, 2026-10-29)

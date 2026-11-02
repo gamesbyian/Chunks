@@ -1,5 +1,9 @@
 # Chunks documentation index
 
+- [Transfer sharing](TRANSFER-SHARING.md): planned local/rTorrent magnet share/copy and conditional verified `.torrent` export, including acceptance.
+- [Expository file associations](EXPOSITORY-FILE-ASSOCIATIONS.md): planned opt-in, scoped read-only seedbox file-membership feed for Expository Transfer.
+
+
 - [Shared name/media identity and Similar Transfers](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md): normative lossless normalization, cached cross-media entity/credit graph, issue-level collections, related-transfer ranking, per-environment UX and staged test gates (planned).
 - [Media metadata provider registry](MEDIA-PROVIDER-REGISTRY.md): dated research on open/free providers, real API fields, authentication, quotas, licensing, fallbacks and integration approval gates; not provider approval or implementation proof.
 

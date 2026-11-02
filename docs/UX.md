@@ -370,3 +370,7 @@ In expanded transfer details, beneath essential transfer controls, show a compac
 
 
 **Purpose:** one intentional interaction system for a native Android BitTorrent client and rTorrent remote, not a chronological log of feature requests. **Authority:** [PRODUCT](PRODUCT.md) owns promises; this file owns cross-surface UX rules; [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md) and the linked focused contracts own domain-specific identities and capabilities. [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md) alone own implementation/evidence status; [WORK-QUEUE](WORK-QUEUE.md) owns execution order. The [preserved original UX notes (with archive-relative links normalized)](archive/UX-2026-10-30-pre-reconciliation.md) are archived for traceability and are non-normative.
+
+## Sharing a transfer and cross-app file annotations (planned)
+
+Transfer Details shall eventually expose the same source-labelled Share magnet / Copy magnet / Share .torrent options for phone and rTorrent; unavailable metadata must be explained in place, private tracker/passkey disclosures precede external sharing and Android Sharesheet grants are scoped. Expository file-membership annotations are optional, pairable/revocable, explicitly read-only and distinguish known-stale or unknown associations. No extra transfer-Add review or mandatory companion app. [Transfer sharing](TRANSFER-SHARING.md) · [Cross-app file association](EXPOSITORY-FILE-ASSOCIATIONS.md). These features are not current P0 implementation or acceptance claims.

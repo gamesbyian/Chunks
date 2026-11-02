@@ -148,3 +148,9 @@ any repeat Add. For any ambiguous ACK, prohibit replay and only perform
 independent readback until exact identity/state allows a safe single session
 cleanup. When a run is red, retain the sanitized last-phase receipt and never
 publish the candidate APK as qualified.
+
+## Planned evidence: transfer-sharing export and external file associations
+
+Do not mark [transfer sharing](TRANSFER-SHARING.md) complete from a fabricated magnet or a parsable test fixture. Export from a real local or rTorrent transfer after discarding its original input, then import into an independent real client and assert exact v1/v2/hybrid infohash, preserved supported trackers and actual observed metadata/peer discovery where available. A `.torrent` export additionally requires independently validated original info bytes and v2 piece layers when required. Test private, offline and unavailable-metadata negative paths without leaking account secrets into evidence.
+
+For [Expository association](EXPOSITORY-FILE-ASSOCIATIONS.md), require an actual per-profile rTorrent file inventory and installed permission-gated IPC/pairing with Expository, plus denial/revocation and stale/incomplete-result tests before claiming usable badges or file-operation warnings. Both are P1 and cannot replace ordinary live torrent acceptance.
