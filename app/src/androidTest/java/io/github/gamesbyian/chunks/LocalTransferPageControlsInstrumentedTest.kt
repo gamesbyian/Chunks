@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -19,6 +20,37 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class LocalTransferPageControlsInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
+
+    @Test fun onePageDoesNotRepeatTheAlreadyVisibleListCount() {
+        var accidentalActions = 0
+        rule.setContent {
+            MaterialTheme {
+                LocalTransferPageControls(
+                    page = ManualCollectionPager.slice((0 until 12).toList(), 0, size = 20),
+                    onPrevious = { accidentalActions++ },
+                    onNext = { accidentalActions++ }
+                )
+            }
+        }
+        rule.onNodeWithText("On-phone transfers: 12 · page 1 of 1").assertDoesNotExist()
+        rule.onNodeWithText("Previous phone transfers").assertDoesNotExist()
+        rule.onNodeWithText("Next phone transfers").assertDoesNotExist()
+        assertEquals(0, accidentalActions)
+    }
+
+    @Test fun exactlyOneFullPageHasNoUnnecessaryPagerControls() {
+        rule.setContent {
+            MaterialTheme {
+                LocalTransferPageControls(
+                    page = ManualCollectionPager.slice((0 until 20).toList(), 0, size = 20),
+                    onPrevious = {},
+                    onNext = {}
+                )
+            }
+        }
+        rule.onNodeWithText("On-phone transfers: 20 · page 1 of 1").assertDoesNotExist()
+        rule.onNodeWithText("Next phone transfers").assertDoesNotExist()
+    }
 
     @Test fun onPhonePagesAreReachableWithNativeButtonsAndCorrectDisabledBoundaries() {
         val items = (0 until 43).toList()
