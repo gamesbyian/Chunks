@@ -70,3 +70,4 @@ jobs:
             chunks-font-specimen.png
             chunks-characters-grid.png
             chunks-font-audit.json
+          retention-days: 14

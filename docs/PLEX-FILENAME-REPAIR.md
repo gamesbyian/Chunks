@@ -1,5 +1,10 @@
 # Compatibility-oriented filename repair and Plex preset
 
+## Shared interpretation seam (2026-11-01)
+
+Use the one canonical, lossless, versioned `MediaNameInterpretation` and sourced optional media identity from [SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md) as **inputs to this analyzer**, without replacing the narrow Plex-specific compatibility rules. The same parsed facts feed Smart Rename, Bulk Rename, Similar Transfers and artwork; **this analyzer alone** determines minimal Plex name repairs from proven liabilities and explicit preview. No normalized title or connected creator relationship authorizes whole-name rewriting, path mutation or implicit edits. Source/provider licensing and query consent: [MEDIA-PROVIDER-REGISTRY](MEDIA-PROVIDER-REGISTRY.md) and [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md). Unimplemented.
+
+
 **Status:** normative planned feature; not an implemented physical-rename capability. **Owner constraint:** minimally destructive edits only. This document specializes the existing three-way [rename contract](PRODUCT.md) and is governed by [SECURITY](SECURITY.md), [ARCHITECTURE](ARCHITECTURE.md), [UX](UX.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md) and [STORAGE-AND-EXTRACTION](STORAGE-AND-EXTRACTION.md). Execution priority and proof are maintained in [WORK-QUEUE](WORK-QUEUE.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md).
 
 ## Product promise

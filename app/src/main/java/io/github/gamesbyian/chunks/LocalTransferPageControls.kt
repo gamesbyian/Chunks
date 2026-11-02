@@ -22,6 +22,10 @@ internal fun LocalTransferPageControls(
     onPrevious: () -> Unit,
     onNext: () -> Unit
 ) {
+    // The parent list already says how many transfers match. A one-page
+    // "page 1 of 1" repeats that information and steals vertical space.
+    if (page.totalPages <= 1) return
+
     Text("On-phone transfers: " + page.totalMatches +
         " · page " + (page.pageIndex + 1) + " of " + page.totalPages,
         style = MaterialTheme.typography.bodyMedium)

@@ -139,6 +139,10 @@ class SeedhostAndroidAddUiInstrumentedTest {
     }
 
     @Test fun installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace() {
+        if (arg("chunks_controlled_peer") == "authorized") {
+            MainActivityRealMagnetJourney(rule, ::corroboratedParent).run()
+            return
+        }
         assumeTrue("Protected explicit trusted-main Add UI journey only",
             arg("chunks_add_ui_once") == "authorized")
         val url = requireNotNull(decoded("chunks_live_url_b64"))
@@ -193,7 +197,7 @@ class SeedhostAndroidAddUiInstrumentedTest {
             checkpoint("queue")
 
             rule.onNodeWithText("+ Add torrent").performClick()
-            rule.waitUntil(30_000) { visible("A place for every download.") }
+            rule.waitUntil(30_000) { visible("Add a download to this server") }
             checkpoint("add-open")
             try {
                 rule.onNodeWithText("Magnet link").performTextReplacement(magnet)

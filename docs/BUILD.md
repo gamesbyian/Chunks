@@ -1,5 +1,12 @@
 # Building the Chunks Android pre-alpha
 
+## Magnet-qualified Preview identity
+
+The [installed rTorrent magnet workflow](../.github/workflows/installed-rtorrent-magnets.yml) builds one **Chunks Magnet Preview** with application ID `io.github.gamesbyian.chunks.magnet<SHA12>`. Its separate ID and provider authorities preserve both ordinary Chunks and any earlier Preview installation even when CI debug signing keys differ. No existing app needs to be uninstalled. Profiles belong to this new app instance; connect the desired server there. The workflow checks its installed version and pulls the installed base APK back for byte-for-byte comparison with the offered binary.
+
+Only a passed actual MainActivity Connect → two real public magnets → metadata/pieces → UI Stop/Start → further pieces → UI session Remove, plus peerless truth and cleanup, qualifies the paired `chunks-magnet-verified-preview-<SHA12>.apk` and `CHUNKS-BUILD-SHA256.txt`. Keep the receipt, JUnit and independent peer JSON with it; verify the checksum before installation. This is a debug-signed API35-emulator candidate, not a publisher-signed release or physical/OEM acceptance. The older public Ubuntu diagnostic no longer publishes a qualified APK.
+
+
 The repository currently has a source-pinned Gradle version but no committed binary Gradle wrapper JAR because the connected GitHub text API cannot copy binary files reliably. This is an explicitly tracked bootstrap limitation; no shell script masquerades as a wrapper. Install Gradle 9.3.1 and JDK 17 locally, or use the GitHub Actions setup-gradle task which installs the exact version.
 
 Run: gradle --no-daemon :app:testDebugUnitTest :app:assembleDebug

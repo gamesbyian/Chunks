@@ -4,6 +4,7 @@ on:
     paths:
       - 'app/src/androidTest/java/io/github/gamesbyian/chunks/SystemFontScaleComposeInstrumentedTest.kt'
       - 'tools/run_compose_system_font_200pct.sh'
+      - 'tests/test_compose_system_font_controller.py'
       - '.github/workflows/compose-system-font-200pct.yml'
   workflow_dispatch:
 permissions:
@@ -17,6 +18,8 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+      - name: Refuse wrong targets and false controller receipts offline
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_compose_system_font_controller.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -30,6 +33,8 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
+      - name: Reclaim unrelated toolchains before allocating emulator userdata
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
       - name: Assert real Android x86_64 hardware acceleration
         run: |
           test -c /dev/kvm
@@ -42,6 +47,7 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
+          disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/run_compose_system_font_200pct.sh

@@ -1,0 +1,105 @@
+name: Collect public magnet candidates
+
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Real source-verified magnet target"
+        required: true
+        default: "100"
+      pages:
+        description: "Search pages per category (bounded)"
+        required: true
+        default: "12"
+  pull_request:
+    paths:
+      - tools/collect_public_magnet_catalog.py
+      - tools/collect_linuxtracker_magnets.py
+      - tools/validate_public_magnet_catalog.py
+      - test-resources/public-magnets/**
+      - .github/workflows/collect-public-magnets.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-magnet-catalog-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  syntax-and-unit:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          python3 -m py_compile tools/collect_public_magnet_catalog.py tools/collect_linuxtracker_magnets.py tools/validate_public_magnet_catalog.py
+          python3 -m unittest discover -s tools -p test_public_fixture_collector.py
+          python3 tools/validate_public_magnet_catalog.py
+  source-probe:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify two live .torrent info dictionaries (not payloads)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import sys
+          sys.path.insert(0, 'tools')
+          from collect_linuxtracker_magnets import get
+          from public_fixture_collector import archive_fixture, torrent_summary
+          h = '6ab547ee88571930f92452d965d1dde36ad5a0a1'
+          raw = get('https://linuxtracker.org/torrents/' + h + '/download/', 2*1024*1024)
+          _, info = torrent_summary(raw, 555000000, ())
+          assert info['infohash_v1'] == h
+          print('LINUXTRACKER SOURCE-VERIFIED', info['name'], info['total_bytes'], h, flush=True)
+          manifest, _raw = archive_fixture('BigBuckBunny_124', 555000000)
+          assert manifest['torrent']['infohash_v1'] == 'b63eaa9720ee797667ef58ea35ef7d81ab5d1c16'
+          print('ARCHIVE SOURCE-VERIFIED', manifest['torrent']['name'], manifest['torrent']['total_bytes'], flush=True)
+          PY
+  collect:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Collect and validate authentic public metainfo (no payloads)
+        id: collect
+        shell: bash
+        env:
+          COUNT: ${{ inputs.count }}
+          PAGES: ${{ inputs.pages }}
+        run: |
+          set +e
+          python3 tools/collect_public_magnet_catalog.py --count "$COUNT" --pages "$PAGES" --max-bytes 555000000
+          status=$?
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          if test -f test-resources/public-magnets/catalog.json; then
+            python3 tools/validate_public_magnet_catalog.py --allow-partial
+          fi
+          exit 0
+      - name: Publish generated catalog for independent review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-public-magnet-catalog
+          path: |
+            test-resources/public-magnets/catalog.json
+            test-resources/public-magnets/magnets.txt
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Require complete catalog
+        if: steps.collect.outputs.exit_code != '0'
+        run: exit 1

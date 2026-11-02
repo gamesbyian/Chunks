@@ -52,6 +52,11 @@ class SeedingEngineAdapterTest {
         assertEquals("the original seeder downloaded nothing", 0L, seederSeen.downloadedBytes)
         assertTrue(SeedingEnforcement.decide(SeedingPolicy(ratioGoal = BigDecimal.ONE), seederSeen)
             is SeedingEnforcement.Decision.CannotJudge)
+        // Piece completion and the asynchronous session-statistics tick are
+        // separate observations. Retain the real byte assertion, but wait
+        // for this peer's counter rather than assuming the seeder's tick
+        // makes the leecher's counter current too.
+        waitFor { (leecher.seedingObservation(leechHash)?.downloadedBytes ?: 0) >= 600_000 }
         val leecherSeen = requireNotNull(leecher.seedingObservation(leechHash))
         assertTrue(leecherSeen.downloadedBytes >= 600_000)
         assertTrue(leecherSeen.seeding)

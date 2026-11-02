@@ -1,0 +1,134 @@
+name: P0 real BEP9 magnet metadata and peer-piece proof
+
+# Reuse the already accepted real libtorrent runner-to-Seedhost peer path.
+# Transfer only a unique 512KiB magnet hash via production rTorrent Add.
+# No .torrent uploaded to rTorrent, no simulation, no shared user job altered.
+on:
+  pull_request:
+    paths:
+      - "app/src/test/java/io/github/gamesbyian/chunks/interop/SeedhostExactMagnetPeerBytesOnceTest.kt"
+      - "tools/parse_real_magnet_peer_receipt.py"
+      - ".github/workflows/seedhost-exact-magnet-peer-once.yml"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Authorize a real 512KiB synthetic magnet with runner seeder and exact session-only cleanup"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-android-seedhost-scope-mutation
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify complete secret-free live receipts and failure counterexamples
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_magnet_peer_receipt.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile exact magnet proof and run safety counterexamples without secrets
+        run: gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.interop.SeedhostExactMagnetPeerBytesOnceTest'
+
+  live-magnet-peer:
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          github.event_name == 'workflow_dispatch' && inputs.apply }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      CHUNKS_HOST_PEER_MAGNET_PROOF: authorized
+      CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Read-only reconcile the prior failed exact synthetic hash
+        env:
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+        run: |
+          python3 - <<'PYCODE'
+          import sys
+          sys.path.insert(0, "tools")
+          from seedhost_magnet_readonly_forensics import rpc_opener, call
+          import xmlrpc.client
+          target = "ce693d901beb00a1ec4e2b62d8c8a2dc5c9fc06d"
+          try:
+              observed = call(rpc_opener(), "d.hash", target)
+          except xmlrpc.client.Fault as fault:
+              # rTorrent's exact missing-hash fault, never an auth/transport error.
+              if "Could not find info-hash" not in fault.faultString:
+                  raise SystemExit("Prior synthetic hash readback failed; no new Add")
+              print("CHUNKS_PRIOR_MAGNET: exact_hash_absent=true")
+          else:
+              print("CHUNKS_PRIOR_MAGNET: exact_hash_present=" + str(str(observed).lower() == target).lower())
+              raise SystemExit("Prior synthetic session needs scoped reconciliation; no new Add")
+          PYCODE
+      - name: Run real BEP9 magnet and preserve a private Gradle status
+        env:
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+          CHUNKS_MAGNET_RECEIPT_PATH: ${{ runner.temp }}/chunks-magnet-peer-stages.txt
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REF" = "refs/heads/main"
+          test "$GITHUB_RUN_ATTEMPT" = 1
+          test -n "$CHUNKS_LIVE_RTORRENT_USER"
+          test -n "$CHUNKS_LIVE_RTORRENT_PASS"
+          private_log=$(mktemp)
+          trap 'rm -f "$private_log"' EXIT
+          set +e
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.interop.SeedhostExactMagnetPeerBytesOnceTest' \
+            > "$private_log" 2>&1
+          gradle_status=$?
+          set -e
+          printf '%s\n' "$gradle_status" > "$RUNNER_TEMP/chunks-magnet-peer-gradle-exit.txt"
+          echo "CHUNKS_REAL_MAGNET_PEER: gradle_test_process_completed=true"
+      - name: Always publish structured, secret-free acceptance or failure receipt
+        if: always()
+        run: |
+          python3 tools/parse_real_magnet_peer_receipt.py \
+            --junit app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.SeedhostExactMagnetPeerBytesOnceTest.xml \
+            --sidecar "$RUNNER_TEMP/chunks-magnet-peer-stages.txt" \
+            --exit-file "$RUNNER_TEMP/chunks-magnet-peer-gradle-exit.txt" \
+            --output "$RUNNER_TEMP/chunks-real-magnet-peer-receipt.json"
+      - name: Upload structured receipt even after test, compiler or setup failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-real-magnet-peer-receipt
+          path: ${{ runner.temp }}/chunks-real-magnet-peer-receipt.json
+          retention-days: 14
+          if-no-files-found: error

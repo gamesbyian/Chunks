@@ -1,0 +1,48 @@
+name: P0 Seedhost read-only magnet forensic snapshot
+
+# No transfer mutations, no Android emulator, no APK and no tracked data
+# changed on the Seedhost. The first protected main push runs exactly once.
+on:
+  pull_request:
+    paths:
+      - "tools/seedhost_magnet_readonly_forensics.py"
+      - ".github/workflows/seedhost-magnet-readonly-forensics.yml"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/seedhost-magnet-readonly-forensics.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-readonly-seedhost-magnet-forensics
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile Python receipt collector without accessing credentials
+        run: python3 -m py_compile tools/seedhost_magnet_readonly_forensics.py
+
+  readonly-forensics:
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          ((github.event_name == 'workflow_dispatch') ||
+           (github.event_name == 'push' &&
+            contains(github.event.head_commit.message, 'one-time exact metainfo read-only magnet forensics (#1009)'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate fixed read-only script
+        run: python3 -m py_compile tools/seedhost_magnet_readonly_forensics.py
+      - name: Read exact public-source magnet hashes and current rTorrent status
+        run: python3 tools/seedhost_magnet_readonly_forensics.py

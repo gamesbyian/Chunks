@@ -4,12 +4,24 @@ set -euo pipefail
 adb shell wm size 1080x2400
 adb shell wm density 420
 adb shell settings put system font_scale 1.0
+# AndroidJUnitRunner's numShards/shardIndex divides ALL ordinary Add tests
+# across independent emulators. Never skip a class to meet a time budget.
+count=${CHUNKS_NATIVE_ADD_SHARD_COUNT:-1}
+index=${CHUNKS_NATIVE_ADD_SHARD_INDEX:-0}
+[[ "$count" =~ ^[1-9][0-9]*$ && "$index" =~ ^[0-9]+$ ]] || {
+  echo "CHUNKS_NATIVE_DIAGNOSTIC: invalid_shard_parameters"; exit 1;
+}
+(( index < count && count <= 4 )) || {
+  echo "CHUNKS_NATIVE_DIAGNOSTIC: invalid_shard_range"; exit 1;
+}
+args=(-Pandroid.testInstrumentationRunnerArguments.notClass=io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest)
+if (( count > 1 )); then
+  args+=("-Pandroid.testInstrumentationRunnerArguments.numShards=$count")
+  args+=("-Pandroid.testInstrumentationRunnerArguments.shardIndex=$index")
+fi
+echo "CHUNKS_NATIVE_DIAGNOSTIC: shard_index=$index shard_count=$count"
 set +e
-# The dedicated 200% Compose acceptance class intentionally rejects a normal
-# system font scale; run it only through run_compose_system_font_200pct.sh.
-# Keep ALL ordinary Add/transfer instrumentation here, excluding only that class.
-gradle --no-daemon :app:connectedDebugAndroidTest \
-  -Pandroid.testInstrumentationRunnerArguments.notClass=io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest
+gradle --no-daemon :app:connectedDebugAndroidTest "${args[@]}"
 test_status=$?
 set -e
 mkdir -p "$RUNNER_TEMP/chunks-add-native-review"
@@ -26,6 +38,13 @@ done
 if [ "$test_status" -ne 0 ]; then
   echo "CHUNKS_NATIVE_DIAGNOSTIC: instrumentation failed; any captured PNGs were retained"
   exit "$test_status"
+fi
+# The required screenshot inventory is validated across all shard artifacts in
+# the coordinator. Validating only one shard here would falsely report missing
+# screenshots captured by the other independent emulator.
+if (( count > 1 )); then
+  echo "CHUNKS_NATIVE_DIAGNOSTIC: screenshot_validation=delegated_to_coordinator"
+  exit 0
 fi
 python3 - <<'PY'
 from pathlib import Path

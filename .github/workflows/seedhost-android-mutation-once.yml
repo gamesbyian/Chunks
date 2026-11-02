@@ -1,13 +1,9 @@
 name: One-time installed Android Seedhost scoped adapter mutation
 # Owner-authorized development-host-only, one unique tracker-bearing synthetic
 # torrent, protected secret inputs and one exact-hash session cleanup.
-# A new workflow merge with the explicit one-time acceptance marker triggers
-# precisely one trusted-main run; never runs on untrusted pull requests.
+# Protected-host mutation is manual only: main, explicit Apply, first attempt.
+# No pull request or main push can trigger it.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-android-mutation-once.yml"
   workflow_dispatch:
     inputs:
       apply_mutation:
@@ -23,10 +19,8 @@ concurrency:
 jobs:
   emulator-exact-synthetic:
     if: >-
-      ${{ github.ref == 'refs/heads/main' &&
-          ((github.event_name == 'workflow_dispatch' && inputs.apply_mutation) ||
-          (github.event_name == 'push' &&
-           contains(github.event.head_commit.message, 'one-time Android Seedhost adapter acceptance'))) }}
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          github.event_name == 'workflow_dispatch' && inputs.apply_mutation }}
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:

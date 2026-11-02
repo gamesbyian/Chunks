@@ -40,3 +40,4 @@ jobs:
           name: chunks-font-cross-family-audit
           path: chunks-font-cross-family-audit.json
           if-no-files-found: warn
+          retention-days: 14

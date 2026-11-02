@@ -16,3 +16,11 @@ captures/
 secrets.properties
 *.log
 .DS_Store
+# Downloaded torrent metadata may embed private tracker passkeys.
+# Only source-reviewed public fixtures should ever be deliberately force-added.
+*.torrent
+
+# Python test/helper interpreter caches (regenerate locally; never source).
+__pycache__/
+*.py[cod]
+.pytest_cache/

@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+- [Shared name/media identity and Similar Transfers](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md): normative lossless normalization, cached cross-media entity/credit graph, issue-level collections, related-transfer ranking, per-environment UX and staged test gates (planned).
+- [Media metadata provider registry](MEDIA-PROVIDER-REGISTRY.md): dated research on open/free providers, real API fields, authentication, quotas, licensing, fallbacks and integration approval gates; not provider approval or implementation proof.
+
 - [External destination delivery](EXTERNAL-DESTINATION-DELIVERY.md): optional verified local-torrent delivery to Google Drive/SAF or independently authorized FTP-family storage, staged copy, recovery and no implicit cloud seeding (planned).
 
 
@@ -13,6 +16,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 
 - [AGENTS](../AGENTS.md): required operating instructions and safety rules.
 - [WORK-QUEUE](WORK-QUEUE.md): concise active priority/order authority; reconcile with live PRs/issues.
+- [Real-transfer-first acceptance](REAL-TRANSFER-ACCEPTANCE.md): owner-mandated real .torrent/magnet/server/peer evidence tiers, positive user journeys, reference-client comparisons and limited role of mocks; required before claiming a BitTorrent feature works.
 - [Engineering delivery protocol](ENGINEERING-DELIVERY-PROTOCOL.md): practical lessons from merged/unmerged PRs: prove normal flows, contain only affected unsafe capabilities, avoid research-stack explosion, triage CI failures by actual phase and integrate exact source. Governs execution method; not a second work queue.\n- [Repository-wide documentation and tracker reconciliation, 2026-10-31](REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md): 107 text-document inventory, all open issue/PR status reconciliation, exact-head native stack red evidence and remaining verification limits; dated audit, not a second work queue.
 - [Requirements rationality audit, 2026-10-31](REQUIREMENTS-RATIONALITY-AUDIT-2026-10-31.md): review new release blockers against concrete harm, platform/library practice and independent evidence tiers.
 - [User-directed file operations](USER-DIRECTED-FILE-OPERATIONS.md): canonical conflict/Replace/Keep both/Skip rules and precise Android provider API distinctions; #809 implementation remains gated.
@@ -94,3 +98,5 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 A user-facing promise goes in PRODUCT or its linked feature contract; screen behavior in UX; implementation details in ARCHITECTURE; a binding choice in DECISIONS; proof in QUALITY-LEDGER; missing test coverage in SPEC-COVERAGE; prioritized work in WORK-QUEUE. Use concise cross-references rather than distributing whole requirements across all seven files.
 
 - [Per-transfer home-screen widgets](PER-TRANSFER-HOME-WIDGETS.md): deferred P3, independent live indicator per transfer, launcher removal feasibility gate.
+
+- [Cross-media real-record/API verification](research/MEDIA-API-RECORD-EVIDENCE-2026-11-02.md): dated public credits and provider-specific API schema/quality caveats, with explicit gaps before live JSON and installed integration acceptance.

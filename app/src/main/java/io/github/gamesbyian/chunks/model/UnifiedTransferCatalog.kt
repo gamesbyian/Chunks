@@ -41,7 +41,8 @@ data class UnifiedTransferObservation(
     val uploadBytesPerSecond: Long?,
     val peers: Int?,
     val addedAtEpochMillis: Long? = null,
-    val hasError: Boolean = false
+    val hasError: Boolean = false,
+    val metadataPending: Boolean? = null
 ) {
     init {
         require(sizeBytes == null || sizeBytes >= 0)
@@ -131,7 +132,8 @@ object UnifiedTransferObservations {
             uploadBytesPerSecond = item.uploadPayloadRateBytesPerSecond.toLong().takeIf { it >= 0 },
             peers = item.peers.takeIf { it >= 0 },
             addedAtEpochMillis = item.addedAtEpochMillis,
-            hasError = !item.error.isNullOrBlank()
+            hasError = !item.error.isNullOrBlank(),
+            metadataPending = !item.metadataKnown
         )
 
     fun fromRTorrent(environment: EnvironmentId, item: RemoteTransfer) =
@@ -139,15 +141,16 @@ object UnifiedTransferObservations {
             key = UnifiedTransferKey.of(environment, item.hash),
             displayName = item.name,
             originalName = item.name,
-            sizeBytes = item.sizeBytes.takeIf { it > 0 },
-            progressPpm = if (item.sizeBytes > 0) {
+            sizeBytes = item.sizeBytes.takeIf { item.metadataPending != true && it > 0 },
+            progressPpm = if (item.metadataPending != true && item.sizeBytes > 0) {
                 (item.completedBytes.toDouble() / item.sizeBytes * 1_000_000)
                     .toInt().coerceIn(0, 1_000_000)
             } else null,
             started = item.started,
             downloadBytesPerSecond = item.downBytesPerSecond?.takeIf { it >= 0 },
             uploadBytesPerSecond = item.upBytesPerSecond?.takeIf { it >= 0 },
-            peers = null
+            peers = null,
+            metadataPending = item.metadataPending
         )
 }
 

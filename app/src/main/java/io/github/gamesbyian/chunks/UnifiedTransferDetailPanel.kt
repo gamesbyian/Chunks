@@ -227,6 +227,8 @@ private fun TransferDetailFacts(transfer: UnifiedTransferObservation) {
  */
 internal fun transferAtAGlance(transfer: UnifiedTransferObservation): String = when {
     transfer.hasError -> "Needs attention: an error was reported."
+    transfer.metadataPending == true && transfer.started == false -> "Stopped; magnet metadata pending."
+    transfer.metadataPending == true -> "Fetching magnet metadata; payload progress unknown."
     transfer.progressPpm == 1_000_000 && transfer.started == false ->
         "Download complete; stopped in the last report."
     transfer.started == false -> "Stopped in the last report."

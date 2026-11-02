@@ -33,10 +33,12 @@ data class RemoteTransfer(
     val directory: String,
     val downBytesPerSecond: Long? = null,
     val upBytesPerSecond: Long? = null,
-    val ratioThousandths: Long? = null
+    val ratioThousandths: Long? = null,
+    /** rTorrent d.is_meta, never inferred from a small positive size. */
+    val metadataPending: Boolean? = null
 ) {
     val fractionComplete: Float
-        get() = if (sizeBytes > 0) (completedBytes.toDouble() / sizeBytes).coerceIn(0.0, 1.0).toFloat() else 0f
+        get() = if (metadataPending != true && sizeBytes > 0) (completedBytes.toDouble() / sizeBytes).coerceIn(0.0, 1.0).toFloat() else 0f
 }
 
 data class RemoteFile(val path: String, val sizeBytes: Long, val priority: Int)
@@ -268,16 +270,43 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         })
     }
 
+    /** Read metadata state in the same rTorrent row as size/progress. A
+     * second request could combine a replaced placeholder with payload flags. */
+    internal suspend fun listTransfersWithMetadata(view: String = "main"): List<RemoteTransfer> {
+        require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
+        return try {
+            try {
+                val rows = extractRows(call("d.multicall2", listOf("", view) + EXTENDED_FIELDS + "d.is_meta="))
+                require(rows.size <= MAX_TRANSFERS)
+                requireUniqueIdentities(rows.map { raw ->
+                    transferWithMetadata(raw as? List<*> ?: error("Invalid metadata row"))
+                })
+            } catch (_: RpcReplyTooLarge) {
+                listTransfersPaged(view, includeMetadata = true)
+            }
+        } catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            listTransfers(view)
+        }
+    }
+
+    private fun transferWithMetadata(row: List<*>): RemoteTransfer {
+        require(row.size == EXTENDED_FIELDS.size + 1) { "Invalid metadata field layout" }
+        val flag = number(row.last())
+        require(flag in 0L..1L) { "Invalid metadata state flag" }
+        return transferFromRow(row.dropLast(1), true).copy(metadataPending = flag == 1L)
+    }
+
     /**
      * Large-queue path: one bounded `download_list` for identities, then
      * `system.multicall` pages of exact-hash getters. Any per-call fault (for
      * example a torrent erased mid-read) fails the whole snapshot closed rather
      * than publishing a partial or mixed list. Read-only; never retried here.
      */
-    internal suspend fun listTransfersPaged(view: String): List<RemoteTransfer> {
+    internal suspend fun listTransfersPaged(view: String, includeMetadata: Boolean = false): List<RemoteTransfer> {
         require(Regex("[A-Za-z][A-Za-z0-9_-]{0,39}").matches(view)) { "Invalid view" }
         val minimum = MINIMUM_FIELDS
-        val extended = EXTENDED_FIELDS
+        val extended = if (includeMetadata) EXTENDED_FIELDS + "d.is_meta=" else EXTENDED_FIELDS
         val hashes = readViewIdentities(view)
         if (hashes.isEmpty()) {
             // Even an empty first read is not a stable snapshot: a server
@@ -295,7 +324,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (fault: RpcFault) {
             // Large-list paging must not turn a transient operational error
             // into thousands of additional credentialed field reads.
-            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            if (includeMetadata || !fault.isUnsupportedOptionalGetter()) throw fault
             false
         }
         val fields = getters(if (rich) extended else minimum)
@@ -303,7 +332,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         for (page in hashes.chunked(PAGE_SIZE)) {
             val rows = pagedRowsWithinLimit(page, fields)
             for ((index, row) in rows.withIndex()) {
-                val transfer = transferFromRow(row, rich)
+                val transfer = if (includeMetadata) transferWithMetadata(row) else transferFromRow(row, rich)
                 require(transfer.hash.equals(page[index], ignoreCase = true)) {
                     "rTorrent returned a different torrent than requested"
                 }
@@ -536,6 +565,49 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             return RemoteAddAndStart.StartNotVerified(hash, null)
         }
         return awaitNativeStartedReadback(plan)
+    }
+
+    /**
+     * Explicit read-only recovery for the original native Add-with-Start
+     * intent after a lost ACK, timeout or pending activation. The original
+     * reviewed identity and Place must agree; no mutation is attempted.
+     * Never use stopped-Add reconciliation for an already active torrent.
+     */
+    internal suspend fun reconcileStartedAdd(plan: StoppedRemoteAddPlan): RemoteAddAndStart =
+        awaitNativeStartedReadback(plan)
+
+    /** Read only, scoped to the submitted hash and reviewed server parent. */
+    internal suspend fun readAddProgress(plan: StoppedRemoteAddPlan): RemoteAddProgress {
+        val hash = plan.expectedInfoHash
+        try {
+            val name = lookupName(hash) ?: return RemoteAddProgress(registered = false)
+            if (readVerifiedAddDirectory(hash, plan.destination, name) == null) {
+                if (lookupName(hash) != name) return RemoteAddProgress(registered = true)
+                error("The registered torrent is outside the reviewed destination")
+            }
+            suspend fun metadataFlag(): Boolean? = try {
+                val flag = number(call("d.is_meta", listOf(hash)))
+                require(flag in 0L..1L) { "Invalid metadata flag" }
+                flag == 1L
+            } catch (fault: RpcFault) {
+                if (!fault.isUnsupportedOptionalGetter()) throw fault
+                null
+            }
+            val pending = metadataFlag()
+            val traffic = readTrafficSample(hash)
+            val state = number(call("d.state", listOf(hash)))
+            require(state in 0L..1L) { "Invalid started flag" }
+            // Metadata promotion replaces a placeholder with a new full job.
+            // Never combine its tiny metadata size with payload counters.
+            if (pending != metadataFlag()) return RemoteAddProgress(registered = true)
+            check((call("d.hash", listOf(hash)) as? String)?.equals(hash, true) == true)
+            return RemoteAddProgress(true, pending, state == 1L, traffic)
+        } catch (fault: RpcFault) {
+            if (!fault.isUnknownInfoHash()) throw fault
+            // Upstream process_meta_download temporarily erases the exact
+            // placeholder while recreating the full download. No write retry.
+            return RemoteAddProgress(registered = false)
+        }
     }
 
     /**
@@ -1449,8 +1521,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         private fun isReadOnlyRpcMethod(method: String, params: List<Any>): Boolean {
             if (method in DIRECT_READ_METHODS) return true
             if (method == "d.multicall2") {
-                return params.size in 3..(2 + EXTENDED_FIELDS.size) &&
-                    params.drop(2).all { it is String && it in EXTENDED_FIELDS }
+                return params.size in 3..(3 + EXTENDED_FIELDS.size) &&
+                    params.drop(2).all { it is String && (it in EXTENDED_FIELDS || it == "d.is_meta=") }
             }
             if (method == "f.multicall" || method == "t.multicall") {
                 val allowed = if (method == "f.multicall") FILE_READ_FIELDS else TRACKER_READ_FIELDS
@@ -1461,7 +1533,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 val nested = params.singleOrNull() as? List<*> ?: return false
                 // Production paging emits one exact-hash getter per entry.
                 // Refuse nested multicall recursion and unrecognized methods.
-                return nested.isNotEmpty() && nested.size <= PAGE_SIZE * EXTENDED_FIELDS.size &&
+                return nested.isNotEmpty() && nested.size <= PAGE_SIZE * (EXTENDED_FIELDS.size + 1) &&
                     nested.all { item ->
                         val fields = item as? Map<*, *> ?: return@all false
                         val name = fields["methodName"] as? String ?: return@all false

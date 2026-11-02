@@ -38,7 +38,8 @@ class RemoteNativeStartedAddTest {
     }
 
     private fun exercise(
-        file: Boolean, active: Long = 1L, loseAcknowledgement: Boolean = false
+        file: Boolean, active: Long = 1L, loseAcknowledgement: Boolean = false,
+        recheckAfterLoad: Boolean = false
     ): Pair<RemoteAddAndStart, List<String>> = runBlocking {
         val expectedHash = if (file) TorrentMetainfoReader.preview(metainfo).infoHashV1 else hash
         val commands = mutableListOf<String>()
@@ -95,7 +96,12 @@ class RemoteNativeStartedAddTest {
             val result = if (file) remote.loadStartedTorrentBytes(metainfo, destination)
                 else remote.loadStarted(StoppedRemoteAddPlan.fromMagnet(magnet, destination))
             if (file && !loseAcknowledgement) assertArrayEquals(metainfo, sentBytes)
-            result to commands.toList()
+            val verified = if (recheckAfterLoad) {
+                val plan = StoppedRemoteAddPlan.fromMagnet(
+                    "magnet:?xt=urn:btih:" + expectedHash, destination)
+                remote.reconcileStartedAdd(plan)
+            } else result
+            verified to commands.toList()
         } finally {
             server.stop(0)
         }
@@ -130,4 +136,21 @@ class RemoteNativeStartedAddTest {
         assertEquals(RemoteAddAndStart.StartNotVerified(hash, null), result)
         assertEquals(listOf("d.multicall2", "d.name", "load.start"), commands)
     }
+    @Test fun lostNativeStartAckCanBeReconciledWithoutAnotherWrite() {
+        val (result, commands) = exercise(
+            file = false, loseAcknowledgement = true, recheckAfterLoad = true)
+        assertEquals(RemoteAddAndStart.Started(hash), result)
+        assertEquals(1, commands.count { it == "load.start" })
+        assertEquals(2, commands.count { it == "d.hash" })
+        assertFalse(commands.any { it in listOf("d.start", "d.resume", "load.verbose", "load.raw_start") })
+    }
+
+    @Test fun readOnlyNativeRecheckRefusesStartedBitWithInactiveEngine() {
+        val (result, commands) = exercise(
+            file = false, active = 0, recheckAfterLoad = true)
+        assertTrue(result is RemoteAddAndStart.StartNotVerified)
+        assertEquals(1, commands.count { it == "load.start" })
+        assertFalse(commands.any { it in listOf("d.start", "d.resume", "load.verbose") })
+    }
+
 }
