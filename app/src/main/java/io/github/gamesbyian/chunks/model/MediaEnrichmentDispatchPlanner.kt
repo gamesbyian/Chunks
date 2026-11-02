@@ -61,9 +61,12 @@ object MediaEnrichmentDispatchPlanner {
         if (!scope.online || !scope.consentGranted) return emptyList()
         val byProvider = budgets.associateBy { it.provider }
         val reserved = mutableMapOf<String, Int>()
-        // Distinct typed identities across source environments consume one outbound lookup.
-        val unique = intents.groupBy { it.key }.mapNotNull { (key, references) ->
-            val authorized = references.filter { it.authorizedReferences > 0 }
+        // Only due, still-visible intents may influence deduplication or priority.
+        // Otherwise a future user request can promote an already-due background request
+        // and wrongly bypass the metered/power-saver background gate.
+        val unique = intents.asSequence()
+            .filter { it.authorizedReferences > 0 && it.queuedAtEpochMs <= scope.nowEpochMs }
+            .groupBy { it.key }.mapNotNull { (key, authorized) ->
             if (authorized.isEmpty()) null else MediaLookupIntent(key,
                 if (authorized.any { it.origin == MediaLookupOrigin.USER_REQUEST })
                     MediaLookupOrigin.USER_REQUEST else MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT,
