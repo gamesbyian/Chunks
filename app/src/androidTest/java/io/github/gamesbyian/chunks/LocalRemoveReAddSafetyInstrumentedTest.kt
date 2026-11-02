@@ -61,22 +61,23 @@ class LocalRemoveReAddSafetyInstrumentedTest {
         var first: LocalTorrentEngine? = null
         var restarted: LocalTorrentEngine? = null
         try {
-            first = LocalTorrentEngine(config).also { it.start() }
-            val removed = first.addStopped(removedTorrent, downloads)
-            val kept = first.addStopped(otherTorrent, downloads)
+            val initial = LocalTorrentEngine(config).also { it.start() }
+            first = initial
+            val removed = initial.addStopped(removedTorrent, downloads)
+            val kept = initial.addStopped(otherTorrent, downloads)
             assertTrue("Initial native Add failed: $removed", removed is LocalAddResult.AddedStopped)
             assertTrue("Second native Add failed: $kept", kept is LocalAddResult.AddedStopped)
             val oldHash = (removed as LocalAddResult.AddedStopped).status.infoHash
             val otherHash = (kept as LocalAddResult.AddedStopped).status.infoHash
             assertFalse("Test requires independent hashes", oldHash.equals(otherHash, true))
-            assertTrue("Session-only Remove must be acknowledged", first.removeKeepingData(oldHash))
-            assertEquals(null, first.status(oldHash))
+            assertTrue("Session-only Remove must be acknowledged", initial.removeKeepingData(oldHash))
+            assertEquals(null, initial.status(oldHash))
 
-            val immediate = first.addStopped(removedTorrent, downloads)
+            val immediate = initial.addStopped(removedTorrent, downloads)
             assertTrue("Old native I/O tombstone MUST refuse immediate same-hash Add: $immediate",
                 immediate is LocalAddResult.Refused)
             assertNotNull("A refused re-Add must not disturb the unrelated live job",
-                first.status(otherHash))
+                initial.status(otherHash))
             assertArrayEquals(digest(removedBytes), digest(removedFile.readBytes()))
             assertArrayEquals(digest(otherBytes), digest(otherFile.readBytes()))
             assertArrayEquals(foreignDigest, digest(foreign.readBytes()))
@@ -84,25 +85,27 @@ class LocalRemoveReAddSafetyInstrumentedTest {
             // close() synchronously stops the native session and joins its
             // old work before path claims can be reused. The unrelated job
             // must be persisted, not silently erased to allow this re-Add.
-            first.close()
+            initial.close()
             first = null
-            restarted = LocalTorrentEngine(config).also { it.start() }
-            assertTrue("A clean restart should not report corrupt state: ${restarted.restoreProblems}",
-                restarted.restoreProblems.isEmpty())
+            val newSession = LocalTorrentEngine(config).also { it.start() }
+            restarted = newSession
+            assertTrue("A clean restart should not report corrupt state: ${newSession.restoreProblems}",
+                newSession.restoreProblems.isEmpty())
             assertEquals("A removed job must not resurrect from old resume data",
-                null, restarted.status(oldHash))
-            val restoredOther = restarted.status(otherHash)
+                null, newSession.status(oldHash))
+            val restoredOther = newSession.status(otherHash)
             assertNotNull("Unrelated job was lost across the required restart", restoredOther)
             assertTrue("Restored job must not start sharing without fresh user consent",
                 restoredOther!!.stopped)
 
-            val readded = restarted.addStopped(removedTorrent, downloads)
+            val readded = newSession.addStopped(removedTorrent, downloads)
             assertTrue("Explicit re-Add after native shutdown must be allowed: $readded",
                 readded is LocalAddResult.AddedStopped)
-            assertEquals(oldHash, (readded as LocalAddResult.AddedStopped).status.infoHash)
+            val readdedStatus = (readded as LocalAddResult.AddedStopped).status
+            assertEquals(oldHash, readdedStatus.infoHash)
             assertTrue("Re-added job must remain stopped pending an explicit Start",
-                readded.status.stopped)
-            assertNotNull(restarted.status(otherHash))
+                readdedStatus.stopped)
+            assertNotNull(newSession.status(otherHash))
             assertArrayEquals("Remove/re-Add must preserve the exact existing download",
                 digest(removedBytes), digest(removedFile.readBytes()))
             assertArrayEquals("Unrelated torrent bytes were changed", digest(otherBytes),
