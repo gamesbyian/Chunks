@@ -34,15 +34,24 @@ internal class MainActivityRealMagnetJourney(
     private fun visible(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun scroll(text: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
     private fun click(text: String) {
-        // LazyColumn scrollToNode has already brought this target into view.
-        // A *second* performScrollTo on a re-composing Connect screen races
-        // focus/layout on real authenticated Android journeys.
+        // First find the LazyColumn item and confirm the action is enabled.
+        // A large transfer Card may be taller than the viewport: scrolling to
+        // its item alone does NOT expose a confirmation button near its end.
         rule.waitUntil(45_000) { runCatching {
             scroll(text)
-            rule.onNodeWithText(text).assertIsEnabled().assertIsDisplayed()
+            rule.onNodeWithText(text).assertIsEnabled()
             true
         }.getOrDefault(false) }
         rule.waitForIdle()
+        // Connect is already visible; a redundant scroll there previously
+        // raced its re-composing form. Only scroll within an oversized item
+        // when the actual action remains offscreen.
+        val shown = runCatching {
+            rule.onNodeWithText(text).assertIsDisplayed()
+            true
+        }.getOrDefault(false)
+        if (!shown) rule.onNodeWithText(text).performScrollTo()
+        rule.onNodeWithText(text).assertIsDisplayed()
         // Exactly one click; never retry a possibly submitted RPC mutation.
         rule.onNodeWithText(text).performClick()
     }
