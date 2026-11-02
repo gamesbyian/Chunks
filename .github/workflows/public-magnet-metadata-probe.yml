@@ -1,0 +1,60 @@
+name: Real public magnet discovery comparison
+
+on:
+  pull_request:
+    paths:
+      - "tools/public_magnet_metadata_probe.py"
+      - ".github/workflows/public-magnet-metadata-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-magnet-metadata-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  public-metadata:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare real disposable rTorrent and libtorrent
+        run: |
+          sudo timeout 120s apt-get update -qq
+          sudo timeout 120s env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rtorrent nginx python3-libtorrent
+          mkdir -p "$RUNNER_TEMP/probe-data" "$RUNNER_TEMP/probe-session"
+          cat > "$RUNNER_TEMP/probe.rc" <<EOF
+          directory.default.set = $RUNNER_TEMP/probe-data
+          session.path.set = $RUNNER_TEMP/probe-session
+          network.scgi.open_port = 127.0.0.1:5000
+          network.port_range.set = 6890-6890
+          network.port_random.set = no
+          throttle.global_down.max_rate.set_kb = 256
+          dht.mode.set = auto
+          protocol.pex.set = yes
+          system.daemon.set = true
+          EOF
+          nohup rtorrent -n -o "import=$RUNNER_TEMP/probe.rc" > "$RUNNER_TEMP/probe-rtorrent.log" 2>&1 < /dev/null &
+          cat > "$RUNNER_TEMP/probe-nginx.conf" <<EOF
+          worker_processes 1;
+          pid $RUNNER_TEMP/probe-nginx.pid;
+          events { worker_connections 64; }
+          http { server { listen 127.0.0.1:18080;
+            location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000; }
+          } }
+          EOF
+          sudo nginx -c "$RUNNER_TEMP/probe-nginx.conf"
+      - name: Same genuine public magnet to both real implementations, at most 90 seconds
+        run: /usr/bin/python3 tools/public_magnet_metadata_probe.py
+      - name: Keep complete real outcomes and JUnit, including unavailable swarms
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-public-magnet-discovery
+          path: |
+            ${{ runner.temp }}/chunks-public-metadata-probe/RECEIPT.json
+            ${{ runner.temp }}/chunks-public-metadata-probe/TEST-public-magnets.xml
+          retention-days: 14
+          if-no-files-found: error
