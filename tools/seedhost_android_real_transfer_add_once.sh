@@ -32,12 +32,11 @@ code=$?
 set -e
 unset url64 user64 pass64
 # Print no stack trace, credentials, full tracker, host reply or test exception.
-file=1 # Preserved positive .torrent receipt from protected run 41363266446; never rerun it here.
 magnet=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-passed' "$raw" || true)
 magnet2=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet2-passed' "$raw" || true)
 uncertain=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet|magnet2)-uncertain' "$raw" || true)
 last=$(grep -E '^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet|magnet2)-(preflight|review|ui-verified|metadata|peer-progress|bytes-verified|restarted|passed|uncertain)$' "$raw" | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_real_add_stage=//' || true)
-[[ "$last" =~ ^(file|magnet)-(preflight|review|ui-verified|bytes-verified|restarted|passed|uncertain)$ ]] || last=unavailable
+[[ "$last" =~ ^(magnet|magnet2)-(preflight|review|ui-verified|metadata|peer-progress|bytes-verified|restarted|passed|uncertain)$ ]] || last=unavailable
 echo "CHUNKS_REAL_ANDROID_ADD: magnet=$magnet magnet2=$magnet2 uncertain=$uncertain last_stage=$last run=$GITHUB_RUN_ID"
 if [[ "$code" -ne 0 || "$magnet" -ne 1 || "$magnet2" -ne 1 ||
       "$uncertain" -ne 0 ]] ||
@@ -47,7 +46,7 @@ if [[ "$code" -ne 0 || "$magnet" -ne 1 || "$magnet2" -ne 1 ||
   exit 1
 fi
 mkdir -p "$RUNNER_TEMP/chunks-real-android-add"
-printf 'status=passed\nsha=%s\nrun=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" \
+printf 'status=two-magnets-passed\nprior-file-receipt=41363266446\nsha=%s\nrun=%s\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" \
   > "$RUNNER_TEMP/chunks-real-android-add/ACCEPTANCE.txt"
 sha256sum app/build/outputs/apk/debug/app-debug.apk \
   >> "$RUNNER_TEMP/chunks-real-android-add/ACCEPTANCE.txt"
