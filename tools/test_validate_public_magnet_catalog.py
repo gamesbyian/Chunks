@@ -74,7 +74,7 @@ class PublicMagnetCatalogIdentityTest(unittest.TestCase):
             "requested": 1, "verified_metadata_count": 1,
             "fixtures": [fixture],
         }), encoding="utf-8")
-        self.magnets.write_text(fixture["magnet"] + "\\n", encoding="utf-8")
+        self.magnets.write_text(fixture["magnet"] + "\n", encoding="utf-8")
         output = StringIO()
         with contextlib.redirect_stdout(output):
             self.assertEqual(1, validate(self.catalog, self.magnets))
