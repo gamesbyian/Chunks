@@ -76,7 +76,7 @@ class MediaRelationIndexTest {
 
     @Test fun biographiesAndArtistsWorkInBothDirections() {
         val film=key("Wood",1); val flacs=key("Stone",2)
-        val cash = "wd:Q18965"
+        val cash = "wd:Q42775"
         val index=MediaRelationIndex.build(listOf(
             MediaTransferMembers(film,listOf(member("walk-the-line",credits=setOf(
                 credit(cash,MediaCreditRole.BIOGRAPHICAL_SUBJECT,"Johnny Cash"))))),
@@ -91,7 +91,7 @@ class MediaRelationIndexTest {
 
     @Test fun sharedActorAndSpecificTopicAreIndependentEvidence() {
         val ray=key("Wood",1); val stealth=key("Stone",2); val her=key("Phone",3)
-        val foxx=credit("wd:Q20566",MediaCreditRole.ACTOR,"Jamie Foxx")
+        val foxx=credit("wd:Q171905",MediaCreditRole.ACTOR,"Jamie Foxx")
         val index=MediaRelationIndex.build(listOf(
             MediaTransferMembers(ray,listOf(member("ray",credits=setOf(foxx),topics=setOf("topic:music-biography")))),
             MediaTransferMembers(stealth,listOf(member("stealth",credits=setOf(foxx),
