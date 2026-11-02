@@ -21,7 +21,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import libtorrent as lt
-from public_fixture_collector import debian_fixture
+from public_fixture_collector import bstr, debian_fixture
 
 PREFIX_BUDGET = 32 * 1024 * 1024
 
@@ -99,6 +99,31 @@ def prepare(root):
             "peer_connections": 0, "peer_disconnects": 0,
             "peer_error_alerts": 0, "max_active_peers": 0, "payload_uploaded_bytes": 0,
             "stages": [], "native_verified_bytes": 0,
+        }
+    if os.getenv("CHUNKS_DISPOSABLE") == "1":
+        # Small synthetic *negative* control: the workflow copies these exact
+        # bytes into its disposable rTorrent directory before the UI Add. It
+        # cannot count as either of the two genuine publisher successes.
+        name = b"chunks-precompleted-control.bin"
+        payload = hashlib.sha256(os.getenv("GITHUB_RUN_ID", "local").encode()).digest() * 2048
+        piece_length = 16384
+        pieces = b"".join(hashlib.sha1(payload[i:i + piece_length]).digest()
+                          for i in range(0, len(payload), piece_length))
+        info = (b"d6:lengthi" + str(len(payload)).encode() + b"e4:name" + bstr(name) +
+                b"12:piece lengthi16384e6:pieces" + bstr(pieces) + b"e")
+        raw = b"d8:announce" + bstr(b"http://127.0.0.1:1/announce") + b"4:info" + info + b"e"
+        target = root / "magnet0"
+        target.mkdir()
+        (target / name.decode()).write_bytes(payload)
+        (root / "magnet0.torrent").write_bytes(raw)
+        infohash = hashlib.sha1(info).hexdigest()
+        (root / "magnet0.magnet").write_text("magnet:?xt=urn:btih:" + infohash)
+        fixtures["magnet0"] = {
+            "hash": infohash, "name": name.decode(), "size": len(payload),
+            "prefix_bytes": len(payload), "source": "disposable-negative-control",
+            "license": "synthetic local test bytes", "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
+            "peer_connections": 0, "peer_disconnects": 0, "peer_error_alerts": 0,
+            "max_active_peers": 0, "payload_uploaded_bytes": 0, "stages": [], "native_verified_bytes": 0,
         }
     if len({item["hash"] for item in fixtures.values()}) != len(fixtures):
         raise ValueError("Public candidates must have distinct infohashes")

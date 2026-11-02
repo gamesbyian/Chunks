@@ -66,7 +66,7 @@ internal class MainActivityRealMagnetJourney(
         rule.waitForIdle()
     }
     private fun report(key: String, value: String) {
-        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[234]?|negative)|traffic_magnet[234]?_(initial|resumed)|diagnostic_magnet[234]?|negative|negative_stage|app_stage)")))
+        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[0234]?|negative)|traffic_magnet[0234]?_(initial|resumed)|diagnostic_magnet[0234]?|negative|negative_stage|app_stage)")))
         require(value.length <= 160 && value.matches(Regex("[a-z0-9,=-]+")))
         InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply { putString(key, value) })
     }
@@ -110,7 +110,7 @@ internal class MainActivityRealMagnetJourney(
         fail("Required exact-server checkpoint missing")
     }
     private fun controller(path: String, port: Long? = null): ByteArray {
-        require(path.matches(Regex("/magnet[234]?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
+        require(path.matches(Regex("/magnet[0234]?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
         val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
         connection.connectTimeout = 5_000; connection.readTimeout = 60_000
         connection.instanceFollowRedirects = false
@@ -147,11 +147,13 @@ internal class MainActivityRealMagnetJourney(
         fun row(hash: String) = runBlocking { remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) } }
         val beforeRows = runBlocking { remote.listTransfers("main") }
         val before = beforeRows.map { it.hash.lowercase() }.toSet()
+        val skippedSessions = mutableMapOf<String, Pair<String, RemoteTransfer?>>()
         val default = runBlocking { remote.defaultDirectory() }
         val parent = default ?: requireNotNull(runBlocking { corroboratedParent(remote, beforeRows) }) {
             "No independently corroborated server Place; no Add allowed"
         }
-        val groups = listOf(listOf("magnet", "magnet3"), listOf("magnet2", "magnet4"))
+        val groups = listOf((if (disposable) listOf("magnet0") else emptyList()) +
+            listOf("magnet", "magnet3"), listOf("magnet2", "magnet4"))
         val fixtures = groups.flatten().associateWith { label ->
             TorrentMetainfoReader.preview(controller("/$label.torrent")).also { preview ->
                 report("chunks_real_add_hash_$label", preview.infoHashV1)
@@ -225,8 +227,10 @@ internal class MainActivityRealMagnetJourney(
           for (label in group) {
             val preview = fixtures.getValue(label)
             val hash = preview.infoHashV1
-            if (hash in before || runBlocking { remote.lookupName(hash) } != null) {
+            val existingName = runBlocking { remote.lookupName(hash) }
+            if (hash in before || existingName != null) {
                 // A pre-existing session is never ours to stop or erase.
+                skippedSessions[hash] = requireNotNull(existingName) to beforeRows.singleOrNull { it.hash.equals(hash, true) }
                 stage(label, "already-present")
                 continue
             }
@@ -276,6 +280,10 @@ internal class MainActivityRealMagnetJourney(
                 }
                 try {
                     rejectPrecompleted(runBlocking { remote.readTrafficSample(hash) })
+                    if (label == "magnet0") await(30) {
+                        rejectPrecompleted(runBlocking { remote.readTrafficSample(hash) })
+                        false
+                    }
                 } catch (_: PrecompletedFixture) {
                     // Remove only the just-created exact job via production UI.
                     // A failed or uncertain removal must stop rotation.
@@ -402,5 +410,15 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_negative_stage", "removed")
         }
         report("chunks_real_add_negative", "peerless-ui-and-cleanup-passed")
+        for ((hash, snapshot) in skippedSessions) {
+            assertEquals("Pre-existing session name changed", snapshot.first,
+                runBlocking { remote.lookupName(hash) })
+            val previous = snapshot.second
+            if (previous != null) {
+                val current = requireNotNull(row(hash))
+                assertEquals("Pre-existing session path changed", previous.directory, current.directory)
+                assertEquals("Pre-existing session state changed", previous.started, current.started)
+            }
+        }
     }
 }

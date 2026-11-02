@@ -36,8 +36,12 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         lines = ["INSTRUMENTATION_STATUS: class=io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest",
                  "INSTRUMENTATION_STATUS: test=installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace",
                  "INSTRUMENTATION_STATUS_CODE: 1",
+                 "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet0=" + "f" * 40,
                  "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet3=" + "d" * 40,
                  "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet4=" + "e" * 40]
+        for stage in ("preflight", "review", "ui-verified", "registered", "metadata", "fixture-precompleted", "removed"):
+            lines.append("INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet0-" + stage)
+        lines.append("INSTRUMENTATION_STATUS: chunks_real_add_traffic_magnet0_initial=0,65536,65536,0,0")
         for label in SOURCES:
             lines.append("INSTRUMENTATION_STATUS: chunks_real_add_hash_" + label + "=" +
                          ("a" * 40 if label == "magnet" else "b" * 40))
@@ -67,6 +71,7 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", parse(data + "\nINSTRUMENTATION_CODE: -1", 0, env)["result"])
         self.assertNotEqual("passed", parse(data.replace("chunks_real_add_hash_negative", "unknown"), 0, env)["result"])
         self.assertNotEqual("passed", parse(data.replace("SeedhostAndroidAddUiInstrumentedTest", "UnexpectedClass"), 0, env)["result"])
+        self.assertNotEqual("passed", parse(data.replace("chunks_real_add_stage=magnet0-removed", "ignored=missing"), 0, env)["result"])
 
     def test_precompleted_candidate_rotates_only_after_exact_cleanup(self):
         env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1")
