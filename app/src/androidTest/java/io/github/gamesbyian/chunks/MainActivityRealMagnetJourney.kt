@@ -200,6 +200,7 @@ internal class MainActivityRealMagnetJourney(
                         assertEquals("Immediately resolved metadata name", preview.name, placeholder.name)
                         assertEquals("Immediately resolved metadata size", preview.sizeBytes, placeholder.sizeBytes)
                         report("chunks_real_add_app_stage", "metadata-already-resolved")
+                        stage(label, "metadata-already-resolved")
                     }
                 }
                 assertTrue(placeholder.started)
