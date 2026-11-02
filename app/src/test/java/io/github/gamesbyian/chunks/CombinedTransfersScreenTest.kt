@@ -172,12 +172,14 @@ class CombinedTransfersScreenTest {
         revealText("Search all selected")
         rule.onNodeWithText("Search all selected").performTextInput("Small Episode")
         rule.onNodeWithText("Showing 1", substring = true).assertExists()
-        // The qualified shared field exposes a screen-reader-labelled 48dp
-        // clear action; search is the only thing it changes.
-        // Search owns one lazy item; scroll by its stable visible label before
-        // resolving the 48dp trailing icon. That action must still exist.
-        revealText("Search all selected")
-        rule.onNodeWithContentDescription("Clear search").performClick()
+        // This 411dp Robolectric viewport has 16dp list padding on each side:
+        // the field itself is 379dp and deliberately chooses the compact
+        // TEXT-labelled Clear search action above the input (not a trailing
+        // icon contentDescription). On a wider layout the icon is used. Both
+        // variants must expose an accessible, 48dp-class real click target.
+        val clearAction = hasText("Clear search") or hasContentDescription("Clear search")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(clearAction)
+        rule.onNode(clearAction).assertIsDisplayed().performClick()
         rule.onNodeWithText("Showing 2", substring = true).assertExists()
         assertTrue("Viewing and clearing a search must issue no server lifecycle commands",
             commands.isEmpty())
