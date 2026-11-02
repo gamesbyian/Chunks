@@ -26,6 +26,7 @@ def parse(raw, exit_code, env=None):
     phases = {source: {name: 0 for name in PHASES} for source in SOURCES}
     observed_hashes = {source: set() for source in SOURCES}
     traffic = {source: {} for source in SOURCES}
+    stall_diagnostics = {source: None for source in SOURCES}
     current_case = None
     current_class = None
     cases = []
@@ -79,6 +80,14 @@ def parse(raw, exit_code, env=None):
             if len(values) == 5 and all(v.isdecimal() and 0 <= int(v) < 2**63 for v in values):
                 traffic[sample.group(1)][sample.group(2)] = dict(zip(
                     ("received", "verified", "expected", "peers", "rate"), map(int, values)))
+        diagnostic = re.fullmatch(
+            r"INSTRUMENTATION_STATUS: chunks_real_add_diagnostic_(magnet2|magnet)="
+            r"(state=[01],active=[01],open=[01],phase=[0-3x],"
+            r"hashfailed=[01x],hashing=[01x],meta=[01x],"
+            r"message=(?:none|storage|tracker-or-network|hash-check|other|unknown)|unavailable)",
+            line)
+        if diagnostic:
+            stall_diagnostics[diagnostic.group(1)] = diagnostic.group(2)
         frame = re.fullmatch(r"\s*at [A-Za-z0-9_.$<>]+\((MainActivityRealMagnetJourney|SeedhostAndroidAddUiInstrumentedTest|VerifiedAddScreen|RTorrentRemote|TransferLifecycleControl)\.kt:([0-9]{1,5})\)", line)
         if frame and len(source_frames) < 8 and 0 < int(frame.group(2)) <= 10000:
             source_frames.append({"file": frame.group(1) + ".kt", "line": int(frame.group(2))})
@@ -110,6 +119,7 @@ def parse(raw, exit_code, env=None):
             "source_id": (("debian-cdimage" if source == "magnet" else "blender-sintel-webtorrent") if controlled else
                           ("ubuntu-25.10-live-server" if source == "magnet" else "ubuntu-25.10-desktop")),
             "traffic": traffic[source],
+            "read_only_stall_diagnostic": stall_diagnostics[source],
             "phase_counts": counts,
             "first_unverified_checkpoint": next((stage for stage in
                 ("preflight", "review", "ui-verified", "registered", "metadata", "peer-progress", "bytes-verified", "restarted", "passed")

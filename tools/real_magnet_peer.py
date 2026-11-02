@@ -94,7 +94,7 @@ def prepare(root):
             "prefix_bytes": budget, "source": source, "license": license_text,
             "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
             "peer_connections": 0, "peer_disconnects": 0,
-            "peer_error_alerts": 0, "payload_uploaded_bytes": 0,
+            "peer_error_alerts": 0, "max_active_peers": 0, "payload_uploaded_bytes": 0,
             "stages": [], "native_verified_bytes": 0,
         }
     return fixtures
@@ -173,6 +173,9 @@ class Peer:
         while not self.stopping.wait(.1):
             with self.lock:
                 for label, (session, handle) in self.active.items():
+                    self.fixtures[label]["max_active_peers"] = max(
+                        self.fixtures[label]["max_active_peers"], handle.status().num_peers
+                    )
                     for alert in session.pop_alerts():
                         if isinstance(alert, lt.peer_connect_alert):
                             self.fixtures[label]["peer_connections"] += 1

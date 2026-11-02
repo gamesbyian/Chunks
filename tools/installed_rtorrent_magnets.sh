@@ -3,7 +3,11 @@
 set -euo pipefail
 umask 077
 test "${CHUNKS_CONTROLLED_PEER:-}" = 1
-test "${GITHUB_RUN_ATTEMPT:-}" = 1
+if [[ "${CHUNKS_DISPOSABLE:-}" != 1 ]]; then
+  # Owner-authorized live Seedhost changes are one-time only. A failed
+  # PR disposable run may be retried after transient GitHub runner trouble.
+  test "${GITHUB_RUN_ATTEMPT:-}" = 1
+fi
 test "${CHUNKS_SOURCE_SHA:-}" = "$GITHUB_SHA"
 test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
 test -s app/build/outputs/apk/debug/app-debug.apk
