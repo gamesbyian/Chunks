@@ -166,9 +166,18 @@ def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
     total = sum(size for _, size in paths)
     if total > max_total_bytes:
         raise ValueError("Torrent payload exceeds test budget")
-    v1 = isinstance(info.get(b"pieces"), bytes) and len(info[b"pieces"]) % 20 == 0 and len(info[b"pieces"]) > 0
-    if not v1:
-        raise ValueError("Unsupported BitTorrent v1 torrent structure")
+    # BEP 3: each 20-byte SHA-1 digest describes exactly one piece.
+    # Merely checking the hash-string length is a multiple of 20 admits
+    # impossible source torrents, despite an authentic infohash.
+    piece_length = info.get(b"piece length")
+    piece_hashes = info.get(b"pieces")
+    if (type(piece_length) is not int or not 1 <= piece_length <= 64 * 1024 * 1024
+            or not isinstance(piece_hashes, bytes) or not piece_hashes
+            or len(piece_hashes) % 20):
+        raise ValueError("Unsupported BitTorrent v1 piece metadata")
+    expected_piece_count = (total // piece_length) + (1 if total % piece_length else 0)
+    if len(piece_hashes) // 20 != expected_piece_count:
+        raise ValueError("BitTorrent v1 piece hashes contradict advertised payload size")
     fields = [("xt", "urn:btih:" + hashlib.sha1(raw_info).hexdigest()),
               ("dn", name)]
     magnet = "magnet:?" + urllib.parse.urlencode(fields)
@@ -208,7 +217,7 @@ def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
     if tracker:
         safe += bstr(b"announce") + bstr(tracker)
     safe += bstr(b"info") + raw_info + b"e"
-    return safe, {"name": name, "infohash_v1": hashlib.sha1(raw_info).hexdigest() if v1 else None,
+    return safe, {"name": name, "infohash_v1": hashlib.sha1(raw_info).hexdigest(),
                   "infohash_v2": None,
                   "magnet": magnet, "total_bytes": total,
                   "files": [{"path": path, "bytes": n} for path, n in paths[:1000]],
