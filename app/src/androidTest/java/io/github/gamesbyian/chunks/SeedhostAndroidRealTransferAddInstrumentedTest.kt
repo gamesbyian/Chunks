@@ -61,11 +61,12 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
 
     private fun reportExactPublicHash(label: String, hash: String) {
         require(label in setOf("file", "magnet", "magnet2"))
-        require(hash.matches(Regex("[a-f0-9]{40}")))
+        val exact = hash.lowercase(java.util.Locale.ROOT)
+        require(exact.matches(Regex("[a-f0-9]{40}")))
         // This is strictly the official, reusable public-test fixture hash.
         // Never emit URL/tracker, host name, credentials or server-side paths.
         InstrumentationRegistry.getInstrumentation().sendStatus(
-            2, Bundle().apply { putString("chunks_real_add_hash_$label", hash) })
+            2, Bundle().apply { putString("chunks_real_add_hash_$label", exact) })
     }
 
     private fun sourceBytes(file: Boolean, alternative: Boolean = false): ByteArray {
