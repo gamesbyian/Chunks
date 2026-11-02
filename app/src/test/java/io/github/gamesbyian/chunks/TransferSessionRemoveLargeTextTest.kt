@@ -65,12 +65,13 @@ class TransferSessionRemoveLargeTextTest {
         rule.onNodeWithText("Confirm removal from rTorrent").assertExists()
         rule.onNodeWithText("Infohash: " + "c".repeat(40)).assertExists()
         rule.onNodeWithText("Current directory: /downloads/specific-profile").assertExists()
-        val confirm = rule.onNodeWithText("Confirm remove").performScrollTo().getUnclippedBoundsInRoot()
+        rule.onNodeWithText("Remove transfer and data (unavailable)").assertExists()
+        val confirm = rule.onNodeWithText("Remove transfer, keep data").performScrollTo().getUnclippedBoundsInRoot()
         val cancel = rule.onNodeWithText("Cancel").performScrollTo().getUnclippedBoundsInRoot()
         assertTrue("Confirm needs a minimum 52dp touch target", confirm.bottom - confirm.top >= 52.dp)
         assertTrue("Cancel needs a minimum 48dp touch target", cancel.bottom - cancel.top >= 48.dp)
         rule.onNodeWithText("Cancel").performScrollTo().performClick()
-        rule.onNodeWithText("Confirm remove").assertDoesNotExist()
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
         assertEquals("Cancel must not request a remote mutation", 0, mutations)
     }
 
@@ -79,7 +80,7 @@ class TransferSessionRemoveLargeTextTest {
     fun exactRemovalReviewRemainsReachableOn412Dp() {
         show()
         rule.onNodeWithText("Remove from rTorrent…").performClick()
-        rule.onNodeWithText("Confirm remove").assertExists()
+        rule.onNodeWithText("Remove transfer, keep data").assertExists()
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(0, mutations)
     }
@@ -95,7 +96,7 @@ class TransferSessionRemoveLargeTextTest {
             }
         }
         rule.onNodeWithText("Refresh this stale server snapshot before removing a transfer.").assertExists()
-        rule.onNodeWithText("Confirm remove").assertDoesNotExist()
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
         assertEquals(0, mutations)
     }
 }
