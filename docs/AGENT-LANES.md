@@ -26,7 +26,7 @@
 
 **Exit:** build a small reviewable PR, run cheap focused tests, supply exact source SHA and evidence tier, seek independent review for filesystem/security changes, and update the owning issue plus [quality ledger](QUALITY-LEDGER.md). Qualified work may be merged; disputed/failed PRs must stay open with concrete blocker or be closed with a recorded replacement/disposition. Work ahead on a different unclaimed task while CI runs. Do not babysit or multiply workflows without need.
 
-**Protected development testing:** named Seedhost transfer inventory is owner-approved nonsecret QA data and targeted destructive **torrent** tests are allowed. Authentication material, tracker passkeys, unrelated accounts and arbitrary remote filesystem mutations are not. Always revalidate exact identity and postconditions; no blind retries.
+**Protected development testing:** named Seedhost transfer inventory is owner-approved nonsecret QA data and targeted destructive **torrent** tests are allowed. RPC authentication material, unrelated accounts and arbitrary remote filesystem mutations remain outside the authorization. The owner explicitly accepts personally selected private-tracker `.torrent` files with passkeys **in the repository** as test fixtures; do not treat that accepted fixture storage as an open P0 security incident. Do not print announce URLs or private credentials in CI, send owner-private fixtures to untrusted public test runners, or infer authorization to mutate a protected host. Always revalidate exact identity and postconditions; no blind retries.
 
 ## Owner exception: dedicated font laboratory (2026-10-28)
 
