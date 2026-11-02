@@ -71,7 +71,7 @@ def main():
                     "rtorrent_verified": 0, "rtorrent_peak_peers": 0,
                     "libtorrent_metadata": False, "libtorrent_received": 0,
                     "libtorrent_verified": 0, "libtorrent_peak_peers": 0,
-                    "cleanup": "not-submitted", "stages": []}
+                    "cleanup": "not-submitted", "stages": [], "rtorrent_state": {}, "tracker_counts": []}
             results[label] = item
             # Standard incoming/outgoing peer traffic and public tracker/DHT
             # discovery only. No local seeder exists in this experiment.
@@ -97,7 +97,8 @@ def main():
                     info = handle.torrent_file()
                     item["libtorrent_metadata"] = info.name() == item["name"] and info.total_size() == item["size"]
                 item["libtorrent_received"] = max(item["libtorrent_received"], status.total_payload_download)
-                if handle.has_metadata():
+                if status.has_metadata:
+                    info = handle.torrent_file()
                     verified = sum(info.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
                     item["libtorrent_verified"] = max(item["libtorrent_verified"], verified)
                 h = item["infohash"]
@@ -105,6 +106,12 @@ def main():
                     exact = getattr(rpc, "d.hash")(h)
                     item["registered"] = exact.lower() == h
                     meta = getattr(rpc, "d.is_meta")(h)
+                    item["rtorrent_state"] = {key: getattr(rpc, key)(h) for key in
+                        ("d.state", "d.is_active", "d.is_open", "d.is_meta")}
+                    try:
+                        item["tracker_counts"] = getattr(rpc, "t.multicall")(h, "", "t.is_enabled=", "t.success_counter=", "t.failed_counter=", "t.latest_sum_peers=")
+                    except xmlrpc.client.Fault:
+                        item["tracker_counts"] = "unsupported"
                     item["rtorrent_peak_peers"] = max(item["rtorrent_peak_peers"], getattr(rpc, "d.peers_connected")(h))
                     if not meta:
                         item["rtorrent_metadata"] = getattr(rpc, "d.name")(h) == item["name"] and getattr(rpc, "d.size_bytes")(h) == item["size"]

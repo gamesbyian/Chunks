@@ -92,6 +92,9 @@ jobs:
         with:
           name: chunks-public-magnet-discovery-${{ matrix.engine }}
           path: |
-            ${{ runner.temp }}/chunks-public-metadata-probe/
+            ${{ runner.temp }}/chunks-public-metadata-probe/RECEIPT.json
+            ${{ runner.temp }}/chunks-public-metadata-probe/TEST-public-magnets.xml
+            ${{ runner.temp }}/chunks-public-metadata-probe/rtorrent-state.json
+            ${{ runner.temp }}/chunks-public-metadata-probe/rtorrent-setup.log
           retention-days: 14
           if-no-files-found: error
