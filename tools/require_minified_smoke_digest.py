@@ -9,7 +9,7 @@ from pathlib import Path
 import re
 import sys
 
-SHA40 = re.compile(r"[0-9a-f]{40}\\Z")
+SHA40 = re.compile(r"[0-9a-f]{40}\Z")
 
 
 def require_single_smoke(digest):
