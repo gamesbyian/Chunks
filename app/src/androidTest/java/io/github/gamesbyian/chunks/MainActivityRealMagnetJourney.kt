@@ -66,7 +66,7 @@ internal class MainActivityRealMagnetJourney(
         rule.waitForIdle()
     }
     private fun report(key: String, value: String) {
-        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet2?|negative)|traffic_magnet2?_(initial|resumed)|negative|negative_stage|app_stage)")))
+        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet2?|negative)|traffic_magnet2?_(initial|resumed)|diagnostic_magnet2?|negative|negative_stage|app_stage)")))
         require(value.length <= 160 && value.matches(Regex("[a-z0-9,=-]+")))
         InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply { putString(key, value) })
     }
@@ -76,6 +76,29 @@ internal class MainActivityRealMagnetJourney(
         require(values.all { it != null && it >= 0L })
         report("chunks_real_add_traffic_${label}_$phase", values.joinToString(","))
     }
+    private fun reportReadOnlyStall(label: String, remote: RTorrentRemote, hash: String) {
+        // The existing inspector verifies exact identity and classifies d.message
+        // without returning a path, URL, private tracker or passkey to the report.
+        // This is called only when real payload progress timed out. No writes.
+        val value = runCatching {
+            val status = runBlocking { RemoteStallInspector.inspect(remote, hash) }
+            fun bit(flag: Boolean?) = when (flag) {
+                true -> "1"
+                false -> "0"
+                null -> "x"
+            }
+            "state=" + bit(status.started) + ",active=" + bit(status.active) +
+                ",open=" + bit(status.open) +
+                ",phase=" + (status.hashingPhase?.toString() ?: "x") +
+                ",hashfailed=" + bit(status.hashCheckFailed) +
+                ",hashing=" + bit(status.hashChecking) +
+                ",meta=" + bit(status.awaitingMetadata) +
+                ",message=" + status.messageClass.name.lowercase(java.util.Locale.ROOT)
+                    .replace("_", "-")
+        }.getOrDefault("unavailable")
+        report("chunks_real_add_diagnostic_$label", value)
+    }
+
     private fun await(seconds: Int = 45, condition: () -> Boolean) {
         val end = SystemClock.elapsedRealtime() + seconds * 1_000L
         while (SystemClock.elapsedRealtime() < end) {
@@ -236,12 +259,24 @@ internal class MainActivityRealMagnetJourney(
                 }
                 stage(label, "metadata")
                 if (!publicDiscovery) controller("/$label/payload", source.listenPort)
-                await(90) {
-                    val sample = runBlocking { remote.readTrafficSample(hash) }
-                    sample.active == true && ((sample.peers ?: 0L) > 0L ||
-                        (publicDiscovery && sample.verifiedBytes == sample.expectedBytes)) &&
-                        (sample.receivedBytes ?: 0L) > 0L && (sample.verifiedBytes ?: 0L) > 0L &&
-                        sample.expectedBytes == preview.sizeBytes
+                try {
+                    await(90) {
+                        val sample = runBlocking { remote.readTrafficSample(hash) }
+                        sample.active == true && ((sample.peers ?: 0L) > 0L ||
+                            (publicDiscovery && sample.verifiedBytes == sample.expectedBytes)) &&
+                            (sample.receivedBytes ?: 0L) > 0L && (sample.verifiedBytes ?: 0L) > 0L &&
+                            sample.expectedBytes == preview.sizeBytes
+                    }
+                } catch (timeout: AssertionError) {
+                    // Prior failed live run had zero independent uploads but
+                    // discarded *all* remote counters and state on timeout.
+                    // Preserve only allowlisted exact-hash numbers/categories
+                    // while the owned transfer still exists, before cleanup.
+                    runCatching {
+                        traffic(label, "initial", runBlocking { remote.readTrafficSample(hash) })
+                    }
+                    reportReadOnlyStall(label, remote, hash)
+                    throw timeout
                 }
                 traffic(label, "initial", runBlocking { remote.readTrafficSample(hash) })
                 stage(label, "peer-progress"); stage(label, "bytes-verified")
