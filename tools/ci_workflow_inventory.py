@@ -67,6 +67,39 @@ def explicitly_targets_main(push_scope):
     return False
 
 
+def artifact_retention_counts(source):
+    """Count artifact upload steps using explicit versus repository-default retention.
+
+    Read only actual step-level uses declarations; shell contents that happen
+    to mention upload-artifact must not count as an Actions upload step.
+    """
+    lines = source.splitlines()
+    uploads = defaults = 0
+    for i, line in enumerate(lines):
+        if not re.match(r"^ {6}-[ \t]+\S", line):
+            continue
+        section = [line]
+        for following in lines[i + 1:]:
+            if following.strip() and not following.lstrip().startswith("#"):
+                indent = len(following) - len(following.lstrip())
+                if indent <= 6:
+                    break
+            section.append(following)
+        step = "\n".join(section)
+        uses = re.search(
+            r"(?m)^ {6}-[ \t]+uses:[ \t]+actions/upload-artifact@[\w.-]+"
+            r"(?:[ \t]*(?:#.*)?)?$|^ {8}uses:[ \t]+actions/upload-artifact@[\w.-]+"
+            r"(?:[ \t]*(?:#.*)?)?$",
+            step,
+        )
+        if not uses:
+            continue
+        uploads += 1
+        if not re.search(r"(?m)^ {10}retention-days:[ \t]*\S+", step):
+            defaults += 1
+    return uploads, defaults
+
+
 def inspect(path, root):
     source = path.read_text(encoding="utf-8")
     clean = "\n".join(line for line in source.splitlines()
@@ -110,6 +143,7 @@ def inspect(path, root):
         "summary_reference": "GITHUB_STEP_SUMMARY" in clean,
         "matrix": bool(re.search(r"(?m)^\s+matrix:", clean)),
     }
+    upload_steps, default_retention_steps = artifact_retention_counts(source)
     issues = []
     if not re.search(r"(?m)^name:\s*\S", clean):
         issues.append("missing_name")
@@ -121,6 +155,8 @@ def inspect(path, root):
         issues.append("pr_without_concurrency")
     return {
         "path": path.relative_to(root).as_posix(),
+        "artifact_upload_steps": upload_steps,
+        "artifact_upload_steps_with_default_retention": default_retention_steps,
         "self_trigger_on_main_push": duplicate_self_candidate,
         "self_trigger_on_pr": self_on_pr,
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
@@ -155,6 +191,13 @@ def collect(root):
                          for e in EVENTS if any(e in w["events"] for w in workflows)},
         "main_self_trigger_candidates": [w["path"] for w in workflows
                                          if w["self_trigger_on_main_push"]],
+        "artifact_default_retention_candidates": [
+            w["path"] for w in workflows
+            if w["artifact_upload_steps_with_default_retention"]
+        ],
+        "artifact_default_retention_upload_steps": sum(
+            w["artifact_upload_steps_with_default_retention"] for w in workflows
+        ),
         "missing_concurrency": [w["path"] for w in workflows
                                 if "pr_without_concurrency" in w["review_flags"]],
         "privilege_review": [w["path"] for w in workflows if
@@ -177,6 +220,11 @@ def markdown(report):
         f"({names(report['missing_concurrency'])})",
         f"- Main-push self-trigger candidates: {len(report['main_self_trigger_candidates'])} "
         f"({names(report['main_self_trigger_candidates'])})",
+        f"- Artifact uploads inheriting repository retention: "
+        f"{report['artifact_default_retention_upload_steps']} steps across "
+        f"{len(report['artifact_default_retention_candidates'])} workflows "
+        f"({names(report['artifact_default_retention_candidates'])}); "
+        "review candidates, not observed artifact sizes.",
         f"- Privilege review candidates: {len(report['privilege_review'])} "
         f"({names(report['privilege_review'])})",
         "- Full JSON in workflow-inventory artifact; flags are not product failures.", "",
