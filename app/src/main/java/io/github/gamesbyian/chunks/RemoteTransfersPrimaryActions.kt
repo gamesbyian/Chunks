@@ -57,9 +57,9 @@ internal fun RemoteTransfersPrimaryActions(
 }
 
 /**
- * Keeping a potentially long sort criterion beside the shown count clips the
- * sort target at 320dp / 200% text. Both facts remain visible when stacked.
- * Sorting is a view-only callback: never a server operation or target selector.
+ * Wide layouts show the transfer count beside the sort action; compact
+ * layouts combine both into one labelled button to avoid another full-height
+ * row at 320dp/200% text. Sorting is read-only UI state, not a server command.
  */
 @Composable
 internal fun RemoteTransfersSortSummary(
