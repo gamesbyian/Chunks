@@ -135,7 +135,7 @@ class PublicMagnetCatalogIdentityTest(unittest.TestCase):
 
 
     def test_tracker_raw_control_characters_cannot_be_hidden_by_urlsplit(self):
-        for control in ("\\n", "\\r", "\\t", "\\x00", "\\x7f"):
+        for control in ("\n", "\r", "\t", "\x00", "\x7f"):
             malicious = "udp://tracker.opentrackr.org:1337/announce" + control
             with self.subTest(control=repr(control)):
                 self.check({**self.item, "magnet": self.item["magnet"]
