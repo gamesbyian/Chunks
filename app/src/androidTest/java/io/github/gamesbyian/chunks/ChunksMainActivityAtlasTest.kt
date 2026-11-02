@@ -377,11 +377,14 @@ class ChunksMainActivityAtlasTest {
         // the composed LazyColumn viewport when the keyboard closes. A query
         // field can be valid while an offscreen item has zero semantics nodes.
         // Resolve via LazyList ScrollToIndex, as other queue tests already do.
-        // This still FAILS unless the real installed UI contains "1 shown".
+        // A compact Transfers header merges the filtered count and the
+        // actionable sort criterion. Require both after the real UI search,
+        // preserving the one-match test instead of accepting the query alone.
+        val oneMatchSort = hasText("1 shown · Sort:", substring = true) and hasClickAction()
         try {
             rule.onNode(hasScrollToIndexAction())
-                .performScrollToNode(hasText("1 shown"))
-            rule.onNodeWithText("1 shown").assertExists()
+                .performScrollToNode(oneMatchSort)
+            rule.onNode(oneMatchSort).assertExists()
         } catch (failure: AssertionError) {
             save("app-search-filter-timeout-diagnostic-real-compose")
             val lines = rule.onRoot(useUnmergedTree = true).printToString()
@@ -391,7 +394,7 @@ class ChunksMainActivityAtlasTest {
                     it.contains("Public.Example") ||
                     it.contains("InputText") }
                 .take(25).joinToString(" | ").take(2800)
-            throw AssertionError("Search did not show one filter match. " +
+            throw AssertionError("Search did not show one match with its sort action. " +
                 "Visible relevant semantics=" + lines, failure)
         }
         // An actual installed-app queue action, not only an isolated editor
