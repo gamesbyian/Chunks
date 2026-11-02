@@ -14,6 +14,7 @@ TARGETS = (
 )
 UI_WORKFLOW = ".github/workflows/seedhost-android-add-ui-once.yml"
 ADAPTER_WORKFLOW = ".github/workflows/seedhost-kotlin-adapter-smoke.yml"
+PUBLIC_WORKFLOW = ".github/workflows/seedhost-public-add-smoke.yml"
 
 
 class SeedhostManualOnlyGates(unittest.TestCase):
@@ -86,6 +87,15 @@ class SeedhostManualOnlyGates(unittest.TestCase):
                 text = (ROOT / path).read_text(encoding="utf-8")
                 self.assertIn("group: chunks-android-seedhost-scope-mutation", text)
                 self.assertIn("cancel-in-progress: false", text)
+
+    def test_public_fixture_apply_is_not_replayed_or_run_by_pr(self):
+        text = (ROOT / PUBLIC_WORKFLOW).read_text(encoding="utf-8")
+        job = text.split("  manual-seedhost-add:", 1)[1].split("    needs:", 1)[0]
+        for guard in ("github.event_name == 'workflow_dispatch'", "github.ref == 'refs/heads/main'",
+                      "(!inputs.apply || github.run_attempt == 1)"):
+            self.assertIn(guard, job)
+        self.assertIn("github.event_name == 'workflow_dispatch' && 'chunks-android-seedhost-scope-mutation'", text)
+        self.assertIn("cancel-in-progress: ${{ github.event_name == 'pull_request' }}", text)
 
 
 if __name__ == "__main__":

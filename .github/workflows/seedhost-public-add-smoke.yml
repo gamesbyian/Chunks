@@ -43,7 +43,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: chunks-public-add-${{ github.event.pull_request.number || github.run_id }}
+  group: ${{ github.event_name == 'workflow_dispatch' && 'chunks-android-seedhost-scope-mutation' || format('chunks-public-add-{0}', github.event.pull_request.number || github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -58,7 +58,7 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_seedhost_secret_route_policy.py' -v
 
   manual-seedhost-add:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && (!inputs.apply || github.run_attempt == 1) }}
     needs: offline-validation
     runs-on: ubuntu-latest
     timeout-minutes: 6
