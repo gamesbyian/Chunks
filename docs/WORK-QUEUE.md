@@ -1,5 +1,10 @@
 # Chunks active engineering work queue
 
+## P1 planned: transfer sharing and metadata export
+
+After the current P0 Add/start, storage and lifecycle blockers, implement [TRANSFER-SHARING](TRANSFER-SHARING.md): native local/rTorrent magnet share/copy, safe private-tracker disclosure, then verified .torrent export where metadata is accessible. Require independent real-client import and exact hash, tracker and peer-discovery receipts. Planned only; no acceptance evidence.
+
+
 ## 2026-11-01 owner direction: real transfer tests are the P0 acceptance authority
 
 **Binding engineering policy:** [REAL-TRANSFER-ACCEPTANCE](REAL-TRANSFER-ACCEPTANCE.md). Prioritize actual `.torrent` and metadata-resolving magnet tests on real servers/peers and installed Chunks paths over extending mock-only suites. Mocks remain secondary edge/negative tests. Status must distinguish real adapter/host, installed emulator and physical handset; a simulator-only green check does not close a torrent feature. Reuse rTorrent/libtorrent/native API behaviour and compare known-good ruTorrent/Transdroid operations before building custom substitutes. Do not reinterpret this as automatically mutating credentialed hosts on every PR.
