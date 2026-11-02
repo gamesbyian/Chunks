@@ -91,13 +91,15 @@ def main():
         while time.monotonic() < deadline:
             all_done = True
             for session, handle, item in sessions:
-                status = handle.status()
+                status = handle.status(lt.status_flags_t.query_pieces)
                 item["libtorrent_peak_peers"] = max(item["libtorrent_peak_peers"], status.num_peers)
                 if handle.has_metadata():
                     info = handle.torrent_file()
                     item["libtorrent_metadata"] = info.name() == item["name"] and info.total_size() == item["size"]
                 item["libtorrent_received"] = max(item["libtorrent_received"], status.total_payload_download)
-                item["libtorrent_verified"] = max(item["libtorrent_verified"], status.total_done)
+                if handle.has_metadata():
+                    verified = sum(info.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
+                    item["libtorrent_verified"] = max(item["libtorrent_verified"], verified)
                 h = item["infohash"]
                 try:
                     exact = getattr(rpc, "d.hash")(h)
@@ -159,10 +161,10 @@ def main():
             "unrelated_inventory_restored": restored, "webseeds": False, "supplied_peers": False}
         (root / "RECEIPT.json").write_text(json.dumps(receipt, indent=2) + "\n")
         suite = ET.Element("testsuite", name="real-public-magnet-discovery", tests="2",
-                           failures=str(sum(not results.get(label, {}).get("passed", False) or results.get(label, {}).get("cleanup") != "session-absent" for label in ("debian", "sintel"))), errors="0", skipped="0")
+                           failures=str(sum(not restored or not results.get(label, {}).get("passed", False) or results.get(label, {}).get("cleanup") != "session-absent" for label in ("debian", "sintel"))), errors="0", skipped="0")
         for label in ("debian", "sintel"):
             case = ET.SubElement(suite, "testcase", classname="PublicMagnetDiscovery", name=label)
-            if not results.get(label, {}).get("passed") or results.get(label, {}).get("cleanup") != "session-absent":
+            if not restored or not results.get(label, {}).get("passed") or results.get(label, {}).get("cleanup") != "session-absent":
                 ET.SubElement(case, "failure", type="PublicMetadataOrPeerUnavailable", message=results.get(label, {}).get("first_unproven") or "not-executed")
         ET.ElementTree(suite).write(root / "TEST-public-magnets.xml", encoding="utf-8", xml_declaration=True)
         print("CHUNKS_PUBLIC_MAGNET_PROBE: " + receipt["result"], flush=True)

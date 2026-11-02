@@ -35,8 +35,6 @@ jobs:
           directory.default.set = $RUNNER_TEMP/probe-data
           session.path.set = $RUNNER_TEMP/probe-session
           network.scgi.open_port = 127.0.0.1:5000
-          network.port_range.set = 6890-6890
-          network.port_random.set = no
           throttle.global_down.max_rate.set_kb = 256
           dht.mode.set = auto
           protocol.pex.set = yes
@@ -62,13 +60,38 @@ jobs:
           sudo nginx -c "$RUNNER_TEMP/probe-nginx.conf"
       - name: Same genuine public magnet to both real implementations, at most 90 seconds
         run: /usr/bin/python3 tools/public_magnet_metadata_probe.py
+      - name: Preserve disposable setup evidence and fail-closed missing reports
+        if: always()
+        run: |
+          evidence="$RUNNER_TEMP/chunks-public-metadata-probe"
+          mkdir -p "$evidence"
+          if [ "${{ matrix.engine }}" = modern ]; then
+            docker inspect --format '{{json .State}}' chunks-public-rtorrent > "$evidence/rtorrent-state.json" 2>&1 || true
+            docker logs chunks-public-rtorrent > "$evidence/rtorrent-setup.log" 2>&1 || true
+          elif [ -f "$RUNNER_TEMP/probe-rtorrent.log" ]; then
+            cp "$RUNNER_TEMP/probe-rtorrent.log" "$evidence/rtorrent-setup.log"
+          fi
+          # This rig contains no credentials or protected server state.
+          # A setup crash must still leave a source-bound JSON and JUnit error.
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "chunks-public-metadata-probe"
+          if not (root / "RECEIPT.json").is_file():
+              (root / "RECEIPT.json").write_text(json.dumps({
+                  "source_sha": os.environ["GITHUB_SHA"], "run_id": os.environ["GITHUB_RUN_ID"],
+                  "result": "failed-or-inconclusive", "failure_category": "setup-before-probe",
+                  "attempted_stages": ["runner-setup"], "completed_stages": [],
+                  "cleanup": "disposable runner teardown", "protected_mutations": False}) + "\n")
+          if not (root / "TEST-public-magnets.xml").is_file():
+              (root / "TEST-public-magnets.xml").write_text('<testsuite name="public-discovery-setup" tests="1" errors="1"><testcase name="setup"><error type="ProbeNotExecuted"/></testcase></testsuite>')
+          PY
       - name: Keep complete real outcomes and JUnit, including unavailable swarms
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: chunks-public-magnet-discovery-${{ matrix.engine }}
           path: |
-            ${{ runner.temp }}/chunks-public-metadata-probe/RECEIPT.json
-            ${{ runner.temp }}/chunks-public-metadata-probe/TEST-public-magnets.xml
+            ${{ runner.temp }}/chunks-public-metadata-probe/
           retention-days: 14
           if-no-files-found: error
