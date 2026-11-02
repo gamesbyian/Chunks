@@ -119,6 +119,17 @@ def select(gh, *, now=None, min_days=MIN_AGE_DAYS, keep=KEEP_NEWEST, limit=MAX_D
     if now.tzinfo is None:
         raise ScanError("naive scan timestamp")
     rows = list_named(gh)
+    # Age bands count ALL artifacts with this shared name. They are potential
+    # size opportunities, NOT approved deletions or verified producer counts.
+    bands = {label: {"count": 0, "bytes": 0} for label in
+             ("under_3d", "3_to_7d", "7_to_14d", "14_to_30d", "30d_plus")}
+    for item in rows:
+        days = (now - parse_date(item.get("created_at"))).total_seconds() / 86400
+        band = ("under_3d" if days < 3 else "3_to_7d" if days < 7 else
+                "7_to_14d" if days < 14 else "14_to_30d" if days < 30 else
+                "30d_plus")
+        bands[band]["count"] += 1
+        bands[band]["bytes"] += item["size_in_bytes"]
     heads = open_pr_heads(gh)
     # Retain 50 most recent artifacts of this name unconditionally, including
     # owner-publication artifacts. Age filtering also protects every recent one.
@@ -166,6 +177,7 @@ def select(gh, *, now=None, min_days=MIN_AGE_DAYS, keep=KEEP_NEWEST, limit=MAX_D
             "workflow": AUTO_WORKFLOW, "artifact_name": ARTIFACT_NAME,
             "mode": "plan", "min_age_days": min_days, "keep_newest": keep,
             "max_deletions": limit, "listed_named_artifacts": len(rows),
+            "named_artifact_age_bands_unqualified": bands,
             "excluded_in_reviewed_subset": excluded, "candidates": candidates,
             "candidate_sha256": plan_digest(candidates),
             "candidate_bytes": sum(x["bytes"] for x in candidates)}
