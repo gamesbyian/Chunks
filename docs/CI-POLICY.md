@@ -94,7 +94,7 @@ All routine font development goes to [`font/lab`](https://github.com/gamesbyian/
 
 ## Automatic CI
 
-One PR Android build/test job when app/Gradle/toolchain sources change. Compile debug APK and run JVM tests on pinned, documented toolchain. Upload short-lived unsigned debug artifacts. Do not run both main-push and PR versions for identical source changes. Docs-only plans need editorial review, not a full Android runner.
+One PR Android build/test job when app/Gradle/toolchain sources change. Compile and source-verify the debug APK and run JVM tests on pinned, documented toolchain. Do not upload routine APK binaries: retain compact failure evidence and source identity. Only an explicitly requested, manually published test APK is downloadable, and publishing a successor retires older owner-test debug prereleases. Do not run both main-push and PR versions for identical source changes. Docs-only plans need editorial review, not a full Android runner.
 
 Do not use Secrets in fork/PR builds. Never connect the CI runner to a private rTorrent host merely to validate a public pull request. Keep live server tests manually authorized, with sanitized result summaries.
 
