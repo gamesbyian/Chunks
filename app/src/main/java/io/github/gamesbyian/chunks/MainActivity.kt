@@ -1451,17 +1451,19 @@ private fun TransfersScreen(
             )
         }
     }
-    Box(Modifier.fillMaxSize()) {
+    // A measured Column gives the persistent footer its own layout space.
+    // A Box overlay lets LazyColumn scroll buttons behind the footer, where
+    // real taps hit + Add instead of a transfer's "More details". Avoid a
+    // hard-coded footer-height guess: 200% font and accessibility text may
+    // increase its actual height.
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) {
         LazyColumn(
             state = listState,
-            // The fixed 60dp-high footer (48dp controls + 6dp top/bottom)
-            // must not overlay the list's pointer hit area. Bottom content
-            // padding alone lets Compose scroll a transfer button *behind*
-            // the footer, where a real tap can accidentally invoke + Add.
-            // Keep the list viewport physically above the footer instead.
-            modifier = Modifier.fillMaxSize().padding(bottom = 64.dp),
-            // Keep the final transfer reachable above floating controls.
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 64.dp),
+            modifier = Modifier.fillMaxSize(),
+            // Keep the final transfer reachable above the floating return
+            // control, without reserving nonexistent footer space in the list.
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 72.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
         item {
@@ -1792,7 +1794,7 @@ private fun TransfersScreen(
         }
         ReturnToTopControl(
             visible = showBackToTop,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 80.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 16.dp),
             onClick = {
                 topControlScope.launch {
                     if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
@@ -1800,16 +1802,15 @@ private fun TransfersScreen(
                 }
             }
         )
-        androidx.compose.foundation.layout.Box(
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            AuthenticatedTransfersFooter(
-                optionsOpen = optionsOpen,
-                onTransfers = { topControlScope.launch { listState.scrollToItem(0) } },
-                onAdd = onAdd,
-                onOptions = onOptions
-            )
         }
+        // Naturally sized below the scroll viewport; cannot steal a tap
+        // from a transfer card, irrespective of density or text scaling.
+        AuthenticatedTransfersFooter(
+            optionsOpen = optionsOpen,
+            onTransfers = { topControlScope.launch { listState.scrollToItem(0) } },
+            onAdd = onAdd,
+            onOptions = onOptions
+        )
     }
 }
 
