@@ -64,22 +64,12 @@ internal fun TransferFilePager(
             Text("No files were reported for this transfer.",
                 style = MaterialTheme.typography.bodySmall)
         } else {
-            Text("Showing ${current.firstIndex + 1}–${current.endExclusive} of ${files.size} files",
-                style = MaterialTheme.typography.bodySmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { requestedPage = current.number - 1 },
-                    enabled = current.number > 0,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                ) { Text("Previous 40") }
-                OutlinedButton(
-                    onClick = { requestedPage = current.number + 1 },
-                    enabled = current.number < current.count - 1,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                ) { Text("Next 40") }
-            }
-            Text("Page ${current.number + 1} of ${current.count}",
-                style = MaterialTheme.typography.labelMedium)
+            RemoteFilePagerControls(
+                page = current,
+                totalFiles = files.size,
+                onPrevious = { requestedPage = current.number - 1 },
+                onNext = { requestedPage = current.number + 1 }
+            )
             if (!mainView || snapshotStale) {
                 Text("Refresh the main server view before changing file priorities.",
                     style = MaterialTheme.typography.bodySmall)
