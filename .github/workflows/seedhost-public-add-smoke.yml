@@ -43,7 +43,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: chunks-public-add-${{ github.event.pull_request.number || github.run_id }}
+  group: ${{ github.event_name == 'workflow_dispatch' && 'chunks-android-seedhost-scope-mutation' || format('chunks-public-add-{0}', github.event.pull_request.number || github.run_id) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -58,11 +58,16 @@ jobs:
           python3 -m unittest discover -s tools -p 'test_seedhost_secret_route_policy.py' -v
 
   manual-seedhost-add:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     needs: offline-validation
     runs-on: ubuntu-latest
     timeout-minutes: 6
     steps:
+      - name: Refuse replay of a mutation dispatch
+        if: ${{ inputs.apply && github.run_attempt != 1 }}
+        run: |
+          echo '::error::A rerun cannot repeat protected mutations; inspect the prior run and dispatch a new explicitly scoped operation if appropriate.'
+          exit 1
       - uses: actions/checkout@v4
       - name: Preview, or confirm and verify ONE stopped Add
         env:
