@@ -8,7 +8,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from verify_native_add_shards import verify, BASELINE_EXECUTED_TESTS
+from verify_native_add_shards import verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS
 
 
 class ShardedNativeAddTests(unittest.TestCase):
@@ -59,7 +59,8 @@ class ShardedNativeAddTests(unittest.TestCase):
 
     def test_all_genuine_shards_and_distributed_screenshots_are_required(self):
         result = self.check()
-        self.assertEqual(BASELINE_EXECUTED_TESTS, result["junit"]["executed"])
+        self.assertGreaterEqual(result["junit"]["executed"], BASELINE_EXECUTED_TESTS)
+        self.assertGreaterEqual(result["junit"]["tests"], BASELINE_JUNIT_TESTS)
         self.assertEqual(2, result["mandatory_real_png_count"])
         self.assertEqual({"one-real-compose.png": [0], "two-real-compose.png": [1]},
                          result["screenshot_shards"])
@@ -87,7 +88,17 @@ class ShardedNativeAddTests(unittest.TestCase):
                 d["junit"]["tests"] = 100
                 d["junit"]["executed"] = 100
             self.change(index, trim)
-        with self.assertRaisesRegex(ValueError, "baseline"):
+        with self.assertRaisesRegex(ValueError, "coverage"):
+            self.check()
+
+    def test_reject_unreviewed_increase_in_skipped_cases(self):
+        def skip_thirty(d):
+            for case in d["test_cases"][:30]:
+                case["outcome"] = "skipped"
+            d["junit"]["executed"] = 151
+            d["junit"]["skipped"] = 30
+        self.change(0, skip_thirty)
+        with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
 
     def test_reject_shard_without_executed_evidence(self):
