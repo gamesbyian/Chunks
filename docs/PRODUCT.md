@@ -1,5 +1,10 @@
 # Chunks canonical product contract
 
+## Existing-transfer sharing (planned)
+
+Provide Share magnet, Copy magnet and, where complete metadata is available, Share .torrent for both local and native rTorrent transfers even if original input is gone. Preserve swarm identity, warn about private tracker passkeys, and never claim identical peers. See [TRANSFER-SHARING](TRANSFER-SHARING.md). Not yet implemented.
+
+
 ## Existing torrent payloads in a chosen directory (binding owner correction, 2026-10-31)
 
 The chosen or accepted **Save to** directory permits ordinary BitTorrent piece verification, reuse and replacement of existing regular files at the exact torrent-declared relative paths. An unfamiliar same-name file is not a reason to block a download or mandate an exclusive proprietary writer. Do not affect unrelated siblings, traverse/escape the selected Place, follow payload symlinks or delete source files through a job-only Remove. Keep concurrent writer exclusions and true Android access/permission integrity. Existing data is checked against actual torrent hashes before Chunks claims verification or seeding. [Normative collision and acceptance policy](LOCAL-TORRENT-COLLISION-POLICY.md) · [D-LOCAL-COLLISIONS-20261031](DECISIONS.md).
