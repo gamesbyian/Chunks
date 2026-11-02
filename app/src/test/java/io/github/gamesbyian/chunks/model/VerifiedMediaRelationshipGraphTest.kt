@@ -171,6 +171,86 @@ class VerifiedMediaRelationshipGraphTest {
         assertEquals("episode:42", safe.recordKey)
     }
 
+
+    @Test fun corroboratingProvidersRetainAllEvidenceWithoutCrossProductDuplicates() {
+        val episode = entity("ep", MediaGraphEntityKind.TV_EPISODE)
+        val issue = entity("issue", MediaGraphEntityKind.COMIC_ISSUE)
+        val author = entity("author", MediaGraphEntityKind.PERSON)
+        val facts = listOf(
+            fact("episodeWriter", episode, MediaGraphPredicate.WRITTEN_BY, author, provider="tvmaze"),
+            fact("issueWriter", issue, MediaGraphPredicate.WRITTEN_BY, author, provider="gcd"),
+            fact("episodeWriter", episode, MediaGraphPredicate.WRITTEN_BY, author, provider="wikidata"),
+            fact("issueWriter", issue, MediaGraphPredicate.WRITTEN_BY, author, provider="wikidata")
+        )
+        val visible = setOf(episode, issue)
+        fun evidence(approved: Set<String>, sources: List<MediaGraphClaim> = facts): List<MediaGraphClaim> =
+            VerifiedMediaRelationshipGraph.build(sources, approved)
+                .related(episode, visible).single().explanations.single().evidence
+        val all = evidence(setOf("tvmaze", "gcd", "wikidata"))
+        assertEquals(4, all.size)
+        assertEquals(all, evidence(setOf("tvmaze", "gcd", "wikidata"), facts.reversed()))
+        assertEquals(4, all.distinct().size)
+        // Removing one of two independent corroborators must not leak withdrawn evidence.
+        val withoutWiki = evidence(setOf("tvmaze", "gcd"))
+        assertEquals(setOf("tvmaze", "gcd"), withoutWiki.map { it.provider }.toSet())
+        assertEquals(2, withoutWiki.size)
+        assertTrue(VerifiedMediaRelationshipGraph.build(facts, setOf("tvmaze"))
+            .related(episode, visible).isEmpty())
+    }
+
+    @Test fun conflictingEditionParentsQuarantineOnlyThatEditionIdentity() {
+        val edition = entity("edition", MediaGraphEntityKind.BOOK_EDITION)
+        val first = entity("first-work", MediaGraphEntityKind.BOOK_WORK)
+        val second = entity("second-work", MediaGraphEntityKind.BOOK_WORK)
+        val a = fact("parent", edition, MediaGraphPredicate.EDITION_OF, first, provider="catalog-a")
+        val b = fact("parent", edition, MediaGraphPredicate.EDITION_OF, second, provider="catalog-b")
+        val visible = setOf(edition, first, second)
+        fun parents(facts: List<MediaGraphClaim>, allowed: Set<String>) =
+            VerifiedMediaRelationshipGraph.build(facts, allowed).related(edition, visible)
+        assertEquals(first, parents(listOf(a, b), setOf("catalog-a")).single().entity)
+        assertTrue(parents(listOf(a, b), setOf("catalog-a", "catalog-b")).isEmpty())
+        // A later edition correction supersedes the earlier claim from the same source field.
+        assertEquals(second, parents(listOf(a, b.copy(provider="catalog-a", revision=2)),
+            setOf("catalog-a")).single().entity)
+        // Different credits on different field keys are legitimately multivalued.
+        val personOne = entity("one", MediaGraphEntityKind.PERSON)
+        val personTwo = entity("two", MediaGraphEntityKind.PERSON)
+        val comic = entity("comic", MediaGraphEntityKind.COMIC_ISSUE)
+        val credits = listOf(
+            fact("writer1", first, MediaGraphPredicate.WRITTEN_BY, personOne),
+            fact("writer2", first, MediaGraphPredicate.WRITTEN_BY, personTwo),
+            fact("comicWriter", comic, MediaGraphPredicate.WRITTEN_BY, personTwo)
+        )
+        assertEquals(MediaGraphRelation.SHARED_WRITER,
+            VerifiedMediaRelationshipGraph.build(credits, setOf("recorded"))
+                .related(first, setOf(first, comic)).single().strongest)
+    }
+
+    @Test fun independentProviderRetractionDoesNotEraseOtherProvidersVerifiedFact() {
+        val film = entity("film", MediaGraphEntityKind.FILM)
+        val work = entity("work", MediaGraphEntityKind.BOOK_WORK)
+        val a = fact("adapt", film, MediaGraphPredicate.ADAPTED_FROM, work, provider="source-a")
+        val b = fact("adapt", film, MediaGraphPredicate.ADAPTED_FROM, work, provider="source-b")
+        val visible = setOf(film, work)
+        fun result(facts: List<MediaGraphClaim>) = VerifiedMediaRelationshipGraph.build(facts,
+            setOf("source-a", "source-b")).related(film, visible)
+        assertEquals(2, result(listOf(a,b)).single().explanations.single().evidence.size)
+        val retracted = a.copy(revision=2, state=MediaGraphClaimState.RETRACTED)
+        assertEquals(listOf(b), result(listOf(a, b, retracted)).single().explanations.single().evidence)
+        // An explicit dispute of the same edge is deliberately stronger than retraction.
+        assertTrue(result(listOf(a,b,a.copy(revision=2, state=MediaGraphClaimState.DISPUTED))).isEmpty())
+    }
+
+    @Test fun genericHighDegreeWriterIsNotExpandedToEveryTransfer() {
+        val writer = entity("large-cast", MediaGraphEntityKind.PERSON)
+        val works = (0..257).map { entity("work$it", MediaGraphEntityKind.COMIC_ISSUE) }
+        val claims = works.mapIndexed { index, work ->
+            fact("credit$index", work, MediaGraphPredicate.WRITTEN_BY, writer)
+        }
+        val graph = VerifiedMediaRelationshipGraph.build(claims, setOf("recorded"))
+        assertTrue(graph.related(works.first(), works.toSet(), 100).isEmpty())
+    }
+
     @Test fun offlinePureQueryHasBoundedLimitAndNoUnlimitedHops() {
         val movie = entity("m",MediaGraphEntityKind.FILM)
         val person = entity("person",MediaGraphEntityKind.PERSON)
