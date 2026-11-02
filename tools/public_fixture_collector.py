@@ -102,10 +102,15 @@ def license_ok(meta):
             or not re.fullmatch(r"[1-4]\.[0-9]+", segments[2])
             or len(segments) > 5):
         return False
-    # Older CC deeds may append a jurisdiction (e.g. /us/) or a translated
-    # deed; do not treat an arbitrary suffix as a recognized CC license.
-    return all(bool(re.fullmatch(r"(?:[a-z]{2,8}|deed\.[a-z]{2,8})", s))
-               for s in segments[3:])
+    # Older deeds may append a jurisdiction (e.g. /us/) and/or a
+    # translated deed. Arbitrary extra path segments are not license proof.
+    extra = segments[3:]
+    jurisdiction = lambda value: bool(re.fullmatch(
+        r"(?:[a-z]{2,3}|england|scotland|wales)", value))
+    deed = lambda value: bool(re.fullmatch(r"deed\.[a-z]{2,8}", value))
+    return (not extra or
+            (len(extra) == 1 and (jurisdiction(extra[0]) or deed(extra[0]))) or
+            (len(extra) == 2 and jurisdiction(extra[0]) and deed(extra[1])))
 
 def bstr(raw):
     return str(len(raw)).encode("ascii") + b":" + raw
