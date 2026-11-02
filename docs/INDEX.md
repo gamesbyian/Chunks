@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+- [Shared name/media identity and Similar Transfers](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md): normative lossless normalization, cached cross-media entity/credit graph, issue-level collections, related-transfer ranking, per-environment UX and staged test gates (planned).
+- [Media metadata provider registry](MEDIA-PROVIDER-REGISTRY.md): dated research on open/free providers, real API fields, authentication, quotas, licensing, fallbacks and integration approval gates; not provider approval or implementation proof.
+
 - [External destination delivery](EXTERNAL-DESTINATION-DELIVERY.md): optional verified local-torrent delivery to Google Drive/SAF or independently authorized FTP-family storage, staged copy, recovery and no implicit cloud seeding (planned).
 
 
