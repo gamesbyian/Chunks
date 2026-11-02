@@ -36,6 +36,7 @@ data class MediaTransferMembers(val key: UnifiedTransferKey, val members: List<M
 }
 
 enum class MediaRelationKind(val rank: Int) {
+    SAME_TORRENT(120),
     SAME_WORK(100), ADJACENT_EPISODE(90), SAME_SERIES(80), SHARED_WRITER(70),
     BIOGRAPHICAL_SUBJECT_AND_ARTIST(65), SAME_ARTIST(55), SHARED_ACTOR(45), SHARED_TOPIC(30)
 }
@@ -61,7 +62,8 @@ data class RelatedTransferCandidate(
 /** Inverted index; a details query only reads postings for terms in the selected transfer. */
 class MediaRelationIndex private constructor(
     private val records: Map<UnifiedTransferKey, MediaTransferMembers>,
-    private val postings: Map<String, List<IndexedMember>>
+    private val postings: Map<String, List<IndexedMember>>,
+    private val byInfohash: Map<String, List<UnifiedTransferKey>>
 ) {
     private data class IndexedMember(val key: UnifiedTransferKey, val member: MediaContentMember)
 
@@ -75,7 +77,8 @@ class MediaRelationIndex private constructor(
                 val ref = IndexedMember(transfer.key, member)
                 for (term in terms(member)) inverted.getOrPut(term) { mutableListOf() }.add(ref)
             }
-            return MediaRelationIndex(transfers.associateBy { it.key }, inverted)
+            return MediaRelationIndex(transfers.associateBy { it.key }, inverted,
+                transfers.groupBy { it.key.infoHash }.mapValues { (_, group) -> group.map { it.key } })
         }
 
         private fun terms(member: MediaContentMember): Set<String> = buildSet {
@@ -105,6 +108,16 @@ class MediaRelationIndex private constructor(
         val sourceRecord = records[source] ?: return emptyList()
         if (source !in visible) return emptyList()
         val hits = mutableMapOf<UnifiedTransferKey, MutableList<MediaRelationEvidence>>()
+        // Exact infohash means the same torrent, regardless of media lookup success.
+        for (sameHash in byInfohash[source.infoHash].orEmpty()) {
+            if (sameHash != source && sameHash in visible &&
+                (!sameEnvironmentOnly || sameHash.environment == source.environment)) {
+                hits.getOrPut(sameHash) { mutableListOf() }.add(
+                    MediaRelationEvidence(MediaRelationKind.SAME_TORRENT, source.infoHash,
+                        null, "<transfer>", "<transfer>")
+                )
+            }
+        }
         for (member in sourceRecord.members) {
             for (term in terms(member)) {
                 for (candidate in postings[term].orEmpty()) {
