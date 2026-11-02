@@ -208,8 +208,8 @@ internal class MainActivityRealMagnetJourney(
             click("Refresh")
             type("Search names or Places", hash)
         }
-        fun lifecycle(hash: String, start: Boolean) {
-            refreshAndFind(hash)
+        fun lifecycle(hash: String, start: Boolean, refresh: Boolean = true) {
+            if (refresh) refreshAndFind(hash)
             click(if (start) "Start transfer…" else "Stop transfer…")
             click(if (start) "Confirm start" else "Confirm stop")
             await { row(hash)?.started == start && runBlocking { remote.readActivity(hash).active } == start }
@@ -295,7 +295,11 @@ internal class MainActivityRealMagnetJourney(
                 scroll(preview.name)
                 assertTrue("Actual Transfers lost original metadata name", visible(preview.name))
                 assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
-                lifecycle(hash, false)
+                // Already refreshed and searched this exact hash above. A second
+                // refresh before Stop creates an unnecessary pending/readback
+                // window and can disable controls while a user-visible mutation
+                // is still awaiting a new snapshot.
+                lifecycle(hash, false, refresh = false)
                 stage(label, "stopped")
                 val stopped = runBlocking { remote.readTrafficSample(hash) }
                 lifecycle(hash, true)
