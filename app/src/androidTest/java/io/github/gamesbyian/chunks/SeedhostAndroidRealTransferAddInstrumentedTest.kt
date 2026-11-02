@@ -233,7 +233,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                 val traffic = result?.second
                 if (transfer?.started == true && transfer.directory == parent &&
                     transfer.name == preview.name && transfer.sizeBytes == preview.sizeBytes &&
-                    traffic?.hash?.equals(hash, true) == true &&
+                    traffic != null && traffic.hash.equals(hash, true) &&
                     traffic.expectedBytes == preview.sizeBytes) {
                     if (!metadata) { metadata = true; report("$stage-metadata") }
                     if ((traffic.peers ?: 0L) > 0L && (traffic.receivedBytes ?: 0L) > 0L) {
