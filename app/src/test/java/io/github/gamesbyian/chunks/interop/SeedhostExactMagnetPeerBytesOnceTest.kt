@@ -37,7 +37,8 @@ import org.libtorrent4j.TorrentBuilder
  * Gated, one-shot, *real* owner-authorized development-host receipt.
  *
  * The runner seeds one 512 KiB synthetic V1 file; the designated hosted
- * rTorrent downloads real peer pieces from that runner. Both exact-hash
+ * rTorrent receives only its real magnet, retrieves BEP9 metainfo directly
+ * from the runner's libtorrent seeder, then downloads real peer pieces. Both exact-hash
  * received and hash-verified counters must grow from a zero baseline.
  * Nothing happens without explicit trusted-main authorization and a unique
  * non-replayed GitHub run identity. All other hosted jobs remain untouched.
@@ -242,9 +243,8 @@ class SeedhostExactMagnetPeerBytesOnceTest {
         require(remote.listTransfers("main").none { it.hash.equals(hash, true) } &&
             remote.lookupName(hash) == null) { "Fresh synthetic hash already exists; no replay" }
         val plan = StoppedRemoteAddPlan.fromMagnet("magnet:?xt=urn:btih:$hash", place)
-        // On the separately authorized trusted-main native acceptance gate,
-        // prove the production Add-with-Start path downloads real peer bytes.
-        // The legacy manual stopped-first fixture stays available unchanged.
+        // Keep the already accepted .torrent peer proof unchanged. This is
+        // an independent magnet-only BEP9 metadata and peer-piece experiment.
         val seed = LocalTorrentEngine(LocalEngineConfig(allowMultipleConnectionsPerIp = true))
         var remoteAdded = false
         // The command can apply before its HTTP ACK is lost; this flag only
