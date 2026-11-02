@@ -115,23 +115,23 @@ class VerifiedMediaRelationshipGraph private constructor(
                     val latest = versions.maxOf { it.revision }
                     versions.filter { it.revision == latest }.distinct().singleOrNull()
                 }
-            // A newer correction or retraction of one source field must not leave that
-            // source's previous assertion active. An unresolved same-record competing
-            // target is ambiguous even when both claims are individually verified.
-            // Distinct field keys are allowed for multi-valued contributor credits.
-            val ambiguousFields = current.groupBy { Triple(it.provider, it.recordKey, it.fieldKey) }
-                .filterValues { values -> values.map { Triple(it.subject, it.predicate, it.target) }.distinct().size > 1 }
+            // An edition identifies one underlying work. Independently verified but
+            // contradictory parents mean unresolved identity, so neither is recommended.
+            // Writer/actor/subject/adaptation relationships can legitimately be plural.
+            val conflictingEditions = current.asSequence()
+                .filter { it.predicate == MediaGraphPredicate.EDITION_OF &&
+                    (it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED) }
+                .groupBy { it.subject }
+                .filterValues { versions -> versions.map { it.target }.distinct().size > 1 }
                 .keys
-            val unambiguous = current.filter {
-                Triple(it.provider, it.recordKey, it.fieldKey) !in ambiguousFields
-            }
             // Contradiction to an exact directed edge suppresses ALL providers' claims about it.
-            val byEdge = unambiguous.groupBy { Triple(it.subject, it.predicate, it.target) }
+            val byEdge = current.groupBy { Triple(it.subject, it.predicate, it.target) }
             val valid = byEdge.values.filter { values ->
                 values.none { it.state == MediaGraphClaimState.DISPUTED } &&
                     values.any { it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED }
             }.flatten().filter { it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED }
                 .filter { it.predicate != MediaGraphPredicate.ABOUT_TOPIC || it.specificTopic }
+                .filterNot { it.predicate == MediaGraphPredicate.EDITION_OF && it.subject in conflictingEditions }
             return VerifiedMediaRelationshipGraph(valid.groupBy { it.subject }, valid.groupBy { it.target })
         }
 
@@ -191,7 +191,17 @@ class VerifiedMediaRelationshipGraph private constructor(
             }
         }
         return hits.entries.map { (entity, matches) ->
-            MediaGraphRelatedEntity(entity, matches.distinctBy { Triple(it.relation, it.via, it.reverseOfDirectFact) }
+            // Collapse equivalent recommendation routes without discarding independent
+            // provider assertions. The old distinctBy retained only the first two-claim
+            // pair, making corroborating provider evidence disappear from "Why related?".
+            val combined = matches.groupBy { Triple(it.relation, it.via, it.reverseOfDirectFact) }
+                .values.map { routes ->
+                    routes.first().copy(evidence = routes.flatMap { it.evidence }.distinct()
+                        .sortedWith(compareBy<MediaGraphClaim> { it.provider }
+                            .thenBy { it.recordKey }.thenBy { it.fieldKey }
+                            .thenBy { it.revision }))
+                }
+            MediaGraphRelatedEntity(entity, combined
                 .sortedWith(compareByDescending<MediaGraphExplanation> { it.relation.rank }
                     .thenBy { it.via?.namespace.orEmpty() + ":" + it.via?.id.orEmpty() }))
         }.sortedWith(compareByDescending<MediaGraphRelatedEntity> { it.strongest.rank }
