@@ -341,5 +341,32 @@ class LinuxTrackerBep12Test(unittest.TestCase):
         self.assertEqual([self.primary.decode(), self.backup.decode()],
                          linux.safe_trackers({b"announce-list": many}))
 
+
+    def test_v1_piece_hash_count_must_match_payload_not_just_be_multiple_of_20(self):
+        cases = (
+            {**self.info, b"piece length": 2},
+            {**self.info, b"length": 16385},
+            {**self.info, b"length": 0},
+            {**self.info, b"piece length": 0},
+            {**self.info, b"piece length": -1},
+            {**self.info, b"piece length": 65 * 1024 * 1024},
+            {**self.info, b"pieces": b"h" * 21},
+            {key: value for key, value in self.info.items() if key != b"piece length"},
+        )
+        for info in cases:
+            with self.subTest(piece_length=info.get(b"piece length"),
+                              payload_length=info.get(b"length")):
+                with self.assertRaisesRegex(ValueError, "piece"):
+                    f.torrent_summary(enc({b"info": info}), 100000)
+
+    def test_v1_exact_full_and_partial_piece_identity_roundtrip(self):
+        info = {**self.info, b"length": 16385, b"pieces": b"h" * 40}
+        source = enc({b"info": info, b"announce": b"https://bt1.archive.org:6969/announce"})
+        safe, detail = f.torrent_summary(source, 100000)
+        self.assertEqual(16385, detail["total_bytes"])
+        self.assertEqual(hashlib.sha1(enc(info)).hexdigest(), detail["infohash_v1"])
+        self.assertEqual(f.parse_bencode(source)[1], f.parse_bencode(safe)[1])
+        self.assertTrue(detail["tracker_retained"])
+
 if __name__ == "__main__":
     unittest.main()
