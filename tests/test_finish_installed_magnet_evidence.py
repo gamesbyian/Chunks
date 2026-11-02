@@ -35,6 +35,11 @@ class PrecompletedControlEvidenceTests(unittest.TestCase):
             path.write_bytes(b"x" * 65536)
         self.assertIs(precompleted_control_preserved(self.root, self.env), False)
 
+    def test_alias_to_original_does_not_count_as_two_preserved_files(self):
+        self.paths[1].unlink()
+        self.paths[1].symlink_to(self.paths[0])
+        self.assertIs(precompleted_control_preserved(self.root, self.env), False)
+
     def test_other_modes_do_not_fabricate_control_evidence(self):
         for env in ({"CHUNKS_CONTROLLED_PEER": "1", "CHUNKS_DISPOSABLE": "0"},
                     dict(self.env, CHUNKS_PUBLIC_DISCOVERY="1")):

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import xml.etree.ElementTree as ET
 from parse_installed_magnet_add_receipt import parse
 
@@ -24,6 +25,10 @@ def precompleted_control_preserved(runner_temp, env):
     paths = (runner_temp / "chunks-real-peer/magnet0/chunks-precompleted-control.bin",
              runner_temp / "chunks-disposable/data/chunks-precompleted-control.bin")
     try:
+        states = [path.lstat() for path in paths]
+        if any(not stat.S_ISREG(state.st_mode) for state in states) or (
+                states[0].st_dev, states[0].st_ino) == (states[1].st_dev, states[1].st_ino):
+            return False
         for path in paths:
             with path.open("rb") as stream:
                 if stream.read(len(expected) + 1) != expected:
