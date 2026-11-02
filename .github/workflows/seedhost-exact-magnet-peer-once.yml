@@ -102,7 +102,7 @@ jobs:
               sys.exit(1)
           try:
               root = ET.parse(report).getroot()
-              lines = (root.findtext("system-out") or "").splitlines()
+              lines = [line for node in root.findall(".//system-out") for line in (node.text or "").splitlines()]
           except (OSError, ET.ParseError):
               print("CHUNKS_REAL_MAGNET_PEER: receipt=invalid")
               sys.exit(1)
@@ -119,6 +119,23 @@ jobs:
                   value = line.partition(": ")[2]
                   if re.fullmatch(r"[a-f0-9]{40}", value):
                       identity = value
+          # Read fixed, non-sensitive failure categories only.
+          allowed_errors = {"AssertionError", "IllegalStateException",
+                            "IllegalArgumentException", "SocketTimeoutException",
+                            "ConnectException", "IOException"}
+          categories = []
+          for testcase in root.findall(".//testcase"):
+              failure = testcase.find("failure")
+              if failure is None:
+                  failure = testcase.find("error")
+              if failure is not None:
+                  category = failure.attrib.get("type", "").rsplit(".", 1)[-1]
+                  categories.append(category if category in allowed_errors else "OtherFailure")
+          print("CHUNKS_REAL_MAGNET_PEER: tests=" + str(root.attrib.get("tests", "unknown")) +
+                " failures=" + str(root.attrib.get("failures", "unknown")) +
+                " errors=" + str(root.attrib.get("errors", "unknown")) +
+                " skipped=" + str(root.attrib.get("skipped", "unknown")) +
+                " failure_categories=" + ",".join(categories[:4]))
           if identity:
               print("CHUNKS_REAL_MAGNET_PEER: synthetic_hash=" + identity)
           print("CHUNKS_REAL_MAGNET_PEER: last_stage=" + (stages[-1] if stages else "unavailable"))
