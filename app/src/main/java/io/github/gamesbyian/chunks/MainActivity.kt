@@ -238,6 +238,8 @@ private fun ChunksApp(
         section = if (returnToCombined) Section.COMBINED else Section.TRANSFERS
     }
     var query by remember { mutableStateOf("") }
+    // Secondary destinations appear only when requested on the ordinary list.
+    var optionsOpen by rememberSaveable { mutableStateOf(false) }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
     var order by remember { mutableStateOf(TransferOrder.NAME) }
     var expandedHash by remember { mutableStateOf<String?>(null) }
@@ -899,7 +901,7 @@ private fun ChunksApp(
                     }
                 }
             }
-            Row(
+            if (section != Section.TRANSFERS || optionsOpen) Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -951,6 +953,8 @@ private fun ChunksApp(
                     },
                     onCombined = { combinedFromPhone = false; section = Section.COMBINED },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
+                    optionsOpen = optionsOpen,
+                    onOptions = { optionsOpen = !optionsOpen },
                     onReviewNames = { section = Section.NAMES },
                     onExportSnapshot = { section = Section.SNAPSHOT },
                     onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
@@ -1400,6 +1404,7 @@ private fun TransfersScreen(
     onFilter: (TransferFilter) -> Unit, onClearView: () -> Unit, order: TransferOrder,
     direction: UnifiedSortDirection,
     onSort: (TransferOrder, UnifiedSortDirection) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
+    optionsOpen: Boolean, onOptions: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
     onInspectSnapshot: () -> Unit,
     onPreparePhone: (RemoteTransfer) -> Unit,
@@ -1451,7 +1456,7 @@ private fun TransfersScreen(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             // Keep the final item reachable above the floating action.
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 92.dp),
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 128.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
         item {
@@ -1782,7 +1787,7 @@ private fun TransfersScreen(
         }
         ReturnToTopControl(
             visible = showBackToTop,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 22.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 80.dp),
             onClick = {
                 topControlScope.launch {
                     if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
@@ -1790,6 +1795,16 @@ private fun TransfersScreen(
                 }
             }
         )
+        androidx.compose.foundation.layout.Box(
+            modifier = Modifier.align(Alignment.BottomCenter)
+        ) {
+            AuthenticatedTransfersFooter(
+                optionsOpen = optionsOpen,
+                onTransfers = { topControlScope.launch { listState.scrollToItem(0) } },
+                onAdd = onAdd,
+                onOptions = onOptions
+            )
+        }
     }
 }
 
