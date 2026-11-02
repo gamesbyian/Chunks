@@ -3,8 +3,9 @@ name: Reject tracked raw torrent metainfo
 on:
   pull_request:
     paths:
-      - '*.torrent'
-      - '**/*.torrent'
+      # Cover root/nested and upper/mixed-case extensions.
+      - '*.[tT][oO][rR][rR][eE][nN][tT]'
+      - '**/*.[tT][oO][rR][rR][eE][nN][tT]'
       - '.gitignore'
       - 'tools/check_tracked_torrent_metainfo.py'
       - 'tests/test_tracked_torrent_metainfo.py'
@@ -12,8 +13,9 @@ on:
   push:
     branches: [main]
     paths:
-      - '*.torrent'
-      - '**/*.torrent'
+      # Cover root/nested and upper/mixed-case extensions.
+      - '*.[tT][oO][rR][rR][eE][nN][tT]'
+      - '**/*.[tT][oO][rR][rR][eE][nN][tT]'
   workflow_dispatch:
 
 permissions:
