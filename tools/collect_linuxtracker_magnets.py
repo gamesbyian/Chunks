@@ -124,6 +124,7 @@ def safe_trackers(root):
             if (p.scheme not in ("http", "https", "udp")
                 or p.hostname not in ALLOWED_TRACKERS or p.username
                 or p.password or p.query or p.fragment or p.port == 0
+                or (p.scheme == "udp" and p.port is None)
                 or p.path != "/announce"):
                 continue
         except ValueError:
