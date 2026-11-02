@@ -115,15 +115,18 @@ class VerifiedMediaRelationshipGraph private constructor(
                     val latest = versions.maxOf { it.revision }
                     versions.filter { it.revision == latest }.distinct().singleOrNull()
                 }
-            // An edition identifies one underlying work. Independently verified but
-            // contradictory parents mean unresolved identity, so neither is recommended.
-            // Writer/actor/subject/adaptation relationships can legitimately be plural.
-            val conflictingEditions = current.asSequence()
+            // A particular edition has one parent work. Contradictory verified catalog
+            // targets abstain, but one explicit user-confirmed correction takes precedence
+            // over catalog assertions. Conflicting user corrections also fail closed.
+            // Writer, actor and adaptation relationships remain legitimately multi-valued.
+            val acceptedEditionParents = current.asSequence()
                 .filter { it.predicate == MediaGraphPredicate.EDITION_OF &&
                     (it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED) }
                 .groupBy { it.subject }
-                .filterValues { versions -> versions.map { it.target }.distinct().size > 1 }
-                .keys
+                .mapValues { (_, versions) ->
+                    val corrected = versions.filter { it.state == MediaGraphClaimState.USER_CONFIRMED }
+                    (corrected.ifEmpty { versions }).map { it.target }.distinct().singleOrNull()
+                }
             // Contradiction to an exact directed edge suppresses ALL providers' claims about it.
             val byEdge = current.groupBy { Triple(it.subject, it.predicate, it.target) }
             val valid = byEdge.values.filter { values ->
@@ -131,7 +134,8 @@ class VerifiedMediaRelationshipGraph private constructor(
                     values.any { it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED }
             }.flatten().filter { it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED }
                 .filter { it.predicate != MediaGraphPredicate.ABOUT_TOPIC || it.specificTopic }
-                .filterNot { it.predicate == MediaGraphPredicate.EDITION_OF && it.subject in conflictingEditions }
+                .filterNot { it.predicate == MediaGraphPredicate.EDITION_OF &&
+                    it.target != acceptedEditionParents[it.subject] }
             return VerifiedMediaRelationshipGraph(valid.groupBy { it.subject }, valid.groupBy { it.target })
         }
 

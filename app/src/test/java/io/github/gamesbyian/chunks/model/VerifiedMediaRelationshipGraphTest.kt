@@ -212,6 +212,16 @@ class VerifiedMediaRelationshipGraphTest {
         // A later edition correction supersedes the earlier claim from the same source field.
         assertEquals(second, parents(listOf(a, b.copy(provider="catalog-a", revision=2)),
             setOf("catalog-a")).single().entity)
+        // Explicit, consent-approved user correction resolves catalog conflict in favor
+        // of its chosen parent, without silently retaining the rejected catalog lineage.
+        val corrected = b.copy(provider="user", state=MediaGraphClaimState.USER_CONFIRMED)
+        val chosen = parents(listOf(a, b, corrected), setOf("catalog-a", "catalog-b", "user"))
+        assertEquals(listOf(second), chosen.map { it.entity })
+        assertEquals(setOf("catalog-b", "user"),
+            chosen.single().explanations.single().evidence.map { it.provider }.toSet())
+        assertTrue(parents(listOf(a, b, corrected,
+            a.copy(provider="user", recordKey="another-correction", state=MediaGraphClaimState.USER_CONFIRMED)),
+            setOf("catalog-a", "catalog-b", "user")).isEmpty())
         // Different credits on different field keys are legitimately multivalued.
         val personOne = entity("one", MediaGraphEntityKind.PERSON)
         val personTwo = entity("two", MediaGraphEntityKind.PERSON)
