@@ -3,7 +3,7 @@ name: P0 installed Android real Seedhost transfer and qualified APK
 # Protected host mutations only on armed trusted main (manual or exactly one
 # owner-authorized merge marker). The APK
 # artifact is published ONLY after the identical installed binary actually
-# sends BOTH real upstream .torrent and magnet and verifies exact-hash peer
+# sends BOTH independent real upstream magnets and verifies exact-hash peer
 # bytes/pieces. No PR, scheduler or repeat-triggered mutation.
 on:
   push:
@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       apply:
-        description: "I authorize one .torrent and one magnet real public-source Add/Stop/session Remove on the development Seedhost"
+        description: "I authorize two distinct magnet-only public-source Add/Stop/session Remove on the development Seedhost"
         type: boolean
         required: true
         default: false
@@ -31,7 +31,7 @@ jobs:
       ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
           ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
            (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time corrected real Android Seedhost Add qualification (#1004)'))) }}
+            contains(github.event.head_commit.message, 'one-time magnet-only two-source Seedhost qualification'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -65,7 +65,7 @@ jobs:
         run: |
           test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
-      - name: Real installed .torrent and magnet peer-byte acceptance
+      - name: Real installed two-source magnet peer-byte acceptance
         uses: reactivecircus/android-emulator-runner@v2
         env:
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
@@ -82,7 +82,7 @@ jobs:
       - name: Attach qualified exact binary and cryptographic evidence only on success
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-android-seedhost-real-transfer-qualified-apk
+          name: chunks-android-seedhost-two-magnet-qualified-apk
           path: |
             app/build/outputs/apk/debug/app-debug.apk
             ${{ runner.temp }}/chunks-real-android-add/ACCEPTANCE.txt
