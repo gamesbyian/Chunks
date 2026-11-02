@@ -65,9 +65,9 @@ internal fun ClearableTransferSearchField(
                         IconButton(
                             onClick = clear,
                             modifier = Modifier.sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                                .semantics { contentDescription = "Clear search" }
                         ) {
-                            Text("×", style = MaterialTheme.typography.headlineSmall,
-                                modifier = Modifier.semantics { contentDescription = "Clear search" })
+                            Text("×", style = MaterialTheme.typography.headlineSmall)
                         }
                     }
                 } else null,
