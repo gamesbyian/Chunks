@@ -16,3 +16,6 @@ captures/
 secrets.properties
 *.log
 .DS_Store
+# Downloaded torrent metadata may embed private tracker passkeys.
+# Only source-reviewed public fixtures should ever be deliberately force-added.
+*.torrent
