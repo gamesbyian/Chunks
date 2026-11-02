@@ -70,10 +70,13 @@ def license_ok(meta):
     """
     if isinstance(meta, list):
         meta = meta[0] if meta else ""
-    value = str(meta or "").strip()
+    raw = str(meta or "")
+    value = raw.strip()
     if value.lower() in ("public domain", "cc0", "cc-by", "cc-by-sa"):
         return True
-    if (len(value) > 512 or not value
+    # Do not normalize whitespace around an alleged URI: urlsplit strips
+    # line breaks/tabs in ways downstream tooling and clients may not.
+    if (raw != value or len(value) > 512 or not value
             or any(char.isspace() or ord(char) < 32 or ord(char) == 127
                    for char in value)):
         return False
