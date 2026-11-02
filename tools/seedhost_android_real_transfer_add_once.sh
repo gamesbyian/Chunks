@@ -31,6 +31,12 @@ adb shell am instrument -w -r \
 code=$?
 set -e
 unset url64 user64 pass64
+# Preserve source-specific evidence before any mandatory pass/fail gate.
+# Never upload the raw adb instrumentation output or authentication flags.
+mkdir -p "$RUNNER_TEMP/chunks-real-android-add"
+python3 tools/parse_installed_magnet_add_receipt.py \
+  --input "$raw" --exit "$code" \
+  --output "$RUNNER_TEMP/chunks-real-android-add/RECEIPT.json"
 # Print no stack trace, credentials, full tracker, host reply or test exception.
 magnet=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-passed' "$raw" || true)
 magnet2=$(grep -Ec '^INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet2-passed' "$raw" || true)
