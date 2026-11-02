@@ -242,6 +242,8 @@ private fun ChunksApp(
         section = if (returnToCombined) Section.COMBINED else Section.TRANSFERS
     }
     var query by remember { mutableStateOf("") }
+    // Secondary destinations appear only when requested on the ordinary list.
+    var optionsOpen by rememberSaveable { mutableStateOf(false) }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
     var order by remember { mutableStateOf(TransferOrder.NAME) }
     var expandedHash by remember { mutableStateOf<String?>(null) }
@@ -909,7 +911,7 @@ private fun ChunksApp(
                     }
                 }
             }
-            Row(
+            if (section != Section.TRANSFERS || optionsOpen) Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -961,6 +963,8 @@ private fun ChunksApp(
                     },
                     onCombined = { combinedFromPhone = false; section = Section.COMBINED },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
+                    optionsOpen = optionsOpen,
+                    onOptions = { optionsOpen = !optionsOpen },
                     onReviewNames = { section = Section.NAMES },
                     onExportSnapshot = { section = Section.SNAPSHOT },
                     onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
@@ -1421,6 +1425,7 @@ private fun TransfersScreen(
     onFilter: (TransferFilter) -> Unit, onClearView: () -> Unit, order: TransferOrder,
     direction: UnifiedSortDirection,
     onSort: (TransferOrder, UnifiedSortDirection) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
+    optionsOpen: Boolean, onOptions: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
     onInspectSnapshot: () -> Unit,
     onPreparePhone: (RemoteTransfer) -> Unit,
@@ -1467,12 +1472,19 @@ private fun TransfersScreen(
             )
         }
     }
-    Box(Modifier.fillMaxSize()) {
+    // A measured Column gives the persistent footer its own layout space.
+    // A Box overlay lets LazyColumn scroll buttons behind the footer, where
+    // real taps hit + Add instead of a transfer's "More details". Avoid a
+    // hard-coded footer-height guess: 200% font and accessibility text may
+    // increase its actual height.
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) {
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            // Keep the final item reachable above the floating action.
-            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 92.dp),
+            // Keep the final transfer reachable above the floating return
+            // control, without reserving nonexistent footer space in the list.
+            contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 72.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
         item {
@@ -1803,13 +1815,22 @@ private fun TransfersScreen(
         }
         ReturnToTopControl(
             visible = showBackToTop,
-            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 22.dp),
+            modifier = Modifier.align(Alignment.BottomEnd).padding(end = 24.dp, bottom = 16.dp),
             onClick = {
                 topControlScope.launch {
                     if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
                     else listState.scrollToItem(0)
                 }
             }
+        )
+        }
+        // Naturally sized below the scroll viewport; cannot steal a tap
+        // from a transfer card, irrespective of density or text scaling.
+        AuthenticatedTransfersFooter(
+            optionsOpen = optionsOpen,
+            onTransfers = { topControlScope.launch { listState.scrollToItem(0) } },
+            onAdd = onAdd,
+            onOptions = onOptions
         )
     }
 }
