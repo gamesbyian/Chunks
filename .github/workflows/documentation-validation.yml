@@ -12,6 +12,8 @@ on:
       - 'tools/check_docs.py'
       - 'tools/check_docs_dispatch_contract.py'
       - 'tests/test_docs_dispatch_contract.py'
+      - 'tests/test_owner_torrent_fixture_policy.py'
+      - '.gitignore'
       - 'tests/test_ci_native_concurrency.py'
       - 'tools/phone_intake_journey.sh'
       - 'tools/test_phone_intake_journey.sh'
@@ -96,6 +98,8 @@ on:
       - 'tools/check_docs.py'
       - 'tools/check_docs_dispatch_contract.py'
       - 'tests/test_docs_dispatch_contract.py'
+      - 'tests/test_owner_torrent_fixture_policy.py'
+      - '.gitignore'
       - 'tests/test_ci_native_concurrency.py'
       - 'tools/phone_intake_journey.sh'
       - 'tools/test_phone_intake_journey.sh'
@@ -228,6 +232,8 @@ jobs:
         run: |
           python3 tools/check_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
+      - name: Respect owner-authorized torrent fixture policy without live tracker access
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_owner_torrent_fixture_policy.py
       - name: Guard documentation dispatch parity and existing path targets
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_docs_dispatch_contract.py
