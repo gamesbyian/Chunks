@@ -102,10 +102,16 @@ def parse_bencode(raw):
                     raise ValueError("Unterminated list")
                 return values, cursor + 1
             values = {}
+            previous_key = None
             while cursor < len(raw) and raw[cursor:cursor+1] != b"e":
                 key, cursor = parse(cursor, depth + 1)
-                if not isinstance(key, bytes) or key in values:
-                    raise ValueError("Bad or repeated bencode dictionary key")
+                # BEP 3 requires lexicographic ordering of the original
+                # *bytes*. Unsorted keys yield a plausible raw infohash but
+                # are not canonical metainfo across reference clients.
+                if (not isinstance(key, bytes)
+                        or (previous_key is not None and key <= previous_key)):
+                    raise ValueError("Noncanonical or repeated bencode dictionary key")
+                previous_key = key
                 start = cursor
                 value, cursor = parse(cursor, depth + 1)
                 if top and key == b"info":
