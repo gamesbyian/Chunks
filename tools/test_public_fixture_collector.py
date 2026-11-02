@@ -220,5 +220,61 @@ class CollectorTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 f.archive_fixture(ident, 100)
 
+
+    def test_bep12_announce_list_takes_precedence_without_changing_infohash(self):
+        approved = b"https://bt1.archive.org:6969/announce"
+        other_approved = b"https://bt2.archive.org:6969/announce"
+        untrusted = b"https://untrusted.example/announce?private=redacted"
+        cases = [
+            # A top-level approved URL must not override an untrusted tier.
+            ("untrusted-tier", approved, [[untrusted]], None),
+            # A valid tier wins over the unrelated top-level fallback.
+            ("approved-tier", other_approved, [[untrusted, approved], [other_approved]], approved),
+            # Even an empty announce-list suppresses the top-level fallback.
+            ("empty-tier", approved, [], None),
+            # Malformed-but-bencoded tier data cannot activate the fallback.
+            ("malformed-tier", approved, b"invalid", None),
+            # A well-formed tier with a non-list member is not a valid tracker.
+            ("invalid-tier-member", approved, [b"not-a-tier"], None),
+        ]
+        for label, top, tiers, expected in cases:
+            with self.subTest(case=label):
+                original = enc({b"announce": top, b"announce-list": tiers, b"info": self.info})
+                safe, detail = f.torrent_summary(original, 100)
+                parsed, _ = f.parse_bencode(safe)
+                self.assertEqual(f.parse_bencode(original)[1], f.parse_bencode(safe)[1])
+                self.assertEqual(hashlib.sha1(enc(self.info)).hexdigest(), detail["infohash_v1"])
+                self.assertEqual(expected, parsed.get(b"announce"))
+                self.assertEqual(expected is not None, detail["tracker_retained"])
+                self.assertNotIn(b"announce-list", parsed)
+                self.assertNotIn(b"untrusted.example", safe)
+                self.assertNotIn(b"private=redacted", safe)
+
+    def test_bep12_preserves_single_approved_announce_when_list_absent(self):
+        approved = b"https://bt1.archive.org:6969/announce"
+        original = enc({b"announce": approved, b"info": self.info})
+        safe, detail = f.torrent_summary(original, 100)
+        self.assertEqual(approved, f.parse_bencode(safe)[0].get(b"announce"))
+        self.assertTrue(detail["tracker_retained"])
+
+    def test_bep12_tier_sanitization_refuses_path_tokens_bad_ports_and_invalid_utf8(self):
+        candidates = (
+            b"https://bt1.archive.org:6969/announce/session-token",
+            b"https://bt1.archive.org:6969/announce?passkey=redacted",
+            b"https://bt1.archive.org:invalid/announce",
+            b"http://[bad/announce",
+            b"https://bt1.archive.org:6969/announce#secret",
+            b"\xff\xfe",
+        )
+        for candidate in candidates:
+            with self.subTest(candidate_class="untrusted URL"):
+                original = enc({b"announce": b"https://bt1.archive.org:6969/announce",
+                                b"announce-list": [[candidate]],
+                                b"info": self.info})
+                safe, detail = f.torrent_summary(original, 100)
+                self.assertFalse(detail["tracker_retained"])
+                self.assertEqual({b"info"}, set(f.parse_bencode(safe)[0]))
+                self.assertEqual(f.parse_bencode(original)[1], f.parse_bencode(safe)[1])
+
 if __name__ == "__main__":
     unittest.main()
