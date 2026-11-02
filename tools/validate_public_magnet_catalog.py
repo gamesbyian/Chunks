@@ -38,10 +38,11 @@ def license_evidence_tier(item):
         return "missing_or_unrecognized_license_claim"
     # This legacy Creative Commons link redirects to a retired, US-specific
     # certification tool; it is not interchangeable with modern CC0 or PDM.
-    if (url.hostname == "creativecommons.org"
-            and url.path.rstrip("/") == "/licenses/publicdomain"):
+    if text.lower() in (
+            "http://creativecommons.org/licenses/publicdomain/",
+            "https://creativecommons.org/licenses/publicdomain/"):
         return "retired_us_public_domain_certification"
-    if (url.hostname == "creativecommons.org"
+    if (license_ok(text) and url.hostname == "creativecommons.org"
             and url.path.rstrip("/") == "/publicdomain/mark/1.0"):
         return "public_domain_mark_claim_not_license"
     if license_ok(text):
