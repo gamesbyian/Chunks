@@ -12,6 +12,7 @@ import time
 import uuid
 import urllib.parse
 import urllib.request
+import urllib.error
 
 from seedhost_magnet_twoarg_control_once import ExactRpc, fixture, cleanup
 from seedhost_magnet_readonly_forensics import RPC
@@ -69,8 +70,19 @@ def main():
     cleaned = False
     try:
         attempted = True
-        post_form_once(client)
-        print("MAGNET_RUTORRENT form_post=acknowledged")
+        # A PHP handler may register the exact hash and then lose its HTTP
+        # ACK. Never resend the POST. Read only and continue the full metadata
+        # observation window even for a 4xx/5xx, timeout or malformed reply.
+        try:
+            post_form_once(client)
+            print("MAGNET_RUTORRENT form_post=acknowledged")
+        except urllib.error.HTTPError as response:
+            code = response.code
+            bucket = str(code) if isinstance(code, int) and 400 <= code <= 599 else "other"
+            print("MAGNET_RUTORRENT form_post=http_" + bucket + "_ack_uncertain")
+        except Exception:
+            print("MAGNET_RUTORRENT form_post=ack_uncertain")
+
         deadline = time.monotonic() + 180
         registered = False
         metadata = False
