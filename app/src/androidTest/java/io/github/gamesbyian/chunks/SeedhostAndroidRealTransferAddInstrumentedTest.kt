@@ -64,8 +64,8 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
         // second Add cannot inherit the first torrent's registered identity.
         val filename = if (alternative) "ubuntu-25.10-desktop-amd64.iso.torrent"
                        else if (file) "ubuntu-26.04.1-live-server-amd64.iso.torrent"
-                       else "ubuntu-26.04.1-desktop-amd64.iso.torrent"
-        val address = URI("https://releases.ubuntu.com/${if (alternative) "25.10" else "26.04"}/$filename")
+                       else "ubuntu-25.10-live-server-amd64.iso.torrent"
+        val address = URI("https://releases.ubuntu.com/${if (file) "26.04" else "25.10"}/$filename")
         require(address.scheme == "https" && address.host == "releases.ubuntu.com")
         val connection = URL(address.toASCIIString()).openConnection() as HttpURLConnection
         connection.connectTimeout = 15_000
