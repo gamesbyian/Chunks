@@ -11,6 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
@@ -18,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
+import io.github.gamesbyian.chunks.rpc.SessionEraseRecheck
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -65,12 +68,13 @@ class TransferSessionRemoveLargeTextTest {
         rule.onNodeWithText("Confirm removal from rTorrent").assertExists()
         rule.onNodeWithText("Infohash: " + "c".repeat(40)).assertExists()
         rule.onNodeWithText("Current directory: /downloads/specific-profile").assertExists()
-        val confirm = rule.onNodeWithText("Confirm remove").performScrollTo().getUnclippedBoundsInRoot()
+        rule.onNodeWithText("Remove transfer and data (unavailable)").assertExists()
+        val confirm = rule.onNodeWithText("Remove transfer, keep data").performScrollTo().getUnclippedBoundsInRoot()
         val cancel = rule.onNodeWithText("Cancel").performScrollTo().getUnclippedBoundsInRoot()
         assertTrue("Confirm needs a minimum 52dp touch target", confirm.bottom - confirm.top >= 52.dp)
         assertTrue("Cancel needs a minimum 48dp touch target", cancel.bottom - cancel.top >= 48.dp)
         rule.onNodeWithText("Cancel").performScrollTo().performClick()
-        rule.onNodeWithText("Confirm remove").assertDoesNotExist()
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
         assertEquals("Cancel must not request a remote mutation", 0, mutations)
     }
 
@@ -79,9 +83,128 @@ class TransferSessionRemoveLargeTextTest {
     fun exactRemovalReviewRemainsReachableOn412Dp() {
         show()
         rule.onNodeWithText("Remove from rTorrent…").performClick()
-        rule.onNodeWithText("Confirm remove").assertExists()
+        rule.onNodeWithText("Remove transfer, keep data").assertExists()
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(0, mutations)
+    }
+
+
+    @Test fun pendingRemovalNeedsReadOnlyMatchingIdentityBeforeFreshConfirmedRetry() {
+        var eraseCalls = 0
+        var checks = 0
+        rule.setContent {
+            ChunksTheme {
+                Surface {
+                    TransferSessionRemoveControl(
+                        remote, transfer, snapshotStale = false, mainView = true,
+                        onMutationStarted = { true }, onSettled = {},
+                        performErase = { _, _, _ ->
+                            eraseCalls++
+                            SessionEraseOutcome.PendingRemoval(transfer.hash)
+                        },
+                        recheck = { _, _, _ ->
+                            checks++
+                            SessionEraseRecheck.PresentMatching
+                        }
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        rule.waitForIdle()
+        assertEquals(1, eraseCalls)
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.onNodeWithText("Check current session (read-only)").performClick()
+        rule.waitForIdle()
+        assertEquals(1, checks)
+        assertEquals("Read-only check must never dispatch a second remove", 1, eraseCalls)
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        assertEquals(1, eraseCalls)
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        rule.waitForIdle()
+        assertEquals(2, eraseCalls)
+    }
+
+    @Test fun absentAfterUncertainRemovalNeverOffersAnotherDelete() {
+        var eraseCalls = 0
+        rule.setContent {
+            ChunksTheme {
+                Surface {
+                    TransferSessionRemoveControl(
+                        remote, transfer, snapshotStale = false, mainView = true,
+                        onMutationStarted = { true }, onSettled = {},
+                        performErase = { _, _, _ ->
+                            eraseCalls++
+                            SessionEraseOutcome.Uncertain(transfer.hash)
+                        },
+                        recheck = { _, _, _ -> SessionEraseRecheck.Absent }
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Check current session (read-only)").performClick()
+        rule.waitForIdle()
+        assertEquals(1, eraseCalls)
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.onNodeWithText("The exact transfer is now absent", substring = true).assertExists()
+    }
+
+
+    @Test fun readdedSameHashCanRecoverFromPreviousVerifiedRemoveWithoutBlindRetry() {
+        var removeCalls = 0
+        var reads = 0
+        rule.setContent {
+            ChunksTheme {
+                Surface {
+                    TransferSessionRemoveControl(
+                        remote, transfer, snapshotStale = false, mainView = true,
+                        onMutationStarted = { true }, onSettled = {},
+                        performErase = { _, _, _ ->
+                            removeCalls++
+                            SessionEraseOutcome.VerifiedRemoved(transfer.hash)
+                        },
+                        recheck = { _, _, _ ->
+                            reads++
+                            // The same exact hash was re-added between refreshes.
+                            SessionEraseRecheck.PresentMatching
+                        }
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        rule.waitForIdle()
+        assertEquals(1, removeCalls)
+        rule.onNodeWithText("Check current session (read-only)").performClick()
+        rule.waitForIdle()
+        assertEquals(1, reads)
+        assertEquals(1, removeCalls)
+        rule.onNodeWithText("Remove from rTorrent…").assertExists()
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        rule.waitForIdle()
+        assertEquals(2, removeCalls)
+    }
+
+    @Test fun deniedMutationGateDoesNotTrapRemoveForever() {
+        show()
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        // The 200%-font confirmation is below the viewport. A real tap must
+        // scroll it into view first; an off-screen click is not a sent command.
+        rule.onNodeWithText("Remove transfer, keep data").performScrollTo().performClick()
+        assertEquals("The denied mutation gate must have been invoked exactly once", 1, mutations)
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Remove from rTorrent…").fetchSemanticsNodes().isNotEmpty()
+        }
+        // A new review is allowed; no second mutation is dispatched implicitly.
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").assertExists()
+        assertEquals(1, mutations)
     }
 
     @Test fun staleInventoryNeverOffersDestructiveConfirmation() {
@@ -95,7 +218,7 @@ class TransferSessionRemoveLargeTextTest {
             }
         }
         rule.onNodeWithText("Refresh this stale server snapshot before removing a transfer.").assertExists()
-        rule.onNodeWithText("Confirm remove").assertDoesNotExist()
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
         assertEquals(0, mutations)
     }
 }

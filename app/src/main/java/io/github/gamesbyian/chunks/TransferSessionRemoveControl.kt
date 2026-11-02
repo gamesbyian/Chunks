@@ -25,6 +25,8 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
+import io.github.gamesbyian.chunks.rpc.SessionEraseRecheck
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /**
@@ -55,22 +57,27 @@ fun TransferSessionRemoveControl(
     snapshotStale: Boolean,
     mainView: Boolean,
     onMutationStarted: () -> Boolean,
-    onSettled: () -> Unit
+    onSettled: () -> Unit,
+    performErase: suspend (String, String, String) -> SessionEraseOutcome = remote::eraseFromSession,
+    recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase
 ) {
-    val validHash = remember(transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
-    var confirming by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+    val validHash = remember(remote, transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
+    var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
-    var attempted by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+    var attempted by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
-    var pending by remember(transfer.hash, transfer.name, transfer.directory) {
+    var pending by remember(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
-    var feedback by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+    var checking by remember(remote, transfer.hash, transfer.name, transfer.directory) {
+        mutableStateOf(false)
+    }
+    var feedback by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf<String?>(null)
     }
-    var verified by rememberSaveable(transfer.hash, transfer.name, transfer.directory) {
+    var verified by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
     val scope = rememberCoroutineScope()
@@ -85,7 +92,7 @@ fun TransferSessionRemoveControl(
         if (!attempted && !confirming) {
             ActionTile("Remove from rTorrent…", ChunksColors.Orange,
                 onClick = { confirming = true },
-                enabled = mainView && !snapshotStale,
+                enabled = mainView && !snapshotStale && !pending && !checking,
                 modifier = Modifier.fillMaxWidth(),
                 icon = R.drawable.chunks_ic_remove, stacked = false)
             if (!mainView) {
@@ -109,41 +116,54 @@ fun TransferSessionRemoveControl(
                     Text("Infohash: " + transfer.hash, style = MaterialTheme.typography.bodySmall)
                     Text("Current directory: " + transfer.directory,
                         style = MaterialTheme.typography.bodySmall)
-                    Text("This removes the torrent from rTorrent's session. Chunks does not request payload-file deletion. Custom server hooks may have additional effects. Refresh and verify before any further action.",
+                    Text("Choose what to remove. Removing the transfer keeps downloaded files on the server. Custom server hooks could still have additional effects.",
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(
+                        onClick = {}, enabled = false,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text("Remove transfer and data (unavailable)") }
+                    Text("Deleting server files is unavailable: rTorrent session removal cannot safely identify and delete only this transfer's data. Use your server file manager if you choose to remove those files.",
                         style = MaterialTheme.typography.bodySmall)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                if (onMutationStarted()) {
-                                confirming = false
-                                attempted = true
-                                pending = true
-                                scope.launch {
-                                    try {
-                                        val response = remote.eraseFromSession(
-                                            transfer.hash, transfer.name, transfer.directory)
-                                        verified = response is SessionEraseOutcome.VerifiedRemoved
-                                        feedback = sessionEraseFeedback(response)
-                                    } catch (_: Exception) {
-                                        verified = false
-                                        feedback = "Could not verify removal. The server state may have changed. Refresh before trying anything else."
-                                    } finally {
-                                        pending = false
-                                        onSettled()
-                                    }
-                                }
-                                } else {
+                                if (mainView && !snapshotStale && !pending && !checking &&
+                                    onMutationStarted()) {
                                     confirming = false
                                     attempted = true
+                                    pending = true
+                                    scope.launch {
+                                        try {
+                                            val response = performErase(
+                                                transfer.hash, transfer.name, transfer.directory)
+                                            verified = response is SessionEraseOutcome.VerifiedRemoved ||
+                                                response is SessionEraseOutcome.AlreadyAbsent
+                                            feedback = sessionEraseFeedback(response)
+                                        } catch (cancel: CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            verified = false
+                                            feedback = "Removal could not be verified. Nothing will be retried automatically. Check the exact server session before another attempt."
+                                        } finally {
+                                            pending = false
+                                            onSettled()
+                                        }
+                                    }
+                                } else {
+                                    // The gate refused BEFORE any remote command. Restore the
+                                    // original actionable state rather than consuming an attempt.
+                                    attempted = false
                                     verified = false
-                                    feedback = "Another remote command needs fresh readback before any further action."
+                                    pending = false
+                                    confirming = false
+                                    feedback = "No Remove command was sent. Refresh and try again after the current command settles."
                                 }
                             },
                             enabled = !pending && mainView && !snapshotStale,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                        ) { Text("Confirm remove") }
+                        ) { Text("Remove transfer, keep data") }
                         OutlinedButton(
                             onClick = { confirming = false },
                             enabled = !pending,
@@ -158,10 +178,49 @@ fun TransferSessionRemoveControl(
                 containerColor = if (verified) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.errorContainer
             )) {
-                Column(Modifier.fillMaxWidth().padding(12.dp)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Removal result", fontWeight = FontWeight.Bold)
-                    Text(if (pending) "Checking the server's main view…" else
+                    Text(if (pending) "Checking exact server session…" else
                         feedback ?: "Result unavailable. Inspect the server.")
+                    // A removed exact hash may later be re-added to the same
+                    // account with the same name/path. Remembered UI state is
+                    // never proof that the NEW session is still absent.
+                    if (!pending) {
+                        OutlinedButton(
+                            onClick = {
+                                checking = true
+                                scope.launch {
+                                    try {
+                                        when (recheck(transfer.hash, transfer.name, transfer.directory)) {
+                                            SessionEraseRecheck.PresentMatching -> {
+                                                // A re-added same-hash job must never inherit
+                                                // an earlier success or attempted-operation lock.
+                                                // Fresh name+path match only reopens REVIEW.
+                                                verified = false
+                                                attempted = false
+                                                feedback = "The same transfer is still in this server's session. You can review a new Remove attempt."
+                                            }
+                                            SessionEraseRecheck.Absent -> {
+                                                verified = true
+                                                feedback = "The exact transfer is now absent from rTorrent's session. No new Remove was sent; downloaded files were not inspected."
+                                            }
+                                            SessionEraseRecheck.Changed ->
+                                                feedback = "That hash now has a different name or directory. No retry is allowed from this old review. Refresh the transfer list."
+                                            SessionEraseRecheck.Unavailable ->
+                                                feedback = "Could not verify the exact server identity. No retry is allowed until a new successful check."
+                                        }
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        feedback = "Server check failed. Nothing was removed or retried by this check."
+                                    } finally { checking = false }
+                                }
+                            },
+                            enabled = !checking && !snapshotStale && mainView,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) { Text(if (checking) "Checking server…" else "Check current session (read-only)") }
+                    }
                 }
             }
         }

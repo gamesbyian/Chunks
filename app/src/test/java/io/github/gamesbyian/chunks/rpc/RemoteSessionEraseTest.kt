@@ -174,6 +174,40 @@ class RemoteSessionEraseTest {
         } finally { server.stop(0) }
     }
 
+
+    @Test fun readOnlyRecheckOfStillPresentExactJobAllowsANewReviewButNeverErases() = runBlocking {
+        withServer(applyErase = false) { remote, methods ->
+            assertEquals(SessionEraseRecheck.PresentMatching,
+                remote.recheckSessionErase(hash, name, directory))
+            assertEquals(listOf("d.hash", "d.name", "d.directory", "d.hash"), methods)
+            assertFalse(methods.contains("d.erase"))
+        }
+    }
+
+    @Test fun readOnlyRecheckRefusesChangedNameOrDirectory() = runBlocking {
+        withServer(prewriteName = "replaced-name") { remote, methods ->
+            assertEquals(SessionEraseRecheck.Changed,
+                remote.recheckSessionErase(hash, name, directory))
+            assertFalse(methods.contains("d.erase"))
+        }
+        withServer(prewriteDirectory = "/elsewhere") { remote, methods ->
+            assertEquals(SessionEraseRecheck.Changed,
+                remote.recheckSessionErase(hash, name, directory))
+            assertFalse(methods.contains("d.erase"))
+        }
+    }
+
+    @Test fun readOnlyRecheckAfterSuccessfulRemovalProvesAbsenceWithoutAnotherWrite() = runBlocking {
+        withServer { remote, methods ->
+            assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
+                remote.eraseFromSession(hash, name, directory))
+            val writes = methods.count { it == "d.erase" }
+            assertEquals(SessionEraseRecheck.Absent,
+                remote.recheckSessionErase(hash, name, directory))
+            assertEquals(writes, methods.count { it == "d.erase" })
+        }
+    }
+
     @Test fun refusesInvalidHashesBeforeAnyNetwork() = runBlocking {
         val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:1/RPC2", "", ""))
         for (bad in listOf("../", "1234", "z".repeat(40), "ab".repeat(21))) {
