@@ -13,6 +13,7 @@ on:
       - "tools/real_magnet_peer.py"
       - "tools/preload_disposable_magnet.py"
       - "tests/test_preload_disposable_magnet.py"
+      - "tests/test_finish_installed_magnet_evidence.py"
       - "tools/installed_rtorrent_magnets.sh"
       - "tools/finish_installed_magnet_evidence.py"
       - "tools/parse_installed_magnet_add_receipt.py"
@@ -68,6 +69,7 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_preload_disposable_magnet.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
           python3 -m py_compile tools/real_magnet_peer.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
       - name: Start genuine public-magnet metadata and payload peer

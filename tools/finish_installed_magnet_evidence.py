@@ -11,6 +11,28 @@ import xml.etree.ElementTree as ET
 from parse_installed_magnet_add_receipt import parse
 
 
+def precompleted_control_preserved(runner_temp, env):
+    """Verify both copies against the deterministic disposable input bytes."""
+    if not (env.get("CHUNKS_CONTROLLED_PEER") == "1" and
+            env.get("CHUNKS_DISPOSABLE") == "1" and
+            env.get("CHUNKS_PUBLIC_DISCOVERY") != "1"):
+        return None
+    run_id = env.get("GITHUB_RUN_ID", "")
+    if not re.fullmatch(r"[0-9]{5,20}", run_id):
+        return False
+    expected = hashlib.sha256(run_id.encode()).digest() * 2048
+    paths = (runner_temp / "chunks-real-peer/magnet0/chunks-precompleted-control.bin",
+             runner_temp / "chunks-disposable/data/chunks-precompleted-control.bin")
+    try:
+        for path in paths:
+            with path.open("rb") as stream:
+                if stream.read(len(expected) + 1) != expected:
+                    return False
+        return True
+    except OSError:
+        return False
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--runner-temp", type=Path, required=True)
@@ -43,6 +65,9 @@ def main():
                     # Public-mode acceptance must not secretly use our seed.
                     peer_valid = peer_valid and (independent["stages"] == ["preflight"] and
                         independent["payload_uploaded_bytes"] == independent["peer_connections"] == 0)
+                elif label == "magnet0":
+                    peer_valid = peer_valid and (independent["stages"] == ["preflight", "metadata"] and
+                        independent["payload_uploaded_bytes"] == 0)
                 elif source["passed"]:
                     peer_valid = peer_valid and (independent["payload_uploaded_bytes"] > 0 and independent["peer_connections"] > 0)
             shutil.copyfile(peer_path, a.output / "PEER-RECEIPT.json")
@@ -51,7 +76,9 @@ def main():
     receipt["application_id"] = "io.github.gamesbyian.chunks." + env.get("CHUNKS_PREVIEW_SUFFIX", "preview")
     receipt["independent_peer_evidence"] = "verified" if peer_valid else "missing-or-inconsistent"
     receipt["independent_evidence_kind"] = "original source pieces checked; supplied peer unused" if receipt["public_peer_discovery"] else "real supplied peer upload and connections"
-    if not peer_valid:
+    control_preserved = precompleted_control_preserved(a.runner_temp, env)
+    receipt["precompleted_control_bytes_preserved"] = control_preserved
+    if not peer_valid or control_preserved is False:
         receipt["result"] = "failed-or-inconclusive"
     (a.output / "RECEIPT.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
     # The two test identities and outcomes come from AndroidJUnitRunner, not
