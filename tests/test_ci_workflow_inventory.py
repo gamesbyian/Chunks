@@ -226,7 +226,7 @@ jobs:
     steps:
       - run: echo secret-value-123
         env:
-          PASSWORD: \${{ secrets.ACTUAL_KEY_NAME }}
+          PASSWORD: ${{ secrets.ACTUAL_KEY_NAME }}
 """
         file = self.fixture("secret.yml", source)
         data = inspect(file, self.root)
