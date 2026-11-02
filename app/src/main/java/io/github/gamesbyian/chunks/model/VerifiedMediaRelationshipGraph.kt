@@ -115,8 +115,18 @@ class VerifiedMediaRelationshipGraph private constructor(
                     val latest = versions.maxOf { it.revision }
                     versions.filter { it.revision == latest }.distinct().singleOrNull()
                 }
+            // A newer correction or retraction of one source field must not leave that
+            // source's previous assertion active. An unresolved same-record competing
+            // target is ambiguous even when both claims are individually verified.
+            // Distinct field keys are allowed for multi-valued contributor credits.
+            val ambiguousFields = current.groupBy { Triple(it.provider, it.recordKey, it.fieldKey) }
+                .filterValues { values -> values.map { Triple(it.subject, it.predicate, it.target) }.distinct().size > 1 }
+                .keys
+            val unambiguous = current.filter {
+                Triple(it.provider, it.recordKey, it.fieldKey) !in ambiguousFields
+            }
             // Contradiction to an exact directed edge suppresses ALL providers' claims about it.
-            val byEdge = current.groupBy { Triple(it.subject, it.predicate, it.target) }
+            val byEdge = unambiguous.groupBy { Triple(it.subject, it.predicate, it.target) }
             val valid = byEdge.values.filter { values ->
                 values.none { it.state == MediaGraphClaimState.DISPUTED } &&
                     values.any { it.state == MediaGraphClaimState.VERIFIED || it.state == MediaGraphClaimState.USER_CONFIRMED }
