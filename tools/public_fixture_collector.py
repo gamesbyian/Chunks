@@ -170,15 +170,36 @@ def torrent_summary(data, max_total_bytes, tracker_hosts=ARCHIVE_TRACKERS):
         fields.append(("xt", "urn:btmh:1220" + hashlib.sha256(raw_info).hexdigest()))
     fields.append(("dn", name))
     magnet = "magnet:?" + urllib.parse.urlencode(fields)
-    # The only retained tracker is the source's own official public tracker.
-    tracker = root.get(b"announce")
-    if isinstance(tracker, bytes):
-        candidate = tracker.decode("utf-8", errors="strict")
-        p = urllib.parse.urlsplit(candidate)
-        if p.hostname not in tracker_hosts or p.username or p.password or p.query or p.fragment or p.scheme not in ("http", "https", "udp"):
-            tracker = None
+    # BEP 12: when announce-list exists, announce is ignored. Source
+    # selection and sanitation must follow effective tiers, not a misleading
+    # top-level fallback. Only retain one approved, public tracker URL;
+    # redact every other tracker, tier, comment and web seed from the fixture.
+    def approved_tracker(candidate):
+        if not isinstance(candidate, bytes) or not 1 <= len(candidate) <= 2048:
+            return False
+        try:
+            url = candidate.decode("utf-8", errors="strict")
+            if any(ord(char) < 32 or ord(char) == 127 for char in url):
+                return False
+            parsed = urllib.parse.urlsplit(url)
+            return (parsed.scheme in ("http", "https", "udp")
+                    and parsed.hostname in tracker_hosts
+                    and not parsed.username and not parsed.password
+                    and not parsed.query and not parsed.fragment
+                    and parsed.path == "/announce"
+                    and parsed.port != 0)
+        except (UnicodeError, ValueError):
+            return False
+
+    if b"announce-list" in root:
+        # Do not trust `announce` if announce-list is empty, malformed, or
+        # contains no approved trackers. Bounded traversal is for preview only.
+        tiers = root[b"announce-list"]
+        candidates = (url for tier in tiers[:16] if isinstance(tier, list)
+                      for url in tier[:64]) if isinstance(tiers, list) else ()
     else:
-        tracker = None
+        candidates = (root.get(b"announce"),)
+    tracker = next((url for url in candidates if approved_tracker(url)), None)
     # Strip comments, external announce lists, webseed tokens and extensions.
     # Preserve *exact raw info bytes* to keep the original info hash intact.
     safe = b"d"
