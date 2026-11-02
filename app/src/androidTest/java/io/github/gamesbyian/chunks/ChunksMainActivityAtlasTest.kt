@@ -444,6 +444,9 @@ class ChunksMainActivityAtlasTest {
             substring = true).assertExists()
         save("app-alias-saved-populated-real-compose")
 
+        // Secondary destinations are one explicit Options tap away; the
+        // ordinary Transfers viewport no longer carries a permanent tab rail.
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.onNodeWithText("Places").performClick()
         rule.onNodeWithText("Everything has a place.").assertExists()
         save("app-places-populated-real-compose")
