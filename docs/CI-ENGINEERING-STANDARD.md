@@ -53,7 +53,7 @@ Every meaningful run SHOULD publish a concise GitHub job summary; failed runs MU
 - reproducible command/parameters where possible; deterministic/flaky/environmental classification marked **observed**, **inferred** or **unclassified**; recommended next debugging action;
 - multiple independent failures without allowing a secondary teardown/reporting failure to hide the original fault.
 
-Emit useful reports even when provisioning fails before tests start. Expose counts of executed/failed/skipped/unexecuted tests, not misleading green summaries. Use actionable annotations and hyperlinks. Redact tokens, credentials, protected endpoints and private payload data. A new agent should identify its first useful debugging action without downloading enormous raw logs.
+Emit useful reports even when provisioning fails before tests start. Expose counts of executed/failed/skipped/unexecuted tests, not misleading green summaries. Treat JUnit class names, parameterized testcase names and local report filenames as untrusted data: publish only conventional static identifiers, redacting data-bearing labels and using opaque report references. Preserve SHA-256 case identity and full JUnit artifacts as separately scoped evidence so redaction does not create a false-green or conceal the failure count. Use actionable annotations and hyperlinks. Redact tokens, credentials, protected endpoints and private payload data. A new agent should identify its first useful debugging action without downloading enormous raw logs.
 
 ## Flakes, historical problems and security
 
