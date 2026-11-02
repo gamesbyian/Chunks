@@ -167,6 +167,24 @@ class CombinedTransfersScreenTest {
         assertTrue(saved.groupByEnvironment)
     }
 
+    @Test fun clearSearchRestoresAllMatchesWithoutChangingSelectedEnvironments() {
+        show()
+        revealText("Search all selected")
+        rule.onNodeWithText("Search all selected").performTextInput("Small Episode")
+        rule.onNodeWithText("Showing 1", substring = true).assertExists()
+        // This 411dp Robolectric viewport has 16dp list padding on each side:
+        // the field itself is 379dp and deliberately chooses the compact
+        // TEXT-labelled Clear search action above the input (not a trailing
+        // icon contentDescription). On a wider layout the icon is used. Both
+        // variants must expose an accessible, 48dp-class real click target.
+        val clearAction = hasText("Clear search") or hasContentDescription("Clear search")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(clearAction)
+        rule.onNode(clearAction).assertIsDisplayed().performClick()
+        rule.onNodeWithText("Showing 2", substring = true).assertExists()
+        assertTrue("Viewing and clearing a search must issue no server lifecycle commands",
+            commands.isEmpty())
+    }
+
     @Test fun emptySearchHasOneTapRecoveryWithoutMutatingOrResettingSort() {
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))

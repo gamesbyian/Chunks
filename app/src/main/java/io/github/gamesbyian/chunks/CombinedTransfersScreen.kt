@@ -790,11 +790,14 @@ internal fun CombinedTransfersScreen(
             }
         }
         item {
-            OutlinedTextField(value = query.search, onValueChange = {
+            ClearableTransferSearchField(
+                value = query.search,
+                onValueChange = {
                     queryTouched = true
                     query = query.copy(search = it)
                 },
-                label = { Text("Search all selected") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                label = "Search all selected"
+            )
         }
         item {
             Text("Filter transfers", style = MaterialTheme.typography.labelLarge)

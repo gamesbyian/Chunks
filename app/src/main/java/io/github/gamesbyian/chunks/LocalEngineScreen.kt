@@ -1225,12 +1225,10 @@ internal fun LocalEngineScreen(
         )
         Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold)
-        OutlinedTextField(
+        ClearableTransferSearchField(
             value = transferSearch,
             onValueChange = { transferSearch = it },
-            label = { Text("Search local names, aliases, folders or hashes") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            label = "Search local names, aliases, folders or hashes"
         )
         // Wrapping chips keeps the final filter/sort option reachable by
         // vertical scroll, keyboard and TalkBack at 320dp and 200% type.
