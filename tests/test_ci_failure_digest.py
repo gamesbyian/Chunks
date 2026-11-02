@@ -206,8 +206,56 @@ class DigestTests(unittest.TestCase):
             '</testsuite>'
         )
         d = make_digest([str(self.path)], "success", "unit", self.env)
-        self.assertEqual("A?B?Secret", d["timing"]["slowest_classes"][0]["class"])
+        self.assertEqual("<redacted-identifier>", d["timing"]["slowest_classes"][0]["class"])
 
+
+    def test_public_failure_digest_redacts_data_bearing_test_names(self):
+        # Parameterized names can embed a private tracker URL or secret-bearing
+        # user value. Neither the JSON receipt nor the job summary should copy it.
+        secret = "LEAKME-TRACKER-PASSKEY"
+        self.path.write_text(
+            '<testsuite tests="1" failures="1">'
+            '<testcase classname="https://private.example/path?passkey=' + secret + '" '
+            'name="test[secret=' + secret + ']" time="1.5">'
+            '<failure message="hidden-assertion">hidden stack</failure>'
+            '</testcase></testsuite>'
+        )
+        d = make_digest([str(self.path)], "failure", "unit", self.env)
+        self.assertEqual(
+            [{"class": "<redacted-identifier>", "test": "<redacted-identifier>"}],
+            d["failed_cases"],
+        )
+        self.assertEqual("<redacted-identifier>",
+                         d["timing"]["slowest_classes"][0]["class"])
+        self.assertEqual("test_assertion", d["phase"])
+        self.assertEqual(1, d["junit"]["failed"])
+        self.assertEqual(1, d["junit"]["executed"])
+        self.assertRegex(d["test_cases"][0]["id_sha256"], r"^[0-9a-f]{64}$")
+        receipt = json.dumps(d)
+        for private in ("private.example", secret, "hidden-assertion", "hidden stack"):
+            self.assertNotIn(private, receipt)
+
+    def test_untrusted_report_filename_is_opaque_on_parse_failure(self):
+        path = Path(self.tmp.name) / "TEST-private-passkey-LEAKME.xml"
+        path.write_text("<testsuite><testcase>")
+        d = make_digest([str(path)], "success", "unit", self.env)
+        self.assertEqual("harness_report", d["phase"])
+        self.assertFalse(d["evidence_executed"])
+        self.assertRegex(d["invalid_reports"][0]["report"],
+                         r"^junit-sha256-[0-9a-f]{20}$")
+        self.assertNotIn("LEAKME", json.dumps(d))
+
+    def test_conventional_junit_method_names_remain_actionable(self):
+        self.path.write_text(
+            '<testsuite tests="1" failures="1">'
+            '<testcase classname="io.example.FooTest" name="workReturnsError">'
+            '<failure/></testcase></testsuite>'
+        )
+        d = make_digest([str(self.path)], "failure", "unit", self.env)
+        self.assertEqual(
+            [{"class": "io.example.FooTest", "test": "workReturnsError"}],
+            d["failed_cases"],
+        )
 
     def test_complete_case_receipt_is_opaque_and_identifies_all_cases(self):
         self.path.write_text(
