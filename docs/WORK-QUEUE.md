@@ -1,10 +1,5 @@
 # Chunks active engineering work queue
 
-## Deferred P1 cross-app and sharing contracts (not P0 work)
-
-After the active Pixel 6 Pro daily-use local, remote and combined acceptance: [TRANSFER-SHARING](TRANSFER-SHARING.md) specifies magnet sharing and conditional `.torrent` export from existing local/rTorrent transfers; [EXPOSITORY-FILE-ASSOCIATIONS](EXPOSITORY-FILE-ASSOCIATIONS.md) specifies an optional read-only, permissioned per-profile membership snapshot for Expository Transfer. Both are **planned only**, have no accepted installed implementation, and may not displace active P0 removal recovery, reconnect, first-viewport transfers or real-engine QA.
-
-
 ## Owner device priority correction (2026-11-02)
 
 **Primary release target is the owner's Pixel 6 Pro.** Optimize and physically accept the actual daily-use UI on that device at its real Android display configuration. The Pixel 6-class 1080×2400, 20:9 display is a **lower-bound preference**, not a requirement to qualify every screen of that size. **Viewport breadth is not P0:** 320×700, 412×892 and other small/narrow device screenshot matrices, tablet layouts, uncommon resolutions and broad density variation are P1 compatibility work; they must not hold up the Pixel 6 Pro daily-use APK. The currently open dual-viewport [#992](https://github.com/gamesbyian/Chunks/pull/992) remains useful nonblocking test research, not mandatory P0 release acceptance. Never mark that failing 412×892 run green or remove it from history.
@@ -220,3 +215,7 @@ Previous work-queue text is preserved **verbatim** in [the 2026-10-31 superseded
 **Sequence, with evidence gates** (independent slices after existing P0): (1) provider legal/terms/credentials review, versioned lossless parser DTO and identifier/credit/collection schema, test fixtures; (2) incremental SQLite graph/index wired to canonical combined environment observations, with offline exact-series/episode/issue and same-work baseline; (3) validated provider sample responses and optional asynchronous lookup adapters for TV episode credits, comic issue credits and Wikidata person linking, built into *existing* enrichment queue; (4) cross-media relationships, explainability, collections/issue coverage and manual corrections; (5) Smart/Bulk Rename/Plex consumer reuse and 'Explore related' optional UI. Each stage must publish source SHA, actual API JSON fixtures, legal/consent analysis, parser/graph acceptance metrics, API29/API35/handset scope and unresolved tests. Only mark completed when integrated and independently proven.
 
 **Specific must-pass:** *Babylon 5* S02E07 `Soul Mates` and *Incredible Hulk* 1987–1998 collection link through **episode writer Peter David ↔ verified subset of comic issue/script credits**, with explicit provider ID/role evidence and honest collection coverage; novel/TV adaptation, music biography↔artist albums, shared cast, shared AI narrative subject. No match on title/year only and no unconsented outgoing queries from expanded details. Android performance goal for warm indexed 10k transfer/100k edge corpus is p95 under 100ms (target, unmeasured). No filesystem or torrent mutations.
+
+## Deferred P1 cross-app and sharing contracts (not P0 work)
+
+After the active Pixel 6 Pro daily-use local, remote and combined acceptance: [TRANSFER-SHARING](TRANSFER-SHARING.md) specifies magnet sharing and conditional `.torrent` export from existing local/rTorrent transfers; [EXPOSITORY-FILE-ASSOCIATIONS](EXPOSITORY-FILE-ASSOCIATIONS.md) specifies an optional read-only, permissioned per-profile membership snapshot for Expository Transfer. Both are **planned only**, have no accepted installed implementation, and may not displace active P0 removal recovery, reconnect, first-viewport transfers or real-engine QA.
