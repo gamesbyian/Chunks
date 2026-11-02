@@ -10,9 +10,48 @@ from pathlib import Path
 import re
 import urllib.parse
 
+from public_fixture_collector import license_ok
+
 HEX40 = re.compile(r"[a-f0-9]{40}")
 HEX64 = re.compile(r"[a-f0-9]{64}")
 MAX_BYTES = 555_000_000
+
+
+def license_evidence_tier(item):
+    """Classify source-supplied license *claims*, never grant legal permission.
+
+    Legacy curated entries predate the current private-flag and URI admission
+    controls. This report is advisory, read-only and does not re-fetch media.
+    """
+    source = urllib.parse.urlsplit(item.get("source_url", ""))
+    if source.hostname == "linuxtracker.org":
+        return "linux_distribution_release_review"
+    text = item.get("license")
+    if not isinstance(text, str):
+        return "missing_or_unrecognized_license_claim"
+    text = text.strip()
+    if not text:
+        return "missing_or_unrecognized_license_claim"
+    try:
+        url = urllib.parse.urlsplit(text)
+    except ValueError:
+        return "missing_or_unrecognized_license_claim"
+    # This legacy Creative Commons link redirects to a retired, US-specific
+    # certification tool; it is not interchangeable with modern CC0 or PDM.
+    if (url.hostname == "creativecommons.org"
+            and url.path.rstrip("/") == "/licenses/publicdomain"):
+        return "retired_us_public_domain_certification"
+    if (url.hostname == "creativecommons.org"
+            and url.path.rstrip("/") == "/publicdomain/mark/1.0"):
+        return "public_domain_mark_claim_not_license"
+    if license_ok(text):
+        if text.lower() == "cc0" or (
+                url.hostname == "creativecommons.org"
+                and url.path.rstrip("/") == "/publicdomain/zero/1.0"):
+            return "cc0_declaration_not_rightsholder_verified"
+        return "cc_license_claim_not_rightsholder_verified"
+    return "missing_or_unrecognized_license_claim"
+
 
 def validate(path, magnets_path, allow_partial=False):
     data = json.loads(Path(path).read_text(encoding="utf-8"))
@@ -30,6 +69,7 @@ def validate(path, magnets_path, allow_partial=False):
     hashes = set()
     sources = Counter()
     trackers = set()
+    license_claims = Counter()
     for i, item in enumerate(fixtures, 1):
         n = item["total_bytes"]
         if type(n) is not int or not 0 < n <= MAX_BYTES:
@@ -71,6 +111,7 @@ def validate(path, magnets_path, allow_partial=False):
         if source.scheme != "https" or source.hostname not in ("archive.org", "linuxtracker.org"):
             raise ValueError(f"Unexpected source at {i}")
         sources[source.hostname] += 1
+        license_claims[license_evidence_tier(item)] += 1
         for tr in params.get("tr", []):
             # urlsplit silently removes embedded CR/LF/TAB; check the
             # decoded raw parameter before normalization or a bad tracker
@@ -90,7 +131,11 @@ def validate(path, magnets_path, allow_partial=False):
                 raise ValueError(f"Unsafe tracker at {i}")
             trackers.add(p.hostname)
     print(json.dumps({"count": len(fixtures), "sources": sources,
-                      "distinct_tracker_hosts": len(trackers), "tracker_hosts": sorted(trackers)},
+                      "distinct_tracker_hosts": len(trackers), "tracker_hosts": sorted(trackers),
+                      "license_claim_evidence_tiers": dict(sorted(license_claims.items())),
+                      "license_proof_boundary":
+                          "Uploader/source claims only; no rights-holder verification, "
+                          "source-private flag recheck or peer-byte acceptance"},
                      indent=2))
     return len(fixtures)
 
