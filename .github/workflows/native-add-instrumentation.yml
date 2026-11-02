@@ -11,6 +11,7 @@ on:
       - "app/build.gradle.kts"
       # Changes to the test command must re-run this suite.
       - "tools/native_add_review.sh"
+      - "tools/verify_native_add_shards.py"
       - ".github/workflows/native-add-instrumentation.yml"
   workflow_dispatch:
 
@@ -23,8 +24,15 @@ concurrency:
 
 jobs:
   add-review-device-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 23
+    env:
+      CHUNKS_NATIVE_ADD_SHARD_COUNT: "2"
+      CHUNKS_NATIVE_ADD_SHARD_INDEX: ${ matrix.shard }}
     steps:
       - uses: actions/checkout@v4
       - name: Check required native atlas captures before SDK and emulator allocation
@@ -78,24 +86,47 @@ jobs:
         env:
           CHUNKS_JOB_STATUS: ${{ job.status }}
         run: |
-          python3 tools/ci_failure_digest.py --suite "api35-native-add" --status "$CHUNKS_JOB_STATUS" --require-executed \
-            --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' --output "$RUNNER_TEMP/chunks-ci-digest.json"
-      - name: Retain structured failure digest
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: chunks-ci-failure-digest-api35-native-add
-          path: ${{ runner.temp }}/chunks-ci-digest.json
-          retention-days: 14
-          if-no-files-found: warn
-      - name: Upload native Compose review screenshots
+          python3 tools/ci_failure_digest.py --suite "api35-native-add-shard-${CHUNKS_NATIVE_ADD_SHARD_INDEX}" --status "$CHUNKS_JOB_STATUS" --require-executed \
+            --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' --output "$RUNNER_TEMP/chunks-native-add-receipt/digest.json"
+      - name: Upload mandatory per-shard test receipt (success or failure)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-native-add-review-states
-          path: |
-            ${{ runner.temp }}/chunks-add-native-review
-            app/build/outputs/androidTest-results/connected/
-            app/build/reports/androidTests/connected/
+          name: chunks-native-add-receipt-shard-${ matrix.shard }}
+          path: ${ runner.temp }}/chunks-native-add-receipt/digest.json
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload every real screenshot captured by this emulator
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-native-add-atlas-shard-${ matrix.shard }}
+          path: ${ runner.temp }}/chunks-add-native-review/*.png
           retention-days: 14
           if-no-files-found: warn
+
+  verify-complete-native-add:
+    needs: add-review-device-test
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all independently executed JUnit receipts and PNGs
+        uses: actions/download-artifact@v4
+        with:
+          pattern: chunks-native-add-*
+          path: ${ runner.temp }}/chunks-native-add-shards
+      - name: Require all shards and every mandatory actual Compose screenshot
+        run: |
+          python3 tools/verify_native_add_shards.py \
+            --artifacts "$RUNNER_TEMP/chunks-native-add-shards" \
+            --shards 2 --sha "$GITHUB_SHA"
+      - name: Attach combined exact-head acceptance receipt
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-native-add-sharded-acceptance
+          path: ${ runner.temp }}/chunks-native-add-shards/native-add-acceptance.json
+          retention-days: 14
+          if-no-files-found: error
