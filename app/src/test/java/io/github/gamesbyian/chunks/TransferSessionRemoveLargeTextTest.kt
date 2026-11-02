@@ -152,6 +152,44 @@ class TransferSessionRemoveLargeTextTest {
         rule.onNodeWithText("The exact transfer is now absent", substring = true).assertExists()
     }
 
+
+    @Test fun readdedSameHashCanRecoverFromPreviousVerifiedRemoveWithoutBlindRetry() {
+        var removeCalls = 0
+        var reads = 0
+        rule.setContent {
+            ChunksTheme {
+                Surface {
+                    TransferSessionRemoveControl(
+                        remote, transfer, snapshotStale = false, mainView = true,
+                        onMutationStarted = { true }, onSettled = {},
+                        performErase = { _, _, _ ->
+                            removeCalls++
+                            SessionEraseOutcome.VerifiedRemoved(transfer.hash)
+                        },
+                        recheck = { _, _, _ ->
+                            reads++
+                            // The same exact hash was re-added between refreshes.
+                            SessionEraseRecheck.PresentMatching
+                        }
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        rule.waitForIdle()
+        assertEquals(1, removeCalls)
+        rule.onNodeWithText("Check current session (read-only)").performClick()
+        rule.waitForIdle()
+        assertEquals(1, reads)
+        assertEquals(1, removeCalls)
+        rule.onNodeWithText("Remove from rTorrent…").assertExists()
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        rule.waitForIdle()
+        assertEquals(2, removeCalls)
+    }
+
     @Test fun deniedMutationGateDoesNotTrapRemoveForever() {
         show()
         rule.onNodeWithText("Remove from rTorrent…").performClick()
