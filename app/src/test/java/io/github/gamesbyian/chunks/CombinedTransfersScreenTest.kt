@@ -167,6 +167,19 @@ class CombinedTransfersScreenTest {
         assertTrue(saved.groupByEnvironment)
     }
 
+    @Test fun clearSearchRestoresAllMatchesWithoutChangingSelectedEnvironments() {
+        show()
+        revealText("Search all selected")
+        rule.onNodeWithText("Search all selected").performTextInput("Small Episode")
+        rule.onNodeWithText("Showing 1", substring = true).assertExists()
+        // The qualified shared field exposes a screen-reader-labelled 48dp
+        // clear action; search is the only thing it changes.
+        rule.onNodeWithContentDescription("Clear search").performScrollTo().performClick()
+        rule.onNodeWithText("Showing 2", substring = true).assertExists()
+        assertTrue("Viewing and clearing a search must issue no server lifecycle commands",
+            commands.isEmpty())
+    }
+
     @Test fun emptySearchHasOneTapRecoveryWithoutMutatingOrResettingSort() {
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
