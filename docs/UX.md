@@ -1,5 +1,10 @@
 # Chunks interaction and accessibility contract
 
+## Sharing a transfer and cross-app file annotations (planned)
+
+Transfer Details shall eventually expose the same source-labelled Share magnet / Copy magnet / Share .torrent options for phone and rTorrent; unavailable metadata must be explained in place, private tracker/passkey disclosures precede external sharing and Android Sharesheet grants are scoped. Expository file-membership annotations are optional, pairable/revocable, explicitly read-only and distinguish known-stale or unknown associations. No extra transfer-Add review or mandatory companion app. [Transfer sharing](TRANSFER-SHARING.md) · [Cross-app file association](EXPOSITORY-FILE-ASSOCIATIONS.md). These features are not current P0 implementation or acceptance claims.
+
+
 ## Primary handset and acceptance scope (owner correction, 2026-11-02)
 
 The owner's **Pixel 6 Pro** is Chunks' authoritative daily-use design and physical acceptance target. The Pixel 6-class 1080×2400, 20:9 phone display is the owner's practical lower-bound preference. Design for the actual Pixel 6 Pro Android display, density, insets, font settings and touch behavior, not a universal tiny-phone matrix. Screens below the Pixel 6 class, including **320×700dp**, are not a P0 design/testing priority; alternative 412×892dp and 200%-font viewport matrix testing is also not a mandatory P0 gate. Retain adaptive Android UI, responsive layout, semantics and accessibility where already implemented, without deliberate breakage. Large font, TalkBack and keyboard should still work reasonably on the primary phone; a true blocker on that supported device is P0. Independent viewport research and exhaustive size/scale permutations may continue as P1 without delaying ordinary release readiness.
