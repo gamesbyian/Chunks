@@ -1324,11 +1324,9 @@ private fun ConnectionScreen(
             )
         }
         item {
-            OutlinedTextField(
+            SecurePasswordInput(
                 value = password, onValueChange = onPassword,
-                label = { Text("Password") },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true, modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth()
             )
         }
         item {
