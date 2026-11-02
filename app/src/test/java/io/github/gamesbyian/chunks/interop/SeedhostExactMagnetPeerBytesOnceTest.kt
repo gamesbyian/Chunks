@@ -8,6 +8,8 @@ import io.github.gamesbyian.chunks.engine.LocalRateLimits
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
+import io.github.gamesbyian.chunks.rpc.RpcFault
+import io.github.gamesbyian.chunks.rpc.isUnknownInfoHash
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
 import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
@@ -164,7 +166,7 @@ class SeedhostExactMagnetPeerBytesOnceTest {
 
     private fun stage(value: String) {
         require(value in setOf("runner-ready", "preflight", "destination", "peer", "seed-ready", "metadata-verified",
-            "added-stopped", "added-started", "started", "bytes-verified", "stopped", "removed",
+            "add-submitted", "added-stopped", "added-started", "started", "seed-started", "payload-seed-ready", "peer-connected", "bytes-verified", "stopped", "removed",
             "inventory-restored", "manual-reconciliation-required"))
         record("stage", value)
         println("CHUNKS_HOST_BYTES_STAGE: $value")
@@ -260,10 +262,16 @@ class SeedhostExactMagnetPeerBytesOnceTest {
         println("CHUNKS_HOST_BYTES_HASH: $hash") // Synthetic-only, never a tracker/passkey.
         require(remote.listTransfers("main").none { it.hash.equals(hash, true) } &&
             remote.lookupName(hash) == null) { "Fresh synthetic hash already exists; no replay" }
-        val plan = StoppedRemoteAddPlan.fromMagnet("magnet:?xt=urn:btih:$hash", place)
+        // This host's 1_prepare hook silently drops trackerless magnets.
+        // Preserve the .torrent fixture's tracker in its magnet, exactly as
+        // the disposable real-magnet interoperability test does. Discovery
+        // deliberately uses the explicit real seeder, not this dead tracker.
+        val tracker = java.net.URLEncoder.encode("http://127.0.0.1:1/announce", "UTF-8")
+        val plan = StoppedRemoteAddPlan.fromMagnet("magnet:?xt=urn:btih:$hash&tr=$tracker", place)
+        assertEquals(1, TorrentMetainfoReader.magnetTrackerCount(plan.source))
         // Keep the already accepted .torrent peer proof unchanged. This is
         // an independent magnet-only BEP9 metadata and peer-piece experiment.
-        val seed = LocalTorrentEngine(LocalEngineConfig(allowMultipleConnectionsPerIp = true))
+        var seed = LocalTorrentEngine(LocalEngineConfig(allowMultipleConnectionsPerIp = true))
         var remoteAdded = false
         // The command can apply before its HTTP ACK is lost; this flag only
         // indicates that Add might have been submitted, never that it worked.
@@ -278,11 +286,12 @@ class SeedhostExactMagnetPeerBytesOnceTest {
             stage("seed-ready")
 
             addMayHaveApplied = true
+            stage("add-submitted")
             // REAL MAGNET ONLY: the remote receives no metainfo bytes.
             // The preflight-approved runner seeder supplies BEP9 metadata
             // and verified pieces through the actual rTorrent peer listener.
             val native = remote.loadStarted(plan)
-            assertTrue("Native magnet Add was existing or invalid: $native",
+            assertTrue("Native magnet Add was existing or invalid",
                 native is RemoteAddAndStart.Started ||
                     native is RemoteAddAndStart.StartNotVerified)
             val row = await("exact newly registered magnet placeholder", 30) {
@@ -314,21 +323,55 @@ class SeedhostExactMagnetPeerBytesOnceTest {
             await("local runner seeder recheck", 35) {
                 seed.status(hash)?.state == LocalTransferState.SEEDING
             }
+            stage("seed-started")
+            // Reuse libtorrent's own peer connection API. This is not a
+            // tracker reachability test: the known real seed dials rTorrent.
+            assertTrue("Real seeder refused the approved peer", seed.connectPeer(hash, peer))
+            var peerObserved = false
             await("actual magnet BEP9 metadata was supplied by the runner peer", 90) {
-                runBlocking {
+                try { runBlocking {
                     val transfer = remote.listTransfers("main").singleOrNull {
                         it.hash.equals(hash, true)
                     }
                     val sample = remote.readTrafficSample(hash)
+                    if (!peerObserved && ((sample.peers ?: 0L) > 0L ||
+                            (seed.status(hash)?.peers ?: 0) > 0)) {
+                        peerObserved = true
+                        stage("peer-connected")
+                    }
                     transfer?.name == name &&
                         transfer.sizeBytes == payload.size.toLong() &&
                         sample.expectedBytes == payload.size.toLong()
+                } } catch (fault: RpcFault) {
+                    // Upstream rTorrent erases/recreates the placeholder in
+                    // process_meta_download. Only that exact missing-hash
+                    // fault is a permissible read-only transition gap.
+                    if (fault.isUnknownInfoHash()) false else throw fault
                 }
             }
             stage("metadata-verified")
+            // rTorrent closes the metadata connection while replacing its
+            // placeholder. With no reachable tracker the old seeder's peer
+            // cache may retain the metadata-only endpoint as upload-only.
+            // A fresh real libtorrent session supplies a new TCP connection
+            // to the same exact hosted payload job; no remote reload/retry.
+            seed.close()
+            seed = LocalTorrentEngine(LocalEngineConfig(allowMultipleConnectionsPerIp = true))
+            seed.start()
+            seed.setRateLimits(LocalRateLimits(uploadBytesPerSecond = 128 * 1024))
+            assertTrue(seed.addStopped(metainfo, seedParent) is LocalAddResult.AddedStopped)
+            assertEquals(LocalCommandOutcome.VERIFIED, seed.resume(hash).outcome)
+            await("payload seeder recheck", 35) { seed.status(hash)?.state == LocalTransferState.SEEDING }
+            stage("payload-seed-ready")
+            assertTrue(seed.connectPeer(hash, peer))
             await("server received and verified every synthetic piece", 150) {
                 runBlocking {
                     val sample = remote.readTrafficSample(hash)
+                    if (!peerObserved && ((sample.peers ?: 0L) > 0L ||
+                            (seed.status(hash)?.peers ?: 0) > 0)) {
+                        peerObserved = true
+                        stage("peer-connected")
+                    }
                     sample.hash.equals(hash, true) &&
                         (sample.receivedBytes ?: 0) >= payload.size &&
                         sample.verifiedBytes == payload.size.toLong()

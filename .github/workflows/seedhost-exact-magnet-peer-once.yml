@@ -9,10 +9,6 @@ on:
       - "app/src/test/java/io/github/gamesbyian/chunks/interop/SeedhostExactMagnetPeerBytesOnceTest.kt"
       - "tools/parse_real_magnet_peer_receipt.py"
       - ".github/workflows/seedhost-exact-magnet-peer-once.yml"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-exact-magnet-peer-once.yml"
   workflow_dispatch:
     inputs:
       apply:
@@ -56,9 +52,7 @@ jobs:
   live-magnet-peer:
     if: >-
       ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
-          ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
-           (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time crash-safe real magnet peer proof (#1022)'))) }}
+          github.event_name == 'workflow_dispatch' && inputs.apply }}
     runs-on: ubuntu-latest
     timeout-minutes: 22
     env:
@@ -79,6 +73,28 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
+      - name: Read-only reconcile the prior failed exact synthetic hash
+        env:
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+        run: |
+          python3 - <<'PYCODE'
+          import sys
+          sys.path.insert(0, "tools")
+          from seedhost_magnet_readonly_forensics import rpc_opener, call
+          import xmlrpc.client
+          target = "ce693d901beb00a1ec4e2b62d8c8a2dc5c9fc06d"
+          try:
+              observed = call(rpc_opener(), "d.hash", target)
+          except xmlrpc.client.Fault as fault:
+              # rTorrent's exact missing-hash fault, never an auth/transport error.
+              if "Could not find info-hash" not in fault.faultString:
+                  raise SystemExit("Prior synthetic hash readback failed; no new Add")
+              print("CHUNKS_PRIOR_MAGNET: exact_hash_absent=true")
+          else:
+              print("CHUNKS_PRIOR_MAGNET: exact_hash_present=" + str(str(observed).lower() == target).lower())
+              raise SystemExit("Prior synthetic session needs scoped reconciliation; no new Add")
+          PYCODE
       - name: Run real BEP9 magnet and preserve a private Gradle status
         env:
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}

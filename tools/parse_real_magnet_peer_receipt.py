@@ -16,7 +16,7 @@ import xml.etree.ElementTree as ET
 
 STAGES = (
     "runner-ready", "preflight", "destination", "peer", "seed-ready",
-    "added-started", "started", "metadata-verified", "bytes-verified",
+    "add-submitted", "added-started", "started", "seed-started", "payload-seed-ready", "peer-connected", "metadata-verified", "bytes-verified",
     "stopped", "removed", "inventory-restored", "manual-reconciliation-required",
 )
 STAGE_SET = set(STAGES)
@@ -98,7 +98,7 @@ def parse(xml_path, sidecar_path, exit_code, env=None):
     cleanup = ("verified" if "inventory-restored" in phases else
                "manual-reconciliation-required" if
                "manual-reconciliation-required" in phases else
-               "unconfirmed-after-add" if "added-started" in phases else
+               "unconfirmed-after-add" if "add-submitted" in phases or "added-started" in phases else
                "no-verified-add")
     passed = (exit_code == 0 and suite["report"] == "valid" and
               suite["tests"] == 3 and
@@ -112,6 +112,17 @@ def parse(xml_path, sidecar_path, exit_code, env=None):
         "schema_version": 1, "result": "passed" if passed else "failed-or-inconclusive",
         "source_sha": env.get("GITHUB_SHA"), "run_id": env.get("GITHUB_RUN_ID"),
         "test_tier": "host-jvm-real-BEP9-magnet", "gradle_exit_code": exit_code,
+        "failure_boundary": next((label for stage, label in (
+            ("peer", "host-listener-reachability"),
+            ("seed-ready", "runner-seeder-registration"),
+            ("added-started", "remote-magnet-registration"),
+            ("started", "remote-active-state"),
+            ("seed-started", "runner-seeder-recheck"),
+            ("peer-connected", "peer-connection"),
+            ("metadata-verified", "BEP9-metadata"),
+            ("bytes-verified", "payload-pieces"),
+            ("inventory-restored", "session-cleanup"),
+        ) if stage not in phases), None),
         "junit": suite, "stage_evidence": stages,
         "last_stage": phases[-1] if phases else "unavailable",
         "synthetic_infohash": unique_hash,
