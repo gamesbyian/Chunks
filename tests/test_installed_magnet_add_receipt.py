@@ -105,6 +105,16 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", parse(data.replace("chunks_real_add_stage=magnet-peer-progress",
                                                        "arbitrary_early_metadata=1"), 0, env)["result"])
 
+    def test_connect_click_attempt_does_not_claim_authenticated_submit(self):
+        raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=runner-ready\n"
+               "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=connect-click-attempt\n"
+               "INSTRUMENTATION_STATUS_CODE: -2\n"
+               "INSTRUMENTATION_CODE: -1")
+        result = parse(raw, 1, self.env)
+        self.assertEqual(["runner-ready", "connect-click-attempt"], result["app_stage_evidence"])
+        self.assertNotIn("connect-submitted", result["app_stage_evidence"])
+        self.assertEqual("failed-or-inconclusive", result["result"])
+
     def test_missing_exact_hash_blocks_otherwise_green_completion(self):
         data = self.success_log().replace(
             "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet2=" + "b" * 40 + "\n", "")
