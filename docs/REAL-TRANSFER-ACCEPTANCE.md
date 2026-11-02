@@ -1,5 +1,12 @@
 # Real-transfer-first acceptance and upstream reuse
 
+## Planned evidence: transfer-sharing export and external file associations
+
+Do not mark [transfer sharing](TRANSFER-SHARING.md) complete from a fabricated magnet or a parsable test fixture. Export from a real local or rTorrent transfer after discarding its original input, then import into an independent real client and assert exact v1/v2/hybrid infohash, preserved supported trackers and actual observed metadata/peer discovery where available. A `.torrent` export additionally requires independently validated original info bytes and v2 piece layers when required. Test private, offline and unavailable-metadata negative paths without leaking account secrets into evidence.
+
+For [Expository association](EXPOSITORY-FILE-ASSOCIATIONS.md), require an actual per-profile rTorrent file inventory and installed permission-gated IPC/pairing with Expository, plus denial/revocation and stale/incomplete-result tests before claiming usable badges or file-operation warnings. Both are P1 and cannot replace ordinary live torrent acceptance.
+
+
 ## Current magnet qualification contract (2026-11-02)
 
 Preserve the installed `.torrent` positive [41363266446](https://github.com/gamesbyian/Chunks/actions/runs/41363266446). The repaired real host/JVM BEP9 test [41380769579](https://github.com/gamesbyian/Chunks/actions/runs/41380769579) proves the development rTorrent can obtain peer metadata and verified pieces. It does not qualify an Android APK or establish public tracker availability.
