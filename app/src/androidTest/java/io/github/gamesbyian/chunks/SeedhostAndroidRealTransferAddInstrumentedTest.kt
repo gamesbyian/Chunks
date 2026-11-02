@@ -54,7 +54,7 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
         Base64.decode(requireNotNull(argument(key)), Base64.NO_WRAP), Charsets.UTF_8)
 
     private fun report(stage: String) {
-        require(stage.matches(Regex("(file|magnet|magnet2)-(preflight|review|ui-verified|metadata|peer-progress|bytes-verified|restarted|passed|uncertain)")))
+        require(stage.matches(Regex("(file|magnet|magnet2)-(preflight|review|ui-verified|registered|readback-error|metadata|peer-progress|bytes-verified|restarted|passed|uncertain)")))
         InstrumentationRegistry.getInstrumentation().sendStatus(
             2, Bundle().apply { putString("chunks_real_add_stage", stage) })
     }
@@ -219,6 +219,8 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
             // Independent RPC readback, NOT a UI state echo. A magnet must
             // resolve its metadata; both sources must receive and verify pieces.
             var observedProgress = false
+            var registered = false
+            var readbackError = false
             var metadata = false
             var peers = false
             val deadline = SystemClock.elapsedRealtime() + 180_000L
@@ -229,8 +231,16 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                     val traffic = transfer?.let { remote.readTrafficSample(hash) }
                     Pair(transfer, traffic)
                 } }.getOrNull()
+                if (result == null && !readbackError) {
+                    readbackError = true
+                    report("$stage-readback-error")
+                }
                 val transfer = result?.first
                 val traffic = result?.second
+                if (transfer != null && !registered) {
+                    registered = true
+                    report("$stage-registered")
+                }
                 if (transfer?.started == true && transfer.directory == parent &&
                     transfer.name == preview.name && transfer.sizeBytes == preview.sizeBytes &&
                     traffic != null && traffic.hash.equals(hash, true) &&
