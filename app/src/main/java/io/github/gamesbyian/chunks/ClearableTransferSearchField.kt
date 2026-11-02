@@ -45,6 +45,16 @@ internal fun ClearableTransferSearchField(
     BoxWithConstraints(modifier.fillMaxWidth()) {
         val compact = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Put this above the focused input: IME resize/pan can otherwise
+            // cover a second row below the field at narrow accessibility sizes.
+            if (compact && value.isNotEmpty()) {
+                TextButton(
+                    onClick = clear,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) {
+                    Text("Clear search")
+                }
+            }
             OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
@@ -63,14 +73,6 @@ internal fun ClearableTransferSearchField(
                 } else null,
                 modifier = Modifier.fillMaxWidth().focusRequester(fieldFocus)
             )
-            if (compact && value.isNotEmpty()) {
-                TextButton(
-                    onClick = clear,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                ) {
-                    Text("Clear search")
-                }
-            }
         }
     }
 }
