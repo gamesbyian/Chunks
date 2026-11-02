@@ -15,8 +15,11 @@ import sys
 from check_native_atlas_contract import required_images
 
 REPO = Path(__file__).resolve().parent.parent
-# Accepted unsharded run 41367486529 executed 362 genuine tests.
-BASELINE_EXECUTED_TESTS = 362
+# Authoritative accepted JUnit run 41367486529: 334 cases, 306 executed,
+# 28 deliberately skipped. Android console's '362 tests' is NOT 362 executed.
+BASELINE_JUNIT_TESTS = 334
+BASELINE_EXECUTED_TESTS = 306
+MAX_BASELINE_SKIPPED = 28
 
 
 def verify(root, count, sha, screenshot_manifest=None):
@@ -25,7 +28,7 @@ def verify(root, count, sha, screenshot_manifest=None):
     manifest = screenshot_manifest
     if manifest is None:
         manifest = required_images((REPO / "tools/native_add_review.sh").read_text())
-    totals = {"executed": 0, "failed": 0, "skipped": 0, "reports": 0}
+    totals = {"tests": 0, "executed": 0, "failed": 0, "skipped": 0, "reports": 0}
     summaries = []
     known_test_ids = set()
     for index in range(count):
@@ -53,6 +56,10 @@ def verify(root, count, sha, screenshot_manifest=None):
             known_test_ids.add(ident)
             if case.get("outcome") not in ("passed", "skipped"):
                 raise ValueError("failed test in accepted shard")
+        if int(j.get("tests", -1)) != int(j["executed"]) + int(j["skipped"]):
+            raise ValueError("shard inconsistent JUnit skip/execute counts")
+        if sum(case["outcome"] == "skipped" for case in cases) != int(j["skipped"]):
+            raise ValueError("shard skipped count contradicts per-case outcomes")
         for key in totals:
             totals[key] += int(j[key])
         print("CHUNKS_NATIVE_SHARDS_PHASE: shard=" + str(index) +
@@ -67,8 +74,10 @@ def verify(root, count, sha, screenshot_manifest=None):
         })
     if len(known_test_ids) != totals['executed'] + totals['skipped']:
         raise ValueError('missing test-case identities')
-    if totals['executed'] < BASELINE_EXECUTED_TESTS:
-        raise ValueError('below accepted 362-test unsharded baseline')
+    if (totals['tests'] < BASELINE_JUNIT_TESTS or
+            totals['executed'] < BASELINE_EXECUTED_TESTS or
+            totals['skipped'] > MAX_BASELINE_SKIPPED):
+        raise ValueError('below accepted complete JUnit coverage or excessive skips')
     screenshots = {}
     for name in manifest:
         candidates = []
@@ -103,7 +112,8 @@ def main():
         # Manifest filenames are public; never print JUnit or screenshot contents.
         print(f"CHUNKS_NATIVE_SHARDS: result=failed class={type(exc).__name__}")
         raise SystemExit(1)
-    print("CHUNKS_NATIVE_SHARDS: result=passed executed=" +
+    print("CHUNKS_NATIVE_SHARDS: result=passed tests=" +
+          str(result["junit"]["tests"]) + " executed=" +
           str(result["junit"]["executed"]) +
           " failed=0 skipped=" + str(result["junit"]["skipped"]) +
           " real_pngs=" + str(result["mandatory_real_png_count"]) +
