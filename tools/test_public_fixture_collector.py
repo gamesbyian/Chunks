@@ -54,6 +54,46 @@ class CollectorTest(unittest.TestCase):
         self.assertFalse(desc["tracker_retained"])
         self.assertEqual(f.parse_bencode(raw)[1], f.parse_bencode(safe)[1])
 
+    def test_bep27_private_torrent_never_becomes_public_source_magnet(self):
+        # Even an approved announce host and a genuine infohash cannot turn
+        # private=1 metainfo into a public DHT/PEX test swarm.
+        raw = enc({b"announce": b"https://bt1.archive.org:6969/announce",
+                   b"info": {**self.info, b"private": 1}})
+        with self.assertRaisesRegex(ValueError, "BEP 27 private"):
+            f.torrent_summary(raw, 100)
+        # Preserve the public importer boundary when no flag or private=0.
+        for info in (self.info, {**self.info, b"private": 0}):
+            source = enc({b"info": info})
+            safe, detail = f.torrent_summary(source, 100)
+            self.assertEqual(hashlib.sha1(enc(info)).hexdigest(),
+                             detail["infohash_v1"])
+            self.assertEqual(f.parse_bencode(source)[1], f.parse_bencode(safe)[1])
+
+    def test_bep27_private_flag_must_be_a_recognized_integer(self):
+        for invalid in (-1, 2, b"1", b"", []):
+            with self.subTest(value=invalid):
+                source = enc({b"info": {**self.info, b"private": invalid}})
+                with self.assertRaisesRegex(ValueError, "Invalid BEP 27"):
+                    f.torrent_summary(source, 100)
+
+    def test_license_or_tracker_allowlisting_cannot_override_private_flag(self):
+        metadata = {
+            "metadata": {"title": "Private despite public attribution",
+                         "licenseurl": self.license_url},
+            "files": [{"name": "example_archive.torrent",
+                       "format": "Archive BitTorrent", "source": "derivative"}],
+        }
+        private_torrent = enc({
+            b"announce": b"https://bt1.archive.org:6969/announce",
+            b"info": {**self.info, b"private": 1},
+        })
+        def fake_fetch(url, cap):
+            return (json.dumps(metadata).encode("utf-8")
+                    if "/metadata/" in url else private_torrent)
+        with patch.object(f, "fetch", side_effect=fake_fetch):
+            with self.assertRaisesRegex(ValueError, "BEP 27 private"):
+                f.archive_fixture("source-with-private-flag", 100)
+
     def test_unsafe_name_path_and_size_rejected(self):
         for name in (b"..", b"/absolute", b"../escape", b"folder\\escape", b"bad\nname"):
             with self.subTest(name=name):
