@@ -16,7 +16,7 @@ private fun validIsbn10(digits: String): Boolean =
         }.sum() % 11 == 0
 
 private fun validIsbn13(digits: String): Boolean =
-    digits.matches(Regex("(?:978|979)[0-9]{10}")) &&
+    digits.matches(Regex("(?:978|979)[0-9]{10}")) && !digits.startsWith("9790") &&
         digits.last().digitToInt() == isbn13CheckDigit(digits.take(12))
 
 private fun validIssn8(digits: String): Boolean {
