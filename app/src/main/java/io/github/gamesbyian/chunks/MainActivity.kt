@@ -206,6 +206,10 @@ private fun ChunksApp(
     var password by remember { mutableStateOf(remembered?.password.orEmpty()) }
     // Remembering is the default. Every user can opt out before Connect.
     var rememberLogin by remember { mutableStateOf(vault.rememberingEnabled()) }
+    // A cold launch may attempt ONE read-only authenticated connection using the last
+    // verified saved login. A failed 401/timeout does not start a retry loop, and
+    // Disconnect/Cancel never automatically reconnect within the same app session.
+    var startupReconnectAttempted by remember { mutableStateOf(false) }
     var savedLoginPresent by remember {
         mutableStateOf(remembered != null || savedProfiles.isNotEmpty())
     }
@@ -537,6 +541,12 @@ private fun ChunksApp(
             }
         } else if (server == null) {
             ConnectionScreen(
+                startupReconnectEligible = RemoteStartupReconnectPolicy.shouldAttempt(
+                    rememberingEnabled = rememberLogin,
+                    hasSavedVerifiedLogin = remembered != null,
+                    alreadyAttempted = startupReconnectAttempted
+                ),
+                onStartupReconnectConsumed = { startupReconnectAttempted = true },
                 endpoint = endpoint, username = username, password = password,
                 rpcPath = rpcPath, onRpcPath = { rpcPath = it },
                 error = error, loading = loading,
@@ -1209,6 +1219,8 @@ private fun ConnectionScreen(
     rpcPath: String = "", onRpcPath: (String) -> Unit = {},
     diagnostics: ConnectionDiagnostics = ConnectionDiagnostics(),
     onCancelConnect: () -> Unit = {},
+    startupReconnectEligible: Boolean = false,
+    onStartupReconnectConsumed: () -> Unit = {},
     rememberLogin: Boolean, savedLoginPresent: Boolean,
     savedProfiles: List<RememberedRemoteProfileRoster.Profile>, credentialNotice: String?,
     onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
@@ -1222,6 +1234,16 @@ private fun ConnectionScreen(
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
     var pendingForget by remember { mutableStateOf<String?>(null) }
+    // Reuse the exact existing verified Connect operation. No saved password or
+    // endpoint is broadcast to an unverified profile, and no torrent mutation
+    // occurs merely because the app opened. Consume before invoking the action
+    // to avoid an automatic loop if authentication/network validation fails.
+    LaunchedEffect(startupReconnectEligible) {
+        if (startupReconnectEligible) {
+            onStartupReconnectConsumed()
+            onConnect()
+        }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
