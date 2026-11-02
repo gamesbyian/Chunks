@@ -111,7 +111,11 @@ These proposed tests are advisory. The [active work queue](../WORK-QUEUE.md), [c
 - [V2EX 2026 Android remote showcase](https://www.v2ex.com/t/1248950): developer describes multi-server overview, monospaced rate digits, swipe right pause/resume, swipe left delete, long-press bulk selection, offline cache and detail editing. Useful to examine, but a developer description does not prove user preference; swipe-to-delete needs discoverability and explicit destructive confirmation.
 - [qBittorrent #23798 resolution](https://github.com/qbittorrent/qBittorrent/issues/23798): secondary WebUI sorting implemented after reported desktop/WebUI discrepancy. A closed issue is not a validated Android design choice.
 - [BiglyBT mobile comparison matrix](https://github.com/BiglySoftware/BiglyBT-Android/blob/master/docs/TorrentAppComparison.md): comparative feature inventory from a vendor, version-dependent and not independent usability evidence.
+- [torrentTUI](https://github.com/thijsvos/torrentTUI): documentation uses Tab to **cycle** sorting columns and a separate R control to reverse order, demonstrating a low-friction cycling pattern. This is a developer-described implementation, not firsthand user evidence that cycling is preferable.
+- [tremc](https://github.com/tremc/tremc): Transmission terminal remote uses a dedicated **sort menu**, plus a separate control to cycle one-, two-, and three-line transfer presentations. It offers the contrast for a deliberate cycle-vs-menu experiment. Neither example establishes Android touch usability.
 - [Transmission and qBittorrent reference UI](https://github.com/transmission/transmission) / [qBittorrent](https://github.com/qbittorrent/qBittorrent): inspect actual current running clients before claiming a gesture, menu or shortcut functions as described in older testimony.
+
+**Specific unresolved design question:** Despite directed searches, no robust, independent first-person comparison was found that prefers cycling sort keys over selecting from a dropdown (or the reverse) in a mobile torrent controller. S01-S04 establish the importance of sort access and persistence, not the optimal selection widget. P3 must test the alternatives instead of presenting a conjecture as community consensus.
 
 ## Known sample gaps and follow-on method
 
