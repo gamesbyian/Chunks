@@ -3,7 +3,7 @@
 **Implementation reuse audit (2026-10-29):** [Open-source reuse candidates for dependency-first Chunks development](research/OPEN-SOURCE-REUSE-2026-10-29.md). Source-level references to LibreTorrent/libtorrent4j, Flood/Transdroid/ruTorrent, Android storage/background alternatives, verified licences, expected adaptations, test plans and explicit non-reuse boundaries. This is **research**, not a competing work queue or Chunks runtime acceptance.
 
 
-**Control-level user testimony (2026-11-01):** [Multilingual torrent-client UI and remote-control interaction atlas](research/TORRENT-CLIENT-CONTROL-UX-VOICE-2026-11-01.md). Thirty-two source discussions coded for sorting, inline/bulk controls, folder selection, compact lists, settings, parity, gestures and trade-offs; descriptive research, not binding Chunks UX or proof of current product behaviour.
+**Control-level user testimony (2026-11-01):** [Multilingual torrent-client UI and remote-control interaction atlas](research/TORRENT-CLIENT-CONTROL-UX-VOICE-2026-11-01.md). Thirty-eight source discussions coded for sorting, inline/bulk controls, folder selection, compact lists, settings, parity, gestures and trade-offs; descriptive research, not binding Chunks UX or proof of current product behaviour.
 
 ## Human-centered BitTorrent ecosystem research (2026-10-29)
 
