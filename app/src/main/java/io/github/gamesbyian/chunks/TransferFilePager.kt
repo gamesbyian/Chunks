@@ -1,21 +1,15 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RemoteFile
@@ -64,22 +58,12 @@ internal fun TransferFilePager(
             Text("No files were reported for this transfer.",
                 style = MaterialTheme.typography.bodySmall)
         } else {
-            Text("Showing ${current.firstIndex + 1}–${current.endExclusive} of ${files.size} files",
-                style = MaterialTheme.typography.bodySmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { requestedPage = current.number - 1 },
-                    enabled = current.number > 0,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                ) { Text("Previous 40") }
-                OutlinedButton(
-                    onClick = { requestedPage = current.number + 1 },
-                    enabled = current.number < current.count - 1,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                ) { Text("Next 40") }
-            }
-            Text("Page ${current.number + 1} of ${current.count}",
-                style = MaterialTheme.typography.labelMedium)
+            RemoteFilePagerControls(
+                page = current,
+                totalFiles = files.size,
+                onPrevious = { requestedPage = current.number - 1 },
+                onNext = { requestedPage = current.number + 1 }
+            )
             if (!mainView || snapshotStale) {
                 Text("Refresh the main server view before changing file priorities.",
                     style = MaterialTheme.typography.bodySmall)
