@@ -42,7 +42,14 @@ def fetch(url, limit, offset=0):
 
 
 def prepare(root):
-    manifest, debian = debian_fixture(2 * 1024**3, architecture="arm64")
+    # The protected development Seedhost now reports the arm64 ISO already
+    # 100% piece-verified with zero new received bytes (run 41448483130).
+    # Never delete or overwrite that existing payload to manufacture traffic.
+    # Use another official, published-checksum-validated Debian publisher
+    # torrent for the one approved live test; preserve the proven disposable
+    # arm64 control and the independent Sintel second source.
+    architecture = "amd64" if os.getenv("CHUNKS_DISPOSABLE") == "0" else "arm64"
+    manifest, debian = debian_fixture(2 * 1024**3, architecture=architecture)
     sintel_url = "https://webtorrent.io/torrents/sintel.torrent"
     with urllib.request.urlopen(sintel_url, timeout=30) as response:
         sintel = response.read(2_097_153)
