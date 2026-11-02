@@ -93,15 +93,15 @@ def license_ok(meta):
     if segments[:2] in (["publicdomain", "zero"], ["publicdomain", "mark"]):
         return (segments[2] == "1.0" and len(segments) <= 4
                 and (len(segments) == 3 or bool(re.fullmatch(
-                    r"deed\\.[a-z]{2,8}", segments[3]))))
+                    r"deed\.[a-z]{2,8}", segments[3]))))
     if (segments[0] != "licenses" or segments[1] not in
             ("by", "by-sa", "by-nc", "by-nd", "by-nc-sa", "by-nc-nd")
-            or not re.fullmatch(r"[1-4]\\.[0-9]+", segments[2])
+            or not re.fullmatch(r"[1-4]\.[0-9]+", segments[2])
             or len(segments) > 5):
         return False
     # Older CC deeds may append a jurisdiction (e.g. /us/) or a translated
     # deed; do not treat an arbitrary suffix as a recognized CC license.
-    return all(bool(re.fullmatch(r"(?:[a-z]{2,8}|deed\\.[a-z]{2,8})", s))
+    return all(bool(re.fullmatch(r"(?:[a-z]{2,8}|deed\.[a-z]{2,8})", s))
                for s in segments[3:])
 
 def bstr(raw):
