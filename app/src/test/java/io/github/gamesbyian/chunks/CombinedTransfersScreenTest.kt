@@ -174,7 +174,8 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Showing 1", substring = true).assertExists()
         // The qualified shared field exposes a screen-reader-labelled 48dp
         // clear action; search is the only thing it changes.
-        rule.onNodeWithContentDescription("Clear search").performScrollTo().performClick()
+        revealDescription("Clear search")
+        rule.onNodeWithContentDescription("Clear search").performClick()
         rule.onNodeWithText("Showing 2", substring = true).assertExists()
         assertTrue("Viewing and clearing a search must issue no server lifecycle commands",
             commands.isEmpty())
