@@ -42,7 +42,9 @@ data class MediaGraphClaim(
 ) {
     init {
         require(provider.matches(Regex("[a-z][a-z0-9-]*")))
-        require(recordKey.isNotBlank() && fieldKey.isNotBlank())
+        // Opaque sanitized locator, never a URL, file path, query string or tracker/passkey.
+        val safeLocator = Regex("""[A-Za-z0-9][A-Za-z0-9_.:$\[\]-]{0,255}""")
+        require(recordKey.matches(safeLocator) && fieldKey.matches(safeLocator))
         require(revision >= 0)
         require(subject != target)
         require(predicate != MediaGraphPredicate.ABOUT_TOPIC || target.kind == MediaGraphEntityKind.TOPIC)

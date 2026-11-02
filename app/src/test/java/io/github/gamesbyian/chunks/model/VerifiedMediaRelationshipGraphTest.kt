@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks.model
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class VerifiedMediaRelationshipGraphTest {
@@ -146,6 +149,18 @@ class VerifiedMediaRelationshipGraphTest {
         assertThrows(IllegalArgumentException::class.java) {
             MediaGraphEntity("TMDB", MediaGraphEntityKind.FILM, "1")
         }
+    }
+
+    @Test fun providerRecordKeysMustNotContainPathsOrQueryCredentials() {
+        val movie = entity("movie", MediaGraphEntityKind.FILM)
+        val book = entity("book", MediaGraphEntityKind.BOOK_WORK)
+        assertThrows(IllegalArgumentException::class.java) {
+            MediaGraphClaim("source", "https://tracker.example/announce?passkey=secret", "id", 1,
+                movie, MediaGraphPredicate.ADAPTED_FROM, book, MediaGraphClaimState.VERIFIED)
+        }
+        val safe = MediaGraphClaim("source", "episode:42", "crew[0].person", 1,
+            movie, MediaGraphPredicate.ADAPTED_FROM, book, MediaGraphClaimState.VERIFIED)
+        assertEquals("episode:42", safe.recordKey)
     }
 
     @Test fun offlinePureQueryHasBoundedLimitAndNoUnlimitedHops() {

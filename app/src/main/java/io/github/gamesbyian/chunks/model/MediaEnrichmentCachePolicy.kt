@@ -85,8 +85,8 @@ class MediaEnrichmentCachePolicy private constructor(
         return when (receipt.state) {
             MediaMetadataReceiptState.VERIFIED -> when {
                 nowMs < receipt.expiresAtMs -> MediaMetadataCacheDecision.FRESH_VERIFIED
-                staleDisplayAllowed -> MediaMetadataCacheDecision.STALE_DISPLAY_ONLY
                 networkAllowed -> MediaMetadataCacheDecision.FETCH_ELIGIBLE
+                staleDisplayAllowed -> MediaMetadataCacheDecision.STALE_DISPLAY_ONLY
                 else -> MediaMetadataCacheDecision.OFFLINE_MISS
             }
             MediaMetadataReceiptState.NOT_FOUND -> if (nowMs < receipt.expiresAtMs) {

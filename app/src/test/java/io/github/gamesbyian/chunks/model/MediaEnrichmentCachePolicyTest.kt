@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks.model
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class MediaEnrichmentCachePolicyTest {
@@ -18,7 +21,8 @@ class MediaEnrichmentCachePolicyTest {
         val cache = MediaEnrichmentCachePolicy.build(listOf(receipt(MediaMetadataReceiptState.VERIFIED)))
         assertEquals(MediaMetadataCacheDecision.FRESH_VERIFIED, decision(cache))
         assertEquals(MediaMetadataCacheDecision.FETCH_ELIGIBLE, decision(cache, now=2000))
-        assertEquals(MediaMetadataCacheDecision.STALE_DISPLAY_ONLY, decision(cache, now=2000, stale=true))
+        assertEquals(MediaMetadataCacheDecision.FETCH_ELIGIBLE, decision(cache, now=2000, stale=true))
+        assertEquals(MediaMetadataCacheDecision.STALE_DISPLAY_ONLY, decision(cache, now=2000, network=false, stale=true))
         assertEquals(MediaMetadataCacheDecision.OFFLINE_MISS, decision(cache, now=2000, network=false))
         assertEquals(MediaMetadataCacheDecision.SCHEMA_QUARANTINE, decision(cache, schema=2))
     }
