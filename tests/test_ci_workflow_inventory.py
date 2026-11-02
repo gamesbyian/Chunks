@@ -188,6 +188,75 @@ jobs:
                               if row["path"].endswith("different.yml"))[
                                   "self_trigger_on_main_push"])
 
+    def test_push_only_paths_does_not_claim_pr_path_filter(self):
+        path = self.fixture("push-only.yml", """name: Push-only path filtering
+on:
+  push:
+    paths:
+      - 'app/**'
+  pull_request:
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+""")
+        result = inspect(path, self.root)
+        self.assertFalse(result["pr_paths_filter"])
+        self.assertIn("pull_request", result["events"])
+        self.assertIn("push", result["events"])
+
+    def test_pr_and_pr_target_only_paths_are_event_scoped(self):
+        cases = {
+            "pr.yml": """name: PR includes
+on:
+  push:
+  pull_request:
+    paths:
+      - 'app/**'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+""",
+            "pr-ignore.yml": """name: PR excludes
+on:
+  push:
+    paths:
+      - 'tools/**'
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+""",
+            "target.yml": """name: Target includes
+on:
+  push:
+    paths:
+      - 'tools/**'
+  pull_request_target:
+    paths:
+      - '.github/**'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+""",
+            "unfiltered-target.yml": """name: Target unfiltered
+on:
+  push:
+    paths-ignore:
+      - '*.md'
+  pull_request_target:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+""",
+        }
+        for name, source in cases.items():
+            with self.subTest(name=name):
+                result = inspect(self.fixture(name, source), self.root)
+                self.assertEqual(name != "unfiltered-target.yml",
+                                 result["pr_paths_filter"])
+
     def test_feature_push_is_not_flagged_as_main_duplicate(self):
         path = self.fixture("feature.yml", """name: Feature
 on:
