@@ -1813,6 +1813,9 @@ private fun TransferCard(
     finishInOrderScope: String? = null
 ) {
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
+    // Exact profile/hash identity prevents a recycled row inheriting another
+    // torrent's expansion. No network/file operation occurs on disclosure.
+    var detailsOpen by rememberSaveable(moveScope, transfer.hash) { mutableStateOf(false) }
     Card(
         colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface),
         shape = RoundedCornerShape(24.dp),
@@ -1822,6 +1825,7 @@ private fun TransferCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (detailsOpen) {
             if (alias != null) {
                 Text("Original torrent: " + transfer.name,
                     style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary,
@@ -1831,6 +1835,7 @@ private fun TransferCard(
                 originalName = transfer.name, hash = transfer.hash,
                 alias = alias, onSave = onAliasSave, session = aliasSession
             )
+            }
             ChunkedProgressBar(
                 progress = transfer.fractionComplete,
                 modifier = Modifier.fillMaxWidth(),
@@ -1859,6 +1864,19 @@ private fun TransferCard(
                     else -> ChunksTone.PAUSED
                 })
             }
+            val conciseRates = buildList {
+                transfer.downBytesPerSecond?.let { add("↓ " + Units.bytes(it) + "/s") }
+                transfer.upBytesPerSecond?.let { add("↑ " + Units.bytes(it) + "/s") }
+            }.joinToString(" · ")
+            if (!detailsOpen && conciseRates.isNotBlank()) {
+                Text(conciseRates, style = MaterialTheme.typography.bodySmall)
+            }
+            OutlinedButton(
+                onClick = { detailsOpen = !detailsOpen },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics { stateDescription = if (detailsOpen) "Expanded" else "Collapsed" }
+            ) { Text(if (detailsOpen) "Hide details" else "More details") }
+            if (detailsOpen) {
             if (transfer.started && transfer.downBytesPerSecond == 0L &&
                 transfer.fractionComplete < 1f) {
                 Text("No download traffic in this snapshot. Start state alone does not prove " +
@@ -1958,6 +1976,7 @@ private fun TransferCard(
                         onSettled = onLifecycleSettled
                     )
                 }
+            }
             }
         }
     }
