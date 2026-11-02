@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
-from urllib.parse import urlencode
+from urllib.parse import urlencode, quote
 
 from validate_public_magnet_catalog import validate
 
@@ -81,6 +81,26 @@ class PublicMagnetCatalogIdentityTest(unittest.TestCase):
     def test_control_bytes_in_raw_magnet_are_rejected(self):
         for suffix in ("\n", "\r", "\t", "\x00", "\x7f"):
             self.check({**self.item, "magnet": self.item["magnet"] + suffix})
+
+
+    def test_tracker_raw_control_characters_cannot_be_hidden_by_urlsplit(self):
+        for control in ("\\n", "\\r", "\\t", "\\x00", "\\x7f"):
+            malicious = "udp://tracker.opentrackr.org:1337/announce" + control
+            with self.subTest(control=repr(control)):
+                self.check({**self.item, "magnet": self.item["magnet"]
+                            + "&tr=" + quote(malicious, safe="")})
+
+    def test_tracker_invalid_and_missing_udp_ports_fail_closed(self):
+        for malformed in (
+            "udp://tracker.opentrackr.org/announce",
+            "udp://tracker.opentrackr.org:0/announce",
+            "udp://tracker.opentrackr.org:99999/announce",
+            "udp://tracker.opentrackr.org:invalid/announce",
+            "https://tracker.opentrackr.org:99999/announce",
+        ):
+            with self.subTest(url_shape=malformed.split("/")[0]):
+                self.check({**self.item, "magnet": self.item["magnet"]
+                            + "&tr=" + quote(malformed, safe="")})
 
 
 if __name__ == "__main__":
