@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
 import io.github.gamesbyian.chunks.rpc.RemoteAddStarter
@@ -90,6 +91,29 @@ fun VerifiedAddScreen(
     var outcome by remember { mutableStateOf<String?>(null) }
     var uncertain by remember { mutableStateOf(false) }
     var alreadyAttempted by remember { mutableStateOf(false) }
+    // Freeze the command actually submitted: mutable checkbox values do not
+    // authorize treating an already-started Add as a stopped Add on recheck.
+    var nativeStartedAttempt by remember { mutableStateOf(false) }
+    var reviewedAttempt by remember { mutableStateOf<StoppedRemoteAddPlan?>(null) }
+    var submittedPlan by remember { mutableStateOf<StoppedRemoteAddPlan?>(null) }
+    var observedProgress by remember { mutableStateOf<io.github.gamesbyian.chunks.rpc.RemoteAddProgress?>(null) }
+    var progressReadFailed by remember { mutableStateOf(false) }
+    var progressRevision by remember { mutableStateOf(0) }
+    LaunchedEffect(remote, submittedPlan, progressRevision) {
+        val target = submittedPlan ?: return@LaunchedEffect
+        repeat(60) {
+            try {
+                observedProgress = remote.readAddProgress(target)
+                progressReadFailed = false
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (_: Exception) {
+                progressReadFailed = true
+                return@LaunchedEffect
+            }
+            kotlinx.coroutines.delay(2_000L)
+        }
+    }
     var startAfterAdd by remember { mutableStateOf(true) }
     val finishInOrderStore = remember(finishInOrderScope) { finishInOrderScope?.let { FinishInOrderStore(context, it) } }
     var finishInOrderDefault by remember(finishInOrderScope) { mutableStateOf(finishInOrderStore?.defaultForNewAdds() == true) }
@@ -404,9 +428,11 @@ fun VerifiedAddScreen(
                             awaitingConfirmation = false
                             submitting = true
                             alreadyAttempted = true
+                            reviewedAttempt = plan
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val orderScope = finishInOrderScope?.takeIf {
                                 bytes != null && finishInOrderAfterAdd && (selectedTorrent?.fileCount ?: 0) >= 2 }
+                            nativeStartedAttempt = startAfterAdd && orderScope == null
                             var orderNote: String? = null
                             scope.launch {
                                 try {
@@ -435,6 +461,7 @@ fun VerifiedAddScreen(
                                     uncertain = result !is RemoteAddAndStart.Started &&
                                         (result !is RemoteAddAndStart.AddedStopped ||
                                             result.result !is RemoteAddOutcome.VerifiedStopped)
+                                    if (bytes == null) submittedPlan = plan
                                     outcome = when (result) {
                                         is RemoteAddAndStart.Started ->
                                             "Verified: added and started on rTorrent. Peer availability and payload bytes still need observation in Transfers."
@@ -498,30 +525,57 @@ fun VerifiedAddScreen(
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Operation outcome", fontWeight = FontWeight.Bold)
                         Text(outcome.orEmpty())
+                        observedProgress?.let { progress ->
+                            Text(progress.summary())
+                            val total = progress.payloadSizeBytes
+                            val verified = progress.payloadVerifiedBytes
+                            if (total != null && verified != null)
+                                Text("Payload: ${Units.bytes(verified)} verified of ${Units.bytes(total)}")
+                        }
+                        if (progressReadFailed) Text(
+                            "Transfer status could not be refreshed. Check the server state before another action.")
                     }
                 }
             }
         }
-        if (alreadyAttempted && plan != null) {
+        if (alreadyAttempted && reviewedAttempt != null) {
             item {
                 OutlinedButton(
                     onClick = {
                         rechecking = true
-                        val reviewedPlan = plan
+                        progressRevision++
+                        val reviewedPlan = requireNotNull(reviewedAttempt)
                         scope.launch {
                             try {
-                                val checked = remote.reconcileStoppedAdd(reviewedPlan)
-                                uncertain = checked !is RemoteAddOutcome.VerifiedStopped
-                                outcome = when (checked) {
-                                    is RemoteAddOutcome.VerifiedStopped ->
-                                        "Read-only check verified this exact hash is stopped at " +
-                                            checked.destination + ". Chunks cannot determine which client originally added it."
-                                    is RemoteAddOutcome.PendingVerification ->
-                                        "Read-only check did not verify the exact hash, destination and stopped state. Inspect the server before deciding what to do next."
-                                    is RemoteAddOutcome.Uncertain ->
-                                        "Read-only server check could not complete. The earlier Add may still have succeeded; do not retry blindly."
-                                    is RemoteAddOutcome.AlreadyPresent ->
-                                        "The hash exists, but placement still requires inspection before another action."
+                                if (nativeStartedAttempt) {
+                                    // A native load may have applied before the gateway
+                                    // lost its reply. Verify the original started intent
+                                    // with exact hash, Place and ACTIVE engine, read only.
+                                    val checked = remote.reconcileStartedAdd(reviewedPlan)
+                                    uncertain = checked !is RemoteAddAndStart.Started
+                                    outcome = if (checked is RemoteAddAndStart.Started) {
+                                        if (!reviewedPlan.useServerDefault) {
+                                            val saved = runCatching {
+                                                onCustomPlaceVerified(reviewedPlan.destination)
+                                            }.getOrDefault(false)
+                                            if (!saved) "Server now confirms this exact hash, destination and active engine. Recent folder shortcut could not be saved."
+                                            else "Server now confirms this exact hash, destination and active engine. No Start or Add was resent."
+                                        } else "Server now confirms this exact hash, destination and active engine. No Start or Add was resent."
+                                    } else "Read-only check did not confirm this exact hash is started AND active at the selected destination. It may be queued, stopped, missing or unavailable. Inspect current server state; no Add or Start was resent."
+                                } else {
+                                    val checked = remote.reconcileStoppedAdd(reviewedPlan)
+                                    uncertain = checked !is RemoteAddOutcome.VerifiedStopped
+                                    outcome = when (checked) {
+                                        is RemoteAddOutcome.VerifiedStopped ->
+                                            "Read-only check verified this exact hash is stopped at " +
+                                                checked.destination + ". Chunks cannot determine which client originally added it."
+                                        is RemoteAddOutcome.PendingVerification ->
+                                            "Read-only check did not verify the exact hash, destination and stopped state. Inspect the server before deciding what to do next."
+                                        is RemoteAddOutcome.Uncertain ->
+                                            "Read-only server check could not complete. The earlier Add may still have succeeded; do not retry blindly."
+                                        is RemoteAddOutcome.AlreadyPresent ->
+                                            "The hash exists, but placement still requires inspection before another action."
+                                    }
                                 }
                             } catch (_: Exception) {
                                 uncertain = true

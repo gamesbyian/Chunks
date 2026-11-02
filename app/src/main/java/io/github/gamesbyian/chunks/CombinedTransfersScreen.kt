@@ -1040,7 +1040,8 @@ internal fun toggleScope(scope: EnvironmentViewScope, id: EnvironmentId): Enviro
 
 /** Text summary of one row; unknown facts are said as unknown, never as zero. */
 internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
-    when (row.started) { true -> "Started"; false -> "Stopped"; null -> "State unknown" },
+    if (row.metadataPending == true) "Fetching metadata" else
+        when (row.started) { true -> "Started"; false -> "Stopped"; null -> "State unknown" },
     row.progressPpm?.let { "${it / 10_000}%" } ?: "Progress unknown",
     row.sizeBytes?.let { Units.bytes(it) } ?: "Size unknown",
     "↓ " + (row.downloadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),

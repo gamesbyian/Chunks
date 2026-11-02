@@ -1,5 +1,12 @@
 # Chunks active engineering work queue
 
+## Current P0 #4 dispatch (2026-11-02)
+
+The installed `.torrent` peer-byte positive [41363266446](https://github.com/gamesbyian/Chunks/actions/runs/41363266446) is accepted and preserved; do not repeat it for magnet diagnosis. Repaired host/JVM [41380769579](https://github.com/gamesbyian/Chunks/actions/runs/41380769579), exact main `ca57b0c0aa9512b6327be6b03e966fc3276ee8b8`, now proves genuine BEP9 metadata and all 512 KiB peer/piece bytes with cleanup. The preceding red run never established registration because its trackerless fixture conflicted with the host insert hook. See [QUALITY-LEDGER](QUALITY-LEDGER.md).
+
+Next executable slice: finish exact-head qualification and merge #1025, then run installed API35 Preview against authorized live rTorrent with two independently sourced public magnets, ordinary discovery, UI Stop/Start with further pieces while incomplete, peerless truth and exact cleanup. The disposable actual-MainActivity positive [41386359896](https://github.com/gamesbyian/Chunks/actions/runs/41386359896) and full native [41386359845](https://github.com/gamesbyian/Chunks/actions/runs/41386359845) are accepted for their recorded checkout; later changes require their own qualification. Retain the full 334/306/28 native baseline and 24 PNGs. Offer only the exact SHA/digest-tested APK; keep physical/OEM separate. This supersedes older instructions below that dispatch the already passing `.torrent` path or treat a started placeholder as downloading.
+
+
 ## 2026-11-01 owner direction: real transfer tests are the P0 acceptance authority
 
 **Binding engineering policy:** [REAL-TRANSFER-ACCEPTANCE](REAL-TRANSFER-ACCEPTANCE.md). Prioritize actual `.torrent` and metadata-resolving magnet tests on real servers/peers and installed Chunks paths over extending mock-only suites. Mocks remain secondary edge/negative tests. Status must distinguish real adapter/host, installed emulator and physical handset; a simulator-only green check does not close a torrent feature. Reuse rTorrent/libtorrent/native API behaviour and compare known-good ruTorrent/Transdroid operations before building custom substitutes. Do not reinterpret this as automatically mutating credentialed hosts on every PR.

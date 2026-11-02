@@ -372,7 +372,7 @@ private fun ChunksApp(
                         val readbackTicket = mutationGate.ticket()
                         if (server === remote) error = null
                         try {
-                            val snapshot = remote.listTransfers(ticket.view)
+                            val snapshot = remote.listTransfersWithMetadata(ticket.view)
                             if (server === remote && remoteFence.current(ticket) &&
                                 mutationGate.acceptFreshRead(readbackTicket)) {
                                 transfers = snapshot
@@ -689,7 +689,7 @@ private fun ChunksApp(
                                 ) { credentials ->
                                     val connection = RTorrentRemote(credentials)
                                     val verifiedVersion = connection.version()
-                                    val verifiedList = connection.listTransfers(ticket.view)
+                                    val verifiedList = connection.listTransfersWithMetadata(ticket.view)
                                     // Public version/inventory must not verify a typed login or
                                     // authorize remembering it. Anonymous connections remain opt-in
                                     // by leaving both credential fields empty.
@@ -1840,11 +1840,13 @@ private fun TransferCard(
             // Wraps the pill onto its own line when the text is large.
             FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(6.dp), itemVerticalAlignment = Alignment.CenterVertically) {
-                Text((transfer.fractionComplete * 100).toInt().toString() + "% · " +
+                Text(if (transfer.metadataPending == true) "Payload size and progress pending metadata" else
+                    (transfer.fractionComplete * 100).toInt().toString() + "% · " +
                     Units.bytes(transfer.completedBytes) + " of " + Units.bytes(transfer.sizeBytes),
                     style = MaterialTheme.typography.bodySmall)
                 // rTorrent's started flag is a requested state, not proof of activity.
                 StatusPill(when {
+                    transfer.metadataPending == true -> "Fetching metadata"
                     transfer.fractionComplete >= 1f -> "Complete"
                     transfer.started -> "Start state set"
                     else -> "Stopped"

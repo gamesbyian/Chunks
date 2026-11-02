@@ -72,7 +72,7 @@ class SystemFontScaleComposeInstrumentedTest {
         "<value><array><data>" + rows.joinToString("") + "</data></array></value>"
     private fun row(fields: List<String>) = array(fields)
 
-    private fun inventory(view: String): String {
+    private fun inventory(view: String, withMetadata: Boolean = false): String {
         val rows = listOf(
             listOf(str("ab".repeat(20)), str("Public.Example.Long.Named.Archive.S01E01.mkv"),
                 num(1073741824), num(524288000), num(1), str("/home/dev/TV"),
@@ -90,7 +90,7 @@ class SystemFontScaleComposeInstrumentedTest {
             "stopped" -> listOf(rows[1])
             else -> rows
         }
-        return array(shown.map(::row))
+        return array(shown.map { row(if (withMetadata) it + num(0) else it) })
     }
 
     private fun files(): String = array((0 until 85).map { i ->
@@ -113,7 +113,7 @@ class SystemFontScaleComposeInstrumentedTest {
                     request.contains("<string>stopped</string>") -> "stopped"
                     else -> "main"
                 }
-                inventory(view)
+                inventory(view, request.contains("<string>d.is_meta=</string>"))
             }
             "f.multicall" -> files()
             else -> error("Unexpected command in read-only installed-app atlas: $method")
@@ -271,17 +271,12 @@ class SystemFontScaleComposeInstrumentedTest {
             rule.onAllNodesWithText("It's all here.")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        // A green connection assertion alone is insufficient: Android's
-        // just-dismissed IME can retain a shortened viewport for several
-        // frames, cutting the lower controls in the first screenshot.
-        // Require the actual bottom Transfer action to be composed and
-        // visible before accepting these real 200% screen pixels.
-        rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("More tools")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        rule.onNodeWithText("More tools").assertIsDisplayed()
+        // At 200% text, secondary actions may be below the first viewport.
+        // Preserve the actual initial pixels, then require ordinary vertical
+        // scrolling to make the existing More tools action visible/reachable.
+        // Node composition alone is not a visibility assertion.
         savePixels("transfers-initial")
+        rule.onNodeWithText("More tools").performScrollTo().assertIsDisplayed()
         // Occasional tools are collapsed behind More tools; they must still
         // open and show their actions at 200% type.
         rule.onNodeWithText("More tools").performClick()
@@ -304,9 +299,14 @@ class SystemFontScaleComposeInstrumentedTest {
         rule.onNodeWithText("All environments").assertIsDisplayed()
         // One lazy list: scroll by semantics so items below the fold get composed first.
         val combinedList = rule.onNode(hasScrollToIndexAction())
+        // Sort/grouping options are deliberately collapsed in the production
+        // screen. Exercise the visible disclosure before testing its controls.
+        combinedList.performScrollToNode(hasText("Change sort & grouping", substring = true))
+        rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         combinedList.performScrollToNode(hasText("Group by environment"))
         rule.onNodeWithText("Group by environment").assertIsDisplayed()
-        rule.onNodeWithContentDescription("Sorted by Name, A–Z. Reverse order").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Sorted by Name, A–Z. Reverse order")
+            .performScrollTo().assertIsDisplayed()
         combinedList.performScrollToNode(hasText("Big Buck Bunny public demo"))
         rule.onNodeWithText("Big Buck Bunny public demo").assertIsDisplayed()
         combinedList.performScrollToNode(hasText("Select…"))

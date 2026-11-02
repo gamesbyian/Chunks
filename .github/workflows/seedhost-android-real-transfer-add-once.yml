@@ -1,15 +1,8 @@
-name: P0 installed Android real Seedhost transfer and qualified APK
+name: Legacy public Ubuntu magnet diagnostic (no APK qualification)
 
-# Protected host mutations only on armed trusted main (manual or exactly one
-# owner-authorized merge marker). The APK
-# artifact is published ONLY after the identical installed binary actually
-# sends BOTH independent real upstream magnets and verifies exact-hash peer
-# bytes/pieces. No PR, scheduler or repeat-triggered mutation.
+# Historical public-swarm diagnostic only. APK qualification now uses
+# installed-rtorrent-magnets.yml with actual MainActivity and peerless truth.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-android-real-transfer-add-once.yml"
   workflow_dispatch:
     inputs:
       apply:
@@ -27,11 +20,7 @@ concurrency:
 
 jobs:
   real-installed-android-add:
-    if: >-
-      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
-          ((github.event_name == 'workflow_dispatch' && inputs.apply) ||
-           (github.event_name == 'push' &&
-            contains(github.event.head_commit.message, 'one-time magnet-only two-source Seedhost qualification'))) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1 }}
     runs-on: ubuntu-latest
     timeout-minutes: 24
     env:
@@ -87,12 +76,3 @@ jobs:
           path: ${{ runner.temp }}/chunks-real-android-add/RECEIPT.json
           retention-days: 14
           if-no-files-found: warn
-      - name: Attach qualified exact binary and cryptographic evidence only on success
-        uses: actions/upload-artifact@v4
-        with:
-          name: chunks-android-seedhost-two-magnet-qualified-apk
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            ${{ runner.temp }}/chunks-real-android-add/ACCEPTANCE.txt
-          retention-days: 14
-          if-no-files-found: error

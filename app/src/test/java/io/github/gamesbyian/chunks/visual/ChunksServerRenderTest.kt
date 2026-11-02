@@ -42,7 +42,7 @@ open class ChunksServerRenderTest {
     private fun num(n: Long) = "<value><i8>$n</i8></value>"
     private fun array(rows: List<String>) = "<value><array><data>" + rows.joinToString("") + "</data></array></value>"
 
-    private fun inventory(view: String): String {
+    private fun inventory(view: String, withMetadata: Boolean = false): String {
         val rows = listOf(
             listOf(str("ab".repeat(20)), str("Our Planet S01 (2160p)"), num(38_600_000_000), num(12_400_000_000),
                 num(1), str("/home/dev/TV"), num(52_800_000), num(1_400_000), num(410)),
@@ -51,7 +51,7 @@ open class ChunksServerRenderTest {
             listOf(str("ef".repeat(20)), str("Sci Fi Pack (2024)"), num(31_400_000_000), num(18_200_000_000),
                 num(0), str("/home/dev/Movies"), num(0), num(0), num(750)))
         val shown = when (view) { "started" -> rows.take(1); "stopped" -> rows.drop(1); else -> rows }
-        return array(shown.map(::array))
+        return array(shown.map { array(if (withMetadata) it + num(0) else it) })
     }
 
     private fun answer(request: String): String {
@@ -62,7 +62,7 @@ open class ChunksServerRenderTest {
                 request.contains("<string>started</string>") -> "started"
                 request.contains("<string>stopped</string>") -> "stopped"
                 else -> "main"
-            })
+            }, request.contains("<string>d.is_meta=</string>"))
             "f.multicall" -> array((0 until 6).map { array(listOf(str("Season 1/Episode $it.mkv"), num(1_000_000L + it), num(1))) })
             else -> return "<?xml version=\"1.0\"?><methodResponse><fault><value><struct>" +
                 "<member><name>faultCode</name><value><int>-506</int></value></member>" +
