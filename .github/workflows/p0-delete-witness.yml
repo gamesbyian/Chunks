@@ -1,0 +1,26 @@
+name: P0 independent delete-data witness (read-only)
+
+on:
+  pull_request:
+    paths:
+      - "tools/p0_delete_payload_witness.py"
+      - "tests/test_p0_delete_payload_witness.py"
+      - ".github/workflows/p0-delete-witness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-p0-delete-witness-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  read-only-witness-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exercise exact absence and hostile path/canary negatives
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p 'test_p0_delete_payload_witness.py' -v
