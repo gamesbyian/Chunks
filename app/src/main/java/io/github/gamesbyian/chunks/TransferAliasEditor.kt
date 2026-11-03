@@ -17,6 +17,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferDisplayNames
@@ -57,12 +59,14 @@ internal fun TransferAliasEditor(
         TransferAliasEditSession(alias)
     }
     val suggestions = remember(originalName) { TransferDisplayNames.suggestions(originalName) }
+    var showSuggestions by rememberSaveable(hash, alias) { mutableStateOf(false) }
 
     if (!editor.editing) {
         OutlinedButton(onClick = {
             editor.problem = null
             editor.draft = alias.orEmpty()
             editor.editing = true
+            showSuggestions = false
         }, modifier = Modifier.heightIn(min = 48.dp)) {
             Text(if (alias == null) "Change list name" else "Edit list name")
         }
@@ -82,8 +86,18 @@ internal fun TransferAliasEditor(
             isError = editor.problem != null
         )
         if (suggestions.isNotEmpty()) {
-            Text("Clean-name suggestions · from this filename only")
-            for (suggestion in suggestions) {
+            OutlinedButton(
+                onClick = { showSuggestions = !showSuggestions },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        stateDescription = if (showSuggestions) "Expanded" else "Collapsed"
+                    }
+            ) {
+                Text(if (showSuggestions) "Hide name suggestions" else "Show name suggestions (${suggestions.size})")
+            }
+            if (showSuggestions) {
+                Text("Clean-name suggestions · from this filename only")
+                for (suggestion in suggestions) {
                 OutlinedButton(
                     onClick = { editor.draft = suggestion.name; editor.problem = null },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -95,7 +109,8 @@ internal fun TransferAliasEditor(
                     style = androidx.compose.material3.MaterialTheme.typography.bodySmall
                 )
             }
-            Text("Suggestions can be edited before saving. They don't identify guests or episode titles absent from the filename.")
+                Text("Suggestions can be edited before saving. They don't identify guests or episode titles absent from the filename.")
+            }
         }
         if (editor.problem != null) Text(editor.problem.orEmpty())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
