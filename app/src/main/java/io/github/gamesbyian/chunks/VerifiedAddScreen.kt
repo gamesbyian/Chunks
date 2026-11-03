@@ -28,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.foundation.selection.toggleable
@@ -38,6 +39,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
@@ -115,6 +117,11 @@ fun VerifiedAddScreen(
         }
     }
     var startAfterAdd by remember { mutableStateOf(true) }
+    // Optional read-only shortcuts, keyed to the authenticated Add destination.
+    // Never open another account's saved folder suggestions on a scope change.
+    var showFolderShortcuts by rememberSaveable(finishInOrderScope, environmentLabel) {
+        mutableStateOf(false)
+    }
     val finishInOrderStore = remember(finishInOrderScope) { finishInOrderScope?.let { FinishInOrderStore(context, it) } }
     var finishInOrderDefault by remember(finishInOrderScope) { mutableStateOf(finishInOrderStore?.defaultForNewAdds() == true) }
     var finishInOrderAfterAdd by remember(selectedTorrent?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
@@ -318,34 +325,61 @@ fun VerifiedAddScreen(
                     "No usable default Place was reported. Enter a custom absolute server folder before adding."
             }, style = MaterialTheme.typography.bodySmall)
         }
-        if (!alreadyAttempted && recentPlaces.isNotEmpty()) {
+        // Existing choices are suggestions, never permission/write probes. Keep
+        // the effective default and manually editable custom Place above.
+        // Disclosing or hiding a list must not invalidate an Add review or
+        // trigger a new server command; selecting a path invalidates review.
+        if (!alreadyAttempted && (recentPlaces.isNotEmpty() || observedPlaces.isNotEmpty())) {
             item {
-                RecentRemotePlaces(recentPlaces, enabled = !submitting) { parent ->
-                    onDestination(parent)
-                    awaitingConfirmation = false
+                OutlinedButton(
+                    onClick = { showFolderShortcuts = !showFolderShortcuts },
+                    enabled = !submitting,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .semantics {
+                            stateDescription = if (showFolderShortcuts) "Expanded" else "Collapsed"
+                        }
+                ) {
+                    val recentCount = recentPlaces.size
+                    val observedCount = observedPlaces.take(8).size
+                    Text(
+                        (if (showFolderShortcuts) "Hide" else "Choose") +
+                            " server folder suggestions · $recentCount recent · $observedCount observed"
+                    )
                 }
             }
-        }
-        if (!alreadyAttempted && observedPlaces.isNotEmpty()) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Folders seen on this server", fontWeight = FontWeight.Bold)
-                    Text("Choose a folder used by an existing transfer. These are server-reported " +
-                        "suggestions, not a filesystem browser or proof that new files can be saved there.",
-                        style = MaterialTheme.typography.bodySmall)
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        observedPlaces.take(8).forEach { parent ->
-                            FilterChip(
-                                selected = destination == parent,
-                                enabled = !submitting,
-                                onClick = {
-                                    onDestination(parent)
-                                    awaitingConfirmation = false
-                                },
-                                modifier = Modifier.heightIn(min = 48.dp),
-                                label = { Text(parent) }
-                            )
+            if (showFolderShortcuts) {
+                if (recentPlaces.isNotEmpty()) {
+                    item {
+                        RecentRemotePlaces(recentPlaces, enabled = !submitting) { parent ->
+                            onDestination(parent)
+                            awaitingConfirmation = false
+                            showFolderShortcuts = false
+                        }
+                    }
+                }
+                if (observedPlaces.isNotEmpty()) {
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Folders seen on this server", fontWeight = FontWeight.Bold)
+                            Text("Choose a folder used by an existing transfer. These are server-reported " +
+                                "suggestions, not a filesystem browser or proof that new files can be saved there.",
+                                style = MaterialTheme.typography.bodySmall)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                observedPlaces.take(8).forEach { parent ->
+                                    FilterChip(
+                                        selected = destination == parent,
+                                        enabled = !submitting,
+                                        onClick = {
+                                            onDestination(parent)
+                                            awaitingConfirmation = false
+                                            showFolderShortcuts = false
+                                        },
+                                        modifier = Modifier.heightIn(min = 48.dp),
+                                        label = { Text(parent) }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

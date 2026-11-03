@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.EnvironmentOperation
 import io.github.gamesbyian.chunks.rpc.RemoteStallEvidence
@@ -122,7 +123,10 @@ internal fun UnifiedTransferDetailPanel(
                 onClick = onInspectStall,
                 enabled = !stallCheckInProgress,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                    contentDescription = "Inspect this transfer on $environmentLabel without changing it"
+                    contentDescription = if (stallCheckInProgress)
+                        "Inspecting this transfer on $environmentLabel without changing it"
+                        else "Inspect this transfer on $environmentLabel without changing it"
+                    stateDescription = if (stallCheckInProgress) "In progress" else "Ready, read only"
                 }
             ) {
                 Text(if (stallCheckInProgress) "Inspecting exact transfer…" else "Inspect transfer state")
@@ -158,6 +162,7 @@ internal fun UnifiedTransferDetailPanel(
                         contentDescription = if (technicalDetailsOpen.value)
                             "Hide technical details for this transfer"
                         else "Show technical details for this transfer"
+                        stateDescription = if (technicalDetailsOpen.value) "Expanded" else "Collapsed"
                     }
             ) {
                 Text(if (technicalDetailsOpen.value) "Hide technical details" else "Show technical details")
@@ -180,7 +185,10 @@ internal fun UnifiedTransferDetailPanel(
                     onClick = onCheckCapabilities,
                     enabled = !capabilityCheckInProgress,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                        contentDescription = "Check capabilities for $environmentLabel"
+                        contentDescription = if (capabilityCheckInProgress)
+                            "Checking capabilities for $environmentLabel"
+                        else "Check capabilities for $environmentLabel"
+                        stateDescription = if (capabilityCheckInProgress) "In progress" else "Ready, read only"
                     }
                 ) {
                     Text(if (capabilityCheckInProgress) "Checking capabilities…"
