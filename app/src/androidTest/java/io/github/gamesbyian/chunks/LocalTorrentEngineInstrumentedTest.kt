@@ -227,15 +227,21 @@ class LocalTorrentEngineInstrumentedTest {
         // These checks exercise the actual synchronized native Remove boundary,
         // not only a Compose confirmation or string comparison helper.
         assertTrue(!instance.removeKeepingDataIfMatching(
-            added.infoHash, added.name + " (stale)", added.savePath))
+            added.infoHash, added.name + " (stale)", added.savePath,
+            added.nativeReviewToken))
         assertTrue(instance.status(added.infoHash) != null)
         assertTrue(!instance.removeKeepingDataIfMatching(
-            added.infoHash, added.name, added.savePath + "/stale"))
+            added.infoHash, added.name, added.savePath + "/stale",
+            added.nativeReviewToken))
+        assertTrue(instance.status(added.infoHash) != null)
+        assertArrayEquals(before, original.readBytes())
+        assertTrue(!instance.removeKeepingDataIfMatching(
+            added.infoHash, added.name, added.savePath, "stale-native-generation"))
         assertTrue(instance.status(added.infoHash) != null)
         assertArrayEquals(before, original.readBytes())
 
         assertTrue(instance.removeKeepingDataIfMatching(
-            added.infoHash, added.name, added.savePath))
+            added.infoHash, added.name, added.savePath, added.nativeReviewToken))
         assertTrue(instance.status(added.infoHash) == null)
         assertArrayEquals(before, original.readBytes())
     }
