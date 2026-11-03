@@ -129,6 +129,12 @@ class TransferMoveTest {
             scope, "seed.example", sourceDirectory = "/server/downloads")
         assertFalse(TransferMove.sourceIdentityMatches(capped, unobservable, null,
             "/server/downloads"))
+
+        val cappedFolder = "/" + "d".repeat(4095)
+        val directoryBound = TransferMove.start(Direction.SERVER_TO_PHONE, hash, expected,
+            scope, "seed.example", sourceDirectory = cappedFolder)
+        assertFalse(TransferMove.sourceIdentityMatches(directoryBound, expected, null,
+            cappedFolder))
     }
 
     @Test fun codecRoundTripsAwkwardNamesAndRejectsMalformedRecords() {
