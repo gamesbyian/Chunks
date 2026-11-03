@@ -66,6 +66,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
     var pendingResetDefault by remember { mutableStateOf<String?>(null) }
     var ruleSearch by rememberSaveable { mutableStateOf("") }
     var explanationOpen by rememberSaveable { mutableStateOf(false) }
+    var defaultsOpen by rememberSaveable { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val labels = environments.associate { it.id to it.label }
 
@@ -128,7 +129,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 }
             }
             else -> {
-                if (snapshot.rules.isEmpty()) Text("No rules yet. Every transfer uses its environment's default below.",
+                if (snapshot.rules.isEmpty()) Text("No rules yet. Open defaults below to review each environment's policy.",
                     style = MaterialTheme.typography.bodyMedium)
                 if (snapshot.rules.isNotEmpty()) {
                     ClearableTransferSearchField(
@@ -143,10 +144,11 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                     if (visibleRules.isEmpty()) Text("No rules match this search. Saved rules are unchanged.",
                         style = MaterialTheme.typography.bodySmall)
                 }
-                visibleRules.forEachIndexed { position, r ->
+                val priorityById = snapshot.rules.mapIndexed { i, item -> item.id to (i + 1) }.toMap()
+                visibleRules.forEach { r ->
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("${position + 1}. ${r.name}", fontWeight = FontWeight.Bold)
+                            Text("${priorityById[r.id] ?: 0}. ${r.name}", fontWeight = FontWeight.Bold)
                             Text("Trackers: " + r.trackerDomains.sorted().joinToString(", ") +
                                 when (r.privateOnly) { true -> " · private torrents only"; false -> " · public torrents only"; null -> "" },
                                 style = MaterialTheme.typography.bodySmall)
@@ -173,8 +175,22 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                         false, emptySet(), policy = SeedingPolicy(), environments = environments.map { it.id }.toSet(),
                         knownEnvironments = environments.map { it.id }.toSet())
                 }, Modifier.fillMaxWidth(), stacked = false)
-                Text("Defaults", style = MaterialTheme.typography.titleMedium)
-                environments.forEach { env ->
+                OutlinedButton(
+                    onClick = { defaultsOpen = !defaultsOpen },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .semantics {
+                            stateDescription = if (defaultsOpen) "Expanded" else "Collapsed"
+                        }
+                ) {
+                    val overrides = environments.count { snapshot.defaults.containsKey(it.id) }
+                    Text(
+                        (if (defaultsOpen) "Hide" else "Review") + " defaults · " +
+                            environments.size + " environments · " + overrides + " saved"
+                    )
+                }
+                if (defaultsOpen) {
+                    Text("Defaults", style = MaterialTheme.typography.titleMedium)
+                    environments.forEach { env ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         EnvironmentBadge(env.label, env.server, environment = env.id.removePrefix("remote:")
                             .takeIf { TransferListSortStore.validEnvironment(it) }
@@ -211,6 +227,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                             }
                         }
                     }
+                }
                 }
             }
         }
