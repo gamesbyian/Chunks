@@ -82,6 +82,18 @@ class CleanAvdProbeTests(unittest.TestCase):
         ))
         self.assertEqual(0, result.returncode, result.stderr)
 
+    def test_reject_crlf_installed_package(self):
+        result = self.probe(FAKE_PACKAGES=(
+            "package:android\r\npackage:io.github.gamesbyian.chunks\r"
+        ))
+        self.assertNotEqual(0, result.returncode)
+
+    def test_reject_empty_or_unstructured_package_inventory(self):
+        for inventory in ("", "error: unauthorized"):
+            with self.subTest(inventory=inventory):
+                result = self.probe(FAKE_PACKAGES=inventory)
+                self.assertNotEqual(0, result.returncode)
+
     def test_fail_closed_on_adb_read_errors(self):
         for command in (
             "shell getprop ro.build.version.sdk",
