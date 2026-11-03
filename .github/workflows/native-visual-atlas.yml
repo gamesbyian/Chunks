@@ -86,6 +86,32 @@ jobs:
           python3 tools/ci_failure_digest.py --suite api35-native-visual-atlas --status "$CHUNKS_JOB_STATUS" --require-executed \
             --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' \
             --output "$RUNNER_TEMP/chunks-native-atlas/digest.json"
+          # The single AndroidJUnitRunner invocation must still exercise all
+          # three test methods previously run across the two Gradle invocations.
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          root = Path("app/build/outputs/androidTest-results/connected")
+          expected = {
+              ("io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest",
+               "installedApplicationExposesNativeAdaptiveVectorIcon"),
+              ("io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest",
+               "largeAccessibilityTypeStillExposesTheWholeHeader"),
+              ("io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest",
+               "brandAndTaglineAreOneAccessibleHeading"),
+          }
+          found = []
+          for report in root.glob("**/TEST-*.xml"):
+              for case in ET.parse(report).getroot().iter("testcase"):
+                  identity = (case.get("classname"), case.get("name"))
+                  if identity in expected:
+                      if any(case.find(tag) is not None for tag in ("skipped", "failure", "error")):
+                          raise SystemExit("Required native atlas Android test did not pass")
+                      found.append(identity)
+          if len(found) != len(expected) or set(found) != expected:
+              raise SystemExit("Missing or duplicated native atlas Android test method")
+          print("CHUNKS_NATIVE_ATLAS: all 3 required installed Android tests passed")
+          PY
       - name: Upload exact emulator screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
