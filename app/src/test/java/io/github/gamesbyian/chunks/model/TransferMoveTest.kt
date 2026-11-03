@@ -110,6 +110,27 @@ class TransferMoveTest {
             "/server/downloads"))
     }
 
+    @Test fun remoteMoveNeverTreatsDifferentNamesWithTheSameLongPrefixAsOneJob() {
+        val prefix = "a".repeat(512)
+        val expected = prefix + "original suffix"
+        val changed = prefix + "replacement suffix"
+        val record = TransferMove.start(Direction.SERVER_TO_PHONE, hash, expected,
+            scope, "seed.example", sourceDirectory = "/server/downloads")
+        assertEquals(expected, record.name)
+        assertFalse(TransferMove.sourceIdentityMatches(record, changed, null,
+            "/server/downloads"))
+        assertTrue(TransferMove.sourceIdentityMatches(record, expected, null,
+            "/server/downloads"))
+
+        // The adapter caps returned names at 2048. A name of exactly that
+        // length may hide a suffix, so cannot prove original source identity.
+        val unobservable = "x".repeat(2048)
+        val capped = TransferMove.start(Direction.SERVER_TO_PHONE, hash, unobservable,
+            scope, "seed.example", sourceDirectory = "/server/downloads")
+        assertFalse(TransferMove.sourceIdentityMatches(capped, unobservable, null,
+            "/server/downloads"))
+    }
+
     @Test fun codecRoundTripsAwkwardNamesAndRejectsMalformedRecords() {
         val move = TransferMove.start(Direction.SERVER_TO_PHONE, hash, "Line\nbreak \\ slash", scope, "host")
         assertEquals(move, TransferMove.decode(move.encode()))
