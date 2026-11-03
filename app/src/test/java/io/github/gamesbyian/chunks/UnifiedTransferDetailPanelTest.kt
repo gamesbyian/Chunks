@@ -117,7 +117,7 @@ class UnifiedTransferDetailPanelTest {
         val snapshot = EnvironmentTransferSnapshot(
             id, EnvironmentAvailability.LIVE, false, now - 10,
             listOf(UnifiedTransferObservation(
-                key, "Cached title", "Cached title", 1024, 800_000, true, 12, 0, null))
+                key, "Cached title", "Cached title", 1024, 800_000, true, 12, 0, 0))
         )
         val state = UnifiedTransferDetails.resolve(key, listOf(snapshot), null, now)
         assertEquals(TransferDetailReadState.INCOMPLETE, state.readState)
@@ -127,7 +127,7 @@ class UnifiedTransferDetailPanelTest {
             }
         }
         rule.onNodeWithText("Cached title").assertExists()
-        rule.onNodeWithText("Peers: not reported").assertExists()
+        rule.onNodeWithText("Peers: 0").assertExists()
         rule.onNodeWithText("Share ratio: not reported").assertExists()
         rule.onNodeWithText("Last-known transfer facts only.", substring = true)
             .performScrollTo().assertExists()
