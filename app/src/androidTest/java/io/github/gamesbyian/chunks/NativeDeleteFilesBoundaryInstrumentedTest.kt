@@ -13,7 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.libtorrent4j.AlertListener
-import org.libtorrent4j.AlertType
+import org.libtorrent4j.alerts.AlertType
 import org.libtorrent4j.SessionHandle
 import org.libtorrent4j.SessionManager
 import org.libtorrent4j.TorrentBuilder
