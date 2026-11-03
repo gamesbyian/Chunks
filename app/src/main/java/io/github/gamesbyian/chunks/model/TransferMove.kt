@@ -104,6 +104,12 @@ internal object TransferMove {
      * rTorrent source removal remains separately checked by its own
      * exact-hash/name/path preflight; there is no phone-native token there.
      */
+    /** A legacy journal without source provenance must not reach a Remove command. */
+    fun hasReviewedSourceIdentity(record: Record): Boolean = when (record.direction) {
+        Direction.PHONE_TO_SERVER -> record.sourceReviewToken != null
+        Direction.SERVER_TO_PHONE -> record.sourceDirectory != null
+    }
+
     fun sourceIdentityMatches(record: Record, currentName: String, currentToken: String?,
                               currentDirectory: String? = null): Boolean =
         record.name == currentName.take(512) && when (record.direction) {
@@ -136,6 +142,8 @@ internal object TransferMove {
      */
     fun beginRemoval(record: Record, targetNow: Observation): Next = when {
         record.stage != Stage.TARGET_VERIFIED -> Next.Keep("Check the ${destination(record)} first.")
+        !hasReviewedSourceIdentity(record) ->
+            Next.Keep("The Move predates original-source identity tracking. Cancel and restart it; no Remove was sent.")
         targetNow != Observation.Present -> Next.Save(record.copy(stage = Stage.AWAITING_TARGET),
             "The new job is no longer confirmed on the ${destination(record)}. The original job was kept.")
         else -> Next.Save(record.copy(stage = Stage.SOURCE_REMOVAL_REQUESTED), "Removing the original job…")
