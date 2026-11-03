@@ -280,11 +280,12 @@ internal object TransferMoveObservations {
         } catch (_: Exception) { Observation.Unknown }
     }
 
+    /** Exact session membership, independent of a potentially filtered `main` view.
+     * rTorrent d.name is keyed by infohash; only its specific unknown-hash
+     * fault establishes absence. Any other RPC failure remains Unknown. */
     suspend fun server(remote: io.github.gamesbyian.chunks.rpc.RTorrentRemote, infoHash: String): Observation =
         try {
-            val listed = remote.listTransfers("main")
-            if (listed.any { it.hash.equals(infoHash, ignoreCase = true) }) Observation.Present
-            else Observation.Absent
+            if (remote.lookupName(infoHash) == null) Observation.Absent else Observation.Present
         } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
         catch (_: Exception) { Observation.Unknown }
 }
