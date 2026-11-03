@@ -11,7 +11,9 @@ class TransferMoveTest {
     private val hash = "B63EAA9720EE797667EF58EA35EF7D81AB5D1C16"
     private val scope = "a".repeat(64)
     private fun started(direction: Direction = Direction.PHONE_TO_SERVER) =
-        TransferMove.start(direction, hash, "Big Buck Bunny", scope, "seed.example")
+        TransferMove.start(direction, hash, "Big Buck Bunny", scope, "seed.example",
+            sourceReviewToken = if (direction == Direction.PHONE_TO_SERVER) "native-session:17" else null,
+            sourceDirectory = if (direction == Direction.SERVER_TO_PHONE) "/server/downloads" else null)
 
     private fun saved(next: Next) = (next as Next.Save).record
 
@@ -82,14 +84,18 @@ class TransferMoveTest {
     }
 
     @Test fun legacyPhoneMoveCanBeRecoveredButCannotEraseUnidentifiedSource() {
-        val old = started()
+        val old = TransferMove.start(Direction.PHONE_TO_SERVER, hash,
+            "Big Buck Bunny", scope, "seed.example")
         assertTrue(old.encode().startsWith("v1\n"))
         val recovered = requireNotNull(TransferMove.decode(old.encode()))
         assertNull(recovered.sourceReviewToken)
         assertFalse(TransferMove.sourceIdentityMatches(recovered, recovered.name, "fresh-native:1"))
+        val legacyReviewed = recovered.copy(stage = Stage.TARGET_VERIFIED)
+        assertTrue(TransferMove.beginRemoval(legacyReviewed, Observation.Present) is Next.Keep)
         // A legacy server-side Move also lacked its reviewed original directory
         // and must be restarted, not silently grant consent to a replacement.
-        val remoteSource = started(Direction.SERVER_TO_PHONE)
+        val remoteSource = TransferMove.start(Direction.SERVER_TO_PHONE, hash,
+            "Big Buck Bunny", scope, "seed.example")
         assertFalse(TransferMove.sourceIdentityMatches(remoteSource, "Big Buck Bunny", null,
             "/server/downloads"))
         val reviewed = TransferMove.start(Direction.SERVER_TO_PHONE, hash, "Big Buck Bunny",
