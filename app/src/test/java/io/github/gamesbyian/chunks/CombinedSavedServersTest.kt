@@ -11,6 +11,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import org.junit.Assert.*
 import java.util.concurrent.atomic.AtomicInteger
@@ -98,11 +100,21 @@ class CombinedSavedServersTest {
         assertEquals("both saved servers fetched exactly once", 2, calls.get())
         // Then independently qualify both UI outcomes after their suspended
         // Dispatchers.IO continuations return to the composition.
-        rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Live · 1 transfers")
-                .fetchSemanticsNodes().isNotEmpty() &&
-            rule.onAllNodesWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
-                .fetchSemanticsNodes().isNotEmpty()
+        try {
+            rule.waitUntil(15_000) {
+                rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Live · 1 transfers")
+                    .fetchSemanticsNodes().isNotEmpty() &&
+                rule.onAllNodesWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            // These are synthetic profiles. Preserve the actual rendered state
+            // so a future failure distinguishes stale/locked/loading outcomes
+            // from an offscreen lazy item or a delayed UI continuation.
+            val ui = runCatching { rule.onRoot().printToString().take(12_000) }
+                .getOrDefault("Semantics tree unavailable")
+            throw AssertionError("Saved-server UI did not apply both completed reads. " +
+                "calls=${calls.get()}, completedReads=${completedReads.get()}; " + ui, failure)
         }
         revealText("Linux ISO")
         rule.onNodeWithText("Linux ISO").assertExists()
