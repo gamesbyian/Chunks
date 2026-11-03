@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -41,7 +40,7 @@ class TransferAliasLongSuggestionTest {
         rule.onNodeWithText("Change list name").performClick()
         val save = rule.onNodeWithText("Save name").getUnclippedBoundsInRoot()
         val cancel = rule.onNodeWithText("Cancel").getUnclippedBoundsInRoot()
-        assertTrue("Save remains a separate full-width touch target", save.width > 220.dp)
+        assertTrue("Save remains a separate full-width touch target", (save.right - save.left) > 220.dp)
         assertTrue("Cancel must be below Save rather than squashed beside it",
             cancel.top >= save.bottom)
         assertEquals(0, calls.intValue)
