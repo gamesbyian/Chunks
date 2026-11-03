@@ -91,7 +91,7 @@ internal object TransferMove {
     fun start(direction: Direction, infoHash: String, name: String,
               serverScopeDigest: String, serverLabel: String,
               sourceReviewToken: String? = null, sourceDirectory: String? = null): Record =
-        Record(direction, infoHash.lowercase(Locale.ROOT), name.take(512),
+        Record(direction, infoHash.lowercase(Locale.ROOT), name.take(2048),
             serverScopeDigest, serverLabel.take(253), Stage.AWAITING_TARGET,
             sourceReviewToken, sourceDirectory)
 
@@ -112,7 +112,11 @@ internal object TransferMove {
 
     fun sourceIdentityMatches(record: Record, currentName: String, currentToken: String?,
                               currentDirectory: String? = null): Boolean =
-        record.name == currentName.take(512) && when (record.direction) {
+        // rTorrent's adapter bounds names at 2048. At that exact limit
+        // the server name might be truncated, so its suffix is unobservable.
+        // Never authorize a destructive source-job mutation on that ambiguity.
+        currentName.isNotBlank() && currentName.length < 2048 &&
+            record.name == currentName && when (record.direction) {
             Direction.PHONE_TO_SERVER ->
                 record.sourceReviewToken != null &&
                     record.sourceReviewToken == currentToken
