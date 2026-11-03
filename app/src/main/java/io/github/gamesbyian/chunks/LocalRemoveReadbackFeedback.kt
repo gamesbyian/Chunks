@@ -19,6 +19,10 @@ internal fun localRemoveReadbackFeedback(
         "The exact transfer is absent from the current phone session, but Remove persistence was not confirmed. Refresh before re-adding; do not repeat Remove blindly. Downloaded files were not requested for deletion."
     acknowledged == false && visibleAfter == true ->
         "Remove was not confirmed and this exact transfer is still present. Refresh the phone list, then review a new Remove attempt if it remains. Downloaded files were kept."
+    acknowledged == null && visibleAfter == false ->
+        "The exact transfer is absent from this phone session after an uncertain Remove. The native result could not be confirmed; refresh and verify saved state before re-adding. Never repeat Remove blindly. Downloaded files were not requested for deletion."
+    acknowledged == null && visibleAfter == true ->
+        "The exact transfer is still present after an uncertain Remove. Refresh its current state before reviewing any new attempt; no automatic retry was sent. Downloaded files were not requested for deletion."
     else ->
         "Remove outcome could not be verified against the phone engine. Refresh the transfer list before another action. Downloaded files were not requested for deletion."
 }

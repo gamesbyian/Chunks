@@ -26,10 +26,24 @@ class LocalRemoveReadbackFeedbackTest {
         assertTrue(response.contains("Downloaded files were kept"))
     }
 
+    @Test fun exceptionAfterNativeRemovalGetsSpecificReadOnlyReconciliation() {
+        val absent = localRemoveReadbackFeedback(null, false)!!
+        assertTrue(absent.contains("absent"))
+        assertTrue(absent.contains("uncertain Remove"))
+        assertTrue(absent.contains("Never repeat Remove blindly"))
+        assertTrue(absent.contains("not requested for deletion"))
+    }
+
+    @Test fun exceptionBeforeNativeRemovalCannotBeMisreportedAsGone() {
+        val present = localRemoveReadbackFeedback(null, true)!!
+        assertTrue(present.contains("still present"))
+        assertTrue(present.contains("no automatic retry"))
+        assertTrue(present.contains("not requested for deletion"))
+    }
+
     @Test fun unavailableEngineIsNeverReportedAsRemoved() {
-        assertEquals(
-            localRemoveReadbackFeedback(null, null),
-            localRemoveReadbackFeedback(false, null)
-        )
+        val unknown = localRemoveReadbackFeedback(null, null)!!
+        assertEquals(unknown, localRemoveReadbackFeedback(false, null))
+        assertTrue(unknown.contains("could not be verified"))
     }
 }

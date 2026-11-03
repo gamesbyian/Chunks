@@ -1611,9 +1611,18 @@ internal fun LocalEngineScreen(
                             // another mutation, and keep the two facts distinct.
                             val (removed, stillPresent) = withContext(Dispatchers.IO) {
                                 val engine = LocalEngineHolder.current()
-                                val acknowledged = engine?.removeKeepingData(transfer.infoHash)
+                                // A native or persistence exception can happen after
+                                // the session already removed this handle. Still perform
+                                // the read-only exact-hash observation; never replay Remove.
+                                val acknowledged = try {
+                                    engine?.removeKeepingData(transfer.infoHash)
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) { null }
                                 val observed = try {
                                     engine?.let { it.status(transfer.infoHash) != null }
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
                                 } catch (_: Exception) { null }
                                 acknowledged to observed
                             }
