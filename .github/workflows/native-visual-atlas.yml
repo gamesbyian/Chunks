@@ -76,8 +76,8 @@ jobs:
             bash tools/native_atlas_capture.sh
             # The two independent test classes can run in one AndroidJUnitRunner
             # session; avoid a second Gradle/UTP install/configuration cycle.
-            gradle --no-daemon :app:connectedDebugAndroidTest \
-              -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest,io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest
+            # reactivecircus executes script lines individually; keep this command on one line.
+            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest,io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest
       - name: Require actual executed Android test evidence
         if: always()
         env:
