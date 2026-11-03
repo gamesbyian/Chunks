@@ -64,13 +64,13 @@ class NativeDeleteFilesBoundaryInstrumentedTest {
             override fun alert(alert: Alert<*>) {
                 when (alert) {
                     is TorrentDeletedAlert -> {
-                        if (alert.infoHashes.v1()?.toHex()?.equals(info.infoHash().toHex(), true) == true) {
+                        if (alert.infoHashes.getV1().toHex().equals(info.infoHash().toHex(), true) == true) {
                             deleted.set(true)
                             done.countDown()
                         }
                     }
                     is TorrentDeleteFailedAlert -> {
-                        if (alert.infoHashes.v1()?.toHex()?.equals(info.infoHash().toHex(), true) == true) {
+                        if (alert.infoHashes.getV1().toHex().equals(info.infoHash().toHex(), true) == true) {
                             deleted.set(false)
                             done.countDown()
                         }
