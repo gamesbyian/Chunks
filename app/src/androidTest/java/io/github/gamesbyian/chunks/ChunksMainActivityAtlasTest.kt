@@ -442,6 +442,12 @@ class ChunksMainActivityAtlasTest {
         // component. Wait for the filtered count, not just the IME's text;
         // rerendering the list can otherwise detach the click's modifier.
         openChangeListNameInPopulatedQueue()
+        // Name suggestions are secondary to an editable draft. Disclose the
+        // same original suggestion list; no rename is sent until explicit Save.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Show name suggestions", substring = true))
+        rule.onNodeWithText("Show name suggestions", substring = true)
+            .performScrollTo().performClick()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("Extracted show title, season and episode from filename")
                 .fetchSemanticsNodes().isNotEmpty()

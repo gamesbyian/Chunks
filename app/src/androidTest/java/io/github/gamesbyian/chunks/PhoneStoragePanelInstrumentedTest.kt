@@ -126,6 +126,10 @@ class PhoneStoragePanelInstrumentedTest {
                 }
             }
         }
+        rule.onNodeWithText("Advanced phone storage").assertExists()
+        rule.onNodeWithText("Observed allocated storage").assertDoesNotExist()
+        rule.onNodeWithText("Advanced phone storage").performScrollTo().performClick()
+        rule.onNodeWithText("Observed allocated storage").assertExists()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("4.0 KiB of filesystem blocks", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()

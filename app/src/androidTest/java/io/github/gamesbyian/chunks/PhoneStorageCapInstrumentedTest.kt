@@ -51,6 +51,8 @@ class PhoneStorageCapInstrumentedTest {
                     }
                 }
             }
+            // The cap editor is optional; disclose it without changing the saved policy.
+            rule.onNodeWithText("Advanced phone storage").performScrollTo().performClick()
             rule.onNodeWithTag("phone-advisory-cap-input").performScrollTo().performTextInput("1")
             rule.onNodeWithText("Save advisory limit").performScrollTo().performClick()
             rule.onNodeWithText("Current advisory limit: 1.0 GiB").assertExists()
