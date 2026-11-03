@@ -45,6 +45,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -276,6 +277,9 @@ internal fun LocalEngineScreen(
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
     var transferSearch by remember { mutableStateOf("") }
+    // View-only disclosure; no native engine work is started by these flags.
+    var showPhoneTools by rememberSaveable { mutableStateOf(false) }
+    var showListOptions by rememberSaveable { mutableStateOf(false) }
     val localFilterStore = remember(context) { LocalTransferFilterStore(context) }
     var transferFilter by remember(localFilterStore) { mutableStateOf(localFilterStore.load()) }
     fun chooseLocalFilter(choice: LocalQueueFilter) {
@@ -369,9 +373,16 @@ internal fun LocalEngineScreen(
         }
     }
     var magnet by remember { mutableStateOf("") }
+    var addExpanded by rememberSaveable { mutableStateOf(false) }
+    var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
+    var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
+    LaunchedEffect(pending?.preview?.infoHashV1) {
+        if (pending != null) addExpanded = true
+    }
     LaunchedEffect(initialMagnet) {
         if (initialMagnet != null && initialMagnet.startsWith("magnet:?")) {
             magnet = initialMagnet
+            addExpanded = true
             onPrefillConsumed()
         }
     }
@@ -566,6 +577,7 @@ internal fun LocalEngineScreen(
 
     LaunchedEffect(initialTorrentUri) {
         val externalUri = initialTorrentUri ?: return@LaunchedEffect
+        addExpanded = true
         // Never start the torrent from an external VIEW/SEND Intent. Only
         // prepare the same explicit Add review reached through the picker.
         pending = null
@@ -622,6 +634,11 @@ internal fun LocalEngineScreen(
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Seeding rules…")
         }
+        PhoneIntakeDisclosure(
+            expanded = addExpanded, pendingReview = pending != null,
+            placeLabel = place?.title, onToggle = { addExpanded = !addExpanded }
+        )
+        if (addExpanded) {
         Text("Add a download on this phone", style = MaterialTheme.typography.titleMedium)
         ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
             enabled = !busy && !inventoryStale && destination != null,
@@ -629,8 +646,6 @@ internal fun LocalEngineScreen(
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
             modifier = Modifier.fillMaxWidth())
-        var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
-        var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = startAfterAdd, enabled = !busy && !inventoryStale,
                 role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
@@ -683,6 +698,7 @@ internal fun LocalEngineScreen(
                             }
                             magnet = ""
                             addFolderDraft = ""
+                            addExpanded = false
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
@@ -763,6 +779,7 @@ internal fun LocalEngineScreen(
             )
             Text("Saves into the download location shown above. Magnets first discover metadata via peers/trackers; if Start after Add is selected, payload downloading begins after metadata arrives. Without peers, downloading cannot begin.",
                 style = MaterialTheme.typography.bodySmall)
+        }
         }
         repairReview?.let { prepared ->
             val (hash, source) = prepared
@@ -944,6 +961,7 @@ internal fun LocalEngineScreen(
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
+                            addExpanded = false
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
@@ -1082,6 +1100,12 @@ internal fun LocalEngineScreen(
                 }
             }
         )
+        OutlinedButton(
+            onClick = { showPhoneTools = !showPhoneTools },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .semantics { stateDescription = if (showPhoneTools) "Expanded" else "Collapsed" }
+        ) { Text(if (showPhoneTools) "Hide phone tools" else "More phone tools") }
+        if (showPhoneTools) {
         LocalInventorySnapshotPanel(
             transfers = transfers,
             stale = inventoryStale,
@@ -1099,6 +1123,7 @@ internal fun LocalEngineScreen(
             stale = inventoryStale || busy,
             sourceLabel = "phone"
         )
+        }
         moveServer?.let { server ->
             val digest = TransferMoveStore.scopeDigest(server.aliasScope)
             val pending = remember(transfers, moveRevision) {
@@ -1230,6 +1255,16 @@ internal fun LocalEngineScreen(
             onValueChange = { transferSearch = it },
             label = "Search local names, aliases, folders or hashes"
         )
+        OutlinedButton(
+            onClick = { showListOptions = !showListOptions },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .semantics { stateDescription = if (showListOptions) "Expanded" else "Collapsed" }
+        ) {
+            Text((if (showListOptions) "Hide" else "Choose") + " filters & sort · " +
+                transferFilter.label + " · " + transferOrder.label + " · " +
+                transferOrder.directionLabel(transferDirection))
+        }
+        if (showListOptions) {
         // Wrapping chips keeps the final filter/sort option reachable by
         // vertical scroll, keyboard and TalkBack at 320dp and 200% type.
         FlowRow(
@@ -1271,6 +1306,7 @@ internal fun LocalEngineScreen(
             onReverse = { chooseTransferSort(transferOrder,
                 TransferSortOrdering.reversed(transferDirection)) }
         )
+        }
         Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
             style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
@@ -1612,6 +1648,34 @@ internal fun LocalEngineScreen(
             }
         }
     )
+    }
+}
+
+/** This entry point is read-only until an existing Add operation is explicitly submitted. */
+@Composable
+internal fun PhoneIntakeDisclosure(
+    expanded: Boolean,
+    pendingReview: Boolean,
+    placeLabel: String?,
+    onToggle: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onToggle,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
+    ) {
+        Text(when {
+            expanded -> "Hide phone Add options"
+            pendingReview -> "Review torrent on this phone"
+            else -> "Add torrent on this phone"
+        })
+    }
+    if (!expanded) {
+        Text(
+            if (placeLabel != null) "Save to: $placeLabel · Change in Add"
+            else "Download location unverified · Review in Add",
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 
