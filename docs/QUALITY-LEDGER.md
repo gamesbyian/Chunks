@@ -8,7 +8,7 @@
 - **Unresolved pre-instrumentation red:** [41563456215](https://github.com/gamesbyian/Chunks/actions/runs/41563456215) attempt 1 on #1126 head `4ac8bc9268e68f367d044806c4a4c988ec273767` booted the emulator but exited during silent install/identity preflight; its receipt has zero Android test starts and no transfer operation. Exact cause remains unknown. Attempt 2 and other old-head runs were cancelled after the follow-up was consolidated. Consult live #1126 checks; no red/cancelled run qualifies an APK.
 
 
-## 2026-11-03 integration evidence delta (until #1124 qualifies)
+## 2026-11-03 earlier integration evidence delta (historical; #1124 later qualified and merged)
 
 **Merged production/test sources:** #1123 at `24223721` and #1118 at `88c47c1e`. #1123 [41551855325](https://github.com/gamesbyian/Chunks/actions/runs/41551855325) passed FGS and offline negative tests, not actual reboot; #1118 [41547036035](https://github.com/gamesbyian/Chunks/actions/runs/41547036035) reboot was cancelled. #1118's native Add [41547036117](https://github.com/gamesbyian/Chunks/actions/runs/41547036117), API29 [41547035980](https://github.com/gamesbyian/Chunks/actions/runs/41547035980), foundation [41547035856](https://github.com/gamesbyian/Chunks/actions/runs/41547035856), R8 [41547035981](https://github.com/gamesbyian/Chunks/actions/runs/41547035981) and disposable protocol [41547036137](https://github.com/gamesbyian/Chunks/actions/runs/41547036137) were green before merge; no physical or delete-payload proof.
 
