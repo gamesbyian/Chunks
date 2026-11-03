@@ -1615,7 +1615,9 @@ internal fun LocalEngineScreen(
                                 // the session already removed this handle. Still perform
                                 // the read-only exact-hash observation; never replay Remove.
                                 val acknowledged = try {
-                                    engine?.removeKeepingData(transfer.infoHash)
+                                    engine?.removeKeepingDataIfMatching(
+                                        transfer.infoHash, transfer.name, transfer.savePath
+                                    )
                                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                                     throw cancel
                                 } catch (_: Exception) { null }
