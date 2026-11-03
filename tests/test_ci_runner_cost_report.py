@@ -57,7 +57,9 @@ class RunnerCostTests(unittest.TestCase):
             cost_report([run(1, "success", [job(2, 1, 2), job(2, 2, 3)])])
 
     def test_skipped_jobs_are_not_counted_as_runner_time(self):
-        r = cost_report([run(1, "skipped", [job(2, conclusion="skipped")])])
+        # GitHub can cancel a queued job before any runner is allocated.
+        r = cost_report([run(1, "skipped", [job(2, conclusion="skipped"),
+                                             job(3, conclusion="cancelled")])])
         self.assertEqual(0, r["runner_minutes"])
         self.assertEqual(0, r["cancelled_run_runner_minutes"])
 

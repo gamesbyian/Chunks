@@ -103,7 +103,7 @@ def cost_report(runs: list[dict]) -> dict:
                 raise ValueError(f"Duplicate job {job_id} on run {run_id}")
             seen_jobs.add(job_id)
             duration = minutes(job.get("started_at"), job.get("completed_at"))
-            if duration == 0 and job.get("conclusion") not in ("skipped", None):
+            if duration == 0 and job.get("conclusion") not in ("skipped", "cancelled", None):
                 if job.get("started_at") is None:
                     raise ValueError(f"Missing timing for executed job {job_id}")
             total += duration
@@ -155,9 +155,12 @@ def main() -> None:
         if data.get("total_count", len(runs)) > len(runs):
             raise ValueError("Incomplete saved workflow-run page")
         for run in runs:
-            run["jobs"] = json.loads(
+            payload = json.loads(
                 (args.jobs_dir / f"{int(run['id'])}.json").read_text(encoding="utf-8")
-            )["jobs"]
+            )
+            if payload.get("total_count", len(payload["jobs"])) > len(payload["jobs"]):
+                raise ValueError(f"Truncated offline jobs for run {run['id']}")
+            run["jobs"] = payload["jobs"]
     else:
         if not (args.repo and args.branch) or args.jobs_dir:
             parser.error("Live mode requires --repo and --branch")
