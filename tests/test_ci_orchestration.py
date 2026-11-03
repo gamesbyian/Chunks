@@ -42,6 +42,16 @@ class DispatchTests(unittest.TestCase):
             self.assertIn("--require-executed", text)
             self.assertNotIn("if [ -f tools/ci_failure_digest.py ]; then", text)
 
+    def test_legacy_shared_build_comparison_is_manual_only(self):
+        experiment = (ROOT / "native-add-shared-build-experiment.yml").read_text()
+        production = (ROOT / "native-add-instrumentation.yml").read_text()
+        self.assertIn("  workflow_dispatch:", experiment)
+        self.assertNotIn("  pull_request:", experiment)
+        self.assertIn("script: bash tools/native_add_prebuilt.sh", experiment)
+        self.assertIn("verify_native_add_shards.py", experiment)
+        self.assertIn("  pull_request:", production)
+        self.assertIn("  workflow_dispatch:", production)
+
     def test_orchestration_tests_trigger_docs_validation(self):
         text = (ROOT / "documentation-validation.yml").read_text()
         for filename in ("tools/ci_failure_digest.py", "tests/test_ci_failure_digest.py",
