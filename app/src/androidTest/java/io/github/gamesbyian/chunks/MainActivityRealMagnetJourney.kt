@@ -168,7 +168,9 @@ internal class MainActivityRealMagnetJourney(
         report("chunks_real_add_app_stage", "connect-click-attempt")
         click("Connect to rTorrent")
         report("chunks_real_add_app_stage", "connect-submitted")
-        rule.waitUntil(90_000) { visible("It's all here.") }
+        // Current compact connected Transfers UI has no former greeting hero.
+        // Require its actual authenticated inventory controls before attempting Add.
+        rule.waitUntil(90_000) { visible("+ Add torrent") && visible("All environments…") }
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
