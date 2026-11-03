@@ -97,6 +97,10 @@ class CombinedTransfersScreenTest {
     @Test fun showsEveryEnvironmentHonestlyWithoutStartingThePhoneEngine() {
         show()
         rule.onNodeWithText("All environments").assertExists()
+        // Ordinary list presentation is compact; source-by-source proof is available on request.
+        rule.onNodeWithText("On this phone: Engine not running", substring = true).assertDoesNotExist()
+        revealText("Environment status")
+        rule.onNodeWithText("Environment status", substring = true).performClick()
         // Lazy rows below the fold are composed only after scrolling to them.
         fun seen(text: String) {
             rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
@@ -233,6 +237,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun staleServerListIsLabelledAsLastKnown() {
         show(stale = true)
+        revealText("Environment status")
+        rule.onNodeWithText("Environment status", substring = true).performClick()
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
             .assertExists()
     }
@@ -240,6 +246,8 @@ class CombinedTransfersScreenTest {
     @Test fun oldSignedInServerRowsRemainVisibleButAreNotLiveOrActionable() {
         show(observedAtEpochMillis = System.currentTimeMillis() -
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS - 1)
+        revealText("Environment status")
+        rule.onNodeWithText("Environment status", substring = true).performClick()
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
             .assertExists()
         rule.onNodeWithText("Select…").performClick()
