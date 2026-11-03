@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.RemoteCapabilities
@@ -28,9 +29,11 @@ internal fun RemoteCapabilityPanel(remote: RTorrentRemote) {
     val scope = rememberCoroutineScope()
     var checking by remember(remote) { mutableStateOf(false) }
     var lines by remember(remote) { mutableStateOf<List<String>?>(null) }
+    var showCapabilityDetails by remember(remote) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedButton(onClick = {
             checking = true
+            showCapabilityDetails = false
             lines = null // A new check cannot reuse a prior result as current evidence.
             scope.launch {
                 lines = try {
@@ -46,9 +49,25 @@ internal fun RemoteCapabilityPanel(remote: RTorrentRemote) {
         }, enabled = !checking, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text(if (checking) "Checking server…" else "Check server capabilities")
         }
-        RemoteCapabilityResultAnnouncements(lines)
+        RemoteCapabilityResultAnnouncements(visibleCapabilityLines(lines, showCapabilityDetails))
+        if (lines != null && requireNotNull(lines).size > 1) {
+            OutlinedButton(
+                onClick = { showCapabilityDetails = !showCapabilityDetails },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        stateDescription = if (showCapabilityDetails) "Expanded" else "Collapsed"
+                    }
+            ) {
+                Text(if (showCapabilityDetails) "Hide capability details" else
+                    "Show capability details (${requireNotNull(lines).size - 1})")
+            }
+        }
     }
 }
+
+/** The first line is the readable result; deeper method evidence is optional. */
+internal fun visibleCapabilityLines(lines: List<String>?, expanded: Boolean): List<String>? =
+    if (expanded) lines else lines?.take(1)
 
 /** Introspection is read-only evidence, not proof that a command is authorized or works. */
 internal fun capabilityEvidenceLabel(graded: RemoteCapabilities.Graded): String = when (graded.status) {
