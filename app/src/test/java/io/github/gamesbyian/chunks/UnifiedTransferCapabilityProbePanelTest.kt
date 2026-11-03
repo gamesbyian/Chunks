@@ -64,6 +64,7 @@ class UnifiedTransferCapabilityProbePanelTest {
             }
         }
         assertEquals("No implicit probe during composition", 0, userTaps)
+        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
         val check = rule.onNodeWithContentDescription(
             "Check capabilities for Server · exact / rutorrent2")
         check.performScrollTo().performClick()
@@ -93,7 +94,8 @@ class UnifiedTransferCapabilityProbePanelTest {
             } }
         }
         rule.onNodeWithText("Check server capabilities").assertDoesNotExist()
-        rule.onNodeWithText("Capabilities in this environment").assertExists()
+        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+        rule.onNodeWithText("Capabilities in this environment").performScrollTo().assertExists()
     }
 
     @Test fun lockedEnvironmentHidesProbeAndPrivateTransferFacts() {

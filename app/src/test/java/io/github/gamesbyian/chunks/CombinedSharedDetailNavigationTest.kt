@@ -88,7 +88,9 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Environment: $connectedName").assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
         rule.onNodeWithText("Instance three download").assertDoesNotExist()
-        rule.onNodeWithText("Exact infohash: $hash").assertExists()
+        rule.onNodeWithText("Exact infohash: $hash").assertDoesNotExist()
+        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+        rule.onNodeWithText("Exact infohash: $hash").performScrollTo().assertExists()
         rule.onNodeWithText("Download rate: 0 B/s").assertExists()
         rule.onNodeWithText("Upload rate: not reported").assertExists()
         rule.onNodeWithText("Start and stop: Capability has not been checked recently for this exact environment.")
@@ -96,6 +98,9 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Back to transfers").performScrollTo()
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         // Open detail never changed filter, login, selection or underlying engine.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Choose environments & filters", substring = true))
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
 
@@ -114,7 +119,8 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Environment: Server · $savedLabel").assertExists()
         rule.onNodeWithText("Instance three download").assertExists()
         rule.onNodeWithText("Instance two download").assertDoesNotExist()
-        rule.onNodeWithText("Exact infohash: $hash").assertExists()
+        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+        rule.onNodeWithText("Exact infohash: $hash").performScrollTo().assertExists()
         rule.onNodeWithText("Download rate: not reported").assertExists()
         rule.onNodeWithText("Upload rate: 55 B/s").assertExists()
         // A saved profile is read-only here: no switch to signed-in server list.
@@ -144,6 +150,9 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Instance two download").assertExists()
         rule.onNodeWithText("Back to transfers").performScrollTo()
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Environment status", substring = true))
+        rule.onNodeWithText("Environment status", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText(origin + ": Out of date, showing last list · 1 transfers"))
         rule.onNodeWithText(origin + ": Out of date, showing last list · 1 transfers").assertExists()

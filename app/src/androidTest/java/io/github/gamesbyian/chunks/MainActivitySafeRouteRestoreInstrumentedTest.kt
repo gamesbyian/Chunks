@@ -45,7 +45,10 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()
         rule.onNodeWithText("All environments").assertExists()
-        rule.onNodeWithText("Browse downloads together.", substring = true).assertExists()
+        // The list remains navigable after recreation without an oversized intro panel.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Choose environments & filters", substring = true))
+        rule.onNodeWithText("Choose environments & filters", substring = true).assertExists()
         rule.onNodeWithText("Stop selected").assertDoesNotExist()
         rule.onNodeWithText("Start selected").assertDoesNotExist()
         // With no saved servers, the phone is the only configured Add target.
