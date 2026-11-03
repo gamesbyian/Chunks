@@ -11,6 +11,10 @@ on:
       - "app/build.gradle.kts"
       # Changes to the test command must re-run this suite.
       - "tools/native_add_review.sh"
+      # Shared immutable APK pair + source-bound AndroidJUnitRunner evidence.
+      - "tools/native_add_prebuilt.sh"
+      - "tools/parse_instrumentation_stream.py"
+      - "tests/test_instrumentation_stream.py"
       - "tools/verify_native_add_shards.py"
       - ".github/workflows/native-add-instrumentation.yml"
     # Drafts are implementation batches; run this costly acceptance only when
@@ -26,26 +30,19 @@ concurrency:
   group: chunks-add-instrument-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
+
 jobs:
-  add-review-device-test:
-    # No runner allocation while a PR is draft. workflow_dispatch remains a
-    # manual opt-in diagnostic; ready_for_review initiates real PR-merge checks.
+  build-once:
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
-    strategy:
-      fail-fast: false
-      matrix:
-        shard: [0, 1]
     runs-on: ubuntu-latest
-    timeout-minutes: 23
-    env:
-      CHUNKS_NATIVE_ADD_SHARD_COUNT: "2"
-      CHUNKS_NATIVE_ADD_SHARD_INDEX: ${{ matrix.shard }}
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
-      - name: Check required native atlas captures before SDK and emulator allocation
+      - name: Check required native atlas captures and parser before SDK allocation
         run: |
           python3 tools/check_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_instrumentation_stream.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -59,79 +56,104 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Compile app and instrumented native UI tests
-        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
-      - name: Free unrelated runner toolchains before emulator startup
+      - name: Compile immutable native Add app/test APK pair once
+        env:
+          CHUNKS_SOURCE_SHA: ${{ github.sha }}
         run: |
-          # November 1 runner: API35 Pixel 6 required 7373 MB with only 7098 MB free.
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
-          df -h "$RUNNER_TEMP"
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+          mkdir -p "$RUNNER_TEMP/chunks-prebuilt"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/chunks-prebuilt/chunks-app.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/chunks-prebuilt/chunks-test.apk"
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/chunks-prebuilt/source-sha"
+          (cd "$RUNNER_TEMP/chunks-prebuilt" && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-native-add-immutable-apk-pair
+          path: ${{ runner.temp }}/chunks-prebuilt/
+          if-no-files-found: error
+          retention-days: 1
+
+  add-review-device-test:
+    needs: build-once
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    env:
+      CHUNKS_NATIVE_ADD_SHARD_COUNT: "2"
+      CHUNKS_NATIVE_ADD_SHARD_INDEX: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chunks-native-add-immutable-apk-pair
+          path: ${{ runner.temp }}/chunks-prebuilt
+      - name: Reject stale SHA or changed app/test APK bytes
+        run: |
+          test "$(cat "$RUNNER_TEMP/chunks-prebuilt/source-sha")" = "$GITHUB_SHA"
+          (cd "$RUNNER_TEMP/chunks-prebuilt" && sha256sum -c SHA256SUMS)
+      - name: Reclaim unrelated toolchains before emulator allocation
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
       - name: Enable Android emulator KVM
         run: |
-          if [ ! -c /dev/kvm ]; then
-            echo "::error::This runner does not expose /dev/kvm; cannot run hardware-accelerated x86 Android instrumented tests"
-            exit 1
-          fi
+          test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
           test -r /dev/kvm && test -w /dev/kvm
-      - name: Run actual native Compose Add review tests
+      - name: Run full native Add review suite from exact-source installed APKs
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          # Cap userdata + recover unrelated host disk: even 4096M exceeded
-          # free runner space (run 41355079713, FATAL 7372.80 MB needed).
-          # Keep enough space for debug/instrumentation APKs and shared-storage fixtures.
           disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/native_add_review.sh
-      - name: Emit agent-readable CI evidence (without test output or secrets)
+          script: bash tools/native_add_prebuilt.sh
+      - name: Emit agent-readable source-bound JUnit evidence even on failure
         if: always()
         env:
           CHUNKS_JOB_STATUS: ${{ job.status }}
         run: |
-          python3 tools/ci_failure_digest.py --suite "api35-native-add-shard-${CHUNKS_NATIVE_ADD_SHARD_INDEX}" --status "$CHUNKS_JOB_STATUS" --require-executed \
-            --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' --output "$RUNNER_TEMP/chunks-native-add-receipt/digest.json"
-      - name: Upload mandatory per-shard test receipt (success or failure)
+          python3 tools/ci_failure_digest.py --suite "api35-native-add-shard-$CHUNKS_NATIVE_ADD_SHARD_INDEX" --status "$CHUNKS_JOB_STATUS" --require-executed \
+            --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' \
+            --output "$RUNNER_TEMP/chunks-native-add-receipt/digest.json"
+      - name: Upload mandatory per-shard test receipts, including failed Android jobs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: chunks-native-add-receipt-shard-${{ matrix.shard }}
           path: ${{ runner.temp }}/chunks-native-add-receipt/digest.json
-          retention-days: 14
           if-no-files-found: error
-      - name: Upload every real screenshot captured by this emulator
+          retention-days: 14
+      - name: Upload real emulator screenshots when captured
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: chunks-native-add-atlas-shard-${{ matrix.shard }}
           path: ${{ runner.temp }}/chunks-add-native-review/*.png
-          retention-days: 14
           if-no-files-found: warn
+          retention-days: 14
 
   verify-complete-native-add:
     needs: add-review-device-test
-    # A skipped draft job must not schedule a separate artifact-merge runner.
-    # On ready PRs, always evaluate all shard receipts, even after failures.
     if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Download all independently executed JUnit receipts and PNGs
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           pattern: chunks-native-add-*
           path: ${{ runner.temp }}/chunks-native-add-shards
-      - name: Require all shards and every mandatory actual Compose screenshot
+      - name: Require accepted JUnit coverage and 24 real Android screenshots
         run: |
-          python3 tools/verify_native_add_shards.py \
-            --artifacts "$RUNNER_TEMP/chunks-native-add-shards" \
+          python3 tools/verify_native_add_shards.py --artifacts "$RUNNER_TEMP/chunks-native-add-shards" \
             --shards 2 --sha "$GITHUB_SHA"
-      - name: Attach combined exact-head acceptance receipt
+      - name: Attach original exact-source native Add acceptance receipt
         if: success()
         uses: actions/upload-artifact@v4
         with:
