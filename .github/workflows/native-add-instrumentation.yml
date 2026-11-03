@@ -16,6 +16,8 @@ on:
       - "tools/parse_instrumentation_stream.py"
       - "tests/test_instrumentation_stream.py"
       - "tools/verify_native_add_shards.py"
+      - "tools/select_native_add_attempts.py"
+      - "tests/test_native_add_attempts.py"
       - ".github/workflows/native-add-instrumentation.yml"
     # Drafts are implementation batches; run this costly acceptance only when
     # marked ready, then on every subsequent change. Converting back to draft
@@ -157,7 +159,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-native-add-receipt-shard-${{ matrix.shard }}
+          name: chunks-native-add-receipt-shard-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
           path: ${{ runner.temp }}/chunks-native-add-receipt/digest.json
           if-no-files-found: error
           retention-days: 14
@@ -165,7 +167,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-native-add-atlas-shard-${{ matrix.shard }}
+          name: chunks-native-add-atlas-shard-${{ matrix.shard }}-attempt-${{ github.run_attempt }}
           path: ${{ runner.temp }}/chunks-add-native-review/*.png
           if-no-files-found: warn
           retention-days: 14
@@ -181,6 +183,10 @@ jobs:
         with:
           pattern: chunks-native-add-*
           path: ${{ runner.temp }}/chunks-native-add-shards
+      - name: Resolve newest attempt per shard, preserving every original receipt
+        run: |
+          python3 tools/select_native_add_attempts.py --artifacts "$RUNNER_TEMP/chunks-native-add-shards" \
+            --shards 2 --sha "$GITHUB_SHA"
       - name: Require accepted JUnit coverage and 24 real Android screenshots
         run: |
           python3 tools/verify_native_add_shards.py --artifacts "$RUNNER_TEMP/chunks-native-add-shards" \
