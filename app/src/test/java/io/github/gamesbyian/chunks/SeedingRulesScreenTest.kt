@@ -57,7 +57,32 @@ class SeedingRulesScreenTest {
         assertEquals(3_000L, stored.policy.uploadLimit!!.bytesPerSecond)
         assertTrue("the server is known, so it is not a future environment", box.id in stored.knownEnvironments)
         assertFalse(stored.nameIsCustom)
+        // Searching changes only the visible list, never its persisted policy.
+        field("Find seeding rules").performTextReplacement("unrelated-query")
+        rule.onNodeWithText("No rules match this search.", substring = true).assertExists()
+        assertEquals(1, SeedingRuleStore(context).load().rules.size)
+        field("Find seeding rules").performTextReplacement("IPTORRENTS")
+        rule.onNodeWithText("1. Iptorrents · Ratio 1.00 · 24 kbit/s").assertExists()
+        assertEquals(1, matchingSeedingRules(listOf(stored), "ipt", mapOf(box.id to box.label)).size)
         rule.onRoot().captureRoboImage("build/chunks-visual/seeding-list.png")
+    }
+
+    @Test fun savedDefaultExplainsItsScopeAndCanBeResetWithoutChangingOtherPolicies() {
+        val store = SeedingRuleStore(context)
+        assertTrue(store.save(SeedingRuleStore.Snapshot(
+            emptyList(), mapOf(SeedingEnvironment.PHONE_ID to io.github.gamesbyian.chunks.seeding.SeedingPolicy())
+        )))
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) { SeedingRulesScreen(environments) {} } }
+        }
+        rule.onNodeWithText("Using your saved preference", substring = true).assertExists()
+        rule.onNodeWithText("Reset to automatic").performScrollTo().performClick()
+        rule.onNodeWithText("Restore the automatic default for On this phone?", substring = true).assertExists()
+        rule.onNodeWithText("Keep default").performClick()
+        assertTrue(store.load().defaults.containsKey(SeedingEnvironment.PHONE_ID))
+        rule.onNodeWithText("Reset to automatic").performScrollTo().performClick()
+        rule.onNodeWithText("Confirm reset").performClick()
+        assertFalse(store.load().defaults.containsKey(SeedingEnvironment.PHONE_ID))
     }
 
     @Test fun ambiguousUnitsBlockSavingAndDeleteNeedsConfirmation() {
