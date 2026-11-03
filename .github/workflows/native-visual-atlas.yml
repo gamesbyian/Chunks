@@ -15,6 +15,9 @@ on:
       - "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
       - "tools/generate_launcher_vector.cjs"
+    # Draft revisions retain fast feedback; exact Android acceptance runs
+    # on review-ready transitions and subsequent ready-PR revisions.
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 permissions:
@@ -26,6 +29,8 @@ concurrency:
 
 jobs:
   android-native-atlas:
+    # A skipped draft job allocates no runner; manual investigation remains possible.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
