@@ -458,7 +458,9 @@ internal fun CombinedTransfersScreen(
         }
     }
     var choosingColours by remember { mutableStateOf(false) }
+    var showingViewOptions by rememberSaveable { mutableStateOf(false) }
     var showingSortOptions by rememberSaveable { mutableStateOf(false) }
+    var showingSourceStatus by rememberSaveable { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
     fun openFor(key: UnifiedTransferKey): (() -> Unit)? =
         if (key.environment == EnvironmentSnapshots.PHONE || (serverId != null && key.environment == serverId))
@@ -719,9 +721,6 @@ internal fun CombinedTransfersScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             CombinedTransfersHeader(onBack)
-            Text("Browse downloads together. Choose the destination explicitly when adding; " +
-                "other controls open the download's own list.",
-                style = MaterialTheme.typography.bodySmall)
         }
         item {
             CombinedAddActions(
@@ -772,6 +771,39 @@ internal fun CombinedTransfersScreen(
             }
         }
         item {
+            val scopeName = when (val scope = query.scope) {
+                EnvironmentViewScope.All -> "All environments"
+                is EnvironmentViewScope.Only ->
+                    if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One environment"
+                    else "${scope.ids.size} environments"
+            }
+            val filterName = when (query.filter) {
+                UnifiedTransferFilter.ALL -> "All transfers"
+                UnifiedTransferFilter.STARTED -> "Started"
+                UnifiedTransferFilter.STOPPED -> "Stopped"
+                UnifiedTransferFilter.COMPLETE -> "Complete"
+                UnifiedTransferFilter.TRANSFERRING -> "Transferring"
+                UnifiedTransferFilter.ATTENTION -> "Needs attention"
+            }
+            OutlinedButton(
+                onClick = { showingViewOptions = !showingViewOptions },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) {
+                Text((if (showingViewOptions) "Hide" else "Choose") +
+                    " environments & filters · $scopeName · $filterName")
+            }
+            // Search has its own clear affordance; do not insert a second button
+            // above the text field as the user types and shift its focus/position.
+            if (!showingViewOptions && result.transfers.isNotEmpty() &&
+                (query.filter != UnifiedTransferFilter.ALL ||
+                    query.scope != EnvironmentViewScope.All)) {
+                OutlinedButton(onClick = { update(CombinedViewPreferences.showAll(query)) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Show all transfers")
+                }
+            }
+        }
+        if (showingViewOptions) item {
             Text("Show", style = MaterialTheme.typography.labelLarge)
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -799,7 +831,7 @@ internal fun CombinedTransfersScreen(
                 label = "Search all selected"
             )
         }
-        item {
+        if (showingViewOptions) item {
             Text("Filter transfers", style = MaterialTheme.typography.labelLarge)
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -863,7 +895,15 @@ internal fun CombinedTransfersScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                result.sources.forEach { source ->
+                if (showingSourceStatus || result.sources.size > 1 || result.hasIncompleteOrStaleSource ||
+                    listings.values.any { it.error != null || it.loading }) {
+                    OutlinedButton(
+                        onClick = { showingSourceStatus = !showingSourceStatus },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text(if (showingSourceStatus) "Hide environment status"
+                        else "Environment status · ${result.sources.size} sources") }
+                }
+                if (showingSourceStatus) result.sources.forEach { source ->
                     val listing = activeSavedScopes[source.environment]?.let { witness ->
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
                     }

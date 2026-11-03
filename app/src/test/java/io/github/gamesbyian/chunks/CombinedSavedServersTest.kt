@@ -35,6 +35,11 @@ class CombinedSavedServersTest {
     private fun revealText(text: String) {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
     }
+    private fun discloseSourceStatus() {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Environment status", substring = true))
+        rule.onNodeWithText("Environment status", substring = true).performClick()
+    }
 
     /**
      * Identity changes may be shown as disconnected, privacy-locked or
@@ -80,6 +85,8 @@ class CombinedSavedServersTest {
                     completedReads.incrementAndGet()
                 }
             }))
+        rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertDoesNotExist()
+        discloseSourceStatus()
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertExists()
         assertEquals("nothing is fetched until the user asks", 0, calls.get())
         assertEquals("no list callback may finish before the explicit tap", 0, completedReads.get())
@@ -132,6 +139,7 @@ class CombinedSavedServersTest {
                     onOpenPhone = {}, onOpenServer = null, onBack = {})
             } }
         }
+        discloseSourceStatus()
 
         val name = "Server · Account slot"
         rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
@@ -223,6 +231,7 @@ class CombinedSavedServersTest {
                 listOf(RemoteTransfer("a".repeat(40), "Cached Linux", 100, 80, true, "/d"))
             else throw java.net.ConnectException("refused")
         }))
+        discloseSourceStatus()
         rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
         rule.waitUntil(5_000) {
             rule.onAllNodesWithText(label + ": Live · 1 transfers").fetchSemanticsNodes().isNotEmpty()
@@ -241,6 +250,7 @@ class CombinedSavedServersTest {
         show(listOf(CombinedSavedProfile(id(scopeA), "ann @ a.example/RPC2", aliasScope = null) {
             calls.incrementAndGet(); emptyList()
         }))
+        discloseSourceStatus()
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers").assertExists()
         rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
         assertEquals(0, calls.get())

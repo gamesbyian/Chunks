@@ -60,6 +60,9 @@ class CombinedTransfersLargeTextTest {
         val backed = intArrayOf(0)
         show(opened, backed)
         rule.onNodeWithText("All environments").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Choose environments & filters", substring = true))
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
         // This label lives inside a lazy list item, not a nested ScrollState.
@@ -116,8 +119,10 @@ class CombinedTransfersLargeTextTest {
         val backed = intArrayOf(0)
         show(opened, backed)
         val list = rule.onNode(hasScrollToIndexAction())
-        // All chips must be inside the vertical list. Nothing requires a
-        // sideways-only gesture or a horizontal-scroll semantics action.
+        // The current-value summary opens all chips on demand, without
+        // horizontal scrolling or losing the saved environment selection.
+        list.performScrollToNode(hasText("Choose environments & filters", substring = true))
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         list.performScrollToNode(hasText("Attention"))
         rule.onNodeWithText("Attention").performClick()
         assertEquals(UnifiedTransferFilter.ATTENTION,

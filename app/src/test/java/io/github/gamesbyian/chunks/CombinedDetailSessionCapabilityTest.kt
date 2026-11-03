@@ -85,6 +85,8 @@ class CombinedDetailSessionCapabilityTest {
             .performScrollToNode(hasText("A single download"))
         rule.onNodeWithContentDescription("Details for A single download on $label")
             .performScrollTo().performClick()
+        // Explicit disclosure is presentation-only: it must never probe a session.
+        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
         val check = "Check capabilities for $label"
         rule.onNodeWithContentDescription(check).performScrollTo().performClick()
         rule.waitUntil(5_000) { firstStarted.get() == 1 }

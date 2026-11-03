@@ -77,7 +77,9 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithContentDescription(target).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: " + serverEnvironmentLabel(aliasScope)).assertExists()
-        rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).assertExists()
+        rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+        rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).performScrollTo().assertExists()
         assertTrue("read-only details must not issue any lifecycle commands", commands.isEmpty())
     }
 
@@ -95,6 +97,11 @@ class CombinedTransfersScreenTest {
     @Test fun showsEveryEnvironmentHonestlyWithoutStartingThePhoneEngine() {
         show()
         rule.onNodeWithText("All environments").assertExists()
+        // Ordinary list presentation is compact; source-by-source proof is available on request.
+        rule.onNodeWithText("On this phone: Engine not running", substring = true).assertDoesNotExist()
+        rule.onRoot().captureRoboImage("build/chunks-visual/combined-compact-first-viewport.png")
+        revealText("Environment status")
+        rule.onNodeWithText("Environment status", substring = true).performClick()
         // Lazy rows below the fold are composed only after scrolling to them.
         fun seen(text: String) {
             rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
@@ -148,7 +155,9 @@ class CombinedTransfersScreenTest {
         val directionSummary = "Hide sort & grouping · Size · Smallest first · Together"
         revealText(directionSummary)
         rule.onNodeWithText(directionSummary).assertExists()
-        // Only the connected server: phone and the offline profile drop out of the status lines.
+        // Disclose the single selected server; the compact summary always identifies active scope.
+        revealText("Choose environments & filters")
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         revealText(serverEnvironmentLabel(aliasScope))
         rule.onAllNodesWithText(serverEnvironmentLabel(aliasScope))[0].performClick()
         rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
@@ -212,6 +221,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {
         show()
+        revealText("Choose environments & filters")
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         rule.onNodeWithText("Filter transfers").assertExists()
         rule.onNodeWithText("Stopped").performClick()
         revealText("Small Episode")
@@ -231,6 +242,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun staleServerListIsLabelledAsLastKnown() {
         show(stale = true)
+        revealText("Environment status")
+        rule.onNodeWithText("Environment status", substring = true).performClick()
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
             .assertExists()
     }
@@ -238,6 +251,8 @@ class CombinedTransfersScreenTest {
     @Test fun oldSignedInServerRowsRemainVisibleButAreNotLiveOrActionable() {
         show(observedAtEpochMillis = System.currentTimeMillis() -
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS - 1)
+        revealText("Environment status")
+        rule.onNodeWithText("Environment status", substring = true).performClick()
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
             .assertExists()
         rule.onNodeWithText("Select…").performClick()

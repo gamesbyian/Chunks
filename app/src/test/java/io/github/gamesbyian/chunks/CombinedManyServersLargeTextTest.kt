@@ -9,6 +9,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.Density
 import androidx.test.core.app.ApplicationProvider
@@ -77,7 +78,9 @@ class CombinedManyServersLargeTextTest {
         list.performScrollToNode(androidx.compose.ui.test.hasContentDescription(detail))
         rule.onNodeWithContentDescription(detail).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
-        rule.onNodeWithText("Exact infohash: $hash").assertExists()
+        rule.onNodeWithText("Exact infohash: $hash").assertDoesNotExist()
+        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+        rule.onNodeWithText("Exact infohash: $hash").performScrollTo().assertExists()
         assertEquals("No saved account may fetch just because its chip is visible", 0, savedReads.get())
         assertNull(LocalEngineHolder.current())
     }
@@ -86,8 +89,11 @@ class CombinedManyServersLargeTextTest {
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
     fun finalSavedSourceChipCanBeSelectedWithoutFetchingOrExecuting() {
         show()
-        // Chips are inside one lazy item that wraps vertically. The last
-        // profile remains accessible by vertical motion, no sideways strip.
+        // Disclose chips only on request, preserving the 200% text vertical route.
+        rule.onNode(hasScrollToIndexAction())
+            .performScrollToNode(hasText("Choose environments & filters", substring = true))
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        // The final server remains scroll-reachable without a horizontal gesture.
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Server · Seedbox 12"))
         rule.onNodeWithText("Server · Seedbox 12").performClick()
