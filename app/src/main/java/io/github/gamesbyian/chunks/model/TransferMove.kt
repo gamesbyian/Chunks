@@ -39,15 +39,39 @@ internal object TransferMove {
         val serverScopeDigest: String,
         /** Host only, for "connect to …" guidance. */
         val serverLabel: String,
-        val stage: Stage
+        val stage: Stage,
+        /** Phone-only native Add generation captured before destination handoff. */
+        val sourceReviewToken: String? = null,
+        /** Remote-only original save directory; never a command or deletion path. */
+        val sourceDirectory: String? = null
     ) {
         init {
             require(Regex("[0-9a-f]{40}").matches(infoHash)) { "Move needs an exact v1 identity" }
             require(Regex("[0-9a-f]{64}").matches(serverScopeDigest)) { "Invalid server scope" }
+            require(sourceReviewToken == null ||
+                Regex("[A-Za-z0-9:.-]{1,120}").matches(sourceReviewToken)) {
+                "Invalid original phone transfer identity"
+            }
+            require(sourceDirectory == null || (sourceDirectory.startsWith("/") &&
+                sourceDirectory.length <= 4096 &&
+                sourceDirectory.none { it.isISOControl() })) {
+                "Invalid original rTorrent save directory"
+            }
         }
 
-        fun encode(): String = listOf("v1", direction.name, infoHash, serverScopeDigest, stage.name,
-            escape(serverLabel), escape(name)).joinToString("\n")
+        fun encode(): String {
+            val legacy = sourceReviewToken == null && sourceDirectory == null
+            val fields = listOf(
+                if (legacy) "v1" else "v3",
+                direction.name, infoHash, serverScopeDigest, stage.name,
+                escape(serverLabel), escape(name)
+            )
+            // Tilde cannot be a native token or absolute directory. Keep the
+            // last field unambiguous even on decoders that trim empty lines.
+            return (if (legacy) fields else
+                fields + escape(sourceReviewToken ?: "~") + escape(sourceDirectory ?: "~"))
+                .joinToString("\n")
+        }
     }
 
     sealed class Observation {
@@ -65,9 +89,45 @@ internal object TransferMove {
     }
 
     fun start(direction: Direction, infoHash: String, name: String,
-              serverScopeDigest: String, serverLabel: String): Record =
-        Record(direction, infoHash.lowercase(Locale.ROOT), name.take(512),
-            serverScopeDigest, serverLabel.take(253), Stage.AWAITING_TARGET)
+              serverScopeDigest: String, serverLabel: String,
+              sourceReviewToken: String? = null, sourceDirectory: String? = null): Record =
+        Record(direction, infoHash.lowercase(Locale.ROOT), name.take(2048),
+            serverScopeDigest, serverLabel.take(253), Stage.AWAITING_TARGET,
+            sourceReviewToken, sourceDirectory)
+
+    /**
+     * The journal's phone source must still be the original native handle.
+     * A legacy v1 Move did not record a generation and can only be cancelled
+     * and restarted before a source Remove. A fresh same-hash Add is never
+     * consent to remove the older journal's job.
+     *
+     * rTorrent source removal remains separately checked by its own
+     * exact-hash/name/path preflight; there is no phone-native token there.
+     */
+    /** A legacy journal without source provenance must not reach a Remove command. */
+    fun hasReviewedSourceIdentity(record: Record): Boolean = when (record.direction) {
+        Direction.PHONE_TO_SERVER -> record.sourceReviewToken != null
+        Direction.SERVER_TO_PHONE -> record.sourceDirectory != null
+    }
+
+    fun sourceIdentityMatches(record: Record, currentName: String, currentToken: String?,
+                              currentDirectory: String? = null): Boolean =
+        // rTorrent's adapter bounds names at 2048. At that exact limit
+        // the server name might be truncated, so its suffix is unobservable.
+        // Never authorize a destructive source-job mutation on that ambiguity.
+        currentName.isNotBlank() && currentName.length < 2048 &&
+            record.name == currentName && when (record.direction) {
+            Direction.PHONE_TO_SERVER ->
+                record.sourceReviewToken != null &&
+                    record.sourceReviewToken == currentToken
+            Direction.SERVER_TO_PHONE ->
+                // The rTorrent adapter caps directories at 4096. At the
+                // boundary a longer path may have been truncated.
+                record.sourceDirectory != null &&
+                    currentDirectory != null &&
+                    currentDirectory.length < 4096 &&
+                    record.sourceDirectory == currentDirectory
+        }
 
     /** A process death mid-removal leaves REQUESTED: treat it as unknown. */
     fun recovered(record: Record): Record =
@@ -90,6 +150,8 @@ internal object TransferMove {
      */
     fun beginRemoval(record: Record, targetNow: Observation): Next = when {
         record.stage != Stage.TARGET_VERIFIED -> Next.Keep("Check the ${destination(record)} first.")
+        !hasReviewedSourceIdentity(record) ->
+            Next.Keep("The Move predates original-source identity tracking. Cancel and restart it; no Remove was sent.")
         targetNow != Observation.Present -> Next.Save(record.copy(stage = Stage.AWAITING_TARGET),
             "The new job is no longer confirmed on the ${destination(record)}. The original job was kept.")
         else -> Next.Save(record.copy(stage = Stage.SOURCE_REMOVAL_REQUESTED), "Removing the original job…")
@@ -128,9 +190,15 @@ internal object TransferMove {
 
     fun decode(text: String): Record? = try {
         val parts = text.split('\n')
-        require(parts.size == 7 && parts[0] == "v1")
+        val hasSourceToken = parts.size == 8 && parts[0] == "v2"
+        val hasBoundSource = parts.size == 9 && parts[0] == "v3"
+        require((parts.size == 7 && parts[0] == "v1") || hasSourceToken || hasBoundSource)
+        val token = if (hasSourceToken) unescape(parts[7]) else if (hasBoundSource)
+            unescape(parts[7]).takeUnless { it == "~" } else null
+        val directory = if (hasBoundSource)
+            unescape(parts[8]).takeUnless { it == "~" } else null
         recovered(Record(Direction.valueOf(parts[1]), parts[2], unescape(parts[6]), parts[3],
-            unescape(parts[5]), Stage.valueOf(parts[4])))
+            unescape(parts[5]), Stage.valueOf(parts[4]), token, directory))
     } catch (_: Exception) { null }
 
     private fun escape(value: String) = value.replace("\\", "\\\\").replace("\n", "\\n")

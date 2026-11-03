@@ -106,7 +106,9 @@ internal fun RemoteBatchPhoneCopyPanel(
 
 /** Batch Move step 1: phone Adds, then journal each confirmed phone job at TARGET_VERIFIED. */
 internal suspend fun runBatchPhoneMove(
-    context: Context, remote: RTorrentRemote, aliasScope: String, items: List<BatchPhoneCopy.Item>
+    context: Context, remote: RTorrentRemote, aliasScope: String, items: List<BatchPhoneCopy.Item>,
+    /** Source jobs observed when the owner reviewed the batch. No guessing a new save path. */
+    originalTransfers: List<RemoteTransfer> = emptyList()
 ): String {
     var journaled = 0
     val text = runBatchPhoneCopy(context, remote, items) { report ->
@@ -114,10 +116,16 @@ internal suspend fun runBatchPhoneMove(
         journaled = report.results.filter {
             it.second == BatchPhoneCopy.Result.ADDED || it.second == BatchPhoneCopy.Result.ALREADY_ON_PHONE
         }.count { (item, _) ->
-            store.save(io.github.gamesbyian.chunks.model.TransferMove.start(
-                io.github.gamesbyian.chunks.model.TransferMove.Direction.SERVER_TO_PHONE, item.infoHash, item.name,
-                TransferMoveStore.scopeDigest(aliasScope), TransferMoveStore.hostLabel(aliasScope))
-                .copy(stage = io.github.gamesbyian.chunks.model.TransferMove.Stage.TARGET_VERIFIED))
+            val original = originalTransfers.singleOrNull {
+                it.hash.equals(item.infoHash, ignoreCase = true) &&
+                    it.name == item.name && it.directory.startsWith("/")
+            }
+            original != null && store.save(io.github.gamesbyian.chunks.model.TransferMove.start(
+                io.github.gamesbyian.chunks.model.TransferMove.Direction.SERVER_TO_PHONE,
+                item.infoHash, item.name,
+                TransferMoveStore.scopeDigest(aliasScope), TransferMoveStore.hostLabel(aliasScope),
+                sourceDirectory = original.directory
+            ).copy(stage = io.github.gamesbyian.chunks.model.TransferMove.Stage.TARGET_VERIFIED))
         }
     }
     return "$text $journaled ready to finish moving: review removal of the original server jobs below."
