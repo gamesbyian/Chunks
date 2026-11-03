@@ -1936,6 +1936,10 @@ private fun TransferCard(
             val conciseRates = buildList {
                 transfer.downBytesPerSecond?.let { add("↓ " + Units.bytes(it) + "/s") }
                 transfer.upBytesPerSecond?.let { add("↑ " + Units.bytes(it) + "/s") }
+                transfer.ratioThousandths?.takeIf { it >= 0 }?.let { ratio ->
+                    add("Ratio " + String.format(java.util.Locale.US, "%.2f",
+                        ratio.toDouble() / 1_000.0))
+                }
             }.joinToString(" · ")
             if (!detailsOpen && conciseRates.isNotBlank()) {
                 Text(conciseRates, style = MaterialTheme.typography.bodySmall)

@@ -1090,7 +1090,9 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
     row.sizeBytes?.let { Units.bytes(it) } ?: "Size unknown",
     "↓ " + (row.downloadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),
     "↑ " + (row.uploadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported")
-).joinToString(" · ")
+).plus(row.ratioThousandths?.let {
+    "Ratio " + String.format(java.util.Locale.US, "%.2f", it.toDouble() / 1_000.0)
+} ?: emptyList()).joinToString(" · ")
 
 @Composable
 private fun CombinedTransferRow(
