@@ -98,7 +98,9 @@ data class LocalTransferStatus(
     val downloadPayloadRateBytesPerSecond: Int = 0,
     val uploadPayloadRateBytesPerSecond: Int = 0,
     /** When libtorrent first added this job (kept in resume data); null if unreported. */
-    val addedAtEpochMillis: Long? = null
+    val addedAtEpochMillis: Long? = null,
+    /** Ephemeral exact native Add/restore generation; never persisted or reused for a new handle. */
+    val nativeReviewToken: String = ""
 )
 
 /** Aggregate tracker health for one transfer, without URLs or tracker messages. */
@@ -141,6 +143,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val session = SessionManager(false)
     // Guarded by its own monitor so the alert thread never needs the engine lock.
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
+    private val reviewSessionId = java.util.UUID.randomUUID().toString()
+    private var reviewSequence = 0L
+    private val nativeReviewTokens = HashMap<String, String>()
+    private fun mintReviewToken(): String = "$reviewSessionId:${++reviewSequence}"
     // Keep timed-out requests pending until their real alert arrives: a late
     // alert must not confirm a different save generation.
     private val pendingSaves = LocalResumeSaveRequests<TorrentHandle>()
@@ -641,6 +647,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (error.value() != 0 || !raw.is_valid)
             return LocalAddResult.Refused("The local engine refused this torrent: " + error.message())
         val handle = TorrentHandle(raw)
+        nativeReviewTokens[hash] = mintReviewToken()
         handles[hash] = handle
         // The asynchronous SAVE_RESUME_DATA callback writes immutable resume
         // events. Serialize initial Add, late saves and Remove using the
@@ -707,6 +714,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (autoStartAfterMetadata) startWhenMetadataArrives += hash
         awaitingMetadata += hash
         val handle = TorrentHandle(raw)
+        nativeReviewTokens[hash] = mintReviewToken()
         handles[hash] = handle
         // Metadata may already have arrived before we registered interest.
         // In that case an early callback may not have found the registered
@@ -1445,9 +1453,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      */
     @Synchronized
     fun removeKeepingDataIfMatching(
-        infoHash: String, expectedName: String, expectedSavePath: String
+        infoHash: String, expectedName: String, expectedSavePath: String,
+        expectedReviewToken: String
     ): Boolean {
-        if (expectedName.isBlank() || !expectedSavePath.startsWith("/")) return false
+        if (expectedName.isBlank() || !expectedSavePath.startsWith("/") ||
+            expectedReviewToken.isBlank()) return false
         val key = normal(infoHash)
         val current = try {
             val handle = handles[key] ?: return false
@@ -1455,7 +1465,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         } catch (_: Exception) { null } ?: return false
         if (current.infoHash != key ||
             current.name != expectedName ||
-            current.savePath != expectedSavePath) return false
+            current.savePath != expectedSavePath ||
+            current.nativeReviewToken != expectedReviewToken) return false
         return removeKeepingData(key)
     }
 
@@ -1476,6 +1487,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         // Any writer already admitted finishes before retirement; any
         // late alert for this handle is refused by LocalResumeWriteFence.
         synchronized(handles) { handles.remove(key) }
+        nativeReviewTokens.remove(key)
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
         magnetCollisionProblems.remove(key)
@@ -1590,6 +1602,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         resumeEvents = null
         retiredThisSession.clear()
         retiredNativeHandles.clear()
+        nativeReviewTokens.clear()
         // The native session has stopped before its in-process path claims
         // are discarded. This does not grant ownership to any restored job.
         checkedPayloadReservations.clear()
@@ -1621,6 +1634,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 }
             } catch (_: Exception) { null }
             if (restored == null) { problems += store.savedSourceName(key); continue }
+            nativeReviewTokens[key] = mintReviewToken()
             handles[key] = restored
             restoredNativeJobs.add(key)
             // Reserve before subsequent fresh checked Adds register native
@@ -1669,7 +1683,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             trackers = trackerSummary(handle),
             downloadPayloadRateBytesPerSecond = status.downloadPayloadRate().coerceAtLeast(0),
             uploadPayloadRateBytesPerSecond = status.uploadPayloadRate().coerceAtLeast(0),
-            addedAtEpochMillis = status.addedTime().takeIf { it > 0 }
+            addedAtEpochMillis = status.addedTime().takeIf { it > 0 },
+            nativeReviewToken = nativeReviewTokens[hash].orEmpty()
         )
     }
 
