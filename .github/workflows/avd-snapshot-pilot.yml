@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  actions: read  # Read current cache usage; no cache deletion, no write token
 
 # Keep cache generation and evaluation serial; never cancel a partial write.
 concurrency:
@@ -59,6 +60,21 @@ jobs:
         with:
           path: ~/.android/avd
           key: ${{ steps.android-sdk.outputs.key }}
+      # Protect production Gradle caches before allocating a cached VM.
+      - name: Fail early if the cache quota has insufficient headroom
+        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          used="$(gh api "repos/$GITHUB_REPOSITORY/actions/cache/usage" --jq '.active_caches_size_in_bytes')"
+          [[ "$used" =~ ^[0-9]+$ ]]
+          # Require roughly 3GB of headroom before starting bootstrap.
+          if (( used >= 7000000000 )); then
+            echo '::error title=AVD cache bootstrap refused::Insufficient repository cache headroom under default 10 GB quota'
+            exit 1
+          fi
       - name: Reject invalid restored snapshot before launch
         if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit == 'true'
         shell: bash
@@ -115,6 +131,21 @@ jobs:
           [[ "$cache_mib" =~ ^[0-9]+$ ]]
           echo "CHUNKS_AVD_CACHE_MIB=$cache_mib" >> "$GITHUB_ENV"
           echo "Isolated AVD cache footprint (MiB): $cache_mib"
+      - name: Bound final snapshot write against repository quota
+        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          used="$(gh api "repos/$GITHUB_REPOSITORY/actions/cache/usage" --jq '.active_caches_size_in_bytes')"
+          [[ "$used" =~ ^[0-9]+$ ]]
+          [[ "${CHUNKS_AVD_CACHE_MIB:-}" =~ ^[0-9]+$ ]]
+          prospective=$(( used + CHUNKS_AVD_CACHE_MIB * 1048576 ))
+          if (( prospective > 9000000000 )); then
+            echo '::error title=AVD cache write refused::Existing caches plus estimated AVD exceed conservative 9 GB ceiling'
+            exit 1
+          fi
       - name: Save verified clean AVD for a future manual run
         if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
