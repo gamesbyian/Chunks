@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -65,6 +66,9 @@ class TransferLifecycleControlLargeTextTest {
     @Test fun confirmationStacksAndButtonsRemainReachableAt200Percent() {
         val attempts = mutableListOf<String>()
         show(started = false, scale = 2f, attempts = attempts)
+        rule.onNodeWithContentDescription(
+            "Start A very long named transfer for the exact remote server on this rTorrent server"
+        ).assertExists()
         rule.onNodeWithText("Start transfer…").performClick()
 
         rule.onNodeWithText("Cancel").performScrollTo()
