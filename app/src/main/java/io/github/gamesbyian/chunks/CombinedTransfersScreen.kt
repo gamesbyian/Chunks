@@ -895,7 +895,7 @@ internal fun CombinedTransfersScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (result.sources.size > 1 || result.hasIncompleteOrStaleSource ||
+                if (showingSourceStatus || result.sources.size > 1 || result.hasIncompleteOrStaleSource ||
                     listings.values.any { it.error != null || it.loading }) {
                     OutlinedButton(
                         onClick = { showingSourceStatus = !showingSourceStatus },
