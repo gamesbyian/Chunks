@@ -56,7 +56,8 @@ _SAFE_FRAME_FILES = frozenset((
 def safe_failure_diagnostic(receipt, peer_valid, control_preserved):
     """Bounded causal hints; never change the underlying acceptance decision."""
     runner = receipt.get("runner") if isinstance(receipt.get("runner"), dict) else {}
-    if runner.get("failed_tests", 0) > 0:
+    failed = runner.get("failed_tests", 0)
+    if type(failed) is int and failed > 0:
         reason = "android-test-failed"
     elif not runner.get("runner_finished"):
         reason = "instrumentation-incomplete"
@@ -78,7 +79,7 @@ def safe_failure_diagnostic(receipt, peer_valid, control_preserved):
             if not isinstance(entry, dict):
                 continue
             file, line = entry.get("file"), entry.get("line")
-            if file in _SAFE_FRAME_FILES and type(line) is int and 1 <= line <= 10000:
+            if isinstance(file, str) and file in _SAFE_FRAME_FILES and type(line) is int and 1 <= line <= 10000:
                 frame = f"{file}:{line}"
                 break
     return {"reason": reason, "last_ui_stage": last, "first_safe_frame": frame}
