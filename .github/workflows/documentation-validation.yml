@@ -39,6 +39,8 @@ on:
       - 'tests/test_ci_workflow_inventory.py'
       - 'tools/ci_runner_cost_report.py'
       - 'tests/test_ci_runner_cost_report.py'
+      - 'tools/ci_active_runner_snapshot.py'
+      - 'tests/test_ci_active_runner_snapshot.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
       - 'tools/physical_android_preflight.sh'
@@ -127,6 +129,8 @@ on:
       - 'tests/test_ci_workflow_inventory.py'
       - 'tools/ci_runner_cost_report.py'
       - 'tests/test_ci_runner_cost_report.py'
+      - 'tools/ci_active_runner_snapshot.py'
+      - 'tests/test_ci_active_runner_snapshot.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
       - 'tools/physical_android_preflight.sh'
@@ -206,6 +210,8 @@ jobs:
           python3 tools/ci_workflow_inventory.py --output "$RUNNER_TEMP/chunks-workflow-inventory.json" --summary
       - name: Verify read-only Actions runner-time accounting (offline)
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_runner_cost_report.py
+      - name: Verify pre-push active runner snapshot is read-only and explicit (offline)
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_active_runner_snapshot.py
       - name: Retain machine-readable all-workflow inventory
         if: always()
         uses: actions/upload-artifact@v4
