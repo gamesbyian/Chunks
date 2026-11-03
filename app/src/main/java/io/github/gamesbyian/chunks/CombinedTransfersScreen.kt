@@ -99,6 +99,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withContext
 
+/**
+ * Exact-principal match only. A user-selected display name takes precedence
+ * over an endpoint banner in the Combined list, without changing server
+ * identity, authenticated authority or a similarly named account's colour.
+ */
+internal fun connectedServerFriendlyLabel(
+    aliasScope: String,
+    serverId: EnvironmentId,
+    savedProfiles: List<CombinedSavedProfile>
+): String = savedProfiles.firstOrNull { it.id == serverId.value }
+    ?.let { "Server · " + it.label }
+    ?: serverEnvironmentLabel(aliasScope)
+
 /** The connected server's latest accepted list, as the server screen holds it. */
 /** Ephemeral selection owner. Never save credentials, sessions or selections to instance state. */
 /** A completed off-main-thread read, valid only for this exact privacy/session view. */
@@ -437,7 +450,8 @@ internal fun CombinedTransfersScreen(
     var batchResult by remember(batchIdentity) { mutableStateOf<List<String>>(emptyList()) }
     val labels = LinkedHashMap<EnvironmentId, String>().apply {
         put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
-        if (server != null && serverId != null) put(serverId, serverEnvironmentLabel(server.aliasScope))
+        if (server != null && serverId != null)
+            put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
     // Palette storage is a lifecycle effect, not work performed by remember or
