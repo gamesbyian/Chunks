@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-03 Robolectric runtime fetch failure: bounded CI triage evidence
+
+**Observed before any tool change:** [#1194 foundation run 41670063830](https://github.com/gamesbyian/Chunks/actions/runs/41670063830) built Android sources and ran **1,478** JVM tests with **one failed** (`AuthenticatedTransfersFooterTest`, 36 skipped). The failing test stack named `MavenArtifactFetcher.java:130` and nested `java.net.SocketException`; this is a Robolectric runtime SDK JAR network/download symptom rather than demonstrated incorrect footer behavior. Its exact HTTP/TLS/root cause remains undetermined; the red run cannot serve as positive Compose acceptance. Official Robolectric documentation independently confirms its separate runtime fetch path. The PR owner was informed in an [independent GitHub comment](https://github.com/gamesbyian/Chunks/pull/1194) rather than being directed to change valid UX code or repeat unneeded entire campaigns.
+
+**Receipt improvement:** `tools/ci_failure_digest.py` emits a static, advisory `possible-robolectric-runtime-dependency-network-fetch` hint only when both verified markers occur inside a failing `android-jvm` JUnit case. The original test-failure status, executed count, installed Android engine evidence and exact source are untouched. Neither raw test exception, dynamic URL/credentials nor public private-tracker information is emitted. Offline negative controls cover failed-class hints, missing/mixed markers, malformed reports, wrong suite and no false pass. No SDK prefetch or cache change is qualified; measured speed savings are unknown. Canonical decision and limits: [CI-POLICY](CI-POLICY.md).
+
+
 ## 2026-11-03 exact search-ceiling and selection-provenance correction
 
 GitHub's [Actions workflow-runs REST documentation](https://docs.github.com/en/rest/actions/workflow-runs) caps filtered result retrieval at 1,000. An exact 1,000-result page series may represent a search boundary rather than a complete historical match set. Following merged pagination [#1193](https://github.com/gamesbyian/Chunks/pull/1193), the read-only reporter now refuses **exactly** 1,000 workflow-run matches as well as larger counts and requests narrower dated windows instead. No accepted Android evidence, run/job timestamp, or historical cost total is altered.
