@@ -1,5 +1,10 @@
 # Chunks specification coverage and acceptance map
 
+## 2026-11-03 evidence correction
+
+The owner reports ordinary Add, Start, Stop and Restart working on the physical Android phone; preserve that report and do not demand repetitive requalification of unchanged behavior. [41563247925](https://github.com/gamesbyian/Chunks/actions/runs/41563247925) separately passed actual API35 emulator reboot/reseed and process-death recovery on source `df3f2c8d086b13b45f6a10a145e13191d139453f`; it does not prove physical reboot or OEM endurance. [#1125](https://github.com/gamesbyian/Chunks/pull/1125) merged phone confirmation identity, while owned-payload deletion, local uncertain-removal recovery, full multi-profile real-engine scope and physical removal remain open in [#1113](https://github.com/gamesbyian/Chunks/issues/1113). See [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) for exact receipts and live priorities.
+
+
 ## Planned transfer sharing and cross-app file associations (not implemented)
 
 **Transfer sharing:** [TRANSFER-SHARING](TRANSFER-SHARING.md) specifies v1/v2/hybrid magnet export, optional verified original metadata `.torrent` export, source-labelled native Android sharing and actual second-client import/peer acceptance. **No feature implementation, installed UI or real import receipt is claimed.**
