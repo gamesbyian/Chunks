@@ -44,7 +44,9 @@ data class UnifiedTransferObservation(
     val hasError: Boolean = false,
     val metadataPending: Boolean? = null,
     /** Optional server-reported all-time ratio. Unknown is never treated as zero. */
-    val ratioThousandths: Long? = null
+    val ratioThousandths: Long? = null,
+    /** Engine-reported save folder only. Not proof of file existence or write authority. */
+    val reportedSaveFolder: String? = null
 ) {
     init {
         require(sizeBytes == null || sizeBytes >= 0)
@@ -136,7 +138,8 @@ object UnifiedTransferObservations {
             peers = item.peers.takeIf { it >= 0 },
             addedAtEpochMillis = item.addedAtEpochMillis,
             hasError = !item.error.isNullOrBlank(),
-            metadataPending = !item.metadataKnown
+            metadataPending = !item.metadataKnown,
+            reportedSaveFolder = item.savePath.takeIf { it.isNotBlank() }
         )
 
     fun fromRTorrent(environment: EnvironmentId, item: RemoteTransfer) =
@@ -154,7 +157,8 @@ object UnifiedTransferObservations {
             uploadBytesPerSecond = item.upBytesPerSecond?.takeIf { it >= 0 },
             peers = null,
             metadataPending = item.metadataPending,
-            ratioThousandths = item.ratioThousandths?.takeIf { it >= 0 }
+            ratioThousandths = item.ratioThousandths?.takeIf { it >= 0 },
+            reportedSaveFolder = item.directory.takeIf { it.isNotBlank() }
         )
 }
 
