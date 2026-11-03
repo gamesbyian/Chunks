@@ -138,7 +138,9 @@ jobs:
           disable-animations: true
           # Cold mode disables snapshots. Snapshot mode loads the cached clean
           # boot but never saves the possibly modified measurement session.
-          emulator-options: ${{ inputs.mode == 'snapshot' && '-no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' || '-no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' }}
+          # Verbose snapshot mode preserves host emulator load/fallback events
+          # in the Actions log. Only a successful load, not a cache hit, counts.
+          emulator-options: ${{ inputs.mode == 'snapshot' && '-verbose -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' || '-no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' }}
           script: |
             set -euo pipefail
             test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = 35
