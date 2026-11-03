@@ -49,27 +49,30 @@ class TransferMoveSourceObservationTest {
         try {
             val client = RTorrentRemote(RemoteCredentials(
                 "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
-            block(client, methods.toList().also { /* caller reads after RPC */ })
+            block(client, methods)
         } finally {
             server.stop(0)
         }
     }
 
     @Test fun hiddenFromMainViewStillExistsInExactSession() = runBlocking {
-        withLoopback(readOnlyReply("Invisible but present")) { remote, _ ->
+        withLoopback(readOnlyReply("Invisible but present")) { remote, methods ->
             assertEquals(Observation.Present, TransferMoveObservations.server(remote, hash))
+            assertEquals(listOf("d.name"), methods)
         }
     }
 
     @Test fun onlySpecificUnknownHashFaultCanProveSourceAbsent() = runBlocking {
-        withLoopback(fault(-501, "Could not find info-hash.")) { remote, _ ->
+        withLoopback(fault(-501, "Could not find info-hash.")) { remote, methods ->
             assertEquals(Observation.Absent, TransferMoveObservations.server(remote, hash))
+            assertEquals(listOf("d.name"), methods)
         }
     }
 
     @Test fun unrelatedRpcFaultCannotBeMisreportedAsSourceRemoved() = runBlocking {
-        withLoopback(fault(-32601, "Method unavailable")) { remote, _ ->
+        withLoopback(fault(-32601, "Method unavailable")) { remote, methods ->
             assertEquals(Observation.Unknown, TransferMoveObservations.server(remote, hash))
+            assertEquals(listOf("d.name"), methods)
         }
     }
 }
