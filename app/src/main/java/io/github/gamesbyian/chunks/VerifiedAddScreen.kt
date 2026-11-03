@@ -723,7 +723,8 @@ internal fun RemoteAddScopeIntro(environmentLabel: String?, aliasScope: String?)
     }
     Text("This server downloads to its own save folder. Nothing is copied to " +
         "this phone by Add. Paste a magnet or choose a .torrent; the server's " +
-        "default folder is used unless you change it. Review before starting.",
+        "default folder is used unless you change it. Review before starting. " +
+        "Saved Chunks server-seeding rules are not applied yet; rTorrent controls seeding.",
         style = MaterialTheme.typography.bodyMedium)
 }
 
