@@ -137,6 +137,13 @@ class AndroidCiTriggerContract(unittest.TestCase):
         self.assertIn("bash tools/native_atlas_capture.sh", source)
         self.assertIn("--require-executed", source)
         self.assertIn("app/build/outputs/androidTest-results/connected/**/TEST-*.xml", source)
+        for name in (
+            "installedApplicationExposesNativeAdaptiveVectorIcon",
+            "largeAccessibilityTypeStillExposesTheWholeHeader",
+            "brandAndTaglineAreOneAccessibleHeading",
+        ):
+            self.assertIn(name, source)
+        self.assertIn("Missing or duplicated native atlas Android test method", source)
 
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
         source = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml"
