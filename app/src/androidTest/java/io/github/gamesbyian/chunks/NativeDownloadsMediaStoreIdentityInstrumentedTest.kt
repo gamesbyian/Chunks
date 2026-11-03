@@ -96,16 +96,29 @@ class NativeDownloadsMediaStoreIdentityInstrumentedTest {
                 matching != null)
             val (id, owner) = requireNotNull(matching)
             val selected = ContentUris.withAppendedId(collection, id)
+            // Android 15's MediaProvider accepts image/video/audio and certain
+            // other media-item URI kinds here, but refuses Downloads collection
+            // IDs even when the exact POSIX-created Downloads row is readable.
+            // This is an intentionally negative capability assertion. Never
+            // reinterpret a Files/Images URI as permission to erase a download.
+            var requestRefused = false
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                // Only constructs a PendingIntent. NEVER invoke its IntentSender.
-                val pending = MediaStore.createDeleteRequest(resolver, listOf(selected))
-                assertTrue("OS did not create an exact-item deletion request", pending.intentSender != null)
+                try {
+                    // Only attempts PendingIntent construction, never launches it.
+                    MediaStore.createDeleteRequest(resolver, listOf(selected))
+                } catch (_: IllegalArgumentException) {
+                    requestRefused = true
+                }
+                if (Build.VERSION.SDK_INT == 35) {
+                    assertTrue("Android 15 unexpectedly accepted a Downloads ID for a media-only delete request",
+                        requestRefused)
+                }
             }
             assertArrayEquals("Preparing a request must preserve the selected payload",
                 bytes, payload.readBytes())
             assertArrayEquals("An unrelated file must be untouched", canaryBytes, canary.readBytes())
             println("CHUNKS_MEDIASTORE_POSIX_PROBE indexed=true ownerIsApp=${owner == ctx.packageName} " +
-                "ownerUnknown=${owner == null} deleteRequestPrepared=${Build.VERSION.SDK_INT >= 30}")
+                "ownerUnknown=${owner == null} downloadsDeleteRequestRefused=$requestRefused")
         } finally {
             // These paths were created with CREATE_NEW in this test invocation.
             // Never delete the folder, wildcard-match names or touch any other file.
