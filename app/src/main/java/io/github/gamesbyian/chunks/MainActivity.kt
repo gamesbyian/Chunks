@@ -1882,8 +1882,12 @@ private fun TransferCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TransferFileTypeBadge(transfer.name)
+                Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
             if (detailsOpen) {
             if (alias != null) {
                 Text("Original torrent: " + transfer.name,

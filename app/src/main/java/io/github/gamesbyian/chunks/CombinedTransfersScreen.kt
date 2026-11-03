@@ -1126,10 +1126,16 @@ private fun CombinedTransferRow(
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(environmentLabel, style = MaterialTheme.typography.labelMedium,
                 color = labelColour, fontWeight = FontWeight.Bold)
-            Text(row.displayName, style = MaterialTheme.typography.titleSmall,
-                maxLines = if (expanded) Int.MAX_VALUE else 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                modifier = Modifier.semantics { contentDescription = row.displayName })
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TransferFileTypeBadge(row.originalName)
+                Text(row.displayName, style = MaterialTheme.typography.titleSmall,
+                    maxLines = if (expanded) Int.MAX_VALUE else 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).semantics {
+                        contentDescription = row.displayName
+                    })
+            }
             Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
             row.progressPpm?.let { ppm ->
                 ChunkedProgressBar(progress = ppm / 1_000_000f,

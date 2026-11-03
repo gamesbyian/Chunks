@@ -1814,8 +1814,12 @@ internal fun LocalTransferCard(
     val percent = transfer.progressPpm / 10_000
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TransferFileTypeBadge(transfer.name)
+                Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            }
             if (alias != null) {
                 Text("Original torrent: " + transfer.name,
                     style = MaterialTheme.typography.bodySmall)
