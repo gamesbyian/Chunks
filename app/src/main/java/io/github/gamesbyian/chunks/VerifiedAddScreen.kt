@@ -20,6 +20,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -324,13 +325,22 @@ fun VerifiedAddScreen(
             )
             Text(when {
                 destination.isNotBlank() ->
-                    "Using custom Place. Clear this field to return to the server default; this choice does not change the server setting."
+                    "Using a custom folder for this Add only. The server's configured default remains unchanged."
                 !defaultReadComplete -> "Reading rTorrent's configured default Place…"
                 configuredDefault != null ->
                     "Using rTorrent default Place: " + configuredDefault + ". No directory override will be sent."
                 else ->
                     "No usable default Place was reported. Enter a custom absolute server folder before adding."
             }, style = MaterialTheme.typography.bodySmall)
+            RemoteDefaultPlaceResetControl(
+                show = destination.isNotBlank() && configuredDefault != null,
+                enabled = !submitting && !alreadyAttempted,
+                onReset = {
+                    onDestination("")
+                    // Re-review the resolved server default; no server mutation.
+                    awaitingConfirmation = false
+                }
+            )
         }
         // Existing choices are suggestions, never permission/write probes. Keep
         // the effective default and manually editable custom Place above.
@@ -709,6 +719,24 @@ internal fun RecentRemotePlaces(
     }
 }
 
+
+/**
+ * Reset only the draft's one-off destination override, without changing the
+ * server's default folder or performing any RPC. The parent screen must
+ * invalidate an existing Add review after changing the draft.
+ */
+@Composable
+internal fun RemoteDefaultPlaceResetControl(
+    show: Boolean,
+    enabled: Boolean,
+    onReset: () -> Unit
+) {
+    if (show) TextButton(
+        onClick = onReset, enabled = enabled,
+        modifier = Modifier.heightIn(min = 48.dp)
+            .semantics { contentDescription = "Use rTorrent default save folder for this Add" }
+    ) { Text("Reset to rTorrent default folder") }
+}
 
 /** Scope stays visible before someone chooses a magnet, file or destination. */
 @Composable

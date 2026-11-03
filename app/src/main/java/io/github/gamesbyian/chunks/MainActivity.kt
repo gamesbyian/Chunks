@@ -1854,7 +1854,8 @@ private fun TransfersScreen(
                         enabled = !stale && !loading && !batchBusy && batchHashes.isNotEmpty(),
                         run = { items -> runBatchPhoneCopy(context, remote, items) },
                         move = { items ->
-                            runBatchPhoneMove(context, remote, aliasScope, items).also { serverMoveRevision++ }
+                            runBatchPhoneMove(context, remote, aliasScope, items, list)
+                                .also { serverMoveRevision++ }
                         }
                     )
                     val serverDigest = TransferMoveStore.scopeDigest(aliasScope)
@@ -1862,7 +1863,9 @@ private fun TransfersScreen(
                         TransferMoveStore(context).all(TransferMove.Direction.SERVER_TO_PHONE).filter { record ->
                             record.stage == TransferMove.Stage.TARGET_VERIFIED &&
                                 record.serverScopeDigest == serverDigest &&
-                                list.any { it.hash.equals(record.infoHash, ignoreCase = true) }
+                                list.any { it.hash.equals(record.infoHash, ignoreCase = true) &&
+                                    TransferMove.sourceIdentityMatches(
+                                        record, it.name, null, it.directory) }
                         }
                     }
                     if (view == "main") BatchMoveRemovalPanel(
@@ -1870,10 +1873,18 @@ private fun TransfersScreen(
                         busy = stale || loading,
                         observeTarget = { hash -> TransferMoveObservations.phone(hash) },
                         removeSource = { hash ->
-                            // Guarded by the transfer's current name and Place; session-only d.erase.
-                            list.firstOrNull { it.hash.equals(hash, ignoreCase = true) }?.let { t ->
-                                remote.eraseFromSession(t.hash, t.name, t.directory)
-                            }
+                            val original = pendingServerMoves.singleOrNull {
+                                it.infoHash.equals(hash, ignoreCase = true)
+                            } ?: error("Original server Move journal missing")
+                            val live = list.singleOrNull {
+                                it.hash.equals(hash, ignoreCase = true)
+                            } ?: error("Original server job unavailable")
+                            if (!TransferMove.sourceIdentityMatches(
+                                    original, live.name, null, live.directory))
+                                error("Original server job changed after Move review")
+                            remote.eraseFromSession(
+                                original.infoHash, original.name,
+                                requireNotNull(original.sourceDirectory))
                         },
                         observeSource = { hash -> TransferMoveObservations.server(remote, hash) },
                         save = { record -> TransferMoveStore(context).save(record) },
@@ -2140,6 +2151,7 @@ private fun TransferCard(
             if (mainView) TransferMoveControl(
                 direction = TransferMove.Direction.SERVER_TO_PHONE,
                 infoHash = transfer.hash, name = transfer.name,
+                sourceDirectory = transfer.directory,
                 serverAliasScope = moveScope?.takeIf {
                     TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null
                 },

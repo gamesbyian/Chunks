@@ -11,7 +11,9 @@ class TransferMoveTest {
     private val hash = "B63EAA9720EE797667EF58EA35EF7D81AB5D1C16"
     private val scope = "a".repeat(64)
     private fun started(direction: Direction = Direction.PHONE_TO_SERVER) =
-        TransferMove.start(direction, hash, "Big Buck Bunny", scope, "seed.example")
+        TransferMove.start(direction, hash, "Big Buck Bunny", scope, "seed.example",
+            sourceReviewToken = if (direction == Direction.PHONE_TO_SERVER) "native-session:17" else null,
+            sourceDirectory = if (direction == Direction.SERVER_TO_PHONE) "/server/downloads" else null)
 
     private fun saved(next: Next) = (next as Next.Save).record
 
@@ -66,6 +68,73 @@ class TransferMoveTest {
         val back = TransferMove.onRemovalResult(started(Direction.SERVER_TO_PHONE)
             .copy(stage = Stage.SOURCE_REMOVAL_REQUESTED), Observation.Absent) as Next.Done
         assertTrue(back.message.contains("Downloaded files remain on the server"))
+    }
+
+    @Test fun phoneSourceGenerationRoundTripsAndNeverAuthorizesReplacement() {
+        val original = TransferMove.start(
+            Direction.PHONE_TO_SERVER, hash, "Big Buck Bunny", scope, "seed.example",
+            sourceReviewToken = "native-session:17"
+        )
+        assertTrue(original.encode().startsWith("v3\n"))
+        assertEquals(original, TransferMove.decode(original.encode()))
+        assertTrue(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", "native-session:17"))
+        assertFalse(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", "native-session:18"))
+        assertFalse(TransferMove.sourceIdentityMatches(original, "Changed title", "native-session:17"))
+        assertFalse(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", null))
+    }
+
+    @Test fun legacyPhoneMoveCanBeRecoveredButCannotEraseUnidentifiedSource() {
+        val old = TransferMove.start(Direction.PHONE_TO_SERVER, hash,
+            "Big Buck Bunny", scope, "seed.example")
+        assertTrue(old.encode().startsWith("v1\n"))
+        val recovered = requireNotNull(TransferMove.decode(old.encode()))
+        assertNull(recovered.sourceReviewToken)
+        assertFalse(TransferMove.sourceIdentityMatches(recovered, recovered.name, "fresh-native:1"))
+        val legacyReviewed = recovered.copy(stage = Stage.TARGET_VERIFIED)
+        assertTrue(TransferMove.beginRemoval(legacyReviewed, Observation.Present) is Next.Keep)
+        // A legacy server-side Move also lacked its reviewed original directory
+        // and must be restarted, not silently grant consent to a replacement.
+        val remoteSource = TransferMove.start(Direction.SERVER_TO_PHONE, hash,
+            "Big Buck Bunny", scope, "seed.example")
+        assertFalse(TransferMove.sourceIdentityMatches(remoteSource, "Big Buck Bunny", null,
+            "/server/downloads"))
+        val reviewed = TransferMove.start(Direction.SERVER_TO_PHONE, hash, "Big Buck Bunny",
+            scope, "seed.example", sourceDirectory = "/server/downloads")
+        assertTrue(reviewed.encode().startsWith("v3\n"))
+        assertEquals(reviewed, TransferMove.decode(reviewed.encode()))
+        assertTrue(TransferMove.sourceIdentityMatches(reviewed, "Big Buck Bunny", null,
+            "/server/downloads"))
+        assertFalse(TransferMove.sourceIdentityMatches(reviewed, "Big Buck Bunny", null,
+            "/server/other"))
+        assertFalse(TransferMove.sourceIdentityMatches(reviewed, "Renamed", null,
+            "/server/downloads"))
+    }
+
+    @Test fun remoteMoveNeverTreatsDifferentNamesWithTheSameLongPrefixAsOneJob() {
+        val prefix = "a".repeat(512)
+        val expected = prefix + "original suffix"
+        val changed = prefix + "replacement suffix"
+        val record = TransferMove.start(Direction.SERVER_TO_PHONE, hash, expected,
+            scope, "seed.example", sourceDirectory = "/server/downloads")
+        assertEquals(expected, record.name)
+        assertFalse(TransferMove.sourceIdentityMatches(record, changed, null,
+            "/server/downloads"))
+        assertTrue(TransferMove.sourceIdentityMatches(record, expected, null,
+            "/server/downloads"))
+
+        // The adapter caps returned names at 2048. A name of exactly that
+        // length may hide a suffix, so cannot prove original source identity.
+        val unobservable = "x".repeat(2048)
+        val capped = TransferMove.start(Direction.SERVER_TO_PHONE, hash, unobservable,
+            scope, "seed.example", sourceDirectory = "/server/downloads")
+        assertFalse(TransferMove.sourceIdentityMatches(capped, unobservable, null,
+            "/server/downloads"))
+
+        val cappedFolder = "/" + "d".repeat(4095)
+        val directoryBound = TransferMove.start(Direction.SERVER_TO_PHONE, hash, expected,
+            scope, "seed.example", sourceDirectory = cappedFolder)
+        assertFalse(TransferMove.sourceIdentityMatches(directoryBound, expected, null,
+            cappedFolder))
     }
 
     @Test fun codecRoundTripsAwkwardNamesAndRejectsMalformedRecords() {

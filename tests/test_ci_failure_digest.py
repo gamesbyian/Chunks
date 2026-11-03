@@ -34,6 +34,65 @@ class DigestTests(unittest.TestCase):
         self.assertNotIn("must-never-appear", str(d))
         self.assertNotIn("sensitive traceback", str(d))
 
+    def test_robolectric_runtime_fetch_signature_advisory_not_green(self):
+        secret = "SEEDBOX-SECRET-NEVER-ECHO"
+        self.path.write_text(
+            '<testsuite tests="1" failures="1"><testcase classname="UiTest" name="render">'
+            '<failure message="java.lang.AssertionError at MavenArtifactFetcher.java:130">'
+            'Caused by java.net.SocketException at NioSocketImpl.java:328 '
+            + secret + ' https://private.example/api?token=' + secret +
+            '</failure></testcase></testsuite>'
+        )
+        result = make_digest([str(self.path)], "failure", "android-jvm", self.env)
+        self.assertEqual("test_assertion", result["phase"])
+        self.assertEqual("possible-robolectric-runtime-dependency-network-fetch",
+                         result["diagnostic_hint"])
+        self.assertEqual(1, result["junit"]["failed"])
+        self.assertTrue(result["evidence_executed"])
+        self.assertFalse(rejects_unverified_green(result, "failure", True))
+        serialized = json.dumps(result)
+        self.assertNotIn(secret, serialized)
+        self.assertNotIn("private.example", serialized)
+        self.assertNotIn("NioSocketImpl", serialized)
+        self.assertIn("Robolectric Android SDK JAR", result["next_action"])
+
+    def test_fetch_hint_requires_exact_conjunction_and_android_jvm_suite(self):
+        candidates = (
+            ('MavenArtifactFetcher.java:130', "android-jvm"),
+            ('Caused by java.net.SocketException', "android-jvm"),
+            ('MavenArtifactFetcher and java.net.SocketException', "native-add"),
+            ('normal android assertion', "android-jvm"),
+        )
+        for payload, suite in candidates:
+            with self.subTest(payload=payload, suite=suite):
+                self.path.write_text(
+                    '<testsuite tests="1" errors="1"><testcase name="fails">'
+                    '<error>' + payload + '</error></testcase></testsuite>'
+                )
+                result = make_digest([str(self.path)], "failure", suite, self.env)
+                self.assertIsNone(result["diagnostic_hint"])
+                self.assertEqual("test_assertion", result["phase"])
+                self.assertEqual(1, result["junit"]["failed"])
+
+    def test_malformed_or_green_evidence_cannot_receive_runtime_fetch_hint(self):
+        self.path.write_text(
+            '<testsuite tests="2" failures="0">'
+            '<testcase name="bad"><failure>'
+            'MavenArtifactFetcher.java:130 java.net.SocketException'
+            '</failure></testcase></testsuite>'
+        )
+        invalid = make_digest([str(self.path)], "success", "android-jvm", self.env)
+        self.assertEqual("harness_report", invalid["phase"])
+        self.assertIsNone(invalid["diagnostic_hint"])
+        self.assertTrue(rejects_unverified_green(invalid, "success", True))
+        self.path.write_text(
+            '<testsuite tests="1"><testcase name="passes">'
+            '</testcase></testsuite>'
+        )
+        clean = make_digest([str(self.path)], "success", "android-jvm", self.env)
+        self.assertIsNone(clean["diagnostic_hint"])
+        self.assertEqual("none", clean["phase"])
+
     def test_skips_and_missing_tests_never_certify_execution(self):
         self.path.write_text('<testsuite><testcase name="skip"><skipped/></testcase></testsuite>')
         d = make_digest([str(self.path)], "success", "unit", self.env)

@@ -380,6 +380,49 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(remoteAdd).performClick()
         rule.onNodeWithText("Add a download to this server").assertExists()
         rule.onNodeWithText("Magnet link").assertExists()
+        // Exercise the production Add screen, including the parent-owned draft.
+        // Reset must invalidate the custom-folder review before a default-folder
+        // review can be confirmed. This synthetic RPC fixture permits reads only.
+        val addList = rule.onNode(hasScrollToIndexAction())
+        addList.performScrollToNode(hasText("Magnet link"))
+        rule.onNodeWithText("Magnet link").performTextReplacement(
+            "magnet:?xt=urn:btih:" + "ab".repeat(20))
+        addList.performScrollToNode(hasText("Custom server folder (optional)"))
+        rule.onNodeWithText("Custom server folder (optional)")
+            .performTextReplacement("/srv/one-off")
+        dismissSearchKeyboard()
+        addList.performScrollToNode(hasText("Review Add"))
+        rule.onNodeWithText("Review Add").performClick()
+        addList.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
+        rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()
+        addList.performScrollToNode(hasText("Confirm: add then start"))
+        rule.onNodeWithText("Confirm: add then start").assertExists()
+
+        val reset = androidx.compose.ui.test.hasContentDescription(
+            "Use rTorrent default save folder for this Add")
+        addList.performScrollToNode(hasText("Custom server folder (optional)"))
+        // The server default is read on Dispatchers.IO, outside the Compose
+        // clock. Keep its item composed while waiting for the usable result.
+        rule.waitUntil(15_000) {
+            rule.onAllNodes(reset).fetchSemanticsNodes().isNotEmpty()
+        }
+        addList.performScrollToNode(reset)
+        rule.onNode(reset).performClick()
+        // Scrolling to Review Add proves the old confirmation was invalidated;
+        // merely finding no offscreen confirmation node would be insufficient.
+        addList.performScrollToNode(hasText("Review Add"))
+        rule.onNodeWithText("Review Add").assertExists()
+        rule.onNodeWithText("Review Add").performClick()
+        addList.performScrollToNode(hasText(
+            "Destination: /downloads (server default; no directory override)"))
+        rule.onNodeWithText("Destination: /downloads (server default; no directory override)")
+            .assertExists()
+        addList.performScrollToNode(hasText("Cancel, don't add"))
+        rule.onNodeWithText("Cancel, don't add").performClick()
+        assertTrue("Editing and re-reviewing the destination must send no mutation",
+            receivedMethods.toList().all {
+                it in setOf("system.client_version", "d.multicall2", "f.multicall", "directory.default")
+            })
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Back to transfers"))
         rule.onNodeWithText("Back to transfers").performClick()
         rule.onNodeWithText("3 transfers", substring = true).assertExists()

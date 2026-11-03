@@ -10,7 +10,8 @@ import org.junit.Test
 class BatchMoveRemovalTest {
     private val scope = "a".repeat(64)
     private fun move(n: Int) = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER,
-        "%040x".format(n), "T$n", scope, "seed.example").copy(stage = Stage.TARGET_VERIFIED)
+        "%040x".format(n), "T$n", scope, "seed.example",
+        sourceReviewToken = "native-session:$n").copy(stage = Stage.TARGET_VERIFIED)
 
     private class World {
         val sourcePresent = mutableSetOf<String>()
@@ -54,6 +55,26 @@ class BatchMoveRemovalTest {
         assertEquals(listOf(Result.REMOVED, Result.UNCONFIRMED, Result.NOT_RUN), report.results.map { it.second })
         assertEquals(2, w.removals.size)
         assertEquals(Stage.SOURCE_REMOVAL_UNCERTAIN, w.journal[moves[1].infoHash]?.stage)
+    }
+
+    @Test fun legacyMoveWithoutSourceReviewStopsBeforeObservationOrMutation() {
+        val old = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER,
+            "%040x".format(1), "T1", scope, "seed.example")
+            .copy(stage = Stage.TARGET_VERIFIED)
+        val next = move(2)
+        val w = World().apply {
+            sourcePresent += old.infoHash
+            sourcePresent += next.infoHash
+            targetPresent += old.infoHash
+            targetPresent += next.infoHash
+        }
+        val report = run(w, listOf(old, next))
+        assertEquals(listOf(Result.SOURCE_REVIEW_REQUIRED, Result.NOT_RUN),
+            report.results.map { it.second })
+        assertTrue(w.removals.isEmpty())
+        assertTrue(old.infoHash in w.sourcePresent)
+        assertTrue(next.infoHash in w.sourcePresent)
+        assertTrue(w.journal.isEmpty())
     }
 
     @Test fun refusesUnverifiedMoves() {

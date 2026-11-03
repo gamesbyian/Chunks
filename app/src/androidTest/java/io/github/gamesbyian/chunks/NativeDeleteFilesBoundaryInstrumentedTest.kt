@@ -10,6 +10,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.libtorrent4j.AlertListener
@@ -35,6 +36,8 @@ import org.libtorrent4j.alerts.TorrentDeletedAlert
 @RunWith(AndroidJUnit4::class)
 class NativeDeleteFilesBoundaryInstrumentedTest {
     @Test fun nativeDeleteAlertAndIndependentAbsenceDoNotTouchForeignBytes() {
+        assumeTrue("Explicit disposable native deletion research only",
+            InstrumentationRegistry.getArguments().getString("chunks_disposable_native_delete") == "authorized")
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val work = File(context.filesDir, "native-delete-proof-" + System.nanoTime())
         assertTrue(work.mkdirs())

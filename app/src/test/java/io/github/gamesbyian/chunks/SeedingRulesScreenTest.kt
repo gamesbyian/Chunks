@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
@@ -108,6 +109,48 @@ class SeedingRulesScreenTest {
         rule.onNodeWithText("Reset to automatic").performScrollTo().performClick()
         rule.onNodeWithText("Confirm reset").performClick()
         assertFalse(store.load().defaults.containsKey(SeedingEnvironment.PHONE_ID))
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi", fontScale = 2.0f)
+    fun searchingDefaultEnvironmentsIsReadOnlyAtSmallLargeTextSize() {
+        val store = SeedingRuleStore(context)
+        val saved = io.github.gamesbyian.chunks.seeding.SeedingPolicy()
+        assertTrue(store.save(SeedingRuleStore.Snapshot(
+            emptyList(), mapOf(SeedingEnvironment.PHONE_ID to saved))))
+        assertEquals(listOf(SeedingEnvironment.phone()),
+            matchingSeedingEnvironments(environments, "On THIS phone"))
+        assertEquals(environments,
+            matchingSeedingEnvironments(environments, "  "))
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                SeedingRulesScreen(environments) {}
+            } }
+        }
+        rule.onNodeWithText("Review defaults", substring = true).performClick()
+        field("Find environment defaults").performScrollTo()
+            .performTextReplacement("no-such-environment")
+        rule.onNodeWithText("No environment defaults match this search", substring = true)
+            .assertExists()
+        assertTrue(store.load().defaults.containsKey(SeedingEnvironment.PHONE_ID))
+        field("Find environment defaults").performScrollTo().performTextReplacement("phone")
+        rule.onNodeWithText("Showing 1 of 2 environment defaults").assertExists()
+        rule.onNodeWithText("Using your saved preference", substring = true).assertExists()
+        assertEquals(1, store.load().defaults.size)
+    }
+
+    @Test fun searchRemainsClearableWhenAnEnvironmentDisappears() {
+        val available = mutableStateOf(environments)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                SeedingRulesScreen(available.value) {}
+            } }
+        }
+        rule.onNodeWithText("Review defaults", substring = true).performClick()
+        field("Find environment defaults").performScrollTo().performTextReplacement("no-such-environment")
+        rule.runOnIdle { available.value = listOf(SeedingEnvironment.phone()) }
+        field("Find environment defaults").performScrollTo().performTextReplacement("")
+        rule.onNodeWithText("Affects future phone transfers", substring = true).assertExists()
     }
 
     @Test fun ambiguousUnitsBlockSavingAndDeleteNeedsConfirmation() {

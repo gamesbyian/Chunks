@@ -8,6 +8,7 @@ stdout, endpoints or environment values.
 from __future__ import annotations
 
 import argparse
+import re
 from dataclasses import dataclass
 from pathlib import Path
 import xml.etree.ElementTree as ET
@@ -16,6 +17,35 @@ STATUS = "INSTRUMENTATION_STATUS: "
 STATUS_CODE = "INSTRUMENTATION_STATUS_CODE: "
 RESULT_CODE = "INSTRUMENTATION_CODE: "
 OUTCOMES = {0: "passed", -1: "error", -2: "failed", -3: "skipped", -4: "skipped"}
+
+
+def failure_locations(text: str) -> list[str]:
+    """Keep only bounded project source frames from failed status records.
+
+    Exception messages, stdout, external frames and request values never enter
+    this diagnostic. Original outcomes and structural JUnit remain unchanged.
+    """
+    frame = re.compile(
+        r"\s*at (io\.github\.gamesbyian\.chunks\.[A-Za-z0-9_.$]{1,200}"
+        r"\([A-Za-z0-9_]{1,100}\.kt:[1-9][0-9]{0,6}\))\s*")
+    pending: list[str] = []
+    result: list[str] = []
+    in_stack = False
+    for line in text.splitlines():
+        if line.startswith(STATUS_CODE):
+            if line[len(STATUS_CODE):].strip() in ("-1", "-2"):
+                for location in pending:
+                    if location not in result and len(result) < 16:
+                        result.append(location)
+            pending = []
+            in_stack = False
+        elif line.startswith(STATUS):
+            in_stack = line.startswith(STATUS + "stack=")
+        elif in_stack and len(pending) < 16:
+            match = frame.fullmatch(line)
+            if match and match[1] not in pending:
+                pending.append(match[1])
+    return result
 
 
 @dataclass(frozen=True)
@@ -108,13 +138,16 @@ def main() -> None:
     p.add_argument("--raw", type=Path, required=True)
     p.add_argument("--junit", type=Path, required=True)
     args = p.parse_args()
-    cases = parse_stream(args.raw.read_text(encoding="utf-8", errors="replace"))
+    raw = args.raw.read_text(encoding="utf-8", errors="replace")
+    cases = parse_stream(raw)
     write_junit(cases, args.junit)
     values = {kind: sum(x.outcome == kind for x in cases)
               for kind in ("passed", "failed", "error", "skipped")}
     print("CHUNKS_PREBUILT_INSTRUMENT: " + " ".join(
         f"{kind}={values[kind]}" for kind in ("passed", "failed", "error", "skipped")))
     if values["failed"] or values["error"] or not values["passed"]:
+        for location in failure_locations(raw):
+            print("CHUNKS_PREBUILT_FAILURE_LOCATION: " + location)
         raise SystemExit("Android instrumentation has failed or no executed tests")
 
 

@@ -45,6 +45,8 @@ on:
       - 'tests/test_ci_pr_overlap_report.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
+      - 'tools/prefetch_robolectric_sdk.py'
+      - 'tests/test_ci_robolectric_prefetch.py'
       - 'tools/physical_android_preflight.sh'
       - 'tools/test_physical_android_preflight.sh'
       - 'tests/test_ci_trigger_contract.py'
@@ -62,6 +64,7 @@ on:
       - '.github/workflows/seedhost-kotlin-adapter-smoke.yml'
       - '.github/workflows/seedhost-public-add-smoke.yml'
       - 'tests/test_ci_failure_digest.py'
+      - 'tests/test_minified_smoke_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
       - '.github/workflows/android-doze-harness-qa.yml'
@@ -137,6 +140,8 @@ on:
       - 'tests/test_ci_pr_overlap_report.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
+      - 'tools/prefetch_robolectric_sdk.py'
+      - 'tests/test_ci_robolectric_prefetch.py'
       - 'tools/physical_android_preflight.sh'
       - 'tools/test_physical_android_preflight.sh'
       - 'tests/test_ci_trigger_contract.py'
@@ -154,6 +159,7 @@ on:
       - '.github/workflows/seedhost-kotlin-adapter-smoke.yml'
       - '.github/workflows/seedhost-public-add-smoke.yml'
       - 'tests/test_ci_failure_digest.py'
+      - 'tests/test_minified_smoke_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
       - '.github/workflows/android-doze-harness-qa.yml'
@@ -208,6 +214,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
       - name: Verify CI JVM fork experiment remains scoped and covered
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_jvm_parallelism.py
+      - name: Verify SHA-512 Robolectric preflight and pinned SDK selection offline
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_robolectric_prefetch.py
       - name: Audit all workflow definitions and their dispatch metadata
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_workflow_inventory.py
@@ -243,6 +251,7 @@ jobs:
       - name: Test complete native Add sharding and CI evidence contracts offline
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_minified_smoke_digest.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_add_shards.py
       - name: Validate protected magnet test evidence receipts without credentials
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_magnet_peer_receipt.py

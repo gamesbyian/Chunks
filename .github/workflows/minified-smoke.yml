@@ -14,8 +14,8 @@ on:
       - "tools/minified_smoke.sh"
       - "tools/ci_failure_digest.py"
       - "tools/require_minified_smoke_digest.py"
-      - "tests/test_ci_failure_digest.py"
-      - "tests/test_minified_smoke_digest.py"
+      # Offline gate-test-only edits are covered in documentation validation.
+      # Keep real R8 for implementation, Gradle, APK and workflow changes.
     # Draft revisions retain fast feedback; exact Android acceptance runs
     # on review-ready transitions and subsequent ready-PR revisions.
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]

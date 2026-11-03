@@ -91,6 +91,17 @@ class ShardedNativeAddTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "coverage"):
             self.check()
 
+    def test_accept_one_additional_opt_in_native_research_skip(self):
+        # The dedicated native-delete probe is intentionally skipped by the
+        # normal installed Add suite. Keep this one-slot allowance explicit.
+        def skip_twenty_nine(d):
+            for case in d["test_cases"][:29]:
+                case["outcome"] = "skipped"
+            d["junit"]["executed"] = 152
+            d["junit"]["skipped"] = 29
+        self.change(0, skip_twenty_nine)
+        self.assertEqual(29, self.check()["junit"]["skipped"])
+
     def test_reject_unreviewed_increase_in_skipped_cases(self):
         def skip_thirty(d):
             for case in d["test_cases"][:30]:

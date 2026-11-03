@@ -23,7 +23,8 @@ import org.junit.runner.RunWith
 class BatchMoveRemovalPanelInstrumentedTest {
     @get:Rule val rule = createComposeRule()
     private fun move(n: Int, name: String) = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER,
-        "%040x".format(n), name, "a".repeat(64), "seed.example").copy(stage = TransferMove.Stage.TARGET_VERIFIED)
+        "%040x".format(n), name, "a".repeat(64), "seed.example",
+        sourceReviewToken = "native-session:$n").copy(stage = TransferMove.Stage.TARGET_VERIFIED)
 
     @Test fun removalNeedsSeparateConfirmationAndKeepsJobsWhoseTargetVanished() {
         val moves = listOf(move(1, "Public one"), move(2, "Public two"))

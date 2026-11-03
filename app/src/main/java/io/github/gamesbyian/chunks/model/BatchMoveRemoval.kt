@@ -19,6 +19,7 @@ internal object BatchMoveRemoval {
         TARGET_NOT_CONFIRMED("kept: the new job is no longer confirmed on the destination"),
         UNCONFIRMED("removal not confirmed; check the original job (not retried)"),
         JOURNAL_FAILED("kept: the Move journal could not be saved"),
+        SOURCE_REVIEW_REQUIRED("kept: original source identity requires a new Move review"),
         NOT_RUN("not attempted (the batch stopped earlier)")
     }
 
@@ -40,6 +41,11 @@ internal object BatchMoveRemoval {
         var stopped = false
         for (move in moves) {
             if (stopped) { results += move to Result.NOT_RUN; continue }
+            if (!TransferMove.hasReviewedSourceIdentity(move)) {
+                results += move to Result.SOURCE_REVIEW_REQUIRED
+                stopped = true
+                continue
+            }
             val target = safely { observeTarget(move.infoHash) }
             val begin = TransferMove.beginRemoval(move, target)
             if (begin !is Next.Save) { results += move to Result.TARGET_NOT_CONFIRMED; continue }

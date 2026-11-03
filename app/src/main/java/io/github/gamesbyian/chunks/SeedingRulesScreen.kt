@@ -65,6 +65,8 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
     var pendingDelete by remember { mutableStateOf<String?>(null) }
     var pendingResetDefault by remember { mutableStateOf<String?>(null) }
     var ruleSearch by rememberSaveable { mutableStateOf("") }
+    // A view-only filter over the same default editors, not a second settings system.
+    var defaultEnvironmentSearch by rememberSaveable { mutableStateOf("") }
     var explanationOpen by rememberSaveable { mutableStateOf(false) }
     var defaultsOpen by rememberSaveable { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -202,7 +204,21 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 }
                 if (defaultsOpen) {
                     Text("Defaults", style = MaterialTheme.typography.titleMedium)
-                    environments.forEach { env ->
+                    if (environments.size > 1 || defaultEnvironmentSearch.isNotBlank()) ClearableTransferSearchField(
+                        value = defaultEnvironmentSearch,
+                        onValueChange = { defaultEnvironmentSearch = it },
+                        label = "Find environment defaults"
+                    )
+                    val visibleDefaults = matchingSeedingEnvironments(
+                        environments, defaultEnvironmentSearch)
+                    if (defaultEnvironmentSearch.isNotBlank()) {
+                        Text("Showing ${visibleDefaults.size} of ${environments.size} environment defaults",
+                            style = MaterialTheme.typography.bodySmall)
+                        if (visibleDefaults.isEmpty())
+                            Text("No environment defaults match this search. Saved defaults are unchanged.",
+                                style = MaterialTheme.typography.bodySmall)
+                    }
+                    visibleDefaults.forEach { env ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         EnvironmentBadge(env.label, env.server, environment = env.id.removePrefix("remote:")
                             .takeIf { TransferListSortStore.validEnvironment(it) }
@@ -246,6 +262,15 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         message?.let { Text(it) }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Back") }
     }
+}
+
+/** Read-only search: never edits stored defaults, rules or environment identity. */
+internal fun matchingSeedingEnvironments(
+    environments: List<SeedingEnvironment>, query: String
+): List<SeedingEnvironment> {
+    val text = query.trim()
+    return if (text.isEmpty()) environments
+    else environments.filter { it.label.contains(text, ignoreCase = true) }
 }
 
 /** Search is read-only; never updates rule scopes or persisted policies. */
