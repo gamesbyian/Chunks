@@ -93,6 +93,7 @@ def cost_report(runs: list[dict]) -> dict:
     step_by_workflow = defaultdict(lambda: {
         "jobs_with_steps": 0, "jobs_without_steps": 0,
         "timed_steps": 0, "incomplete_steps": 0, "skipped_steps": 0,
+        "invalid_step_timestamps": 0,
         "timed_step_minutes": 0.0, "hotspots": [],
     })
     by_head_sha = {}
@@ -172,7 +173,14 @@ def cost_report(runs: list[dict]) -> dict:
                         if number in seen_step_numbers:
                             raise ValueError(f"Duplicate step number on job {job_id}")
                         seen_step_numbers.add(number)
-                        elapsed = minutes(begin, end)
+                        try:
+                            elapsed = minutes(begin, end)
+                        except ValueError:
+                            # Step metadata can be unreliable on canceled jobs.
+                            # Preserve complete job runner cost; mark this step
+                            # as unusable timing instead of losing the entire audit.
+                            activity["invalid_step_timestamps"] += 1
+                            continue
                         activity["timed_step_minutes"] += elapsed
                         activity["timed_steps"] += 1
                         activity["hotspots"].append({
