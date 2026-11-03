@@ -44,6 +44,19 @@ internal fun LocalDownloadPlacePicker(
                 color = MaterialTheme.colorScheme.error)
             else -> {
                 Text("Saves to: " + selected.title, fontWeight = FontWeight.Bold)
+                when (resolution.provenance) {
+                    LocalPlaceResolution.Provenance.AUTOMATIC ->
+                        Text("Automatic phone default, selected from locations checked for writing.",
+                            style = MaterialTheme.typography.bodySmall)
+                    LocalPlaceResolution.Provenance.SAVED_CHOICE ->
+                        Text("Your saved default for future phone downloads.",
+                            style = MaterialTheme.typography.bodySmall)
+                    LocalPlaceResolution.Provenance.FALLBACK ->
+                        Text("Temporary fallback: your saved location is unavailable. " +
+                            "The saved choice is preserved for when it works again.",
+                            style = MaterialTheme.typography.bodySmall)
+                    null -> Unit
+                }
                 Text(selected.detail, style = MaterialTheme.typography.bodySmall)
             }
         }
