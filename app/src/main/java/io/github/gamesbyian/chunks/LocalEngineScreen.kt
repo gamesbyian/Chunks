@@ -1996,10 +1996,16 @@ internal fun LocalFileSelection(
         return
     }
     val pageSize = 40
-    val pageCount = if (files.isEmpty()) 1 else (files.size - 1) / pageSize + 1
+    var fileSearch by rememberSaveable(transferKey) { mutableStateOf("") }
     var requestedPage by remember(transferKey, files.size) { mutableStateOf(0) }
+    // Filter only the observed file inventory; original native file indices
+    // remain unchanged and must be passed to every file/priority operation.
+    val matchedIndices = remember(files, fileSearch) {
+        matchingFileIndices(files.map { it.path }, fileSearch)
+    }
+    val pageCount = ((matchedIndices.size + pageSize - 1) / pageSize).coerceAtLeast(1)
     val page = requestedPage.coerceIn(0, pageCount - 1)
-    val pageFiles = files.drop(page * pageSize).take(pageSize)
+    val pageFiles = matchedIndices.drop(page * pageSize).take(pageSize).map { files[it] }
     // Native download progress can change every second. Do not dismiss a
     // user's confirmation merely because doneBytes advances. Only a change
     // to file identity, total size or wanted selection invalidates review.
@@ -2012,10 +2018,10 @@ internal fun LocalFileSelection(
     // Key pending confirmation to the exact review identity instead of
     // clearing it from an asynchronous LaunchedEffect, which could race a
     // newly clicked Select/Skip button on the first Compose frame.
-    var pendingBatch by remember(transferKey, page, reviewFingerprint) {
+    var pendingBatch by remember(transferKey, fileSearch, page, reviewFingerprint) {
         mutableStateOf<Boolean?>(null)
     }
-    var priorityEditorIndex by remember(transferKey, page, reviewFingerprint) {
+    var priorityEditorIndex by remember(transferKey, fileSearch, page, reviewFingerprint) {
         mutableStateOf<Int?>(null)
     }
     var pendingEpisodeFocus by remember(transferKey, reviewFingerprint) {
@@ -2025,6 +2031,20 @@ internal fun LocalFileSelection(
 
     Text("Untick a file to skip downloading it. Already downloaded parts are kept.",
         style = MaterialTheme.typography.bodySmall)
+    if (files.isNotEmpty()) {
+        ClearableTransferSearchField(
+            value = fileSearch,
+            onValueChange = { fileSearch = it; requestedPage = 0 },
+            label = "Search this transfer's files"
+        )
+        Text("Showing ${matchedIndices.size} of ${files.size} file paths" +
+            if (fileSearch.isNotBlank()) " · filtered" else "",
+            style = MaterialTheme.typography.bodySmall)
+        if (matchedIndices.isEmpty()) Text(
+            "No files match this search. Clear it to see the full list.",
+            style = MaterialTheme.typography.bodySmall)
+    }
+    // Scheduling applies to the full exact transfer, never only visible search matches.
     finishInOrder?.invoke(files)
     if (onFocusEpisodes != null && focusPlan != null) {
         OutlinedButton(onClick = { pendingEpisodeFocus = !pendingEpisodeFocus },
@@ -2059,7 +2079,8 @@ internal fun LocalFileSelection(
     }
 
     if (pageCount > 1) {
-        Text("Files page " + (page + 1) + " of " + pageCount + " (" + files.size + " files)",
+        Text("Files page " + (page + 1) + " of " + pageCount + " (" +
+            matchedIndices.size + " matching files)",
             style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { requestedPage = page - 1 }, enabled = !busy && page > 0,
@@ -2085,7 +2106,7 @@ internal fun LocalFileSelection(
             Text(if (changes == 0) "All ${pageFiles.size} files on this page already " +
                     (if (want) "are selected." else "are skipped.")
                 else "Review: " + (if (want) "select " else "skip ") +
-                    "${changes} of ${pageFiles.size} files on this page. " +
+                    "${changes} of ${pageFiles.size} visible matching files on this page. " +
                     "Already downloaded bytes are never deleted. Changing wanted pieces " +
                     "may stop or resume downloading; other pages are untouched.",
                 style = MaterialTheme.typography.bodySmall)
