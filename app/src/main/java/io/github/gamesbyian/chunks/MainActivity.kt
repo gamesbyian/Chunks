@@ -1597,7 +1597,8 @@ private fun TransfersScreen(
                     }
             ) {
                 Text((if (listControlsOpen) "Hide" else "Choose") + " filters & sort · " +
-                    filter.label + " · " + order.label + " · " + order.directionLabel(direction))
+                    visible.size + " shown · Sort: " + order.label + " · " +
+                    order.directionLabel(direction) + " · " + filter.label)
             }
         }
         if (listControlsOpen) item {
