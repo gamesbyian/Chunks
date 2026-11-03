@@ -96,6 +96,8 @@ internal fun TransferMoveControl(
     serverAliasScope: String?,
     /** Exact ephemeral native Add generation for a phone-origin Move. */
     sourceReviewToken: String? = null,
+    /** Exact original rTorrent directory at server-origin Move review. */
+    sourceDirectory: String? = null,
     busy: Boolean,
     ports: TransferMovePorts,
     onStartMove: () -> Unit,
@@ -111,7 +113,7 @@ internal fun TransferMoveControl(
     val store = remember { TransferMoveStore(context) }
     var record by remember(direction, infoHash, revision) { mutableStateOf(store.get(direction, infoHash)) }
     var confirmingStart by remember(infoHash) { mutableStateOf(false) }
-    var confirmingRemoval by remember(infoHash, sourceReviewToken) { mutableStateOf(false) }
+    var confirmingRemoval by remember(infoHash, sourceReviewToken, sourceDirectory) { mutableStateOf(false) }
     var working by remember(infoHash) { mutableStateOf(false) }
     var message by remember(infoHash) { mutableStateOf<String?>(null) }
     val destination = if (direction == Direction.PHONE_TO_SERVER) "server" else "phone"
@@ -155,7 +157,8 @@ internal fun TransferMoveControl(
                         confirmingStart = false
                         val started = TransferMove.start(direction, infoHash, name,
                             TransferMoveStore.scopeDigest(serverAliasScope),
-                            TransferMoveStore.hostLabel(serverAliasScope), sourceReviewToken)
+                            TransferMoveStore.hostLabel(serverAliasScope),
+                            sourceReviewToken, sourceDirectory)
                         if (store.save(started)) { record = started; onStartMove() }
                         else message = "Chunks could not save the Move. Nothing changed."
                     }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
@@ -168,7 +171,8 @@ internal fun TransferMoveControl(
         } else {
             val sameServer = serverAliasScope != null &&
                 TransferMoveStore.scopeDigest(serverAliasScope) == current.serverScopeDigest
-            val sameSource = TransferMove.sourceIdentityMatches(current, name, sourceReviewToken)
+            val sameSource = TransferMove.sourceIdentityMatches(
+                current, name, sourceReviewToken, sourceDirectory)
             Text(when (current.stage) {
                 Stage.AWAITING_TARGET -> "Move to $destination started. Add it there, then check."
                 Stage.TARGET_VERIFIED -> "Move to $destination: the new job is confirmed there. " +
@@ -178,9 +182,9 @@ internal fun TransferMoveControl(
             }, style = MaterialTheme.typography.bodyMedium)
             if (!sameServer) Text("This Move belongs to ${current.serverLabel}. Connect to that " +
                 "account to continue it.", style = MaterialTheme.typography.bodySmall)
-            if (!sameSource) Text("The original phone transfer has changed or this older Move " +
-                "cannot identify its native session. Nothing will be removed. Cancel this " +
-                "Move and start a new one from the current phone transfer.",
+            if (!sameSource) Text("The original transfer has changed or this older Move " +
+                "cannot identify its original source. Nothing will be removed. Cancel this " +
+                "Move and start a new one from the current transfer.",
                 style = MaterialTheme.typography.bodySmall)
             val observeTarget = ports.observeTarget
             when (current.stage) {
@@ -206,8 +210,9 @@ internal fun TransferMoveControl(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = {
                                 confirmingRemoval = false
-                                if (!TransferMove.sourceIdentityMatches(current, name, sourceReviewToken)) {
-                                    message = "The original phone transfer changed. No Remove was sent. Cancel and start a fresh Move."
+                                if (!TransferMove.sourceIdentityMatches(
+                                        current, name, sourceReviewToken, sourceDirectory)) {
+                                    message = "The original transfer changed. No Remove was sent. Cancel and start a fresh Move."
                                     return@Button
                                 }
                                 if (!onMutationStarted()) {
