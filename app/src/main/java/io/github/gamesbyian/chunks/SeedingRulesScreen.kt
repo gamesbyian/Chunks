@@ -28,6 +28,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -63,6 +65,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
     var pendingDelete by remember { mutableStateOf<String?>(null) }
     var pendingResetDefault by remember { mutableStateOf<String?>(null) }
     var ruleSearch by rememberSaveable { mutableStateOf("") }
+    var explanationOpen by rememberSaveable { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val labels = environments.associate { it.id to it.label }
 
@@ -76,11 +79,24 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Seeding rules", style = MaterialTheme.typography.headlineSmall)
-        ChunksBanner("What these rules do today",
-            "On this phone, rules apply to transfers added from now on, while Chunks is running: upload limits " +
-                "are set and confirmed, and a reached stop condition pauses the transfer once. Transfers you already " +
-                "have are not changed, and editing a rule does not change transfers it was already applied to. " +
-                "Server rules are saved but not applied yet. Nothing is ever removed or deleted.", ChunksTone.PAUSED)
+        Text(
+            "Phone rules affect new transfers only. Server rules are saved for later and are not applied yet.",
+            style = MaterialTheme.typography.bodySmall
+        )
+        OutlinedButton(
+            onClick = { explanationOpen = !explanationOpen },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .semantics {
+                    stateDescription = if (explanationOpen) "Expanded" else "Collapsed"
+                }
+        ) { Text(if (explanationOpen) "Hide rule explanation" else "What these rules do today") }
+        if (explanationOpen) {
+            ChunksBanner("What these rules do today",
+                "On this phone, rules apply to transfers added from now on, while Chunks is running: upload limits " +
+                    "are set and confirmed, and a reached stop condition pauses the transfer once. Transfers you already " +
+                    "have are not changed, and editing a rule does not change transfers it was already applied to. " +
+                    "Server rules are saved but not applied yet. Nothing is ever removed or deleted.", ChunksTone.PAUSED)
+        }
         if (snapshot.quarantinedRemoteRules.isNotEmpty() ||
             snapshot.quarantinedRemoteDefaults.isNotEmpty()) {
             ChunksBanner("Older server assignments need review",
