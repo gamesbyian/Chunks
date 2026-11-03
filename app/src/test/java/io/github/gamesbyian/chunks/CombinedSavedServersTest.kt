@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.performScrollToNode
@@ -27,6 +27,9 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi")
 class CombinedSavedServersTest {
+    // The queued v2 dispatcher resumes IO results on the test scheduler. The
+    // legacy unconfined rule can resume on an IO worker while the tap handler
+    // is still adding another profile's loading state, losing a map update.
     @get:Rule val rule = createComposeRule()
     private val scopeA = "https://a.example/RPC2\u0000ann"
     private val scopeB = "https://b.example/RPC2\u0000bob"
@@ -41,6 +44,15 @@ class CombinedSavedServersTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText("Environment status", substring = true))
         rule.onNodeWithText("Environment status", substring = true).performClick()
+    }
+    private fun loadOtherSavedServers() {
+        // The privacy-policy read also runs outside the Compose test clock.
+        // Require its actual enabled entry point before sending one tap.
+        rule.waitUntil(5_000) {
+            rule.onAllNodesWithText("Load other saved servers (read-only)")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
     }
 
     /**
@@ -92,7 +104,7 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertExists()
         assertEquals("nothing is fetched until the user asks", 0, calls.get())
         assertEquals("no list callback may finish before the explicit tap", 0, completedReads.get())
-        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
+        loadOtherSavedServers()
         // First qualify both real background callbacks. This wait is not a
         // UI assertion and does not use blocking CountDownLatch.await(), which
         // could starve Robolectric's main looper during Compose resumption.
@@ -156,7 +168,7 @@ class CombinedSavedServersTest {
         discloseSourceStatus()
 
         val name = "Server · Account slot"
-        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
+        loadOtherSavedServers()
         rule.waitUntil(5_000) { entered.get() == 1 }
         rule.runOnIdle {
             // Simulate a restored/edited profile retaining the same list slot
@@ -191,7 +203,7 @@ class CombinedSavedServersTest {
                     2048, 1024, true, "/new"))
             }
         }
-        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
+        loadOtherSavedServers()
         rule.waitUntil(5_000) {
             newReads.get() == 1 &&
                 rule.onAllNodesWithText(name + ": Live · 1 transfers")
@@ -246,7 +258,7 @@ class CombinedSavedServersTest {
             else throw java.net.ConnectException("refused")
         }))
         discloseSourceStatus()
-        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
+        loadOtherSavedServers()
         rule.waitUntil(5_000) {
             rule.onAllNodesWithText(label + ": Live · 1 transfers").fetchSemanticsNodes().isNotEmpty()
         }

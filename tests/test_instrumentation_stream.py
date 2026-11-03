@@ -1,10 +1,12 @@
 """Offline negative controls for AndroidJUnitRunner raw status receipts."""
 from pathlib import Path
 import tempfile
+import subprocess
+import sys
 import unittest
 import xml.etree.ElementTree as ET
 
-from tools.parse_instrumentation_stream import parse_stream, write_junit
+from tools.parse_instrumentation_stream import failure_locations, parse_stream, write_junit
 
 
 def event(klass, method, outcome=0, total=1, started=True):
@@ -30,6 +32,44 @@ def stream(*rows, final=-1):
 
 
 class InstrumentationStreamTests(unittest.TestCase):
+    def test_locations_ignore_passed_stdout_and_malformed_frames(self):
+        location = "  at io.github.gamesbyian.chunks.SampleTest.check(SampleTest.kt:42)"
+        self.assertEqual([], failure_locations(stream(event("example.Foo", "ok").replace(
+            "INSTRUMENTATION_STATUS_CODE: 0", "INSTRUMENTATION_STATUS: stack=ignored\n"
+            + location + "\nINSTRUMENTATION_STATUS_CODE: 0"))))
+        raw = stream(event("example.Foo", "broken", -2).replace(
+            "INSTRUMENTATION_STATUS_CODE: -2",
+            location + "\nINSTRUMENTATION_STATUS: stack=ignored\n"
+            "  at io.github.gamesbyian.chunks.Sample.check(https://private.invalid:42)\n"
+            "  at io.github.gamesbyian.chunks.Sample.check(Sample.kt:42) secret\n"
+            "INSTRUMENTATION_STATUS_CODE: -2"))
+        self.assertEqual([], failure_locations(raw))
+
+    def test_cli_reports_only_bounded_project_locations_for_failed_stacks(self):
+        frames = "\n".join(
+            f"  at io.github.gamesbyian.chunks.SampleTest.check(SampleTest.kt:{i})"
+            for i in range(1, 25))
+        raw = stream(event("example.Foo", "broken", -2).replace(
+            "INSTRUMENTATION_STATUS_CODE: -2",
+            "INSTRUMENTATION_STATUS: stack=java.lang.AssertionError: secret=https://private.invalid/token\n"
+            + frames + "\n  at third.party.Library.run(Library.java:4)\n"
+            + "INSTRUMENTATION_STATUS_CODE: -2"))
+        with tempfile.TemporaryDirectory() as tmp:
+            source, report = Path(tmp) / "raw.txt", Path(tmp) / "TEST.xml"
+            source.write_text(raw)
+            result = subprocess.run([sys.executable, "tools/parse_instrumentation_stream.py",
+                                     "--raw", str(source), "--junit", str(report)],
+                                    text=True, capture_output=True)
+        self.assertNotEqual(0, result.returncode)
+        lines = [line for line in result.stdout.splitlines()
+                 if line.startswith("CHUNKS_PREBUILT_FAILURE_LOCATION:")]
+        self.assertEqual(16, len(lines))
+        self.assertEqual("CHUNKS_PREBUILT_FAILURE_LOCATION: "
+                         "io.github.gamesbyian.chunks.SampleTest.check(SampleTest.kt:1)", lines[0])
+        self.assertNotIn("secret", result.stdout)
+        self.assertNotIn("private.invalid", result.stdout)
+        self.assertNotIn("third.party", result.stdout)
+
     def test_exact_pass_and_ignore_create_structural_junit(self):
         cases = parse_stream(stream(
             event("example.Foo", "first", total=3),
