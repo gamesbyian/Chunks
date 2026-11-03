@@ -95,6 +95,9 @@ class SeedingRulesScreenTest {
         rule.setContent {
             ChunksTheme { Surface(color = ChunksColors.Background) { SeedingRulesScreen(environments) {} } }
         }
+        rule.onNodeWithText("Review defaults · 2 environments · 1 saved").assertExists()
+        rule.onNodeWithText("Using your saved preference", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Review defaults", substring = true).performClick()
         rule.onNodeWithText("Using your saved preference", substring = true).assertExists()
         rule.onNodeWithText("Reset to automatic").performScrollTo().performClick()
         rule.onNodeWithText("Restore the automatic default for On this phone?", substring = true).assertExists()
