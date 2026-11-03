@@ -41,7 +41,9 @@ internal object TransferMove {
         val serverLabel: String,
         val stage: Stage,
         /** Phone-only native Add generation captured before destination handoff. */
-        val sourceReviewToken: String? = null
+        val sourceReviewToken: String? = null,
+        /** Remote-only original save directory; never a command or deletion path. */
+        val sourceDirectory: String? = null
     ) {
         init {
             require(Regex("[0-9a-f]{40}").matches(infoHash)) { "Move needs an exact v1 identity" }
@@ -50,16 +52,25 @@ internal object TransferMove {
                 Regex("[A-Za-z0-9:.-]{1,120}").matches(sourceReviewToken)) {
                 "Invalid original phone transfer identity"
             }
+            require(sourceDirectory == null || (sourceDirectory.startsWith("/") &&
+                sourceDirectory.length <= 4096 &&
+                sourceDirectory.none { it.isISOControl() })) {
+                "Invalid original rTorrent save directory"
+            }
         }
 
         fun encode(): String {
+            val legacy = sourceReviewToken == null && sourceDirectory == null
             val fields = listOf(
-                if (sourceReviewToken == null) "v1" else "v2",
+                if (legacy) "v1" else "v3",
                 direction.name, infoHash, serverScopeDigest, stage.name,
                 escape(serverLabel), escape(name)
             )
-            return (if (sourceReviewToken == null) fields
-                else fields + escape(sourceReviewToken)).joinToString("\n")
+            // Tilde cannot be a native token or absolute directory. Keep the
+            // last field unambiguous even on decoders that trim empty lines.
+            return (if (legacy) fields else
+                fields + escape(sourceReviewToken ?: "~") + escape(sourceDirectory ?: "~"))
+                .joinToString("\n")
         }
     }
 
@@ -79,10 +90,10 @@ internal object TransferMove {
 
     fun start(direction: Direction, infoHash: String, name: String,
               serverScopeDigest: String, serverLabel: String,
-              sourceReviewToken: String? = null): Record =
+              sourceReviewToken: String? = null, sourceDirectory: String? = null): Record =
         Record(direction, infoHash.lowercase(Locale.ROOT), name.take(512),
             serverScopeDigest, serverLabel.take(253), Stage.AWAITING_TARGET,
-            sourceReviewToken)
+            sourceReviewToken, sourceDirectory)
 
     /**
      * The journal's phone source must still be the original native handle.
@@ -93,11 +104,16 @@ internal object TransferMove {
      * rTorrent source removal remains separately checked by its own
      * exact-hash/name/path preflight; there is no phone-native token there.
      */
-    fun sourceIdentityMatches(record: Record, currentName: String, currentToken: String?): Boolean =
-        record.direction != Direction.PHONE_TO_SERVER ||
-            (record.name == currentName.take(512) &&
+    fun sourceIdentityMatches(record: Record, currentName: String, currentToken: String?,
+                              currentDirectory: String? = null): Boolean =
+        record.name == currentName.take(512) && when (record.direction) {
+            Direction.PHONE_TO_SERVER ->
                 record.sourceReviewToken != null &&
-                record.sourceReviewToken == currentToken)
+                    record.sourceReviewToken == currentToken
+            Direction.SERVER_TO_PHONE ->
+                record.sourceDirectory != null &&
+                    record.sourceDirectory == currentDirectory
+        }
 
     /** A process death mid-removal leaves REQUESTED: treat it as unknown. */
     fun recovered(record: Record): Record =
@@ -159,10 +175,14 @@ internal object TransferMove {
     fun decode(text: String): Record? = try {
         val parts = text.split('\n')
         val hasSourceToken = parts.size == 8 && parts[0] == "v2"
-        require((parts.size == 7 && parts[0] == "v1") || hasSourceToken)
+        val hasBoundSource = parts.size == 9 && parts[0] == "v3"
+        require((parts.size == 7 && parts[0] == "v1") || hasSourceToken || hasBoundSource)
+        val token = if (hasSourceToken) unescape(parts[7]) else if (hasBoundSource)
+            unescape(parts[7]).takeUnless { it == "~" } else null
+        val directory = if (hasBoundSource)
+            unescape(parts[8]).takeUnless { it == "~" } else null
         recovered(Record(Direction.valueOf(parts[1]), parts[2], unescape(parts[6]), parts[3],
-            unescape(parts[5]), Stage.valueOf(parts[4]),
-            if (hasSourceToken) unescape(parts[7]) else null))
+            unescape(parts[5]), Stage.valueOf(parts[4]), token, directory))
     } catch (_: Exception) { null }
 
     private fun escape(value: String) = value.replace("\\", "\\\\").replace("\n", "\\n")
