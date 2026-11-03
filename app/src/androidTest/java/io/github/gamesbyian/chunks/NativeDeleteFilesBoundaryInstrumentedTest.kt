@@ -44,6 +44,8 @@ class NativeDeleteFilesBoundaryInstrumentedTest {
         val metainfo = TorrentBuilder().path(source)
             .pieceSize(16 * 1024).generate().entry().bencode()
         val info = TorrentInfo(metainfo)
+        // Hybrid fixtures may have different v1 and legacy/best hashes.
+        // torrent_deleted_alert identifies the removed v1 torrent by v1 hash.
         val destination = File(work, "destination").apply { assertTrue(mkdirs()) }
         // A matching pre-existing file is intentionally used to demonstrate
         // that native delete_files does NOT certify who originally wrote it.
@@ -64,13 +66,13 @@ class NativeDeleteFilesBoundaryInstrumentedTest {
             override fun alert(alert: Alert<*>) {
                 when (alert) {
                     is TorrentDeletedAlert -> {
-                        if (alert.infoHashes.getV1().toHex().equals(info.infoHash().toHex(), true) == true) {
+                        if (alert.infoHashes.getV1().toHex().equals(info.infoHashes().getV1().toHex(), true) == true) {
                             deleted.set(true)
                             done.countDown()
                         }
                     }
                     is TorrentDeleteFailedAlert -> {
-                        if (alert.infoHashes.getV1().toHex().equals(info.infoHash().toHex(), true) == true) {
+                        if (alert.infoHashes.getV1().toHex().equals(info.infoHashes().getV1().toHex(), true) == true) {
                             deleted.set(false)
                             done.countDown()
                         }
