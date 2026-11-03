@@ -72,7 +72,7 @@ class RunnerCostTests(unittest.TestCase):
         self.assertIsNone(r["details"][0]["job_window_minutes"])
         self.assertEqual(0, r["by_workflow"]["API35"]["runs_with_timed_jobs"])
 
-    def test_source_sha_aggregates_multiple_events_and_no_runner_cancellations(self):
+    def test_head_sha_aggregates_multiple_events_and_no_runner_cancellations(self):
         same = "a" * 40
         other = "b" * 40
         first = run(30, "cancelled", [job(1, 1, 4, "cancelled")])
@@ -86,9 +86,9 @@ class RunnerCostTests(unittest.TestCase):
         report = cost_report([first, second, third, unattributed])
         self.assertEqual(10, report["runner_minutes"])
         self.assertEqual(3, report["cancelled_run_runner_minutes"])
-        self.assertEqual(1, report["runs_without_source_sha"])
-        self.assertEqual([same, other], sorted(report["by_source_sha"]))
-        a = report["by_source_sha"][same]
+        self.assertEqual(1, report["runs_without_head_sha"])
+        self.assertEqual([same, other], sorted(report["by_head_sha"]))
+        a = report["by_head_sha"][same]
         self.assertEqual(2, a["runs"])
         self.assertEqual([30, 31], a["run_ids"])
         self.assertEqual(["API35"], a["workflows"])
@@ -96,8 +96,8 @@ class RunnerCostTests(unittest.TestCase):
         self.assertEqual(1, a["zero_timed_job_runs"])
         self.assertEqual(3, a["runner_minutes"])
         self.assertEqual(3, a["cancelled_run_runner_minutes"])
-        self.assertEqual(7, report["by_source_sha"][other]["runner_minutes"])
-        self.assertEqual(0, report["by_source_sha"][other]["zero_timed_job_runs"])
+        self.assertEqual(7, report["by_head_sha"][other]["runner_minutes"])
+        self.assertEqual(0, report["by_head_sha"][other]["zero_timed_job_runs"])
 
     def test_queue_and_earliest_failing_job_are_timestamp_proxies(self):
         sample = cost_report([
@@ -118,13 +118,13 @@ class RunnerCostTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "before workflow created_at"):
             cost_report([sample])
 
-    def test_source_sha_rejects_false_provenance(self):
+    def test_head_sha_rejects_false_provenance(self):
         bad = run(35, "success", [job(1, 1, 3)])
         bad["head_sha"] = "not-a-sha"
         with self.assertRaisesRegex(ValueError, "Invalid source SHA"):
             cost_report([bad])
         missing = run(36, "cancelled", [])
-        self.assertEqual({}, cost_report([missing])["by_source_sha"])
+        self.assertEqual({}, cost_report([missing])["by_head_sha"])
 
     def test_live_api_is_read_only_and_rejects_incomplete_pages(self):
         with patch("tools.ci_runner_cost_report.gh_json") as fetch:
