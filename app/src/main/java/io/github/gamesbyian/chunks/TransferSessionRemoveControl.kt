@@ -59,12 +59,26 @@ fun TransferSessionRemoveControl(
     onMutationStarted: () -> Boolean,
     onSettled: () -> Unit,
     performErase: suspend (String, String, String) -> SessionEraseOutcome = remote::eraseFromSession,
-    recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase
+    recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase,
+    environmentLabel: String? = "rTorrent",
+    snapshotRevision: Long = 0L
 ) {
     val validHash = remember(remote, transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
-    var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
+    // Freshness or view changes revoke an open review, but never erase the
+    // separate attempted/pending state used to prevent a blind retry.
+    var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory,
+        environmentLabel, snapshotStale, mainView) {
         mutableStateOf(false)
     }
+    // rememberSaveable restores a disposed lazy row without comparing its old
+    // inputs. Persist the actual reviewed identity as well, so a refreshed or
+    // changed row cannot resurrect an earlier confirmation after scrolling.
+    val currentReview = listOf(transfer.hash, transfer.name, transfer.directory,
+        environmentLabel.orEmpty(), snapshotRevision.toString())
+        .joinToString("") { "${it.length}:$it" }
+    var reviewedIdentity by rememberSaveable { mutableStateOf<String?>(null) }
+    val reviewCurrent = confirming && reviewedIdentity == currentReview &&
+        !snapshotStale && mainView && environmentLabel != null
     var attempted by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
@@ -89,13 +103,16 @@ fun TransferSessionRemoveControl(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!attempted && !confirming) {
+        if (!attempted && !reviewCurrent) {
             ActionTile("Remove from rTorrent…", ChunksColors.Orange,
-                onClick = { confirming = true },
-                enabled = mainView && !snapshotStale && !pending && !checking,
+                onClick = { reviewedIdentity = currentReview; confirming = true },
+                enabled = environmentLabel != null && mainView && !snapshotStale && !pending && !checking,
                 modifier = Modifier.fillMaxWidth(),
                 icon = R.drawable.chunks_ic_remove, stacked = false)
-            if (!mainView) {
+            if (environmentLabel == null) {
+                Text("The server account could not be identified. Reconnect before removing a transfer.",
+                    style = MaterialTheme.typography.bodySmall)
+            } else if (!mainView) {
                 Text("Switch to the main server view before removing a transfer.",
                     style = MaterialTheme.typography.bodySmall)
             } else if (snapshotStale) {
@@ -103,7 +120,7 @@ fun TransferSessionRemoveControl(
                     style = MaterialTheme.typography.bodySmall)
             }
         }
-        if (confirming) {
+        if (reviewCurrent) {
             Card(colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer
             )) {
@@ -112,6 +129,7 @@ fun TransferSessionRemoveControl(
                     Text("Confirm removal from rTorrent",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold)
+                    Text(environmentLabel.orEmpty(), style = MaterialTheme.typography.bodySmall)
                     Text(transfer.name, style = MaterialTheme.typography.bodyMedium)
                     Text("Infohash: " + transfer.hash, style = MaterialTheme.typography.bodySmall)
                     Text("Current directory: " + transfer.directory,
@@ -127,7 +145,7 @@ fun TransferSessionRemoveControl(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                if (mainView && !snapshotStale && !pending && !checking &&
+                                if (environmentLabel != null && mainView && !snapshotStale && !pending && !checking &&
                                     onMutationStarted()) {
                                     confirming = false
                                     attempted = true
@@ -159,7 +177,7 @@ fun TransferSessionRemoveControl(
                                     feedback = "No Remove command was sent. Refresh and try again after the current command settles."
                                 }
                             },
-                            enabled = !pending && mainView && !snapshotStale,
+                            enabled = environmentLabel != null && !pending && mainView && !snapshotStale,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)

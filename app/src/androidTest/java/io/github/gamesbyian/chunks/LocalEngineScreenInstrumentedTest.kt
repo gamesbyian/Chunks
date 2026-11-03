@@ -164,6 +164,31 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(0, removed)
     }
 
+    @Test fun phoneRemovalReviewDoesNotSurviveStaleOrBusyInventory() {
+        var removed = 0
+        var busy by mutableStateOf(false)
+        val status = LocalTransferStatus("a".repeat(40), "Original",
+            LocalTransferState.DOWNLOADING, stopped = false, progressPpm = 0, wantedBytes = 1000,
+            doneBytes = 0, payloadDownloadedBytes = 0, payloadUploadedBytes = 0, peers = 0,
+            savePath = "/first", error = null)
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    LocalTransferCard(status, busy = busy, onToggle = {}, onRemove = { removed++ })
+                }
+            }
+        }
+        rule.onNodeWithText("Remove…").performScrollTo().performClick()
+        rule.onNodeWithText("Remove transfer, keep data").assertExists()
+        rule.runOnIdle { busy = true }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.runOnIdle { busy = false }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.onNodeWithText("Remove…").performScrollTo().performClick()
+        rule.onNodeWithText("Remove transfer, keep data").assertExists()
+        assertEquals(0, removed)
+    }
+
     @Test fun nativePerTransferPayloadRatesAreVisibleOnRunningCards() {
         val transfer = LocalTransferStatus("9".repeat(40), "Live peer fixture",
             LocalTransferState.DOWNLOADING, stopped = false, progressPpm = 25_000,
