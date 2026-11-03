@@ -186,6 +186,10 @@ internal class LocalResumeEventStore private constructor(
         return states[key]?.phase in setOf(null, Phase.EMPTY, Phase.REMOVED)
     }
 
+    @Synchronized override fun pendingRemovals(): List<String> =
+        states.entries.asSequence().filter { it.value.phase == Phase.REMOVE_INTENT }
+            .map { it.key }.sorted().toList()
+
     @Synchronized override fun restorable(): List<Pair<String, ByteArray>> =
         states.entries.mapNotNull { (key, state) ->
             if (state.phase == Phase.SAVED) state.payload?.let { key to it } else null
