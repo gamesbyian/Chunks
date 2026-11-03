@@ -1451,6 +1451,8 @@ private fun TransfersScreen(
     // accepted queue revision clears it: never apply an old batch to new rows.
     var selecting by remember(aliasScope, view) { mutableStateOf(false) }
     var toolsOpen by remember(aliasScope) { mutableStateOf(false) }
+    // Exact server/view scoped presentation state only; no operation lease is stored here.
+    var listControlsOpen by rememberSaveable(aliasScope, view) { mutableStateOf(false) }
     var batchHashes by remember(aliasScope, view) { mutableStateOf<Set<String>>(emptySet()) }
     var batchName by remember(aliasScope, view) { mutableStateOf("") }
     var batchConfirm by remember(aliasScope, view) { mutableStateOf(false) }
@@ -1587,16 +1589,28 @@ private fun TransfersScreen(
             )
         }
         item {
+            OutlinedButton(
+                onClick = { listControlsOpen = !listControlsOpen },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        stateDescription = if (listControlsOpen) "Expanded" else "Collapsed"
+                    }
+            ) {
+                Text((if (listControlsOpen) "Hide" else "Choose") + " filters & sort · " +
+                    filter.label + " · " + order.label + " · " + order.directionLabel(direction))
+            }
+        }
+        if (listControlsOpen) item {
             RemoteTransferFilterChoices(selected = filter, onChoose = onFilter)
         }
-        item {
+        if (listControlsOpen) item {
             RemoteTransfersSortSummary(visible.size, order.label, onCycleSort = {
                 val choices = TransferOrder.entries
                 val next = choices[(choices.indexOf(order) + 1) % choices.size]
                 onSort(next, next.naturalDirection)
             })
         }
-        item {
+        if (listControlsOpen) item {
             TransferSortDirectionButton(
                 sortName = order.label,
                 directionLabel = order.directionLabel(direction),
