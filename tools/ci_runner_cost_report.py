@@ -6,6 +6,7 @@ Requires authenticated gh CLI only for live mode. Offline mode:
   --runs-json runs.json --jobs-dir downloaded-job-json/
 The REST data is the source; durations are measured, not predicted or billed minutes.
 Source-SHA groups may include multiple PR events (draft, ready, retry), not one dispatch.
+Queue and first-failing-job times are observed proxies, not proof of human-actionable feedback.
 """
 from __future__ import annotations
 
@@ -79,7 +80,8 @@ def cost_report(runs: list[dict]) -> dict:
     by_name = defaultdict(lambda: {
         "runs": 0, "cancelled_runs": 0, "failed_runs": 0,
         "runner_minutes": 0.0, "cancelled_run_runner_minutes": 0.0,
-        "wall_minutes": 0.0, "job_window_minutes": 0.0, "runs_with_timed_jobs": 0, "jobs": 0,
+        "wall_minutes": 0.0, "job_window_minutes": 0.0, "queue_minutes": 0.0,
+        "runs_with_timed_jobs": 0, "jobs": 0,
     })
     rows = []
     by_source = {}
@@ -102,6 +104,7 @@ def cost_report(runs: list[dict]) -> dict:
         total = 0.0
         timed_starts = []
         timed_ends = []
+        failed_job_ends = []
         for job in jobs:
             job_id = int(job["id"])
             if job_id in seen_jobs:
@@ -118,11 +121,23 @@ def cost_report(runs: list[dict]) -> dict:
             if job.get("conclusion") != "skipped" and job.get("started_at") and job.get("completed_at"):
                 timed_starts.append(instant(job["started_at"]))
                 timed_ends.append(instant(job["completed_at"]))
+                if job.get("conclusion") == "failure":
+                    failed_job_ends.append(instant(job["completed_at"]))
         # Unlike created_at→updated_at, this excludes queue and API update delays.
         # It is a job activity window, not a dependency-critical-path measurement.
         job_window = ((max(timed_ends) - min(timed_starts)).total_seconds() / 60
                       if timed_starts else None)
         wall = minutes(run.get("created_at"), run.get("updated_at"))
+        dispatch = instant(run["created_at"]) if run.get("created_at") else None
+        queue_minutes = ((min(timed_starts) - dispatch).total_seconds() / 60
+                         if timed_starts and dispatch else None)
+        first_failed_job_minutes = (
+            (min(failed_job_ends) - dispatch).total_seconds() / 60
+            if failed_job_ends and dispatch else None)
+        if queue_minutes is not None and queue_minutes < 0:
+            raise ValueError(f"Job starts before workflow created_at on run {run_id}")
+        if first_failed_job_minutes is not None and first_failed_job_minutes < 0:
+            raise ValueError(f"Failed job completes before workflow created_at on run {run_id}")
         group = by_name[name]
         group["runs"] += 1
         group["jobs"] += len(jobs)
@@ -131,6 +146,8 @@ def cost_report(runs: list[dict]) -> dict:
         if job_window is not None:
             group["job_window_minutes"] += job_window
             group["runs_with_timed_jobs"] += 1
+            if queue_minutes is not None:
+                group["queue_minutes"] += queue_minutes
         if outcome == "cancelled":
             group["cancelled_runs"] += 1
             group["cancelled_run_runner_minutes"] += total
@@ -140,6 +157,10 @@ def cost_report(runs: list[dict]) -> dict:
             "run_id": run_id, "workflow": name, "conclusion": outcome,
             "runner_minutes": round(total, 3), "wall_minutes": round(wall, 3),
             "job_window_minutes": round(job_window, 3) if job_window is not None else None,
+            "queue_minutes": round(queue_minutes, 3) if queue_minutes is not None else None,
+            "first_failed_job_completion_minutes": (
+                round(first_failed_job_minutes, 3)
+                if first_failed_job_minutes is not None else None),
         })
         sha = run.get("head_sha")
         if sha is None:
@@ -178,7 +199,7 @@ def cost_report(runs: list[dict]) -> dict:
     return {
         "schema": "chunks-ci-runner-cost-v1",
         "source": "GitHub Actions job started_at/completed_at timestamps",
-        "scope": "completed runs only; runner minutes are not billed-minute estimates; wall_minutes includes queue/API updates; job_window_minutes excludes them and is null without timed jobs",
+        "scope": "completed runs only; runner minutes are not billed-minute estimates; wall_minutes includes queue/API updates; job_window_minutes excludes them and is null without timed jobs; queue and first-failing-job completion are timing proxies, not actionable-feedback guarantees",
         "runs": len(rows),
         "runner_minutes": round(sum(x["runner_minutes"] for x in rows), 3),
         "cancelled_run_runner_minutes": round(
