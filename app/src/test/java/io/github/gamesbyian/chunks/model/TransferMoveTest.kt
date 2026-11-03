@@ -73,7 +73,7 @@ class TransferMoveTest {
             Direction.PHONE_TO_SERVER, hash, "Big Buck Bunny", scope, "seed.example",
             sourceReviewToken = "native-session:17"
         )
-        assertTrue(original.encode().startsWith("v2\\n"))
+        assertTrue(original.encode().startsWith("v3\\n"))
         assertEquals(original, TransferMove.decode(original.encode()))
         assertTrue(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", "native-session:17"))
         assertFalse(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", "native-session:18"))
@@ -87,10 +87,21 @@ class TransferMoveTest {
         val recovered = requireNotNull(TransferMove.decode(old.encode()))
         assertNull(recovered.sourceReviewToken)
         assertFalse(TransferMove.sourceIdentityMatches(recovered, recovered.name, "fresh-native:1"))
-        // The rTorrent source has its own exact-hash/name/path verification
-        // and never relied on the phone engine's ephemeral native token.
+        // A legacy server-side Move also lacked its reviewed original directory
+        // and must be restarted, not silently grant consent to a replacement.
         val remoteSource = started(Direction.SERVER_TO_PHONE)
-        assertTrue(TransferMove.sourceIdentityMatches(remoteSource, "Big Buck Bunny", null))
+        assertFalse(TransferMove.sourceIdentityMatches(remoteSource, "Big Buck Bunny", null,
+            "/server/downloads"))
+        val reviewed = TransferMove.start(Direction.SERVER_TO_PHONE, hash, "Big Buck Bunny",
+            scope, "seed.example", sourceDirectory = "/server/downloads")
+        assertTrue(reviewed.encode().startsWith("v3\\n"))
+        assertEquals(reviewed, TransferMove.decode(reviewed.encode()))
+        assertTrue(TransferMove.sourceIdentityMatches(reviewed, "Big Buck Bunny", null,
+            "/server/downloads"))
+        assertFalse(TransferMove.sourceIdentityMatches(reviewed, "Big Buck Bunny", null,
+            "/server/other"))
+        assertFalse(TransferMove.sourceIdentityMatches(reviewed, "Renamed", null,
+            "/server/downloads"))
     }
 
     @Test fun codecRoundTripsAwkwardNamesAndRejectsMalformedRecords() {
