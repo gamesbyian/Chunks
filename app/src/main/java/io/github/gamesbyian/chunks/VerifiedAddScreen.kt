@@ -160,9 +160,9 @@ fun VerifiedAddScreen(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && !choosing && !submitting && !alreadyAttempted) {
             choosing = true
-            fromPhone = false
-            selectedTorrent = null
-            selectedBytes = null
+            // Preserve an existing reviewed .torrent until the replacement
+            // has been fully read and validated. An invalid provider document
+            // must not erase the user's working Add draft.
             fileError = null
             awaitingConfirmation = false
             scope.launch {
@@ -177,9 +177,13 @@ fun VerifiedAddScreen(
                     }
                     selectedTorrent = result.first
                     selectedBytes = result.second
+                    fromPhone = false
                     useFile = true
-                } catch (e: Exception) {
-                    fileError = "This document is not supported v1 .torrent metainfo or exceeds the safety limit."
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    fileError = "Could not open that .torrent (unsupported v1 metainfo or size limit)." +
+                        if (selectedTorrent != null) " Your previous .torrent remains selected." else ""
                 } finally {
                     choosing = false
                 }
@@ -249,7 +253,7 @@ fun VerifiedAddScreen(
                     }
                 },
                 label = { Text("Magnet link") },
-                enabled = !submitting && !alreadyAttempted,
+                enabled = !submitting && !choosing && !alreadyAttempted,
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
                 maxLines = 4
@@ -287,13 +291,13 @@ fun VerifiedAddScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
                         selected = !useFile,
-                        enabled = !submitting && !alreadyAttempted,
+                        enabled = !submitting && !choosing && !alreadyAttempted,
                         onClick = { useFile = false; awaitingConfirmation = false },
                         label = { Text("Magnet") }
                     )
                     FilterChip(
                         selected = useFile,
-                        enabled = !submitting && !alreadyAttempted,
+                        enabled = !submitting && !choosing && !alreadyAttempted,
                         onClick = { useFile = true; awaitingConfirmation = false },
                         label = { Text(".torrent file") }
                     )
@@ -423,7 +427,7 @@ fun VerifiedAddScreen(
                     Button(
                         onClick = { awaitingConfirmation = true },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                        enabled = !submitting
+                        enabled = !submitting && !choosing
                     ) { Text("Review Add") }
                 }
             } else {
@@ -538,7 +542,7 @@ fun VerifiedAddScreen(
                                 outcome = "An earlier remote command needs a fresh server read before another Add."
                             }
                         },
-                        enabled = !submitting,
+                        enabled = !submitting && !choosing,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                     ) { Text(if (startAfterAdd) "Confirm: add then start" else "Confirm: add stopped") }
                 }
