@@ -99,6 +99,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("All environments").assertExists()
         // Ordinary list presentation is compact; source-by-source proof is available on request.
         rule.onNodeWithText("On this phone: Engine not running", substring = true).assertDoesNotExist()
+        rule.onRoot().captureRoboImage("build/chunks-visual/combined-compact-first-viewport.png")
         revealText("Environment status")
         rule.onNodeWithText("Environment status", substring = true).performClick()
         // Lazy rows below the fold are composed only after scrolling to them.
@@ -154,7 +155,9 @@ class CombinedTransfersScreenTest {
         val directionSummary = "Hide sort & grouping · Size · Smallest first · Together"
         revealText(directionSummary)
         rule.onNodeWithText(directionSummary).assertExists()
-        // Only the connected server: phone and the offline profile drop out of the status lines.
+        // Disclose the single selected server; the compact summary always identifies active scope.
+        revealText("Choose environments & filters")
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         revealText(serverEnvironmentLabel(aliasScope))
         rule.onAllNodesWithText(serverEnvironmentLabel(aliasScope))[0].performClick()
         rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
@@ -218,6 +221,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {
         show()
+        revealText("Choose environments & filters")
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         rule.onNodeWithText("Filter transfers").assertExists()
         rule.onNodeWithText("Stopped").performClick()
         revealText("Small Episode")
