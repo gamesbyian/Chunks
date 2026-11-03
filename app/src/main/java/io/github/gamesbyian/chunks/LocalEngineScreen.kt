@@ -1811,20 +1811,27 @@ internal fun LocalTransferCard(
     // inventory or another pending action also requires a fresh review.
     var confirmRemove by remember(transfer.infoHash, transfer.name, transfer.savePath, busy) { mutableStateOf(false) }
     var confirmHandoff by remember(transfer.infoHash) { mutableStateOf(false) }
+    // Read-only disclosure keyed to exact transfer and save location. A recycled
+    // row cannot inherit another transfer’s expanded diagnostics or permissions.
+    var diagnosticsOpen by rememberSaveable(transfer.infoHash, transfer.name, transfer.savePath) {
+        mutableStateOf(false)
+    }
     val percent = transfer.progressPpm / 10_000
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold)
-            if (alias != null) {
-                Text("Original torrent: " + transfer.name,
-                    style = MaterialTheme.typography.bodySmall)
-            }
-            if (onSaveAlias != null) {
-                TransferAliasEditor(
-                    originalName = transfer.name, hash = transfer.infoHash,
-                    alias = alias, onSave = onSaveAlias
-                )
+            if (diagnosticsOpen) {
+                if (alias != null) {
+                    Text("Original torrent: " + transfer.name,
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                if (onSaveAlias != null) {
+                    TransferAliasEditor(
+                        originalName = transfer.name, hash = transfer.infoHash,
+                        alias = alias, onSave = onSaveAlias
+                    )
+                }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically) {
@@ -1847,11 +1854,13 @@ internal fun LocalTransferCard(
                     Units.bytes(transfer.uploadPayloadRateBytesPerSecond.toLong()) + "/s",
                     style = MaterialTheme.typography.bodySmall)
             }
-            LocalTrackerSummaryText.describe(transfer.trackers, transfer.stopped,
-                LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall)
+            if (diagnosticsOpen) {
+                LocalTrackerSummaryText.describe(transfer.trackers, transfer.stopped,
+                    LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall)
+                }
+                seeding?.let { SeedingSnapshotSummary(transfer.infoHash, it) }
             }
-            seeding?.let { SeedingSnapshotSummary(transfer.infoHash, it) }
             ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f, tone = stateTone(transfer),
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             // totalWantedDone is hash-verified completed payload; allTimeDownload
@@ -1859,6 +1868,17 @@ internal fun LocalTransferCard(
             Text("Verified on disk " + Units.bytes(transfer.doneBytes) + " of " +
                 Units.bytes(transfer.wantedBytes) + " · Shared " +
                 Units.bytes(transfer.payloadUploadedBytes), style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(
+                onClick = { diagnosticsOpen = !diagnosticsOpen },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        contentDescription = if (diagnosticsOpen)
+                            "Hide diagnostics for ${transfer.name} on this phone"
+                        else "More details for ${transfer.name} on this phone"
+                        stateDescription = if (diagnosticsOpen) "Expanded" else "Collapsed"
+                    }
+            ) { Text(if (diagnosticsOpen) "Hide details" else "More details") }
+            if (diagnosticsOpen) {
             if (transfer.payloadDownloadedBytes > 0L) {
                 Text("Network payload counter " + Units.bytes(transfer.payloadDownloadedBytes),
                     style = MaterialTheme.typography.bodySmall)
@@ -1891,6 +1911,7 @@ internal fun LocalTransferCard(
                     else "Running, but 0 peers connected. Check trackers, DHT, VPN/firewall and live seed availability. Starting alone cannot produce bytes.",
                     style = MaterialTheme.typography.bodySmall)
             }
+            } // End read-only diagnostic disclosure. Primary actions stay visible.
             // Three tiles side by side split words at 200% text; stack them instead.
             val wideText = LocalDensity.current.fontScale >= 1.5f
             val tile: Modifier = if (wideText) Modifier.fillMaxWidth() else Modifier
@@ -1911,7 +1932,7 @@ internal fun LocalTransferCard(
             else Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                 actions(Modifier.weight(1f))
             }
-            if (onRepairTrackers != null && transfer.stopped &&
+            if (diagnosticsOpen && onRepairTrackers != null && transfer.stopped &&
                 transfer.metadataKnown && transfer.trackers?.total == 0) {
                 OutlinedButton(
                     onClick = onRepairTrackers,
@@ -1919,7 +1940,7 @@ internal fun LocalTransferCard(
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text("Repair missing trackers from original .torrent…") }
             }
-            if (onPrepareRemote != null &&
+            if (diagnosticsOpen && onPrepareRemote != null &&
                 TorrentIdentityHandoff.prepare(transfer.infoHash, transfer.name) != null) {
                 OutlinedButton(onClick = { confirmHandoff = true }, enabled = !busy,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
