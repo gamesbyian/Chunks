@@ -62,8 +62,12 @@ internal data class LocalPlaceResolution(
     val selected: LocalDownloadPlace?,
     val choices: List<LocalPlaceChoice>,
     /** Shown whenever the remembered or preferred Place could not be used. */
-    val notice: String?
-)
+    val notice: String?,
+    /** Read-only explanation of how this effective location was chosen. */
+    val provenance: Provenance? = null
+) {
+    enum class Provenance { AUTOMATIC, SAVED_CHOICE, FALLBACK }
+}
 
 /**
  * Picks the default for new phone Adds. A remembered user choice wins only
@@ -81,7 +85,8 @@ internal object LocalDownloadPlacePolicy {
     fun resolve(remembered: LocalPlaceKind?, choices: List<LocalPlaceChoice>): LocalPlaceResolution {
         val byKind = choices.associateBy { it.place.kind }
         val wanted = remembered?.let(byKind::get)
-        if (wanted != null && wanted.verified) return LocalPlaceResolution(wanted.place, choices, null)
+        if (wanted != null && wanted.verified) return LocalPlaceResolution(
+            wanted.place, choices, null, LocalPlaceResolution.Provenance.SAVED_CHOICE)
         val fallback = preference.mapNotNull(byKind::get).firstOrNull { it.verified }
         val notice = when {
             fallback == null -> "No phone download folder passed Chunks' write check, so phone Adds are unavailable."
@@ -96,6 +101,11 @@ internal object LocalDownloadPlacePolicy {
                     "New Adds use ${fallback.place.title}." }
             else -> null
         }
-        return LocalPlaceResolution(fallback?.place, choices, notice)
+        return LocalPlaceResolution(fallback?.place, choices, notice,
+            when {
+                fallback == null -> null
+                remembered != null -> LocalPlaceResolution.Provenance.FALLBACK
+                else -> LocalPlaceResolution.Provenance.AUTOMATIC
+            })
     }
 }
