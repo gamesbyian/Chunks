@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -619,7 +621,12 @@ internal fun LocalEngineScreen(
             )
         }
     }
-    Box(Modifier.fillMaxSize()) {
+    val transfersRequester = remember { BringIntoViewRequester() }
+    val optionsRequester = remember { BringIntoViewRequester() }
+    // The footer owns measured space rather than overlaying another action.
+    // Reuse the existing local Add draft, list and filter state.
+    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.weight(1f)) {
     Column(
         Modifier.fillMaxSize().verticalScroll(scrollState)
             .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 92.dp),
@@ -1251,7 +1258,9 @@ internal fun LocalEngineScreen(
             onNamesChanged = { registeredNames = it }
         )
         Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold)
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.bringIntoViewRequester(transfersRequester)
+                .semantics { heading() })
         ClearableTransferSearchField(
             value = transferSearch,
             onValueChange = { transferSearch = it },
@@ -1260,6 +1269,7 @@ internal fun LocalEngineScreen(
         OutlinedButton(
             onClick = { showListOptions = !showListOptions },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .bringIntoViewRequester(optionsRequester)
                 .semantics { stateDescription = if (showListOptions) "Expanded" else "Collapsed" }
         ) {
             Text((if (showListOptions) "Hide" else "Choose") + " filters & sort · " +
@@ -1658,7 +1668,21 @@ internal fun LocalEngineScreen(
             }
         }
     )
-    }
+    } // scroll viewport
+    AuthenticatedTransfersFooter(
+        optionsOpen = showListOptions,
+        environmentLabel = "this phone",
+        onTransfers = { scope.launch { transfersRequester.bringIntoView() } },
+        onAdd = {
+            addExpanded = true
+            scope.launch { scrollState.scrollTo(0) }
+        },
+        onOptions = {
+            showListOptions = !showListOptions
+            scope.launch { optionsRequester.bringIntoView() }
+        }
+    )
+    } // measured footer + viewport
 }
 
 /** This entry point is read-only until an existing Add operation is explicitly submitted. */

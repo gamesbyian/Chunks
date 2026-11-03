@@ -27,6 +27,9 @@ class ConnectAdvancedPathTest {
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(text, substring = true))
 
     private fun enter(address: String, path: String) {
+        // Phone-first startup retains server Connect via the ordinary Back route.
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Back").performClick()
         scrollTo("Seedbox hostname")
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname", substring = true))
             .performTextReplacement(address)
