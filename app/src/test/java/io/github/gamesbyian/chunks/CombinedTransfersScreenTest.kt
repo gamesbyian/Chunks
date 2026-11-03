@@ -291,8 +291,12 @@ class CombinedTransfersScreenTest {
         show(stale = true)
         revealText("Environment status")
         rule.onNodeWithText("Environment status", substring = true).performClick()
-        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
-            .assertExists()
+        // Expanded environment rows live in a LazyColumn and may be outside
+        // the composed viewport. Reveal the exact row before asserting it.
+        val staleLabel = serverEnvironmentLabel(aliasScope) +
+            ": Out of date, showing last list · 2 transfers"
+        revealText(staleLabel)
+        rule.onNodeWithText(staleLabel).assertExists()
     }
 
     @Test fun oldSignedInServerRowsRemainVisibleButAreNotLiveOrActionable() {
@@ -300,8 +304,12 @@ class CombinedTransfersScreenTest {
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS - 1)
         revealText("Environment status")
         rule.onNodeWithText("Environment status", substring = true).performClick()
-        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": Out of date, showing last list · 2 transfers")
-            .assertExists()
+        // Expanded environment rows live in a LazyColumn and may be outside
+        // the composed viewport. Reveal the exact row before asserting it.
+        val staleLabel = serverEnvironmentLabel(aliasScope) +
+            ": Out of date, showing last list · 2 transfers"
+        revealText(staleLabel)
+        rule.onNodeWithText(staleLabel).assertExists()
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)
