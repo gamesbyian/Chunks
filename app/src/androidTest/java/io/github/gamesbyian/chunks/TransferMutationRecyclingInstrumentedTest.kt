@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -77,6 +80,35 @@ class TransferMutationRecyclingInstrumentedTest {
         rule.onNodeWithText("Confirm removal from rTorrent").assertExists()
         awayAndBack()
         rule.onNodeWithText("Confirm removal from rTorrent").assertExists()
+    }
+
+    @Test fun removedCardDoesNotRestoreReviewAfterOffscreenRefreshOrIdentityChange() {
+        var revision by mutableStateOf(1L)
+        var current by mutableStateOf(transfer)
+        rule.setContent {
+            MaterialTheme {
+                LazyColumn(Modifier.fillMaxSize()) {
+                    item(key = "operation") {
+                        TransferSessionRemoveControl(
+                            remote, current, snapshotStale = false,
+                            mainView = true, onMutationStarted = { true }, onSettled = {},
+                            snapshotRevision = revision
+                        )
+                    }
+                    items(40) { i -> Text("Row $i", Modifier.height(120.dp)) }
+                }
+            }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(25)
+        rule.runOnIdle { revision++ }
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        rule.onNodeWithText("Confirm removal from rTorrent").assertDoesNotExist()
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(25)
+        rule.runOnIdle { current = current.copy(directory = "/other") }
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        rule.onNodeWithText("Confirm removal from rTorrent").assertDoesNotExist()
     }
 
     @Test fun filePrioritySelectionRetainsExactRequestedValueAfterRecycle() {

@@ -60,7 +60,8 @@ fun TransferSessionRemoveControl(
     onSettled: () -> Unit,
     performErase: suspend (String, String, String) -> SessionEraseOutcome = remote::eraseFromSession,
     recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase,
-    environmentLabel: String? = "rTorrent"
+    environmentLabel: String? = "rTorrent",
+    snapshotRevision: Long = 0L
 ) {
     val validHash = remember(remote, transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
     // Freshness or view changes revoke an open review, but never erase the
@@ -69,6 +70,15 @@ fun TransferSessionRemoveControl(
         environmentLabel, snapshotStale, mainView) {
         mutableStateOf(false)
     }
+    // rememberSaveable restores a disposed lazy row without comparing its old
+    // inputs. Persist the actual reviewed identity as well, so a refreshed or
+    // changed row cannot resurrect an earlier confirmation after scrolling.
+    val currentReview = listOf(transfer.hash, transfer.name, transfer.directory,
+        environmentLabel.orEmpty(), snapshotRevision.toString())
+        .joinToString("") { "${it.length}:$it" }
+    var reviewedIdentity by rememberSaveable { mutableStateOf<String?>(null) }
+    val reviewCurrent = confirming && reviewedIdentity == currentReview &&
+        !snapshotStale && mainView && environmentLabel != null
     var attempted by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
@@ -93,9 +103,9 @@ fun TransferSessionRemoveControl(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!attempted && !confirming) {
+        if (!attempted && !reviewCurrent) {
             ActionTile("Remove from rTorrent…", ChunksColors.Orange,
-                onClick = { confirming = true },
+                onClick = { reviewedIdentity = currentReview; confirming = true },
                 enabled = environmentLabel != null && mainView && !snapshotStale && !pending && !checking,
                 modifier = Modifier.fillMaxWidth(),
                 icon = R.drawable.chunks_ic_remove, stacked = false)
@@ -110,7 +120,7 @@ fun TransferSessionRemoveControl(
                     style = MaterialTheme.typography.bodySmall)
             }
         }
-        if (confirming) {
+        if (reviewCurrent) {
             Card(colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.errorContainer
             )) {

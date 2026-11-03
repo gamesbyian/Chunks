@@ -224,13 +224,14 @@ class TransferSessionRemoveLargeTextTest {
 
     @Test fun scopeLabelChangeDoesNotUnlockAnInFlightRemoval() {
         var label by mutableStateOf("First account")
+        var stale by mutableStateOf(false)
         var eraseCalls = 0
         val result = CompletableDeferred<SessionEraseOutcome>()
         rule.setContent {
             ChunksTheme { Surface {
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     TransferSessionRemoveControl(
-                        remote, transfer, snapshotStale = false, mainView = true,
+                        remote, transfer, snapshotStale = stale, mainView = true,
                         onMutationStarted = { true }, onSettled = {}, environmentLabel = label,
                         performErase = { _, _, _ -> eraseCalls++; result.await() }
                     )
@@ -239,7 +240,8 @@ class TransferSessionRemoveLargeTextTest {
         }
         rule.onNodeWithText("Remove from rTorrent…").performClick()
         rule.onNodeWithText("Remove transfer, keep data").performScrollTo().performClick()
-        rule.runOnIdle { label = "Changed display label" }
+        rule.runOnIdle { label = "Changed display label"; stale = true }
+        rule.runOnIdle { stale = false }
         rule.onNodeWithText("Remove from rTorrent…").assertDoesNotExist()
         rule.onNodeWithText("Checking exact server session…").assertExists()
         assertEquals(1, eraseCalls)

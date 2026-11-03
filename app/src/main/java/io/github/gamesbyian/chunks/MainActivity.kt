@@ -2004,7 +2004,8 @@ private fun TransferCard(
                 remote = remote, transfer = transfer, snapshotStale = stale,
                 mainView = mainView, onMutationStarted = onMutationStarted,
                 onSettled = onLifecycleSettled,
-                environmentLabel = removalEnvironmentLabel
+                environmentLabel = removalEnvironmentLabel,
+                snapshotRevision = snapshotRevision
             )
             if (expanded) {
                 if (filesLoading) Text("Reading server file list…")
