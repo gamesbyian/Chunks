@@ -8,6 +8,7 @@ out="$RUNNER_TEMP/chunks-native-delete-android"
 mkdir -p "$out"
 set +e
 timeout 90 adb shell am instrument -w -r \
+  -e chunks_disposable_native_delete authorized \
   -e class io.github.gamesbyian.chunks.NativeDeleteFilesBoundaryInstrumentedTest \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
   > "$out/raw.txt" 2>&1

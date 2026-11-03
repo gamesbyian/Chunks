@@ -43,8 +43,10 @@ class RTorrentDisposableBatchMoveTest {
             val hash = TorrentMetainfoReader.preview(bytes).infoHashV1
             val added = rtorrent.loadStoppedTorrentBytes(bytes, root.absolutePath)
             assertTrue("$added", added is RemoteAddOutcome.VerifiedStopped || added is RemoteAddOutcome.PendingVerification)
-            TransferMove.start(TransferMove.Direction.SERVER_TO_PHONE, hash, name, "a".repeat(64), "rig")
-                .copy(stage = TransferMove.Stage.TARGET_VERIFIED)
+            TransferMove.start(
+                TransferMove.Direction.SERVER_TO_PHONE, hash, name, "a".repeat(64), "rig",
+                sourceDirectory = root.absolutePath
+            ).copy(stage = TransferMove.Stage.TARGET_VERIFIED)
         }
         repeat(30) {
             if (rtorrent.listTransfers("main").count { r -> records.any { it.infoHash.equals(r.hash, true) } } < 2)

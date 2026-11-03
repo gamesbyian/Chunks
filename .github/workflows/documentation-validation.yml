@@ -45,6 +45,8 @@ on:
       - 'tests/test_ci_pr_overlap_report.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
+      - 'tools/prefetch_robolectric_sdk.py'
+      - 'tests/test_ci_robolectric_prefetch.py'
       - 'tools/physical_android_preflight.sh'
       - 'tools/test_physical_android_preflight.sh'
       - 'tests/test_ci_trigger_contract.py'
@@ -138,6 +140,8 @@ on:
       - 'tests/test_ci_pr_overlap_report.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
+      - 'tools/prefetch_robolectric_sdk.py'
+      - 'tests/test_ci_robolectric_prefetch.py'
       - 'tools/physical_android_preflight.sh'
       - 'tools/test_physical_android_preflight.sh'
       - 'tests/test_ci_trigger_contract.py'
@@ -210,6 +214,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
       - name: Verify CI JVM fork experiment remains scoped and covered
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_jvm_parallelism.py
+      - name: Verify SHA-512 Robolectric preflight and pinned SDK selection offline
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_robolectric_prefetch.py
       - name: Audit all workflow definitions and their dispatch metadata
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_workflow_inventory.py

@@ -36,6 +36,26 @@ class LocalResumeEventStoreTest {
         })
     }
 
+    @Test fun pendingRemovalEnumerationExcludesSavedAndAlreadyRetiredGenerations() {
+        val dir = root()
+        val kept = "b".repeat(40)
+        val retired = "c".repeat(40)
+        val store = open(dir)
+        store.save(hash, "pending".toByteArray())
+        store.removeIntent(hash)
+        store.save(kept, "keep".toByteArray())
+        store.save(retired, "old".toByteArray())
+        store.removeIntent(retired)
+        store.removeCommit(retired)
+        val reopened = open(dir)
+        assertEquals(listOf(hash), reopened.pendingRemovals())
+        assertFalse(reopened.canRegister(hash))
+        assertArrayEquals("keep".toByteArray(), reopened.current(kept))
+        reopened.removeCommit(hash)
+        assertEquals(emptyList<String>(), open(dir).pendingRemovals())
+        assertTrue(open(dir).canRegister(hash))
+    }
+
     @Test fun removalIntentIsDurableAndPreventsZombieOnInterruptedJniRemoval() {
         val dir = root()
         val store = open(dir)

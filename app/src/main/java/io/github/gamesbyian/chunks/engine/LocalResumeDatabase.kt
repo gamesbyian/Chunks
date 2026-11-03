@@ -216,6 +216,12 @@ internal class LocalResumeDatabase private constructor(
         return states[key]?.phase in setOf(null, "EMPTY", "REMOVED")
     }
 
+    @Synchronized override fun pendingRemovals(): List<String> {
+        healthy()
+        return states.values.asSequence().filter { it.phase == "REMOVE_INTENT" }
+            .map { it.key }.sorted().toList()
+    }
+
     @Synchronized override fun restorable(): List<Pair<String, ByteArray>> {
         healthy()
         return states.values.mapNotNull { record -> record.payload?.let { record.key to it.copyOf() } }

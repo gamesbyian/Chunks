@@ -9,6 +9,8 @@ The REST data is the source; durations are measured, not predicted or billed min
 GitHub head_sha groups may include draft, ready and retry events; not one dispatch.
 On pull_request, head_sha need not be the actual GITHUB_SHA merge checkout.
 Queue and first-failing-job times are observed proxies, not proof of human-actionable feedback.
+Aggregate job_window_minutes intentionally includes idle gaps between workflow rerun attempts.
+Attempt-window and retry-gap metrics separate these, without changing runner-minute totals.
 Step hotspots use GitHub step numbers rather than names to avoid leaking dynamic/secret labels.
 ALL workflow rerun attempts are fetched; latest-only jobs silently undercount failed attempts.
 Missing/incomplete step data is reported as unknown; it is never interpreted as zero time.
@@ -157,6 +159,8 @@ def cost_report(runs: list[dict]) -> dict:
         "runs_with_timed_jobs": 0, "jobs": 0,
         "runs_with_reruns": 0, "prior_attempt_runner_minutes": 0.0,
         "failed_jobs_across_attempts": 0,
+        "complete_attempt_window_minutes": 0.0, "retry_idle_gap_minutes": 0.0,
+        "runs_with_complete_attempt_windows": 0,
     })
     rows = []
     step_by_workflow = defaultdict(lambda: {
@@ -191,6 +195,7 @@ def cost_report(runs: list[dict]) -> dict:
         failed_jobs_across_attempts = 0
         timed_starts = []
         timed_ends = []
+        attempt_job_intervals = defaultdict(list)
         failed_job_ends = []
         for job in jobs:
             job_id = int(job["id"])
@@ -259,12 +264,40 @@ def cost_report(runs: list[dict]) -> dict:
             if job.get("conclusion") != "skipped" and job.get("started_at") and job.get("completed_at"):
                 timed_starts.append(instant(job["started_at"]))
                 timed_ends.append(instant(job["completed_at"]))
+                attempt_job_intervals[attempt].append((instant(job["started_at"]), instant(job["completed_at"])))
                 if job.get("conclusion") == "failure":
                     failed_job_ends.append(instant(job["completed_at"]))
         # Unlike created_at→updated_at, this excludes queue and API update delays.
         # It is a job activity window, not a dependency-critical-path measurement.
         job_window = ((max(timed_ends) - min(timed_starts)).total_seconds() / 60
                       if timed_starts else None)
+        # GitHub's cross-attempt min(start) -> max(end) window includes
+        # human/API delay between a failed attempt and its later rerun.
+        # Preserve the original metric, and distinguish per-attempt windows.
+        windows = {}
+        for attempt in range(1, run_attempt + 1):
+            intervals = attempt_job_intervals.get(attempt, [])
+            windows[attempt] = (
+                (min(start for start, _ in intervals), max(end for _, end in intervals))
+                if intervals else None
+            )
+        complete_windows = all(window is not None for window in windows.values())
+        summed_attempt_window = (
+            sum((end - start).total_seconds() / 60
+                for start, end in windows.values() if start is not None)
+            if complete_windows else None
+        )
+        # No idle-gap claim when a rerun attempt lacks job times, or attempts
+        # overlap (unusual GitHub metadata / offline fixture).
+        retry_idle_gap = None
+        if complete_windows:
+            ordered_windows = [windows[i] for i in range(1, run_attempt + 1)]
+            deltas = [
+                (ordered_windows[i][0] - ordered_windows[i - 1][1]).total_seconds() / 60
+                for i in range(1, len(ordered_windows))
+            ]
+            if all(delta >= 0 for delta in deltas):
+                retry_idle_gap = sum(deltas)
         wall = minutes(run.get("created_at"), run.get("updated_at"))
         dispatch = instant(run["created_at"]) if run.get("created_at") else None
         queue_minutes = ((min(timed_starts) - dispatch).total_seconds() / 60
@@ -285,6 +318,11 @@ def cost_report(runs: list[dict]) -> dict:
         group["failed_jobs_across_attempts"] += failed_jobs_across_attempts
         if run_attempt > 1:
             group["runs_with_reruns"] += 1
+        if summed_attempt_window is not None:
+            group["complete_attempt_window_minutes"] += summed_attempt_window
+            group["runs_with_complete_attempt_windows"] += 1
+        if retry_idle_gap is not None:
+            group["retry_idle_gap_minutes"] += retry_idle_gap
         if job_window is not None:
             group["job_window_minutes"] += job_window
             group["runs_with_timed_jobs"] += 1
@@ -306,6 +344,18 @@ def cost_report(runs: list[dict]) -> dict:
             "prior_attempt_runner_minutes": round(prior_attempt_minutes, 3),
             "failed_jobs_across_attempts": failed_jobs_across_attempts,
             "job_window_minutes": round(job_window, 3) if job_window is not None else None,
+            "attempt_job_window_minutes": {
+                str(attempt): (
+                    round((window[1] - window[0]).total_seconds() / 60, 3)
+                    if window is not None else None
+                ) for attempt, window in windows.items()
+            },
+            "complete_attempt_window_minutes": (
+                round(summed_attempt_window, 3) if summed_attempt_window is not None else None
+            ),
+            "retry_idle_gap_minutes": (
+                round(retry_idle_gap, 3) if retry_idle_gap is not None else None
+            ),
             "queue_minutes": round(queue_minutes, 3) if queue_minutes is not None else None,
             "first_failed_job_completion_minutes": (
                 round(first_failed_job_minutes, 3)
@@ -364,12 +414,20 @@ def cost_report(runs: list[dict]) -> dict:
     return {
         "schema": "chunks-ci-runner-cost-v1",
         "source": "GitHub Actions job started_at/completed_at timestamps, all run attempts",
-        "scope": "completed runs only; head_sha is PR branch identity, not necessarily the tested merge checkout; runner minutes are not billed-minute estimates; wall_minutes includes queue/API updates; job_window_minutes excludes them and is null without timed jobs; queue and first-failing-job completion are timing proxies, not actionable-feedback guarantees",
+        "scope": "completed runs only; head_sha is PR branch identity, not necessarily the tested merge checkout; runner minutes are not billed minutes; job_window_minutes spans all rerun attempts including idle retry gaps, whereas complete_attempt_window_minutes excludes between-attempt gaps but may include dependencies within each attempt; absent attempt jobs make these new metrics unknown; queue/failure-completion metrics are timing proxies, not actionable-feedback guarantees",
         "runs": len(rows),
         "runner_minutes": round(sum(x["runner_minutes"] for x in rows), 3),
         "prior_attempt_runner_minutes": round(
             sum(x["prior_attempt_runner_minutes"] for x in rows), 3),
         "runs_with_reruns": sum(x["reported_attempts"] > 1 for x in rows),
+        "runs_with_complete_attempt_windows": sum(
+            x["complete_attempt_window_minutes"] is not None for x in rows),
+        "complete_attempt_window_minutes": round(sum(
+            x["complete_attempt_window_minutes"]
+            for x in rows if x["complete_attempt_window_minutes"] is not None), 3),
+        "retry_idle_gap_minutes": round(sum(
+            x["retry_idle_gap_minutes"] for x in rows
+            if x["retry_idle_gap_minutes"] is not None), 3),
         "runs_with_unobserved_job_attempts": sum(
             bool(x["attempts_without_jobs"]) for x in rows),
         "cancelled_run_runner_minutes": round(
@@ -447,6 +505,11 @@ def main() -> None:
                   f"timed_step_min={activity['timed_step_minutes']:.2f} "
                   f"top=run{top['run_id']}/job{top['job_id']}/step{top['step_number']} "
                   f"({top['minutes']:.2f}m)")
+    print(f"Complete per-attempt span (measured runs only): "
+          f"{report['complete_attempt_window_minutes']:.2f} minutes "
+          f"across {report['runs_with_complete_attempt_windows']} runs; "
+          f"observed retry idle: {report['retry_idle_gap_minutes']:.2f} minutes "
+          "(exclude missing/overlapping attempts)")
     for sha, group in report["by_head_sha"].items():
         print(f"head_sha={sha[:12]} runs={group['runs']} "
               f"runner_min={group['runner_minutes']:.2f} "

@@ -4,6 +4,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
+import io.github.gamesbyian.chunks.engine.LocalResumeDatabase
+import io.github.gamesbyian.chunks.engine.LocalResumeDirectoryInventory
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
@@ -160,6 +162,105 @@ class LocalTorrentEngineInstrumentedTest {
         assertTrue(instance.removeKeepingData(status.infoHash))
         assertTrue(!instance.flushCompletedForLibraryRead(status.infoHash, 100L))
         assertArrayEquals(payload, File(seedRoot, "payload.bin").readBytes())
+    }
+
+    @Test fun freshNativeSessionFinishesInterruptedRemoveWithoutTouchingOtherTransfer() {
+        val retiredRoot = File(work, "retire-after-crash/Retired fixture").apply { mkdirs() }
+        val original = ByteArray(50_000).also { Random(83).nextBytes(it) }
+        File(retiredRoot, "retired.bin").writeBytes(original)
+        val keptRoot = File(work, "keep-after-crash/Kept fixture").apply { mkdirs() }
+        val keptBytes = ByteArray(44_000).also { Random(87).nextBytes(it) }
+        File(keptRoot, "kept.bin").writeBytes(keptBytes)
+        val retiredTorrent = TorrentBuilder().path(retiredRoot)
+            .pieceSize(16 * 1024).generate().entry().bencode()
+        val keptTorrent = TorrentBuilder().path(keptRoot)
+            .pieceSize(16 * 1024).generate().entry().bencode()
+        val state = File(work, "interrupted-intent-state").apply { mkdirs() }
+        val config = LocalEngineConfig(listenInterfaces = "127.0.0.1:0", stateDirectory = state)
+        val first = LocalTorrentEngine(config).also { it.start(); engines += it }
+        val retired = (first.addStopped(retiredTorrent, requireNotNull(retiredRoot.parentFile))
+            as LocalAddResult.AddedStopped).status
+        val kept = (first.addStopped(keptTorrent, requireNotNull(keptRoot.parentFile))
+            as LocalAddResult.AddedStopped).status
+        assertEquals("Both native jobs must persist for the test", 2,
+            first.saveResumeData(timeoutMs = 20_000))
+        first.close() // Real native session.stop joins queued disk I/O.
+        // Simulate a durable REMOVE_INTENT committed just before native
+        // removal/restart interruption. No file is deleted by this injection.
+        LocalResumeDatabase.open(state, LocalResumeDirectoryInventory.prepare(state)).use {
+            assertTrue(!it.canRegister(retired.infoHash))
+            it.removeIntent(retired.infoHash)
+            assertEquals(listOf(retired.infoHash), it.pendingRemovals())
+        }
+        val second = LocalTorrentEngine(config).also { it.start(); engines += it }
+        assertTrue("Retired hash must not resurrect", second.status(retired.infoHash) == null)
+        assertTrue("Unrelated stopped job must restore", second.status(kept.infoHash)?.stopped == true)
+        assertTrue("Cold intent completion must be durable", second.restoreProblems.isEmpty())
+        LocalResumeDatabase.open(state, LocalResumeDirectoryInventory.prepare(state)).use {
+            assertTrue(it.canRegister(retired.infoHash))
+            assertTrue(it.pendingRemovals().isEmpty())
+            assertTrue(!it.canRegister(kept.infoHash))
+        }
+        assertArrayEquals(original, File(retiredRoot, "retired.bin").readBytes())
+        assertArrayEquals(keptBytes, File(keptRoot, "kept.bin").readBytes())
+        // A genuinely new native session may safely register this hash again;
+        // old native tombstones cannot exist after the first session.stop.
+        val readded = second.addStoppedChecked(retiredTorrent, requireNotNull(retiredRoot.parentFile))
+        assertTrue("Exact-hash re-Add should recover using original bytes",
+            readded is LocalAddResult.AddedStopped)
+        assertEquals(retired.infoHash, (readded as LocalAddResult.AddedStopped).status.infoHash)
+        assertArrayEquals(original, File(retiredRoot, "retired.bin").readBytes())
+        assertArrayEquals(keptBytes, File(keptRoot, "kept.bin").readBytes())
+    }
+
+    @Test fun staleReviewedNameOrFolderCannotRemoveLiveSameHashJob() {
+        val root = File(work, "reviewed-identity/Exact reviewed fixture").apply { mkdirs() }
+        val original = File(root, "payload.bin").apply {
+            writeBytes(ByteArray(73_000).also { Random(77).nextBytes(it) })
+        }
+        val before = original.readBytes()
+        val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024).generate().entry().bencode()
+        val instance = engine()
+        val added = (instance.addStopped(torrent, requireNotNull(root.parentFile))
+            as LocalAddResult.AddedStopped).status
+
+        // These checks exercise the actual synchronized native Remove boundary,
+        // not only a Compose confirmation or string comparison helper.
+        assertTrue(!instance.removeKeepingDataIfMatching(
+            added.infoHash, added.name + " (stale)", added.savePath,
+            added.nativeReviewToken))
+        assertTrue(instance.status(added.infoHash) != null)
+        assertTrue(!instance.removeKeepingDataIfMatching(
+            added.infoHash, added.name, added.savePath + "/stale",
+            added.nativeReviewToken))
+        assertTrue(instance.status(added.infoHash) != null)
+        assertArrayEquals(before, original.readBytes())
+        assertTrue(!instance.removeKeepingDataIfMatching(
+            added.infoHash, added.name, added.savePath, "stale-native-generation"))
+        assertTrue(instance.status(added.infoHash) != null)
+        assertArrayEquals(before, original.readBytes())
+
+        assertTrue(instance.removeKeepingDataIfMatching(
+            added.infoHash, added.name, added.savePath, added.nativeReviewToken))
+        assertTrue(instance.status(added.infoHash) == null)
+        assertArrayEquals(before, original.readBytes())
+
+        // A newly loaded copy with the SAME hash, name and folder must
+        // never inherit consent from a previous native handle.
+        val nextEngine = engine()
+        val replacement = (nextEngine.addStopped(torrent, requireNotNull(root.parentFile))
+            as LocalAddResult.AddedStopped).status
+        assertEquals(added.infoHash, replacement.infoHash)
+        assertEquals(added.name, replacement.name)
+        assertEquals(added.savePath, replacement.savePath)
+        assertTrue(replacement.nativeReviewToken != added.nativeReviewToken)
+        assertTrue(!nextEngine.removeKeepingDataIfMatching(
+            added.infoHash, added.name, added.savePath, added.nativeReviewToken))
+        assertTrue(nextEngine.status(added.infoHash) != null)
+        assertTrue(nextEngine.removeKeepingDataIfMatching(
+            replacement.infoHash, replacement.name, replacement.savePath,
+            replacement.nativeReviewToken))
+        assertArrayEquals(before, original.readBytes())
     }
 
     @Test fun sessionOnlyRemovalCannotLeaveResumeFileForRestart() {
