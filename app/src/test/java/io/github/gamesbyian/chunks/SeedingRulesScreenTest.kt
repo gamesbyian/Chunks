@@ -33,6 +33,26 @@ class SeedingRulesScreenTest {
 
     private fun field(label: String) = rule.onNode(hasSetTextAction() and hasText(label, substring = true))
 
+    @Test fun compactExplanationLeavesRuleScopeTruthfulAndDetailsOneTapAway() {
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                SeedingRulesScreen(environments) {}
+            } }
+        }
+        rule.onNodeWithText(
+            "Phone rules affect new transfers only. Server rules are saved for later and are not applied yet."
+        ).assertExists()
+        rule.onNodeWithText("On this phone, rules apply to transfers added from now on", substring = true)
+            .assertDoesNotExist()
+        rule.onNodeWithText("What these rules do today").performClick()
+        rule.onNodeWithText("On this phone, rules apply to transfers added from now on", substring = true)
+            .assertExists()
+        rule.onNodeWithText("Hide rule explanation").performClick()
+        rule.onNodeWithText("On this phone, rules apply to transfers added from now on", substring = true)
+            .assertDoesNotExist()
+        rule.onNodeWithText("New rule").assertExists()
+    }
+
     @Test fun createAScopedRuleWithExactUnitsAndItPersists() {
         rule.setContent { ChunksTheme { Surface(color = ChunksColors.Background) { SeedingRulesScreen(environments) {} } } }
         rule.onNodeWithText("What these rules do today").assertExists()
