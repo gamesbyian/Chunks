@@ -32,6 +32,7 @@ class NativeDeleteFlagsLinuxProbeTest {
         val nativeResult = AtomicReference<String>("none")
         val alerts = java.util.concurrent.atomic.AtomicInteger(0)
         val terminalAlerts = java.util.concurrent.atomic.AtomicInteger(0)
+        val terminalHash = AtomicReference<String>("none")
         var listener: AlertListener? = null
         try {
             val source = root.resolve("source/Probe content")
@@ -50,6 +51,7 @@ class NativeDeleteFlagsLinuxProbeTest {
             val canaryBytes = "unrelated file must survive".toByteArray()
             canary.writeBytes(canaryBytes)
             val wantedHash = info.infoHash().toHex()
+            println("CHUNKS_NATIVE_DELETE_META legacy=$wantedHash v1=${info.infoHashes().getV1().toHex()} best=${info.infoHashes().getBest().toHex()} file=${info.files().filePath(0)}")
             val watch = object : AlertListener {
                 override fun types(): IntArray? = null
                 override fun alert(alert: Alert<*>) {
@@ -58,18 +60,16 @@ class NativeDeleteFlagsLinuxProbeTest {
                         is TorrentDeletedAlert -> {
                             terminalAlerts.incrementAndGet()
                             println("CHUNKS_NATIVE_DELETE_EVENT type=deleted observedHash=${alert.infoHashes.getV1().toHex()} expectedHash=$wantedHash")
-                            if (alert.infoHashes.getV1().toHex().equals(wantedHash, true)) {
-                                nativeResult.set("deleted")
-                                done.countDown()
-                            }
+                            terminalHash.set(alert.infoHashes.getV1().toHex())
+                            nativeResult.set("deleted")
+                            done.countDown()
                         }
                         is TorrentDeleteFailedAlert -> {
                             terminalAlerts.incrementAndGet()
                             println("CHUNKS_NATIVE_DELETE_EVENT type=failed observedHash=${alert.infoHashes.getV1().toHex()} expectedHash=$wantedHash")
-                            if (alert.infoHashes.getV1().toHex().equals(wantedHash, true)) {
-                                nativeResult.set("failed")
-                                done.countDown()
-                            }
+                            terminalHash.set(alert.infoHashes.getV1().toHex())
+                            nativeResult.set("failed")
+                            done.countDown()
                         }
                     }
                 }
@@ -90,6 +90,7 @@ class NativeDeleteFlagsLinuxProbeTest {
             assertTrue("no matching delete terminal alert in 30 seconds (result=${nativeResult.get()} alerts=${alerts.get()} terminalAlerts=${terminalAlerts.get()} targetExists=${target.exists()})",
                 done.await(30, TimeUnit.SECONDS))
             assertEquals("native delete terminal alert", "deleted", nativeResult.get())
+            assertEquals("native callback identity differs from metadata v1", info.infoHashes().getV1().toHex(), terminalHash.get())
             assertFalse("native deleted alert but mapped target still on disk", target.exists())
             assertArrayEquals("unrelated canary modified", canaryBytes, canary.readBytes())
         } finally {
