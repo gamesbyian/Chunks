@@ -8,6 +8,12 @@ Chunks already runs actual KVM-backed API29 storage and API35 installed instrume
 
 The upstream [emulator-runner AVD caching recipe](https://github.com/ReactiveCircus/android-emulator-runner#avd-snapshot-caching) and [Kiwix Android CI](https://github.com/kiwix/kiwix-android/blob/main/.github/workflows/ci.yml) use clean emulator snapshots. Chunks' core Android jobs do not yet restore explicitly cached AVD snapshots. **Hypothesis:** reusing an exactly matched clean API35 boot can reduce time-to-ready and total runner consumption after accounting for SDK installation, cache restore/save, size and reliability. This is unmeasured; no speedup or acceptance is claimed.
 
+## Existing measured latency ceiling (historical native Add run)
+
+Real source-bound [API35 native Add run 41597519488](https://github.com/gamesbyian/Chunks/actions/runs/41597519488), before this pilot, logged two independent shard boots. Each spent approximately **48–49 seconds installing Android SDK components** inside emulator-runner and **1–1.5 seconds creating the AVD**. From emulator launch until Android reported booted, shard 1 took about **26 seconds** and shard 0 about **37 seconds**. These are step-log clock intervals, not repeated controlled benchmarks. Most of the full 266/326-second emulator-runner windows was installed test execution and harness work.
+
+**Implication:** a cache of only the clean AVD snapshot can directly attack roughly 27–38 seconds of AVD creation/boot in those runs, **before subtracting cache download, restore or compatibility overhead**. It cannot automatically eliminate the roughly 49-second SDK installation or hundreds of seconds of valuable installed tests. The pilot's explicit SDK preinstall is included in total job time and must not be omitted from the comparison. A failure to improve whole-job consumption is a valid reason to reject snapshots even if the boot portion improves.
+
 ## Manual A/B protocol
 
 The [isolated pilot workflow](../.github/workflows/avd-snapshot-pilot.yml) has only `workflow_dispatch` on `main` and never runs automatically for pushes, PRs or schedules. It uses KVM, Ubuntu 24.04, API35 Google APIs x86_64, Pixel 6 and a 2048M AVD. The cache key contains installed emulator and system-image revisions plus device/profile identity. Only `~/.android/avd` is cached; host ADB keys, APKs, torrents, trackers, credentials, test fixtures and Gradle state are not.
