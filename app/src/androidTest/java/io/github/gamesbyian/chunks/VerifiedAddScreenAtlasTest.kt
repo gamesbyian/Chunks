@@ -23,8 +23,10 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
@@ -138,8 +140,8 @@ class VerifiedAddScreenAtlasTest {
         rule.onNodeWithText("Choose server folder suggestions", substring = true).performClick()
         list.performScrollToNode(hasText("Recent save folders"))
         rule.onNodeWithText("Recent save folders").assertExists()
-        list.performScrollToNode(hasText("/srv/recent"))
-        rule.onNodeWithText("/srv/recent").performClick()
+        list.performScrollToNode(hasContentDescription("Use recent server folder: /srv/recent"))
+        rule.onNodeWithContentDescription("Use recent server folder: /srv/recent").performClick()
         rule.runOnIdle {
             org.junit.Assert.assertEquals("/srv/recent", destination)
             org.junit.Assert.assertEquals(1, draftChoices)
