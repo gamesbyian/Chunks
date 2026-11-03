@@ -148,7 +148,7 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.assertEqual(workflow.count(":app:assembleDebug :app:assembleDebugAndroidTest"), 1)
         self.assertNotIn("connectedDebugAndroidTest", workflow)
         for expected in (
-            "chunks-native-add-immutable-apk-pair",
+            "chunks-prebuilt-native-add-apk-pair",
             "sha256sum -c SHA256SUMS",
             "script: bash tools/native_add_prebuilt.sh",
             "check_native_atlas_contract.py",
