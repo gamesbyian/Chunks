@@ -21,7 +21,7 @@
 | 11 | Navigation and orientation | Use one shared user-facing vocabulary across engines | Partial | [UX.md](UX.md) |
 | 12 | Transfer inventory and controls | Thin collapsed transfer rows | In #1132 | [CombinedTransfersScreen.kt](../app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt) |
 | 13 | Transfer inventory and controls | Accessible truncation of long names | Partial | [MainActivity.kt](../app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt) |
-| 14 | Transfer inventory and controls | Small truthful artwork or file-type fallback | In #1132 | [TransferFileTypeBadge.kt](../app/src/main/java/io/github/gamesbyian/chunks/TransferFileTypeBadge.kt) |
+| 14 | Transfer inventory and controls | Small truthful artwork or file-type fallback | In #1132 | [TransferFileTypeBadge.kt (proposed in #1132)](https://github.com/gamesbyian/Chunks/pull/1132) |
 | 15 | Transfer inventory and controls | Environment colour plus text identification | Source present | [CombinedTransfersScreen.kt](../app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt) |
 | 16 | Transfer inventory and controls | Compact truthful transfer status | Source present | [model/UnifiedTransferCatalog.kt](../app/src/main/java/io/github/gamesbyian/chunks/model/UnifiedTransferCatalog.kt) |
 | 17 | Transfer inventory and controls | Segmented progress for all transfer lists | In #1132 | [ChunkedProgressBar.kt](../app/src/main/java/io/github/gamesbyian/chunks/ChunkedProgressBar.kt) |
