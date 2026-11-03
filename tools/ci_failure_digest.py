@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Bounded, secret-free CI failure digest. Never treats missing tests as success.
 
-Consumes JUnit structure only (test names and counts), NOT exception messages,
-system-out, environment secrets, or protected endpoint details. Full logs remain
-in GitHub Actions; this is an index and an honest evidence-execution receipt.
+Consumes JUnit structure and only two FIXED signatures in failing-case traces,
+not exception contents, system-out, environment secrets or protected endpoints.
+Never serializes the inspected trace. Full logs stay in Actions; this is an
+honest executed-evidence receipt and an advisory, secret-free diagnostic index.
 """
 import argparse
 import glob
@@ -74,6 +75,7 @@ def make_digest(paths, status, suite, env=None):
     timed_cases = 0
     invalid_case_times = 0
     class_seconds = {}
+    robolectric_fetch_signature = False
     for path in sorted(set(paths)):
         try:
             root = ET.parse(path).getroot()
@@ -112,8 +114,21 @@ def make_digest(paths, status, suite, env=None):
                         invalid_case_times += 1
                 if case.find("skipped") is not None:
                     skipped += 1
-                if case.find("failure") is not None or case.find("error") is not None:
+                failing_node = case.find("failure")
+                if failing_node is None:
+                    failing_node = case.find("error")
+                if failing_node is not None:
                     failures += 1
+                    # Robolectric's SDK jar is downloaded by its own Maven
+                    # resolver at test runtime. Distinguish a fixed, observed
+                    # network-fetch signature from an app assertion without
+                    # disclosing even one byte of untrusted stack trace.
+                    if suite == "android-jvm":
+                        trace = ((failing_node.get("message") or "") + "\n" +
+                                 (failing_node.text or ""))[:32768]
+                        if ("MavenArtifactFetcher" in trace and
+                                "java.net.SocketException" in trace):
+                            robolectric_fetch_signature = True
                     if len(failed_cases) < 20:
                         # No exception text, output, paths or environment values.
                         failed_cases.append({
@@ -142,6 +157,17 @@ def make_digest(paths, status, suite, env=None):
     else:
         phase = "none"
         next_action = None
+    # Diagnostic-only: never change whether a report is accepted or which
+    # source/test identities passed. The static hint is NOT proven root cause.
+    diagnostic_hint = (
+        "possible-robolectric-runtime-dependency-network-fetch"
+        if failures and not invalid and robolectric_fetch_signature else None
+    )
+    if diagnostic_hint and phase == "test_assertion":
+        next_action = (
+            "Inspect Robolectric Android SDK JAR runtime Maven resolution; "
+            "preserve the red receipt and requalify the same source after dependency availability"
+        )
     base = env.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
     repository = env.get("GITHUB_REPOSITORY", "")
     run_id = env.get("GITHUB_RUN_ID", "")
@@ -174,6 +200,7 @@ def make_digest(paths, status, suite, env=None):
         "reported_job_status": status,
         "evidence_executed": bool(reports and tests > skipped and not invalid),
         "phase": phase,
+        "diagnostic_hint": diagnostic_hint,
         "junit": {"reports": reports, "tests": tests, "failed": failures,
                   "skipped": skipped, "executed": tests - skipped},
         "failed_cases": failed_cases,
@@ -231,11 +258,14 @@ def main():
                 out.write("- First failing tests (no private failure text): "
                           + ", ".join(json.dumps(c["class"] + "." + c["test"])
                                       for c in digest["failed_cases"][:5]) + "\n")
+            if digest["diagnostic_hint"]:
+                out.write(f"- Advisory diagnostic: `{digest['diagnostic_hint']}` (unverified cause; job remains red)\n")
             if digest["next_action"]:
                 out.write(f"- Next: {digest['next_action']}\n")
             out.write("\n")
     print(json.dumps({"phase": digest["phase"], "junit": digest["junit"],
-                      "evidence_executed": digest["evidence_executed"]}))
+                      "evidence_executed": digest["evidence_executed"],
+                      "diagnostic_hint": digest["diagnostic_hint"]}))
     if rejects_unverified_green(digest, args.status, args.require_executed):
         print("::error::Required JUnit evidence absent, invalid, all-skipped or failed")
         raise SystemExit(1)

@@ -64,6 +64,7 @@ on:
       - '.github/workflows/seedhost-kotlin-adapter-smoke.yml'
       - '.github/workflows/seedhost-public-add-smoke.yml'
       - 'tests/test_ci_failure_digest.py'
+      - 'tests/test_minified_smoke_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
       - '.github/workflows/android-doze-harness-qa.yml'
@@ -158,6 +159,7 @@ on:
       - '.github/workflows/seedhost-kotlin-adapter-smoke.yml'
       - '.github/workflows/seedhost-public-add-smoke.yml'
       - 'tests/test_ci_failure_digest.py'
+      - 'tests/test_minified_smoke_digest.py'
       - 'tests/test_ci_orchestration.py'
       - '.github/workflows/android-radio-harness-qa.yml'
       - '.github/workflows/android-doze-harness-qa.yml'
@@ -249,6 +251,7 @@ jobs:
       - name: Test complete native Add sharding and CI evidence contracts offline
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_minified_smoke_digest.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_add_shards.py
       - name: Validate protected magnet test evidence receipts without credentials
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_magnet_peer_receipt.py
