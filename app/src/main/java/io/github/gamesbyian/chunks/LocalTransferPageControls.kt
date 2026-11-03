@@ -45,13 +45,13 @@ internal fun LocalTransferPageControls(
                         enabled = page.hasPrevious,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                             .semantics { contentDescription = "Previous phone transfers" }
-                    ) { Text("Previous") }
+                    ) { Text("Previous phone transfers") }
                     OutlinedButton(
                         onClick = onNext,
                         enabled = page.hasNext,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                             .semantics { contentDescription = "Next phone transfers" }
-                    ) { Text("Next") }
+                    ) { Text("Next phone transfers") }
                 }
             } else {
                 Row(
@@ -63,13 +63,13 @@ internal fun LocalTransferPageControls(
                         enabled = page.hasPrevious,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                             .semantics { contentDescription = "Previous phone transfers" }
-                    ) { Text("Previous") }
+                    ) { Text("Previous phone transfers") }
                     OutlinedButton(
                         onClick = onNext,
                         enabled = page.hasNext,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)
                             .semantics { contentDescription = "Next phone transfers" }
-                    ) { Text("Next") }
+                    ) { Text("Next phone transfers") }
                 }
             }
         }
