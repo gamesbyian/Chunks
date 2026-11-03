@@ -14,6 +14,12 @@ Real source-bound [API35 native Add run 41597519488](https://github.com/gamesbyi
 
 **Implication:** a cache of only the clean AVD snapshot can directly attack roughly 27–38 seconds of AVD creation/boot in those runs, **before subtracting cache download, restore or compatibility overhead**. It cannot automatically eliminate the roughly 49-second SDK installation or hundreds of seconds of valuable installed tests. The pilot's explicit SDK preinstall is included in total job time and must not be omitted from the comparison. A failure to improve whole-job consumption is a valid reason to reject snapshots even if the boot portion improves.
 
+## First cold experiment: harness failure, not app failure
+
+The actual [cold workflow run 41735533155](https://github.com/gamesbyian/Chunks/actions/runs/41735533155) used merged source `fb7575cbfa3a630607fd45b64551eaa4aa948bc2`. Hardware KVM and Android 35 SDK provisioning passed. The SDK image/emulator install occupied approximately **5 minutes 30 seconds** (23:00:18 to 23:05:47 UTC), substantially longer than the historical 48–49-second action setup inside existing Chunks native jobs. The emulator subsequently **booted successfully** at 23:06:37 UTC.
+
+The experiment then failed because `reactivecircus/android-emulator-runner@v2` invokes `script:` through `/usr/bin/sh`; the pilot supplied Bash-only `set -euo pipefail`, producing `set: Illegal option -o pipefail` at 23:06:45. The restored/cold comparison probe did not execute; no Chunks APK or BitTorrent path was tested and no snapshot cache was saved. **Correction:** use portable `set -eu` in the two emulator-runner scripts, while retaining Bash `set -euo pipefail` in normal `shell: bash` job steps. This first run is valid evidence of the SDK setup cost and the harness mistake, but **not a successful baseline sample**. Do not blindly rerun the same red head.
+
 ## Manual A/B protocol
 
 The [isolated pilot workflow](../.github/workflows/avd-snapshot-pilot.yml) has only `workflow_dispatch` on `main` and never runs automatically for pushes, PRs or schedules. It uses KVM, Ubuntu 24.04, API35 Google APIs x86_64, Pixel 6 and a 2048M AVD. The cache key contains installed emulator and system-image revisions plus device/profile identity. Only `~/.android/avd` is cached; host ADB keys, APKs, torrents, trackers, credentials, test fixtures and Gradle state are not.

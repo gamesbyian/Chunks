@@ -104,7 +104,8 @@ jobs:
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           script: |
-            set -euo pipefail
+            # android-emulator-runner executes script with /bin/sh, not Bash.
+            set -eu
             test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = 35
             if adb shell pm list packages | grep -F 'io.github.gamesbyian.chunks'; then
               echo '::error::App unexpectedly present on pristine AVD'
@@ -173,7 +174,8 @@ jobs:
           # in the Actions log. Only a successful load, not a cache hit, counts.
           emulator-options: ${{ inputs.mode == 'snapshot' && '-verbose -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' || '-no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' }}
           script: |
-            set -euo pipefail
+            # android-emulator-runner executes script with /bin/sh, not Bash.
+            set -eu
             test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = 35
             test "$(adb shell getprop ro.product.cpu.abi | tr -d '\r')" = x86_64
             if adb shell pm list packages | grep -F 'io.github.gamesbyian.chunks'; then
