@@ -38,7 +38,11 @@ internal fun AuthenticatedTransfersFooter(
 ) {
     Surface(color = ChunksColors.Surface) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val stacked = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
+            // At 412dp, 140% fonts already make "Transfers" wrap awkwardly
+            // in a three-column row. Give Options its own row before that
+            // threshold, without penalizing normal-scale everyday layouts.
+            val stacked = maxWidth < 380.dp ||
+                LocalDensity.current.fontScale >= 1.3f
             if (stacked) {
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
