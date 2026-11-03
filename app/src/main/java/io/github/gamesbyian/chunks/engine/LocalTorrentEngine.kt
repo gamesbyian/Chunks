@@ -1597,7 +1597,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 if (handles[key] != handle ||
                     !runCatching { handle.isValid }.getOrDefault(false)) return false
                 pendingSaves.acquire(key, handle) {
-                    handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
+                    // libtorrent's documented cache-flush flag prevents a
+                    // post-Stop fast-resume snapshot from racing disk writes
+                    // and retaining inconsistent payload modification times.
+                    handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT.or_(
+                        TorrentHandle.FLUSH_DISK_CACHE))
                 }
             }
         }
