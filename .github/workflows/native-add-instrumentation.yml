@@ -184,9 +184,11 @@ jobs:
           pattern: chunks-native-add-*
           path: ${{ runner.temp }}/chunks-native-add-shards
       - name: Resolve newest attempt per shard, preserving every original receipt
+        env:
+          CHUNKS_SHARDS_RESULT: ${{ needs.add-review-device-test.result }}
         run: |
           python3 tools/select_native_add_attempts.py --artifacts "$RUNNER_TEMP/chunks-native-add-shards" \
-            --shards 2 --sha "$GITHUB_SHA"
+            --shards 2 --sha "$GITHUB_SHA" --shards-result "$CHUNKS_SHARDS_RESULT"
       - name: Require accepted JUnit coverage and 24 real Android screenshots
         run: |
           python3 tools/verify_native_add_shards.py --artifacts "$RUNNER_TEMP/chunks-native-add-shards" \
