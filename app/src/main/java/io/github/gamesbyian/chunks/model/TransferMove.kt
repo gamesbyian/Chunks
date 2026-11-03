@@ -121,7 +121,11 @@ internal object TransferMove {
                 record.sourceReviewToken != null &&
                     record.sourceReviewToken == currentToken
             Direction.SERVER_TO_PHONE ->
+                // The rTorrent adapter caps directories at 4096. At the
+                // boundary a longer path may have been truncated.
                 record.sourceDirectory != null &&
+                    currentDirectory != null &&
+                    currentDirectory.length < 4096 &&
                     record.sourceDirectory == currentDirectory
         }
 
