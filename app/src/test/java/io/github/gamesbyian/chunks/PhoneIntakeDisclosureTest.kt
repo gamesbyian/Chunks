@@ -6,8 +6,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.test.assertDoesNotExist
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -15,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,6 +76,6 @@ class PhoneIntakeDisclosureTest {
         }
         val button = rule.onNodeWithText("Add torrent on this phone")
         val bounds = button.getUnclippedBoundsInRoot()
-        assert(bounds.bottom - bounds.top >= 48.dp)
+        assertTrue("The explicit Add entry must remain touchable", bounds.bottom - bounds.top >= 48.dp)
     }
 }
