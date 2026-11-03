@@ -1433,6 +1433,32 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         checkedPayloadReservations.release(requestedHash)
     }
 
+    /**
+     * Remove only the exact native identity that the user reviewed. A hash is
+     * insufficient authorization: after an earlier Remove another instance
+     * may have added the same hash under a different name or save folder.
+     * Check against the live handle while holding the engine's mutation lock,
+     * then issue a single session-only Remove under that same lock.
+     *
+     * False also includes unavailable native snapshots. It never retries,
+     * writes payload files or claims persistence after an uncertain result.
+     */
+    @Synchronized
+    fun removeKeepingDataIfMatching(
+        infoHash: String, expectedName: String, expectedSavePath: String
+    ): Boolean {
+        if (expectedName.isBlank() || !expectedSavePath.startsWith("/")) return false
+        val key = normal(infoHash)
+        val current = try {
+            val handle = handles[key] ?: return false
+            snapshot(key, handle)
+        } catch (_: Exception) { null } ?: return false
+        if (current.infoHash != key ||
+            current.name != expectedName ||
+            current.savePath != expectedSavePath) return false
+        return removeKeepingData(key)
+    }
+
     /** Remove from the session only. Payload files are never deleted here. */
     @Synchronized
     fun removeKeepingData(infoHash: String): Boolean {
