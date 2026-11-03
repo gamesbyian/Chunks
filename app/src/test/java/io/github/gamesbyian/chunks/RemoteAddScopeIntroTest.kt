@@ -32,6 +32,7 @@ class RemoteAddScopeIntroTest {
         rule.onNodeWithText("Add a download to this server").assertExists()
         rule.onNodeWithText("Adding to: Seedbox 2").assertExists()
         rule.onNodeWithText("Nothing is copied to this phone by Add.", substring = true).assertExists()
+        rule.onNodeWithText("Saved Chunks server-seeding rules are not applied yet;", substring = true).assertExists()
     }
 
     @Test
