@@ -66,7 +66,11 @@ jobs:
           set -euo pipefail
           test -s "$HOME/.android/avd/test.ini"
           test -d "$HOME/.android/avd/test.avd"
-          find "$HOME/.android/avd/test.avd/snapshots" -type f -size +0c -print -quit | grep -q .
+          # Exact default Quick Boot metadata and RAM, not an arbitrary file
+          # from an empty/invalid snapshot directory.
+          test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/snapshot.pb"
+          test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/ram.bin" || \
+            test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/ram.img"
       # Snapshot creation is deliberately a separate invocation, containing
       # no Chunks APK, torrent, credentials, seedbox connection or test fixture.
       - name: Generate clean boot snapshot on cache miss
@@ -97,7 +101,20 @@ jobs:
         run: |
           set -euo pipefail
           test -s "$HOME/.android/avd/test.ini"
-          find "$HOME/.android/avd/test.avd/snapshots" -type f -size +0c -print -quit | grep -q .
+          # Exact default Quick Boot metadata and RAM, not an arbitrary file
+          # from an empty/invalid snapshot directory.
+          test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/snapshot.pb"
+          test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/ram.bin" || \
+            test -s "$HOME/.android/avd/test.avd/snapshots/default_boot/ram.img"
+      - name: Record AVD cache footprint before using or saving it
+        if: inputs.mode == 'snapshot'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_mib="$(du -sm "$HOME/.android/avd" | awk '{print $1}')"
+          [[ "$cache_mib" =~ ^[0-9]+$ ]]
+          echo "CHUNKS_AVD_CACHE_MIB=$cache_mib" >> "$GITHUB_ENV"
+          echo "Isolated AVD cache footprint (MiB): $cache_mib"
       - name: Save verified clean AVD for a future manual run
         if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -146,6 +163,7 @@ jobs:
             echo '### Isolated AVD startup pilot (no app tests)'
             echo "- Mode: $CHUNKS_MODE"
             echo "- Cache hit: ${CHUNKS_CACHE_HIT:-not applicable}"
+            echo "- Restored/generated AVD directory (MiB): ${CHUNKS_AVD_CACHE_MIB:-not applicable}"
             echo "- System image: API35 google_apis x86_64 revision ${CHUNKS_IMAGE_REV:-unknown}"
             echo "- Emulator revision: ${CHUNKS_EMULATOR_REV:-unknown}"
             echo "- Source checkout: $GITHUB_SHA"
@@ -156,5 +174,6 @@ jobs:
               echo '- Measured emulator-runner step and probe: not executed'
             fi
             echo '- Compare full runner job time and cache restore/save times in Actions, not just this interval.'
+            echo '- A cache hit and valid snapshot files do not by themselves prove Quick Boot was loaded: examine emulator startup logs for snapshot restore rather than cold-boot fallback.'
             echo '- A boot receipt does not qualify any APK, installed test, torrent, rTorrent session or physical phone.'
           } >> "$GITHUB_STEP_SUMMARY"
