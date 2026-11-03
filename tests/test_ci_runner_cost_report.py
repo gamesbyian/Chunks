@@ -1,7 +1,7 @@
 """Offline negative controls for real Actions job-time accounting."""
 import unittest
 
-from tools.ci_runner_cost_report import cost_report, get_runs, minutes
+from tools.ci_runner_cost_report import cost_report, get_runs, minutes, paginated_items, created_range
 from unittest.mock import patch
 
 
@@ -247,12 +247,111 @@ class RunnerCostTests(unittest.TestCase):
     def test_live_api_is_read_only_and_rejects_incomplete_pages(self):
         with patch("tools.ci_runner_cost_report.gh_json") as fetch:
             fetch.return_value = {"total_count": 101, "workflow_runs": []}
-            with self.assertRaisesRegex(ValueError, "More than 100"):
+            with self.assertRaisesRegex(ValueError, "Incomplete workflow runs page"):
                 get_runs("gamesbyian/Chunks", "ui/branch")
             fetch.assert_called_once()
             self.assertIn("branch=ui%2Fbranch", fetch.call_args.args[0])
         with self.assertRaisesRegex(ValueError, "Invalid owner"):
             get_runs("bad/repo/extra", "branch")
+
+
+    def test_created_window_accepts_only_ordered_real_dates(self):
+        self.assertEqual("2026-11-01..2026-11-03",
+                         created_range("2026-11-01..2026-11-03"))
+        self.assertIsNone(created_range(None))
+        for invalid in (
+            "2026-11-03", "2026-11-03..", "2026-11-03..2026-11-01",
+            "2026-02-30..2026-03-01", "2026-11-03&status=success..2026-11-04",
+            "2026-01-01%0A..2026-01-02",
+        ):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                created_range(invalid)
+
+    def test_complete_multi_page_workflow_run_query_and_date_scope(self):
+        first = [dict(run(i, "success", [])) for i in range(100, 200)]
+        second = [dict(run(200, "success", []))]
+        for x in first + second:
+            x.pop("jobs")
+        def fake_fetch(path):
+            if "/actions/runs?" in path:
+                self.assertIn("created=2026-11-01..2026-11-03", path)
+                if path.endswith("page=1"):
+                    return {"total_count": 101, "workflow_runs": first}
+                if path.endswith("page=2"):
+                    return {"total_count": 101, "workflow_runs": second}
+                self.fail("Unexpected run page: " + path)
+            self.assertIn("filter=all", path)
+            self.assertIn("page=1", path)
+            run_id = int(path.split("/runs/")[1].split("/jobs?")[0])
+            return {"total_count": 1, "jobs": [
+                job(run_id * 10, 1, 2),
+            ]}
+        with patch("tools.ci_runner_cost_report.gh_json", side_effect=fake_fetch) as fetch:
+            collected = get_runs("gamesbyian/Chunks", "ux/example",
+                                 "2026-11-01..2026-11-03")
+        self.assertEqual(101, len(collected))
+        self.assertEqual(101, cost_report(collected)["runner_minutes"])
+        self.assertEqual(103, fetch.call_count)
+
+    def test_all_attempt_job_pagination_over_one_hundred_jobs(self):
+        r = run(47, "success", [])
+        r["run_attempt"] = 2
+        r.pop("jobs")
+        jobs = []
+        for index in range(101):
+            item = job(index + 1000, 1, 2)
+            item["run_attempt"] = 1 if index < 100 else 2
+            jobs.append(item)
+        def fake_fetch(path):
+            if "/actions/runs?" in path:
+                return {"total_count": 1, "workflow_runs": [r]}
+            self.assertIn("filter=all", path)
+            if path.endswith("page=1"):
+                return {"total_count": 101, "jobs": jobs[:100]}
+            if path.endswith("page=2"):
+                return {"total_count": 101, "jobs": jobs[100:]}
+            self.fail("Unexpected job page")
+        with patch("tools.ci_runner_cost_report.gh_json", side_effect=fake_fetch) as fetch:
+            collected = get_runs("gamesbyian/Chunks", "ux/long")
+        reported = cost_report(collected)
+        self.assertEqual(101, reported["runner_minutes"])
+        self.assertEqual(100, reported["prior_attempt_runner_minutes"])
+        self.assertEqual(0, reported["runs_with_unobserved_job_attempts"])
+        self.assertEqual(3, fetch.call_count)
+
+    def test_refuse_incomplete_changing_and_duplicate_pages(self):
+        first = [{"id": i} for i in range(100)]
+        for second_page, message in (
+            ({"total_count": 100, "workflow_runs": [{"id": 100}]}, "changed"),
+            ({"total_count": 101, "workflow_runs": []}, "Incomplete"),
+            ({"total_count": 101, "workflow_runs": [{"id": 1}]}, "Duplicate"),
+        ):
+            with self.subTest(message=message):
+                with patch("tools.ci_runner_cost_report.gh_json") as fetch:
+                    fetch.side_effect = [
+                        {"total_count": 101, "workflow_runs": first},
+                        second_page,
+                    ]
+                    with self.assertRaisesRegex(ValueError, message):
+                        paginated_items("repos/gamesbyian/Chunks/actions/runs?branch=example",
+                                        "workflow_runs", "workflow runs")
+        with patch("tools.ci_runner_cost_report.gh_json") as fetch:
+            fetch.return_value = {"total_count": 1001,
+                                  "workflow_runs": first}
+            with self.assertRaisesRegex(ValueError, "More than 1000"):
+                paginated_items("repos/gamesbyian/Chunks/actions/runs?branch=main",
+                                "workflow_runs", "workflow runs")
+            fetch.assert_called_once()
+
+    def test_unfinished_branch_exits_before_job_requests(self):
+        active = run(66, "success", [])
+        active["status"] = "in_progress"
+        active.pop("jobs")
+        with patch("tools.ci_runner_cost_report.gh_json") as fetch:
+            fetch.return_value = {"total_count": 1, "workflow_runs": [active]}
+            with self.assertRaisesRegex(ValueError, "not complete"):
+                get_runs("gamesbyian/Chunks", "ux/active")
+            fetch.assert_called_once()
 
 
 if __name__ == "__main__":

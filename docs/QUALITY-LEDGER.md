@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-03 bounded, complete Actions cost-report pagination
+
+The existing read-only `tools/ci_runner_cost_report.py` previously rejected any branch with over 100 runs even though its suggested date-scope workaround did not exist. Live `GET /actions/runs?branch=ux/73-wave2-phone-first-and-footer-20261103&created=2026-11-03..2026-11-03&per_page=100` returned **54** records, confirming the documented GitHub date filter. The earlier main-push study already needed **three pages / 202 records** (October 27–November 2). Neither observation triggered a build, and no runner-minute savings can be attributed to changing a read-only report.
+
+The additive reporter change supports `--created YYYY-MM-DD..YYYY-MM-DD`, complete numbered workflow-run pages, and full `filter=all` job pages (preserving old-attempt cost). It checks page counts, duplicate IDs, invalid dates, live unsettled runs and GitHub's filtered 1,000-run search limit. Offline tests specifically exercise 101-run/101-job samples and intentionally malformed pages. Missing or moving pages are errors, not a valid partial measurement. Date-scoped results must not be presented as whole-branch lifetime totals. The change touches no app/Android/BitTorrent/rTorrent execution or CI workflow scheduling. See [CI-POLICY](CI-POLICY.md) for the live read-only evidence, limitations and invocation.
+
+
 ## 2026-11-03 active CI occupancy and draft supersession evidence
 
 Historical complete **seven-draft-revision** checkpoint from [UX #1175](https://github.com/gamesbyian/Chunks/pull/1175), branch `ux/73-wave2-phone-first-and-footer-20261103`: 42 Actions workflows, all jobs captured using the **all-attempt** REST filter, with **94.716 summed runner-minutes**. Of those, canceled workflows consumed **47.283 minutes**; 21 draft-only R8/native Add/atlas checks skipped without runner allocation. The first revision's three real engine/API29/foundation failures consumed **3.883 minutes**, demonstrating the value of early risk-specific negative feedback. Other draft cohorts recorded 20.600, 8.117, 3.083 and 15.483 canceled runner-minutes, plus separate completed red/green checks. This checkpoint cannot be presented as a final #1175 review-ready or mergerun total, future compute savings, or a release qualification.
