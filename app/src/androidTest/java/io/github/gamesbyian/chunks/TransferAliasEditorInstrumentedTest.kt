@@ -76,6 +76,7 @@ class TransferAliasEditorInstrumentedTest {
             }
         }
         rule.onNodeWithText("Change list name").performClick()
+        rule.onNodeWithText("Show name suggestions", substring = true).performClick()
         rule.onNodeWithText("Celebrity Jeopardy S04E02").performClick()
         // Detach the entire editor item, not just scroll within it.
         rule.onNode(hasScrollToIndexAction()).performScrollToIndex(25)
@@ -107,6 +108,7 @@ class TransferAliasEditorInstrumentedTest {
         }
 
         rule.onNodeWithText("Change list name").performClick()
+        rule.onNodeWithText("Show name suggestions", substring = true).performClick()
         rule.onNodeWithText("Extracted show title, season and episode from filename").assertExists()
         capture("alias-suggestions-real-compose")
         rule.onNodeWithText("Celebrity Jeopardy S04E02").performClick()
