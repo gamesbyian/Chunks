@@ -17,6 +17,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
@@ -24,6 +25,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import io.github.gamesbyian.chunks.rpc.SessionEraseRecheck
+import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -173,6 +175,48 @@ class TransferSessionRemoveLargeTextTest {
         rule.waitForIdle()
         rule.runOnIdle { label = "Changed display label" }
         rule.onNodeWithText("Remove from rTorrent…").assertDoesNotExist()
+        rule.onNodeWithText("Check current session (read-only)").assertExists()
+        assertEquals(1, eraseCalls)
+    }
+
+    @Test fun unidentifiedScopeCannotStartRemoval() {
+        rule.setContent {
+            ChunksTheme { Surface {
+                TransferSessionRemoveControl(
+                    remote, transfer, snapshotStale = false, mainView = true,
+                    onMutationStarted = { mutations++; true }, onSettled = {},
+                    environmentLabel = null
+                )
+            } }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").assertIsNotEnabled()
+        rule.onNodeWithText("The server account could not be identified.", substring = true).assertExists()
+        assertEquals(0, mutations)
+    }
+
+    @Test fun scopeLabelChangeDoesNotUnlockAnInFlightRemoval() {
+        var label by mutableStateOf("First account")
+        var eraseCalls = 0
+        val result = CompletableDeferred<SessionEraseOutcome>()
+        rule.setContent {
+            ChunksTheme { Surface {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    TransferSessionRemoveControl(
+                        remote, transfer, snapshotStale = false, mainView = true,
+                        onMutationStarted = { true }, onSettled = {}, environmentLabel = label,
+                        performErase = { _, _, _ -> eraseCalls++; result.await() }
+                    )
+                }
+            } }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performScrollTo().performClick()
+        rule.runOnIdle { label = "Changed display label" }
+        rule.onNodeWithText("Remove from rTorrent…").assertDoesNotExist()
+        rule.onNodeWithText("Checking exact server session…").assertExists()
+        assertEquals(1, eraseCalls)
+        rule.runOnIdle { result.complete(SessionEraseOutcome.Uncertain(transfer.hash)) }
+        rule.waitForIdle()
         rule.onNodeWithText("Check current session (read-only)").assertExists()
         assertEquals(1, eraseCalls)
     }

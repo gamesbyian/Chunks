@@ -56,5 +56,9 @@ class RemoteVerifiedUiIdentityTest {
         val unsafe = RemoteVerifiedUiIdentity.removalScopeLabel(
             "https://box.example/RPC2?token=secret\u0000alice")
         assertEquals(null, unsafe)
+        assertEquals(null, RemoteVerifiedUiIdentity.removalScopeLabel(
+            "https://alice:secret@box.example/RPC2\u0000alice"))
+        assertEquals(null, RemoteVerifiedUiIdentity.removalScopeLabel(
+            "https://box.example/RPC2#secret\u0000alice"))
     }
 }
