@@ -244,6 +244,23 @@ class LocalTorrentEngineInstrumentedTest {
             added.infoHash, added.name, added.savePath, added.nativeReviewToken))
         assertTrue(instance.status(added.infoHash) == null)
         assertArrayEquals(before, original.readBytes())
+
+        // A newly loaded copy with the SAME hash, name and folder must
+        // never inherit consent from a previous native handle.
+        val nextEngine = engine()
+        val replacement = (nextEngine.addStopped(torrent, requireNotNull(root.parentFile))
+            as LocalAddResult.AddedStopped).status
+        assertEquals(added.infoHash, replacement.infoHash)
+        assertEquals(added.name, replacement.name)
+        assertEquals(added.savePath, replacement.savePath)
+        assertTrue(replacement.nativeReviewToken != added.nativeReviewToken)
+        assertTrue(!nextEngine.removeKeepingDataIfMatching(
+            added.infoHash, added.name, added.savePath, added.nativeReviewToken))
+        assertTrue(nextEngine.status(added.infoHash) != null)
+        assertTrue(nextEngine.removeKeepingDataIfMatching(
+            replacement.infoHash, replacement.name, replacement.savePath,
+            replacement.nativeReviewToken))
+        assertArrayEquals(before, original.readBytes())
     }
 
     @Test fun sessionOnlyRemovalCannotLeaveResumeFileForRestart() {
