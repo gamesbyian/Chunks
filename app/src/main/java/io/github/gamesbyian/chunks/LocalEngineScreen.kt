@@ -1587,6 +1587,7 @@ internal fun LocalEngineScreen(
                     TransferMoveControl(
                         direction = TransferMove.Direction.PHONE_TO_SERVER,
                         infoHash = transfer.infoHash, name = transfer.name,
+                        sourceReviewToken = transfer.nativeReviewToken,
                         serverAliasScope = moveServer?.aliasScope?.takeIf { prepareRemoteHandoff != null },
                         busy = busy || inventoryStale,
                         ports = TransferMovePorts(
@@ -1594,7 +1595,12 @@ internal fun LocalEngineScreen(
                             observeSource = { TransferMoveObservations.phone(transfer.infoHash) },
                             removeSource = {
                                 withContext(Dispatchers.IO) {
-                                    LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash)
+                                    val confirmed = LocalEngineHolder.current()?.removeKeepingDataIfMatching(
+                                        transfer.infoHash, transfer.name, transfer.savePath,
+                                        transfer.nativeReviewToken
+                                    )
+                                    if (confirmed != true)
+                                        error("The reviewed original phone session no longer matches")
                                 }
                             },
                             targetUnavailableReason = "Connect to the server account to check it."
