@@ -11,6 +11,9 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/SeedhostAndroidAddUiInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
       - "tools/real_magnet_peer.py"
+      - "tools/preload_disposable_magnet.py"
+      - "tests/test_preload_disposable_magnet.py"
+      - "tests/test_finish_installed_magnet_evidence.py"
       - "tools/installed_rtorrent_magnets.sh"
       - "tools/finish_installed_magnet_evidence.py"
       - "tools/parse_installed_magnet_add_receipt.py"
@@ -65,6 +68,8 @@ jobs:
       - name: Cheap receipt and controller checks before native build
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_preload_disposable_magnet.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
           python3 -m py_compile tools/real_magnet_peer.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
       - name: Start genuine public-magnet metadata and payload peer
@@ -133,6 +138,9 @@ jobs:
           done
           echo '::error::Known real metadata-serving peer unavailable; no Add'
           exit 1
+      - name: Preload one genuine fixture on the disposable server only
+        if: env.CHUNKS_DISPOSABLE == '1' && env.CHUNKS_PUBLIC_DISCOVERY != '1'
+        run: python3 tools/preload_disposable_magnet.py
       - name: Prepare hardware-accelerated API35 emulator
         run: |
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
@@ -152,6 +160,11 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           script: bash tools/installed_rtorrent_magnets.sh
+      - name: Verify disposable precompleted bytes were preserved
+        if: env.CHUNKS_DISPOSABLE == '1' && env.CHUNKS_PUBLIC_DISCOVERY != '1'
+        run: |
+          cmp "$RUNNER_TEMP/chunks-real-peer/magnet0/chunks-precompleted-control.bin" \
+              "$RUNNER_TEMP/chunks-disposable/data/chunks-precompleted-control.bin"
       - name: Retain independent peer counters and stop owned runner processes
         if: always()
         run: |
