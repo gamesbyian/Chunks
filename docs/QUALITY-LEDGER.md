@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-03 exact search-ceiling and selection-provenance correction
+
+GitHub's [Actions workflow-runs REST documentation](https://docs.github.com/en/rest/actions/workflow-runs) caps filtered result retrieval at 1,000. An exact 1,000-result page series may represent a search boundary rather than a complete historical match set. Following merged pagination [#1193](https://github.com/gamesbyian/Chunks/pull/1193), the read-only reporter now refuses **exactly** 1,000 workflow-run matches as well as larger counts and requests narrower dated windows instead. No accepted Android evidence, run/job timestamp, or historical cost total is altered.
+
+The report's machine-readable and human summary now preserve the precise requested live `repository`/`branch`/`created_range` and all-attempt job filter; offline JSON uses a distinct `offline-snapshot` mode without inventing a branch. Deterministic negative tests cover the 1,000 boundary and both JSON selection modes. This is reproducibility and false-completeness prevention, not a measured runner-minute or billable-minute saving.
+
+
 ## 2026-11-03 bounded, complete Actions cost-report pagination
 
 The existing read-only `tools/ci_runner_cost_report.py` previously rejected any branch with over 100 runs even though its suggested date-scope workaround did not exist. Live `GET /actions/runs?branch=ux/73-wave2-phone-first-and-footer-20261103&created=2026-11-03..2026-11-03&per_page=100` returned **54** records, confirming the documented GitHub date filter. The earlier main-push study already needed **three pages / 202 records** (October 27–November 2). Neither observation triggered a build, and no runner-minute savings can be attributed to changing a read-only report.

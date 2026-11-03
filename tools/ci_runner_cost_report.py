@@ -87,6 +87,14 @@ def paginated_items(path: str, key: str, label: str) -> list[dict]:
         count = payload.get("total_count")
         if type(count) is not int or count < 0:
             raise ValueError(f"Invalid {label} total_count")
+        if count == MAX_PAGE_RESULTS and key == "workflow_runs":
+            # GitHub may cap a filtered search at exactly 1,000 results
+            # even if the underlying match set is larger. Never certify
+            # the boundary value as a complete sample.
+            raise ValueError(
+                "At the 1000-workflow search ceiling; narrow with --created "
+                "before claiming an exhaustive report"
+            )
         if count > MAX_PAGE_RESULTS:
             raise ValueError(
                 f"More than {MAX_PAGE_RESULTS} {label}; narrow with --created "
@@ -402,6 +410,24 @@ def main() -> None:
             parser.error("Live mode requires --repo and --branch")
         runs = get_runs(args.repo, args.branch, args.created)
     report = cost_report(runs)
+    # Preserve the user's selection in the exported machine-readable evidence:
+    # a calendar-sliced report must never masquerade as a branch lifetime total.
+    if args.runs_json:
+        report["selection"] = {
+            "mode": "offline-snapshot",
+            "source": "caller-supplied runs and jobs; preserve those source files",
+        }
+        print("Scope: offline supplied runs/jobs snapshot")
+    else:
+        report["selection"] = {
+            "mode": "github-rest",
+            "repository": args.repo,
+            "branch": args.branch,
+            "created_range": args.created,
+            "job_attempt_filter": "all",
+        }
+        print(f"Scope: repository={args.repo} branch={args.branch} "
+              f"created={args.created or 'not specified'}; all job attempts")
     print(f"Completed runs: {report['runs']}; aggregate runner minutes: "
           f"{report['runner_minutes']:.2f}; canceled-run runner minutes: "
           f"{report['cancelled_run_runner_minutes']:.2f}; "
