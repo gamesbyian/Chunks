@@ -139,6 +139,36 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.assertIn("if-no-files-found: error", source)
         self.assertNotIn("continue-on-error: true", source)
 
+    def test_build_once_preserves_full_installed_android_shard_coverage(self):
+        workflow = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        runner = (ROOT / "tools/native_add_prebuilt.sh").read_text()
+        self.assertIn("  build-once:", workflow)
+        self.assertIn("  add-review-device-test:\n    needs: build-once", workflow)
+        self.assertIn("  verify-complete-native-add:\n    needs: add-review-device-test", workflow)
+        self.assertEqual(workflow.count(":app:assembleDebug :app:assembleDebugAndroidTest"), 1)
+        self.assertNotIn("connectedDebugAndroidTest", workflow)
+        for expected in (
+            "chunks-prebuilt-native-add-apk-pair",
+            "sha256sum -c SHA256SUMS",
+            "script: bash tools/native_add_prebuilt.sh",
+            "check_native_atlas_contract.py",
+            "test_instrumentation_stream.py",
+            "--require-executed",
+            "verify_native_add_shards.py",
+            "chunks-native-add-sharded-acceptance",
+            "Native Add installed Android test failure",
+            "if: failure()",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, workflow)
+        for expected in (
+            "adb shell am instrument -w -r",
+            '-e numShards "$count" -e shardIndex "$index"',
+            "parse_instrumentation_stream.py",
+        ):
+            with self.subTest(expected=expected):
+                self.assertIn(expected, runner)
+
     def test_workflow_has_real_two_shards_and_always_uploads_receipts(self):
         workflow = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
         shell = (ROOT / "tools/native_add_review.sh").read_text()
