@@ -18,6 +18,8 @@ class LocalZipOfflineNavigationInstrumentedTest {
 
     @Test fun offlineZipReviewIsAvailableWithoutCredentialsAndReturnsToConnection() {
         rule.onNodeWithText("Your downloads").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
+        rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect a local ZIP without connecting"))
         rule.onNodeWithText("Inspect a local ZIP without connecting").performClick()
         rule.onNodeWithText("Local ZIP review").assertExists()

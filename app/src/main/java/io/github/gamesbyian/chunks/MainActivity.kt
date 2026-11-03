@@ -1247,6 +1247,7 @@ private fun ConnectionScreen(
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
     var pendingForget by remember { mutableStateOf<String?>(null) }
+    var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
     var renameProfileId by remember { mutableStateOf<String?>(null) }
     var renameDraft by remember { mutableStateOf("") }
     var renameBusy by remember { mutableStateOf(false) }
@@ -1460,9 +1461,14 @@ private fun ConnectionScreen(
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
         item {
-            Text("Other tools", style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() })
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { extraToolsOpen = !extraToolsOpen },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        stateDescription = if (extraToolsOpen) "Expanded" else "Collapsed"
+                    }
+            ) { Text(if (extraToolsOpen) "Hide offline tools" else "More offline tools") }
+            if (extraToolsOpen) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
                     onClick = onLocalZipReview, modifier = Modifier.fillMaxWidth(),
                     icon = R.drawable.chunks_ic_archive, stacked = false)
@@ -1949,8 +1955,12 @@ private fun TransferCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TransferFileTypeBadge(transfer.name)
+                Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            }
             if (detailsOpen) {
             if (alias != null) {
                 Text("Original torrent: " + transfer.name,
@@ -1993,6 +2003,10 @@ private fun TransferCard(
             val conciseRates = buildList {
                 transfer.downBytesPerSecond?.let { add("↓ " + Units.bytes(it) + "/s") }
                 transfer.upBytesPerSecond?.let { add("↑ " + Units.bytes(it) + "/s") }
+                transfer.ratioThousandths?.takeIf { it >= 0 }?.let { ratio ->
+                    add("Ratio " + String.format(java.util.Locale.US, "%.2f",
+                        ratio.toDouble() / 1_000.0))
+                }
             }.joinToString(" · ")
             if (!detailsOpen && conciseRates.isNotBlank()) {
                 Text(conciseRates, style = MaterialTheme.typography.bodySmall)
@@ -2329,8 +2343,12 @@ private fun ServerScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            ColoredPanel("Your rTorrent.", "Version " + version + " · protected remote session",
-                if (stale) Coral else Lime)
+            Text("Server settings · " + environmentLabel,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
+            Text("rTorrent " + version +
+                if (stale) " · last known list (refresh needed)" else " · connected session",
+                style = MaterialTheme.typography.bodySmall)
         }
         item {
             Text("Server view", style = MaterialTheme.typography.titleLarge)
@@ -2339,8 +2357,9 @@ private fun ServerScreen(
                 style = MaterialTheme.typography.bodySmall)
         }
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.horizontalScroll(rememberScrollState())) {
+            FlowRow(modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 for (view in listOf("main", "default", "started", "stopped")) {
                     FilterChip(selected = requestedView == view,
                         onClick = { onRequestedView(view) },

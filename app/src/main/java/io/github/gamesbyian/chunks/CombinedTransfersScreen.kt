@@ -90,6 +90,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
 import io.github.gamesbyian.chunks.model.EnvironmentHue
 import io.github.gamesbyian.chunks.model.EnvironmentPalette
 import kotlinx.coroutines.Dispatchers
@@ -1089,7 +1090,10 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
     row.sizeBytes?.let { Units.bytes(it) } ?: "Size unknown",
     "↓ " + (row.downloadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),
     "↑ " + (row.uploadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported")
-).joinToString(" · ")
+).plus(row.ratioThousandths?.let {
+    listOf("Ratio " + String.format(java.util.Locale.US, "%.2f",
+        it.toDouble() / 1_000.0))
+} ?: emptyList()).joinToString(" · ")
 
 @Composable
 private fun CombinedTransferRow(
@@ -1105,44 +1109,74 @@ private fun CombinedTransferRow(
     /** Read-only details are available even for saved, unsigned-in profiles. */
     onDetails: () -> Unit
 ) {
+    // Exact source plus hash is the only valid disclosure key. A reused lazy slot
+    // must never inherit expansion from a different server or changed transfer.
+    var expanded by rememberSaveable(row.key.environment.value, row.key.infoHash) {
+        mutableStateOf(false)
+    }
     val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
-    // The hue is used for the label only where it meets AA on this surface.
-    val labelColour = if (hue != null && EnvironmentPalette.labelIsReadable(hue, ChunksColors.Surface.toArgbLong()))
-        accent else ChunksColors.Text
+    val labelColour = if (hue != null && EnvironmentPalette.labelIsReadable(
+        hue, ChunksColors.Surface.toArgbLong())) accent else ChunksColors.Text
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(12.dp))
         .background(ChunksColors.Surface)) {
-        // Decorative rail; the environment name below carries the identity.
+        // Colour is supplementary: the exact environment name is always present.
         Box(Modifier.width(6.dp).fillMaxHeight().background(accent))
         if (selection != null) Checkbox(checked = selection, onCheckedChange = onSelect,
             modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically).semantics {
                 contentDescription = "Select ${row.displayName} on $environmentLabel"
             })
-        Column(Modifier.weight(1f).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(environmentLabel, style = MaterialTheme.typography.labelMedium, color = labelColour,
-                fontWeight = FontWeight.Bold)
+        Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(environmentLabel, style = MaterialTheme.typography.labelMedium,
+                color = labelColour, fontWeight = FontWeight.Bold)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TransferFileTypeBadge(row.originalName)
+                Text(row.displayName, style = MaterialTheme.typography.titleSmall,
+                    maxLines = if (expanded) Int.MAX_VALUE else 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).semantics {
+                        contentDescription = row.displayName
+                    })
+            }
+            Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
+            row.progressPpm?.let { ppm ->
+                ChunkedProgressBar(progress = ppm / 1_000_000f,
+                    modifier = Modifier.fillMaxWidth(), segments = 8)
+            }
             combinedRowFreshnessLabel(source)?.let { warning ->
                 Text(warning, style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Text(row.displayName, style = MaterialTheme.typography.titleSmall)
-            if (row.displayName != row.originalName) Text("Torrent name: " + row.originalName,
-                style = MaterialTheme.typography.bodySmall)
-            Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
-            if (row.hasError) Text("Needs attention in its own list", color = ChunksColors.Red,
-                style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(onClick = onDetails,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                    contentDescription = "Details for ${row.displayName} on $environmentLabel"
-                }) { Text("Details") }
-            if (onOpen != null) OutlinedButton(onClick = onOpen,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .semantics { contentDescription = "Open ${row.displayName} in $environmentLabel" }) {
-                Text("Open in its list")
+            if (row.hasError) Text("Needs attention in its own list",
+                color = ChunksColors.Red, style = MaterialTheme.typography.bodySmall)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onDetails,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics {
+                        contentDescription = "Details for ${row.displayName} on $environmentLabel"
+                    }) { Text("Details") }
+                OutlinedButton(onClick = { expanded = !expanded },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics {
+                        contentDescription = if (expanded)
+                            "Hide extra actions for ${row.displayName} on $environmentLabel"
+                        else "More actions for ${row.displayName} on $environmentLabel"
+                        stateDescription = if (expanded) "Expanded" else "Collapsed"
+                    }) { Text(if (expanded) "Less" else "More") }
             }
-            // Say why no action is offered rather than leaving the user to hunt for one.
-            else if (row.key.environment != EnvironmentSnapshots.PHONE) Text(
-                "Listed only. Sign in to this server to open or change it.",
-                style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+            if (expanded) {
+                if (row.displayName != row.originalName) Text(
+                    "Torrent name: " + row.originalName,
+                    style = MaterialTheme.typography.bodySmall)
+                if (onOpen != null) OutlinedButton(onClick = onOpen,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .semantics {
+                            contentDescription = "Open ${row.displayName} in $environmentLabel"
+                        }) {
+                    Text("Open in its list")
+                } else if (row.key.environment != EnvironmentSnapshots.PHONE) Text(
+                    "Listed only. Sign in to this server to open or change it.",
+                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+            }
         }
     }
 }

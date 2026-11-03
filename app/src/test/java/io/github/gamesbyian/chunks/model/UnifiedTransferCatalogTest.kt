@@ -41,6 +41,20 @@ class UnifiedTransferCatalogTest {
         assertFalse(result.hasIncompleteOrStaleSource)
     }
 
+    @Test fun ratioIsOptionalServerEvidenceNeverFabricatedForPhoneOrUnknownRemote() {
+        val serverReported = RemoteTransfer(hash('b'), "A", 1000, 750, true, "/remote",
+            ratioThousandths = 1250)
+        val remoteUnknown = serverReported.copy(hash = hash('c'), ratioThousandths = null)
+        val invalid = serverReported.copy(hash = hash('d'), ratioThousandths = -1)
+        assertEquals(1250L,
+            UnifiedTransferObservations.fromRTorrent(server1, serverReported).ratioThousandths)
+        assertNull(UnifiedTransferObservations.fromRTorrent(server1, remoteUnknown).ratioThousandths)
+        assertNull(UnifiedTransferObservations.fromRTorrent(server1, invalid).ratioThousandths)
+        val phoneObserved = LocalTransferStatus(hash('e'), "Phone", LocalTransferState.SEEDING,
+            false, 1_000_000, 1000, 1000, 1000, 2000, 0, "/phone", null)
+        assertNull(UnifiedTransferObservations.fromPhone(phone, phoneObserved).ratioThousandths)
+    }
+
     @Test fun allNumericKeysReverseAndKeepUnknownLastInBothDirections() {
         val first = item(phone, 'a', "Alpha", 10L)
         val second = item(phone, 'b', "Beta", 20L)

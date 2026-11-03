@@ -40,6 +40,8 @@ class ChunksScreenRenderTest {
     }
 
     @Test fun offlineScreens() {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
+        rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect a local ZIP without connecting"))
         rule.onNodeWithText("Inspect a local ZIP without connecting").performClick()
         rule.waitForIdle()
@@ -55,6 +57,8 @@ class ChunksScreenRenderTest {
     }
 
     @Test fun createScreen() {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
+        rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
         rule.onNodeWithText("Create a torrent from phone files").performClick()
         rule.waitForIdle()
