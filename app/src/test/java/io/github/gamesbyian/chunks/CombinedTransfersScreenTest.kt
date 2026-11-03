@@ -77,7 +77,9 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithContentDescription(target).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: " + serverEnvironmentLabel(aliasScope)).assertExists()
-        rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).assertExists()
+        rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+        rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).performScrollTo().assertExists()
         assertTrue("read-only details must not issue any lifecycle commands", commands.isEmpty())
     }
 
