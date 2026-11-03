@@ -842,7 +842,7 @@ internal fun CombinedTransfersScreen(
             )
             // The search affordance itself remains in place while typing.
             // This hint comes AFTER the field so it never displaces its focus.
-            if (query.search.isNotBlank() && result.transfers.isNotEmpty() &&
+            if (query.search.isNotBlank() &&
                 query.filter == UnifiedTransferFilter.ALL &&
                 query.scope == EnvironmentViewScope.All) {
                 Text("New downloads may not match this search. Clear search to see them.",
@@ -1007,6 +1007,14 @@ internal fun CombinedTransfersScreen(
                     Text("No transfers are visible with these view choices. " +
                         "Locked or offline environments may still need attention.",
                         style = MaterialTheme.typography.bodySmall)
+                    if (query.filter != UnifiedTransferFilter.ALL ||
+                        query.scope != EnvironmentViewScope.All) {
+                        Text(
+                            "New downloads may be hidden by this view. Show all transfers " +
+                                "clears view filters, not your Add destination.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                     OutlinedButton(
                         onClick = { update(CombinedViewPreferences.showAll(query)) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
