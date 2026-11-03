@@ -113,6 +113,52 @@ class VerifiedAddScreenAtlasTest {
         rule.onNodeWithText("Review Add").assertExists()
     }
 
+    @Test fun folderShortcutsAreOptionalAndChoosingOnlyEditsTheReviewDraft() {
+        var magnet by mutableStateOf(validMagnet)
+        var destination by mutableStateOf("/srv/original")
+        var draftChoices = 0
+        rule.setContent {
+            MaterialTheme {
+                VerifiedAddScreen(remote, magnet, destination,
+                    onMagnet = { magnet = it },
+                    onDestination = { destination = it; draftChoices++ },
+                    onBack = {}, onComplete = {},
+                    onMutationStarted = { error("Folder suggestion must never issue a server command") },
+                    onMutationSettled = {},
+                    recentPlaces = listOf("/srv/recent"),
+                    observedPlaces = listOf("/srv/observed"),
+                    environmentLabel = "Testing server")
+            }
+        }
+        val list = rule.onNode(hasScrollToIndexAction())
+        list.performScrollToNode(hasText("Choose server folder suggestions", substring = true))
+        rule.onNodeWithText("Choose server folder suggestions", substring = true).assertExists()
+        rule.onNodeWithText("Recent save folders").assertDoesNotExist()
+        rule.onNodeWithText("Folders seen on this server").assertDoesNotExist()
+        rule.onNodeWithText("Choose server folder suggestions", substring = true).performClick()
+        list.performScrollToNode(hasText("Recent save folders"))
+        rule.onNodeWithText("Recent save folders").assertExists()
+        list.performScrollToNode(hasText("/srv/recent"))
+        rule.onNodeWithText("/srv/recent").performClick()
+        rule.runOnIdle {
+            org.junit.Assert.assertEquals("/srv/recent", destination)
+            org.junit.Assert.assertEquals(1, draftChoices)
+        }
+        rule.onNodeWithText("Recent save folders").assertDoesNotExist()
+        list.performScrollToNode(hasText("Choose server folder suggestions", substring = true))
+        rule.onNodeWithText("Choose server folder suggestions", substring = true).performClick()
+        list.performScrollToNode(hasText("Folders seen on this server"))
+        rule.onNodeWithText("Folders seen on this server").assertExists()
+        list.performScrollToNode(hasText("/srv/observed"))
+        rule.onNodeWithText("/srv/observed").performClick()
+        rule.runOnIdle {
+            org.junit.Assert.assertEquals("/srv/observed", destination)
+            org.junit.Assert.assertEquals(2, draftChoices)
+        }
+        rule.onNodeWithText("Folders seen on this server").assertDoesNotExist()
+        rule.onNodeWithText("Confirm one server operation").assertDoesNotExist()
+    }
+
     @Test fun reviewedStoppedAddShowsExactHashAndDestination() {
         var magnet by mutableStateOf(validMagnet)
         var destination by mutableStateOf("/home/dev/chunks-public-test")
