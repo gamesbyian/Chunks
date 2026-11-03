@@ -64,6 +64,14 @@ class ChunksMainActivityAtlasTest {
     private val receivedMethods = Collections.synchronizedList(mutableListOf<String>())
     @Volatile private var fixtureProblem: String? = null
 
+    /** UI-only disclosure: reach the same original intake without assuming it opens by default. */
+    private fun assertPhoneAddEntryIsReachable() {
+        val open = rule.onAllNodesWithText("Add torrent on this phone")
+            .fetchSemanticsNodes().isNotEmpty()
+        if (open) rule.onNodeWithText("Add torrent on this phone").performScrollTo().performClick()
+        rule.onNodeWithText("Add a download on this phone").assertExists()
+    }
+
     private fun str(s: String) = "<value><string>" + s.replace("&", "&amp;")
         .replace("<", "&lt;").replace(">", "&gt;") + "</string></value>"
     private fun num(n: Long) = "<value><i8>$n</i8></value>"
@@ -341,7 +349,7 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
         rule.onNode(phoneAdd).performClick()
         rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Add a download on this phone").assertExists()
+        assertPhoneAddEntryIsReachable()
         // Local Back, distinct from the Combined header Back, returns to the
         // review's originating Combined list while the server remains signed in.
         rule.onNodeWithText("Back").performScrollTo().performClick()
@@ -349,12 +357,12 @@ class ChunksMainActivityAtlasTest {
         // Re-enter phone from Combined without submitting any torrent.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
         rule.onNode(phoneAdd).performClick()
-        rule.onNodeWithText("Add a download on this phone").assertExists()
+        assertPhoneAddEntryIsReachable()
         rule.onNodeWithText("All environments…").performScrollTo().performClick()
         // This second entry came from the phone while server is still connected.
         rule.onNodeWithText("Back").performClick()
         rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Add a download on this phone").assertExists()
+        assertPhoneAddEntryIsReachable()
         // Return again, then choose the separately authenticated server Add.
         rule.onNodeWithText("All environments…").performScrollTo().performClick()
         val remoteAdd = androidx.compose.ui.test.hasContentDescription(
