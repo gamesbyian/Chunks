@@ -35,7 +35,7 @@ class ChunksBrandHeaderTest {
         rule.onNodeWithText("Chunks").assertIsDisplayed()
         rule.onNodeWithText("Your downloads have places to be.").assertDoesNotExist()
         val bounds = rule.onNodeWithText("Chunks").getUnclippedBoundsInRoot()
-        assertTrue("The title must remain compact instead of occupying a hero", bounds.height < 64.dp)
+        assertTrue("The title must remain compact instead of occupying a hero", (bounds.bottom - bounds.top) < 64.dp)
     }
 
     @Test
@@ -51,6 +51,6 @@ class ChunksBrandHeaderTest {
         rule.onNodeWithText("Chunks").assertIsDisplayed()
         rule.onNodeWithText("Your downloads have places to be.").assertDoesNotExist()
         val bounds = rule.onNodeWithText("Chunks").getUnclippedBoundsInRoot()
-        assertTrue("Double text should not recreate the illustrated header", bounds.height < 108.dp)
+        assertTrue("Double text should not recreate the illustrated header", (bounds.bottom - bounds.top) < 108.dp)
     }
 }
