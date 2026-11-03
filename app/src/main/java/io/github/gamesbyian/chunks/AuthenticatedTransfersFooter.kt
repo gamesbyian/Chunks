@@ -32,7 +32,9 @@ internal fun AuthenticatedTransfersFooter(
     optionsOpen: Boolean,
     onTransfers: () -> Unit,
     onAdd: () -> Unit,
-    onOptions: () -> Unit
+    onOptions: () -> Unit,
+    /** Supplied by the phone route; a null scope preserves existing remote labels. */
+    environmentLabel: String? = null
 ) {
     Surface(color = ChunksColors.Surface) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
@@ -46,19 +48,19 @@ internal fun AuthenticatedTransfersFooter(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FooterTransfers(onTransfers, Modifier.weight(1f))
-                        FooterAdd(onAdd, Modifier.weight(1f))
+                        FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel)
+                        FooterAdd(onAdd, Modifier.weight(1f), environmentLabel)
                     }
-                    FooterOptions(optionsOpen, onOptions, Modifier.fillMaxWidth())
+                    FooterOptions(optionsOpen, onOptions, Modifier.fillMaxWidth(), environmentLabel)
                 }
             } else {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FooterTransfers(onTransfers, Modifier.weight(1f))
-                    FooterAdd(onAdd, Modifier.weight(1f))
-                    FooterOptions(optionsOpen, onOptions, Modifier.weight(1f))
+                    FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel)
+                    FooterAdd(onAdd, Modifier.weight(1f), environmentLabel)
+                    FooterOptions(optionsOpen, onOptions, Modifier.weight(1f), environmentLabel)
                 }
             }
         }
@@ -66,26 +68,35 @@ internal fun AuthenticatedTransfersFooter(
 }
 
 @Composable
-private fun FooterTransfers(onClick: () -> Unit, modifier: Modifier) {
-    OutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)) {
+private fun FooterTransfers(onClick: () -> Unit, modifier: Modifier, environmentLabel: String?) {
+    OutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)
+        .then(if (environmentLabel == null) Modifier else Modifier.semantics {
+            contentDescription = "Show transfers on $environmentLabel"
+        })) {
         Text("Transfers", maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
-private fun FooterAdd(onClick: () -> Unit, modifier: Modifier) {
-    Button(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)) {
+private fun FooterAdd(onClick: () -> Unit, modifier: Modifier, environmentLabel: String?) {
+    Button(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)
+        .then(if (environmentLabel == null) Modifier else Modifier.semantics {
+            contentDescription = "Add torrent on $environmentLabel"
+        })) {
         Text("+ Add", maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
-private fun FooterOptions(open: Boolean, onClick: () -> Unit, modifier: Modifier) {
+private fun FooterOptions(
+    open: Boolean, onClick: () -> Unit, modifier: Modifier, environmentLabel: String?
+) {
     OutlinedButton(
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp)
             .semantics {
-                contentDescription = "Options"
+                contentDescription = if (environmentLabel == null) "Options"
+                    else "Options on $environmentLabel"
                 stateDescription = if (open) "Expanded" else "Collapsed"
             }
     ) {

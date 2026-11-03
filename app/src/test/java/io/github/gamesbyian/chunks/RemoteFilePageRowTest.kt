@@ -85,6 +85,33 @@ class RemoteFilePageRowTest {
         assertEquals(1, clicks[0])
     }
 
+    @Config(qualifiers = "w600dp-h700dp-mdpi")
+    @Test fun expandedLongPathRevealsEntireNameWithoutLosingAccessibleIdentity() {
+        val longFile = RemoteFile(
+            "A very long series/Season with an extremely long name/" +
+                "Episode 01 long descriptive filename which should occupy at least " +
+                "five lines when the complete path is requested and must not be cut off.mkv",
+            4096L, 1)
+        val facts = "8. ${longFile.path} · 4.0 KiB · Normal"
+        val open = androidx.compose.runtime.mutableStateOf(false)
+        rule.setContent {
+            ChunksTheme {
+                Box(Modifier.width(500.dp)) {
+                    RemoteFilePageRow(7, longFile, "Normal", open.value, true) {
+                        open.value = !open.value
+                    }
+                }
+            }
+        }
+        val collapsed = rule.onNodeWithContentDescription(facts).getUnclippedBoundsInRoot()
+        rule.onNodeWithContentDescription("Change priority for file 8: ${longFile.path}")
+            .performClick()
+        rule.waitForIdle()
+        val expanded = rule.onNodeWithContentDescription(facts).getUnclippedBoundsInRoot()
+        assertTrue("opening the exact file reveals its untruncated long path",
+            expanded.bottom - expanded.top > collapsed.bottom - collapsed.top)
+    }
+
     @Test fun staleFilePriorityAnnouncesWhyItCannotBeChanged() {
         val clicks = intArrayOf(0)
         rule.setContent {

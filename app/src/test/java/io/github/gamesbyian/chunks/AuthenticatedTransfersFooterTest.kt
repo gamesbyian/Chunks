@@ -76,6 +76,29 @@ class AuthenticatedTransfersFooterTest {
         assertTrue("Options should cover most of the footer at 200% text", o.right - o.left >= 280.dp)
     }
 
+    @Test fun phoneFooterActionsNameTheExactScopeWithoutChangingRemoteSemantics() {
+        var transfers = 0
+        var adds = 0
+        var options = 0
+        rule.setContent {
+            ChunksTheme {
+                Box(Modifier.width(412.dp)) {
+                    AuthenticatedTransfersFooter(false,
+                        onTransfers = { transfers++ },
+                        onAdd = { adds++ },
+                        onOptions = { options++ },
+                        environmentLabel = "this phone")
+                }
+            }
+        }
+        rule.onNodeWithContentDescription("Show transfers on this phone").performClick()
+        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        rule.onNodeWithContentDescription("Options on this phone").performClick()
+        assertEquals(1, transfers)
+        assertEquals(1, adds)
+        assertEquals(1, options)
+    }
+
     @Test
     @Config(qualifiers = "w320dp-h700dp-mdpi")
     fun enlargedTypeFooterRetainsAllThreeActions() {

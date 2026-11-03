@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -180,6 +181,10 @@ class SeedhostAndroidAddUiInstrumentedTest {
 
         var added = false
         try {
+            // A fresh installation now opens local Transfers. Use the visible
+            // server setup route; never bypass the real authentication form.
+            rule.onNodeWithText("On this phone (experimental)").assertExists()
+            rule.onNodeWithText("Back").performScrollTo().performClick()
             // The Connect list composes lazily; at large text the field starts below the fold.
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
             rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)

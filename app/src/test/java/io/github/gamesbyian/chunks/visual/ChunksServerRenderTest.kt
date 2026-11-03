@@ -95,6 +95,10 @@ open class ChunksServerRenderTest {
         val listening = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { server = it }
         Thread { while (!listening.isClosed) try { serve(listening.accept()) } catch (_: Exception) {} }
             .apply { isDaemon = true; start() }
+        // Connect explicitly through the phone-first route, with no shortcut
+        // into the authenticated server screen.
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Back").performClick()
         // The Connect list composes lazily; at large text the field starts below the fold.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")

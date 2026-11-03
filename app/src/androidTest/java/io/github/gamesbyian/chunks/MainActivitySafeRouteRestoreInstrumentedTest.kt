@@ -31,7 +31,7 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
     @Test fun disconnectedPhoneAndCombinedRoutesSurviveActivityRecreationWithoutCommands() {
         // The phone surface is reachable without authenticating any rTorrent
         // server and is wrapped by its own separate transfer privacy gate.
-        rule.onNodeWithText("Open phone downloads").performClick()
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
         rule.onNodeWithText("All environments…").assertExists()
 
         rule.activityRule.scenario.recreate()
@@ -79,6 +79,8 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
     }
 
     @Test fun createRouteDropsPendingReviewAndReturnsToDisconnectedEntry() {
+        // The offline tools remain available from the disconnected server setup.
+        rule.onNodeWithText("Back").performScrollTo().performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))

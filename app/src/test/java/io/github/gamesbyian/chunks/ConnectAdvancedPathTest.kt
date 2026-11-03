@@ -27,6 +27,9 @@ class ConnectAdvancedPathTest {
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(text, substring = true))
 
     private fun enter(address: String, path: String) {
+        // Phone-first startup retains server Connect via the ordinary Back route.
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Back").performClick()
         scrollTo("Seedbox hostname")
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname", substring = true))
             .performTextReplacement(address)
@@ -38,6 +41,15 @@ class ConnectAdvancedPathTest {
         scrollTo("Connect to rTorrent")
         rule.onNodeWithText("Connect to rTorrent").performClick()
         rule.waitForIdle()
+    }
+
+    @Test fun freshPhoneEntryKeepsServerConnectionOptionalAndAvailable() {
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
+        // Navigating here alone never authenticates or submits a transfer.
+        rule.onNodeWithText("Connection unsuccessful").assertDoesNotExist()
     }
 
     @Test fun anAddressWithAPathAndAnAdvancedPathIsRefusedBeforeConnecting() {
