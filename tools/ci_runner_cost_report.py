@@ -64,7 +64,7 @@ def created_range(value: str | None) -> str | None:
     """Require a bounded, real calendar-date range accepted by GitHub REST."""
     if value is None:
         return None
-    match = re.fullmatch(r"(\\d{4}-\\d{2}-\\d{2})\\.\\.(\\d{4}-\\d{2}-\\d{2})", value)
+    match = re.fullmatch(r"(\d{4}-\d{2}-\d{2})\.\.(\d{4}-\d{2}-\d{2})", value)
     if not match:
         raise ValueError("created must be YYYY-MM-DD..YYYY-MM-DD")
     try:
@@ -118,7 +118,7 @@ def paginated_items(path: str, key: str, label: str) -> list[dict]:
 def get_runs(repo: str, branch: str, created: str | None = None) -> list[dict]:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("Invalid owner/repository")
-    if not branch or len(branch) > 200 or any(x in branch for x in ("\\n", "\\r")):
+    if not branch or len(branch) > 200 or any(x in branch for x in ("\n", "\r")):
         raise ValueError("Invalid branch name")
     window = created_range(created)
     path = f"repos/{repo}/actions/runs?branch={quote(branch, safe='')}"
