@@ -8,6 +8,9 @@ The REST data is the source; durations are measured, not predicted or billed min
 GitHub head_sha groups may include draft, ready and retry events; not one dispatch.
 On pull_request, head_sha need not be the actual GITHUB_SHA merge checkout.
 Queue and first-failing-job times are observed proxies, not proof of human-actionable feedback.
+Step hotspots use GitHub step numbers rather than names to avoid leaking dynamic/secret labels.
+ALL workflow rerun attempts are fetched; latest-only jobs silently undercount failed attempts.
+Missing/incomplete step data is reported as unknown; it is never interpreted as zero time.
 """
 from __future__ import annotations
 
@@ -68,7 +71,7 @@ def get_runs(repo: str, branch: str) -> list[dict]:
         raise ValueError("More than 100 runs; narrow the branch/time window; do not report a partial total")
     for run in runs:
         run_id = int(run["id"])
-        jobs = gh_json(f"repos/{repo}/actions/runs/{run_id}/jobs?per_page=100")
+        jobs = gh_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=all&per_page=100")
         if jobs.get("total_count", len(jobs.get("jobs", []))) > len(jobs.get("jobs", [])):
             raise ValueError(f"Truncated jobs on run {run_id}")
         run["jobs"] = jobs["jobs"]
@@ -83,8 +86,16 @@ def cost_report(runs: list[dict]) -> dict:
         "runner_minutes": 0.0, "cancelled_run_runner_minutes": 0.0,
         "wall_minutes": 0.0, "job_window_minutes": 0.0, "queue_minutes": 0.0,
         "runs_with_timed_jobs": 0, "jobs": 0,
+        "runs_with_reruns": 0, "prior_attempt_runner_minutes": 0.0,
+        "failed_jobs_across_attempts": 0,
     })
     rows = []
+    step_by_workflow = defaultdict(lambda: {
+        "jobs_with_steps": 0, "jobs_without_steps": 0,
+        "timed_steps": 0, "incomplete_steps": 0, "skipped_steps": 0,
+        "invalid_step_timestamps": 0,
+        "timed_step_minutes": 0.0, "hotspots": [],
+    })
     by_head_sha = {}
     unattributed_runs = 0
     for run in runs:
@@ -103,6 +114,12 @@ def cost_report(runs: list[dict]) -> dict:
             raise ValueError(f"Missing jobs on run {run_id}")
         seen_jobs = set()
         total = 0.0
+        run_attempt = run.get("run_attempt", 1)
+        if type(run_attempt) is not int or run_attempt < 1:
+            raise ValueError(f"Invalid run attempt on workflow {run_id}")
+        observed_attempts = set()
+        prior_attempt_minutes = 0.0
+        failed_jobs_across_attempts = 0
         timed_starts = []
         timed_ends = []
         failed_job_ends = []
@@ -111,6 +128,12 @@ def cost_report(runs: list[dict]) -> dict:
             if job_id in seen_jobs:
                 raise ValueError(f"Duplicate job {job_id} on run {run_id}")
             seen_jobs.add(job_id)
+            attempt = job.get("run_attempt", 1)
+            if type(attempt) is not int or attempt < 1 or attempt > run_attempt:
+                raise ValueError(f"Invalid job attempt on job {job_id}")
+            observed_attempts.add(attempt)
+            if job.get("conclusion") == "failure":
+                failed_jobs_across_attempts += 1
             # GitHub sometimes gives skipped jobs inverted timestamps (e.g.
             # 05:34:23 start / 05:34:14 completion). No runner was allocated.
             duration = (0.0 if job.get("conclusion") == "skipped" else
@@ -119,6 +142,51 @@ def cost_report(runs: list[dict]) -> dict:
                 if job.get("started_at") is None:
                     raise ValueError(f"Missing timing for executed job {job_id}")
             total += duration
+            if attempt < run_attempt:
+                prior_attempt_minutes += duration
+            # Steps are included in the existing jobs REST response. Never issue
+            # an additional Actions query or emit raw step labels/commands.
+            if job.get("conclusion") != "skipped" and job.get("started_at") and job.get("completed_at"):
+                activity = step_by_workflow[name]
+                steps = job.get("steps")
+                if steps is None:
+                    activity["jobs_without_steps"] += 1
+                elif not isinstance(steps, list):
+                    raise ValueError(f"Invalid steps on job {job_id}")
+                else:
+                    activity["jobs_with_steps"] += 1
+                    seen_step_numbers = set()
+                    for step in steps:
+                        if not isinstance(step, dict):
+                            raise ValueError(f"Invalid step on job {job_id}")
+                        if step.get("conclusion") == "skipped":
+                            # GitHub can return inverted times for skipped steps.
+                            activity["skipped_steps"] += 1
+                            continue
+                        begin, end = step.get("started_at"), step.get("completed_at")
+                        if not begin or not end:
+                            activity["incomplete_steps"] += 1
+                            continue
+                        number = step.get("number")
+                        if type(number) is not int or number < 1:
+                            raise ValueError(f"Missing step number on job {job_id}")
+                        if number in seen_step_numbers:
+                            raise ValueError(f"Duplicate step number on job {job_id}")
+                        seen_step_numbers.add(number)
+                        try:
+                            elapsed = minutes(begin, end)
+                        except ValueError:
+                            # Step metadata can be unreliable on canceled jobs.
+                            # Preserve complete job runner cost; mark this step
+                            # as unusable timing instead of losing the entire audit.
+                            activity["invalid_step_timestamps"] += 1
+                            continue
+                        activity["timed_step_minutes"] += elapsed
+                        activity["timed_steps"] += 1
+                        activity["hotspots"].append({
+                            "run_id": run_id, "job_id": job_id,
+                            "step_number": number, "minutes": round(elapsed, 3),
+                        })
             if job.get("conclusion") != "skipped" and job.get("started_at") and job.get("completed_at"):
                 timed_starts.append(instant(job["started_at"]))
                 timed_ends.append(instant(job["completed_at"]))
@@ -144,6 +212,10 @@ def cost_report(runs: list[dict]) -> dict:
         group["jobs"] += len(jobs)
         group["runner_minutes"] += total
         group["wall_minutes"] += wall
+        group["prior_attempt_runner_minutes"] += prior_attempt_minutes
+        group["failed_jobs_across_attempts"] += failed_jobs_across_attempts
+        if run_attempt > 1:
+            group["runs_with_reruns"] += 1
         if job_window is not None:
             group["job_window_minutes"] += job_window
             group["runs_with_timed_jobs"] += 1
@@ -157,6 +229,13 @@ def cost_report(runs: list[dict]) -> dict:
         rows.append({
             "run_id": run_id, "workflow": name, "conclusion": outcome,
             "runner_minutes": round(total, 3), "wall_minutes": round(wall, 3),
+            "reported_attempts": run_attempt,
+            "job_attempts_observed": sorted(observed_attempts),
+            # An absent attempt can mean no runner allocated; never silently
+            # certify its cost as zero from an incomplete offline jobs payload.
+            "attempts_without_jobs": sorted(set(range(1, run_attempt + 1)) - observed_attempts),
+            "prior_attempt_runner_minutes": round(prior_attempt_minutes, 3),
+            "failed_jobs_across_attempts": failed_jobs_across_attempts,
             "job_window_minutes": round(job_window, 3) if job_window is not None else None,
             "queue_minutes": round(queue_minutes, 3) if queue_minutes is not None else None,
             "first_failed_job_completion_minutes": (
@@ -172,11 +251,16 @@ def cost_report(runs: list[dict]) -> dict:
             revision = by_head_sha.setdefault(sha.lower(), {
                 "runs": 0, "cancelled_runs": 0, "failed_runs": 0,
                 "zero_timed_job_runs": 0, "runner_minutes": 0.0,
-                "cancelled_run_runner_minutes": 0.0, "run_ids": [],
+                "cancelled_run_runner_minutes": 0.0,
+                "prior_attempt_runner_minutes": 0.0,
+                "runs_with_reruns": 0, "run_ids": [],
                 "workflows": [],
             })
             revision["runs"] += 1
             revision["runner_minutes"] += total
+            revision["prior_attempt_runner_minutes"] += prior_attempt_minutes
+            if run_attempt > 1:
+                revision["runs_with_reruns"] += 1
             revision["run_ids"].append(run_id)
             if name not in revision["workflows"]:
                 revision["workflows"].append(name)
@@ -191,6 +275,17 @@ def cost_report(runs: list[dict]) -> dict:
     for name, values in sorted(by_name.items()):
         groups[name] = {k: round(v, 3) if isinstance(v, float) else v
                         for k, v in values.items()}
+    step_activity = {}
+    for workflow, values in sorted(step_by_workflow.items()):
+        step_activity[workflow] = {
+            **{key: (round(value, 3) if isinstance(value, float) else value)
+               for key, value in values.items() if key != "hotspots"},
+            # Exact step number + job ID makes this reproducible while never
+            # serializing step names, shell commands, URLs, or test output.
+            "hotspots": sorted(values["hotspots"], key=lambda x: (
+                -x["minutes"], x["run_id"], x["job_id"], x["step_number"],
+            ))[:8],
+        }
     revision_groups = {
         sha: {key: (round(value, 3) if isinstance(value, float)
                     else sorted(value) if key == "workflows" else value)
@@ -199,14 +294,20 @@ def cost_report(runs: list[dict]) -> dict:
     }
     return {
         "schema": "chunks-ci-runner-cost-v1",
-        "source": "GitHub Actions job started_at/completed_at timestamps",
+        "source": "GitHub Actions job started_at/completed_at timestamps, all run attempts",
         "scope": "completed runs only; head_sha is PR branch identity, not necessarily the tested merge checkout; runner minutes are not billed-minute estimates; wall_minutes includes queue/API updates; job_window_minutes excludes them and is null without timed jobs; queue and first-failing-job completion are timing proxies, not actionable-feedback guarantees",
         "runs": len(rows),
         "runner_minutes": round(sum(x["runner_minutes"] for x in rows), 3),
+        "prior_attempt_runner_minutes": round(
+            sum(x["prior_attempt_runner_minutes"] for x in rows), 3),
+        "runs_with_reruns": sum(x["reported_attempts"] > 1 for x in rows),
+        "runs_with_unobserved_job_attempts": sum(
+            bool(x["attempts_without_jobs"]) for x in rows),
         "cancelled_run_runner_minutes": round(
             sum(x["cancelled_run_runner_minutes"] for x in groups.values()), 3
         ),
-        "by_workflow": groups, "by_head_sha": revision_groups,
+        "by_workflow": groups, "by_workflow_step_activity": step_activity,
+        "by_head_sha": revision_groups,
         "runs_without_head_sha": unattributed_runs,
         "details": sorted(rows, key=lambda x: x["run_id"]),
     }
@@ -241,13 +342,23 @@ def main() -> None:
     report = cost_report(runs)
     print(f"Completed runs: {report['runs']}; aggregate runner minutes: "
           f"{report['runner_minutes']:.2f}; canceled-run runner minutes: "
-          f"{report['cancelled_run_runner_minutes']:.2f}")
+          f"{report['cancelled_run_runner_minutes']:.2f}; "
+          f"prior-attempt minutes: {report['prior_attempt_runner_minutes']:.2f}; "
+          f"rerun workflows: {report['runs_with_reruns']}")
     for name, item in report["by_workflow"].items():
         print(f"{name}: runs={item['runs']} cancelled={item['cancelled_runs']} "
               f"runner_min={item['runner_minutes']:.2f} "
               f"cancelled_min={item['cancelled_run_runner_minutes']:.2f} "
               f"job_window_min={item['job_window_minutes']:.2f} "
               f"timed_runs={item['runs_with_timed_jobs']}")
+    for workflow, activity in report["by_workflow_step_activity"].items():
+        if activity["hotspots"]:
+            top = activity["hotspots"][0]
+            print(f"step_activity={workflow}: timed_jobs={activity['jobs_with_steps']} "
+                  f"missing_steps_jobs={activity['jobs_without_steps']} "
+                  f"timed_step_min={activity['timed_step_minutes']:.2f} "
+                  f"top=run{top['run_id']}/job{top['job_id']}/step{top['step_number']} "
+                  f"({top['minutes']:.2f}m)")
     for sha, group in report["by_head_sha"].items():
         print(f"head_sha={sha[:12]} runs={group['runs']} "
               f"runner_min={group['runner_minutes']:.2f} "

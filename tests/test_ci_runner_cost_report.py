@@ -126,6 +126,124 @@ class RunnerCostTests(unittest.TestCase):
         missing = run(36, "cancelled", [])
         self.assertEqual({}, cost_report([missing])["by_head_sha"])
 
+    def test_step_hotspots_are_from_existing_job_payload_and_hide_labels(self):
+        import json
+
+        one = job(101, 1, 7)
+        one["steps"] = [
+            {"number": 1, "name": "Private server credential in step name",
+             "conclusion": "success", "started_at": stamp(1), "completed_at": stamp(3)},
+            {"number": 2, "name": "Native Android test from installed APK",
+             "conclusion": "success", "started_at": stamp(3), "completed_at": stamp(6)},
+            {"number": 3, "conclusion": "skipped",
+             "started_at": stamp(9), "completed_at": stamp(2)},
+            {"number": 4, "conclusion": "cancelled",
+             "started_at": stamp(6), "completed_at": None},
+        ]
+        two = job(102, 1, 6)  # Old/offline job payload missing step detail.
+        result = cost_report([run(70, "success", [one, two])])
+        self.assertEqual(11, result["runner_minutes"])
+        steps = result["by_workflow_step_activity"]["API35"]
+        self.assertEqual(1, steps["jobs_with_steps"])
+        self.assertEqual(1, steps["jobs_without_steps"])
+        self.assertEqual(2, steps["timed_steps"])
+        self.assertEqual(1, steps["skipped_steps"])
+        self.assertEqual(1, steps["incomplete_steps"])
+        self.assertEqual(5, steps["timed_step_minutes"])
+        self.assertEqual([
+            {"run_id": 70, "job_id": 101, "step_number": 2, "minutes": 3},
+            {"run_id": 70, "job_id": 101, "step_number": 1, "minutes": 2},
+        ], steps["hotspots"])
+        self.assertNotIn("Private server credential", json.dumps(result))
+        self.assertNotIn("Native Android test from installed APK", json.dumps(result))
+
+    def test_step_negative_controls_and_unknown_coverage(self):
+        missing = job(101, 1, 4)
+        self.assertEqual(1, cost_report([run(75, "success", [missing])])[
+            "by_workflow_step_activity"]["API35"]["jobs_without_steps"])
+        skipped = job(110, 7, 1, conclusion="skipped")
+        self.assertEqual({}, cost_report([run(76, "skipped", [skipped])])[
+            "by_workflow_step_activity"])
+        bad_time = job(109, 1, 5)
+        bad_time["steps"] = [{"number": 1, "conclusion": "cancelled",
+                              "started_at": stamp(4), "completed_at": stamp(2)}]
+        inspected = cost_report([run(74, "cancelled", [bad_time])])
+        timed = inspected["by_workflow_step_activity"]["API35"]
+        self.assertEqual(1, timed["invalid_step_timestamps"])
+        self.assertEqual(0, timed["timed_steps"])
+        self.assertEqual(4, inspected["runner_minutes"])
+
+        for bad_steps, error in [
+            ("malformed", "Invalid steps"),
+            ([None], "Invalid step"),
+            ([{"number": "1", "conclusion": "success",
+               "started_at": stamp(1), "completed_at": stamp(2)}], "Missing step number"),
+            ([{"number": 1, "conclusion": "success",
+               "started_at": stamp(1), "completed_at": stamp(2)},
+              {"number": 1, "conclusion": "success",
+               "started_at": stamp(2), "completed_at": stamp(3)}], "Duplicate step number"),
+        ]:
+            checked = job(111, 1, 5)
+            checked["steps"] = bad_steps
+            with self.subTest(error=error), self.assertRaisesRegex(ValueError, error):
+                cost_report([run(77, "success", [checked])])
+
+    def test_rerun_attempts_count_all_actual_job_minutes(self):
+        first = job(210, 1, 5, "failure")
+        first["run_attempt"] = 1
+        # GitHub allocates a NEW job ID on retry, even with the same name.
+        retried = job(211, 6, 9, "success")
+        retried["run_attempt"] = 2
+        source = run(80, "success", [first, retried])
+        source["run_attempt"] = 2
+        source["head_sha"] = "f" * 40
+        report = cost_report([source])
+        self.assertEqual(7, report["runner_minutes"])
+        self.assertEqual(4, report["prior_attempt_runner_minutes"])
+        self.assertEqual(1, report["runs_with_reruns"])
+        self.assertEqual(0, report["runs_with_unobserved_job_attempts"])
+        self.assertEqual([1, 2], report["details"][0]["job_attempts_observed"])
+        self.assertEqual(1, report["details"][0]["failed_jobs_across_attempts"])
+        self.assertEqual([], report["details"][0]["attempts_without_jobs"])
+        self.assertEqual(4, report["by_workflow"]["API35"]["prior_attempt_runner_minutes"])
+        self.assertEqual(1, report["by_workflow"]["API35"]["failed_jobs_across_attempts"])
+        self.assertEqual(4, report["by_head_sha"]["f" * 40]["prior_attempt_runner_minutes"])
+
+    def test_missing_run_attempt_job_metadata_is_explicitly_uncertain(self):
+        only_second = job(212, 1, 3)
+        only_second["run_attempt"] = 2
+        case = run(81, "success", [only_second])
+        case["run_attempt"] = 2
+        report = cost_report([case])
+        self.assertEqual(1, report["runs_with_unobserved_job_attempts"])
+        self.assertEqual([1], report["details"][0]["attempts_without_jobs"])
+        self.assertEqual(2, report["runner_minutes"])  # observed lower bound
+        invalid = run(82, "success", [only_second])
+        invalid["run_attempt"] = 1
+        with self.assertRaisesRegex(ValueError, "Invalid job attempt"):
+            cost_report([invalid])
+        invalid["run_attempt"] = "2"
+        with self.assertRaisesRegex(ValueError, "Invalid run attempt"):
+            cost_report([invalid])
+
+    def test_live_api_retrieves_all_attempts_without_new_endpoint_fanout(self):
+        source = run(83, "success", [])
+        source["run_attempt"] = 2
+        first = job(301, 1, 3, "failure")
+        first["run_attempt"] = 1
+        second = job(302, 4, 6, "success")
+        second["run_attempt"] = 2
+        with patch("tools.ci_runner_cost_report.gh_json") as fetch:
+            fetch.side_effect = [
+                {"total_count": 1, "workflow_runs": [source]},
+                {"total_count": 2, "jobs": [first, second]},
+            ]
+            fetched = get_runs("gamesbyian/Chunks", "ux/branch")
+        self.assertEqual(2, len(fetched[0]["jobs"]))
+        self.assertEqual(2, fetch.call_count)
+        self.assertIn("filter=all", fetch.call_args.args[0])
+        self.assertEqual(4, cost_report(fetched)["runner_minutes"])
+
     def test_live_api_is_read_only_and_rejects_incomplete_pages(self):
         with patch("tools.ci_runner_cost_report.gh_json") as fetch:
             fetch.return_value = {"total_count": 101, "workflow_runs": []}
