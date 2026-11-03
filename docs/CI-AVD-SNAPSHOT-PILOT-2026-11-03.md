@@ -1,0 +1,28 @@
+# Clean Android emulator snapshot pilot (manual, non-production)
+
+**Authority:** [CI engineering standard](CI-ENGINEERING-STANDARD.md), [CI policy](CI-POLICY.md), [Android evidence-first](../.agents/skills/android-evidence-first/SKILL.md), [work queue](WORK-QUEUE.md). This is a bounded experimental operating recipe, not an active work queue or app acceptance gate.
+
+## Observed architecture and specific hypothesis
+
+Chunks already runs actual KVM-backed API29 storage and API35 installed instrumentation. Native Add builds one source-bound app/test APK pair and distributes it to two independent emulators. Those tests and evidence receipts remain mandatory.
+
+The upstream [emulator-runner AVD caching recipe](https://github.com/ReactiveCircus/android-emulator-runner#avd-snapshot-caching) and [Kiwix Android CI](https://github.com/kiwix/kiwix-android/blob/main/.github/workflows/ci.yml) use clean emulator snapshots. Chunks' core Android jobs do not yet restore explicitly cached AVD snapshots. **Hypothesis:** reusing an exactly matched clean API35 boot can reduce time-to-ready and total runner consumption after accounting for SDK installation, cache restore/save, size and reliability. This is unmeasured; no speedup or acceptance is claimed.
+
+## Manual A/B protocol
+
+The [isolated pilot workflow](../.github/workflows/avd-snapshot-pilot.yml) has only `workflow_dispatch` on `main` and never runs automatically for pushes, PRs or schedules. It uses KVM, Ubuntu 24.04, API35 Google APIs x86_64, Pixel 6 and a 2048M AVD. The cache key contains installed emulator and system-image revisions plus device/profile identity. Only `~/.android/avd` is cached; host ADB keys, APKs, torrents, trackers, credentials, test fixtures and Gradle state are not.
+
+1. Dispatch `cold` twice on the same source/configuration. Each run launches a fresh `-no-snapshot` device and checks Android SDK/CPU and Chunks absence, without app installation.
+2. Dispatch `snapshot` once to generate a **pristine** snapshot. The workflow validates API35 and absence of Chunks before shutdown; the cache is saved only after snapshot files are checked. The generation run is bootstrap cost, not a warm-cache result.
+3. Dispatch `snapshot` at least twice more with an actual cache hit, unchanged installed SDK revisions and comparable runner conditions. The saved boot is loaded with `-no-snapshot-save` so the measured session cannot overwrite the cached clean image.
+4. Compare complete job duration, SDK provisioning, cache transfer and emulator-runner/probe time in each run. Report source SHA, run IDs, cache-hit state, image revisions, failed runs and cache size. Distinguish total runner minutes from emulator-only latency. Do not extrapolate from a cache miss or a single cold/warm pair.
+
+**Failure safety:** A corrupt/absent expected snapshot on a cache hit fails explicitly rather than silently switching to a cold boot. Version changes generate distinct keys. A deliberate incompatibility correction must bump the workflow's `v1` identity. Concurrent generation is serialized, and the workflow holds no protected-host permissions or secrets.
+
+## Decision and acceptance boundary
+
+Promote nothing into the existing API29/API35 production workflows unless the repeated pilot shows a worthwhile net improvement and acceptable failure/storage profile. Any future production integration must independently preserve all exact-source installed test identities, real screenshots, true local/rTorrent bytes, Android storage state isolation, readback and other required evidence. Never cache a device after installing an app or creating a transfer; a snapshot-generated boot receipt alone is not Chunks product acceptance. Do not run extra full Android suites solely to benchmark this optimization. If there is no meaningful gain, leave production configuration untouched and retire the experiment.
+
+## Separate Gradle cache finding
+
+The repository already uses `org.gradle.configuration-cache=true` and `gradle/actions/setup-gradle`. The action's documented default writes user-home cache entries on the default branch while PR jobs generally read from shared main-branch entries; PR merge-ref caches have narrow reuse scope. Enabling `org.gradle.caching=true` or `--build-cache` in isolation does not demonstrate cross-PR output reuse. Reconsider only after a bounded experiment establishes task-output eligibility, trusted cache population, build/signing/provenance equality, storage overhead and actual time saved. Do not enable untrusted writable PR caches or a remote cache speculatively.
