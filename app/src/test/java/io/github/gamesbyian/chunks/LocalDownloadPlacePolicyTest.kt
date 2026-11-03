@@ -18,6 +18,7 @@ class LocalDownloadPlacePolicyTest {
         val resolved = LocalDownloadPlacePolicy.resolve(null, listOf(publicOk, appOk, sdOk))
         assertEquals(LocalPlaceKind.PUBLIC_DOWNLOADS, resolved.selected?.kind)
         assertNull(resolved.notice)
+        assertEquals(LocalPlaceResolution.Provenance.AUTOMATIC, resolved.provenance)
     }
 
     @Test fun rememberedVerifiedChoiceWins() {
@@ -25,6 +26,7 @@ class LocalDownloadPlacePolicyTest {
             LocalPlaceKind.REMOVABLE_APP_STORAGE, listOf(publicOk, appOk, sdOk))
         assertEquals(LocalPlaceKind.REMOVABLE_APP_STORAGE, resolved.selected?.kind)
         assertNull(resolved.notice)
+        assertEquals(LocalPlaceResolution.Provenance.SAVED_CHOICE, resolved.provenance)
     }
 
     @Test fun missingOrFailedRememberedChoiceFallsBackVisibly() {
@@ -32,11 +34,13 @@ class LocalDownloadPlacePolicyTest {
             LocalPlaceKind.REMOVABLE_APP_STORAGE, listOf(publicOk, appOk))
         assertEquals(LocalPlaceKind.PUBLIC_DOWNLOADS, ejected.selected?.kind)
         assertTrue(ejected.notice!!.contains("not available"))
+        assertEquals(LocalPlaceResolution.Provenance.FALLBACK, ejected.provenance)
 
         val failed = LocalDownloadPlacePolicy.resolve(LocalPlaceKind.REMOVABLE_APP_STORAGE,
             listOf(publicOk, appOk, choice(LocalPlaceKind.REMOVABLE_APP_STORAGE, "read-only")))
         assertEquals(LocalPlaceKind.PUBLIC_DOWNLOADS, failed.selected?.kind)
         assertTrue(failed.notice!!.contains("read-only"))
+        assertEquals(LocalPlaceResolution.Provenance.FALLBACK, failed.provenance)
     }
 
     @Test fun unavailablePublicDownloadsIsStatedWhenAppStorageIsUsed() {
@@ -58,6 +62,7 @@ class LocalDownloadPlacePolicyTest {
             listOf(choice(LocalPlaceKind.PUBLIC_DOWNLOADS, "a"), choice(LocalPlaceKind.APP_STORAGE, "b")))
         assertNull(resolved.selected)
         assertTrue(resolved.notice!!.contains("unavailable"))
+        assertNull("No verified destination must have no selection provenance", resolved.provenance)
     }
 
     @Test fun unknownStoredKeyIsIgnored() {
