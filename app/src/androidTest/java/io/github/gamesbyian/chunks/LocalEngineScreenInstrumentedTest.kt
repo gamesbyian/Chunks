@@ -460,18 +460,26 @@ class LocalEngineScreenInstrumentedTest {
                 }
             }
         }
-        rule.onNodeWithText("Files page 1 of 3 (85 files)").assertExists()
+        rule.onNodeWithText("Files page 1 of 3 (85 matching files)").assertExists()
         rule.onNodeWithText("File 040.txt").assertDoesNotExist()
         rule.onNodeWithText("Previous page").assertIsNotEnabled()
         rule.onNodeWithText("Next page").performClick()
-        rule.onNodeWithText("Files page 2 of 3 (85 files)").assertExists()
+        rule.onNodeWithText("Files page 2 of 3 (85 matching files)").assertExists()
         rule.onNodeWithText("File 040.txt").performScrollTo().performClick()
         rule.onNodeWithText("File 080.txt").assertDoesNotExist()
         rule.onNodeWithText("Next page").performScrollTo().performClick()
-        rule.onNodeWithText("Files page 3 of 3 (85 files)").assertExists()
+        rule.onNodeWithText("Files page 3 of 3 (85 matching files)").assertExists()
         rule.onNodeWithText("File 084.txt").performScrollTo().performClick()
         rule.onNodeWithText("Next page").performScrollTo().assertIsNotEnabled()
         assertEquals(listOf(40 to false, 84 to false), selected)
+        // Search is a read-only view over the original native file positions.
+        // Filtered row #1 still targets original file #84, never position zero.
+        rule.onNodeWithText("Search this transfer's files").performScrollTo()
+            .performTextReplacement("File 084.txt")
+        rule.onNodeWithText("Showing 1 of 85 file paths · filtered").assertExists()
+        rule.onNodeWithText("File 040.txt").assertDoesNotExist()
+        rule.onNodeWithText("File 084.txt").performScrollTo().performClick()
+        assertEquals(listOf(40 to false, 84 to false, 84 to false), selected)
     }
 
     @Test fun speedLimitsRefuseInvalidInputAndSaveKibibytes() {
