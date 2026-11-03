@@ -213,6 +213,33 @@ class LocalTorrentEngineInstrumentedTest {
         assertArrayEquals(keptBytes, File(keptRoot, "kept.bin").readBytes())
     }
 
+    @Test fun staleReviewedNameOrFolderCannotRemoveLiveSameHashJob() {
+        val root = File(work, "reviewed-identity/Exact reviewed fixture").apply { mkdirs() }
+        val original = File(root, "payload.bin").apply {
+            writeBytes(ByteArray(73_000).also { Random(77).nextBytes(it) })
+        }
+        val before = original.readBytes()
+        val torrent = TorrentBuilder().path(root).pieceSize(16 * 1024).generate().entry().bencode()
+        val instance = engine()
+        val added = (instance.addStopped(torrent, requireNotNull(root.parentFile))
+            as LocalAddResult.AddedStopped).status
+
+        // These checks exercise the actual synchronized native Remove boundary,
+        // not only a Compose confirmation or string comparison helper.
+        assertTrue(!instance.removeKeepingDataIfMatching(
+            added.infoHash, added.name + " (stale)", added.savePath))
+        assertTrue(instance.status(added.infoHash) != null)
+        assertTrue(!instance.removeKeepingDataIfMatching(
+            added.infoHash, added.name, added.savePath + "/stale"))
+        assertTrue(instance.status(added.infoHash) != null)
+        assertArrayEquals(before, original.readBytes())
+
+        assertTrue(instance.removeKeepingDataIfMatching(
+            added.infoHash, added.name, added.savePath))
+        assertTrue(instance.status(added.infoHash) == null)
+        assertArrayEquals(before, original.readBytes())
+    }
+
     @Test fun sessionOnlyRemovalCannotLeaveResumeFileForRestart() {
         val root = File(work, "remove-resume/Remove fixture").apply { mkdirs() }
         val original = File(root, "source.bin").apply {
