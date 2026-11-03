@@ -1131,7 +1131,8 @@ internal fun LocalEngineScreen(
             val pending = remember(transfers, moveRevision) {
                 moveStore.all(TransferMove.Direction.PHONE_TO_SERVER).filter { record ->
                     record.stage == TransferMove.Stage.TARGET_VERIFIED && record.serverScopeDigest == digest &&
-                        transfers.any { it.infoHash.equals(record.infoHash, ignoreCase = true) }
+                        transfers.any { it.infoHash.equals(record.infoHash, ignoreCase = true) &&
+                            TransferMove.sourceIdentityMatches(record, it.name, it.nativeReviewToken) }
                 }
             }
             BatchMoveRemovalPanel(
@@ -1139,7 +1140,20 @@ internal fun LocalEngineScreen(
                 busy = busy || inventoryStale,
                 observeTarget = { hash -> server.observe(hash) },
                 removeSource = { hash ->
-                    withContext(Dispatchers.IO) { LocalEngineHolder.current()?.removeKeepingData(hash) }
+                    withContext(Dispatchers.IO) {
+                        val original = pending.singleOrNull {
+                            it.infoHash.equals(hash, ignoreCase = true)
+                        } ?: error("Original Move journal missing")
+                        val engine = LocalEngineHolder.current() ?: error("Phone engine unavailable")
+                        val live = engine.status(hash) ?: error("Original phone job absent")
+                        if (!TransferMove.sourceIdentityMatches(
+                                original, live.name, live.nativeReviewToken))
+                            error("The original phone generation was replaced")
+                        if (!engine.removeKeepingDataIfMatching(
+                                hash, original.name, live.savePath,
+                                requireNotNull(original.sourceReviewToken)))
+                            error("The original phone job could not be removed safely")
+                    }
                 },
                 observeSource = { hash -> TransferMoveObservations.phone(hash) },
                 save = { record -> moveStore.save(record) },
@@ -1205,10 +1219,16 @@ internal fun LocalEngineScreen(
                         }
                         val journaled = withContext(Dispatchers.IO) {
                             verified.count { (item, _) ->
-                                moveStore.save(TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER,
+                                val original = transfers.singleOrNull {
+                                    it.infoHash.equals(item.infoHash, ignoreCase = true) &&
+                                        it.name == item.name && it.nativeReviewToken.isNotBlank()
+                                }
+                                original != null && moveStore.save(TransferMove.start(
+                                    TransferMove.Direction.PHONE_TO_SERVER,
                                     item.infoHash, item.name, TransferMoveStore.scopeDigest(server.aliasScope),
-                                    TransferMoveStore.hostLabel(server.aliasScope))
-                                    .copy(stage = TransferMove.Stage.TARGET_VERIFIED))
+                                    TransferMoveStore.hostLabel(server.aliasScope),
+                                    sourceReviewToken = original.nativeReviewToken
+                                ).copy(stage = TransferMove.Stage.TARGET_VERIFIED))
                             }
                         }
                         moveRevision++
