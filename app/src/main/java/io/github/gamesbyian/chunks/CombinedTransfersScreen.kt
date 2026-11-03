@@ -458,6 +458,7 @@ internal fun CombinedTransfersScreen(
         }
     }
     var choosingColours by remember { mutableStateOf(false) }
+    var showingViewOptions by rememberSaveable { mutableStateOf(false) }
     var showingSortOptions by rememberSaveable { mutableStateOf(false) }
     var showingSourceStatus by rememberSaveable { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
@@ -770,6 +771,35 @@ internal fun CombinedTransfersScreen(
             }
         }
         item {
+            val scopeName = when (val scope = query.scope) {
+                EnvironmentViewScope.All -> "All environments"
+                is EnvironmentViewScope.Only ->
+                    if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One environment"
+                    else "${scope.ids.size} environments"
+            }
+            val filterName = when (query.filter) {
+                UnifiedTransferFilter.ALL -> "All transfers"
+                UnifiedTransferFilter.STARTED -> "Started"
+                UnifiedTransferFilter.STOPPED -> "Stopped"
+                UnifiedTransferFilter.COMPLETE -> "Complete"
+                UnifiedTransferFilter.TRANSFERRING -> "Transferring"
+                UnifiedTransferFilter.ATTENTION -> "Needs attention"
+            }
+            OutlinedButton(
+                onClick = { showingViewOptions = !showingViewOptions },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) {
+                Text((if (showingViewOptions) "Hide" else "Choose") +
+                    " environments & filters · $scopeName · $filterName")
+            }
+            if (!showingViewOptions && CombinedViewPreferences.narrowingActive(query)) {
+                OutlinedButton(onClick = { update(CombinedViewPreferences.showAll(query)) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Show all transfers")
+                }
+            }
+        }
+        if (showingViewOptions) item {
             Text("Show", style = MaterialTheme.typography.labelLarge)
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -797,7 +827,7 @@ internal fun CombinedTransfersScreen(
                 label = "Search all selected"
             )
         }
-        item {
+        if (showingViewOptions) item {
             Text("Filter transfers", style = MaterialTheme.typography.labelLarge)
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
