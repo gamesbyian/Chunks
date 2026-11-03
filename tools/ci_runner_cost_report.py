@@ -2,6 +2,7 @@
 """Read-only GitHub Actions runner-cost report; no new CI dispatch or telemetry service.
 
 Run: python3 tools/ci_runner_cost_report.py --repo gamesbyian/Chunks --branch BRANCH
+For long branches: add --created YYYY-MM-DD..YYYY-MM-DD; live pages are exhaustive up to GitHub's 1,000-result search bound.
 Requires authenticated gh CLI only for live mode. Offline mode:
   --runs-json runs.json --jobs-dir downloaded-job-json/
 The REST data is the source; durations are measured, not predicted or billed minutes.
@@ -56,25 +57,85 @@ def gh_json(path: str) -> dict:
     return data
 
 
-def get_runs(repo: str, branch: str) -> list[dict]:
+MAX_PAGE_RESULTS = 1000  # GitHub caps filtered workflow-run searches at 1,000.
+
+
+def created_range(value: str | None) -> str | None:
+    """Require a bounded, real calendar-date range accepted by GitHub REST."""
+    if value is None:
+        return None
+    match = re.fullmatch(r"(\\d{4}-\\d{2}-\\d{2})\\.\\.(\\d{4}-\\d{2}-\\d{2})", value)
+    if not match:
+        raise ValueError("created must be YYYY-MM-DD..YYYY-MM-DD")
+    try:
+        first, last = (datetime.strptime(part, "%Y-%m-%d").date()
+                       for part in match.groups())
+    except ValueError as exc:
+        raise ValueError("Invalid created calendar date") from exc
+    if last < first:
+        raise ValueError("created date range is reversed")
+    return value
+
+
+def paginated_items(path: str, key: str, label: str) -> list[dict]:
+    """Fetch complete stable pages, never a plausible-looking partial total."""
+    collected: list[dict] = []
+    seen_ids: set[int] = set()
+    expected = None
+    for page in range(1, MAX_PAGE_RESULTS // 100 + 1):
+        payload = gh_json(f"{path}&per_page=100&page={page}")
+        count = payload.get("total_count")
+        if type(count) is not int or count < 0:
+            raise ValueError(f"Invalid {label} total_count")
+        if count > MAX_PAGE_RESULTS:
+            raise ValueError(
+                f"More than {MAX_PAGE_RESULTS} {label}; narrow with --created "
+                "or a smaller branch; do not present a partial total"
+            )
+        if expected is None:
+            expected = count
+        elif count != expected:
+            raise ValueError(f"{label} total_count changed during pagination")
+        items = payload.get(key)
+        if not isinstance(items, list):
+            raise ValueError(f"Invalid {label} page")
+        wanted = min(100, expected - len(collected))
+        if len(items) != wanted:
+            raise ValueError(f"Incomplete {label} page {page}")
+        for item in items:
+            if not isinstance(item, dict) or type(item.get("id")) is not int:
+                raise ValueError(f"Invalid {label} item")
+            identity = item["id"]
+            if identity in seen_ids:
+                raise ValueError(f"Duplicate {label} item across pages: {identity}")
+            seen_ids.add(identity)
+        collected.extend(items)
+        if len(collected) == expected:
+            return collected
+    raise ValueError(f"Incomplete {label} pagination")
+
+
+def get_runs(repo: str, branch: str, created: str | None = None) -> list[dict]:
     if not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repo):
         raise ValueError("Invalid owner/repository")
-    if not branch or len(branch) > 200 or any(x in branch for x in ("\n", "\r")):
+    if not branch or len(branch) > 200 or any(x in branch for x in ("\\n", "\\r")):
         raise ValueError("Invalid branch name")
-    response = gh_json(
-        f"repos/{repo}/actions/runs?branch={quote(branch, safe='')}&per_page=100"
-    )
-    runs = response.get("workflow_runs", [])
-    if not isinstance(runs, list):
-        raise ValueError("Invalid workflow_runs")
-    if response.get("total_count", len(runs)) > len(runs):
-        raise ValueError("More than 100 runs; narrow the branch/time window; do not report a partial total")
+    window = created_range(created)
+    path = f"repos/{repo}/actions/runs?branch={quote(branch, safe='')}"
+    if window is not None:
+        path += f"&created={quote(window, safe='')}"
+    runs = paginated_items(path, "workflow_runs", "workflow runs")
+    # Stop before N job-list requests if the branch is still changing. A
+    # completed-only report cannot represent an in-progress PR revision.
+    for run in runs:
+        if run.get("status") != "completed":
+            raise ValueError(f"Run {run['id']} is not complete; use a settled window")
     for run in runs:
         run_id = int(run["id"])
-        jobs = gh_json(f"repos/{repo}/actions/runs/{run_id}/jobs?filter=all&per_page=100")
-        if jobs.get("total_count", len(jobs.get("jobs", []))) > len(jobs.get("jobs", [])):
-            raise ValueError(f"Truncated jobs on run {run_id}")
-        run["jobs"] = jobs["jobs"]
+        run["jobs"] = paginated_items(
+            f"repos/{repo}/actions/runs/{run_id}/jobs?filter=all",
+            "jobs", f"jobs on run {run_id}",
+        )
     return runs
 
 
@@ -317,12 +378,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo", help="owner/repo (live mode)")
     parser.add_argument("--branch", help="exact PR branch (live mode)")
+    parser.add_argument("--created", help="inclusive YYYY-MM-DD..YYYY-MM-DD range (live mode)")
     parser.add_argument("--runs-json", type=Path, help="saved GET actions/runs JSON")
     parser.add_argument("--jobs-dir", type=Path, help="saved <run-id>.json GET jobs responses")
     parser.add_argument("--json-out", type=Path, help="write full grouped report to disk")
     args = parser.parse_args()
     if args.runs_json:
-        if args.repo or args.branch or not args.jobs_dir:
+        if args.repo or args.branch or args.created or not args.jobs_dir:
             parser.error("Offline mode requires --runs-json and --jobs-dir only")
         data = json.loads(args.runs_json.read_text(encoding="utf-8"))
         runs = data["workflow_runs"]
@@ -338,7 +400,7 @@ def main() -> None:
     else:
         if not (args.repo and args.branch) or args.jobs_dir:
             parser.error("Live mode requires --repo and --branch")
-        runs = get_runs(args.repo, args.branch)
+        runs = get_runs(args.repo, args.branch, args.created)
     report = cost_report(runs)
     print(f"Completed runs: {report['runs']}; aggregate runner minutes: "
           f"{report['runner_minutes']:.2f}; canceled-run runner minutes: "
