@@ -46,7 +46,7 @@ class UnifiedTransferCatalogTest {
     @Test fun unreportedSaveFolderNeverBecomesAClaimAboutServerOrPhoneFiles() {
         val remote = RemoteTransfer(hash('a'), "Server", 1000, 500, true, "")
         assertNull(UnifiedTransferObservations.fromRTorrent(server1, remote).reportedSaveFolder)
-        val phoneUnknown = LocalTransferStatus(hash('b'), "Phone", LocalTransferState.STOPPED,
+        val phoneUnknown = LocalTransferStatus(hash('b'), "Phone", LocalTransferState.UNKNOWN,
             true, 0, 0, 0, 0, 0, 0, "", null)
         assertNull(UnifiedTransferObservations.fromPhone(phone, phoneUnknown).reportedSaveFolder)
     }
