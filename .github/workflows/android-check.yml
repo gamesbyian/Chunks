@@ -15,6 +15,7 @@ on:
       - "*.gradle.kts"
       - "gradle.properties"
       - "tools/ci_jvm_two_forks.init.gradle"
+      - "tools/prefetch_robolectric_sdk.py"
       - ".github/workflows/android-check.yml"
   workflow_dispatch:
 
@@ -62,6 +63,12 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
+      # Robolectric 4.17 otherwise fetches this 191 MB API35 runtime JAR
+      # during the test suite, after compilation. Verify both Maven SHA-512
+      # sidecars, install the JAR in its existing ~/.m2 cache, and fail early
+      # on reproducibly corrupt/failed downloads. No tests are filtered.
+      - name: Prefetch and verify Robolectric Android 15 runtime SDK
+        run: timeout 240s python3 tools/prefetch_robolectric_sdk.py --sdk 35
       - name: Compile Android and run JVM tests
         run: |
           if ! gradle --no-daemon --init-script tools/ci_jvm_two_forks.init.gradle :app:testDebugUnitTest :app:assembleDebug; then
