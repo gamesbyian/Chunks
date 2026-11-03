@@ -164,13 +164,20 @@ class RunnerCostTests(unittest.TestCase):
         skipped = job(110, 7, 1, conclusion="skipped")
         self.assertEqual({}, cost_report([run(76, "skipped", [skipped])])[
             "by_workflow_step_activity"])
+        bad_time = job(109, 1, 5)
+        bad_time["steps"] = [{"number": 1, "conclusion": "cancelled",
+                              "started_at": stamp(4), "completed_at": stamp(2)}]
+        inspected = cost_report([run(74, "cancelled", [bad_time])])
+        timed = inspected["by_workflow_step_activity"]["API35"]
+        self.assertEqual(1, timed["invalid_step_timestamps"])
+        self.assertEqual(0, timed["timed_steps"])
+        self.assertEqual(4, inspected["runner_minutes"])
+
         for bad_steps, error in [
             ("malformed", "Invalid steps"),
             ([None], "Invalid step"),
             ([{"number": "1", "conclusion": "success",
                "started_at": stamp(1), "completed_at": stamp(2)}], "Missing step number"),
-            ([{"number": 1, "conclusion": "success",
-               "started_at": stamp(3), "completed_at": stamp(2)}], "Negative job duration"),
             ([{"number": 1, "conclusion": "success",
                "started_at": stamp(1), "completed_at": stamp(2)},
               {"number": 1, "conclusion": "success",
