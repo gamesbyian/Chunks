@@ -6,6 +6,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,6 +20,19 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi")
 class RemoteCapabilityAnnouncementsTest {
     @get:Rule val rule = createComposeRule()
+
+    @Test fun compactCapabilitiesRetainSummaryAndNeverInventUnknownEvidence() {
+        val lines = listOf(
+            "Server did not expose a full method list",
+            "Unknown: Start/stop support",
+            "Not advertised: File priorities"
+        )
+        assertNull(visibleCapabilityLines(null, false))
+        assertEquals(listOf(lines.first()), visibleCapabilityLines(lines, false))
+        assertEquals(lines, visibleCapabilityLines(lines, true))
+        assertEquals(listOf("Connection failed"),
+            visibleCapabilityLines(listOf("Connection failed"), false))
+    }
 
     @Test fun probeResultAndErrorReplaceOldTextWithinPersistentPoliteRegion() {
         val lines = mutableStateOf<List<String>?>(null)
