@@ -47,7 +47,8 @@ class UnifiedTransferDetailPanelTest {
                 originalName = "Example file collection", sizeBytes = 1024,
                 progressPpm = 555_000, started = true,
                 downloadBytesPerSecond = null, uploadBytesPerSecond = 0,
-                peers = null, hasError = true, ratioThousandths = 1450))
+                peers = null, hasError = true, ratioThousandths = 1450,
+                reportedSaveFolder = "/home/seed/long named folder"))
         )), EnvironmentCapabilitySnapshot(id, "rTorrent on server two", now - 20,
             mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.ADVERTISED,
                 EnvironmentOperation.FILE_PRIORITIES to CapabilityEvidence.MISSING)), now)
@@ -78,6 +79,10 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Progress: 55.5%").assertExists()
         rule.onNodeWithText("Download rate: not reported").assertExists()
+        rule.onNodeWithText("Save folder reported by engine: /home/seed/long named folder")
+            .assertExists()
+        rule.onNodeWithText("A reported folder does not confirm those files exist", substring = true)
+            .assertExists()
         rule.onNodeWithText("Peers: not reported").assertExists()
         rule.onNodeWithText("Share ratio: 1.45").assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-320x700-200pct.png")
@@ -127,6 +132,7 @@ class UnifiedTransferDetailPanelTest {
             }
         }
         rule.onNodeWithText("Cached title").assertExists()
+        rule.onNodeWithText("Save folder reported by engine: not reported").assertExists()
         rule.onNodeWithText("Peers: 0").assertExists()
         rule.onNodeWithText("Share ratio: not reported").assertExists()
         rule.onNodeWithText("Last-known transfer facts only.", substring = true)
@@ -145,6 +151,7 @@ class UnifiedTransferDetailPanelTest {
             }
         }
         rule.onNodeWithText("Accessible selected transfer").assertDoesNotExist()
+        rule.onNodeWithText("Save folder reported by engine:", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Open Locked server transfers").assertDoesNotExist()
         rule.onNodeWithText("Refresh Locked server").assertDoesNotExist()
