@@ -6,6 +6,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -34,13 +35,15 @@ class TransferMoveControlInstrumentedTest {
 
     private fun show(
         target: () -> Observation, source: () -> Observation,
-        removals: AtomicInteger, starts: AtomicInteger, removeFails: Boolean = false
+        removals: AtomicInteger, starts: AtomicInteger, removeFails: Boolean = false,
+        phoneSourceToken: String? = "native-session:17"
     ) = rule.setContent {
         MaterialTheme {
             Column {
                 TransferMoveControl(
                     direction = TransferMove.Direction.PHONE_TO_SERVER,
-                    infoHash = hash, name = "Big Buck Bunny", serverAliasScope = scope, busy = false,
+                    infoHash = hash, name = "Big Buck Bunny", serverAliasScope = scope,
+                    sourceReviewToken = phoneSourceToken, busy = false,
                     ports = TransferMovePorts(
                         observeTarget = { target() }, observeSource = { source() },
                         removeSource = { removals.incrementAndGet(); if (removeFails) error("lost reply") },
@@ -79,12 +82,41 @@ class TransferMoveControlInstrumentedTest {
         assertNull(TransferMoveStore(context).get(TransferMove.Direction.PHONE_TO_SERVER, hash))
     }
 
+    @Test fun replacementPhoneSourceCannotInheritPersistedMoveRemovalConsent() {
+        val removals = AtomicInteger(); val starts = AtomicInteger()
+        val original = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER, hash,
+            "Big Buck Bunny", TransferMoveStore.scopeDigest(scope), "seed.example",
+            sourceReviewToken = "native-session:old")
+            .copy(stage = TransferMove.Stage.TARGET_VERIFIED)
+        TransferMoveStore(context).save(original)
+        show({ Observation.Present }, { Observation.Present }, removals, starts,
+            phoneSourceToken = "native-session:new")
+        rule.onNodeWithText("The original transfer has changed", substring = true).assertExists()
+        rule.onNodeWithText("Remove original job from the phone…").assertIsNotEnabled()
+        assertEquals(0, removals.get())
+        rule.onNodeWithText("Cancel Move (keep both jobs)").performClick()
+        assertNull(TransferMoveStore(context).get(TransferMove.Direction.PHONE_TO_SERVER, hash))
+    }
+
+    @Test fun oldV1PhoneMoveNeedsFreshReviewBeforeAnySourceRemove() {
+        val removals = AtomicInteger(); val starts = AtomicInteger()
+        val legacy = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER, hash,
+            "Big Buck Bunny", TransferMoveStore.scopeDigest(scope), "seed.example")
+            .copy(stage = TransferMove.Stage.TARGET_VERIFIED)
+        TransferMoveStore(context).save(legacy)
+        show({ Observation.Present }, { Observation.Present }, removals, starts)
+        rule.onNodeWithText("cannot identify its original source", substring = true).assertExists()
+        rule.onNodeWithText("Remove original job from the phone…").assertIsNotEnabled()
+        assertEquals(0, removals.get())
+    }
+
     @Test fun lostRemovalReplyBecomesUncertainAndIsNeverRepeatedAutomatically() {
         val removals = AtomicInteger(); val starts = AtomicInteger()
         var sourceSeen: Observation = Observation.Unknown
         val store = TransferMoveStore(context)
         store.save(TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER, hash, "Big Buck Bunny",
-            TransferMoveStore.scopeDigest(scope), "seed.example")
+            TransferMoveStore.scopeDigest(scope), "seed.example",
+            sourceReviewToken = "native-session:17")
             .copy(stage = TransferMove.Stage.TARGET_VERIFIED))
         show({ Observation.Present }, { sourceSeen }, removals, starts, removeFails = true)
         rule.onNodeWithText("Remove original job from the phone…").performClick()
