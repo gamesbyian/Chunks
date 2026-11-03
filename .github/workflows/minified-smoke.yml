@@ -16,6 +16,9 @@ on:
       - "tools/require_minified_smoke_digest.py"
       - "tests/test_ci_failure_digest.py"
       - "tests/test_minified_smoke_digest.py"
+    # Draft revisions retain fast feedback; exact Android acceptance runs
+    # on review-ready transitions and subsequent ready-PR revisions.
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 permissions:
@@ -27,6 +30,8 @@ concurrency:
 
 jobs:
   minified-smoke:
+    # A skipped draft job allocates no runner; manual investigation remains possible.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
