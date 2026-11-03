@@ -1424,9 +1424,16 @@ internal fun LocalEngineScreen(
                     }
                     performLocalMutation {
                         try {
-                            val outcome = withContext(Dispatchers.IO) {
+                            val (outcome, stoppedCheckpoint) = withContext(Dispatchers.IO) {
                                 val engine = LocalEngineHolder.get(context)
-                                if (transfer.stopped) engine.resume(transfer.infoHash) else engine.pause(transfer.infoHash)
+                                if (transfer.stopped) {
+                                    engine.resume(transfer.infoHash) to null
+                                } else {
+                                    val stopped = engine.pause(transfer.infoHash)
+                                    val saved = if (stopped.outcome == LocalCommandOutcome.VERIFIED)
+                                        engine.saveResumeDataFor(transfer.infoHash) else null
+                                    stopped to saved
+                                }
                             }
                             var serviceProblem: String? = null
                             if (transfer.stopped && outcome.outcome in setOf(
@@ -1436,7 +1443,11 @@ internal fun LocalEngineScreen(
                                 }
                             }
                             message = when (outcome.outcome) {
-                                LocalCommandOutcome.VERIFIED -> serviceProblem
+                                LocalCommandOutcome.VERIFIED ->
+                                    if (stoppedCheckpoint == false)
+                                        "Stopped on this phone, but its recovery checkpoint could not be confirmed. " +
+                                            "Keep Chunks open for the next save; downloaded files remain untouched."
+                                    else serviceProblem
                                 LocalCommandOutcome.REFUSED ->
                                     "Start was refused: unreviewed destination files may be overwritten. Inspect the transfer's storage warning; no Start was issued."
                                 LocalCommandOutcome.UNCERTAIN -> {

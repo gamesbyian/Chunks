@@ -21,11 +21,20 @@ internal class LocalResumeSaveRequests<H : Any> {
             latch.countDown()
         }
 
+        /** A completed FAILED request can still be followed by a fresh save;
+         * an unresolved old callback must never acknowledge a new checkpoint. */
+        fun awaitSettled(timeoutNanos: Long): Boolean =
+            latch.await(timeoutNanos.coerceAtLeast(0L), TimeUnit.NANOSECONDS)
+
         fun awaitConfirmed(timeoutNanos: Long): Boolean =
-            latch.await(timeoutNanos.coerceAtLeast(0L), TimeUnit.NANOSECONDS) && confirmed
+            awaitSettled(timeoutNanos) && confirmed
     }
 
     private val outstanding = ConcurrentHashMap<String, Request<H>>()
+
+    /** Read-only witness of a pending pre-Stop save for this exact handle. */
+    fun pendingFor(key: String, handle: H): Request<H>? =
+        outstanding[key]?.takeIf { it.handle == handle }
 
     fun acquire(key: String, handle: H, invokeNative: () -> Unit): Request<H> {
         val proposed = Request(handle)

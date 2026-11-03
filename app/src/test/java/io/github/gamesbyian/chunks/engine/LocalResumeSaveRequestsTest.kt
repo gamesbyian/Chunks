@@ -42,6 +42,24 @@ class LocalResumeSaveRequestsTest {
         assertFalse(second.awaitConfirmed(0))
     }
 
+    @Test fun postStopCheckpointDoesNotInheritPreStopSaveAlert() {
+        val saves = LocalResumeSaveRequests<Handle>()
+        val handle = Handle(17)
+        var nativeCalls = 0
+        val beforeStop = saves.acquire("same", handle) { nativeCalls++ }
+        assertSame(beforeStop, saves.pendingFor("same", handle))
+        assertFalse(beforeStop.awaitSettled(0))
+        saves.complete("same", handle, false)
+        assertTrue("A failed old save is settled, not confirmed", beforeStop.awaitSettled(0))
+        assertFalse(beforeStop.awaitConfirmed(0))
+        assertEquals(null, saves.pendingFor("same", handle))
+        val afterStop = saves.acquire("same", handle) { nativeCalls++ }
+        assertEquals("A post-Stop checkpoint requires its own native save", 2, nativeCalls)
+        assertFalse("The old callback cannot confirm the new request", afterStop.awaitConfirmed(0))
+        saves.complete("same", handle, true)
+        assertTrue(afterStop.awaitConfirmed(0))
+    }
+
     @Test fun failedAndCancelledSavesAreNeverCountedAsPersisted() {
         val saves = LocalResumeSaveRequests<Handle>()
         val a = Handle(1)

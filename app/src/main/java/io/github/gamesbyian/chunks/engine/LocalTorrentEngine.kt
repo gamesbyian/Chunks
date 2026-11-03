@@ -1557,6 +1557,57 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
+     * Persist the exact current job after a user-confirmed Stop, before the UI
+     * offers crash/relaunch recovery as settled. Unlike the periodic bulk save,
+     * this never waits for unrelated torrents and cannot acknowledge a replaced
+     * native handle. A callback counts only after the resume-store commit succeeds.
+     *
+     * This must run off the Android UI thread. Failure or timeout is UNKNOWN
+     * durability, never permission to retry Start/Stop or delete any payload.
+     */
+    fun saveResumeDataFor(infoHash: String, timeoutMs: Long = 3_000): Boolean {
+        require(timeoutMs in 0L..30_000L)
+        val key = normal(infoHash)
+        val deadline = System.nanoTime() + timeoutMs * 1_000_000
+        fun remaining() = (deadline - System.nanoTime()).coerceAtLeast(0L)
+        val (handle, prior) = synchronized(this) {
+            if (config.stateDirectory == null || !started) return false
+            synchronized(handles) {
+                val exact = handles[key]?.takeIf { it.isValid } ?: return false
+                exact to pendingSaves.pendingFor(key, exact)
+            }
+        }
+        // A metadata-triggered save may have been requested BEFORE the Stop.
+        // Joining it is not evidence of the stopped state; wait until it
+        // settles, then ask libtorrent for a *new* post-Stop snapshot.
+        if (prior != null) {
+            try {
+                if (!prior.awaitSettled(remaining())) return false
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return false
+            }
+        }
+        // Register under the Remove / Close monitor, but NEVER await an
+        // asynchronous JNI alert while holding the engine or handles lock.
+        val request = synchronized(this) {
+            if (config.stateDirectory == null || !started) return false
+            synchronized(handles) {
+                if (handles[key] != handle || !handle.isValid) return false
+                pendingSaves.acquire(key, handle) {
+                    handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
+                }
+            }
+        }
+        return try {
+            request.awaitConfirmed(remaining())
+        } catch (_: InterruptedException) {
+            Thread.currentThread().interrupt()
+            false
+        }
+    }
+
+    /**
      * Ask libtorrent for fresh resume data for every transfer and write each
      * atomically. Returns how many were confirmed before the timeout.
      */

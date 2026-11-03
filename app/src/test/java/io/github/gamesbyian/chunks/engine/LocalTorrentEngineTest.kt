@@ -498,6 +498,27 @@ class LocalTorrentEngineTest {
             assertArrayEquals(bytes, File(fixture.root, name).readBytes())
     }
 
+    @Test fun exactStoppedJobCanPersistCrashRecoveryWithoutSavingEveryTorrent() {
+        val fixture = fixture()
+        val state = temp.newFolder("exact-stop-state")
+        val destination = temp.newFolder("exact-stop-payload")
+        val instance = persistentEngine(state)
+        val hash = added(instance.addStopped(fixture.torrent, destination)).infoHash
+        assertFalse("An unrelated hash cannot receive a checkpoint receipt",
+            instance.saveResumeDataFor("f".repeat(40), timeoutMs = 0))
+        assertEquals(LocalCommandOutcome.VERIFIED, instance.resume(hash).outcome)
+        assertEquals(LocalCommandOutcome.VERIFIED, instance.pause(hash).outcome)
+        assertTrue("Stop requires an exact native callback and persisted resume state",
+            instance.saveResumeDataFor(hash, timeoutMs = 5_000))
+        assertTrue("The checkpoint must be independently present in the store",
+            verifiedSavedResumeEvent(state, hash))
+        assertTrue(instance.removeKeepingData(hash))
+        assertFalse("A removed native generation cannot be saved",
+            instance.saveResumeDataFor(hash, timeoutMs = 0))
+        for ((name, bytes) in fixture.files)
+            assertArrayEquals(bytes, File(fixture.root, name).readBytes())
+    }
+
     @Test fun completedTransferSurvivesRestartAndReturnsStopped() {
         val fixture = fixture()
         val seeder = engine()
