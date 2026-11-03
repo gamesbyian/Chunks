@@ -224,6 +224,9 @@ class LocalEngineScreenInstrumentedTest {
                 }
             }
         }
+        rule.onNodeWithContentDescription(
+            "More details for Saved before tracker fix on this phone"
+        ).performScrollTo().performClick()
         rule.onNodeWithText("Repair missing trackers from original .torrent…")
             .performScrollTo().performClick()
         assertEquals(1, repairs)
@@ -244,6 +247,9 @@ class LocalEngineScreenInstrumentedTest {
                     onRemove = {}, onRepairTrackers = { repairs++ })
             }
         }
+        rule.onNodeWithContentDescription(
+            "More details for Stale saved torrent on this phone"
+        ).performClick()
         rule.onNodeWithText("Repair missing trackers from original .torrent…")
             .assertIsNotEnabled()
         assertEquals(0, repairs)
