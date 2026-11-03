@@ -68,7 +68,7 @@ jobs:
           (cd "$RUNNER_TEMP/chunks-prebuilt" && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
-          name: chunks-native-add-immutable-apk-pair
+          name: chunks-prebuilt-native-add-apk-pair
           path: ${{ runner.temp }}/chunks-prebuilt/
           if-no-files-found: error
           retention-days: 1
@@ -89,7 +89,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
-          name: chunks-native-add-immutable-apk-pair
+          name: chunks-prebuilt-native-add-apk-pair
           path: ${{ runner.temp }}/chunks-prebuilt
       - name: Reject stale SHA or changed app/test APK bytes
         run: |
