@@ -30,6 +30,8 @@ class NativeDeleteFlagsLinuxProbeTest {
         val manager = SessionManager(false)
         val done = CountDownLatch(1)
         val nativeResult = AtomicReference<String>("none")
+        val alerts = java.util.concurrent.atomic.AtomicInteger(0)
+        val terminalAlerts = java.util.concurrent.atomic.AtomicInteger(0)
         var listener: AlertListener? = null
         try {
             val source = root.resolve("source/Probe content")
@@ -49,18 +51,21 @@ class NativeDeleteFlagsLinuxProbeTest {
             canary.writeBytes(canaryBytes)
             val wantedHash = info.infoHash().toHex()
             val watch = object : AlertListener {
-                override fun types(): IntArray = intArrayOf(
-                    AlertType.TORRENT_DELETED.swig(),
-                    AlertType.TORRENT_DELETE_FAILED.swig())
+                override fun types(): IntArray? = null
                 override fun alert(alert: Alert<*>) {
+                    alerts.incrementAndGet()
                     when (alert) {
                         is TorrentDeletedAlert -> {
+                            terminalAlerts.incrementAndGet()
+                            println("CHUNKS_NATIVE_DELETE_EVENT type=deleted observedHash=${alert.infoHashes.getV1().toHex()} expectedHash=$wantedHash")
                             if (alert.infoHashes.getV1().toHex().equals(wantedHash, true)) {
                                 nativeResult.set("deleted")
                                 done.countDown()
                             }
                         }
                         is TorrentDeleteFailedAlert -> {
+                            terminalAlerts.incrementAndGet()
+                            println("CHUNKS_NATIVE_DELETE_EVENT type=failed observedHash=${alert.infoHashes.getV1().toHex()} expectedHash=$wantedHash")
                             if (alert.infoHashes.getV1().toHex().equals(wantedHash, true)) {
                                 nativeResult.set("failed")
                                 done.countDown()
@@ -82,7 +87,7 @@ class NativeDeleteFlagsLinuxProbeTest {
             assertNotNull("native handle never appeared", handle)
             assertArrayEquals("pre-delete target bytes", bytes, target.readBytes())
             manager.remove(requireNotNull(handle), SessionHandle.DELETE_FILES)
-            assertTrue("no delete terminal alert in 30 seconds (result=${nativeResult.get()})",
+            assertTrue("no matching delete terminal alert in 30 seconds (result=${nativeResult.get()} alerts=${alerts.get()} terminalAlerts=${terminalAlerts.get()} targetExists=${target.exists()})",
                 done.await(30, TimeUnit.SECONDS))
             assertEquals("native delete terminal alert", "deleted", nativeResult.get())
             assertFalse("native deleted alert but mapped target still on disk", target.exists())
