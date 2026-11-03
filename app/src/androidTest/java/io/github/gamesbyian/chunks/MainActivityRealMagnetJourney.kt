@@ -211,8 +211,15 @@ internal class MainActivityRealMagnetJourney(
             click("Refresh")
             type("Search names or Places", hash)
         }
+        // Current compact transfer cards intentionally hide secondary actions
+        // behind a read-only disclosure. Open it for the exact searched hash,
+        // rather than assuming a collapsed card exposes Stop/Remove.
+        fun exposeTransferActions() {
+            if (visible("More details")) click("More details")
+        }
         fun lifecycle(hash: String, start: Boolean) {
             refreshAndFind(hash)
+            exposeTransferActions()
             click(if (start) "Start transfer…" else "Stop transfer…")
             click(if (start) "Confirm start" else "Confirm stop")
             await { row(hash)?.started == start && runBlocking { remote.readActivity(hash).active } == start }
@@ -220,7 +227,8 @@ internal class MainActivityRealMagnetJourney(
         fun remove(hash: String) {
             if (row(hash)?.started == true) lifecycle(hash, false)
             refreshAndFind(hash)
-            click("Remove from rTorrent…"); click("Confirm remove")
+            exposeTransferActions()
+            click("Remove from rTorrent…"); click("Remove transfer, keep data")
             await { runBlocking { remote.lookupName(hash) } == null }
             assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
         }
