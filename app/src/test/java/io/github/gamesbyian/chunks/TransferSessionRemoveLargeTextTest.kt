@@ -8,6 +8,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -124,6 +127,28 @@ class TransferSessionRemoveLargeTextTest {
         rule.onNodeWithText("Remove transfer, keep data").performClick()
         rule.waitForIdle()
         assertEquals(2, eraseCalls)
+    }
+
+    @Test fun removalReviewShowsServerAccountAndClosesIfScopeChanges() {
+        var label by mutableStateOf("Server · alice @ host.example/rutorrent/")
+        rule.setContent {
+            ChunksTheme { Surface {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    TransferSessionRemoveControl(
+                        remote, transfer, snapshotStale = false, mainView = true,
+                        onMutationStarted = { mutations++; false }, onSettled = {},
+                        environmentLabel = label
+                    )
+                }
+            } }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Server · alice @ host.example/rutorrent/").assertExists()
+        rule.runOnIdle { label = "Server · bob @ host.example/rutorrent2/" }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Server · bob @ host.example/rutorrent2/").assertExists()
+        assertEquals(0, mutations)
     }
 
     @Test fun absentAfterUncertainRemovalNeverOffersAnotherDelete() {

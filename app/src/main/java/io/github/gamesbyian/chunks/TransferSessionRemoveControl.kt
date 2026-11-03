@@ -59,10 +59,11 @@ fun TransferSessionRemoveControl(
     onMutationStarted: () -> Boolean,
     onSettled: () -> Unit,
     performErase: suspend (String, String, String) -> SessionEraseOutcome = remote::eraseFromSession,
-    recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase
+    recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase,
+    environmentLabel: String = "rTorrent"
 ) {
     val validHash = remember(remote, transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
-    var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
+    var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory, environmentLabel) {
         mutableStateOf(false)
     }
     var attempted by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
@@ -112,6 +113,7 @@ fun TransferSessionRemoveControl(
                     Text("Confirm removal from rTorrent",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold)
+                    Text(environmentLabel, style = MaterialTheme.typography.bodySmall)
                     Text(transfer.name, style = MaterialTheme.typography.bodyMedium)
                     Text("Infohash: " + transfer.hash, style = MaterialTheme.typography.bodySmall)
                     Text("Current directory: " + transfer.directory,

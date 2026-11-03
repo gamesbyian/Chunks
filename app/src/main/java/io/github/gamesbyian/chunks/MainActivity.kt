@@ -1801,6 +1801,7 @@ private fun TransfersScreen(
                 onInspect = { onInspect(transfer) },
                 onPreparePhone = { onPreparePhone(transfer) },
                 onCopyToPhone = onCopyToPhone,
+                removalEnvironmentLabel = serverEnvironmentLabel(aliasScope),
                 moveScope = aliasScope,
                 finishInOrderScope = aliasScope
             )
@@ -1849,6 +1850,7 @@ private fun TransferCard(
     onInspect: () -> Unit,
     onPreparePhone: () -> Unit,
     onCopyToPhone: (String) -> Unit,
+    removalEnvironmentLabel: String,
     /** Authenticated endpoint + account scope, or null when ambiguous. */
     moveScope: String? = null,
     /** Authenticated endpoint + account scope for Finish in Order; null when ambiguous. */
@@ -2001,7 +2003,8 @@ private fun TransferCard(
             TransferSessionRemoveControl(
                 remote = remote, transfer = transfer, snapshotStale = stale,
                 mainView = mainView, onMutationStarted = onMutationStarted,
-                onSettled = onLifecycleSettled
+                onSettled = onLifecycleSettled,
+                environmentLabel = removalEnvironmentLabel
             )
             if (expanded) {
                 if (filesLoading) Text("Reading server file list…")
