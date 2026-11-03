@@ -1743,8 +1743,9 @@ internal fun LocalTransferCard(
     seeding: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment? = null
 ) {
     // An open confirmation belongs to the identity the user reviewed, not
-    // just a hash that may now describe a moved or changed transfer.
-    var confirmRemove by remember(transfer.infoHash, transfer.name, transfer.savePath) { mutableStateOf(false) }
+    // just a hash that may now describe a moved or changed transfer. A stale
+    // inventory or another pending action also requires a fresh review.
+    var confirmRemove by remember(transfer.infoHash, transfer.name, transfer.savePath, busy) { mutableStateOf(false) }
     var confirmHandoff by remember(transfer.infoHash) { mutableStateOf(false) }
     val percent = transfer.progressPpm / 10_000
     Card(Modifier.fillMaxWidth()) {

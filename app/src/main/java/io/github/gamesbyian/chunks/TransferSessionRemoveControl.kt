@@ -63,7 +63,10 @@ fun TransferSessionRemoveControl(
     environmentLabel: String? = "rTorrent"
 ) {
     val validHash = remember(remote, transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
-    var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory, environmentLabel) {
+    // Freshness or view changes revoke an open review, but never erase the
+    // separate attempted/pending state used to prevent a blind retry.
+    var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory,
+        environmentLabel, snapshotStale, mainView) {
         mutableStateOf(false)
     }
     var attempted by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {

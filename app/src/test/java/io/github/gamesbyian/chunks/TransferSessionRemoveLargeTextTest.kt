@@ -179,6 +179,34 @@ class TransferSessionRemoveLargeTextTest {
         assertEquals(1, eraseCalls)
     }
 
+    @Test fun staleOrDifferentViewRequiresANewRemovalReview() {
+        var stale by mutableStateOf(false)
+        var mainView by mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme { Surface {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    TransferSessionRemoveControl(
+                        remote, transfer, snapshotStale = stale, mainView = mainView,
+                        onMutationStarted = { mutations++; false }, onSettled = {}
+                    )
+                }
+            } }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.runOnIdle { stale = true }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.runOnIdle { stale = false }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.runOnIdle { mainView = false }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.runOnIdle { mainView = true }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").assertExists()
+        assertEquals(0, mutations)
+    }
+
     @Test fun unidentifiedScopeCannotStartRemoval() {
         rule.setContent {
             ChunksTheme { Surface {
