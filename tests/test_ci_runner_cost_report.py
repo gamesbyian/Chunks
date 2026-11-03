@@ -226,6 +226,70 @@ class RunnerCostTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Invalid run attempt"):
             cost_report([invalid])
 
+    def test_retry_idle_is_not_continuous_runner_activity(self):
+        # Actual run 41603577160 had a failed attempt, an idle retry gap,
+        # and a successful second attempt. Use synthetic clock values to
+        # keep this regression independent of GitHub and Android.
+        first = job(201, 1, 4, "failure")
+        first["run_attempt"] = 1
+        second = job(202, 7, 9, "success")
+        second["run_attempt"] = 2
+        sample = run(90, "success", [first, second])
+        sample["run_attempt"] = 2
+        report = cost_report([sample])
+        row = report["details"][0]
+        self.assertEqual(5, row["runner_minutes"])
+        self.assertEqual(8, row["job_window_minutes"])
+        self.assertEqual({"1": 3, "2": 2}, row["attempt_job_window_minutes"])
+        self.assertEqual(5, row["complete_attempt_window_minutes"])
+        self.assertEqual(3, row["retry_idle_gap_minutes"])
+        self.assertEqual(5, report["complete_attempt_window_minutes"])
+        self.assertEqual(3, report["retry_idle_gap_minutes"])
+        group = report["by_workflow"]["API35"]
+        self.assertEqual(5, group["complete_attempt_window_minutes"])
+        self.assertEqual(3, group["retry_idle_gap_minutes"])
+
+    def test_parallel_jobs_are_one_attempt_window_not_summed_durations(self):
+        # Parallel shards: 3 + 4 runner minutes overlap for a 4-minute window.
+        sample = run(91, "success", [job(211, 1, 4), job(212, 1, 5)])
+        report = cost_report([sample])
+        row = report["details"][0]
+        self.assertEqual(7, row["runner_minutes"])
+        self.assertEqual(4, row["complete_attempt_window_minutes"])
+        self.assertEqual(0, row["retry_idle_gap_minutes"])
+        self.assertEqual({"1": 4}, row["attempt_job_window_minutes"])
+
+    def test_missing_and_overlapping_attempt_windows_remain_unknown(self):
+        only_second = job(221, 4, 6)
+        only_second["run_attempt"] = 2
+        missing = run(92, "success", [only_second])
+        missing["run_attempt"] = 2
+        report = cost_report([missing])
+        row = report["details"][0]
+        self.assertEqual({"1": None, "2": 2}, row["attempt_job_window_minutes"])
+        self.assertIsNone(row["complete_attempt_window_minutes"])
+        self.assertIsNone(row["retry_idle_gap_minutes"])
+        self.assertEqual(0, report["runs_with_complete_attempt_windows"])
+
+        a = job(231, 1, 5)
+        a["run_attempt"] = 1
+        b = job(232, 4, 8)
+        b["run_attempt"] = 2
+        overlap = run(93, "success", [a, b])
+        overlap["run_attempt"] = 2
+        result = cost_report([overlap])
+        self.assertEqual(8, result["details"][0]["complete_attempt_window_minutes"])
+        self.assertIsNone(result["details"][0]["retry_idle_gap_minutes"])
+
+    def test_skipped_only_attempt_is_not_zero_window(self):
+        sample = run(94, "skipped", [job(241, 9, 1, "skipped")])
+        result = cost_report([sample])
+        row = result["details"][0]
+        self.assertEqual({"1": None}, row["attempt_job_window_minutes"])
+        self.assertIsNone(row["complete_attempt_window_minutes"])
+        self.assertIsNone(row["retry_idle_gap_minutes"])
+        self.assertEqual(0, result["runner_minutes"])
+
     def test_live_api_retrieves_all_attempts_without_new_endpoint_fanout(self):
         source = run(83, "success", [])
         source["run_attempt"] = 2
