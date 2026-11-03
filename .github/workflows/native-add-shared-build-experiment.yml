@@ -2,14 +2,9 @@ name: Experimental Android native Add build-once instrumentation
 
 # Compare against the proven two-shard Gradle job; never replace it unless
 # real JUnit identities, required screenshots, time and reliability agree.
+# Historical benchmark only. Production native Add acceptance owns PR events;
+# this workflow must never launch a parallel PR emulator campaign.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/native-add-shared-build-experiment.yml'
-      - 'tools/native_add_prebuilt.sh'
-      - 'tools/parse_instrumentation_stream.py'
-      - 'tests/test_instrumentation_stream.py'
-    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 permissions:
@@ -21,7 +16,6 @@ concurrency:
 
 jobs:
   build-once:
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
     timeout-minutes: 18
     steps:
@@ -60,7 +54,6 @@ jobs:
 
   prebuilt-device-shards:
     needs: build-once
-    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     strategy:
       fail-fast: false
       matrix:
@@ -125,7 +118,7 @@ jobs:
 
   compare-full-evidence:
     needs: prebuilt-device-shards
-    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
+    if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
