@@ -1,5 +1,10 @@
 # Chunks specification coverage and acceptance map
 
+## 2026-11-03 evidence correction
+
+The owner reports ordinary Add, Start, Stop and Restart working on the physical Android phone; preserve that report and do not demand repetitive requalification of unchanged behavior. [41563247925](https://github.com/gamesbyian/Chunks/actions/runs/41563247925) separately passed actual API35 emulator reboot/reseed and process-death recovery on source `df3f2c8d086b13b45f6a10a145e13191d139453f`; it does not prove physical reboot or OEM endurance. [#1125](https://github.com/gamesbyian/Chunks/pull/1125) and [#1126](https://github.com/gamesbyian/Chunks/pull/1126) merged phone/remote confirmation identity and freshness work, while owned-payload deletion, local uncertain-removal recovery, full multi-profile real-engine scope and physical removal remain open in [#1113](https://github.com/gamesbyian/Chunks/issues/1113). See [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) for exact receipts and live priorities.
+
+
 ## Planned transfer sharing and cross-app file associations (not implemented)
 
 **Transfer sharing:** [TRANSFER-SHARING](TRANSFER-SHARING.md) specifies v1/v2/hybrid magnet export, optional verified original metadata `.torrent` export, source-labelled native Android sharing and actual second-client import/peer acceptance. **No feature implementation, installed UI or real import receipt is claimed.**
@@ -15,7 +20,7 @@
 
 **Accepted and closed:** [#4](https://github.com/gamesbyian/Chunks/issues/4) original Chunks-created real magnet/.torrent transfer stuck-paused defect, resolved by merged native start-on-load [#973](https://github.com/gamesbyian/Chunks/pull/973). On a **physical owner Android phone**, both a real magnet and a `.torrent` were loaded via the supplied preview and both auto-started with the option enabled, then **both completed** (owner report, 2026-11-02). Installed API35 disposable actual MainActivity plus two independent original publisher magnets, exact bytes/pieces, UI Stop→Start, peerless negative and cleanup green [41446739216](https://github.com/gamesbyian/Chunks/actions/runs/41446739216); later preview-producing disposable installed gate [41450936833](https://github.com/gamesbyian/Chunks/actions/runs/41450936833). This closes the original user journey while preserving older red-run diagnostic provenance.
 
-**Still open, separate from #4:** [#1041](https://github.com/gamesbyian/Chunks/issues/1041)/[#9](https://github.com/gamesbyian/Chunks/issues/9) genuinely fresh real fixture rotation on pre-completed downloads, no forced deletion; #1/#464 remote reconnection, auth and multi-profile authority; #5/#569 local lifecycle/reboot and peer seeding; #809 restricted ZIP/library writer safety; #567/#8 compact integrated UX/200%-text/keyboard/TalkBack; #10 signed release/protected main and physical/OEM breadth. The owner did not report personally testing Stop→Start, payload-preserving Remove, priority, reboot or multi-remote. Supersede earlier dated lines below that describe #4 and physical Add as still unverified.
+**Still open, separate from #4:** [#1041](https://github.com/gamesbyian/Chunks/issues/1041)/[#9](https://github.com/gamesbyian/Chunks/issues/9) genuinely fresh real fixture rotation on pre-completed downloads, no forced deletion; #1/#464 remote reconnection, auth and multi-profile authority; #5/#569 local lifecycle/reboot and peer seeding; #809 restricted ZIP/library writer safety; #567/#8 compact integrated UX/200%-text/keyboard/TalkBack; #10 signed release/protected main and physical/OEM breadth. The owner subsequently reported ordinary Start, Stop and Restart working on the phone; payload-preserving Remove, priority, reboot and multi-remote remain separate acceptance gaps. Supersede earlier dated lines below that describe #4 and physical Add as still unverified.
 
 ## 2026-11-02 remote magnet acceptance delta
 
