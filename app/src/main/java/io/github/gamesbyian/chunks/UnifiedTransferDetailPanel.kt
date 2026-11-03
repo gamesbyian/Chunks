@@ -12,6 +12,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -53,6 +55,10 @@ internal fun UnifiedTransferDetailPanel(
     stallCheckError: String? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
+    // Presentation state only. Never retain a mutation authority or stale command review.
+    val technicalDetailsOpen = rememberSaveable(detail.key.environment.value, detail.key.infoHash) {
+        mutableStateOf(false)
+    }
     Column(
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -69,6 +75,7 @@ internal fun UnifiedTransferDetailPanel(
                 transferAtAGlance(transfer), style = MaterialTheme.typography.titleMedium)
         }
         Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleMedium)
+        if (!hidden) detail.observation?.let { TransferDetailFacts(it) }
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
         if (!hidden && onOpenOwningList != null) {
@@ -84,13 +91,6 @@ internal fun UnifiedTransferDetailPanel(
                 "to change it.", style = MaterialTheme.typography.bodyMedium)
         }
         if (!hidden) {
-            Text("Exact infohash: " + detail.key.infoHash,
-                style = MaterialTheme.typography.bodySmall)
-            detail.observedAtEpochMillis?.let { whenObserved ->
-                Text("Last observed: " + DateFormat.getDateTimeInstance(
-                    DateFormat.MEDIUM, DateFormat.SHORT, Locale.getDefault()
-                ).format(Date(whenObserved)), style = MaterialTheme.typography.bodySmall)
-            }
             detail.observation?.let { transfer ->
                 if (detail.readState != TransferDetailReadState.CURRENT) {
                     Text(
@@ -100,7 +100,6 @@ internal fun UnifiedTransferDetailPanel(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                TransferDetailFacts(transfer)
             }
             if (detail.observation == null) {
                 Text("No currently displayable details from this exact environment.",
@@ -152,6 +151,26 @@ internal fun UnifiedTransferDetailPanel(
             }
         }
         if (!hidden) {
+            OutlinedButton(
+                onClick = { technicalDetailsOpen.value = !technicalDetailsOpen.value },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        contentDescription = if (technicalDetailsOpen.value)
+                            "Hide technical details for this transfer"
+                        else "Show technical details for this transfer"
+                    }
+            ) {
+                Text(if (technicalDetailsOpen.value) "Hide technical details" else "Show technical details")
+            }
+        }
+        if (!hidden && technicalDetailsOpen.value) {
+            Text("Exact infohash: " + detail.key.infoHash,
+                style = MaterialTheme.typography.bodySmall)
+            detail.observedAtEpochMillis?.let { whenObserved ->
+                Text("Last observed: " + DateFormat.getDateTimeInstance(
+                    DateFormat.MEDIUM, DateFormat.SHORT, Locale.getDefault()
+                ).format(Date(whenObserved)), style = MaterialTheme.typography.bodySmall)
+            }
             Text("Capabilities in this environment", style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
             Text("Read-only evidence. An advertised or built-in capability does not prove a command succeeded.",
