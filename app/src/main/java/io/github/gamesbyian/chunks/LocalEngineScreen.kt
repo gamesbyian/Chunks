@@ -1616,7 +1616,8 @@ internal fun LocalEngineScreen(
                                 // the read-only exact-hash observation; never replay Remove.
                                 val acknowledged = try {
                                     engine?.removeKeepingDataIfMatching(
-                                        transfer.infoHash, transfer.name, transfer.savePath
+                                        transfer.infoHash, transfer.name, transfer.savePath,
+                                        transfer.nativeReviewToken
                                     )
                                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                                     throw cancel
@@ -1830,7 +1831,8 @@ internal fun LocalTransferCard(
     // An open confirmation belongs to the identity the user reviewed, not
     // just a hash that may now describe a moved or changed transfer. A stale
     // inventory or another pending action also requires a fresh review.
-    var confirmRemove by remember(transfer.infoHash, transfer.name, transfer.savePath, busy) { mutableStateOf(false) }
+    var confirmRemove by remember(transfer.infoHash, transfer.name, transfer.savePath,
+        transfer.nativeReviewToken, busy) { mutableStateOf(false) }
     var confirmHandoff by remember(transfer.infoHash) { mutableStateOf(false) }
     // Read-only disclosure remains bound to the exact job and Save to location.
     var diagnosticsOpen by rememberSaveable(transfer.infoHash, transfer.name, transfer.savePath) {
