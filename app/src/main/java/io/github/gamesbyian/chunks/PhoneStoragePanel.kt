@@ -32,10 +32,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
@@ -96,6 +98,7 @@ internal fun PhoneStoragePanel(
         mutableStateOf(savedCap?.let(LocalCapInput::formatGiB) ?: "")
     }
     var capMessage by remember(context, downloadRoot) { mutableStateOf<String?>(null) }
+    var advancedStorageOpen by rememberSaveable { mutableStateOf(false) }
     var newNotice by remember(context, downloadRoot) { mutableStateOf<StorageWarning?>(null) }
     var folderUsage by remember(context, readFolder) { mutableStateOf<LocalFolderInventory?>(null) }
     var allocationUsage by remember(context, readAllocated) { mutableStateOf<LocalAllocatedInventory?>(null) }
@@ -178,6 +181,16 @@ internal fun PhoneStoragePanel(
             Text("Logical sizes inside Chunks' downloads folder, including files left after removing a torrent. " +
                 "This is separate from filesystem block allocation and cannot authorize deletion.",
                 style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(
+                onClick = { advancedStorageOpen = !advancedStorageOpen },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        stateDescription = if (advancedStorageOpen) "Expanded" else "Collapsed"
+                    }
+            ) {
+                Text(if (advancedStorageOpen) "Hide advanced phone storage" else "Advanced phone storage")
+            }
+            if (advancedStorageOpen) {
             Text("Observed allocated storage", fontWeight = FontWeight.SemiBold)
             val observed = allocationUsage
             when {
@@ -231,6 +244,7 @@ internal fun PhoneStoragePanel(
                     },
                     modifier = Modifier.heightIn(min = 48.dp)
                 ) { Text("Clear advisory limit") }
+            }
             }
             // The OS sample above is filesDir (internal); app Downloads may be on
             // another mount. Never combine those free bytes with this limit.
