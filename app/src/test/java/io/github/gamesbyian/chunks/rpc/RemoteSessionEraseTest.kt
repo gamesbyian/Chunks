@@ -217,4 +217,40 @@ class RemoteSessionEraseTest {
             } catch (_: IllegalArgumentException) { }
         }
     }
+
+    @Test fun vanishedNameThenReappearedExactHashNeverClaimsOldReviewAbsent() = runBlocking {
+        for (reappears in listOf(false, true)) {
+            val methods = mutableListOf<String>()
+            var hashReads = 0
+            val server = HttpServer.create(
+                InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+            server.createContext("/RPC2") { exchange ->
+                val payload = exchange.requestBody.bufferedReader().use { it.readText() }
+                val method = Regex("<methodName>([^<]+)</methodName>")
+                    .find(payload)?.groupValues?.get(1).orEmpty()
+                methods += method
+                if (method == "d.hash") hashReads++
+                val missing = method == "d.name" ||
+                    (method == "d.hash" && hashReads >= 2 && !reappears)
+                val xml = if (missing) unknownHashFault()
+                else "<methodResponse><params><param>" + value(hash) +
+                    "</param></params></methodResponse>"
+                val bytes = xml.toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            server.start()
+            try {
+                val remote = RTorrentRemote(RemoteCredentials(
+                    "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+                assertEquals(
+                    if (reappears) SessionEraseRecheck.Unavailable else SessionEraseRecheck.Absent,
+                    remote.recheckSessionErase(hash, name, directory)
+                )
+                assertEquals(listOf("d.hash", "d.name", "d.hash"), methods)
+                assertFalse("Read-only recheck must not mutate rTorrent",
+                    methods.contains("d.erase"))
+            } finally { server.stop(0) }
+        }
+    }
 }
