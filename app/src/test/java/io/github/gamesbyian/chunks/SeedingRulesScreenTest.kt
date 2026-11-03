@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
@@ -136,6 +137,20 @@ class SeedingRulesScreenTest {
         rule.onNodeWithText("Showing 1 of 2 environment defaults").assertExists()
         rule.onNodeWithText("Using your saved preference", substring = true).assertExists()
         assertEquals(1, store.load().defaults.size)
+    }
+
+    @Test fun searchRemainsClearableWhenAnEnvironmentDisappears() {
+        val available = mutableStateOf(environments)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                SeedingRulesScreen(available.value) {}
+            } }
+        }
+        rule.onNodeWithText("Review defaults", substring = true).performClick()
+        field("Find environment defaults").performScrollTo().performTextReplacement("no-such-environment")
+        rule.runOnIdle { available.value = listOf(SeedingEnvironment.phone()) }
+        field("Find environment defaults").performScrollTo().performTextReplacement("")
+        rule.onNodeWithText("Affects future phone transfers", substring = true).assertExists()
     }
 
     @Test fun ambiguousUnitsBlockSavingAndDeleteNeedsConfirmation() {

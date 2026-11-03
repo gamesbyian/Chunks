@@ -204,7 +204,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 }
                 if (defaultsOpen) {
                     Text("Defaults", style = MaterialTheme.typography.titleMedium)
-                    if (environments.size > 1) ClearableTransferSearchField(
+                    if (environments.size > 1 || defaultEnvironmentSearch.isNotBlank()) ClearableTransferSearchField(
                         value = defaultEnvironmentSearch,
                         onValueChange = { defaultEnvironmentSearch = it },
                         label = "Find environment defaults"
