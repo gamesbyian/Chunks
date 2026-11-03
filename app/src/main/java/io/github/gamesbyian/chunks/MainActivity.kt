@@ -1801,7 +1801,7 @@ private fun TransfersScreen(
                 onInspect = { onInspect(transfer) },
                 onPreparePhone = { onPreparePhone(transfer) },
                 onCopyToPhone = onCopyToPhone,
-                removalEnvironmentLabel = serverEnvironmentLabel(aliasScope),
+                removalEnvironmentLabel = RemoteVerifiedUiIdentity.removalScopeLabel(aliasScope),
                 moveScope = aliasScope,
                 finishInOrderScope = aliasScope
             )
@@ -1850,7 +1850,7 @@ private fun TransferCard(
     onInspect: () -> Unit,
     onPreparePhone: () -> Unit,
     onCopyToPhone: (String) -> Unit,
-    removalEnvironmentLabel: String,
+    removalEnvironmentLabel: String?,
     /** Authenticated endpoint + account scope, or null when ambiguous. */
     moveScope: String? = null,
     /** Authenticated endpoint + account scope for Finish in Order; null when ambiguous. */

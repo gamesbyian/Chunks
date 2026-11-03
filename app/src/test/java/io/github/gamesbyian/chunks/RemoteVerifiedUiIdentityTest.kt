@@ -42,4 +42,19 @@ class RemoteVerifiedUiIdentityTest {
         assertFalse(RemoteVerifiedUiIdentity.aliasScopeOf(first) ==
             RemoteVerifiedUiIdentity.aliasScopeOf(second))
     }
+
+    @Test fun removalLabelPreservesAccountWhitespaceAndLongInstancePathWithoutSecrets() {
+        val prefix = "https://box.example/" + "x".repeat(200)
+        val first = requireNotNull(RemoteVerifiedUiIdentity.removalScopeLabel("$prefix/one\u0000 alice "))
+        val second = requireNotNull(RemoteVerifiedUiIdentity.removalScopeLabel("$prefix/two\u0000alice"))
+        assertTrue(first.contains("$prefix/one"))
+        assertTrue(second.contains("$prefix/two"))
+        assertTrue(first.contains("\\u0020alice\\u0020"))
+        assertFalse(first == second)
+        // The production transport refuses embedded credentials and queries;
+        // a malformed scope must not render a token or password in the UI.
+        val unsafe = RemoteVerifiedUiIdentity.removalScopeLabel(
+            "https://box.example/RPC2?token=secret\u0000alice")
+        assertEquals(null, unsafe)
+    }
 }

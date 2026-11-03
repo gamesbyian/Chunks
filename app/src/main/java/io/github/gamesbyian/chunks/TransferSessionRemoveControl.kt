@@ -60,7 +60,7 @@ fun TransferSessionRemoveControl(
     onSettled: () -> Unit,
     performErase: suspend (String, String, String) -> SessionEraseOutcome = remote::eraseFromSession,
     recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase,
-    environmentLabel: String = "rTorrent"
+    environmentLabel: String? = "rTorrent"
 ) {
     val validHash = remember(remote, transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
     var confirming by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory, environmentLabel) {
@@ -93,10 +93,13 @@ fun TransferSessionRemoveControl(
         if (!attempted && !confirming) {
             ActionTile("Remove from rTorrent…", ChunksColors.Orange,
                 onClick = { confirming = true },
-                enabled = mainView && !snapshotStale && !pending && !checking,
+                enabled = environmentLabel != null && mainView && !snapshotStale && !pending && !checking,
                 modifier = Modifier.fillMaxWidth(),
                 icon = R.drawable.chunks_ic_remove, stacked = false)
-            if (!mainView) {
+            if (environmentLabel == null) {
+                Text("The server account could not be identified. Reconnect before removing a transfer.",
+                    style = MaterialTheme.typography.bodySmall)
+            } else if (!mainView) {
                 Text("Switch to the main server view before removing a transfer.",
                     style = MaterialTheme.typography.bodySmall)
             } else if (snapshotStale) {
@@ -113,7 +116,7 @@ fun TransferSessionRemoveControl(
                     Text("Confirm removal from rTorrent",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold)
-                    Text(environmentLabel, style = MaterialTheme.typography.bodySmall)
+                    Text(environmentLabel.orEmpty(), style = MaterialTheme.typography.bodySmall)
                     Text(transfer.name, style = MaterialTheme.typography.bodyMedium)
                     Text("Infohash: " + transfer.hash, style = MaterialTheme.typography.bodySmall)
                     Text("Current directory: " + transfer.directory,
@@ -129,7 +132,7 @@ fun TransferSessionRemoveControl(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                if (mainView && !snapshotStale && !pending && !checking &&
+                                if (environmentLabel != null && mainView && !snapshotStale && !pending && !checking &&
                                     onMutationStarted()) {
                                     confirming = false
                                     attempted = true
@@ -161,7 +164,7 @@ fun TransferSessionRemoveControl(
                                     feedback = "No Remove command was sent. Refresh and try again after the current command settles."
                                 }
                             },
-                            enabled = !pending && mainView && !snapshotStale,
+                            enabled = environmentLabel != null && !pending && mainView && !snapshotStale,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)

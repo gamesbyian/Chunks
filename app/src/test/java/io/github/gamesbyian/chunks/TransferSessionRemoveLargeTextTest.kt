@@ -151,6 +151,32 @@ class TransferSessionRemoveLargeTextTest {
         assertEquals(0, mutations)
     }
 
+    @Test fun scopeLabelChangeDoesNotClearAnUncertainRemovalLock() {
+        var label by mutableStateOf("First account")
+        var eraseCalls = 0
+        rule.setContent {
+            ChunksTheme { Surface {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    TransferSessionRemoveControl(
+                        remote, transfer, snapshotStale = false, mainView = true,
+                        onMutationStarted = { true }, onSettled = {}, environmentLabel = label,
+                        performErase = { _, _, _ ->
+                            eraseCalls++
+                            SessionEraseOutcome.Uncertain(transfer.hash)
+                        }
+                    )
+                }
+            } }
+        }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.runOnIdle { label = "Changed display label" }
+        rule.onNodeWithText("Remove from rTorrent…").assertDoesNotExist()
+        rule.onNodeWithText("Check current session (read-only)").assertExists()
+        assertEquals(1, eraseCalls)
+    }
+
     @Test fun absentAfterUncertainRemovalNeverOffersAnotherDelete() {
         var eraseCalls = 0
         rule.setContent {
