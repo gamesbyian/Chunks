@@ -102,7 +102,10 @@ def cost_report(runs: list[dict]) -> dict:
             if job_id in seen_jobs:
                 raise ValueError(f"Duplicate job {job_id} on run {run_id}")
             seen_jobs.add(job_id)
-            duration = minutes(job.get("started_at"), job.get("completed_at"))
+            # GitHub sometimes gives skipped jobs inverted timestamps (e.g.
+            # 05:34:23 start / 05:34:14 completion). No runner was allocated.
+            duration = (0.0 if job.get("conclusion") == "skipped" else
+                        minutes(job.get("started_at"), job.get("completed_at")))
             if duration == 0 and job.get("conclusion") not in ("skipped", "cancelled", None):
                 if job.get("started_at") is None:
                     raise ValueError(f"Missing timing for executed job {job_id}")
