@@ -36,6 +36,7 @@ class TransferCollectionEditorInstrumentedTest {
                 }
             }
             rule.onNodeWithText("Edit collections").performClick()
+            rule.onNodeWithText("Choose existing collection", substring = true).performClick()
             rule.onNodeWithText("Add to Star Trek").performClick()
             rule.waitForIdle()
             assertEquals(listOf("Star Trek"), TransferCollectionStore(context).forTransfer(scope, hash))

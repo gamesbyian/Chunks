@@ -14,9 +14,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.CollectionMembershipRules
@@ -52,8 +55,9 @@ internal fun TransferCollectionEditor(
     availableCollections: List<String> = emptyList(),
     onMembershipChanged: () -> Unit
 ) {
-    var expanded by remember(scope, infoHash) { mutableStateOf(false) }
-    var draft by remember(scope, infoHash) { mutableStateOf("") }
+    var expanded by rememberSaveable(scope, infoHash) { mutableStateOf(false) }
+    var draft by rememberSaveable(scope, infoHash) { mutableStateOf("") }
+    var showExisting by rememberSaveable(scope, infoHash) { mutableStateOf(false) }
     var memberships by remember(scope, infoHash) {
         mutableStateOf(store.forTransfer(scope, infoHash))
     }
@@ -84,8 +88,19 @@ internal fun TransferCollectionEditor(
                 )
                 val choices = CollectionChoicePlanner.unassigned(availableCollections, memberships)
                 if (choices.isNotEmpty()) {
-                    Text("Add an existing collection", style = MaterialTheme.typography.bodyMedium)
-                    for (name in choices) {
+                    OutlinedButton(
+                        onClick = { showExisting = !showExisting },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .semantics {
+                                stateDescription = if (showExisting) "Expanded" else "Collapsed"
+                            }
+                    ) {
+                        Text(if (showExisting) "Hide existing collections"
+                            else "Choose existing collection (${choices.size})")
+                    }
+                    if (showExisting) {
+                        Text("Add an existing collection", style = MaterialTheme.typography.bodyMedium)
+                        for (name in choices) {
                         OutlinedButton(
                             onClick = {
                                 if (store.add(scope, infoHash, name)) {
@@ -99,6 +114,7 @@ internal fun TransferCollectionEditor(
                             enabled = memberships.size < CollectionMembershipRules.MAX_PER_TRANSFER,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         ) { Text("Add to $name") }
+                        }
                     }
                 }
                 OutlinedTextField(

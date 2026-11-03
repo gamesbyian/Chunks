@@ -40,6 +40,10 @@ class ConnectionDiagnosticsPanelInstrumentedTest {
                     loading = false, onCancel = {})
             }
         }
+        rule.onNodeWithText("• Paste the full address.").assertExists()
+        rule.onNodeWithText("• Common direct SCGI (/RPC2): No rTorrent gateway here (HTTP 404)")
+            .assertDoesNotExist()
+        rule.onNodeWithText("What Chunks tried (1)").performClick()
         rule.onNodeWithText("• Common direct SCGI (/RPC2): No rTorrent gateway here (HTTP 404)").assertExists()
         rule.onNodeWithText("• Paste the full address.").assertExists()
         rule.onNodeWithText("Cancel connection check").assertDoesNotExist()
