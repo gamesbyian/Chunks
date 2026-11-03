@@ -22,6 +22,7 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -471,11 +472,11 @@ class LocalEngineScreenInstrumentedTest {
         rule.onNodeWithText("Previous page").assertIsNotEnabled()
         rule.onNodeWithText("Next page").performClick()
         rule.onNodeWithText("Files page 2 of 3 (85 matching files)").assertExists()
-        rule.onNodeWithText("File 040.txt").performScrollTo().performClick()
+        rule.onNodeWithTag("local-file-toggle-40").performScrollTo().performClick()
         rule.onNodeWithText("File 080.txt").assertDoesNotExist()
         rule.onNodeWithText("Next page").performScrollTo().performClick()
         rule.onNodeWithText("Files page 3 of 3 (85 matching files)").assertExists()
-        rule.onNodeWithText("File 084.txt").performScrollTo().performClick()
+        rule.onNodeWithTag("local-file-toggle-84").performScrollTo().performClick()
         rule.onNodeWithText("Next page").performScrollTo().assertIsNotEnabled()
         assertEquals(listOf(40 to false, 84 to false), selected)
         // The filtered row still carries original file index 84.
@@ -483,7 +484,7 @@ class LocalEngineScreenInstrumentedTest {
             .performTextReplacement("File 084.txt")
         rule.onNodeWithText("Showing 1 of 85 file paths · filtered").assertExists()
         rule.onNodeWithText("File 040.txt").assertDoesNotExist()
-        rule.onNodeWithText("File 084.txt").performScrollTo().performClick()
+        rule.onNodeWithTag("local-file-toggle-84").performScrollTo().performClick()
         assertEquals(listOf(40 to false, 84 to false, 84 to false), selected)
     }
 
