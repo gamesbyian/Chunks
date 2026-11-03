@@ -792,8 +792,11 @@ internal fun CombinedTransfersScreen(
                 Text((if (showingViewOptions) "Hide" else "Choose") +
                     " environments & filters · $scopeName · $filterName")
             }
+            // Search has its own clear affordance; do not insert a second button
+            // above the text field as the user types and shift its focus/position.
             if (!showingViewOptions && result.transfers.isNotEmpty() &&
-                CombinedViewPreferences.narrowingActive(query)) {
+                (query.filter != UnifiedTransferFilter.ALL ||
+                    query.scope != EnvironmentViewScope.All)) {
                 OutlinedButton(onClick = { update(CombinedViewPreferences.showAll(query)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Show all transfers")
