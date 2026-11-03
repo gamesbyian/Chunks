@@ -346,7 +346,16 @@ internal class MainActivityRealMagnetJourney(
                 if (!publicDiscovery) assertTrue(payload.completedBytes < payload.sizeBytes)
                 click("Back to transfers")
                 refreshAndFind(hash)
-                scroll(preview.name)
+                // Refresh observes the exact server hash asynchronously. Wait
+                // for that read-only inventory projection to settle before
+                // judging the installed card's original metadata name.
+                // Never repeat Add, Start, Stop or any other RPC mutation.
+                rule.waitUntil(30_000) {
+                    runCatching {
+                        scroll(preview.name)
+                        visible(preview.name)
+                    }.getOrDefault(false)
+                }
                 assertTrue("Actual Transfers lost original metadata name", visible(preview.name))
                 assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
                 lifecycle(hash, false)
