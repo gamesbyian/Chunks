@@ -72,6 +72,60 @@ class RunnerCostTests(unittest.TestCase):
         self.assertIsNone(r["details"][0]["job_window_minutes"])
         self.assertEqual(0, r["by_workflow"]["API35"]["runs_with_timed_jobs"])
 
+    def test_head_sha_aggregates_multiple_events_and_no_runner_cancellations(self):
+        same = "a" * 40
+        other = "b" * 40
+        first = run(30, "cancelled", [job(1, 1, 4, "cancelled")])
+        first["head_sha"] = same
+        # Same immutable source can be dispatched again on ready-for-review.
+        second = run(31, "skipped", [job(2, 8, 3, "skipped")])
+        second["head_sha"] = same.upper()
+        third = run(32, "success", [job(3, 2, 5), job(4, 2, 6)])
+        third["head_sha"] = other
+        unattributed = run(33, "cancelled", [])
+        report = cost_report([first, second, third, unattributed])
+        self.assertEqual(10, report["runner_minutes"])
+        self.assertEqual(3, report["cancelled_run_runner_minutes"])
+        self.assertEqual(1, report["runs_without_head_sha"])
+        self.assertEqual([same, other], sorted(report["by_head_sha"]))
+        a = report["by_head_sha"][same]
+        self.assertEqual(2, a["runs"])
+        self.assertEqual([30, 31], a["run_ids"])
+        self.assertEqual(["API35"], a["workflows"])
+        self.assertEqual(1, a["cancelled_runs"])
+        self.assertEqual(1, a["zero_timed_job_runs"])
+        self.assertEqual(3, a["runner_minutes"])
+        self.assertEqual(3, a["cancelled_run_runner_minutes"])
+        self.assertEqual(7, report["by_head_sha"][other]["runner_minutes"])
+        self.assertEqual(0, report["by_head_sha"][other]["zero_timed_job_runs"])
+
+    def test_queue_and_earliest_failing_job_are_timestamp_proxies(self):
+        sample = cost_report([
+            run(50, "failure", [job(1, 2, 4, "failure"), job(2, 1, 5)]),
+            run(51, "cancelled", []),
+            run(52, "success", [job(3, conclusion="skipped")]),
+        ])
+        self.assertEqual(1, sample["details"][0]["queue_minutes"])
+        self.assertEqual(4, sample["details"][0]["first_failed_job_completion_minutes"])
+        self.assertEqual(1, sample["by_workflow"]["API35"]["queue_minutes"])
+        self.assertIsNone(sample["details"][1]["queue_minutes"])
+        self.assertIsNone(sample["details"][1]["first_failed_job_completion_minutes"])
+        self.assertIsNone(sample["details"][2]["queue_minutes"])
+
+    def test_queue_rejects_impossible_pre_dispatch_job_start(self):
+        sample = run(60, "success", [job(1, 1, 4)])
+        sample["created_at"] = stamp(2)
+        with self.assertRaisesRegex(ValueError, "before workflow created_at"):
+            cost_report([sample])
+
+    def test_head_sha_rejects_false_provenance(self):
+        bad = run(35, "success", [job(1, 1, 3)])
+        bad["head_sha"] = "not-a-sha"
+        with self.assertRaisesRegex(ValueError, "Invalid source SHA"):
+            cost_report([bad])
+        missing = run(36, "cancelled", [])
+        self.assertEqual({}, cost_report([missing])["by_head_sha"])
+
     def test_live_api_is_read_only_and_rejects_incomplete_pages(self):
         with patch("tools.ci_runner_cost_report.gh_json") as fetch:
             fetch.return_value = {"total_count": 101, "workflow_runs": []}
