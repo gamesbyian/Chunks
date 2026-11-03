@@ -126,6 +126,61 @@ class RunnerCostTests(unittest.TestCase):
         missing = run(36, "cancelled", [])
         self.assertEqual({}, cost_report([missing])["by_head_sha"])
 
+    def test_step_hotspots_are_from_existing_job_payload_and_hide_labels(self):
+        import json
+
+        one = job(101, 1, 7)
+        one["steps"] = [
+            {"number": 1, "name": "Private server credential in step name",
+             "conclusion": "success", "started_at": stamp(1), "completed_at": stamp(3)},
+            {"number": 2, "name": "Native Android test from installed APK",
+             "conclusion": "success", "started_at": stamp(3), "completed_at": stamp(6)},
+            {"number": 3, "conclusion": "skipped",
+             "started_at": stamp(9), "completed_at": stamp(2)},
+            {"number": 4, "conclusion": "cancelled",
+             "started_at": stamp(6), "completed_at": None},
+        ]
+        two = job(102, 1, 6)  # Old/offline job payload missing step detail.
+        result = cost_report([run(70, "success", [one, two])])
+        self.assertEqual(11, result["runner_minutes"])
+        steps = result["by_workflow_step_activity"]["API35"]
+        self.assertEqual(1, steps["jobs_with_steps"])
+        self.assertEqual(1, steps["jobs_without_steps"])
+        self.assertEqual(2, steps["timed_steps"])
+        self.assertEqual(1, steps["skipped_steps"])
+        self.assertEqual(1, steps["incomplete_steps"])
+        self.assertEqual(5, steps["timed_step_minutes"])
+        self.assertEqual([
+            {"run_id": 70, "job_id": 101, "step_number": 2, "minutes": 3},
+            {"run_id": 70, "job_id": 101, "step_number": 1, "minutes": 2},
+        ], steps["hotspots"])
+        self.assertNotIn("Private server credential", json.dumps(result))
+        self.assertNotIn("Native Android test from installed APK", json.dumps(result))
+
+    def test_step_negative_controls_and_unknown_coverage(self):
+        missing = job(101, 1, 4)
+        self.assertEqual(1, cost_report([run(75, "success", [missing])])[
+            "by_workflow_step_activity"]["API35"]["jobs_without_steps"])
+        skipped = job(110, 7, 1, conclusion="skipped")
+        self.assertEqual({}, cost_report([run(76, "skipped", [skipped])])[
+            "by_workflow_step_activity"])
+        for bad_steps, error in [
+            ("malformed", "Invalid steps"),
+            ([None], "Invalid step"),
+            ([{"number": "1", "conclusion": "success",
+               "started_at": stamp(1), "completed_at": stamp(2)}], "Missing step number"),
+            ([{"number": 1, "conclusion": "success",
+               "started_at": stamp(3), "completed_at": stamp(2)}], "Negative job duration"),
+            ([{"number": 1, "conclusion": "success",
+               "started_at": stamp(1), "completed_at": stamp(2)},
+              {"number": 1, "conclusion": "success",
+               "started_at": stamp(2), "completed_at": stamp(3)}], "Duplicate step number"),
+        ]:
+            checked = job(111, 1, 5)
+            checked["steps"] = bad_steps
+            with self.subTest(error=error), self.assertRaisesRegex(ValueError, error):
+                cost_report([run(77, "success", [checked])])
+
     def test_live_api_is_read_only_and_rejects_incomplete_pages(self):
         with patch("tools.ci_runner_cost_report.gh_json") as fetch:
             fetch.return_value = {"total_count": 101, "workflow_runs": []}
