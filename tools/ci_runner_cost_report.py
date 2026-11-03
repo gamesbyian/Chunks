@@ -8,6 +8,8 @@ The REST data is the source; durations are measured, not predicted or billed min
 GitHub head_sha groups may include draft, ready and retry events; not one dispatch.
 On pull_request, head_sha need not be the actual GITHUB_SHA merge checkout.
 Queue and first-failing-job times are observed proxies, not proof of human-actionable feedback.
+Step hotspots use GitHub step numbers rather than names to avoid leaking dynamic/secret labels.
+Missing/incomplete step data is reported as unknown; it is never interpreted as zero time.
 """
 from __future__ import annotations
 
@@ -85,6 +87,11 @@ def cost_report(runs: list[dict]) -> dict:
         "runs_with_timed_jobs": 0, "jobs": 0,
     })
     rows = []
+    step_by_workflow = defaultdict(lambda: {
+        "jobs_with_steps": 0, "jobs_without_steps": 0,
+        "timed_steps": 0, "incomplete_steps": 0, "skipped_steps": 0,
+        "timed_step_minutes": 0.0, "hotspots": [],
+    })
     by_head_sha = {}
     unattributed_runs = 0
     for run in runs:
@@ -119,6 +126,42 @@ def cost_report(runs: list[dict]) -> dict:
                 if job.get("started_at") is None:
                     raise ValueError(f"Missing timing for executed job {job_id}")
             total += duration
+            # Steps are included in the existing jobs REST response. Never issue
+            # an additional Actions query or emit raw step labels/commands.
+            if job.get("conclusion") != "skipped" and job.get("started_at") and job.get("completed_at"):
+                activity = step_by_workflow[name]
+                steps = job.get("steps")
+                if steps is None:
+                    activity["jobs_without_steps"] += 1
+                elif not isinstance(steps, list):
+                    raise ValueError(f"Invalid steps on job {job_id}")
+                else:
+                    activity["jobs_with_steps"] += 1
+                    seen_step_numbers = set()
+                    for step in steps:
+                        if not isinstance(step, dict):
+                            raise ValueError(f"Invalid step on job {job_id}")
+                        if step.get("conclusion") == "skipped":
+                            # GitHub can return inverted times for skipped steps.
+                            activity["skipped_steps"] += 1
+                            continue
+                        begin, end = step.get("started_at"), step.get("completed_at")
+                        if not begin or not end:
+                            activity["incomplete_steps"] += 1
+                            continue
+                        number = step.get("number")
+                        if type(number) is not int or number < 1:
+                            raise ValueError(f"Missing step number on job {job_id}")
+                        if number in seen_step_numbers:
+                            raise ValueError(f"Duplicate step number on job {job_id}")
+                        seen_step_numbers.add(number)
+                        elapsed = minutes(begin, end)
+                        activity["timed_step_minutes"] += elapsed
+                        activity["timed_steps"] += 1
+                        activity["hotspots"].append({
+                            "run_id": run_id, "job_id": job_id,
+                            "step_number": number, "minutes": round(elapsed, 3),
+                        })
             if job.get("conclusion") != "skipped" and job.get("started_at") and job.get("completed_at"):
                 timed_starts.append(instant(job["started_at"]))
                 timed_ends.append(instant(job["completed_at"]))
@@ -191,6 +234,17 @@ def cost_report(runs: list[dict]) -> dict:
     for name, values in sorted(by_name.items()):
         groups[name] = {k: round(v, 3) if isinstance(v, float) else v
                         for k, v in values.items()}
+    step_activity = {}
+    for workflow, values in sorted(step_by_workflow.items()):
+        step_activity[workflow] = {
+            **{key: (round(value, 3) if isinstance(value, float) else value)
+               for key, value in values.items() if key != "hotspots"},
+            # Exact step number + job ID makes this reproducible while never
+            # serializing step names, shell commands, URLs, or test output.
+            "hotspots": sorted(values["hotspots"], key=lambda x: (
+                -x["minutes"], x["run_id"], x["job_id"], x["step_number"],
+            ))[:8],
+        }
     revision_groups = {
         sha: {key: (round(value, 3) if isinstance(value, float)
                     else sorted(value) if key == "workflows" else value)
@@ -206,7 +260,8 @@ def cost_report(runs: list[dict]) -> dict:
         "cancelled_run_runner_minutes": round(
             sum(x["cancelled_run_runner_minutes"] for x in groups.values()), 3
         ),
-        "by_workflow": groups, "by_head_sha": revision_groups,
+        "by_workflow": groups, "by_workflow_step_activity": step_activity,
+        "by_head_sha": revision_groups,
         "runs_without_head_sha": unattributed_runs,
         "details": sorted(rows, key=lambda x: x["run_id"]),
     }
@@ -248,6 +303,14 @@ def main() -> None:
               f"cancelled_min={item['cancelled_run_runner_minutes']:.2f} "
               f"job_window_min={item['job_window_minutes']:.2f} "
               f"timed_runs={item['runs_with_timed_jobs']}")
+    for workflow, activity in report["by_workflow_step_activity"].items():
+        if activity["hotspots"]:
+            top = activity["hotspots"][0]
+            print(f"step_activity={workflow}: timed_jobs={activity['jobs_with_steps']} "
+                  f"missing_steps_jobs={activity['jobs_without_steps']} "
+                  f"timed_step_min={activity['timed_step_minutes']:.2f} "
+                  f"top=run{top['run_id']}/job{top['job_id']}/step{top['step_number']} "
+                  f"({top['minutes']:.2f}m)")
     for sha, group in report["by_head_sha"].items():
         print(f"head_sha={sha[:12]} runs={group['runs']} "
               f"runner_min={group['runner_minutes']:.2f} "
