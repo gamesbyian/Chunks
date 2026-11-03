@@ -156,6 +156,8 @@ class ShardedNativeAddTests(unittest.TestCase):
             "--require-executed",
             "verify_native_add_shards.py",
             "chunks-native-add-sharded-acceptance",
+            "Native Add installed Android test failure",
+            "if: failure()",
         ):
             with self.subTest(expected=expected):
                 self.assertIn(expected, workflow)

@@ -58,6 +58,24 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(1, options)
     }
 
+    @Test fun atPrimaryPhoneWidthEnlargedTextDoesNotCompressThreeNavigationButtons() {
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                ChunksTheme {
+                    Box(Modifier.width(412.dp)) {
+                        AuthenticatedTransfersFooter(false, {}, {}, {})
+                    }
+                }
+            }
+        }
+        val t = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
+        val a = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val o = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
+        assertTrue("Two primary actions remain on one readable row", t.right < a.left)
+        assertTrue("Advanced navigation receives its own full-width row", o.top >= a.bottom)
+        assertTrue("Options should cover most of the footer at 200% text", o.right - o.left >= 280.dp)
+    }
+
     @Test
     @Config(qualifiers = "w320dp-h700dp-mdpi")
     fun enlargedTypeFooterRetainsAllThreeActions() {
@@ -71,9 +89,17 @@ class AuthenticatedTransfersFooterTest {
                 }
             }
         }
-        rule.onNodeWithText("Transfers").assertExists()
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithContentDescription("Options").assertExists()
+        val transfers = rule.onNodeWithText("Transfers")
+        val add = rule.onNodeWithText("+ Add")
+        val options = rule.onNodeWithContentDescription("Options")
+        val firstRow = transfers.getUnclippedBoundsInRoot()
+        val addRow = add.getUnclippedBoundsInRoot()
+        val secondRow = options.getUnclippedBoundsInRoot()
+        assertTrue("Transfers and Add share the readable first row", firstRow.right < addRow.left)
+        assertTrue("Options moves below at 200% text", secondRow.top >= addRow.bottom)
+        assertTrue("Options remains a full-size target", secondRow.bottom - secondRow.top >= 48.dp)
+        add.performClick()
+        options.performClick()
         assertEquals(1, adds)
     }
 }

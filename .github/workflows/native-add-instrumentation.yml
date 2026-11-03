@@ -121,6 +121,38 @@ jobs:
           python3 tools/ci_failure_digest.py --suite "api35-native-add-shard-$CHUNKS_NATIVE_ADD_SHARD_INDEX" --status "$CHUNKS_JOB_STATUS" --require-executed \
             --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' \
             --output "$RUNNER_TEMP/chunks-native-add-receipt/digest.json"
+      - name: Show bounded safe failing Android testcase identities
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import xml.etree.ElementTree as ET
+          root = Path("app/build/outputs/androidTest-results/connected")
+          count = 0
+          for report in sorted(root.glob("**/TEST-*.xml")):
+              try:
+                  cases = ET.parse(report).getroot().iter("testcase")
+                  for case in cases:
+                      if case.find("failure") is None and case.find("error") is None:
+                          continue
+                      cls = case.get("classname", "")
+                      method = case.get("name", "")
+                      if (re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.$]{0,159}", cls) and
+                              re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]{0,99}", method)):
+                          print(f"::error title=Native Add installed Android test failure::{cls}.{method}")
+                      else:
+                          print("CHUNKS_NATIVE_DIAGNOSTIC: failed_case_identity_redacted")
+                      count += 1
+                      if count >= 8:
+                          break
+              except (OSError, ET.ParseError):
+                  print("CHUNKS_NATIVE_DIAGNOSTIC: invalid_JUnit_report")
+              if count >= 8:
+                  break
+          if count == 0:
+              print("CHUNKS_NATIVE_DIAGNOSTIC: no_safe_failed_test_identity; inspect earliest failed step")
+          PY
       - name: Upload mandatory per-shard test receipts, including failed Android jobs
         if: always()
         uses: actions/upload-artifact@v4

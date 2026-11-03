@@ -803,6 +803,15 @@ internal fun CombinedTransfersScreen(
                     Text("Show all transfers")
                 }
             }
+            if (result.transfers.isNotEmpty() &&
+                (query.filter != UnifiedTransferFilter.ALL ||
+                    query.scope != EnvironmentViewScope.All)) {
+                Text(
+                    "New downloads may be hidden by this view. Show all transfers " +
+                        "clears view filters, not your Add destination.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
         }
         if (showingViewOptions) item {
             Text("Show", style = MaterialTheme.typography.labelLarge)
@@ -831,6 +840,14 @@ internal fun CombinedTransfersScreen(
                 },
                 label = "Search all selected"
             )
+            // The search affordance itself remains in place while typing.
+            // This hint comes AFTER the field so it never displaces its focus.
+            if (query.search.isNotBlank() && result.transfers.isNotEmpty() &&
+                query.filter == UnifiedTransferFilter.ALL &&
+                query.scope == EnvironmentViewScope.All) {
+                Text("New downloads may not match this search. Clear search to see them.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
         }
         if (showingViewOptions) item {
             Text("Filter transfers", style = MaterialTheme.typography.labelLarge)
