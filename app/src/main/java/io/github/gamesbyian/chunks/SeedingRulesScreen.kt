@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +61,8 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
     var editing by remember { mutableStateOf<SeedingRule?>(null) }
     var editingDefault by remember { mutableStateOf<SeedingEnvironment?>(null) }
     var pendingDelete by remember { mutableStateOf<String?>(null) }
+    var pendingResetDefault by remember { mutableStateOf<String?>(null) }
+    var ruleSearch by rememberSaveable { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     val labels = environments.associate { it.id to it.label }
 
@@ -111,7 +114,20 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
             else -> {
                 if (snapshot.rules.isEmpty()) Text("No rules yet. Every transfer uses its environment's default below.",
                     style = MaterialTheme.typography.bodyMedium)
-                snapshot.rules.forEachIndexed { position, r ->
+                if (snapshot.rules.isNotEmpty()) {
+                    ClearableTransferSearchField(
+                        value = ruleSearch, onValueChange = { ruleSearch = it },
+                        label = "Find seeding rules"
+                    )
+                }
+                val visibleRules = matchingSeedingRules(snapshot.rules, ruleSearch, labels)
+                if (ruleSearch.isNotBlank()) {
+                    Text("Showing ${visibleRules.size} of ${snapshot.rules.size} saved rules",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (visibleRules.isEmpty()) Text("No rules match this search. Saved rules are unchanged.",
+                        style = MaterialTheme.typography.bodySmall)
+                }
+                visibleRules.forEachIndexed { position, r ->
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("${position + 1}. ${r.name}", fontWeight = FontWeight.Bold)
@@ -136,6 +152,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 }
                 ActionTile("New rule", ChunksColors.Green, {
                     message = null
+                    ruleSearch = ""
                     editing = SeedingRule(java.util.UUID.randomUUID().toString(), SeedingRule.suggestedName(emptySet(), SeedingPolicy()),
                         false, emptySet(), policy = SeedingPolicy(), environments = environments.map { it.id }.toSet(),
                         knownEnvironments = environments.map { it.id }.toSet())
@@ -146,15 +163,56 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                         EnvironmentBadge(env.label, env.server, environment = env.id.removePrefix("remote:")
                             .takeIf { TransferListSortStore.validEnvironment(it) }
                             ?.let { io.github.gamesbyian.chunks.model.EnvironmentId(it) })
-                        Text((snapshot.defaults[env.id] ?: SeedingPolicy()).describe(), style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(onClick = { editingDefault = env; message = null },
-                            modifier = Modifier.heightIn(min = 48.dp)) { Text("Edit default") }
+                        val explicitDefault = snapshot.defaults[env.id]
+                        Text((if (explicitDefault == null) "Automatic default" else "Using your saved preference") +
+                            " · " + (explicitDefault ?: SeedingPolicy()).describe(),
+                            style = MaterialTheme.typography.bodySmall)
+                        Text(if (env.server) "Saved here for later remote support; this server is not being changed."
+                            else "Affects future phone transfers, not existing downloads.",
+                            style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = {
+                            editingDefault = env; pendingResetDefault = null; message = null
+                        }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Change default") }
+                        if (explicitDefault != null) {
+                            if (pendingResetDefault == env.id) {
+                                Text("Restore the automatic default for ${env.label}? Existing transfers stay unchanged.",
+                                    style = MaterialTheme.typography.bodySmall)
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(onClick = {
+                                        pendingResetDefault = null
+                                        persist(snapshot.copy(defaults = snapshot.defaults - env.id))
+                                    }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                        Text("Confirm reset")
+                                    }
+                                    OutlinedButton(onClick = { pendingResetDefault = null },
+                                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                        Text("Keep default")
+                                    }
+                                }
+                            } else OutlinedButton(onClick = { pendingResetDefault = env.id },
+                                modifier = Modifier.heightIn(min = 48.dp)) {
+                                Text("Reset to automatic")
+                            }
+                        }
                     }
                 }
             }
         }
         message?.let { Text(it) }
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Back") }
+    }
+}
+
+/** Search is read-only; never updates rule scopes or persisted policies. */
+internal fun matchingSeedingRules(
+    rules: List<SeedingRule>, query: String, labels: Map<String, String>
+): List<SeedingRule> {
+    val needle = query.trim()
+    if (needle.isEmpty()) return rules
+    return rules.filter { rule ->
+        rule.name.contains(needle, ignoreCase = true) ||
+            rule.trackerDomains.any { it.contains(needle, ignoreCase = true) } ||
+            rule.environments.any { labels[it]?.contains(needle, ignoreCase = true) == true }
     }
 }
 
