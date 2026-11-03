@@ -100,7 +100,8 @@ timeout --signal=TERM --kill-after=5s 150s adb wait-for-device || {
 milestone "ADB reconnected; verifying new boot identity"
 after_boot_id=""
 boot_deadline=$((SECONDS + 180))
-while (( SECONDS < boot_deadline )); do
+for _ in $(seq 1 90); do
+  (( SECONDS < boot_deadline )) || break
   complete="$(timeout --signal=TERM --kill-after=2s 8s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" || complete=""
   candidate="$(read_boot_id)" || candidate=""
   if [[ "$complete" == "1" ]] && valid_boot_id "$candidate" && [[ "$candidate" != "$before_boot_id" ]]; then
