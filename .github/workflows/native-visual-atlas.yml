@@ -74,13 +74,25 @@ jobs:
           disable-animations: true
           script: |
             bash tools/native_atlas_capture.sh
-            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest
-            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest
+            # The two independent test classes can run in one AndroidJUnitRunner
+            # session; avoid a second Gradle/UTP install/configuration cycle.
+            gradle --no-daemon :app:connectedDebugAndroidTest \
+              -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest,io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest
+      - name: Require actual executed Android test evidence
+        if: always()
+        env:
+          CHUNKS_JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 tools/ci_failure_digest.py --suite api35-native-visual-atlas --status "$CHUNKS_JOB_STATUS" --require-executed \
+            --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' \
+            --output "$RUNNER_TEMP/chunks-native-atlas/digest.json"
       - name: Upload exact emulator screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: chunks-native-compose-baseline-atlas
-          path: ${{ runner.temp }}/chunks-native-atlas
+          path: |
+            ${{ runner.temp }}/chunks-native-atlas
+            app/build/outputs/androidTest-results/connected/**/TEST-*.xml
           retention-days: 14
           if-no-files-found: warn
