@@ -14,6 +14,7 @@ on:
 
 permissions:
   contents: read
+  actions: read  # Read current cache usage; no cache deletion, no write token
 
 # Keep cache generation and evaluation serial; never cancel a partial write.
 concurrency:
@@ -32,9 +33,25 @@ jobs:
           test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
           test -r /dev/kvm && test -w /dev/kvm
+      # Refuse speculative snapshot work before expensive SDK allocation.
+      - name: Fail early if the cache quota has insufficient headroom
+        if: inputs.mode == 'snapshot'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          used="$(gh api "repos/$GITHUB_REPOSITORY/actions/cache/usage" --jq '.active_caches_size_in_bytes')"
+          [[ "$used" =~ ^[0-9]+$ ]]
+          # Require roughly 3GB of headroom before starting bootstrap.
+          if (( used >= 7000000000 )); then
+            echo '::error title=AVD cache bootstrap refused::Insufficient repository cache headroom under default 10 GB quota'
+            exit 1
+          fi
       # Resolve exact emulator/system-image revisions BEFORE looking up a
       # snapshot. A version change must never silently restore a stale VM.
       - name: Install Android 35 image and derive versioned cache identity
+        if: inputs.mode == 'snapshot'
         id: android-sdk
         shell: bash
         run: |
@@ -87,14 +104,9 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: false
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: |
-            set -euo pipefail
-            test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = 35
-            if adb shell pm list packages | grep -F 'io.github.gamesbyian.chunks'; then
-              echo '::error::App unexpectedly present on pristine AVD'
-              exit 1
-            fi
-            echo 'Clean original system verified; no Chunks installed or launched.'
+          # Upstream splits multiline scripts into independent /bin/sh -c invocations.
+          # Keep checks in a single checked Bash subprocess.
+          script: bash tools/ci_avd_pilot_probe.sh pristine
       - name: Verify snapshot was written and publish cache only after success
         if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
         shell: bash
@@ -115,6 +127,21 @@ jobs:
           [[ "$cache_mib" =~ ^[0-9]+$ ]]
           echo "CHUNKS_AVD_CACHE_MIB=$cache_mib" >> "$GITHUB_ENV"
           echo "Isolated AVD cache footprint (MiB): $cache_mib"
+      - name: Bound final snapshot write against repository quota
+        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          used="$(gh api "repos/$GITHUB_REPOSITORY/actions/cache/usage" --jq '.active_caches_size_in_bytes')"
+          [[ "$used" =~ ^[0-9]+$ ]]
+          [[ "${CHUNKS_AVD_CACHE_MIB:-}" =~ ^[0-9]+$ ]]
+          prospective=$(( used + CHUNKS_AVD_CACHE_MIB * 1048576 ))
+          if (( prospective > 9000000000 )); then
+            echo '::error title=AVD cache write refused::Existing caches plus estimated AVD exceed conservative 9 GB ceiling'
+            exit 1
+          fi
       - name: Save verified clean AVD for a future manual run
         if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
@@ -138,16 +165,23 @@ jobs:
           disable-animations: true
           # Cold mode disables snapshots. Snapshot mode loads the cached clean
           # boot but never saves the possibly modified measurement session.
-          emulator-options: ${{ inputs.mode == 'snapshot' && '-no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' || '-no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' }}
-          script: |
-            set -euo pipefail
-            test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = 35
-            test "$(adb shell getprop ro.product.cpu.abi | tr -d '\r')" = x86_64
-            if adb shell pm list packages | grep -F 'io.github.gamesbyian.chunks'; then
-              echo '::error::App unexpectedly present during AVD-only benchmark'
-              exit 1
-            fi
-            echo 'Android 35 booted; no application/test acceptance attempted.'
+          # Verbose snapshot mode preserves host emulator load/fallback events
+          # in the Actions log. Only a successful load, not a cache hit, counts.
+          emulator-options: ${{ inputs.mode == 'snapshot' && '-verbose -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' || '-no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' }}
+          script: bash tools/ci_avd_pilot_probe.sh measure
+      - name: Read installed SDK revisions for cold-mode provenance
+        if: inputs.mode == 'cold'
+        shell: bash
+        run: |
+          set -euo pipefail
+          emulator_meta="$ANDROID_HOME/emulator/source.properties"
+          image_meta="$ANDROID_HOME/system-images/android-35/google_apis/x86_64/source.properties"
+          test -s "$emulator_meta" && test -s "$image_meta"
+          em="$(sed -n 's/^Pkg.Revision=//p' "$emulator_meta" | head -1)"
+          img="$(sed -n 's/^Pkg.Revision=//p' "$image_meta" | head -1)"
+          [[ "$em" =~ ^[0-9]+([.][0-9]+)*$ ]]
+          [[ "$img" =~ ^[0-9]+([.][0-9]+)*$ ]]
+          printf 'CHUNKS_COLD_EMULATOR_REV=%s\nCHUNKS_COLD_IMAGE_REV=%s\n' "$em" "$img" >> "$GITHUB_ENV"
       - name: Print bounded comparison receipt
         if: always()
         env:
@@ -164,8 +198,8 @@ jobs:
             echo "- Mode: $CHUNKS_MODE"
             echo "- Cache hit: ${CHUNKS_CACHE_HIT:-not applicable}"
             echo "- Restored/generated AVD directory (MiB): ${CHUNKS_AVD_CACHE_MIB:-not applicable}"
-            echo "- System image: API35 google_apis x86_64 revision ${CHUNKS_IMAGE_REV:-unknown}"
-            echo "- Emulator revision: ${CHUNKS_EMULATOR_REV:-unknown}"
+            echo "- System image: API35 google_apis x86_64 revision ${CHUNKS_COLD_IMAGE_REV:-${CHUNKS_IMAGE_REV:-unknown}}"
+            echo "- Emulator revision: ${CHUNKS_COLD_EMULATOR_REV:-${CHUNKS_EMULATOR_REV:-unknown}}"
             echo "- Source checkout: $GITHUB_SHA"
             if [[ "${CHUNKS_AVD_PROBE_START_MS:-}" =~ ^[0-9]+$ ]]; then
               elapsed=$(( $(date +%s%3N) - CHUNKS_AVD_PROBE_START_MS ))
