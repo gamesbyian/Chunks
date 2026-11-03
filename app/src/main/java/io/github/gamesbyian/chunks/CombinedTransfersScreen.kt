@@ -459,6 +459,7 @@ internal fun CombinedTransfersScreen(
     }
     var choosingColours by remember { mutableStateOf(false) }
     var showingSortOptions by rememberSaveable { mutableStateOf(false) }
+    var showingSourceStatus by rememberSaveable { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
     fun openFor(key: UnifiedTransferKey): (() -> Unit)? =
         if (key.environment == EnvironmentSnapshots.PHONE || (serverId != null && key.environment == serverId))
@@ -719,9 +720,6 @@ internal fun CombinedTransfersScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
             CombinedTransfersHeader(onBack)
-            Text("Browse downloads together. Choose the destination explicitly when adding; " +
-                "other controls open the download's own list.",
-                style = MaterialTheme.typography.bodySmall)
         }
         item {
             CombinedAddActions(
@@ -863,7 +861,15 @@ internal fun CombinedTransfersScreen(
         }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                result.sources.forEach { source ->
+                if (result.sources.size > 1 || result.hasIncompleteOrStaleSource ||
+                    listings.values.any { it.error != null || it.loading }) {
+                    OutlinedButton(
+                        onClick = { showingSourceStatus = !showingSourceStatus },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text(if (showingSourceStatus) "Hide environment status"
+                        else "Environment status · ${result.sources.size} sources") }
+                }
+                if (showingSourceStatus) result.sources.forEach { source ->
                     val listing = activeSavedScopes[source.environment]?.let { witness ->
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
                     }
