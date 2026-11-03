@@ -436,7 +436,43 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             session.swig().set_peer_class_filter(filter)
         }
         started = true
-        if (store != null) restore(store)
+        if (store != null) {
+            // Only this newly started native session can complete a stranded
+            // fsynced REMOVE_INTENT. The previous native session no longer
+            // exists, and restore() never reloads pending removal identities.
+            // A same-process transient Remove failure must NOT be treated as
+            // success here: this runs only once on a fresh engine start.
+            restore(store)
+            reconcileColdRemovalIntents(store)
+        }
+    }
+
+    /**
+     * Finalize owner-authorized Remove intents only after the previous native
+     * session is gone and a fresh session has been established. This does not
+     * delete any payload and never retries the original native mutation.
+     * Other restored jobs remain untouched. If fsynced completion fails,
+     * registration stays blocked and the failure remains visible.
+     */
+    private fun reconcileColdRemovalIntents(store: LocalResumeStore) {
+        val problems = restoreProblems.toMutableList()
+        val pending = try { store.pendingRemovals() } catch (_: Exception) {
+            restoreProblems = problems + "Pending Remove state could not be inspected"
+            return
+        }
+        for (hash in pending) {
+            if (handles.containsKey(hash) || retiredNativeHandles.containsKey(hash)) {
+                problems += "Pending Remove still has a native session identity: $hash"
+                continue
+            }
+            try { store.removeCommit(hash) } catch (_: Exception) {
+                problems += "Pending Remove completion requires storage recovery: $hash"
+                // SQLite marks uncertain commits unhealthy until reopened.
+                // Never reinterpret or repeatedly write such a transaction.
+                break
+            }
+        }
+        restoreProblems = problems
     }
 
     /**
