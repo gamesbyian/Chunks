@@ -15,6 +15,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -31,6 +32,12 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class NativeDownloadsMediaStoreIdentityInstrumentedTest {
     @Test fun directCreatedNonMediaDownloadHasExactMediaStoreUriAndUnlaunchedDeleteRequest() {
+        // Never create/clean research files on a physical owner handset or in
+        // the normal installed Add suite. This explicit argument is supplied
+        // only by the dedicated disposable CI emulator workflow.
+        assumeTrue("Disposable emulator research only",
+            InstrumentationRegistry.getArguments()
+                .getString("chunks_disposable_media_store") == "authorized")
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         @Suppress("DEPRECATION")
         val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
@@ -64,7 +71,7 @@ class NativeDownloadsMediaStoreIdentityInstrumentedTest {
                 MediaStore.MediaColumns.OWNER_PACKAGE_NAME,
                 MediaStore.MediaColumns.SIZE)
             var matching: Pair<Long, String?>? = null
-            repeat(12) {
+            for (attempt in 0 until 12) {
                 resolver.query(collection, projection, "${MediaStore.MediaColumns.DISPLAY_NAME}=?",
                     arrayOf(payload.name), null)?.use { cursor ->
                     val idColumn = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
@@ -82,7 +89,7 @@ class NativeDownloadsMediaStoreIdentityInstrumentedTest {
                         }
                     }
                 }
-                if (matching != null) return@repeat
+                if (matching != null) break
                 Thread.sleep(200)
             }
             assertTrue("POSIX-written nonmedia Downloads payload lacks a readable exact MediaStore row",
