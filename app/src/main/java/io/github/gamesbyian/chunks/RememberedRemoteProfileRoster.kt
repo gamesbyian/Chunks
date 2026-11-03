@@ -42,6 +42,11 @@ internal class RememberedRemoteProfileRoster(context: Context) {
             val port = if (uri.port == -1) "" else ":" + uri.port
             (uri.host.orEmpty() + port + uri.rawPath.orEmpty()).take(160)
         } catch (_: Exception) { "rTorrent server" }
+        /** Local presentation label only; never changes a server principal or credentials. */
+        internal fun validFriendlyName(raw: String): Boolean {
+            val value = raw.trim()
+            return value.length in 1..100 && value.none { it.code < 32 || it.code == 127 }
+        }
     }
 
     internal data class Profile(
@@ -177,13 +182,14 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         verifiedAt: Long = System.currentTimeMillis()
     ): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!legacy.rememberingEnabled() || !valid(credentials)) return false
-        val name = preferredLabel?.trim()?.takeIf {
-            it.length in 1..100 && it.none { c -> c.code < 32 || c.code == 127 }
-        } ?: displayName(credentials)
         val id = identity(credentials)
         val current = list().toMutableList()
         if (migrationBlocked) return false
         val existing = current.indexOfFirst { it.id == id }
+        // Keep user-supplied friendly names across future authenticated refreshes.
+        val name = preferredLabel?.trim()?.takeIf { validFriendlyName(it) }
+            ?: current.getOrNull(existing)?.label
+            ?: displayName(credentials)
         if (existing >= 0) current.removeAt(existing)
         else if (current.size >= MAX_PROFILES) return false
         current.add(0, Profile(id, name, credentials, verifiedAt))
@@ -199,6 +205,15 @@ internal class RememberedRemoteProfileRoster(context: Context) {
         synchronized(RemoteCredentialLock.monitor) {
             if (!RemoteCredentialLock.current(ticket)) false else saveVerified(credentials)
         }
+
+    /** Presentation-only rename of an already encrypted and authenticated profile. */
+    fun rename(id: String, newLabel: String): Boolean = synchronized(RemoteCredentialLock.monitor) {
+        val label = newLabel.trim()
+        if (!validId.matches(id) || !validFriendlyName(label)) return false
+        val current = list()
+        if (migrationBlocked || current.none { it.id == id }) return false
+        persist(current.map { if (it.id == id) it.copy(label = label) else it })
+    }
 
     fun forget(id: String): Boolean = synchronized(RemoteCredentialLock.monitor) {
         if (!validId.matches(id)) return false

@@ -572,6 +572,14 @@ private fun ChunksApp(
                     error = null
                     credentialNotice = "Selected saved profile. Connect to authenticate."
                 },
+                onRenameProfile = { profile, displayLabel ->
+                    val saved = withContext(Dispatchers.IO) {
+                        try { profileRoster.rename(profile.id, displayLabel) }
+                        catch (_: Exception) { false }
+                    }
+                    if (saved) savedProfiles = withContext(Dispatchers.IO) { profileRoster.list() }
+                    saved
+                },
                 onForgetProfile = { profile ->
                     if (!loading) {
                         // Revoke pending Connect saves at the moment Forget
@@ -1229,6 +1237,7 @@ private fun ConnectionScreen(
     savedProfiles: List<RememberedRemoteProfileRoster.Profile>, credentialNotice: String?,
     onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
     onSelectProfile: (RememberedRemoteProfileRoster.Profile) -> Unit,
+    onRenameProfile: suspend (RememberedRemoteProfileRoster.Profile, String) -> Boolean,
     onForgetProfile: (RememberedRemoteProfileRoster.Profile) -> Unit,
     onLocalZipReview: () -> Unit,
     onInspectSnapshot: () -> Unit,
@@ -1239,6 +1248,11 @@ private fun ConnectionScreen(
 ) {
     var pendingForget by remember { mutableStateOf<String?>(null) }
     var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
+    var renameProfileId by remember { mutableStateOf<String?>(null) }
+    var renameDraft by remember { mutableStateOf("") }
+    var renameBusy by remember { mutableStateOf(false) }
+    var renameNotice by remember { mutableStateOf<String?>(null) }
+    val renameScope = rememberCoroutineScope()
     // Reuse the exact existing verified Connect operation. No saved password or
     // endpoint is broadcast to an unverified profile, and no torrent mutation
     // occurs merely because the app opened. Consume before invoking the action
@@ -1305,13 +1319,66 @@ private fun ConnectionScreen(
                             }
                         }
                     } else {
-                        OutlinedButton(onClick = { pendingForget = profile.id },
-                            enabled = !loading, modifier = Modifier.heightIn(min = 48.dp)) {
-                            Text("Forget " + profile.label)
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = {
+                                renameProfileId = profile.id
+                                renameDraft = profile.label
+                                renameNotice = null
+                                pendingForget = null
+                            }, enabled = !loading && !renameBusy,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text("Rename")
+                            }
+                            OutlinedButton(onClick = {
+                                pendingForget = profile.id
+                                renameProfileId = null
+                            }, enabled = !loading && !renameBusy,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text("Forget " + profile.label)
+                            }
+                        }
+                    }
+                    if (renameProfileId == profile.id) {
+                        OutlinedTextField(
+                            value = renameDraft, onValueChange = { renameDraft = it },
+                            label = { Text("Friendly name for this server") },
+                            singleLine = true, modifier = Modifier.fillMaxWidth()
+                        )
+                        Text("Only the name shown in Chunks changes. The server, login, torrents and files stay unchanged.",
+                            style = MaterialTheme.typography.bodySmall)
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = {
+                                if (!renameBusy) {
+                                    renameBusy = true
+                                    val targetName = renameDraft
+                                    renameScope.launch {
+                                        val ok = try { onRenameProfile(profile, targetName) }
+                                            catch (_: Exception) { false }
+                                        renameNotice = if (ok) "Friendly name saved." else
+                                            "Could not save this name. Existing profile preserved."
+                                        if (ok) renameProfileId = null
+                                        renameBusy = false
+                                    }
+                                }
+                            }, enabled = !loading && !renameBusy &&
+                                RememberedRemoteProfileRoster.validFriendlyName(renameDraft),
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text(if (renameBusy) "Saving…" else "Save name")
+                            }
+                            OutlinedButton(onClick = { renameProfileId = null },
+                                enabled = !renameBusy,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text("Cancel")
+                            }
                         }
                     }
                 }
             }
+        }
+        if (renameNotice != null) item {
+            Text(renameNotice.orEmpty(), style = MaterialTheme.typography.bodySmall)
         }
         item {
             OutlinedTextField(

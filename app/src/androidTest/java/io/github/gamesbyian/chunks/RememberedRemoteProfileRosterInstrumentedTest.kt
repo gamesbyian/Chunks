@@ -57,6 +57,31 @@ class RememberedRemoteProfileRosterInstrumentedTest {
         } finally { vault.clearAll() }
     }
 
+    @Test fun friendlyNameRemainsEncryptedAndSurvivesAccountReconnect() {
+        val vault = RememberedRemoteProfileRoster(context)
+        vault.clearAll()
+        try {
+            assertTrue(vault.saveVerified(alice, verifiedAt = 5_000L))
+            val initial = vault.list().single()
+            assertTrue(vault.rename(initial.id, "Wood"))
+            val renamed = RememberedRemoteProfileRoster(context).list().single()
+            assertEquals("Wood", renamed.label)
+            assertEquals(initial.id, renamed.id)
+            assertEquals(initial.credentials, renamed.credentials)
+            assertEquals(5_000L, renamed.lastVerifiedAt)
+            assertTrue(vault.saveVerified(alice.copy(password = "new-secret"), verifiedAt = 6_000L))
+            assertEquals("Wood", vault.list().single().label)
+            assertEquals("new-secret", vault.list().single().credentials.password)
+            assertFalse(vault.rename(initial.id, " "))
+            assertFalse(vault.rename(initial.id, "x".repeat(101)))
+            assertFalse(vault.rename("0".repeat(64), "Wrong account"))
+            assertEquals("Wood", vault.list().single().label)
+            val encrypted = context.getSharedPreferences("chunks_remote_profiles_encrypted_v1",
+                Context.MODE_PRIVATE).getString("roster", "").orEmpty()
+            assertFalse(encrypted.contains("Wood"))
+        } finally { vault.clearAll() }
+    }
+
     @Test fun twoInstancesOfOneAccountShowDistinctAddressesAndVerifiedTimes() {
         val vault = RememberedRemoteProfileRoster(context)
         vault.clearAll()

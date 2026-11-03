@@ -12,6 +12,8 @@
 
 The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.md) defines the authority of each document and how agents maintain it. This index is navigation, **not another specification**.
 
+- [73-item UX implementation coverage trace (2026-11-03)](UX-73-CANDIDATE-TRACE-2026-11-03.md): stable candidate numbers, observed source coverage and exact PR references; dated trace only, not a second work queue or acceptance authority.
+
 **Start UX work with [the canonical interaction contract](UX.md)**: shared philosophy and state grammar → navigation/Add/transfers/files/privacy/accessibility journeys → focused feature contracts. The [2026-10-30 UX integration audit](UX-INTEGRATION-AUDIT-2026-10-30.md) records contradictions, migration coverage and overlapping PR reconciliation; it is an audit receipt, not a second UX authority.
 
 ## Agent entry points

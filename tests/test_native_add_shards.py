@@ -120,6 +120,25 @@ class ShardedNativeAddTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "source"):
             self.check()
 
+    def test_expensive_device_suite_waits_for_ready_pr_without_skipping_required_coverage(self):
+        source = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        self.assertIn("types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]", source)
+        self.assertIn("workflow_dispatch:", source)
+        self.assertIn(
+            "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
+            source,
+        )
+        self.assertIn(
+            "if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)",
+            source,
+        )
+        # Keep the same two emulators, JUnit receipts, screenshot evidence and
+        # failed-shard handling once a PR is actually ready for review.
+        self.assertIn("shard: [0, 1]", source)
+        self.assertIn("verify_native_add_shards.py", source)
+        self.assertIn("if-no-files-found: error", source)
+        self.assertNotIn("continue-on-error: true", source)
+
     def test_workflow_has_real_two_shards_and_always_uploads_receipts(self):
         workflow = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
         shell = (ROOT / "tools/native_add_review.sh").read_text()

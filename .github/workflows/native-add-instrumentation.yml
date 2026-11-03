@@ -13,6 +13,10 @@ on:
       - "tools/native_add_review.sh"
       - "tools/verify_native_add_shards.py"
       - ".github/workflows/native-add-instrumentation.yml"
+    # Drafts are implementation batches; run this costly acceptance only when
+    # marked ready, then on every subsequent change. Converting back to draft
+    # cancels obsolete in-flight work through the PR concurrency group.
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
 
 permissions:
@@ -24,6 +28,9 @@ concurrency:
 
 jobs:
   add-review-device-test:
+    # No runner allocation while a PR is draft. workflow_dispatch remains a
+    # manual opt-in diagnostic; ready_for_review initiates real PR-merge checks.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     strategy:
       fail-fast: false
       matrix:
@@ -107,7 +114,9 @@ jobs:
 
   verify-complete-native-add:
     needs: add-review-device-test
-    if: always()
+    # A skipped draft job must not schedule a separate artifact-merge runner.
+    # On ready PRs, always evaluate all shard receipts, even after failures.
+    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
