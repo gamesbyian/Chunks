@@ -1,0 +1,148 @@
+name: Experimental Android native Add build-once instrumentation
+
+# Compare against the proven two-shard Gradle job; never replace it unless
+# real JUnit identities, required screenshots, time and reliability agree.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/native-add-shared-build-experiment.yml'
+      - 'tools/native_add_prebuilt.sh'
+      - 'tools/parse_instrumentation_stream.py'
+      - 'tests/test_instrumentation_stream.py'
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-prebuilt-experiment-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-once:
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove raw instrumentation receipt parser before Android allocation
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_instrumentation_stream.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Compile immutable app/test APK pair only once
+        env:
+          CHUNKS_SOURCE_SHA: ${{ github.sha }}
+        run: |
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+          mkdir -p "$RUNNER_TEMP/chunks-prebuilt"
+          cp app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/chunks-prebuilt/chunks-app.apk"
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk "$RUNNER_TEMP/chunks-prebuilt/chunks-test.apk"
+          printf '%s\n' "$GITHUB_SHA" > "$RUNNER_TEMP/chunks-prebuilt/source-sha"
+          (cd "$RUNNER_TEMP/chunks-prebuilt" && sha256sum *.apk > SHA256SUMS && sha256sum -c SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chunks-prebuilt-experiment-apk-pair
+          path: ${{ runner.temp }}/chunks-prebuilt/
+          if-no-files-found: error
+          retention-days: 1
+
+  prebuilt-device-shards:
+    needs: build-once
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1]
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    env:
+      CHUNKS_NATIVE_ADD_SHARD_COUNT: "2"
+      CHUNKS_NATIVE_ADD_SHARD_INDEX: ${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: chunks-prebuilt-experiment-apk-pair
+          path: ${{ runner.temp }}/chunks-prebuilt
+      - name: Reject stale SHA or changed app/test APK bytes
+        run: |
+          test "$(cat "$RUNNER_TEMP/chunks-prebuilt/source-sha")" = "$GITHUB_SHA"
+          (cd "$RUNNER_TEMP/chunks-prebuilt" && sha256sum -c SHA256SUMS)
+      - name: Reclaim unrelated toolchains before emulator allocation
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+      - name: Enable Android emulator KVM
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+      - name: Run the same complete shards from installed prebuilt APKs
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/native_add_prebuilt.sh
+      - name: Emit source-bound per-test JUnit evidence
+        if: always()
+        env:
+          CHUNKS_JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 tools/ci_failure_digest.py --suite "api35-native-add-shard-$CHUNKS_NATIVE_ADD_SHARD_INDEX" --status "$CHUNKS_JOB_STATUS" --require-executed \
+            --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' \
+            --output "$RUNNER_TEMP/chunks-native-add-receipt/digest.json"
+      - name: Retain mandatory per-shard receipts, including failed experiments
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-native-add-receipt-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/chunks-native-add-receipt/digest.json
+          if-no-files-found: error
+          retention-days: 3
+      - name: Retain actual emulator screenshots when captured
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-native-add-atlas-shard-${{ matrix.shard }}
+          path: ${{ runner.temp }}/chunks-add-native-review/*.png
+          if-no-files-found: warn
+          retention-days: 3
+
+  compare-full-evidence:
+    needs: prebuilt-device-shards
+    if: always() && (github.event_name != 'pull_request' || !github.event.pull_request.draft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: chunks-native-add-*
+          path: ${{ runner.temp }}/chunks-native-add-shards
+      - name: Require accepted JUnit coverage and 24 real Android screenshots
+        run: |
+          python3 tools/verify_native_add_shards.py --artifacts "$RUNNER_TEMP/chunks-native-add-shards" \
+            --shards 2 --sha "$GITHUB_SHA"
+      - name: Publish exact result only when all evidence passed
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-prebuilt-experiment-sharded-acceptance
+          path: ${{ runner.temp }}/chunks-native-add-shards/native-add-acceptance.json
+          retention-days: 3
+          if-no-files-found: error
