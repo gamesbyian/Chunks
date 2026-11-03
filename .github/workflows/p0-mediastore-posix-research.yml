@@ -57,6 +57,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chunks-p0-mediastore-posix-junit
-          path: ${{ runner.temp }}/chunks-mediastore-posix/TEST-mediastore-posix.xml
+          path: |
+            ${{ runner.temp }}/chunks-mediastore-posix/TEST-mediastore-posix.xml
+            ${{ runner.temp }}/chunks-mediastore-posix/raw.txt
           retention-days: 7
           if-no-files-found: warn
