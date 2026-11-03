@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,6 +70,11 @@ private fun RemoteFilePriorityToggle(
     OutlinedButton(onClick = onToggle, enabled = actionEnabled,
         modifier = modifier.heightIn(min = 48.dp).semantics {
             contentDescription = "$actionName for file ${index + 1}: ${file.path}"
+            stateDescription = when {
+                !actionEnabled -> "Unavailable until the current server view permits priority changes"
+                expanded -> "Expanded"
+                else -> "Collapsed"
+            }
         }) {
         Text(if (expanded) "Close" else "Priority")
     }

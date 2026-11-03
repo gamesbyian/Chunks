@@ -50,6 +50,11 @@ class LocalTransferCardDisclosureTest {
         rule.onNodeWithText("Stop").assertExists()
         rule.onNodeWithText("Remove…").assertExists()
         rule.onNodeWithText("Files").assertExists()
+        rule.onNodeWithContentDescription("Stop Public.Sample.mkv on this phone").assertExists()
+        rule.onNodeWithContentDescription(
+            "Remove transfer Public.Sample.mkv from this phone").assertExists()
+        rule.onNodeWithContentDescription(
+            "Show files for Public.Sample.mkv on this phone").assertExists()
         rule.onNodeWithText("Network payload counter", substring = true).assertDoesNotExist()
         rule.onNodeWithContentDescription(
             "More details for Public.Sample.mkv on this phone").performClick()
@@ -58,5 +63,33 @@ class LocalTransferCardDisclosureTest {
             "Hide diagnostics for Public.Sample.mkv on this phone").performClick()
         rule.onNodeWithText("Network payload counter", substring = true).assertDoesNotExist()
         assertEquals("Expanding must not submit Start, Stop, Remove, or Files", 0, mutations)
+    }
+
+    @Test fun stoppedPhoneTransferAnnouncesStartAndExactLocalTarget() {
+        val transfer = LocalTransferStatus(
+            infoHash = "b".repeat(40),
+            name = "Other.Sample.mkv",
+            state = LocalTransferState.UNKNOWN,
+            stopped = true,
+            progressPpm = 100_000,
+            wantedBytes = 1000,
+            doneBytes = 100,
+            payloadDownloadedBytes = 100,
+            payloadUploadedBytes = 0,
+            peers = 0,
+            savePath = "/local",
+            error = null
+        )
+        var writes = 0
+        rule.setContent {
+            ChunksTheme { Surface {
+                LocalTransferCard(transfer, busy = false,
+                    onToggle = { writes++ }, onRemove = { writes++ })
+            } }
+        }
+        rule.onNodeWithContentDescription("Start Other.Sample.mkv on this phone").assertExists()
+        rule.onNodeWithContentDescription(
+            "Remove transfer Other.Sample.mkv from this phone").assertExists()
+        assertEquals("Reading exact accessible action labels cannot change transfer state", 0, writes)
     }
 }

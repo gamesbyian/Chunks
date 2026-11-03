@@ -221,6 +221,9 @@ class CombinedTransfersScreenTest {
         show()
         rule.onNodeWithText("Search all selected").performTextInput("not-in-any-transfer")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
+        revealText("New downloads may not match this search.")
+        rule.onNodeWithText("New downloads may not match this search.", substring = true)
+            .assertExists()
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").performClick()
         rule.onNodeWithText("Showing 2", substring = true).assertExists()
@@ -238,6 +241,24 @@ class CombinedTransfersScreenTest {
         assertEquals(UnifiedSortKey.SIZE, recovered.sortKey)
         assertEquals(UnifiedSortDirection.ASCENDING, recovered.direction)
         assertTrue("View-only recovery must not issue Start/Stop", commands.isEmpty())
+    }
+
+    @Test fun entirelyHiddenFilteredSearchExplainsWhyAddMayNotAppear() {
+        show()
+        revealText("Choose environments & filters")
+        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        revealText("Stopped")
+        rule.onNodeWithText("Stopped").performClick()
+        revealText("Search all selected")
+        rule.onNodeWithText("Search all selected").performTextInput("Big Archive")
+        rule.onNodeWithText("Showing 0", substring = true).assertExists()
+        revealText("New downloads may be hidden by this view.")
+        rule.onNodeWithText("New downloads may be hidden by this view.", substring = true)
+            .assertExists()
+        revealText("Show all transfers")
+        rule.onNodeWithText("Show all transfers").performClick()
+        rule.onNodeWithText("Showing 2", substring = true).assertExists()
+        assertTrue("Recovering an empty view never starts or stops anything", commands.isEmpty())
     }
 
     @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {

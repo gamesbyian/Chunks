@@ -14,7 +14,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** The illustrative blocks must not create four meaningless TalkBack stops. */
+/** Explicit full welcome illustration only: normal navigation now defaults compact. */
 @RunWith(AndroidJUnit4::class)
 class ChunksBrandHeaderInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
@@ -22,7 +22,7 @@ class ChunksBrandHeaderInstrumentedTest {
     @Test fun largeAccessibilityTypeStillExposesTheWholeHeader() {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
-                MaterialTheme { ChunksBrandHeader() }
+                MaterialTheme { ChunksBrandHeader(compact = false) }
             }
         }
         rule.onNodeWithContentDescription("chunks. Your downloads have places to be.")
@@ -31,7 +31,7 @@ class ChunksBrandHeaderInstrumentedTest {
 
     @Test fun brandAndTaglineAreOneAccessibleHeading() {
         rule.setContent {
-            MaterialTheme { ChunksBrandHeader() }
+            MaterialTheme { ChunksBrandHeader(compact = false) }
         }
         rule.onNodeWithContentDescription("chunks. Your downloads have places to be.")
             .assertExists()

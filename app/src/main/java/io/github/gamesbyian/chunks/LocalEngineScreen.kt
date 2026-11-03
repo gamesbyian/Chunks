@@ -1922,14 +1922,25 @@ internal fun LocalTransferCard(
             val actions: @Composable (Modifier) -> Unit = { each ->
                 ActionTile(if (transfer.stopped) "Start" else "Stop",
                     if (transfer.stopped) ChunksColors.Green else ChunksColors.Purple,
-                    onClick = onToggle, enabled = !busy, modifier = each,
+                    onClick = onToggle, enabled = !busy,
+                    modifier = each.semantics {
+                        contentDescription = (if (transfer.stopped) "Start " else "Stop ") +
+                            transfer.name + " on this phone"
+                    },
                     icon = if (transfer.stopped) R.drawable.chunks_ic_play else R.drawable.chunks_ic_stop,
                     stacked = !wideText)
                 ActionTile("Remove…", ChunksColors.Orange, onClick = { confirmRemove = true },
-                    enabled = !busy && !confirmRemove, modifier = each,
+                    enabled = !busy && !confirmRemove,
+                    modifier = each.semantics {
+                        contentDescription = "Remove transfer " + transfer.name + " from this phone"
+                    },
                     icon = R.drawable.chunks_ic_remove, stacked = !wideText)
                 if (transfer.metadataKnown) ActionTile(if (filesShown) "Hide files" else "Files",
-                    ChunksColors.Cyan, onClick = onShowFiles, enabled = !busy, modifier = each,
+                    ChunksColors.Cyan, onClick = onShowFiles, enabled = !busy,
+                    modifier = each.semantics {
+                        contentDescription = (if (filesShown) "Hide files for " else "Show files for ") +
+                            transfer.name + " on this phone"
+                    },
                     icon = R.drawable.chunks_ic_folder, stacked = !wideText)
             }
             if (wideText) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { actions(tile) }
