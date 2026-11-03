@@ -792,7 +792,8 @@ internal fun CombinedTransfersScreen(
                 Text((if (showingViewOptions) "Hide" else "Choose") +
                     " environments & filters · $scopeName · $filterName")
             }
-            if (!showingViewOptions && CombinedViewPreferences.narrowingActive(query)) {
+            if (!showingViewOptions && result.transfers.isNotEmpty() &&
+                CombinedViewPreferences.narrowingActive(query)) {
                 OutlinedButton(onClick = { update(CombinedViewPreferences.showAll(query)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Show all transfers")
