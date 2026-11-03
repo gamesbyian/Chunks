@@ -25,6 +25,14 @@ internal data class FilePage(
 
 internal object FilePages {
     const val SIZE = 40
+    /**
+     * Keep expanded details attached to the exact reported file, not merely
+     * an index that might refer to another path after a server refresh.
+     * Priority changes are observations, so they must not close the panel.
+     */
+    fun selectedIndex(files: List<RemoteFile>, index: Int, path: String?): Int =
+        index.takeIf { it in files.indices && files[it].path == path } ?: -1
+
     fun select(totalFiles: Int, requestedPage: Int): FilePage {
         require(totalFiles in 0..12000) { "Unexpected file inventory size" }
         val count = ((totalFiles + SIZE - 1) / SIZE).coerceAtLeast(1)
@@ -49,9 +57,14 @@ internal fun TransferFilePager(
     onMutationStarted: () -> Boolean,
     onSettled: () -> Unit
 ) {
-    var requestedPage by rememberSaveable(hash, files) { mutableStateOf(0) }
-    var fileSearch by rememberSaveable(hash) { mutableStateOf("") }
-    var selectedIndex by rememberSaveable(hash, files, fileSearch) { mutableStateOf(-1) }
+    // Server readings change as progress and priorities change. A refresh is
+    // not a new torrent, so it must not jump back to page one or close details.
+    // Changing the authenticated remote instance does reset the UI scope.
+    var requestedPage by rememberSaveable(remote, hash) { mutableStateOf(0) }
+    var fileSearch by rememberSaveable(remote, hash) { mutableStateOf("") }
+    var selectedIndex by rememberSaveable(remote, hash) { mutableStateOf(-1) }
+    var selectedPath by rememberSaveable(remote, hash) { mutableStateOf<String?>(null) }
+    val activeSelectedIndex = FilePages.selectedIndex(files, selectedIndex, selectedPath)
     val matchedIndices = matchingFileIndices(files.map { it.path }, fileSearch)
     val current = FilePages.select(matchedIndices.size, requestedPage)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -96,11 +109,19 @@ internal fun TransferFilePager(
                 }
                 RemoteFilePageRow(
                     index = i, file = file, priorityLabel = priority,
-                    expanded = selectedIndex == i,
+                    expanded = activeSelectedIndex == i,
                     actionEnabled = mainView && !snapshotStale && file.priority in 0..2,
-                    onToggle = { selectedIndex = if (selectedIndex == i) -1 else i }
+                    onToggle = {
+                        if (activeSelectedIndex == i) {
+                            selectedIndex = -1
+                            selectedPath = null
+                        } else {
+                            selectedIndex = i
+                            selectedPath = file.path
+                        }
+                    }
                 )
-                if (selectedIndex == i) {
+                if (activeSelectedIndex == i) {
                     TransferFilePriorityControl(
                         remote = remote,
                         hash = hash,
