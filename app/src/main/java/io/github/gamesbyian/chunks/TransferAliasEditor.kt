@@ -18,6 +18,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -101,8 +102,14 @@ internal fun TransferAliasEditor(
                 OutlinedButton(
                     onClick = { editor.draft = suggestion.name; editor.problem = null },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .semantics {
+                            contentDescription = "Use list-name suggestion: " + suggestion.name
+                        }
                 ) {
-                    Text(suggestion.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    // These candidates are explicitly revealed by the user.
+                    // Never conceal the significant suffix of a long episode
+                    // or movie title after two lines, especially at large text.
+                    Text(suggestion.name, maxLines = Int.MAX_VALUE)
                 }
                 Text(
                     suggestion.explanation,
