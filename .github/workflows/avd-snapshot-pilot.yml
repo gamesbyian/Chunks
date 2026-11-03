@@ -1,0 +1,160 @@
+name: Chunks clean AVD snapshot pilot (manual only)
+
+# Diagnostic experiment only. Never selected by pull_request or push.
+# A cached clean Android boot is not evidence that any Chunks test passed.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Cold emulator baseline or clean saved-snapshot restore"
+        required: true
+        type: choice
+        options: [cold, snapshot]
+        default: cold
+
+permissions:
+  contents: read
+
+# Keep cache generation and evaluation serial; never cancel a partial write.
+concurrency:
+  group: chunks-avd-snapshot-pilot
+  cancel-in-progress: false
+
+jobs:
+  measure:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require hardware acceleration before allocating Android
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+          test -r /dev/kvm && test -w /dev/kvm
+      # Resolve exact emulator/system-image revisions BEFORE looking up a
+      # snapshot. A version change must never silently restore a stale VM.
+      - name: Install Android 35 image and derive versioned cache identity
+        id: android-sdk
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            'emulator' 'system-images;android-35;google_apis;x86_64'
+          emulator_meta="$ANDROID_HOME/emulator/source.properties"
+          image_meta="$ANDROID_HOME/system-images/android-35/google_apis/x86_64/source.properties"
+          test -s "$emulator_meta" && test -s "$image_meta"
+          emulator_revision="$(sed -n 's/^Pkg.Revision=//p' "$emulator_meta" | head -1)"
+          image_revision="$(sed -n 's/^Pkg.Revision=//p' "$image_meta" | head -1)"
+          [[ "$emulator_revision" =~ ^[0-9]+([.][0-9]+)*$ ]]
+          [[ "$image_revision" =~ ^[0-9]+([.][0-9]+)*$ ]]
+          printf 'key=chunks-avd-pilot-ubuntu2404-api35-googleapis-x86_64-pixel6-2g-v1-em%s-img%s\n' \
+            "$emulator_revision" "$image_revision" >> "$GITHUB_OUTPUT"
+          printf 'emulator_rev=%s\nimage_rev=%s\n' \
+            "$emulator_revision" "$image_revision" >> "$GITHUB_OUTPUT"
+      - name: Restore only the isolated clean AVD (never app state or ADB keys)
+        if: inputs.mode == 'snapshot'
+        id: avd-restore
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/.android/avd
+          key: ${{ steps.android-sdk.outputs.key }}
+      - name: Reject invalid restored snapshot before launch
+        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$HOME/.android/avd/test.ini"
+          test -d "$HOME/.android/avd/test.avd"
+          find "$HOME/.android/avd/test.avd/snapshots" -type f -size +0c -print -quit | grep -q .
+      # Snapshot creation is deliberately a separate invocation, containing
+      # no Chunks APK, torrent, credentials, seedbox connection or test fixture.
+      - name: Generate clean boot snapshot on cache miss
+        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          avd-name: test
+          force-avd-creation: false
+          emulator-boot-timeout: 600
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            set -euo pipefail
+            test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = 35
+            if adb shell pm list packages | grep -F 'io.github.gamesbyian.chunks'; then
+              echo '::error::App unexpectedly present on pristine AVD'
+              exit 1
+            fi
+            echo 'Clean original system verified; no Chunks installed or launched.'
+      - name: Verify snapshot was written and publish cache only after success
+        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$HOME/.android/avd/test.ini"
+          find "$HOME/.android/avd/test.avd/snapshots" -type f -size +0c -print -quit | grep -q .
+      - name: Save verified clean AVD for a future manual run
+        if: inputs.mode == 'snapshot' && steps.avd-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/.android/avd
+          key: ${{ steps.android-sdk.outputs.key }}
+      - name: Mark start of measured emulator-runner invocation
+        shell: bash
+        run: echo "CHUNKS_AVD_PROBE_START_MS=$(date +%s%3N)" >> "$GITHUB_ENV"
+      - name: Boot and validate cold or saved-snapshot emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          avd-name: test
+          force-avd-creation: ${{ inputs.mode == 'cold' }}
+          emulator-boot-timeout: 600
+          disable-animations: true
+          # Cold mode disables snapshots. Snapshot mode loads the cached clean
+          # boot but never saves the possibly modified measurement session.
+          emulator-options: ${{ inputs.mode == 'snapshot' && '-no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' || '-no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none' }}
+          script: |
+            set -euo pipefail
+            test "$(adb shell getprop ro.build.version.sdk | tr -d '\r')" = 35
+            test "$(adb shell getprop ro.product.cpu.abi | tr -d '\r')" = x86_64
+            if adb shell pm list packages | grep -F 'io.github.gamesbyian.chunks'; then
+              echo '::error::App unexpectedly present during AVD-only benchmark'
+              exit 1
+            fi
+            echo 'Android 35 booted; no application/test acceptance attempted.'
+      - name: Print bounded comparison receipt
+        if: always()
+        env:
+          CHUNKS_MODE: ${{ inputs.mode }}
+          CHUNKS_CACHE_HIT: ${{ steps.avd-restore.outputs.cache-hit }}
+          CHUNKS_EMULATOR_REV: ${{ steps.android-sdk.outputs.emulator_rev }}
+          CHUNKS_IMAGE_REV: ${{ steps.android-sdk.outputs.image_rev }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Mode: $CHUNKS_MODE; cache hit: ${CHUNKS_CACHE_HIT:-not applicable}"
+          {
+            echo '### Isolated AVD startup pilot (no app tests)'
+            echo "- Mode: $CHUNKS_MODE"
+            echo "- Cache hit: ${CHUNKS_CACHE_HIT:-not applicable}"
+            echo "- System image: API35 google_apis x86_64 revision ${CHUNKS_IMAGE_REV:-unknown}"
+            echo "- Emulator revision: ${CHUNKS_EMULATOR_REV:-unknown}"
+            echo "- Source checkout: $GITHUB_SHA"
+            if [[ "${CHUNKS_AVD_PROBE_START_MS:-}" =~ ^[0-9]+$ ]]; then
+              elapsed=$(( $(date +%s%3N) - CHUNKS_AVD_PROBE_START_MS ))
+              echo "- Measured emulator-runner step and probe (milliseconds): $elapsed"
+            else
+              echo '- Measured emulator-runner step and probe: not executed'
+            fi
+            echo '- Compare full runner job time and cache restore/save times in Actions, not just this interval.'
+            echo '- A boot receipt does not qualify any APK, installed test, torrent, rTorrent session or physical phone.'
+          } >> "$GITHUB_STEP_SUMMARY"
