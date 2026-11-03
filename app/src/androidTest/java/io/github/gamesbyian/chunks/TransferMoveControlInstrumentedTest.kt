@@ -91,7 +91,7 @@ class TransferMoveControlInstrumentedTest {
         TransferMoveStore(context).save(original)
         show({ Observation.Present }, { Observation.Present }, removals, starts,
             phoneSourceToken = "native-session:new")
-        rule.onNodeWithText("The original phone transfer has changed", substring = true).assertExists()
+        rule.onNodeWithText("The original transfer has changed", substring = true).assertExists()
         rule.onNodeWithText("Remove original job from the phone…").assertIsNotEnabled()
         assertEquals(0, removals.get())
         rule.onNodeWithText("Cancel Move (keep both jobs)").performClick()
@@ -105,7 +105,7 @@ class TransferMoveControlInstrumentedTest {
             .copy(stage = TransferMove.Stage.TARGET_VERIFIED)
         TransferMoveStore(context).save(legacy)
         show({ Observation.Present }, { Observation.Present }, removals, starts)
-        rule.onNodeWithText("cannot identify its native session", substring = true).assertExists()
+        rule.onNodeWithText("cannot identify its original source", substring = true).assertExists()
         rule.onNodeWithText("Remove original job from the phone…").assertIsNotEnabled()
         assertEquals(0, removals.get())
     }
