@@ -5,7 +5,8 @@ Run: python3 tools/ci_runner_cost_report.py --repo gamesbyian/Chunks --branch BR
 Requires authenticated gh CLI only for live mode. Offline mode:
   --runs-json runs.json --jobs-dir downloaded-job-json/
 The REST data is the source; durations are measured, not predicted or billed minutes.
-Source-SHA groups may include multiple PR events (draft, ready, retry), not one dispatch.
+GitHub head_sha groups may include draft, ready and retry events; not one dispatch.
+On pull_request, head_sha need not be the actual GITHUB_SHA merge checkout.
 Queue and first-failing-job times are observed proxies, not proof of human-actionable feedback.
 """
 from __future__ import annotations
@@ -84,7 +85,7 @@ def cost_report(runs: list[dict]) -> dict:
         "runs_with_timed_jobs": 0, "jobs": 0,
     })
     rows = []
-    by_source = {}
+    by_head_sha = {}
     unattributed_runs = 0
     for run in runs:
         run_id = int(run["id"])
@@ -168,7 +169,7 @@ def cost_report(runs: list[dict]) -> dict:
         else:
             if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", sha):
                 raise ValueError(f"Invalid source SHA on run {run_id}")
-            revision = by_source.setdefault(sha.lower(), {
+            revision = by_head_sha.setdefault(sha.lower(), {
                 "runs": 0, "cancelled_runs": 0, "failed_runs": 0,
                 "zero_timed_job_runs": 0, "runner_minutes": 0.0,
                 "cancelled_run_runner_minutes": 0.0, "run_ids": [],
@@ -194,19 +195,19 @@ def cost_report(runs: list[dict]) -> dict:
         sha: {key: (round(value, 3) if isinstance(value, float)
                     else sorted(value) if key == "workflows" else value)
               for key, value in group.items()}
-        for sha, group in sorted(by_source.items())
+        for sha, group in sorted(by_head_sha.items())
     }
     return {
         "schema": "chunks-ci-runner-cost-v1",
         "source": "GitHub Actions job started_at/completed_at timestamps",
-        "scope": "completed runs only; runner minutes are not billed-minute estimates; wall_minutes includes queue/API updates; job_window_minutes excludes them and is null without timed jobs; queue and first-failing-job completion are timing proxies, not actionable-feedback guarantees",
+        "scope": "completed runs only; head_sha is PR branch identity, not necessarily the tested merge checkout; runner minutes are not billed-minute estimates; wall_minutes includes queue/API updates; job_window_minutes excludes them and is null without timed jobs; queue and first-failing-job completion are timing proxies, not actionable-feedback guarantees",
         "runs": len(rows),
         "runner_minutes": round(sum(x["runner_minutes"] for x in rows), 3),
         "cancelled_run_runner_minutes": round(
             sum(x["cancelled_run_runner_minutes"] for x in groups.values()), 3
         ),
-        "by_workflow": groups, "by_source_sha": revision_groups,
-        "runs_without_source_sha": unattributed_runs,
+        "by_workflow": groups, "by_head_sha": revision_groups,
+        "runs_without_head_sha": unattributed_runs,
         "details": sorted(rows, key=lambda x: x["run_id"]),
     }
 
@@ -247,8 +248,8 @@ def main() -> None:
               f"cancelled_min={item['cancelled_run_runner_minutes']:.2f} "
               f"job_window_min={item['job_window_minutes']:.2f} "
               f"timed_runs={item['runs_with_timed_jobs']}")
-    for sha, group in report["by_source_sha"].items():
-        print(f"source={sha[:12]} runs={group['runs']} "
+    for sha, group in report["by_head_sha"].items():
+        print(f"head_sha={sha[:12]} runs={group['runs']} "
               f"runner_min={group['runner_minutes']:.2f} "
               f"cancelled_min={group['cancelled_run_runner_minutes']:.2f} "
               f"no_timed_jobs={group['zero_timed_job_runs']}")
