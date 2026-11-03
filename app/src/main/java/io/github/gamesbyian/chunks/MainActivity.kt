@@ -1238,6 +1238,19 @@ private fun ChunksApp(
                         onMagnet = { magnet = it }, onDestination = { draftPath = it },
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,
+                        onViewVerifiedTransfer = { hash ->
+                            // The Add result came from this exact authenticated
+                            // server; switching accounts must never redirect it.
+                            if (server === connectedRemote) {
+                                query = hash
+                                filter = TransferFilter.ALL
+                                remoteFilterStore.save(sortEnvironment, TransferFilter.ALL)
+                                requestedView = "main"
+                                draftPath = ""
+                                section = Section.TRANSFERS
+                                refresh()
+                            }
+                        },
                         onMutationStarted = beginRemoteMutation,
                         onMutationSettled = settledRemoteMutation,
                         recentPlaces = recentPlaces,

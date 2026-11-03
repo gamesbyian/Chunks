@@ -80,7 +80,9 @@ fun VerifiedAddScreen(
     /** Authenticated endpoint + account scope; null hides the Finish in Order option. */
     finishInOrderScope: String? = null,
     /** Exact server account and address this Add goes to, shown in the confirmation. */
-    environmentLabel: String? = null
+    environmentLabel: String? = null,
+    /** View only a positively verified hash in this authenticated server inventory. */
+    onViewVerifiedTransfer: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -93,6 +95,7 @@ fun VerifiedAddScreen(
     var outcome by remember { mutableStateOf<String?>(null) }
     var uncertain by remember { mutableStateOf(false) }
     var alreadyAttempted by remember { mutableStateOf(false) }
+    var verifiedHash by remember(remote) { mutableStateOf<String?>(null) }
     // Freeze the command actually submitted: mutable checkbox values do not
     // authorize treating an already-started Add as a stopped Add on recheck.
     var nativeStartedAttempt by remember { mutableStateOf(false) }
@@ -466,6 +469,7 @@ fun VerifiedAddScreen(
                             awaitingConfirmation = false
                             submitting = true
                             alreadyAttempted = true
+                            verifiedHash = null
                             reviewedAttempt = plan
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val orderScope = finishInOrderScope?.takeIf {
@@ -500,6 +504,7 @@ fun VerifiedAddScreen(
                                         (result !is RemoteAddAndStart.AddedStopped ||
                                             result.result !is RemoteAddOutcome.VerifiedStopped)
                                     if (bytes == null) submittedPlan = plan
+                                    verifiedHash = verifiedAddNavigationHash(result)
                                     outcome = when (result) {
                                         is RemoteAddAndStart.Started ->
                                             "Verified: added and started on rTorrent. Peer availability and payload bytes still need observation in Transfers."
@@ -527,6 +532,7 @@ fun VerifiedAddScreen(
                                             " This folder was used but its Recent shortcut could not be saved."
                                     }
                                 } catch (_: Exception) {
+                                    verifiedHash = null
                                     uncertain = true
                                     outcome = "Could not verify the operation. Inspect the current server transfer list before attempting another Add. No automatic retry occurred."
                                 } finally {
@@ -575,6 +581,15 @@ fun VerifiedAddScreen(
                     }
                 }
             }
+            verifiedHash?.let { hash ->
+                item {
+                    OutlinedButton(
+                        onClick = { onViewVerifiedTransfer(hash) },
+                        enabled = !submitting && !rechecking,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
+                    ) { Text("View verified transfer in rTorrent") }
+                }
+            }
         }
         if (alreadyAttempted && reviewedAttempt != null) {
             item {
@@ -591,6 +606,7 @@ fun VerifiedAddScreen(
                                     // with exact hash, Place and ACTIVE engine, read only.
                                     val checked = remote.reconcileStartedAdd(reviewedPlan)
                                     uncertain = checked !is RemoteAddAndStart.Started
+                                    verifiedHash = verifiedAddNavigationHash(checked)
                                     outcome = if (checked is RemoteAddAndStart.Started) {
                                         if (!reviewedPlan.useServerDefault) {
                                             val saved = runCatching {
@@ -603,6 +619,7 @@ fun VerifiedAddScreen(
                                 } else {
                                     val checked = remote.reconcileStoppedAdd(reviewedPlan)
                                     uncertain = checked !is RemoteAddOutcome.VerifiedStopped
+                                    verifiedHash = (checked as? RemoteAddOutcome.VerifiedStopped)?.hash
                                     outcome = when (checked) {
                                         is RemoteAddOutcome.VerifiedStopped ->
                                             "Read-only check verified this exact hash is stopped at " +
@@ -616,6 +633,7 @@ fun VerifiedAddScreen(
                                     }
                                 }
                             } catch (_: Exception) {
+                                verifiedHash = null
                                 uncertain = true
                                 outcome = "Could not read server state. The earlier Add might have applied; inspect the transfer list before retrying."
                             } finally {
@@ -638,6 +656,14 @@ fun VerifiedAddScreen(
             }
         }
     }
+}
+
+/** Never navigate as verified from an ambiguous Add/Start acknowledgement. */
+internal fun verifiedAddNavigationHash(result: RemoteAddAndStart): String? = when (result) {
+    is RemoteAddAndStart.Started -> result.hash
+    is RemoteAddAndStart.AddedStopped ->
+        (result.result as? RemoteAddOutcome.VerifiedStopped)?.hash
+    is RemoteAddAndStart.StartNotVerified -> null
 }
 
 /** Seedhost evidence: some servers silently discard torrents without a tracker. */
