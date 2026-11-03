@@ -39,15 +39,28 @@ internal object TransferMove {
         val serverScopeDigest: String,
         /** Host only, for "connect to …" guidance. */
         val serverLabel: String,
-        val stage: Stage
+        val stage: Stage,
+        /** Phone-only native Add generation captured before destination handoff. */
+        val sourceReviewToken: String? = null
     ) {
         init {
             require(Regex("[0-9a-f]{40}").matches(infoHash)) { "Move needs an exact v1 identity" }
             require(Regex("[0-9a-f]{64}").matches(serverScopeDigest)) { "Invalid server scope" }
+            require(sourceReviewToken == null ||
+                Regex("[A-Za-z0-9:.-]{1,120}").matches(sourceReviewToken)) {
+                "Invalid original phone transfer identity"
+            }
         }
 
-        fun encode(): String = listOf("v1", direction.name, infoHash, serverScopeDigest, stage.name,
-            escape(serverLabel), escape(name)).joinToString("\n")
+        fun encode(): String {
+            val fields = listOf(
+                if (sourceReviewToken == null) "v1" else "v2",
+                direction.name, infoHash, serverScopeDigest, stage.name,
+                escape(serverLabel), escape(name)
+            )
+            return (if (sourceReviewToken == null) fields
+                else fields + escape(sourceReviewToken)).joinToString("\n")
+        }
     }
 
     sealed class Observation {
@@ -65,9 +78,26 @@ internal object TransferMove {
     }
 
     fun start(direction: Direction, infoHash: String, name: String,
-              serverScopeDigest: String, serverLabel: String): Record =
+              serverScopeDigest: String, serverLabel: String,
+              sourceReviewToken: String? = null): Record =
         Record(direction, infoHash.lowercase(Locale.ROOT), name.take(512),
-            serverScopeDigest, serverLabel.take(253), Stage.AWAITING_TARGET)
+            serverScopeDigest, serverLabel.take(253), Stage.AWAITING_TARGET,
+            sourceReviewToken)
+
+    /**
+     * The journal's phone source must still be the original native handle.
+     * A legacy v1 Move did not record a generation and can only be cancelled
+     * and restarted before a source Remove. A fresh same-hash Add is never
+     * consent to remove the older journal's job.
+     *
+     * rTorrent source removal remains separately checked by its own
+     * exact-hash/name/path preflight; there is no phone-native token there.
+     */
+    fun sourceIdentityMatches(record: Record, currentName: String, currentToken: String?): Boolean =
+        record.direction != Direction.PHONE_TO_SERVER ||
+            (record.name == currentName.take(512) &&
+                record.sourceReviewToken != null &&
+                record.sourceReviewToken == currentToken)
 
     /** A process death mid-removal leaves REQUESTED: treat it as unknown. */
     fun recovered(record: Record): Record =
@@ -128,9 +158,11 @@ internal object TransferMove {
 
     fun decode(text: String): Record? = try {
         val parts = text.split('\n')
-        require(parts.size == 7 && parts[0] == "v1")
+        val hasSourceToken = parts.size == 8 && parts[0] == "v2"
+        require((parts.size == 7 && parts[0] == "v1") || hasSourceToken)
         recovered(Record(Direction.valueOf(parts[1]), parts[2], unescape(parts[6]), parts[3],
-            unescape(parts[5]), Stage.valueOf(parts[4])))
+            unescape(parts[5]), Stage.valueOf(parts[4]),
+            if (hasSourceToken) unescape(parts[7]) else null))
     } catch (_: Exception) { null }
 
     private fun escape(value: String) = value.replace("\\", "\\\\").replace("\n", "\\n")
