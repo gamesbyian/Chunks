@@ -19,6 +19,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
@@ -104,7 +106,12 @@ fun TransferLifecycleControl(
                     confirming = true
                 },
                 enabled = !snapshotStale,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().semantics {
+                    // A visually short action must still announce its complete
+                    // exact target and engine to assistive-technology users.
+                    contentDescription = (if (transfer.started) "Stop " else "Start ") +
+                        transfer.name + " on this rTorrent server"
+                },
                 icon = if (transfer.started) R.drawable.chunks_ic_stop else R.drawable.chunks_ic_play, stacked = false)
             // A torrent can have d.state=1 while d.is_active=0. Give a
             // deliberate, exact-hash Open/Start/Resume review only after a
@@ -119,6 +126,10 @@ fun TransferLifecycleControl(
                     },
                     enabled = !snapshotStale,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .semantics {
+                            contentDescription = "Resume inactive " + transfer.name +
+                                " on this rTorrent server"
+                        }
                 ) { Text("Resume inactive transfer…") }
             }
         }
