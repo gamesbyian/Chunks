@@ -7,6 +7,8 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -33,6 +35,10 @@ class LocalPhoneFirstfoldEntryTest {
                 ChunksTheme { Surface { LocalEngineScreen(onBack = {}, onCombined = {}, onSeedingRules = {}) } }
             }
         }
+        // A normal return opens on transfers. Enter Add explicitly for this
+        // existing first-fold source-order and safety-description acceptance.
+        rule.onNodeWithText("Add a download on this phone").assertDoesNotExist()
+        rule.onNodeWithText("Add torrent on this phone").performScrollTo().performClick()
     }
 
     @Test fun phoneIntakeIsAheadOfLongAdvancedExplanationAt320Dp() {
