@@ -6,6 +6,9 @@ set -euo pipefail
 pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
 cls=io.github.gamesbyian.chunks.LocalEngineRebootInstrumentedTest
+# Bound ADB calls so an unresponsive emulator cannot consume the whole job.
+adb_bounded() { timeout --signal=TERM --kill-after=5s 90s adb "$@"; }
+milestone() { printf 'CHUNKS_REBOOT [%s] %s\n' "$(date -u +%FT%TZ)" "$*"; }
 
 # A reboot is device-wide and cannot be undone. This standalone script is
 # directly callable, so it must not inherit unverified identity from an
@@ -61,7 +64,7 @@ fi
 # The boot-completed property can already be 1 on the original boot. Take an
 # OS kernel identity witness BEFORE arming the transfer, and require it to
 # change before phase B can assert a reboot recovery.
-read_boot_id() { adb shell cat /proc/sys/kernel/random/boot_id 2>/dev/null | tr -d '\r\n'; }
+read_boot_id() { adb_bounded shell cat /proc/sys/kernel/random/boot_id 2>/dev/null | tr -d '\r\n'; }
 valid_boot_id() { [[ "$1" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; }
 before_boot_id="$(read_boot_id)"
 valid_boot_id "$before_boot_id" || { echo "CHUNKS_REBOOT: no valid original kernel boot ID"; exit 1; }
@@ -78,18 +81,27 @@ instrument_passed_once() {
     [[ "$(grep -c '^INSTRUMENTATION_CODE:' <<< "$output" || true)" == 1 ]] &&
     ! grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$output"
 }
-adb logcat -c || true
-outA=$(adb shell am instrument -w -r -e class "$cls#phaseA_seedUnderServiceBeforeReboot" -e chunksRebootPhase a "$runner")
+adb_bounded logcat -c || true
+milestone "phase A instrumentation started"
+outA=$(adb_bounded shell am instrument -w -r -e class "$cls#phaseA_seedUnderServiceBeforeReboot" -e chunksRebootPhase a "$runner")
 echo "$outA" | tail -6
 instrument_passed_once "$outA" || {
   echo "CHUNKS_REBOOT: phase A did not report exactly one passing, non-skipped test"; exit 1;
 }
-adb logcat -d -s ChunksReboot:I | grep "CHUNKS_REBOOT armed" || { echo "CHUNKS_REBOOT: phase A never armed"; exit 1; }
-adb reboot
-adb wait-for-device
+adb_bounded logcat -d -s ChunksReboot:I | grep "CHUNKS_REBOOT armed" || { echo "CHUNKS_REBOOT: phase A never armed"; exit 1; }
+milestone "phase A passed; requesting reboot"
+timeout --signal=TERM --kill-after=5s 20s adb reboot || {
+  echo 'CHUNKS_REBOOT: reboot command failed or timed out' >&2; exit 1;
+}
+milestone "waiting for ADB reconnect (150s maximum)"
+timeout --signal=TERM --kill-after=5s 150s adb wait-for-device || {
+  echo 'CHUNKS_REBOOT: ADB did not reconnect within 150s' >&2; exit 1;
+}
+milestone "ADB reconnected; verifying new boot identity"
 after_boot_id=""
-for _ in $(seq 1 120); do
-  complete="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" || complete=""
+boot_deadline=$((SECONDS + 180))
+while (( SECONDS < boot_deadline )); do
+  complete="$(timeout --signal=TERM --kill-after=2s 8s adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r\n')" || complete=""
   candidate="$(read_boot_id)" || candidate=""
   if [[ "$complete" == "1" ]] && valid_boot_id "$candidate" && [[ "$candidate" != "$before_boot_id" ]]; then
     after_boot_id="$candidate"
@@ -101,13 +113,14 @@ done
   echo "CHUNKS_REBOOT: no observed new kernel boot with completed Android startup"
   exit 1
 }
-echo "CHUNKS_REBOOT kernel_boot_id_changed=true"
+milestone "kernel_boot_id_changed=true"
 sleep 10
-if adb shell pidof "$pkg" >/dev/null 2>&1; then echo "CHUNKS_REBOOT: Chunks process started by itself after boot"; exit 1; fi
-adb logcat -c || true
-outB=$(adb shell am instrument -w -r -e class "$cls#phaseB_nothingStartsAfterBootAndRestoreIsStopped" -e chunksRebootPhase b "$runner")
+if adb_bounded shell pidof "$pkg" >/dev/null 2>&1; then echo "CHUNKS_REBOOT: Chunks process started by itself after boot"; exit 1; fi
+adb_bounded logcat -c || true
+milestone "phase B instrumentation started"
+outB=$(adb_bounded shell am instrument -w -r -e class "$cls#phaseB_nothingStartsAfterBootAndRestoreIsStopped" -e chunksRebootPhase b "$runner")
 echo "$outB" | tail -6
-log_b="$(adb logcat -d -s ChunksReboot:I)" || {
+log_b="$(adb_bounded logcat -d -s ChunksReboot:I)" || {
   echo 'CHUNKS_REBOOT: post-reboot peer evidence unavailable' >&2; exit 1;
 }
 printf '%s\n' "$log_b" | tail -3
@@ -120,3 +133,5 @@ instrument_passed_once "$outB" || {
 [[ "$(grep -Fc 'CHUNKS_REBOOT restored_stopped=true no_autostart=true sha_unchanged=true reseeded_bytes=96000 removed_keep_files=true' <<< "$log_b" || true)" == 1 ]] || {
   echo 'CHUNKS_REBOOT: no unique real post-reboot fresh-peer seeding receipt' >&2; exit 1;
 }
+
+milestone "phase B passed; fresh-peer seeding verified"
