@@ -42,10 +42,13 @@ data class UnifiedTransferObservation(
     val peers: Int?,
     val addedAtEpochMillis: Long? = null,
     val hasError: Boolean = false,
-    val metadataPending: Boolean? = null
+    val metadataPending: Boolean? = null,
+    /** Optional server-reported all-time ratio. Unknown is never treated as zero. */
+    val ratioThousandths: Long? = null
 ) {
     init {
         require(sizeBytes == null || sizeBytes >= 0)
+        require(ratioThousandths == null || ratioThousandths >= 0)
         require(progressPpm == null || progressPpm in 0..1_000_000)
         require(downloadBytesPerSecond == null || downloadBytesPerSecond >= 0)
         require(uploadBytesPerSecond == null || uploadBytesPerSecond >= 0)
@@ -150,7 +153,8 @@ object UnifiedTransferObservations {
             downloadBytesPerSecond = item.downBytesPerSecond?.takeIf { it >= 0 },
             uploadBytesPerSecond = item.upBytesPerSecond?.takeIf { it >= 0 },
             peers = null,
-            metadataPending = item.metadataPending
+            metadataPending = item.metadataPending,
+            ratioThousandths = item.ratioThousandths?.takeIf { it >= 0 }
         )
 }
 

@@ -110,9 +110,11 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
             .assertExists()
         rule.onNodeWithText("Refresh other saved servers").assertExists()
-        // Listed-only rows have no live list to open.
+        // A listed-only row offers its explanation on disclosure, not a live command.
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
+        rule.onNodeWithText("More").performScrollTo().performClick()
         rule.onNodeWithText("Listed only. Sign in to this server to open or change it.").assertExists()
+        rule.onNodeWithText("Open in its list").assertDoesNotExist()
     }
 
     @Test fun lateReadFromPreviousAccountCannotPublishIntoReconfiguredServerSlot() {

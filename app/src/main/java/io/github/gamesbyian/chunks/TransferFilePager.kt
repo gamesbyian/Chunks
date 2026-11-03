@@ -50,17 +50,29 @@ internal fun TransferFilePager(
     onSettled: () -> Unit
 ) {
     var requestedPage by rememberSaveable(hash, files) { mutableStateOf(0) }
-    var selectedIndex by rememberSaveable(hash, files) { mutableStateOf(-1) }
-    val current = FilePages.select(files.size, requestedPage)
+    var fileSearch by rememberSaveable(hash) { mutableStateOf("") }
+    var selectedIndex by rememberSaveable(hash, files, fileSearch) { mutableStateOf(-1) }
+    val matchedIndices = matchingFileIndices(files.map { it.path }, fileSearch)
+    val current = FilePages.select(matchedIndices.size, requestedPage)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("${files.size} server-reported files", fontWeight = FontWeight.Bold)
+        if (files.isNotEmpty()) {
+            ClearableTransferSearchField(
+                value = fileSearch,
+                onValueChange = { fileSearch = it; requestedPage = 0 },
+                label = "Search this transfer's files"
+            )
+            Text("Showing ${matchedIndices.size} of ${files.size} file paths" +
+                if (fileSearch.isNotBlank()) " · filtered" else "",
+                style = MaterialTheme.typography.bodySmall)
+        }
         if (files.isEmpty()) {
             Text("No files were reported for this transfer.",
                 style = MaterialTheme.typography.bodySmall)
         } else {
             RemoteFilePagerControls(
                 page = current,
-                totalFiles = files.size,
+                totalFiles = matchedIndices.size,
                 onPrevious = { requestedPage = current.number - 1 },
                 onNext = { requestedPage = current.number + 1 }
             )
@@ -68,7 +80,13 @@ internal fun TransferFilePager(
                 Text("Refresh the main server view before changing file priorities.",
                     style = MaterialTheme.typography.bodySmall)
             }
-            for (i in current.firstIndex until current.endExclusive) {
+            if (matchedIndices.isEmpty()) Text(
+                "No files match this search. Clear it to see the full list.",
+                style = MaterialTheme.typography.bodySmall)
+            for (pageIndex in current.firstIndex until current.endExclusive) {
+                // 'i' remains the original server file index for all read-only
+                // details and guarded priority actions, even after searching.
+                val i = matchedIndices[pageIndex]
                 val file = files[i]
                 val priority = when (file.priority) {
                     0 -> "Skipped"

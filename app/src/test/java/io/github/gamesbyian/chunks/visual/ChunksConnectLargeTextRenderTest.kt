@@ -36,6 +36,8 @@ class ChunksConnectLargeTextRenderTest {
     }
 
     @Test fun createAt200Percent() {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
+        rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
         rule.onNodeWithText("Create a torrent from phone files").performClick()
         rule.waitForIdle()

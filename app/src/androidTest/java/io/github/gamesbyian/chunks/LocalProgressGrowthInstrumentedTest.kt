@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
@@ -35,6 +37,9 @@ class LocalProgressGrowthInstrumentedTest {
                 )
             }
         }
+        compose.onNodeWithContentDescription(
+            "More details for Public growth fixture on this phone"
+        ).performClick()
         compose.onNodeWithText("Observed over 12s:", substring = true).assertExists()
         compose.onNodeWithText("No verified or peer-network byte growth during this sample.",
             substring = true).assertExists()

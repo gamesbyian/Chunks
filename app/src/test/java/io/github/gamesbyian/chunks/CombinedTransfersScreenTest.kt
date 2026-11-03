@@ -83,6 +83,23 @@ class CombinedTransfersScreenTest {
         assertTrue("read-only details must not issue any lifecycle commands", commands.isEmpty())
     }
 
+    @Test fun compactRowsKeepExactScopedDetailsWhileExtraActionsNeedDisclosure() {
+        show()
+        val label = serverEnvironmentLabel(aliasScope)
+        val more = "More actions for Big Archive on " + label
+        revealDescription(more)
+        rule.onNodeWithContentDescription(more).assertExists()
+        rule.onNodeWithText("Open in its list").assertDoesNotExist()
+        // Disclosure changes only this exact source/hash row. No Start/Stop RPC.
+        rule.onNodeWithContentDescription(more).performClick()
+        rule.onNodeWithText("Open in its list").assertExists()
+        rule.onNodeWithContentDescription(
+            "Hide extra actions for Big Archive on " + label).performClick()
+        rule.onNodeWithText("Open in its list").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Details for Big Archive on " + label).assertExists()
+        assertTrue("Read-only disclosure may never issue lifecycle commands", commands.isEmpty())
+    }
+
     @Test fun corruptSavedDetailIdentityCannotResolveOrGuessAnEnvironment() {
         assertNull(restoreCombinedDetailTarget(null))
         assertNull(restoreCombinedDetailTarget(emptyList()))

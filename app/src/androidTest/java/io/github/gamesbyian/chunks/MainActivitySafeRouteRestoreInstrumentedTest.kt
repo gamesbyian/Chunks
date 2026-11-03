@@ -79,6 +79,8 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
     }
 
     @Test fun createRouteDropsPendingReviewAndReturnsToDisconnectedEntry() {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
+        rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
         rule.onNodeWithText("Create a torrent from phone files").performClick()
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
@@ -88,6 +90,8 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()
         rule.onNodeWithText("Your downloads").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
+        rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
         rule.onNodeWithText("Create a torrent from phone files").assertExists()
         rule.onNodeWithText("Create torrent").assertDoesNotExist()

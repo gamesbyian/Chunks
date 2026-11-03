@@ -492,7 +492,7 @@ class ChunksMainActivityAtlasTest {
         save("app-organize-populated-real-compose")
 
         rule.onNodeWithText("Server").performClick()
-        rule.onNodeWithText("Your rTorrent.", substring = true).assertExists()
+        rule.onNodeWithText("Server settings", substring = true).assertExists()
         save("app-server-populated-real-compose")
 
         rule.onNodeWithText("Transfers").performClick()
