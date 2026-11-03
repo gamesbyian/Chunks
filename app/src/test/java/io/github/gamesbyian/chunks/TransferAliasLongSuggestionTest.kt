@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -25,6 +26,25 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi", fontScale = 2.0f)
 class TransferAliasLongSuggestionTest {
     @get:Rule val rule = createComposeRule()
+
+    @Test fun narrowLargeTextSaveAndCancelStackWithoutClipping() {
+        val calls = mutableIntStateOf(0)
+        rule.setContent {
+            MaterialTheme {
+                Box(Modifier.width(320.dp)) {
+                    TransferAliasEditor("Sample.Series.S01E01.1080p.mkv",
+                        "d".repeat(40), null, onSave = { calls.intValue++; true })
+                }
+            }
+        }
+        rule.onNodeWithText("Change list name").performClick()
+        val save = rule.onNodeWithText("Save name").getUnclippedBoundsInRoot()
+        val cancel = rule.onNodeWithText("Cancel").getUnclippedBoundsInRoot()
+        assertTrue("Save remains a separate full-width touch target", save.width > 220.dp)
+        assertTrue("Cancel must be below Save rather than squashed beside it",
+            cancel.top >= save.bottom)
+        assertEquals(0, calls.intValue)
+    }
 
     @Test fun longEpisodeSuggestionIsNotTruncatedOrSilentlyCommitted() {
         val original = "Chronicles.Of.The.Emerald.Observatory.With.An.Exceedingly.Long." +
