@@ -99,6 +99,25 @@ class RunnerCostTests(unittest.TestCase):
         self.assertEqual(7, report["by_source_sha"][other]["runner_minutes"])
         self.assertEqual(0, report["by_source_sha"][other]["zero_timed_job_runs"])
 
+    def test_queue_and_earliest_failing_job_are_timestamp_proxies(self):
+        sample = cost_report([
+            run(50, "failure", [job(1, 2, 4, "failure"), job(2, 1, 5)]),
+            run(51, "cancelled", []),
+            run(52, "success", [job(3, conclusion="skipped")]),
+        ])
+        self.assertEqual(1, sample["details"][0]["queue_minutes"])
+        self.assertEqual(4, sample["details"][0]["first_failed_job_completion_minutes"])
+        self.assertEqual(1, sample["by_workflow"]["API35"]["queue_minutes"])
+        self.assertIsNone(sample["details"][1]["queue_minutes"])
+        self.assertIsNone(sample["details"][1]["first_failed_job_completion_minutes"])
+        self.assertIsNone(sample["details"][2]["queue_minutes"])
+
+    def test_queue_rejects_impossible_pre_dispatch_job_start(self):
+        sample = run(60, "success", [job(1, 1, 4)])
+        sample["created_at"] = stamp(2)
+        with self.assertRaisesRegex(ValueError, "before workflow created_at"):
+            cost_report([sample])
+
     def test_source_sha_rejects_false_provenance(self):
         bad = run(35, "success", [job(1, 1, 3)])
         bad["head_sha"] = "not-a-sha"
