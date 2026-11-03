@@ -38,6 +38,53 @@ def precompleted_control_preserved(runner_temp, env):
         return False
 
 
+
+# Only fixed protocol stages and source-file basenames may enter CI annotations.
+# Never interpolate raw instrumentation, stack traces, credentials, endpoints or
+# potentially hostile test labels into an Actions command.
+_SAFE_UI_STAGES = frozenset((
+    "runner-ready", "connect-click-attempt", "connect-submitted", "queue",
+    "add-open-requested", "add-open", "magnet-entered", "place-ready",
+    "add-review", "add-submitted", "add-registered", "metadata-already-resolved",
+))
+_SAFE_FRAME_FILES = frozenset((
+    "MainActivityRealMagnetJourney.kt", "SeedhostAndroidAddUiInstrumentedTest.kt",
+    "VerifiedAddScreen.kt", "RTorrentRemote.kt", "TransferLifecycleControl.kt",
+))
+
+
+def safe_failure_diagnostic(receipt, peer_valid, control_preserved):
+    """Bounded causal hints; never change the underlying acceptance decision."""
+    runner = receipt.get("runner") if isinstance(receipt.get("runner"), dict) else {}
+    failed = runner.get("failed_tests", 0)
+    if type(failed) is int and failed > 0:
+        reason = "android-test-failed"
+    elif not runner.get("runner_finished"):
+        reason = "instrumentation-incomplete"
+    elif not peer_valid:
+        reason = "independent-peer-evidence-not-proven"
+    elif control_preserved is False:
+        reason = "precompleted-control-bytes-mismatch"
+    else:
+        reason = "required-case-or-phase-evidence-incomplete"
+    stages = receipt.get("app_stage_evidence")
+    last = "none"
+    if isinstance(stages, list):
+        last = next((stage for stage in reversed(stages)
+                     if isinstance(stage, str) and stage in _SAFE_UI_STAGES), "none")
+    frames = receipt.get("safe_failure_source_frames")
+    frame = "none"
+    if isinstance(frames, list):
+        for entry in frames:
+            if not isinstance(entry, dict):
+                continue
+            file, line = entry.get("file"), entry.get("line")
+            if isinstance(file, str) and file in _SAFE_FRAME_FILES and type(line) is int and 1 <= line <= 10000:
+                frame = f"{file}:{line}"
+                break
+    return {"reason": reason, "last_ui_stage": last, "first_safe_frame": frame}
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--runner-temp", type=Path, required=True)
@@ -85,6 +132,9 @@ def main():
     receipt["precompleted_control_bytes_preserved"] = control_preserved
     if not peer_valid or control_preserved is False:
         receipt["result"] = "failed-or-inconclusive"
+    if receipt["result"] != "passed":
+        receipt["safe_failure_diagnostic"] = safe_failure_diagnostic(
+            receipt, peer_valid, control_preserved)
     (a.output / "RECEIPT.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
     # The two test identities and outcomes come from AndroidJUnitRunner, not
     # from successful RPC acknowledgements or invented "passed" XML cases.
@@ -112,6 +162,12 @@ def main():
     raw_path = a.runner_temp / "chunks-installed-magnets.raw"
     raw_path.unlink(missing_ok=True)
     if not passed:
+        detail = receipt["safe_failure_diagnostic"]
+        # All three fields were selected from fixed allowlists / bounded numbers.
+        print("::error title=Chunks real-magnet evidence::"
+              f"reason={detail['reason']} "
+              f"last_ui_stage={detail['last_ui_stage']} "
+              f"first_safe_frame={detail['first_safe_frame']}", flush=True)
         raise SystemExit("Installed real-magnet acceptance incomplete; no qualified APK")
     source = env["GITHUB_SHA"]
     if not re.fullmatch("[a-f0-9]{40}", source):

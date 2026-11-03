@@ -239,6 +239,11 @@ private fun TransferDetailFacts(transfer: UnifiedTransferObservation) {
         Text("Upload rate: " + (transfer.uploadBytesPerSecond?.let {
             io.github.gamesbyian.chunks.model.Units.bytes(it) + "/s"
         } ?: "not reported"), style = MaterialTheme.typography.bodyMedium)
+        Text("Peers: " + (transfer.peers?.toString() ?: "not reported"),
+            style = MaterialTheme.typography.bodyMedium)
+        Text("Share ratio: " + (transfer.ratioThousandths?.let {
+            String.format(Locale.ROOT, "%.2f", it / 1_000.0)
+        } ?: "not reported"), style = MaterialTheme.typography.bodyMedium)
         if (transfer.hasError) {
             Text("An error was reported. Inspect the owning engine for its cause.",
                 style = MaterialTheme.typography.bodyMedium,

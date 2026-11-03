@@ -47,7 +47,7 @@ class UnifiedTransferDetailPanelTest {
                 originalName = "Example file collection", sizeBytes = 1024,
                 progressPpm = 555_000, started = true,
                 downloadBytesPerSecond = null, uploadBytesPerSecond = 0,
-                peers = null, hasError = true))
+                peers = null, hasError = true, ratioThousandths = 1450))
         )), EnvironmentCapabilitySnapshot(id, "rTorrent on server two", now - 20,
             mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.ADVERTISED,
                 EnvironmentOperation.FILE_PRIORITIES to CapabilityEvidence.MISSING)), now)
@@ -78,6 +78,8 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Progress: 55.5%").assertExists()
         rule.onNodeWithText("Download rate: not reported").assertExists()
+        rule.onNodeWithText("Peers: not reported").assertExists()
+        rule.onNodeWithText("Share ratio: 1.45").assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-320x700-200pct.png")
         rule.onNodeWithText("Refresh Server two / rutorrent2").performScrollTo().performClick()
         rule.onNodeWithText("Open Server two / rutorrent2 transfers").performScrollTo().performClick()
@@ -115,7 +117,7 @@ class UnifiedTransferDetailPanelTest {
         val snapshot = EnvironmentTransferSnapshot(
             id, EnvironmentAvailability.LIVE, false, now - 10,
             listOf(UnifiedTransferObservation(
-                key, "Cached title", "Cached title", 1024, 800_000, true, 12, 0, null))
+                key, "Cached title", "Cached title", 1024, 800_000, true, 12, 0, 0))
         )
         val state = UnifiedTransferDetails.resolve(key, listOf(snapshot), null, now)
         assertEquals(TransferDetailReadState.INCOMPLETE, state.readState)
@@ -125,6 +127,8 @@ class UnifiedTransferDetailPanelTest {
             }
         }
         rule.onNodeWithText("Cached title").assertExists()
+        rule.onNodeWithText("Peers: 0").assertExists()
+        rule.onNodeWithText("Share ratio: not reported").assertExists()
         rule.onNodeWithText("Last-known transfer facts only.", substring = true)
             .performScrollTo().assertExists()
         rule.onNodeWithText("Capability unknown.", substring = true).assertDoesNotExist()

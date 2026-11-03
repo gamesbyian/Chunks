@@ -949,7 +949,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return try {
             if (!sessionContainsExactHash(hash)) return SessionEraseRecheck.Absent
             val currentName = lookupName(hash)
-            if (currentName == null) return SessionEraseRecheck.Absent
+            if (currentName == null) {
+                // The job disappeared between d.hash and d.name. A different
+                // client may already have re-added the same hash: observe
+                // again before calling the old review absent. A fresh positive
+                // identity is uncertain, never proof that the old one is gone.
+                return if (sessionContainsExactHash(hash)) SessionEraseRecheck.Unavailable
+                else SessionEraseRecheck.Absent
+            }
             val currentDirectory = call("d.directory", listOf(hash)) as? String
                 ?: return SessionEraseRecheck.Unavailable
             if (!sessionContainsExactHash(hash)) return SessionEraseRecheck.Absent
