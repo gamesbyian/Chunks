@@ -1573,7 +1573,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val (handle, prior) = synchronized(this) {
             if (config.stateDirectory == null || !started) return false
             synchronized(handles) {
-                val exact = handles[key]?.takeIf { it.isValid } ?: return false
+                val exact = handles[key]?.takeIf { runCatching { it.isValid }.getOrDefault(false) }
+                    ?: return false
                 exact to pendingSaves.pendingFor(key, exact)
             }
         }
@@ -1593,7 +1594,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         val request = synchronized(this) {
             if (config.stateDirectory == null || !started) return false
             synchronized(handles) {
-                if (handles[key] != handle || !handle.isValid) return false
+                if (handles[key] != handle ||
+                    !runCatching { handle.isValid }.getOrDefault(false)) return false
                 pendingSaves.acquire(key, handle) {
                     handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
                 }
