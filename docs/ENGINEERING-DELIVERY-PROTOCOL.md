@@ -2,6 +2,14 @@
 
 **Authority:** operational practice under [AGENTS](../AGENTS.md), the [documentation standard](DOCUMENTATION-STANDARD.md), [CI policy](CI-POLICY.md), [requirements-rationality audit](REQUIREMENTS-RATIONALITY-AUDIT-2026-10-31.md), and the **one active** [work queue](WORK-QUEUE.md). This is **not another queue, product contract, or permission to disable a defect safeguard**. Current facts come from live main/issues/PRs, not this dated review.
 
+## Deliver related environments and dependent features together
+
+For every planned local/remote feature, check whether a *shared behavior with distinct execution adapters* can be delivered as one scoped vertical feature. Capture the common intent, selected environment, authority/capability, confirmation, preconditions, observed postcondition, retry/uncertainty and accessibility contract. Then build local and remote execution seams concurrently where independent, rather than completing phone-specific product/UI work before considering rTorrent. Do not unify incompatible transport or filesystem guarantees, and keep destructive features fail-closed until positive file-ownership and readback proof.
+
+Create a shared acceptance scenario manifest with per-adapter fixtures/observations. Run both in a coordinated session, using one built APK/emulator boot, shared test assets and disposable servers when possible. Each adapter retains independent pass/fail receipts, adversarial tests and rerun selection. Rerun only genuinely affected gates, plus one cross-environment installed UI/identity check at integration; reuse successful unaffected owner/device evidence. A combined session is a **resource scheduling optimization**, never permission to declare a missing/skipped/failed subcase green.
+
+Perform a second *capability-family scan* before new features: media identity powers metadata, Similar Transfers, search and smart rename; shared transfer inventory powers combined list, details and remote observations; destination and identity safeguards apply to Add, Move and Remove but do not automatically authorize all three. Separate safe shared modeling from dangerous attempts to universalize low-level providers.
+
 ## The measurable objective
 
 Maximize **correct, usable, integrated user journeys per unit of engineering and CI effort**, without sacrificing data integrity, account isolation, security, accessibility or owner-approved capabilities. Every PR must either (a) repair an observed harmful failure, (b) complete a working slice of a required journey, or (c) remove a specific test/architecture blocker on the shortest path to (a)/(b). Generic hardening/research needs a concrete risk or decision it will resolve.
