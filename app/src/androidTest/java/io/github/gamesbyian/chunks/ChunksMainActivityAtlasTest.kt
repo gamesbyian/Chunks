@@ -297,7 +297,12 @@ class ChunksMainActivityAtlasTest {
         // viewport transitions only the unmerged button + text are present.
         // Inspect the actual clickable parent, not a transient merged text
         // child, and keep one single semantic click after the item is reached.
-        val connectButton = hasClickAction() and hasAnyDescendant(hasText("Connect to rTorrent"))
+        // Compose may merge the label into the clickable Button node, or keep
+        // it as a child on API35. Accept either representation but still
+        // require one unique click target; neither path issues a second RPC.
+        val connectText = hasText("Connect to rTorrent")
+        val connectButton = hasClickAction() and
+            (connectText or hasAnyDescendant(connectText))
         var connectComposed = false
         for (attempt in 1..5) {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
