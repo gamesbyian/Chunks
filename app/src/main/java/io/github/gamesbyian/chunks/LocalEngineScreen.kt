@@ -623,6 +623,15 @@ internal fun LocalEngineScreen(
     }
     val transfersRequester = remember { BringIntoViewRequester() }
     val optionsRequester = remember { BringIntoViewRequester() }
+    // A fresh phone-only landing must actually expose downloads, even when
+    // optional Add, organization and settings tools precede the list in the
+    // scroll document. Incoming magnets and pending Add reviews retain their
+    // own starting context. This runs once per newly mounted phone route.
+    LaunchedEffect(Unit) {
+        if (initialMagnet == null && !addExpanded && pending == null) {
+            transfersRequester.bringIntoView()
+        }
+    }
     val addRequester = remember { BringIntoViewRequester() }
     var addNavigationRevision by remember { mutableIntStateOf(0) }
     LaunchedEffect(addExpanded, addNavigationRevision) {
