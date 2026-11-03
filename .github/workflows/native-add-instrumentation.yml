@@ -45,6 +45,7 @@ jobs:
           python3 tools/check_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_instrumentation_stream.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_add_attempts.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
