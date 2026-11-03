@@ -37,6 +37,8 @@ on:
       - '.github/workflows/reference-panel-weight-studies.yml'
       - 'tools/ci_workflow_inventory.py'
       - 'tests/test_ci_workflow_inventory.py'
+      - 'tools/ci_runner_cost_report.py'
+      - 'tests/test_ci_runner_cost_report.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
       - 'tools/physical_android_preflight.sh'
@@ -123,6 +125,8 @@ on:
       - '.github/workflows/reference-panel-weight-studies.yml'
       - 'tools/ci_workflow_inventory.py'
       - 'tests/test_ci_workflow_inventory.py'
+      - 'tools/ci_runner_cost_report.py'
+      - 'tests/test_ci_runner_cost_report.py'
       - 'tools/ci_jvm_two_forks.init.gradle'
       - 'tests/test_ci_jvm_parallelism.py'
       - 'tools/physical_android_preflight.sh'
@@ -200,6 +204,8 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_workflow_inventory.py
           python3 tools/ci_workflow_inventory.py --output "$RUNNER_TEMP/chunks-workflow-inventory.json" --summary
+      - name: Verify read-only Actions runner-time accounting (offline)
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_runner_cost_report.py
       - name: Retain machine-readable all-workflow inventory
         if: always()
         uses: actions/upload-artifact@v4
