@@ -66,7 +66,7 @@ class DigestTests(unittest.TestCase):
         for payload, suite in candidates:
             with self.subTest(payload=payload, suite=suite):
                 self.path.write_text(
-                    '<testsuite tests="1" failures="1"><testcase name="fails">'
+                    '<testsuite tests="1" errors="1"><testcase name="fails">'
                     '<error>' + payload + '</error></testcase></testsuite>'
                 )
                 result = make_digest([str(self.path)], "failure", suite, self.env)

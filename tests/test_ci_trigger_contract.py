@@ -145,6 +145,33 @@ class AndroidCiTriggerContract(unittest.TestCase):
             self.assertIn(name, source)
         self.assertIn("Missing or duplicated native atlas Android test method", source)
 
+    def test_r8_offline_gate_tests_only_run_in_existing_docs_job(self):
+        docs = (ROOT / ".github/workflows/documentation-validation.yml").read_text()
+        r8 = (ROOT / ".github/workflows/minified-smoke.yml").read_text()
+        docs_paths = pull_request_paths(docs)
+        r8_paths = pull_request_paths(r8)
+        for path in ("tests/test_ci_failure_digest.py",
+                     "tests/test_minified_smoke_digest.py"):
+            with self.subTest(path=path):
+                self.assertIn(path, docs_paths)
+                self.assertNotIn(path, r8_paths)
+                self.assertTrue(dispatches_for_changed_paths(docs, (path,)))
+                self.assertFalse(dispatches_for_changed_paths(r8, (path,)))
+                self.assertIn(
+                    "python3 -m unittest discover -s tests -p " + path.split("/")[-1],
+                    docs,
+                )
+        # Changing anything that affects the actual R8 execution or source-
+        # bound evidence remains an installed-emulator gate.
+        for path in ("tools/ci_failure_digest.py",
+                     "tools/require_minified_smoke_digest.py",
+                     "tools/minified_smoke.sh",
+                     "app/build.gradle.kts",
+                     ".github/workflows/minified-smoke.yml"):
+            with self.subTest(implementation=path):
+                self.assertIn(path, r8_paths)
+                self.assertTrue(dispatches_for_changed_paths(r8, (path,)))
+
     def test_expensive_r8_and_visual_atlas_wait_for_review_ready_pr(self):
         # Preserve both real installed-device classes and R8 exact-case checks;
         # only draft event scheduling should change.

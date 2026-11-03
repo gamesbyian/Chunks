@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-03 precise R8 test-only routing and actual runner baseline
+
+The same-source R8 acceptance [run 41673878175](https://github.com/gamesbyian/Chunks/actions/runs/41673878175) for diagnostics PR #1200 passed its genuine qaMinified installed Android test at head `c496265323361022cbc04a529df83acb3495e815`, using **7.733 job runner-minutes** (264 seconds R8 build and 136 seconds installed smoke). The independent docs check on that head correctly rejected a **self-contradictory JUnit test fixture** (`errors=1` case incorrectly declared as `failures=1`); the fixture is corrected without relaxing declared-count validation. The still-needed final exact-head R8 check covers the updated workflow path selector.
+
+The current routing now excludes only offline gate-test files `tests/test_ci_failure_digest.py` and `tests/test_minified_smoke_digest.py` from the expensive R8 event path list; documentation validation retains and executes **both** in its existing single job. Changes to either underlying proof implementation script or the R8 workflow remain actual installed-emulator selection. Offline tests prove positive/negative event routing. The 7.733-minute run is a measured **cost analogue**, not a claimed measured saving until a real later test-only PR is observed. Refer to [CI-POLICY](CI-POLICY.md) for boundaries, full source/runner gate and review-ready behavior.
+
+
 ## 2026-11-03 Robolectric runtime fetch failure: bounded CI triage evidence
 
 **Observed before any tool change:** [#1194 foundation run 41670063830](https://github.com/gamesbyian/Chunks/actions/runs/41670063830) built Android sources and ran **1,478** JVM tests with **one failed** (`AuthenticatedTransfersFooterTest`, 36 skipped). The failing test stack named `MavenArtifactFetcher.java:130` and nested `java.net.SocketException`; this is a Robolectric runtime SDK JAR network/download symptom rather than demonstrated incorrect footer behavior. Its exact HTTP/TLS/root cause remains undetermined; the red run cannot serve as positive Compose acceptance. Official Robolectric documentation independently confirms its separate runtime fetch path. The PR owner was informed in an [independent GitHub comment](https://github.com/gamesbyian/Chunks/pull/1194) rather than being directed to change valid UX code or repeat unneeded entire campaigns.
