@@ -145,6 +145,32 @@ class AndroidCiTriggerContract(unittest.TestCase):
             self.assertIn(name, source)
         self.assertIn("Missing or duplicated native atlas Android test method", source)
 
+    def test_expensive_r8_and_visual_atlas_wait_for_review_ready_pr(self):
+        # Preserve both real installed-device classes and R8 exact-case checks;
+        # only draft event scheduling should change.
+        for filename, job, obligatory in (
+            ("minified-smoke.yml", "minified-smoke",
+             ("require_minified_smoke_digest.py", "reactivecircus/android-emulator-runner@v2")),
+            ("native-visual-atlas.yml", "android-native-atlas",
+             ("native_atlas_capture.sh", "CHUNKS_NATIVE_ATLAS: all 3 required installed Android tests passed")),
+        ):
+            with self.subTest(filename=filename):
+                source = (ROOT / ".github/workflows" / filename).read_text()
+                self.assertIn(
+                    "types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]",
+                    source,
+                )
+                self.assertIn("workflow_dispatch:", source)
+                self.assertIn(
+                    "if: github.event_name != 'pull_request' || !github.event.pull_request.draft",
+                    source,
+                )
+                self.assertIn(f"  {job}:", source)
+                self.assertIn("cancel-in-progress: true", source)
+                for retained in obligatory:
+                    self.assertIn(retained, source)
+                self.assertNotIn("continue-on-error: true", source)
+
     def test_engine_collision_edits_trigger_real_api29_downloads_acceptance(self):
         source = (ROOT / ".github/workflows/android10-downloads-instrumentation.yml"
                   ).read_text(encoding="utf-8")
