@@ -40,6 +40,9 @@ class Android10StoragePermissionDialogInstrumentedTest {
         assumeTrue("Android 10 only", Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
         assumeTrue("Needs a fresh install without the storage grant", !granted())
         rule.setContent { MaterialTheme { LocalEngineScreen() } }
+        // The real user opens the optional Add surface before requesting
+        // storage. Keep every following OS permission and folder readback check.
+        rule.onNodeWithText("Add torrent on this phone").performScrollTo().performClick()
 
         val button = "Allow storage access for Downloads/" + LocalDownloadPlaces.PUBLIC_FOLDER_NAME
         rule.waitUntil(30_000) { rule.onAllNodesWithText(button).fetchSemanticsNodes().isNotEmpty() }
