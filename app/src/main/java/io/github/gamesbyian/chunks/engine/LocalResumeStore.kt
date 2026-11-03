@@ -6,6 +6,8 @@ import java.io.File
 /** One resume authority per engine session; desktop JNI fixtures retain the legacy reader/writer. */
 internal interface LocalResumeStore : AutoCloseable {
     fun canRegister(key: String): Boolean
+    /** Valid fsynced intents awaiting confirmation from a *new* empty native session. */
+    fun pendingRemovals(): List<String>
     fun restorable(): List<Pair<String, ByteArray>>
     fun problems(): List<String>
     fun current(key: String): ByteArray?
