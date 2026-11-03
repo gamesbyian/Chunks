@@ -70,6 +70,8 @@ class SeedingRulesScreenTest {
         rule.onNodeWithText("Save rule").performScrollTo().assertIsEnabled().performClick()
         rule.onNodeWithText("1. Iptorrents · Ratio 1.00 · 24 kbit/s").assertExists()
         rule.onNodeWithText("Applies to: On this phone").assertExists()
+        rule.onNodeWithText("Phone: matching future additions only").assertExists()
+        rule.onNodeWithText("Servers: saved for later", substring = true).assertDoesNotExist()
 
         val stored = SeedingRuleStore(context).load().rules.single()
         assertEquals(setOf("iptorrents.com"), stored.trackerDomains)
