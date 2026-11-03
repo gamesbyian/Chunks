@@ -7,6 +7,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -52,7 +56,9 @@ class RemoteFilePageRowTest {
         val container = rule.onNodeWithTag("file-container").getUnclippedBoundsInRoot()
         assertTrue("action must stay inside its file row", action.left >= container.left && action.right <= container.right)
         rule.onNodeWithContentDescription(
-            "Change priority for file 8: Season 1/Episode 01 The Long Title.mkv").performClick()
+            "Change priority for file 8: Season 1/Episode 01 The Long Title.mkv")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+            .performClick()
         assertEquals(1, clicks[0])
     }
 
@@ -73,7 +79,27 @@ class RemoteFilePageRowTest {
             .getUnclippedBoundsInRoot()
         assertTrue("wide presentation is horizontal", facts.right < action.left)
         rule.onNodeWithContentDescription(
-            "Close priority options for file 8: Season 1/Episode 01 The Long Title.mkv").performClick()
+            "Close priority options for file 8: Season 1/Episode 01 The Long Title.mkv")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
+            .performClick()
         assertEquals(1, clicks[0])
+    }
+
+    @Test fun staleFilePriorityAnnouncesWhyItCannotBeChanged() {
+        val clicks = intArrayOf(0)
+        rule.setContent {
+            ChunksTheme {
+                Box(Modifier.width(288.dp)) {
+                    RemoteFilePageRow(7, file, "Normal", false, false) { clicks[0]++ }
+                }
+            }
+        }
+        rule.onNodeWithContentDescription(
+            "Change priority for file 8: Season 1/Episode 01 The Long Title.mkv"
+        ).assert(SemanticsMatcher.expectValue(
+            SemanticsProperties.StateDescription,
+            "Unavailable until the current server view permits priority changes"
+        )).assertIsNotEnabled()
+        assertEquals(0, clicks[0])
     }
 }
