@@ -121,6 +121,8 @@ class LocalResumeDatabaseTest {
             assertTrue(migrated.canRegister(removed))
             assertFalse(migrated.canRegister(pending))
             assertFalse(migrated.canRegister(corrupt))
+            assertEquals("Only an authentic durable intent may be cold-reconciled",
+                listOf(pending), migrated.pendingRemovals())
             assertEquals(1, migrated.problems().size)
             assertEquals(hash, migrated.restorable().single().first)
             migrated.save(removed, "new explicit Add".toByteArray())
