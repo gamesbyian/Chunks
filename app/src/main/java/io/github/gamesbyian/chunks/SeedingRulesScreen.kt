@@ -153,6 +153,18 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                                 when (r.privateOnly) { true -> " · private torrents only"; false -> " · public torrents only"; null -> "" },
                                 style = MaterialTheme.typography.bodySmall)
                             Text(appliesTo(r, labels), style = MaterialTheme.typography.bodySmall)
+                            // Keep actual application separate from a saved remote
+                            // preference. The same rule may target both environments.
+                            val scopeOutcomes = buildList {
+                                if (SeedingEnvironment.PHONE_ID in r.environments)
+                                    add("Phone: matching future additions only")
+                                if (r.environments.any { it.startsWith("remote:") })
+                                    add("Servers: saved for later, not applied")
+                            }
+                            if (scopeOutcomes.isNotEmpty()) Text(
+                                scopeOutcomes.joinToString(" · "),
+                                style = MaterialTheme.typography.bodySmall
+                            )
                             Text(r.policy.describe(), style = MaterialTheme.typography.bodySmall)
                             if (pendingDelete == r.id) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 OutlinedButton(onClick = { pendingDelete = null; persist(snapshot.copy(rules = snapshot.rules - r)) },
