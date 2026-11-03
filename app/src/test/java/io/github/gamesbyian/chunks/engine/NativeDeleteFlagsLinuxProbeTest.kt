@@ -5,6 +5,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import org.junit.Assert.*
+import org.junit.Before
 import org.junit.Test
 import org.libtorrent4j.AlertListener
 import org.libtorrent4j.SessionHandle
@@ -23,6 +24,7 @@ import org.libtorrent4j.alerts.TorrentDeleteFailedAlert
  * The fixture and all writes are in this isolated temporary directory.
  */
 class NativeDeleteFlagsLinuxProbeTest {
+    @Before fun loadNative() = DesktopLibtorrent.ensureLoaded()
     @Test fun isolatedDeleteFilesHasBoundedAlertAndFileWitness() {
         val root = Files.createTempDirectory("chunks-delete-boundary-").toFile()
         val manager = SessionManager(false)
