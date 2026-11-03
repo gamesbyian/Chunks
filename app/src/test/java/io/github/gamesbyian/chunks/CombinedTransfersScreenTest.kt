@@ -198,6 +198,8 @@ class CombinedTransfersScreenTest {
         revealText("Search all selected")
         rule.onNodeWithText("Search all selected").performTextInput("Small Episode")
         rule.onNodeWithText("Showing 1", substring = true).assertExists()
+        rule.onNodeWithText("New downloads may not match this search.", substring = true)
+            .assertExists()
         // This 411dp Robolectric viewport has 16dp list padding on each side:
         // the field itself is 379dp and deliberately chooses the compact
         // TEXT-labelled Clear search action above the input (not a trailing
@@ -207,6 +209,8 @@ class CombinedTransfersScreenTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(clearAction)
         rule.onNode(clearAction).assertIsDisplayed().performClick()
         rule.onNodeWithText("Showing 2", substring = true).assertExists()
+        rule.onNodeWithText("New downloads may not match this search.", substring = true)
+            .assertDoesNotExist()
         assertTrue("Viewing and clearing a search must issue no server lifecycle commands",
             commands.isEmpty())
     }
@@ -247,12 +251,17 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Big Archive").assertDoesNotExist()
         revealText("Showing 1")
         rule.onNodeWithText("Showing 1", substring = true).assertExists()
+        revealText("New downloads may be hidden by this view.")
+        rule.onNodeWithText("New downloads may be hidden by this view.", substring = true)
+            .assertExists()
         assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.STOPPED,
             CombinedViewPreferences(context).load().filter)
         revealText("All transfers")
         rule.onNodeWithText("All transfers").performClick()
         revealText("Big Archive")
         rule.onNodeWithText("Big Archive").assertExists()
+        rule.onNodeWithText("New downloads may be hidden by this view.", substring = true)
+            .assertDoesNotExist()
         assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.ALL,
             CombinedViewPreferences(context).load().filter)
     }
