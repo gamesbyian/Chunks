@@ -1742,7 +1742,9 @@ internal fun LocalTransferCard(
     /** The Smart Seeding snapshot the phone controller stored; null before it has seen this transfer. */
     seeding: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment? = null
 ) {
-    var confirmRemove by remember(transfer.infoHash) { mutableStateOf(false) }
+    // An open confirmation belongs to the identity the user reviewed, not
+    // just a hash that may now describe a moved or changed transfer.
+    var confirmRemove by remember(transfer.infoHash, transfer.name, transfer.savePath) { mutableStateOf(false) }
     var confirmHandoff by remember(transfer.infoHash) { mutableStateOf(false) }
     val percent = transfer.progressPpm / 10_000
     Card(Modifier.fillMaxWidth()) {
@@ -1886,6 +1888,10 @@ internal fun LocalTransferCard(
             )
             if (filesShown && files != null) LocalFilesOnDiskCheck(transfer.infoHash, transfer.savePath, files)
             if (confirmRemove) {
+                Text("Remove from this phone: " + transfer.name,
+                    style = MaterialTheme.typography.titleSmall)
+                Text("Infohash: " + transfer.infoHash, style = MaterialTheme.typography.bodySmall)
+                Text("Current folder: " + transfer.savePath, style = MaterialTheme.typography.bodySmall)
                 Text("Choose what to remove from this phone. Keeping data stops this torrent in Chunks, but leaves downloaded files in their current folder.")
                 LocalTransferConfirmationActions(
                     confirmLabel = "Remove transfer, keep data",
@@ -1898,7 +1904,7 @@ internal fun LocalTransferCard(
                     onClick = {}, enabled = false,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text("Remove transfer and data (unavailable)") }
-                Text("Deleting downloaded data is not yet available: Chunks must first verify exactly which files belong only to this transfer. You can manage downloaded files separately in Android Files. Re-adding the same torrent immediately after removal may require a full phone-engine restart while native disk work finishes.",
+                Text("Deleting downloaded data is not yet available: Chunks must first verify exactly which files belong only to this transfer. You can manage downloaded files separately in Android Files. If re-adding this torrent is temporarily unavailable, wait for its previous disk work to finish and try again.",
                     style = MaterialTheme.typography.bodySmall)
             }
         }

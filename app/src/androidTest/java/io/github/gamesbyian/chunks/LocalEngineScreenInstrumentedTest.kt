@@ -114,7 +114,7 @@ class LocalEngineScreenInstrumentedTest {
             savePath = "/x", error = null)
         rule.setContent {
             MaterialTheme {
-                Column(Modifier.fillMaxSize().padding(16.dp)) {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)) {
                     LocalTransferCard(status, busy = false, onToggle = {}, onRemove = { removed++ })
                 }
             }
@@ -132,9 +132,36 @@ class LocalEngineScreenInstrumentedTest {
         rule.onNodeWithText("Remove…").performClick()
         assertEquals(0, removed)
         rule.onNodeWithText("leaves downloaded files in their current folder", substring = true).assertExists()
+        rule.onNodeWithText("Infohash: " + "b".repeat(40)).assertExists()
+        rule.onNodeWithText("Current folder: /x").assertExists()
         capture("local-engine-remove-confirm-real-compose")
-        rule.onNodeWithText("Remove transfer, keep data").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performScrollTo().performClick()
         assertEquals(1, removed)
+    }
+
+    @Test fun phoneRemovalReviewClosesWhenTheSameHashChangesLocationOrName() {
+        var removed = 0
+        var status by mutableStateOf(LocalTransferStatus("a".repeat(40), "Original",
+            LocalTransferState.DOWNLOADING, stopped = false, progressPpm = 0, wantedBytes = 1000,
+            doneBytes = 0, payloadDownloadedBytes = 0, payloadUploadedBytes = 0, peers = 0,
+            savePath = "/first", error = null))
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    LocalTransferCard(status, busy = false, onToggle = {}, onRemove = { removed++ })
+                }
+            }
+        }
+        rule.onNodeWithText("Remove…").performScrollTo().performClick()
+        rule.onNodeWithText("Current folder: /first").assertExists()
+        rule.runOnIdle { status = status.copy(savePath = "/second") }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        assertEquals(0, removed)
+        rule.onNodeWithText("Remove…").performScrollTo().performClick()
+        rule.onNodeWithText("Current folder: /second").assertExists()
+        rule.runOnIdle { status = status.copy(name = "Changed") }
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        assertEquals(0, removed)
     }
 
     @Test fun nativePerTransferPayloadRatesAreVisibleOnRunningCards() {
