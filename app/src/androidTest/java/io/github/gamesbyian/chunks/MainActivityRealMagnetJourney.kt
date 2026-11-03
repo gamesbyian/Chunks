@@ -66,7 +66,7 @@ internal class MainActivityRealMagnetJourney(
         rule.waitForIdle()
     }
     private fun report(key: String, value: String) {
-        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet2?|negative)|traffic_magnet2?_(initial|resumed)|diagnostic_magnet2?|negative|negative_stage|app_stage)")))
+        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[0234]?|negative)|traffic_magnet[0234]?_(initial|resumed)|diagnostic_magnet[0234]?|negative|negative_stage|app_stage)")))
         require(value.length <= 160 && value.matches(Regex("[a-z0-9,=-]+")))
         InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply { putString(key, value) })
     }
@@ -110,7 +110,7 @@ internal class MainActivityRealMagnetJourney(
         fail("Required exact-server checkpoint missing")
     }
     private fun controller(path: String, port: Long? = null): ByteArray {
-        require(path.matches(Regex("/magnet2?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
+        require(path.matches(Regex("/magnet[0234]?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
         val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
         connection.connectTimeout = 5_000; connection.readTimeout = 60_000
         connection.instanceFollowRedirects = false
@@ -147,16 +147,19 @@ internal class MainActivityRealMagnetJourney(
         fun row(hash: String) = runBlocking { remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) } }
         val beforeRows = runBlocking { remote.listTransfers("main") }
         val before = beforeRows.map { it.hash.lowercase() }.toSet()
+        val skippedSessions = mutableMapOf<String, Pair<String, RemoteTransfer?>>()
         val default = runBlocking { remote.defaultDirectory() }
         val parent = default ?: requireNotNull(runBlocking { corroboratedParent(remote, beforeRows) }) {
             "No independently corroborated server Place; no Add allowed"
         }
-        val fixtures = listOf("magnet", "magnet2").associateWith { label ->
+        val groups = listOf((if (disposable && !publicDiscovery) listOf("magnet0") else emptyList()) +
+            listOf("magnet", "magnet3"), listOf("magnet2", "magnet4"))
+        val fixtures = groups.flatten().associateWith { label ->
             TorrentMetainfoReader.preview(controller("/$label.torrent")).also { preview ->
                 report("chunks_real_add_hash_$label", preview.infoHashV1)
-                require(preview.infoHashV1 !in before && runBlocking { remote.lookupName(preview.infoHashV1) } == null)
             }
         }
+        require(fixtures.values.map { it.infoHashV1 }.toSet().size == fixtures.size)
         // Real connection UI; its ordinary authentication, saved profile,
         // selected environment and mutation fence remain in the call chain.
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
@@ -165,9 +168,9 @@ internal class MainActivityRealMagnetJourney(
         report("chunks_real_add_app_stage", "connect-click-attempt")
         click("Connect to rTorrent")
         report("chunks_real_add_app_stage", "connect-submitted")
-        // The compact authenticated Transfers header replaced the old welcome
-        // slogan. Assert an actual connected list action, not retired copy.
-        rule.waitUntil(90_000) { visible("All environments…") && !visible("Connect to rTorrent") }
+        // Current compact connected Transfers UI has no former greeting hero.
+        // Require its actual authenticated inventory controls before attempting Add.
+        rule.waitUntil(90_000) { visible("+ Add torrent") && visible("All environments…") }
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
@@ -208,17 +211,15 @@ internal class MainActivityRealMagnetJourney(
             click("Refresh")
             type("Search names or Places", hash)
         }
-        fun ensureTransferDetails() {
-            // Since the compact Transfers redesign, Start/Stop/Remove
-            // live behind an explicit per-row disclosure. On an exact-hash
-            // filtered queue this is the one selected job; do not mistake
-            // an undisclosed control for a rejected engine mutation.
-            if (!visible("Hide details")) click("More details")
-            rule.onNodeWithText("Hide details").assertExists()
+        // Current compact transfer cards intentionally hide secondary actions
+        // behind a read-only disclosure. Open it for the exact searched hash,
+        // rather than assuming a collapsed card exposes Stop/Remove.
+        fun exposeTransferActions() {
+            if (visible("More details")) click("More details")
         }
-        fun lifecycle(hash: String, start: Boolean, refresh: Boolean = true) {
-            if (refresh) refreshAndFind(hash)
-            ensureTransferDetails()
+        fun lifecycle(hash: String, start: Boolean) {
+            refreshAndFind(hash)
+            exposeTransferActions()
             click(if (start) "Start transfer…" else "Stop transfer…")
             click(if (start) "Confirm start" else "Confirm stop")
             await { row(hash)?.started == start && runBlocking { remote.readActivity(hash).active } == start }
@@ -226,20 +227,31 @@ internal class MainActivityRealMagnetJourney(
         fun remove(hash: String) {
             if (row(hash)?.started == true) lifecycle(hash, false)
             refreshAndFind(hash)
-            ensureTransferDetails()
+            exposeTransferActions()
             click("Remove from rTorrent…"); click("Remove transfer, keep data")
             await { runBlocking { remote.lookupName(hash) } == null }
             assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
         }
-        for (label in listOf("magnet", "magnet2")) {
+        for (group in groups) {
+          var groupPassed = false
+          for (label in group) {
             val preview = fixtures.getValue(label)
             val hash = preview.infoHashV1
-            require(hash !in before && runBlocking { remote.lookupName(hash) } == null)
+            val existingName = runBlocking { remote.lookupName(hash) }
+            if (hash in before || existingName != null) {
+                // A pre-existing session is never ours to stop or erase.
+                skippedSessions[hash] = requireNotNull(existingName) to beforeRows.singleOrNull { it.hash.equals(hash, true) }
+                stage(label, "already-present")
+                continue
+            }
             stage(label, "preflight")
             var submitted = false
+            var verifiedAdded = false
             var removed = false
+            var cleanupAttempted = false
             try {
                 add(hash, label) { submitted = true }
+                verifiedAdded = true
                 stage(label, "ui-verified")
                 val placeholder = requireNotNull(row(hash))
                 assertTrue(placeholder.directory in setOf(parent, "$parent/${preview.name}"))
@@ -270,15 +282,47 @@ internal class MainActivityRealMagnetJourney(
                         (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt() == 0
                 }
                 stage(label, "metadata")
+                class PrecompletedFixture : RuntimeException()
+                fun rejectPrecompleted(sample: RemoteTrafficSample) {
+                    if (sample.expectedBytes == preview.sizeBytes && preview.sizeBytes > 0 &&
+                        sample.verifiedBytes == preview.sizeBytes && sample.receivedBytes == 0L) {
+                        traffic(label, "initial", sample)
+                        throw PrecompletedFixture()
+                    }
+                }
+                try {
+                    rejectPrecompleted(runBlocking { remote.readTrafficSample(hash) })
+                    if (label == "magnet0") await(30) {
+                        rejectPrecompleted(runBlocking { remote.readTrafficSample(hash) })
+                        false
+                    }
+                } catch (_: PrecompletedFixture) {
+                    // Remove only the just-created exact job via production UI.
+                    // A failed or uncertain removal must stop rotation.
+                    stage(label, "fixture-precompleted")
+                    click("Back to transfers")
+                    cleanupAttempted = true
+                    remove(hash); removed = true
+                    stage(label, "removed")
+                    continue
+                }
                 if (!publicDiscovery) controller("/$label/payload", source.listenPort)
                 try {
                     await(90) {
                         val sample = runBlocking { remote.readTrafficSample(hash) }
+                        rejectPrecompleted(sample)
                         sample.active == true && ((sample.peers ?: 0L) > 0L ||
                             (publicDiscovery && sample.verifiedBytes == sample.expectedBytes)) &&
                             (sample.receivedBytes ?: 0L) > 0L && (sample.verifiedBytes ?: 0L) > 0L &&
                             sample.expectedBytes == preview.sizeBytes
                     }
+                } catch (_: PrecompletedFixture) {
+                    stage(label, "fixture-precompleted")
+                    click("Back to transfers")
+                    cleanupAttempted = true
+                    remove(hash); removed = true
+                    stage(label, "removed")
+                    continue
                 } catch (timeout: AssertionError) {
                     // Prior failed live run had zero independent uploads but
                     // discarded *all* remote counters and state on timeout.
@@ -305,11 +349,7 @@ internal class MainActivityRealMagnetJourney(
                 scroll(preview.name)
                 assertTrue("Actual Transfers lost original metadata name", visible(preview.name))
                 assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
-                // Already refreshed and searched this exact hash above. A second
-                // refresh before Stop creates an unnecessary pending/readback
-                // window and can disable controls while a user-visible mutation
-                // is still awaiting a new snapshot.
-                lifecycle(hash, false, refresh = false)
+                lifecycle(hash, false)
                 stage(label, "stopped")
                 val stopped = runBlocking { remote.readTrafficSample(hash) }
                 lifecycle(hash, true)
@@ -323,14 +363,18 @@ internal class MainActivityRealMagnetJourney(
                 traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
                 stage(label, "restarted")
                 stage(label, if (completeBeforeRestart) "completed-at-stop" else "resumed-traffic")
+                cleanupAttempted = true
                 remove(hash); removed = true
                 stage(label, "removed")
                 stage(label, "ui-controls"); stage(label, "passed")
+                groupPassed = true
             } finally {
                 if (submitted && !removed) {
-                    // Failure-only exact owned-session cleanup. A fresh exact
-                    // row and metadata flag guard changes; no Add is replayed.
-                    val current = row(hash)
+                    // A timeout or other uncertain Add does not establish
+                    // that this test created a matching session. Preserve it
+                    // for read-only reconciliation; never adopt and erase it.
+                    // A cleanup attempt is also never blindly repeated.
+                    val current = if (cleanupAttempted || !verifiedAdded) null else row(hash)
                     if (current != null && current.directory in setOf(parent, "$parent/${preview.name}")) {
                         if (current.started) runBlocking { remote.setStarted(hash, false) }
                         await { row(hash)?.started == false && runBlocking { remote.readActivity(hash).active } == false }
@@ -342,6 +386,9 @@ internal class MainActivityRealMagnetJourney(
                     stage(label, "uncertain")
                 }
             }
+            if (groupPassed) break
+          }
+          assertTrue("All genuine candidates in a publisher group were unavailable or precompleted", groupPassed)
         }
         val run = requireNotNull(arg("chunks_acceptance_run"))
         require(run.matches(Regex("[0-9]{5,20}")))
@@ -377,5 +424,15 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_negative_stage", "removed")
         }
         report("chunks_real_add_negative", "peerless-ui-and-cleanup-passed")
+        for ((hash, snapshot) in skippedSessions) {
+            assertEquals("Pre-existing session name changed", snapshot.first,
+                runBlocking { remote.lookupName(hash) })
+            val previous = snapshot.second
+            if (previous != null) {
+                val current = requireNotNull(row(hash))
+                assertEquals("Pre-existing session path changed", previous.directory, current.directory)
+                assertEquals("Pre-existing session state changed", previous.started, current.started)
+            }
+        }
     }
 }

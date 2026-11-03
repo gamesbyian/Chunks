@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Real libtorrent metadata/payload peer for installed remote-Add acceptance.
 
-Two independently published, redistributable v1 torrents: official Debian
-netinst and Blender's CC BY 3.0 Sintel via WebTorrent. Only a bounded prefix
-is fetched over HTTPS; libtorrent independently checks the original pieces.
+Two independently published groups of redistributable v1 torrents: official
+Debian arm64/amd64 netinst and Blender's CC BY 3.0 Sintel/Big Buck Bunny via
+WebTorrent. Only a bounded prefix is fetched over HTTPS; libtorrent checks
+the original pieces before the installed app is allowed to submit a magnet.
 The Android app submits magnets, never these metainfo bytes, to rTorrent.
 The loopback controller only dials the configured disposable/development host.
 """
@@ -20,7 +21,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import libtorrent as lt
-from public_fixture_collector import debian_fixture
+from public_fixture_collector import bstr, debian_fixture
 
 PREFIX_BUDGET = 32 * 1024 * 1024
 
@@ -42,18 +43,20 @@ def fetch(url, limit, offset=0):
 
 
 def prepare(root):
-    manifest, debian = debian_fixture(2 * 1024**3, architecture="arm64")
-    sintel_url = "https://webtorrent.io/torrents/sintel.torrent"
-    with urllib.request.urlopen(sintel_url, timeout=30) as response:
-        sintel = response.read(2_097_153)
-    if not sintel or len(sintel) > 2_097_152:
-        raise ValueError("Sintel metainfo unavailable")
-    sources = {
-        "magnet": (debian, manifest["torrent_url"].replace("/bt-cd/", "/iso-cd/").removesuffix(".torrent"),
-                   manifest["source_url"], manifest["license"]),
-        "magnet2": (sintel, "https://webtorrent.io/torrents/", sintel_url,
-                    "Blender Foundation Sintel, CC BY 3.0, https://durian.blender.org/sharing/"),
-    }
+    sources = {}
+    for label, architecture in (("magnet", "arm64"), ("magnet3", "amd64")):
+        manifest, raw = debian_fixture(2 * 1024**3, architecture=architecture)
+        sources[label] = (raw, manifest["torrent_url"].replace("/bt-cd/", "/iso-cd/").removesuffix(".torrent"),
+                          manifest["source_url"], manifest["license"])
+    for label, title in (("magnet2", "sintel"), ("magnet4", "big-buck-bunny")):
+        source = "https://webtorrent.io/torrents/" + title + ".torrent"
+        with urllib.request.urlopen(source, timeout=30) as response:
+            raw = response.read(2_097_153)
+        if not raw or len(raw) > 2_097_152:
+            raise ValueError("Blender metainfo unavailable")
+        license_url = "https://durian.blender.org/sharing/" if title == "sintel" else "https://peach.blender.org/about/"
+        sources[label] = (raw, "https://webtorrent.io/torrents/", source,
+                          "Blender Foundation, CC BY 3.0, " + license_url)
     fixtures = {}
     for label, (raw, payload_source, source, license_text) in sources.items():
         ti = lt.torrent_info(raw)
@@ -85,7 +88,7 @@ def prepare(root):
                 out.truncate(length)
                 wanted = min(remaining, length)
                 if wanted:
-                    url = payload_source if label == "magnet" else payload_source + urllib.parse.quote(str(relative))
+                    url = payload_source if label in ("magnet", "magnet3") else payload_source + urllib.parse.quote(str(relative))
                     out.write(fetch(url, wanted))
                     remaining -= wanted
         (root / (label + ".torrent")).write_bytes(raw)
@@ -97,6 +100,33 @@ def prepare(root):
             "peer_error_alerts": 0, "max_active_peers": 0, "payload_uploaded_bytes": 0,
             "stages": [], "native_verified_bytes": 0,
         }
+    if os.getenv("CHUNKS_DISPOSABLE") == "1" and os.getenv("CHUNKS_PUBLIC_DISCOVERY") != "1":
+        # Small synthetic *negative* control: the workflow copies these exact
+        # bytes into its disposable rTorrent directory before the UI Add. It
+        # cannot count as either of the two genuine publisher successes.
+        name = b"chunks-precompleted-control.bin"
+        payload = hashlib.sha256(os.getenv("GITHUB_RUN_ID", "local").encode()).digest() * 2048
+        piece_length = 16384
+        pieces = b"".join(hashlib.sha1(payload[i:i + piece_length]).digest()
+                          for i in range(0, len(payload), piece_length))
+        info = (b"d6:lengthi" + str(len(payload)).encode() + b"e4:name" + bstr(name) +
+                b"12:piece lengthi16384e6:pieces" + bstr(pieces) + b"e")
+        raw = b"d8:announce" + bstr(b"http://127.0.0.1:1/announce") + b"4:info" + info + b"e"
+        target = root / "magnet0"
+        target.mkdir()
+        (target / name.decode()).write_bytes(payload)
+        (root / "magnet0.torrent").write_bytes(raw)
+        infohash = hashlib.sha1(info).hexdigest()
+        (root / "magnet0.magnet").write_text("magnet:?xt=urn:btih:" + infohash)
+        fixtures["magnet0"] = {
+            "hash": infohash, "name": name.decode(), "size": len(payload),
+            "prefix_bytes": len(payload), "source": "disposable-negative-control",
+            "license": "synthetic local test bytes", "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
+            "peer_connections": 0, "peer_disconnects": 0, "peer_error_alerts": 0,
+            "max_active_peers": 0, "payload_uploaded_bytes": 0, "stages": [], "native_verified_bytes": 0,
+        }
+    if len({item["hash"] for item in fixtures.values()}) != len(fixtures):
+        raise ValueError("Public candidates must have distinct infohashes")
     return fixtures
 
 
@@ -142,27 +172,35 @@ class Peer:
             classes.add_rule("0.0.0.0", "255.255.255.255", 1)
             session.set_peer_class_filter(classes)
             ti = lt.torrent_info(str(self.root / (label + ".torrent")))
-            params = {"ti": ti, "save_path": str(self.root / label)}
+            metadata_only = label == "magnet0" and stage == "metadata"
+            save_path = self.root / ("magnet0-metadata" if metadata_only else label)
+            if metadata_only:
+                # Supply BEP9 metainfo from an empty directory. The test
+                # must establish precompletion by rTorrent's own disk
+                # recheck, before any peer can upload payload to it.
+                save_path.mkdir()
+            params = {"ti": ti, "save_path": str(save_path)}
             handle = session.add_torrent(params)
             # Never fetch missing bytes from public trackers or webseeds.
             handle.replace_trackers([])
             for webseed in handle.url_seeds():
                 handle.remove_url_seed(webseed)
             handle.resume()
-            deadline = time.monotonic() + 45
-            while time.monotonic() < deadline:
+            if not metadata_only:
+                deadline = time.monotonic() + 45
+                while time.monotonic() < deadline:
+                    status = handle.status(lt.status_flags_t.query_pieces)
+                    verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
+                    if status.error:
+                        raise ValueError("Native source recheck failed")
+                    if verified >= item["prefix_bytes"]:
+                        break
+                    time.sleep(.1)
                 status = handle.status(lt.status_flags_t.query_pieces)
                 verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
-                if status.error:
-                    raise ValueError("Native source recheck failed")
-                if verified >= item["prefix_bytes"]:
-                    break
-                time.sleep(.1)
-            status = handle.status(lt.status_flags_t.query_pieces)
-            verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
-            if verified < item["prefix_bytes"]:
-                raise ValueError("Original source pieces are unavailable")
-            item["native_verified_bytes"] = verified
+                if verified < item["prefix_bytes"]:
+                    raise ValueError("Original source pieces are unavailable")
+                item["native_verified_bytes"] = verified
             self.active[label] = session, handle
             item["stages"].append(stage)
             if stage != "preflight":
@@ -214,7 +252,8 @@ def main():
             def do_GET(self):
                 if self.path == "/ready":
                     body = json.dumps(peer.fixtures).encode()
-                elif self.path in ("/magnet.torrent", "/magnet2.torrent", "/magnet.magnet", "/magnet2.magnet"):
+                elif self.path in tuple("/" + label + extension for label in peer.fixtures
+                                        for extension in (".torrent", ".magnet")):
                     body = (args.root / self.path[1:]).read_bytes()
                 else:
                     self.send_error(404)
