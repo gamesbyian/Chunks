@@ -68,6 +68,31 @@ class TransferMoveTest {
         assertTrue(back.message.contains("Downloaded files remain on the server"))
     }
 
+    @Test fun phoneSourceGenerationRoundTripsAndNeverAuthorizesReplacement() {
+        val original = TransferMove.start(
+            Direction.PHONE_TO_SERVER, hash, "Big Buck Bunny", scope, "seed.example",
+            sourceReviewToken = "native-session:17"
+        )
+        assertTrue(original.encode().startsWith("v2\\n"))
+        assertEquals(original, TransferMove.decode(original.encode()))
+        assertTrue(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", "native-session:17"))
+        assertFalse(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", "native-session:18"))
+        assertFalse(TransferMove.sourceIdentityMatches(original, "Changed title", "native-session:17"))
+        assertFalse(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", null))
+    }
+
+    @Test fun legacyPhoneMoveCanBeRecoveredButCannotEraseUnidentifiedSource() {
+        val old = started()
+        assertTrue(old.encode().startsWith("v1\\n"))
+        val recovered = requireNotNull(TransferMove.decode(old.encode()))
+        assertNull(recovered.sourceReviewToken)
+        assertFalse(TransferMove.sourceIdentityMatches(recovered, recovered.name, "fresh-native:1"))
+        // The rTorrent source has its own exact-hash/name/path verification
+        // and never relied on the phone engine's ephemeral native token.
+        val remoteSource = started(Direction.SERVER_TO_PHONE)
+        assertTrue(TransferMove.sourceIdentityMatches(remoteSource, "Big Buck Bunny", null))
+    }
+
     @Test fun codecRoundTripsAwkwardNamesAndRejectsMalformedRecords() {
         val move = TransferMove.start(Direction.SERVER_TO_PHONE, hash, "Line\nbreak \\ slash", scope, "host")
         assertEquals(move, TransferMove.decode(move.encode()))
