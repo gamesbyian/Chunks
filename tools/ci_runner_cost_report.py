@@ -5,6 +5,7 @@ Run: python3 tools/ci_runner_cost_report.py --repo gamesbyian/Chunks --branch BR
 Requires authenticated gh CLI only for live mode. Offline mode:
   --runs-json runs.json --jobs-dir downloaded-job-json/
 The REST data is the source; durations are measured, not predicted or billed minutes.
+Source-SHA groups may include multiple PR events (draft, ready, retry), not one dispatch.
 """
 from __future__ import annotations
 
@@ -81,6 +82,8 @@ def cost_report(runs: list[dict]) -> dict:
         "wall_minutes": 0.0, "job_window_minutes": 0.0, "runs_with_timed_jobs": 0, "jobs": 0,
     })
     rows = []
+    by_source = {}
+    unattributed_runs = 0
     for run in runs:
         run_id = int(run["id"])
         if run_id in seen_runs:
@@ -138,10 +141,40 @@ def cost_report(runs: list[dict]) -> dict:
             "runner_minutes": round(total, 3), "wall_minutes": round(wall, 3),
             "job_window_minutes": round(job_window, 3) if job_window is not None else None,
         })
+        sha = run.get("head_sha")
+        if sha is None:
+            unattributed_runs += 1  # Backwards-compatible with older offline fixtures.
+        else:
+            if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", sha):
+                raise ValueError(f"Invalid source SHA on run {run_id}")
+            revision = by_source.setdefault(sha.lower(), {
+                "runs": 0, "cancelled_runs": 0, "failed_runs": 0,
+                "zero_timed_job_runs": 0, "runner_minutes": 0.0,
+                "cancelled_run_runner_minutes": 0.0, "run_ids": [],
+                "workflows": [],
+            })
+            revision["runs"] += 1
+            revision["runner_minutes"] += total
+            revision["run_ids"].append(run_id)
+            if name not in revision["workflows"]:
+                revision["workflows"].append(name)
+            if not timed_starts:
+                revision["zero_timed_job_runs"] += 1
+            if outcome == "cancelled":
+                revision["cancelled_runs"] += 1
+                revision["cancelled_run_runner_minutes"] += total
+            elif outcome == "failure":
+                revision["failed_runs"] += 1
     groups = {}
     for name, values in sorted(by_name.items()):
         groups[name] = {k: round(v, 3) if isinstance(v, float) else v
                         for k, v in values.items()}
+    revision_groups = {
+        sha: {key: (round(value, 3) if isinstance(value, float)
+                    else sorted(value) if key == "workflows" else value)
+              for key, value in group.items()}
+        for sha, group in sorted(by_source.items())
+    }
     return {
         "schema": "chunks-ci-runner-cost-v1",
         "source": "GitHub Actions job started_at/completed_at timestamps",
@@ -151,7 +184,9 @@ def cost_report(runs: list[dict]) -> dict:
         "cancelled_run_runner_minutes": round(
             sum(x["cancelled_run_runner_minutes"] for x in groups.values()), 3
         ),
-        "by_workflow": groups, "details": sorted(rows, key=lambda x: x["run_id"]),
+        "by_workflow": groups, "by_source_sha": revision_groups,
+        "runs_without_source_sha": unattributed_runs,
+        "details": sorted(rows, key=lambda x: x["run_id"]),
     }
 
 
@@ -191,6 +226,11 @@ def main() -> None:
               f"cancelled_min={item['cancelled_run_runner_minutes']:.2f} "
               f"job_window_min={item['job_window_minutes']:.2f} "
               f"timed_runs={item['runs_with_timed_jobs']}")
+    for sha, group in report["by_source_sha"].items():
+        print(f"source={sha[:12]} runs={group['runs']} "
+              f"runner_min={group['runner_minutes']:.2f} "
+              f"cancelled_min={group['cancelled_run_runner_minutes']:.2f} "
+              f"no_timed_jobs={group['zero_timed_job_runs']}")
     if args.json_out:
         args.json_out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n",
                                  encoding="utf-8")
