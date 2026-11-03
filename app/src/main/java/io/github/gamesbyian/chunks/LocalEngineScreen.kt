@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -619,10 +621,19 @@ internal fun LocalEngineScreen(
             )
         }
     }
-    Box(Modifier.fillMaxSize()) {
+    val transfersRequester = remember { BringIntoViewRequester() }
+    val optionsRequester = remember { BringIntoViewRequester() }
+    val addRequester = remember { BringIntoViewRequester() }
+    var addNavigationRevision by remember { mutableIntStateOf(0) }
+    LaunchedEffect(addExpanded, addNavigationRevision) {
+        if (addExpanded) addRequester.bringIntoView()
+    }
+    // The footer occupies measured space and never overlays a transfer action.
+    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.weight(1f)) {
     Column(
         Modifier.fillMaxSize().verticalScroll(scrollState)
-            .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 92.dp),
+            .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (onBack != null) OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
@@ -641,7 +652,9 @@ internal fun LocalEngineScreen(
             placeLabel = place?.title, onToggle = { addExpanded = !addExpanded }
         )
         if (addExpanded) {
-        Text("Add a download on this phone", style = MaterialTheme.typography.titleMedium)
+        Text("Add a download on this phone", style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.bringIntoViewRequester(addRequester)
+                .semantics { heading() })
         ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
             enabled = !busy && !inventoryStale && destination != null,
             modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
@@ -1271,7 +1284,9 @@ internal fun LocalEngineScreen(
             onNamesChanged = { registeredNames = it }
         )
         Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold)
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.bringIntoViewRequester(transfersRequester)
+                .semantics { heading() })
         ClearableTransferSearchField(
             value = transferSearch,
             onValueChange = { transferSearch = it },
@@ -1280,6 +1295,7 @@ internal fun LocalEngineScreen(
         OutlinedButton(
             onClick = { showListOptions = !showListOptions },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .bringIntoViewRequester(optionsRequester)
                 .semantics { stateDescription = if (showListOptions) "Expanded" else "Collapsed" }
         ) {
             Text((if (showListOptions) "Hide" else "Choose") + " filters & sort · " +
@@ -1696,7 +1712,22 @@ internal fun LocalEngineScreen(
             }
         }
     )
-    }
+    } // scroll viewport
+    AuthenticatedTransfersFooter(
+        optionsOpen = showListOptions,
+        environmentLabel = "this phone",
+        onTransfers = { scope.launch { transfersRequester.bringIntoView() } },
+        onAdd = {
+            addExpanded = true
+            // Repeated taps also bring the real form into view above the footer.
+            addNavigationRevision++
+        },
+        onOptions = {
+            showListOptions = !showListOptions
+            scope.launch { optionsRequester.bringIntoView() }
+        }
+    )
+    } // measured footer + viewport
 }
 
 /** This entry point is read-only until an existing Add operation is explicitly submitted. */

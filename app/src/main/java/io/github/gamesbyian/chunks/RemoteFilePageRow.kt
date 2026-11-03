@@ -50,7 +50,14 @@ internal fun RemoteFilePageRow(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(fileFacts, style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.weight(1f), maxLines = 3, overflow = TextOverflow.Ellipsis)
+                    // The condensed row stays compact; expanding the exact file
+                    // reveals its complete path without truncation. Speak the
+                    // complete identity even when only three lines fit visually.
+                    modifier = Modifier.weight(1f).semantics {
+                        contentDescription = fileFacts
+                    },
+                    maxLines = if (expanded) Int.MAX_VALUE else 3,
+                    overflow = if (expanded) TextOverflow.Clip else TextOverflow.Ellipsis)
                 RemoteFilePriorityToggle(index, file, expanded, actionEnabled, onToggle)
             }
         }

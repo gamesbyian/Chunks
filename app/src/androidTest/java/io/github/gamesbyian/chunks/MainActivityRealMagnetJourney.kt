@@ -46,12 +46,21 @@ internal class MainActivityRealMagnetJourney(
         // Connect is already visible; a redundant scroll there previously
         // raced its re-composing form. Only scroll within an oversized item
         // when the actual action remains offscreen.
-        val shown = runCatching {
-            rule.onNodeWithText(text).assertIsDisplayed()
-            true
-        }.getOrDefault(false)
-        if (!shown) rule.onNodeWithText(text).performScrollTo()
-        rule.onNodeWithText(text).assertIsDisplayed()
+        // The IME can asynchronously re-scroll and recycle a lazy button
+        // after the first pre-dispatch scroll. Retry *only* read/scroll checks,
+        // never an action that could have submitted Connect/Add/Remove.
+        var visiblyReady = false
+        for (attempt in 1..5) {
+            visiblyReady = runCatching {
+                if (attempt > 1) scroll(text)
+                rule.onNodeWithText(text).performScrollTo()
+                rule.waitForIdle()
+                rule.onNodeWithText(text).assertIsDisplayed()
+                true
+            }.getOrDefault(false)
+            if (visiblyReady) break
+        }
+        check(visiblyReady) { "Installed action remained outside the visible Compose viewport: $text" }
         // Exactly one click; never retry a possibly submitted RPC mutation.
         rule.onNodeWithText(text).performClick()
     }
@@ -160,6 +169,10 @@ internal class MainActivityRealMagnetJourney(
             }
         }
         require(fixtures.values.map { it.infoHashV1 }.toSet().size == fixtures.size)
+        // Fresh installs now open phone Transfers first. Reach server setup
+        // explicitly without bypassing the real authentication UI.
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Back").performScrollTo().performClick()
         // Real connection UI; its ordinary authentication, saved profile,
         // selected environment and mutation fence remain in the call chain.
         type("Seedbox hostname, ruTorrent URL or RPC address", url)

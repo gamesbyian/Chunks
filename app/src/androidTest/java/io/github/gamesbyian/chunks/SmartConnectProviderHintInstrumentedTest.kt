@@ -3,6 +3,10 @@ package io.github.gamesbyian.chunks
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -21,6 +25,9 @@ class SmartConnectProviderHintInstrumentedTest {
 
     @Test fun cataloguedHostShowsDocumentedHintAndUnknownHostShowsNone() {
         val field = "Seedbox hostname, ruTorrent URL or RPC address"
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Back").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(field))
         rule.onNodeWithText(field).performTextInput("box.whatbox.ca")
         rule.waitForIdle()
         rule.onNodeWithText("Recognised Whatbox.", substring = true).assertExists()

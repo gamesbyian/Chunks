@@ -61,6 +61,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.LocalDensity
@@ -247,7 +248,13 @@ private fun ChunksApp(
     var stale by remember { mutableStateOf(false) }
     var currentView by remember { mutableStateOf("main") }
     var requestedView by remember { mutableStateOf("main") }
-    var section by rememberSaveable(saver = SectionRestoreSaver) { mutableStateOf(Section.TRANSFERS) }
+    // A fresh install with no remembered authenticated server opens the useful
+    // phone transfer inventory. Saved/verified remote users still enter their
+    // existing single-attempt reconnect journey. Restored routes keep their
+    // explicit prior section; this default grants no server mutation authority.
+    var section by rememberSaveable(saver = SectionRestoreSaver) {
+        mutableStateOf(if (remembered == null) Section.LOCAL else Section.TRANSFERS)
+    }
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
@@ -2024,13 +2031,19 @@ private fun TransferCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TransferFileTypeBadge(transfer.name)
                 Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    // Collapsed rows stay compact, but full names are available
+                    // to TalkBack and when the user expands this exact card.
+                    modifier = Modifier.weight(1f).semantics {
+                        contentDescription = alias ?: transfer.name
+                    },
+                    maxLines = if (detailsOpen) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis)
             }
             if (detailsOpen) {
             if (alias != null) {
                 Text("Original torrent: " + transfer.name,
                     style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary,
-                    maxLines = if (expanded) 5 else 1, overflow = TextOverflow.Ellipsis)
+                    maxLines = Int.MAX_VALUE, overflow = TextOverflow.Clip)
             }
             TransferAliasEditor(
                 originalName = transfer.name, hash = transfer.hash,
