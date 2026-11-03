@@ -145,7 +145,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val handles: MutableMap<String, TorrentHandle> = Collections.synchronizedMap(LinkedHashMap())
     private val reviewSessionId = java.util.UUID.randomUUID().toString()
     private var reviewSequence = 0L
-    private val nativeReviewTokens = HashMap<String, String>()
+    private val nativeReviewTokens = ConcurrentHashMap<String, String>()
     private fun mintReviewToken(): String = "$reviewSessionId:${++reviewSequence}"
     // Keep timed-out requests pending until their real alert arrives: a late
     // alert must not confirm a different save generation.
