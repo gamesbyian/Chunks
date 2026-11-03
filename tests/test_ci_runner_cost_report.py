@@ -1,7 +1,7 @@
 """Offline negative controls for real Actions job-time accounting."""
 import unittest
 
-from tools.ci_runner_cost_report import cost_report, get_runs, minutes, paginated_items, created_range
+from tools.ci_runner_cost_report import cost_report, get_runs, minutes, paginated_items, created_range, main
 from unittest.mock import patch
 
 
@@ -352,6 +352,73 @@ class RunnerCostTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "not complete"):
                 get_runs("gamesbyian/Chunks", "ux/active")
             fetch.assert_called_once()
+
+
+    def test_exact_1000_workflow_results_cannot_certify_search_completeness(self):
+        # Filtered GitHub REST searches can stop at this exact boundary.
+        hundred = [{"id": i} for i in range(100)]
+        with patch("tools.ci_runner_cost_report.gh_json") as fetch:
+            fetch.return_value = {"total_count": 1000, "workflow_runs": hundred}
+            with self.assertRaisesRegex(ValueError, "search ceiling"):
+                paginated_items("repos/gamesbyian/Chunks/actions/runs?branch=main",
+                                "workflow_runs", "workflow runs")
+            fetch.assert_called_once()
+
+    def test_exported_live_json_includes_date_scope_and_all_attempt_filter(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as temporary:
+            out = Path(temporary) / "report.json"
+            argv = ["ci_runner_cost_report.py", "--repo", "gamesbyian/Chunks",
+                    "--branch", "ux/evidence", "--created",
+                    "2026-11-01..2026-11-03", "--json-out", str(out)]
+            with patch("sys.argv", argv), patch(
+                "tools.ci_runner_cost_report.get_runs",
+                return_value=[run(90, "success", [job(90, 1, 3)])],
+            ) as fetched, patch("builtins.print"):
+                main()
+            fetched.assert_called_once_with(
+                "gamesbyian/Chunks", "ux/evidence", "2026-11-01..2026-11-03"
+            )
+            report = json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual({
+                "mode": "github-rest",
+                "repository": "gamesbyian/Chunks",
+                "branch": "ux/evidence",
+                "created_range": "2026-11-01..2026-11-03",
+                "job_attempt_filter": "all",
+            }, report["selection"])
+            self.assertEqual(2, report["runner_minutes"])
+
+    def test_offline_json_scope_stays_distinct_from_live_branch_evidence(self):
+        import json
+        import tempfile
+        from pathlib import Path
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            jobs_dir = root / "jobs"
+            jobs_dir.mkdir()
+            sample = run(91, "success", [])
+            sample.pop("jobs")
+            (root / "runs.json").write_text(json.dumps({
+                "total_count": 1, "workflow_runs": [sample],
+            }), encoding="utf-8")
+            (jobs_dir / "91.json").write_text(json.dumps({
+                "total_count": 1, "jobs": [job(910, 1, 2)],
+            }), encoding="utf-8")
+            out = root / "report.json"
+            argv = ["ci_runner_cost_report.py", "--runs-json",
+                    str(root / "runs.json"), "--jobs-dir", str(jobs_dir),
+                    "--json-out", str(out)]
+            with patch("sys.argv", argv), patch("builtins.print"):
+                main()
+            data = json.loads(out.read_text(encoding="utf-8"))
+            self.assertEqual("offline-snapshot", data["selection"]["mode"])
+            self.assertNotIn("branch", data["selection"])
+            self.assertEqual(1, data["runner_minutes"])
 
 
 if __name__ == "__main__":
