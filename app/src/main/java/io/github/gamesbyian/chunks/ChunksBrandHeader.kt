@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -32,7 +33,16 @@ import androidx.compose.ui.unit.sp
  * the wordmark and tagline are one heading.
  */
 @Composable
-internal fun ChunksBrandHeader(modifier: Modifier = Modifier) {
+internal fun ChunksBrandHeader(modifier: Modifier = Modifier, compact: Boolean = true) {
+    // This header is mounted on every phone-only Transfers screen and most
+    // other everyday routes. Keep their inventory in the initial viewport;
+    // reserve the illustrated identity for an explicitly requested welcome.
+    if (compact) {
+        Box(modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)) {
+            CompactChunksHeader()
+        }
+        return
+    }
     // At 200% text scaling the headline owns the width; the illustration
     // yields space rather than clipping the actual navigational identity.
     val showArtwork = LocalDensity.current.fontScale < 1.5f

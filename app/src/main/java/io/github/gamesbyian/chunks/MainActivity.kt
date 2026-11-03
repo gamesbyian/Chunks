@@ -172,6 +172,24 @@ private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
+/** Search the existing connected-server Options routes without new authority. */
+internal fun optionsDestinationMatches(label: String, rawQuery: String): Boolean {
+    val needle = rawQuery.trim().lowercase(java.util.Locale.ROOT)
+    if (needle.isEmpty()) return true
+    val aliases = when (label) {
+        "Transfers" -> "torrent downloads active list search"
+        "On this phone" -> "local phone downloads storage files"
+        "Places" -> "folder destination location save path"
+        "Organize" -> "collections categories organize grouping"
+        "Server" -> "connection endpoint profile account login settings server"
+        "ZIP review" -> "zip archives compressed inspect"
+        "Create" -> "create torrent publish share new"
+        else -> ""
+    }
+    val haystack = (label + " " + aliases).lowercase(java.util.Locale.ROOT)
+    return needle.split(Regex("\\s+")).all { it in haystack }
+}
+
 // Only privacy-gated, non-mutating navigation is kept through Activity/process
 // recreation. No authenticated server, command, selected hash or Add draft is saved.
 private val SectionRestoreSaver = Saver<androidx.compose.runtime.MutableState<Section>, String>(
@@ -244,6 +262,8 @@ private fun ChunksApp(
     var query by remember { mutableStateOf("") }
     // Secondary destinations appear only when requested on the ordinary list.
     var optionsOpen by rememberSaveable { mutableStateOf(false) }
+    // A view-only filter; no hidden configuration or account scope is indexed.
+    var optionsSearch by rememberSaveable { mutableStateOf("") }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
     var order by remember { mutableStateOf(TransferOrder.NAME) }
     var expandedHash by remember { mutableStateOf<String?>(null) }
@@ -919,20 +939,41 @@ private fun ChunksApp(
                     }
                 }
             }
+            // Reuse the already-authorized destinations. No search-created
+            // settings screen, saved login or implicit server Add target.
+            val optionsDestinations = Section.entries.filter {
+                it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT &&
+                    it != Section.SEEDING && it != Section.SNAPSHOT_INSPECT &&
+                    it != Section.COMBINED
+            }
+            val visibleDestinations = if (section == Section.TRANSFERS && optionsOpen)
+                optionsDestinations.filter { optionsDestinationMatches(it.label, optionsSearch) }
+            else optionsDestinations
+            if (section == Section.TRANSFERS && optionsOpen) {
+                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+                    ClearableTransferSearchField(
+                        value = optionsSearch, onValueChange = { optionsSearch = it },
+                        label = "Find a screen or tool"
+                    )
+                    if (visibleDestinations.isEmpty()) {
+                        Text("No matching Options screen. Clear search to see all destinations.",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
             if (section != Section.TRANSFERS || optionsOpen) Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                for (tab in Section.entries.filter { it != Section.ADD && it != Section.NAMES && it != Section.SNAPSHOT && it != Section.SEEDING &&
-                    it != Section.SNAPSHOT_INSPECT && it != Section.COMBINED }) {
+                for (tab in visibleDestinations) {
                     FilterChip(
                         selected = section == tab,
-                        onClick = { if (tab == Section.LOCAL) localFromCombined = false; section = tab },
+                        onClick = {
+                            optionsSearch = ""
+                            if (tab == Section.LOCAL) localFromCombined = false
+                            section = tab
+                        },
                         label = { Text(tab.label) },
-                        // A hard 48dp height clips enlarged Compose labels when
-                        // Android system font scale reaches 200%. Keep the
-                        // minimum touch target while letting text determine
-                        // the natural height on large-font devices.
                         modifier = Modifier.heightIn(min = 48.dp)
                     )
                 }
@@ -972,7 +1013,7 @@ private fun ChunksApp(
                     onCombined = { combinedFromPhone = false; section = Section.COMBINED },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     optionsOpen = optionsOpen,
-                    onOptions = { optionsOpen = !optionsOpen },
+                    onOptions = { optionsOpen = !optionsOpen; if (!optionsOpen) optionsSearch = "" },
                     onReviewNames = { section = Section.NAMES },
                     onExportSnapshot = { section = Section.SNAPSHOT },
                     onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },

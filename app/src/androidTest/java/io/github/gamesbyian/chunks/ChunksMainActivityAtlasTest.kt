@@ -488,6 +488,10 @@ class ChunksMainActivityAtlasTest {
         // Secondary destinations are one explicit Options tap away; the
         // ordinary Transfers viewport no longer carries a permanent tab rail.
         rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithText("Find a screen or tool").performTextReplacement("server")
+        rule.onNodeWithText("Server").assertExists()
+        rule.onNodeWithText("Places").assertDoesNotExist()
+        rule.onNodeWithText("Find a screen or tool").performTextReplacement("")
         rule.onNodeWithText("Places").performClick()
         rule.onNodeWithText("Everything has a place.").assertExists()
         save("app-places-populated-real-compose")
