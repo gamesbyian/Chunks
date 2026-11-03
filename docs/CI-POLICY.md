@@ -1,5 +1,22 @@
 # Lean CI and evidence economy
 
+## Cross-workflow Android APK reuse: verified binary identity boundaries (2026-11-03)
+
+**Reject an unqualified reuse premise:** In the [merged #1170 final campaign](https://github.com/gamesbyian/Chunks/pull/1170), several jobs invoked `assembleDebug` but **not with interchangeable output identities**. Source inspection of `app/build.gradle.kts` lines 17–40 establishes that `CHUNKS_SIDE_BY_SIDE=1` and `CHUNKS_PREVIEW_SUFFIX` alter `applicationId` and app name, while `CHUNKS_SOURCE_SHA` alters `versionName`. The `qaMinified` build additionally enables R8 and resource shrink, changes debuggability and consumes its own tested source set. The workflow-specific facts are:
+
+| Workflow | Current compile/identity inputs | Consequence for untested reuse |
+| --- | --- | --- |
+| `installed-rtorrent-magnets.yml` | `assembleDebug` plus `CHUNKS_SIDE_BY_SIDE=1`, run-SHA-specific magnet suffix and `CHUNKS_SOURCE_SHA` | Separate package identity; **not** interchangeable with ordinary debug or a generic APK |
+| `minified-smoke.yml` | `assembleQaMinified` and `assembleQaMinifiedAndroidTest`, `chunks.testBuildType=qaMinified` | R8/minified runtime acceptance is distinct; never replace it with debug |
+| `native-add-instrumentation.yml` | `assembleDebug` and `assembleDebugAndroidTest`, source SHA embedded in version, immutable exact-APK-pair artifact reused within two shards | Build-once *within* this workflow is independently qualified; no general cross-workflow reuse proven |
+| `android-check.yml` | `testDebugUnitTest`, `assembleDebug`, source SHA embedded in version, separate JVM init script | Debug output identity resembles native Add, but binary equality/signing, build inputs, check conditions and required receipts remain unproven |
+| `android10-downloads-instrumentation.yml` | `assembleDebug` and `assembleDebugAndroidTest` without `CHUNKS_SOURCE_SHA` in the inspected workflow | Version metadata may differ from source-stamped builds |
+| `native-visual-atlas.yml` | `assembleDebug` without the source-stamping environment; connected API35 atlas tests | Separate build provenance and installed screenshot/test contract |
+
+**Measured opportunity and limits:** On final [#1170 job evidence](https://github.com/gamesbyian/Chunks/actions/runs/41603577412), the recorded compile/test-APK-related step windows were approximately foundation **5.917 min** (includes JVM tests), R8 build **5.100 min**, API29 compile **2.117 min**, native atlas build **1.383 min**, native Add shared compile **2.083 min**, and disposable rTorrent separately installable APK/test compile **1.950 min**. These are actual elapsed workflow steps on related source, **not six identical compilation tasks** or proven savings that may simply be added. Distinct test, JVM and package/signing requirements disallow a speculative common-build shortcut. Even when Gradle task names match, GitHub-hosted debug signing keys need not match across builds. Exact source SHA, app/test APK digest, build-variant, manifest/package identity, signing and required installed-proof parity must be demonstrated *before* any promotion, including artifact-upload/download and fan-out coordinator overhead.
+
+**Decision:** Preserve the real Android 10 Downloads/SAF, API35 visual atlas, native Add, R8 and disposable rTorrent workflows. Do not introduce a shared APK coordinator or new test campaign merely to chase superficially duplicated `assembleDebug` steps. A future isolated experiment can compare *one* legitimately equal-input pair on the same source, with signed/hashed binary and executed-case receipts, but no such equality or time benefit is presently established.
+
 ## Optional live runner snapshot before rapidly superseding a PR (2026-11-03)
 
 **Measured decision problem:** [UX wave #1175](https://github.com/gamesbyian/Chunks/pull/1175) had, in its first seven complete draft source revisions, **42 workflow dispatches**; three independent Android/real-rTorrent checks ran on each revision and three expensive review-ready-only workflows were skipped each time. Their real job timestamps totaled **94.716 runner-minutes**, including **47.283 runner-minutes on canceled runs**. Crucially, the initial revision's three checks also uncovered genuine failures within **3.883 runner-minutes combined**. Avoiding all early CI would have delayed useful feedback; treating every cancellation minute as a proven saving would misrepresent incomplete but sometimes diagnostic work. This was a historical draft checkpoint, not a final merge-campaign result.
