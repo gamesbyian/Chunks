@@ -1606,12 +1606,20 @@ internal fun LocalEngineScreen(
                 onRemove = {
                     performLocalMutation {
                         try {
-                            val removed = withContext(Dispatchers.IO) {
-                                LocalEngineHolder.current()?.removeKeepingData(transfer.infoHash)
+                            // The native call can remove its handle but fail its final
+                            // persistence commit. Observe this exact hash without sending
+                            // another mutation, and keep the two facts distinct.
+                            val (removed, stillPresent) = withContext(Dispatchers.IO) {
+                                val engine = LocalEngineHolder.current()
+                                val acknowledged = engine?.removeKeepingData(transfer.infoHash)
+                                val observed = try {
+                                    engine?.let { it.status(transfer.infoHash) != null }
+                                } catch (_: Exception) { null }
+                                acknowledged to observed
                             }
-                            message = if (removed == true) null
-                                else "Session removal was not confirmed. Check the transfer list before trying again."
-                            if (removed != true) inventoryFrame = inventoryFrame.copy(stale = true)
+                            message = localRemoveReadbackFeedback(removed, stillPresent)
+                            if (removed != true || stillPresent != false)
+                                inventoryFrame = inventoryFrame.copy(stale = true)
                         } catch (cancel: kotlinx.coroutines.CancellationException) {
                             throw cancel
                         } catch (_: Exception) {
