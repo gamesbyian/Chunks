@@ -29,6 +29,33 @@ class LocalResumeDatabaseTest {
         try { block(); fail("Expected persistence refusal") } catch (_: Exception) { }
     }
 
+    @Test fun pendingIntentsRemainExplicitUntilARealFreshSessionCanReconcile() {
+        val root = root()
+        val retired = "a".repeat(40)
+        val retained = "b".repeat(40)
+        val corrupt = "c".repeat(40)
+        open(root).use { store ->
+            store.save(retired, "to remove".toByteArray())
+            store.save(retained, "still active".toByteArray())
+            store.removeIntent(retired)
+        }
+        open(root).use { reopened ->
+            assertEquals(listOf(retired), reopened.pendingRemovals())
+            assertFalse(reopened.canRegister(retired))
+            assertArrayEquals("still active".toByteArray(), reopened.current(retained))
+            // The persistence layer alone never decides that native I/O has ended.
+            assertFalse(reopened.canRegister(retired))
+            reopened.removeCommit(retired)
+            assertTrue(reopened.canRegister(retired))
+            assertEquals(emptyList<String>(), reopened.pendingRemovals())
+            assertArrayEquals("still active".toByteArray(), reopened.current(retained))
+        }
+        open(root).use { reopened ->
+            assertTrue(reopened.canRegister(retired))
+            assertEquals(listOf(retained), reopened.restorable().map { it.first })
+        }
+    }
+
     @Test fun repeatedSnapshotsAndRetireReAddReuseBoundedStorageAcrossReopen() {
         val root = root()
         val payload = ByteArray(64 * 1024) { (it % 251).toByte() }
