@@ -78,7 +78,7 @@ def cost_report(runs: list[dict]) -> dict:
     by_name = defaultdict(lambda: {
         "runs": 0, "cancelled_runs": 0, "failed_runs": 0,
         "runner_minutes": 0.0, "cancelled_run_runner_minutes": 0.0,
-        "wall_minutes": 0.0, "jobs": 0,
+        "wall_minutes": 0.0, "job_window_minutes": 0.0, "runs_with_timed_jobs": 0, "jobs": 0,
     })
     rows = []
     for run in runs:
@@ -97,6 +97,8 @@ def cost_report(runs: list[dict]) -> dict:
             raise ValueError(f"Missing jobs on run {run_id}")
         seen_jobs = set()
         total = 0.0
+        timed_starts = []
+        timed_ends = []
         for job in jobs:
             job_id = int(job["id"])
             if job_id in seen_jobs:
@@ -110,12 +112,22 @@ def cost_report(runs: list[dict]) -> dict:
                 if job.get("started_at") is None:
                     raise ValueError(f"Missing timing for executed job {job_id}")
             total += duration
+            if job.get("conclusion") != "skipped" and job.get("started_at") and job.get("completed_at"):
+                timed_starts.append(instant(job["started_at"]))
+                timed_ends.append(instant(job["completed_at"]))
+        # Unlike created_at→updated_at, this excludes queue and API update delays.
+        # It is a job activity window, not a dependency-critical-path measurement.
+        job_window = ((max(timed_ends) - min(timed_starts)).total_seconds() / 60
+                      if timed_starts else None)
         wall = minutes(run.get("created_at"), run.get("updated_at"))
         group = by_name[name]
         group["runs"] += 1
         group["jobs"] += len(jobs)
         group["runner_minutes"] += total
         group["wall_minutes"] += wall
+        if job_window is not None:
+            group["job_window_minutes"] += job_window
+            group["runs_with_timed_jobs"] += 1
         if outcome == "cancelled":
             group["cancelled_runs"] += 1
             group["cancelled_run_runner_minutes"] += total
@@ -124,6 +136,7 @@ def cost_report(runs: list[dict]) -> dict:
         rows.append({
             "run_id": run_id, "workflow": name, "conclusion": outcome,
             "runner_minutes": round(total, 3), "wall_minutes": round(wall, 3),
+            "job_window_minutes": round(job_window, 3) if job_window is not None else None,
         })
     groups = {}
     for name, values in sorted(by_name.items()):
@@ -132,7 +145,7 @@ def cost_report(runs: list[dict]) -> dict:
     return {
         "schema": "chunks-ci-runner-cost-v1",
         "source": "GitHub Actions job started_at/completed_at timestamps",
-        "scope": "completed runs only; runner minutes are not billed-minute estimates",
+        "scope": "completed runs only; runner minutes are not billed-minute estimates; wall_minutes includes queue/API updates; job_window_minutes excludes them and is null without timed jobs",
         "runs": len(rows),
         "runner_minutes": round(sum(x["runner_minutes"] for x in rows), 3),
         "cancelled_run_runner_minutes": round(
@@ -175,7 +188,9 @@ def main() -> None:
     for name, item in report["by_workflow"].items():
         print(f"{name}: runs={item['runs']} cancelled={item['cancelled_runs']} "
               f"runner_min={item['runner_minutes']:.2f} "
-              f"cancelled_min={item['cancelled_run_runner_minutes']:.2f}")
+              f"cancelled_min={item['cancelled_run_runner_minutes']:.2f} "
+              f"job_window_min={item['job_window_minutes']:.2f} "
+              f"timed_runs={item['runs_with_timed_jobs']}")
     if args.json_out:
         args.json_out.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n",
                                  encoding="utf-8")

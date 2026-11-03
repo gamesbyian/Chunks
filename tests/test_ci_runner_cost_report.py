@@ -30,6 +30,11 @@ class RunnerCostTests(unittest.TestCase):
         self.assertEqual(11, report["runner_minutes"])
         self.assertEqual(4, report["cancelled_run_runner_minutes"])
         self.assertEqual(30, report["by_workflow"]["API35"]["wall_minutes"])
+        self.assertEqual(7, report["by_workflow"]["API35"]["job_window_minutes"])
+        self.assertEqual(2, report["by_workflow"]["API35"]["runs_with_timed_jobs"])
+        self.assertEqual(4, report["details"][0]["job_window_minutes"])
+        self.assertEqual(3, report["details"][1]["job_window_minutes"])
+        self.assertIsNone(report["details"][2]["job_window_minutes"])
         self.assertEqual(3, report["by_workflow"]["API35"]["runs"])
         self.assertEqual(1, report["by_workflow"]["API35"]["cancelled_runs"])
 
@@ -64,6 +69,8 @@ class RunnerCostTests(unittest.TestCase):
                                              job(3, conclusion="cancelled")])])
         self.assertEqual(0, r["runner_minutes"])
         self.assertEqual(0, r["cancelled_run_runner_minutes"])
+        self.assertIsNone(r["details"][0]["job_window_minutes"])
+        self.assertEqual(0, r["by_workflow"]["API35"]["runs_with_timed_jobs"])
 
     def test_live_api_is_read_only_and_rejects_incomplete_pages(self):
         with patch("tools.ci_runner_cost_report.gh_json") as fetch:
