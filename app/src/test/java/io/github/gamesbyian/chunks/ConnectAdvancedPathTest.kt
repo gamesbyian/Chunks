@@ -43,6 +43,15 @@ class ConnectAdvancedPathTest {
         rule.waitForIdle()
     }
 
+    @Test fun freshPhoneEntryKeepsServerConnectionOptionalAndAvailable() {
+        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
+        // Navigating here alone never authenticates or submits a transfer.
+        rule.onNodeWithText("Connection unsuccessful").assertDoesNotExist()
+    }
+
     @Test fun anAddressWithAPathAndAnAdvancedPathIsRefusedBeforeConnecting() {
         enter("https://host.example/rutorrent2/", "/RPC2")
         scrollTo("already includes a path")
