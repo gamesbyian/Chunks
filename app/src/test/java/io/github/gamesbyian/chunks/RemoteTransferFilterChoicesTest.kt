@@ -70,6 +70,21 @@ class RemoteTransferFilterChoicesTest {
         assertEquals(listOf(TransferFilter.NEEDS_SORTING, TransferFilter.ALL), chosen)
     }
 
+    @Test fun selectedFilterExplainsObservedEvidenceWithoutInventingACause() {
+        val chosen = mutableListOf<TransferFilter>()
+        show(320, chosen)
+        rule.onNodeWithText("Traffic now").performClick()
+        rule.onNodeWithText("Missing rates are unknown.", substring = true).assertExists()
+        rule.onNodeWithText("0 B/s down").performClick()
+        rule.onNodeWithText("it does not diagnose why.", substring = true).assertExists()
+        rule.onNodeWithText("Start set").performClick()
+        rule.onNodeWithText("It does not promise active traffic.", substring = true).assertExists()
+        rule.onNodeWithText("All").performClick()
+        rule.onNodeWithText("It does not promise active traffic.", substring = true).assertDoesNotExist()
+        assertEquals(listOf(TransferFilter.TRANSFERRING, TransferFilter.ZERO_DOWNLOAD,
+            TransferFilter.ACTIVE, TransferFilter.ALL), chosen)
+    }
+
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
     fun longLabelsWrapAndKeepFullClickTargetsAt412Dp() {
