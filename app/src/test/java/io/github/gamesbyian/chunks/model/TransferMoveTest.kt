@@ -73,7 +73,7 @@ class TransferMoveTest {
             Direction.PHONE_TO_SERVER, hash, "Big Buck Bunny", scope, "seed.example",
             sourceReviewToken = "native-session:17"
         )
-        assertTrue(original.encode().startsWith("v3\\n"))
+        assertTrue(original.encode().startsWith("v3\n"))
         assertEquals(original, TransferMove.decode(original.encode()))
         assertTrue(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", "native-session:17"))
         assertFalse(TransferMove.sourceIdentityMatches(original, "Big Buck Bunny", "native-session:18"))
@@ -83,7 +83,7 @@ class TransferMoveTest {
 
     @Test fun legacyPhoneMoveCanBeRecoveredButCannotEraseUnidentifiedSource() {
         val old = started()
-        assertTrue(old.encode().startsWith("v1\\n"))
+        assertTrue(old.encode().startsWith("v1\n"))
         val recovered = requireNotNull(TransferMove.decode(old.encode()))
         assertNull(recovered.sourceReviewToken)
         assertFalse(TransferMove.sourceIdentityMatches(recovered, recovered.name, "fresh-native:1"))
@@ -94,7 +94,7 @@ class TransferMoveTest {
             "/server/downloads"))
         val reviewed = TransferMove.start(Direction.SERVER_TO_PHONE, hash, "Big Buck Bunny",
             scope, "seed.example", sourceDirectory = "/server/downloads")
-        assertTrue(reviewed.encode().startsWith("v3\\n"))
+        assertTrue(reviewed.encode().startsWith("v3\n"))
         assertEquals(reviewed, TransferMove.decode(reviewed.encode()))
         assertTrue(TransferMove.sourceIdentityMatches(reviewed, "Big Buck Bunny", null,
             "/server/downloads"))
