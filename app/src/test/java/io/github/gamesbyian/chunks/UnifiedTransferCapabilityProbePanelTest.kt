@@ -10,6 +10,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
@@ -64,12 +65,20 @@ class UnifiedTransferCapabilityProbePanelTest {
             }
         }
         assertEquals("No implicit probe during composition", 0, userTaps)
-        rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Show technical details for this transfer")
+            .performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed"))
+            .performClick()
+        rule.onNodeWithContentDescription("Hide technical details for this transfer")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
         val check = rule.onNodeWithContentDescription(
             "Check capabilities for Server · exact / rutorrent2")
         check.performScrollTo().performClick()
         assertEquals(1, userTaps)
         rule.onNodeWithText("Checking capabilities…").assertExists()
+        rule.onNodeWithContentDescription("Checking capabilities for Server · exact / rutorrent2")
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In progress"))
+            .assertIsNotEnabled()
         rule.runOnIdle {
             busy.value = false
             error.value = "the signed-in server did not answer"
@@ -85,6 +94,31 @@ class UnifiedTransferCapabilityProbePanelTest {
             "Start and stop: Capability has not been checked recently for this exact environment.")
             .performScrollTo().assertExists()
         assertEquals(1, userTaps)
+    }
+
+    @Test fun stalledTransferInspectorAnnouncesBusyAndReadyWithoutExtraCalls() {
+        val busy = mutableStateOf(true)
+        var requests = 0
+        rule.setContent {
+            ChunksTheme { Surface {
+                UnifiedTransferDetailPanel(detail(), "Exact server",
+                    onBack = {}, onInspectStall = { requests++ },
+                    stallCheckInProgress = busy.value)
+            } }
+        }
+        rule.onNodeWithContentDescription(
+            "Inspecting this transfer on Exact server without changing it"
+        ).performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "In progress"))
+            .assertIsNotEnabled()
+        assertEquals(0, requests)
+        rule.runOnIdle { busy.value = false }
+        rule.onNodeWithContentDescription(
+            "Inspect this transfer on Exact server without changing it"
+        ).performScrollTo()
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Ready, read only"))
+            .performClick()
+        assertEquals(1, requests)
     }
 
     @Test fun savedServerWithoutAnAdapterNeverOffersAProbe() {
