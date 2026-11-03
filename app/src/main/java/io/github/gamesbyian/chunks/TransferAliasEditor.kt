@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,7 +18,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -101,8 +104,14 @@ internal fun TransferAliasEditor(
                 OutlinedButton(
                     onClick = { editor.draft = suggestion.name; editor.problem = null },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .semantics {
+                            contentDescription = "Use list-name suggestion: " + suggestion.name
+                        }
                 ) {
-                    Text(suggestion.name, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    // These candidates are explicitly revealed by the user.
+                    // Never conceal the significant suffix of a long episode
+                    // or movie title after two lines, especially at large text.
+                    Text(suggestion.name, maxLines = Int.MAX_VALUE)
                 }
                 Text(
                     suggestion.explanation,
@@ -113,25 +122,46 @@ internal fun TransferAliasEditor(
             }
         }
         if (editor.problem != null) Text(editor.problem.orEmpty())
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = {
-                    try {
-                        val proposed = TransferDisplayNames.validateAlias(editor.draft)
-                        if (onSave(proposed.takeUnless { it == originalName })) {
-                            editor.editing = false
-                            editor.problem = null
-                        } else editor.problem = "Could not save the local display name."
-                    } catch (failure: IllegalArgumentException) {
-                        editor.problem = failure.message ?: "Invalid display name."
+        val saveName: () -> Unit = {
+            try {
+                val proposed = TransferDisplayNames.validateAlias(editor.draft)
+                if (onSave(proposed.takeUnless { it == originalName })) {
+                    editor.editing = false
+                    editor.problem = null
+                } else editor.problem = "Could not save the local display name."
+            } catch (failure: IllegalArgumentException) {
+                editor.problem = failure.message ?: "Invalid display name."
+            }
+        }
+        val cancelName: () -> Unit = {
+            editor.editing = false
+            editor.problem = null
+        }
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val stacked = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
+            if (stacked) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = saveName,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Save name")
                     }
-                },
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-            ) { Text("Save name") }
-            OutlinedButton(
-                onClick = { editor.editing = false; editor.problem = null },
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-            ) { Text("Cancel") }
+                    OutlinedButton(onClick = cancelName,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Cancel")
+                    }
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = saveName,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                        Text("Save name")
+                    }
+                    OutlinedButton(onClick = cancelName,
+                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                        Text("Cancel")
+                    }
+                }
+            }
         }
         if (alias != null) {
             OutlinedButton(onClick = {

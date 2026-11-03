@@ -38,7 +38,17 @@ class UnifiedTransferCatalogTest {
         assertNotEquals(a.key, b.key)
         assertNull(b.downloadBytesPerSecond)
         assertEquals(0L, a.downloadBytesPerSecond)
+        assertEquals("/private", a.reportedSaveFolder)
+        assertEquals("/server", b.reportedSaveFolder)
         assertFalse(result.hasIncompleteOrStaleSource)
+    }
+
+    @Test fun unreportedSaveFolderNeverBecomesAClaimAboutServerOrPhoneFiles() {
+        val remote = RemoteTransfer(hash('a'), "Server", 1000, 500, true, "")
+        assertNull(UnifiedTransferObservations.fromRTorrent(server1, remote).reportedSaveFolder)
+        val phoneUnknown = LocalTransferStatus(hash('b'), "Phone", LocalTransferState.UNKNOWN,
+            true, 0, 0, 0, 0, 0, 0, "", null)
+        assertNull(UnifiedTransferObservations.fromPhone(phone, phoneUnknown).reportedSaveFolder)
     }
 
     @Test fun ratioIsOptionalServerEvidenceNeverFabricatedForPhoneOrUnknownRemote() {

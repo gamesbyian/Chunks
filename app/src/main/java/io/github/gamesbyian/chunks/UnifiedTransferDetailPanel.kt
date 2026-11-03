@@ -233,6 +233,11 @@ private fun TransferDetailFacts(transfer: UnifiedTransferObservation) {
         Text("Progress: " + progress, style = MaterialTheme.typography.bodyMedium)
         Text("Size: " + (transfer.sizeBytes?.let { io.github.gamesbyian.chunks.model.Units.bytes(it) }
             ?: "unknown"), style = MaterialTheme.typography.bodyMedium)
+        Text("Save folder reported by engine: " +
+            (transfer.reportedSaveFolder ?: "not reported"),
+            style = MaterialTheme.typography.bodyMedium)
+        Text("A reported folder does not confirm those files exist, are accessible, or may be deleted.",
+            style = MaterialTheme.typography.bodySmall)
         Text("Download rate: " + (transfer.downloadBytesPerSecond?.let {
             io.github.gamesbyian.chunks.model.Units.bytes(it) + "/s"
         } ?: "not reported"), style = MaterialTheme.typography.bodyMedium)
