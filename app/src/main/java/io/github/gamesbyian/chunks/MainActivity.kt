@@ -2127,14 +2127,28 @@ private fun TransferCard(
                         ratio.toDouble() / 1_000.0))
                 }
             }.joinToString(" · ")
-            if (!detailsOpen && conciseRates.isNotBlank()) {
-                Text(conciseRates, style = MaterialTheme.typography.bodySmall)
+            // Thin collapsed cards: at ordinary text sizes the disclosure shares
+            // the rates line instead of adding a full-width row to every card.
+            val inlineDisclosure = LocalDensity.current.fontScale < 1.5f
+            val disclosureLabel = if (detailsOpen) "Hide details" else "More details"
+            val disclosureModifier = Modifier.heightIn(min = 48.dp)
+                .semantics { stateDescription = if (detailsOpen) "Expanded" else "Collapsed" }
+            if (inlineDisclosure) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (!detailsOpen) conciseRates else "", style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f))
+                    androidx.compose.material3.TextButton(onClick = { detailsOpen = !detailsOpen },
+                        modifier = disclosureModifier) { Text(disclosureLabel) }
+                }
+            } else {
+                if (!detailsOpen && conciseRates.isNotBlank()) {
+                    Text(conciseRates, style = MaterialTheme.typography.bodySmall)
+                }
+                OutlinedButton(
+                    onClick = { detailsOpen = !detailsOpen },
+                    modifier = disclosureModifier.fillMaxWidth()
+                ) { Text(disclosureLabel) }
             }
-            OutlinedButton(
-                onClick = { detailsOpen = !detailsOpen },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .semantics { stateDescription = if (detailsOpen) "Expanded" else "Collapsed" }
-            ) { Text(if (detailsOpen) "Hide details" else "More details") }
             if (detailsOpen) {
             if (transfer.started && transfer.downBytesPerSecond == 0L &&
                 transfer.fractionComplete < 1f) {

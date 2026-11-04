@@ -2107,18 +2107,33 @@ internal fun LocalTransferCard(
                 modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
             // totalWantedDone is hash-verified completed payload; allTimeDownload
             // is a libtorrent network counter and may exclude HTTPS web seeds.
-            Text("Verified on disk " + Units.bytes(transfer.doneBytes) + " of " +
+            val verifiedText = "Verified on disk " + Units.bytes(transfer.doneBytes) + " of " +
                 Units.bytes(transfer.wantedBytes) + " · Shared " +
-                Units.bytes(transfer.payloadUploadedBytes), style = MaterialTheme.typography.bodySmall)
-            OutlinedButton(
-                onClick = { diagnosticsOpen = !diagnosticsOpen },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                    contentDescription = if (diagnosticsOpen)
-                        "Hide diagnostics for ${transfer.name} on this phone"
-                    else "More details for ${transfer.name} on this phone"
-                    stateDescription = if (diagnosticsOpen) "Expanded" else "Collapsed"
+                Units.bytes(transfer.payloadUploadedBytes)
+            val diagnosticsModifier = Modifier.heightIn(min = 48.dp).semantics {
+                contentDescription = if (diagnosticsOpen)
+                    "Hide diagnostics for ${transfer.name} on this phone"
+                else "More details for ${transfer.name} on this phone"
+                stateDescription = if (diagnosticsOpen) "Expanded" else "Collapsed"
+            }
+            val diagnosticsLabel = if (diagnosticsOpen) "Hide details" else "More details"
+            // Thin collapsed cards: at ordinary text sizes the disclosure shares the
+            // verified-bytes line instead of a full-width row on every card.
+            if (LocalDensity.current.fontScale < 1.5f) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(verifiedText, style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f))
+                    androidx.compose.material3.TextButton(
+                        onClick = { diagnosticsOpen = !diagnosticsOpen },
+                        modifier = diagnosticsModifier) { Text(diagnosticsLabel) }
                 }
-            ) { Text(if (diagnosticsOpen) "Hide details" else "More details") }
+            } else {
+                Text(verifiedText, style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(
+                    onClick = { diagnosticsOpen = !diagnosticsOpen },
+                    modifier = diagnosticsModifier.fillMaxWidth()
+                ) { Text(diagnosticsLabel) }
+            }
             if (diagnosticsOpen) {
             if (transfer.payloadDownloadedBytes > 0L) {
                 Text("Network payload counter " + Units.bytes(transfer.payloadDownloadedBytes),
