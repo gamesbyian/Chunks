@@ -454,7 +454,7 @@ class LocalTorrentEngineTest {
         for ((name, bytes) in fixture.files) assertArrayEquals(bytes, File(fixture.root, name).readBytes())
     }
 
-    @Test fun userAuthorizedDeleteRemovesPreexistingExactPayloadAndPreservesCanaries() {
+    @Test fun userAuthorizedDeleteWithForeignDirectoryCanaryReportsNativeFailureEvenWhenBytesGone() {
         val source = fixture()
         val destination = source.root.parentFile
         val unrelated = File(source.root, "unrelated.txt").apply { writeText("keep me") }
@@ -474,10 +474,63 @@ class LocalTorrentEngineTest {
         assertEquals(LocalDeleteDataDispatch.REQUESTED, receipt.dispatch)
         assertNull(instance.status(status.infoHash))
         assertEquals(source.files.size, receipt.targets.size)
-        waitFor(30_000) { receipt.payloadReadback() == LocalDeleteDataReadback.ABSENT }
+        val deadline = System.nanoTime() + 30_000_000_000L
+        var readback = receipt.payloadReadback()
+        while (readback == LocalDeleteDataReadback.UNAVAILABLE &&
+            System.nanoTime() < deadline) {
+            Thread.sleep(100)
+            readback = receipt.payloadReadback()
+        }
+        assertEquals("Native alert=" + receipt.nativeCompletion?.get() +
+            ", observed/unmatched alerts=" + instance.nativeDeletionAlertCounts() +
+            ", exact surviving files=" + receipt.targets.count { it.exists() },
+            LocalDeleteDataReadback.NATIVE_FAILED, readback)
+        // libtorrent may remove exact files yet report a native error when the
+        // containing directory still holds a foreign file. Never claim success.
         for (name in source.files.keys) assertFalse(File(source.root, name).exists())
         assertEquals("keep me", unrelated.readText())
         assertEquals("keep root sibling", rootSibling.readText())
+    }
+
+    @Test fun userAuthorizedDeleteCompletesWithNativeSuccessAndExactFileAbsence() {
+        val source = fixture()
+        val destination = source.root.parentFile
+        val unrelatedSibling = File(destination, "unrelated-sibling.txt").apply {
+            writeText("keep sibling")
+        }
+        val instance = engine()
+        val added = added(instance.addStopped(source.torrent, destination))
+        val current = requireNotNull(instance.status(added.infoHash))
+        val receipt = instance.removeWithDataIfMatching(
+            current.infoHash, current.name, current.savePath, current.nativeReviewToken)
+        assertEquals(LocalDeleteDataDispatch.REQUESTED, receipt.dispatch)
+        val deadline = System.nanoTime() + 30_000_000_000L
+        var observed = receipt.payloadReadback()
+        while (observed == LocalDeleteDataReadback.UNAVAILABLE && System.nanoTime() < deadline) {
+            Thread.sleep(100)
+            observed = receipt.payloadReadback()
+        }
+        assertEquals("Native alert=" + receipt.nativeCompletion?.get() +
+            ", observed/unmatched alerts=" + instance.nativeDeletionAlertCounts() +
+            ", exact surviving files=" + receipt.targets.count { it.exists() },
+            LocalDeleteDataReadback.ABSENT, observed)
+        for (name in source.files.keys) assertFalse(File(source.root, name).exists())
+        assertEquals("keep sibling", unrelatedSibling.readText())
+    }
+
+    @Test fun deleteReceiptRequiresNativeConfirmationEvenWhenPathsAreAlreadyAbsent() {
+        val empty = temp.newFile("already-gone.txt")
+        assertTrue(empty.delete())
+        val native = java.util.concurrent.atomic.AtomicReference<Boolean?>(null)
+        val receipt = LocalDeleteDataReceipt(LocalDeleteDataDispatch.REQUESTED,
+            listOf(empty), nativeCompletion = native)
+        assertEquals(LocalDeleteDataReadback.UNAVAILABLE, receipt.payloadReadback())
+        native.set(false)
+        assertEquals(LocalDeleteDataReadback.NATIVE_FAILED, receipt.payloadReadback())
+        native.set(true)
+        assertEquals(LocalDeleteDataReadback.ABSENT, receipt.payloadReadback())
+        empty.writeText("still here")
+        assertEquals(LocalDeleteDataReadback.STILL_PRESENT, receipt.payloadReadback())
     }
 
     @Test fun deleteDataRefusesInvalidReviewedIdentityWithoutMutatingPayload() {

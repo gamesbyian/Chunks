@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
+import io.github.gamesbyian.chunks.engine.LocalDeleteDataDispatch
+import io.github.gamesbyian.chunks.engine.LocalDeleteDataReadback
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import java.io.File
@@ -131,6 +133,35 @@ class LocalRemoveReAddSafetyInstrumentedTest {
                 digest(otherFile.readBytes()))
             assertArrayEquals("Foreign sibling file was touched", foreignDigest,
                 digest(foreign.readBytes()))
+
+            // Now exercise the DISTINCT production delete-data API in the same
+            // real installed native session, with the same pre-existing bytes.
+            // A per-hash successful dispatch is insufficient: require exact
+            // TORRENT_DELETED alert plus independently absent payload.
+            val delete = newSession.removeWithDataIfMatching(
+                readdedStatus.infoHash, readdedStatus.name,
+                readdedStatus.savePath, readdedStatus.nativeReviewToken)
+            assertEquals("Actual delete-files request was refused",
+                LocalDeleteDataDispatch.REQUESTED, delete.dispatch)
+            assertEquals(null, newSession.status(oldHash))
+            val deleteDeadline = System.nanoTime() +
+                java.util.concurrent.TimeUnit.SECONDS.toNanos(30)
+            var deletion = delete.payloadReadback()
+            while (deletion == LocalDeleteDataReadback.UNAVAILABLE &&
+                System.nanoTime() < deleteDeadline) {
+                Thread.sleep(100)
+                deletion = delete.payloadReadback()
+            }
+            assertEquals("Missing positive native alert AND physical payload absence",
+                LocalDeleteDataReadback.ABSENT, deletion)
+            assertFalse("Pre-existing transfer data must actually be removed",
+                removedFile.exists())
+            assertNotNull("Remove and data must not retire a different session",
+                newSession.status(otherHash))
+            assertArrayEquals("Delete and data touched another active torrent",
+                digest(otherBytes), digest(otherFile.readBytes()))
+            assertArrayEquals("Delete and data touched unrelated sibling file",
+                foreignDigest, digest(foreign.readBytes()))
         } finally {
             runCatching { restarted?.close() }
             runCatching { first?.close() }
