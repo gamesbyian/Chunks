@@ -64,12 +64,15 @@ internal fun AuthenticatedTransfersFooter(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
+                    // An equal split broke "Transfers" mid-word at 320dp and 200%
+                    // ("Transfe/rs"). Transfers takes its natural width and Add
+                    // fills the rest; both keep 48dp height.
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel)
-                        FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription)
+                        FooterTransfers(onTransfers, Modifier, environmentLabel, CompactFooterPadding)
+                        FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription, CompactFooterPadding)
                     }
                     FooterOptions(optionsOpen, onOptions, Modifier.fillMaxWidth(), environmentLabel)
                 }
@@ -87,9 +90,14 @@ internal fun AuthenticatedTransfersFooter(
     }
 }
 
+private val CompactFooterPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+
 @Composable
-private fun FooterTransfers(onClick: () -> Unit, modifier: Modifier, environmentLabel: String?) {
-    OutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)
+private fun FooterTransfers(
+    onClick: () -> Unit, modifier: Modifier, environmentLabel: String?,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding
+) {
+    OutlinedButton(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
         .then(if (environmentLabel == null) Modifier else Modifier.semantics {
             contentDescription = "Show transfers on $environmentLabel"
         })) {
@@ -99,10 +107,11 @@ private fun FooterTransfers(onClick: () -> Unit, modifier: Modifier, environment
 
 @Composable
 private fun FooterAdd(
-    onClick: () -> Unit, modifier: Modifier, environmentLabel: String?, description: String?
+    onClick: () -> Unit, modifier: Modifier, environmentLabel: String?, description: String?,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding
 ) {
     val spoken = description ?: environmentLabel?.let { "Add torrent on $it" }
-    Button(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)
+    Button(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
         .then(if (spoken == null) Modifier else Modifier.semantics {
             contentDescription = spoken
         })) {

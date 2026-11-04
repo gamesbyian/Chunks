@@ -2,6 +2,15 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-04 non-P0 UX #1292: magnet draft check, Options setting search, Combined Add seam, phone Place reset
+
+- **[#1292](https://github.com/gamesbyian/Chunks/pull/1292)** squash-merged as `82828eff305afb9da00b77fc1f93393755fed551` from exact head `e1e5891c430e016e2d9463cb863d1e541661d5f5`. Passed:
+  - foundation [41926021845](https://github.com/gamesbyian/Chunks/actions/runs/41926021845): 1651 JUnit cases, 1611 executed, 0 failed, 40 skipped;
+  - installed real rTorrent magnet lifecycle [41926021673](https://github.com/gamesbyian/Chunks/actions/runs/41926021673): two public magnets added through the installed UI, which now passes the magnet check; resumed verified pieces, peerless truth and cleanup;
+  - two-server Combined [41926021962](https://github.com/gamesbyian/Chunks/actions/runs/41926021962), plus the native Add shards and coordinator, atlas, API 29 downloads, remote delete-data and minified smoke.
+- Local negative controls: phone magnet check 4/4 red and Options shortcuts 2/2 red without the production change.
+- Limits: no live base32 magnet Add; the normalized link is the standard hex form. Physical Pixel, third-party IME clipboard and TalkBack review remain open.
+
 ## 2026-11-04 non-P0 UX #1287: installed soft-keyboard footer and phone search recreation
 
 - Native Add [41912638476](https://github.com/gamesbyian/Chunks/actions/runs/41912638476) on PR head `0ab91309` (merge ref `b3c00d64`). Per-case shard receipts were matched by the digest's SHA-256 test identity (`classname\0name`), not the aggregate: `FooterImeInstalledInstrumentedTest.footerYieldsToTheSoftKeyboardAndReturnsAfterSearchKey` **passed** in shard 1 (the IME-absent assumption did not trigger) and `phoneSearchSurvivesActivityRecreation` **passed** in shard 0. Shards: 161 executed/19 skipped and 167/15 by identity; the skips are pre-existing cases.

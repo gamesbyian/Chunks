@@ -11,7 +11,7 @@ import java.util.Locale
 internal enum class OptionsShortcut(val title: String, val where: String, private val words: String) {
     SEEDING_RULES("Seeding rules", "Ratio and seeding-time rules · opens Seeding rules",
         "seeding seed ratio share sharing time rule rules stop upload goal"),
-    PHONE_SETTINGS("Phone settings", "Speed limits, DHT and the phone download location · opens On this phone, then Options",
+    PHONE_SETTINGS("Phone settings", "Speed limits are in phone Options; DHT and the download location are in phone Add · opens On this phone",
         "speed limit limits bandwidth throttle rate dht peer peers discovery download location place phone storage"),
     ENVIRONMENT_COLOURS("Environment colours", "Colours for the phone and each server · opens All environments",
         "colour colours color colors palette environment environments identity combined all"),
