@@ -2,6 +2,18 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-04 Connect-transition instability in installed Combined (diagnosis and fix)
+
+Three installed Combined failures all occurred in the Connect → Transfers transition while the soft keyboard was still closing:
+
+| Run | Attempt | Failure |
+| --- | --- | --- |
+| #1278 Combined [41884156514](https://github.com/gamesbyian/Chunks/actions/runs/41884156514) | 1 | `CalledFromWrongThreadException` in focus invalidation |
+| #1283 Combined [41901115836](https://github.com/gamesbyian/Chunks/actions/runs/41901115836) | 1 | footer `Options` not composed |
+| #1283 Combined [41901115836](https://github.com/gamesbyian/Chunks/actions/runs/41901115836) | 2 | `performMeasureAndLayout called during measure layout` |
+
+The contributing change is #1274's footer, which yields to the IME. **Fix (this PR):** submitting the connection form (button or Go) hides the keyboard and clears focus before Connect starts, so the transition no longer overlaps an IME animation. The installed Combined journeys also wait for the footer before tapping it. Qualification is the exact-head installed Combined run on this PR. I did not merge #1283's earlier head on reruns.
+
 ## 2026-11-04 non-P0 UX #1282: one status vocabulary across phone, rTorrent and Combined
 
 - **[#1282](https://github.com/gamesbyian/Chunks/pull/1282)** squash-merged as `ff0b88d434cf66e046a561199a608ed8aa03eb94` from exact head `dc62703750618ed112483308e8cb08d276cff1cf`. Passed: native Add two shards plus coordinator [41897407052](https://github.com/gamesbyian/Chunks/actions/runs/41897407052), API29 [41897406988](https://github.com/gamesbyian/Chunks/actions/runs/41897406988), atlas [41897406924](https://github.com/gamesbyian/Chunks/actions/runs/41897406924), R8 [41897406994](https://github.com/gamesbyian/Chunks/actions/runs/41897406994), installed Combined [41897406920](https://github.com/gamesbyian/Chunks/actions/runs/41897406920), remote delete-data [41897406837](https://github.com/gamesbyian/Chunks/actions/runs/41897406837) and docs [41897406922](https://github.com/gamesbyian/Chunks/actions/runs/41897406922).
