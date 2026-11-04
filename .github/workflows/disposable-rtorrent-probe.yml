@@ -188,6 +188,8 @@ jobs:
           CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
           CHUNKS_RUTORRENT_PHP_ROOT: ${{ runner.temp }}/chunks-rutorrent-web/rutorrent1
           CHUNKS_RUTORRENT_PHP_URL: http://127.0.0.1:18082/rutorrent1/plugins/erasedata/action.php
+          CHUNKS_DISPOSABLE_RUTORRENT_URL: http://127.0.0.1:18082/rutorrent1/plugins/httprpc/action.php
+          CHUNKS_DISPOSABLE_PHP_TORRENT: ${{ runner.temp }}/chunks-erasedata-adapter-positive.torrent
           RU_PROFILE_PATH: ${{ runner.temp }}/chunks-rutorrent-profiles
           RU_SCGI_HOST: 127.0.0.1
           RU_SCGI_PORT: "5000"
@@ -208,6 +210,9 @@ jobs:
             sleep 1
           done
           python3 tools/verify_disposable_rutorrent_php_delete.py
+          python3 tools/stage_disposable_rutorrent_adapter_delete.py stage
+          gradle --no-daemon :app:testDebugUnitTest --tests io.github.gamesbyian.chunks.rpc.RTorrentDisposableRealPhpErasedataTest
+          python3 tools/stage_disposable_rutorrent_adapter_delete.py verify
           echo "CHUNKS_ERASEDATA: real rTorrent exact-session removal + pinned upstream PHP plugin and collector + independent exact-file absence; foreign canary unchanged" >> "$GITHUB_STEP_SUMMARY"
       - name: Evidence summary
         if: always()
