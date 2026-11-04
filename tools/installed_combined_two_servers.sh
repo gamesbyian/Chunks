@@ -10,6 +10,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk >/dev/null
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk >/dev/null
 adb reverse tcp:18080 tcp:18080 >/dev/null
 adb reverse tcp:18082 tcp:18082 >/dev/null
+adb reverse tcp:18083 tcp:18083 >/dev/null
 b64() { printf '%s' "$1" | base64 -w 0; }
 field() { python3 -c "import json,sys; print(json.load(open(sys.argv[1]))[sys.argv[2]])" "$receipt" "$1"; }
 set +e
