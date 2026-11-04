@@ -1286,8 +1286,13 @@ private fun CombinedTransferRow(
             }
             Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
             row.progressPpm?.let { ppm ->
-                ChunkedProgressBar(progress = ppm / 1_000_000f,
-                    modifier = Modifier.fillMaxWidth(), segments = 8)
+                ChunkedProgressBar(
+                    progress = ppm / 1_000_000f,
+                    modifier = Modifier.fillMaxWidth(),
+                    historyKey = ProgressChunkStore.identity(
+                        row.key.environment.value, row.key.infoHash),
+                    observeFresh = source?.canClaimCompleteLiveInventory == true
+                )
             }
             combinedRowFreshnessLabel(source)?.let { warning ->
                 Text(warning, style = MaterialTheme.typography.bodySmall,
