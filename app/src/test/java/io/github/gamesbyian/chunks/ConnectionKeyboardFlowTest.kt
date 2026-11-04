@@ -64,5 +64,7 @@ class ConnectionScreenImeTest {
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("Or paste a magnet link"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
+        rule.onNode(hasSetTextAction() and hasText("Optional phone download subfolder"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
     }
 }

@@ -811,6 +811,11 @@ internal fun LocalEngineScreen(
             label = { Text("Optional phone download subfolder") },
             placeholder = { Text("Leave blank for Chunks default") },
             singleLine = true,
+            // A folder name is typed exactly: no autocorrect or auto-capitalisation.
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             // Only the typed name can be wrong; an unresolved download location is
             // reported separately ("Checking where this phone can save…").
             isError = addFolderNameInvalid,
