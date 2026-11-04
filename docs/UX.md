@@ -290,6 +290,10 @@ Use a separate TV-first Compose presentation over the same transfer/core contrac
 The transfer menu offers **Pin to home screen**: one separately positionable widget per job, not a shared transfer grid. Compact icon-like progress/status, optionally artwork-backed, and expanded resize layouts follow the same explicit local/remote identity and privacy cues as transfer detail. Tap opens the bound transfer. Seeding and completion retain the widget; verified job deletion should ideally remove it without user cleanup, subject to Android launcher restrictions that must be honestly exposed and tested. See [canonical home-screen widget UX/acceptance](PER-TRANSFER-HOME-WIDGETS.md).
 
 
+## Recency-preserving segmented progress (owner approved, planned 2026-11-03)
+
+Progress tracks appear **empty at zero** and assemble from proportional segments when actual observed verified completion increases. No pre-drawn empty divisions and no successive recolouring of a fixed grid. Each visible increment communicates new progress since the previous qualifying observation, while older adjacent increments merge first to keep the latest updates distinct. Defaults: **20 maximum visible segments**, preserve newest **8** increments where size permits, aggregate sub-**3px** increments, and never generate chunks merely because the screen refreshes. First observation of a partly completed transfer creates one truthful baseline band, with no invented history. Same hash on different servers has separate history; a Combined list shows existing per-environment history. A completed bar fills fully; rechecks can accurately reduce the filled area; offline/unknown is clearly distinguished. Numeric progress and accessible status remain primary. Full rendering, persistence and acceptance rules: [TRANSFER-PROGRESS-CHUNKS](TRANSFER-PROGRESS-CHUNKS.md).
+
 ## Visual design and accessibility
 
 ### Information density and expressiveness
