@@ -1134,8 +1134,9 @@ internal fun LocalEngineScreen(
             )
         }
         // Batch selection acts on the list itself, so it sits with the list (as on
-        // rTorrent) and near the outcome/confirmation area above it.
-        LocalBatchCollectionPanel(
+        // rTorrent) and near the outcome/confirmation area above it. With no
+        // phone transfers there is nothing to select, so it is not shown.
+        if (transfers.isNotEmpty()) LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
             inventoryStale = inventoryStale || busy,

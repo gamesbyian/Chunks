@@ -10,6 +10,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -93,7 +95,7 @@ open class ChunksServerRenderTest {
 
     protected open val prefix = "server"
 
-    @Test fun serverTransfers() {
+    private fun connectToFixture() {
         val listening = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { server = it }
         Thread { while (!listening.isClosed) try { serve(listening.accept()) } catch (_: Exception) {} }
             .apply { isDaemon = true; start() }
@@ -113,6 +115,37 @@ open class ChunksServerRenderTest {
             rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-timeout.png")
             throw timeout
         }
+    }
+
+    /**
+     * The installed atlas step that fills rTorrent Add: with Options
+     * destinations shown on the Add route, the magnet and custom-folder fields
+     * stay editable and the Add list keeps most of the screen.
+     */
+    @Test fun serverAddKeepsItsFieldsEditableBelowDestinations() {
+        connectToFixture()
+        rule.waitForIdle()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Add a download to this server").assertExists()
+        val addList = rule.onNode(hasScrollToIndexAction())
+        addList.performScrollToNode(hasText("Magnet link"))
+        rule.onNodeWithText("Magnet link").performTextReplacement("magnet:?xt=urn:btih:" + "ab".repeat(20))
+        addList.performScrollToNode(hasText("Custom server folder (optional)"))
+        rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/srv/one-off")
+        rule.onNode(hasText("/srv/one-off")).assertExists()
+        // The destination strip must not take over the Add screen.
+        val list = addList.getUnclippedBoundsInRoot()
+        val root = rule.onRoot().getUnclippedBoundsInRoot()
+        val listHeight = list.bottom - list.top
+        val rootHeight = root.bottom - root.top
+        org.junit.Assert.assertTrue("Add list height $listHeight vs screen $rootHeight",
+            listHeight >= rootHeight * 0.5f)
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-add.png")
+    }
+
+    @Test fun serverTransfers() {
+        connectToFixture()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix.png")
         val density = rule.activity.resources.displayMetrics.density

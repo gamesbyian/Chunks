@@ -973,9 +973,14 @@ private fun ChunksApp(
             // height-bounded and scrolls vertically, so wrapped destinations and
             // expanded privacy controls can never push the screen and its footer
             // out of reach at 320dp and 200% type.
+            // On other routes (Add, Places…) the destinations are a compact,
+            // two-row-high strip so the screen itself (and its keyboard) keeps
+            // its space; the open Transfers Options panel may use more.
             if (section != Section.TRANSFERS || optionsOpen) Column(
                 Modifier.fillMaxWidth()
-                    .heightIn(max = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.45f).dp)
+                    .heightIn(max = if (section == Section.TRANSFERS)
+                        (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.45f).dp
+                        else 112.dp)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -1010,9 +1015,10 @@ private fun ChunksApp(
                         )
                     }
                 }
-                // Privacy & authentication belongs with Options, not pinned above
-                // every screen; Lock now stays on top while a policy is active.
-                io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
+                // Privacy & authentication belongs with Transfers Options, not pinned
+                // above every screen; Lock now stays on top while a policy is active.
+                if (section == Section.TRANSFERS)
+                    io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
             }
             if (error != null) {
                 Notice("Refresh problem", error.orEmpty())
