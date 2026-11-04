@@ -1,8 +1,6 @@
 package io.github.gamesbyian.chunks.rpc
 
 import java.net.URI
-import org.json.JSONArray
-import org.json.JSONTokener
 
 /** Non-force ruTorrent erasedata integration; never a recursive directory delete. */
 internal object RuTorrentDeleteData {
@@ -26,19 +24,18 @@ internal object RuTorrentDeleteData {
         }
     }
 
-    /** Plugin response is a JSON array of RPC results; never accept HTML or false. */
-    fun acceptedResponse(body: String): Boolean {
-        if (body.length !in 2..16384) return false
-        return try {
-            val tokener = JSONTokener(body)
-            val parsed = tokener.nextValue()
-            parsed is JSONArray && tokener.nextClean() == '\u0000' &&
-                (0 until parsed.length()).all { index ->
-                    val value = parsed.opt(index)
-                    value is Number || value is Boolean || value is String
-                }
-        } catch (_: Exception) { false }
-    }
+    /**
+     * The erasedata endpoint returns a JSON array of XML-RPC scalar integer
+     * command results (sometimes encoded as decimal strings). Its failure
+     * sentinel is JSON false. Keep this parser deliberately limited to the
+     * actual accepted response shape: no Android JSON stub in host JVM tests,
+     * no HTML, objects, trailers, nested arrays or permissive prefix parsing.
+     */
+    private val scalarArray = Regex("""\[\s*(?:(?:-?[0-9]+|"-?[0-9]+")
+        (?:\s*,\s*(?:-?[0-9]+|"-?[0-9]+"))*)?\s*\]""".replace("\n", "").replace(" ", ""))
+    fun acceptedResponse(body: String): Boolean =
+        body.length in 2..16384 && scalarArray.matches(body)
+
 }
 
 /** Accepted queue != verified remote file deletion. */

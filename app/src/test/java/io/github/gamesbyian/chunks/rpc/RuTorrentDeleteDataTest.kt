@@ -12,7 +12,10 @@ class RuTorrentDeleteDataTest {
         assertEquals("/rutorrent3/plugins/erasedata/action.php",
             RuTorrentDeleteData.endpoint(URI(
                 "https://host.example/rutorrent3/plugins/httprpc/action.php"))?.rawPath)
-        for (path in listOf("/RPC2", "/rutorrent4/plugins/httprpc/action.php",
+        assertEquals("/rutorrent4/plugins/erasedata/action.php",
+            RuTorrentDeleteData.endpoint(URI(
+                "https://host.example/rutorrent4/plugins/httprpc/action.php"))?.rawPath)
+        for (path in listOf("/RPC2", "/rutorrent1000/plugins/httprpc/action.php",
                 "/rutorrent/plugins/other/action.php", "/rutorrent/plugins/httprpc/action.php/extra")) {
             assertNull(RuTorrentDeleteData.endpoint(URI("https://host.example$path")))
         }
