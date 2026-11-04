@@ -2,12 +2,16 @@ package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -91,7 +95,7 @@ open class ChunksServerRenderTest {
 
     protected open val prefix = "server"
 
-    @Test fun serverTransfers() {
+    private fun connectToFixture() {
         val listening = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { server = it }
         Thread { while (!listening.isClosed) try { serve(listening.accept()) } catch (_: Exception) {} }
             .apply { isDaemon = true; start() }
@@ -111,10 +115,45 @@ open class ChunksServerRenderTest {
             rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-timeout.png")
             throw timeout
         }
+    }
+
+    /**
+     * The installed atlas step that fills rTorrent Add: with Options
+     * destinations shown on the Add route, the magnet and custom-folder fields
+     * stay editable and the Add list keeps most of the screen.
+     */
+    @Test fun serverAddKeepsItsFieldsEditableBelowDestinations() {
+        connectToFixture()
+        rule.waitForIdle()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Add a download to this server").assertExists()
+        val addList = rule.onNode(hasScrollToIndexAction())
+        addList.performScrollToNode(hasText("Magnet link"))
+        rule.onNodeWithText("Magnet link").performTextReplacement("magnet:?xt=urn:btih:" + "ab".repeat(20))
+        addList.performScrollToNode(hasText("Custom server folder (optional)"))
+        rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/srv/one-off")
+        rule.onNode(hasText("/srv/one-off")).assertExists()
+        // The destination strip must not take over the Add screen.
+        val list = addList.getUnclippedBoundsInRoot()
+        val root = rule.onRoot().getUnclippedBoundsInRoot()
+        val listHeight = list.bottom - list.top
+        val rootHeight = root.bottom - root.top
+        org.junit.Assert.assertTrue("Add list height $listHeight vs screen $rootHeight",
+            listHeight >= rootHeight * 0.5f)
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-add.png")
+    }
+
+    @Test fun serverTransfers() {
+        connectToFixture()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix.png")
+        val density = rule.activity.resources.displayMetrics.density
+        val small = rule.smallTouchTargets(density).toMutableList()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Our Planet S01 (2160p)"))
         rule.waitForIdle()
+        small += rule.smallTouchTargets(density)
+        org.junit.Assert.assertTrue("rTorrent touch targets under 48dp: ${small.distinct()}", small.isEmpty())
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-cards.png")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select transfers for a batch"))
         rule.onNodeWithText("Select transfers for a batch").performClick()
@@ -130,7 +169,19 @@ open class ChunksServerRenderTest {
         // The authenticated Transfers screen now puts secondary destinations
         // behind its persistent Options footer. Exercise that actual disclosure
         // instead of assuming the old permanent tab rail still exists.
+        // The compact "+ Add" names its exact target for TalkBack.
+        rule.onNodeWithContentDescription("Add torrent on ", substring = true).assertExists()
         rule.onNodeWithContentDescription("Options").performClick()
+        rule.waitForIdle()
+        // Destinations wrap in a height-bounded, vertically scrollable panel
+        // instead of a sideways scroller: each can be brought on screen at
+        // 411dp, including at 200% text, and the footer is never pushed away.
+        for (tab in listOf("Places", "Organize", "Server", "Create", "ZIP review")) {
+            rule.onNodeWithText(tab).performScrollTo().assertIsDisplayed()
+        }
+        // Privacy & authentication is an Option for this profile, not a pinned row.
+        rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithContentDescription("Options").assertIsDisplayed()
         for (tab in listOf("Places", "Organize", "Server")) {
             rule.onNodeWithText(tab).performClick()
             rule.waitForIdle()
@@ -145,4 +196,10 @@ open class ChunksServerRenderTest {
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi", fontScale = 2.0f)
 class ChunksServerLargeTextRenderTest : ChunksServerRenderTest() {
     override val prefix = "server-200pct"
+}
+
+/** The reviewed overflow case: 320dp at 200% font with wrapped Options and privacy controls. */
+@Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi", fontScale = 2.0f)
+class ChunksServerNarrowLargeTextRenderTest : ChunksServerRenderTest() {
+    override val prefix = "server-320-200pct"
 }

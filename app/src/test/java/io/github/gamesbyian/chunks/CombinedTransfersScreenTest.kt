@@ -175,8 +175,10 @@ class CombinedTransfersScreenTest {
         // Disclose the single selected server; the compact summary always identifies active scope.
         revealText("Choose environments & filters")
         rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
-        revealText(serverEnvironmentLabel(aliasScope))
-        rule.onAllNodesWithText(serverEnvironmentLabel(aliasScope))[0].performClick()
+        // The view chip shows the compact unique origin; the group heading below
+        // retains the exact address-bearing label.
+        revealText(compactServerLabel(aliasScope))
+        rule.onAllNodesWithText(compactServerLabel(aliasScope))[0].performClick()
         rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
         revealText("Showing 2")
         rule.onNodeWithText("Showing 2").assertExists()
@@ -251,12 +253,14 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Stopped").performClick()
         revealText("Search all selected")
         rule.onNodeWithText("Search all selected").performTextInput("Big Archive")
+        revealText("Showing 0")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
         revealText("New downloads may be hidden by this view.")
         rule.onNodeWithText("New downloads may be hidden by this view.", substring = true)
             .assertExists()
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").performClick()
+        revealText("Showing 2")
         rule.onNodeWithText("Showing 2", substring = true).assertExists()
         assertTrue("Recovering an empty view never starts or stops anything", commands.isEmpty())
     }
@@ -310,6 +314,7 @@ class CombinedTransfersScreenTest {
             ": Out of date, showing last list · 2 transfers"
         revealText(staleLabel)
         rule.onNodeWithText(staleLabel).assertExists()
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)
@@ -328,6 +333,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {
         show()
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)
@@ -370,6 +376,7 @@ class CombinedTransfersScreenTest {
                     onOpenPhone = {}, onOpenServer = {}, onBack = {})
             } }
         }
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)
@@ -391,6 +398,7 @@ class CombinedTransfersScreenTest {
 
         // Reconnect to the same account also retires the new session's
         // selection even though both its hash and authenticated scope match.
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val otherRow = "Select Big Archive on " + serverEnvironmentLabel(otherScope)
         revealDescription(otherRow)
@@ -418,6 +426,7 @@ class CombinedTransfersScreenTest {
                     onOpenPhone = {}, onOpenServer = {}, onBack = {})
             } }
         }
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)

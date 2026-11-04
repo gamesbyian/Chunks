@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
@@ -55,8 +56,12 @@ class ChunksScreenRenderTest {
     @Test fun privacyScreen() {
         rule.onNodeWithText("On this phone (experimental)").assertExists()
         rule.waitForIdle()
-        rule.onNodeWithText("Privacy & authentication").performClick()
+        // Privacy & authentication lives in Phone options, reached from the footer.
+        rule.onNodeWithContentDescription("Options on this phone").performClick()
         rule.waitForIdle()
+        rule.onNodeWithText("Privacy & authentication").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("privacy is off", substring = true).assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/privacy.png")
     }
 

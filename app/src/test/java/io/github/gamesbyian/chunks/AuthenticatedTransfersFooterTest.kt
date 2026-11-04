@@ -76,6 +76,24 @@ class AuthenticatedTransfersFooterTest {
         assertTrue("Options should cover most of the footer at 200% text", o.right - o.left >= 280.dp)
     }
 
+    @Test fun primaryPhoneAt140PercentKeepsFullTransfersWordOnReadableRow() {
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 1.4f)) {
+                ChunksTheme {
+                    Box(Modifier.width(412.dp)) {
+                        AuthenticatedTransfersFooter(false, {}, {}, {})
+                    }
+                }
+            }
+        }
+        val transfers = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
+        val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val options = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
+        assertTrue("Primary transfers and Add still fit side-by-side", transfers.right < add.left)
+        assertTrue("140% type moves secondary Options to a readable second row",
+            options.top >= add.bottom)
+    }
+
     @Test fun phoneFooterActionsNameTheExactScopeWithoutChangingRemoteSemantics() {
         var transfers = 0
         var adds = 0

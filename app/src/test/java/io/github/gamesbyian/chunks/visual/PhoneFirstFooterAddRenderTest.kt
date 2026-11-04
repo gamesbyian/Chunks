@@ -24,6 +24,19 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneFirstFooterAddRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
+    @Test fun freshPhoneLaunchKeepsOrientationAndReachesInventoryInOneTap() {
+        rule.waitForIdle()
+        // Launch does not scroll away from where-am-I and Back, even here.
+        rule.onNodeWithText("On this phone (experimental)").assertIsDisplayed()
+        rule.onNodeWithText("Back").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Show transfers on this phone")
+            .assertIsDisplayed().performClick()
+        rule.onNodeWithText("Phone transfers").assertIsDisplayed()
+        // The persistent footer retains direct Add without needing to scroll
+        // back through secondary tools.
+        rule.onNodeWithContentDescription("Add torrent on this phone").assertIsDisplayed()
+    }
+
     @Test fun footerAddRevealsActualPhoneAddFormAboveFooter() {
         rule.onNodeWithText("On this phone (experimental)").assertExists()
         val add = rule.onNodeWithContentDescription("Add torrent on this phone")

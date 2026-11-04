@@ -162,9 +162,40 @@ internal data class CombinedSavedProfile(
     val label: String,
     /** Authenticated endpoint + NUL + username, for its own privacy gate and aliases. */
     val aliasScope: String? = null,
+    /** The person's friendly profile name alone, for compact rows; [label] stays exact. */
+    val shortLabel: String? = null,
     /** Read-only list of its "main" view with its own saved credentials; null when unavailable. */
     val listOnly: (suspend () -> List<RemoteTransfer>)? = null
 )
+
+/**
+ * Compact visible origin labels for rows and view chips. The exact label
+ * (which includes the server address) remains in headings, confirmations,
+ * details and every spoken row action. A compact name is used only when it is
+ * unique among the environments shown; otherwise the exact label is kept, so
+ * two instances on one host can never look identical.
+ */
+internal fun compactEnvironmentLabels(
+    exact: Map<EnvironmentId, String>,
+    compact: Map<EnvironmentId, String>
+): Map<EnvironmentId, String> {
+    val counts = exact.keys.mapNotNull { compact[it]?.trim()?.takeIf(String::isNotEmpty) }
+        .groupingBy { it }.eachCount()
+    return exact.mapValues { (id, full) ->
+        val short = compact[id]?.trim()?.takeIf(String::isNotEmpty)
+        if (short != null && counts[short] == 1 &&
+            exact.none { (other, label) -> other != id && label == short }) short else full
+    }
+}
+
+/** "Server · user @ host" without the RPC path, for compact display only. */
+internal fun compactServerLabel(aliasScope: String): String {
+    val endpoint = aliasScope.substringBefore('\u0000')
+    val user = aliasScope.substringAfter('\u0000', "").trim()
+    val host = try { java.net.URI(endpoint.trim()).host } catch (_: Exception) { null }
+        ?.takeIf { it.isNotBlank() } ?: return serverEnvironmentLabel(aliasScope)
+    return "Server · " + (if (user.isEmpty()) host else "$user @ $host")
+}
 
 /** One read-only fetch of another saved server: never a command, never a sign-in switch. */
 internal data class SavedServerListing(
@@ -263,7 +294,9 @@ internal fun CombinedTransfersScreen(
     onAddToServer: (() -> Unit)? = null,
     /** Opens this exact transfer in its own environment's list; only phone and the signed-in server. */
     onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** Caller-owned list position, kept when visiting an owning list and returning. */
+    listState: androidx.compose.foundation.lazy.LazyListState? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -454,6 +487,16 @@ internal fun CombinedTransfersScreen(
             put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
+    val rowLabels = remember(labels, savedProfiles, server?.aliasScope) {
+        compactEnvironmentLabels(labels, buildMap {
+        put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
+        savedProfiles.forEach { profile ->
+            profile.shortLabel?.let { put(EnvironmentId(profile.id), "Server · $it") }
+        }
+        if (server != null && serverId != null && serverId !in this)
+            put(serverId, compactServerLabel(server.aliasScope))
+        })
+    }
     // Palette storage is a lifecycle effect, not work performed by remember or
     // by LazyColumn composition. Read external changes via the shared revision:
     // profile rename, navigation and chooser updates never overwrite user hues.
@@ -574,7 +617,7 @@ internal fun CombinedTransfersScreen(
         onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
     }
 
-    val listState = rememberLazyListState()
+    val listState = listState ?: rememberLazyListState()
     // Reading LazyListState.layoutInfo during composition creates a feedback
     // loop: layout publishes info, composition reads it, then remeasures.
     // Capture only actual size changes and use stable scroll state for visibility.
@@ -729,7 +772,11 @@ internal fun CombinedTransfersScreen(
             stallCheckError = stallFailure?.takeIf { stillStall(it.first) }?.second
         )
     } else {
-    Box(Modifier.fillMaxSize()) {
+    // The same measured Transfers / Add / Options footer as the phone and
+    // rTorrent lists. Each action only moves within this view: Add leads to
+    // the explicit destination choices, never to an inferred environment.
+    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.weight(1f)) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
                 .onSizeChanged { viewportHeightPx = it.height },
             state = listState, contentPadding = PaddingValues(bottom = 88.dp),
@@ -737,12 +784,14 @@ internal fun CombinedTransfersScreen(
         item {
             CombinedTransfersHeader(onBack)
         }
-        item {
+        item(key = COMBINED_ADD_ITEM_KEY) {
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
                 onOpenPhone = onOpenPhone,
-                onAddToServer = onAddToServer
+                onAddToServer = onAddToServer,
+                phoneHue = palette.hueOf(EnvironmentSnapshots.PHONE),
+                serverHue = serverId?.let { palette.hueOf(it) }
             )
         }
         item {
@@ -846,7 +895,7 @@ internal fun CombinedTransfersScreen(
                     val selected = scope is EnvironmentViewScope.Only && id in scope.ids
                     FilterChip(selected = selected, onClick = {
                         update(query.copy(scope = toggleScope(scope, id)))
-                    }, label = { Text(label) }, leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
+                    }, label = { Text(rowLabels[id] ?: label) }, leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
                         modifier = Modifier.heightIn(min = 48.dp))
                 }
             }
@@ -1055,6 +1104,7 @@ internal fun CombinedTransfersScreen(
                 }
                 items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
                     CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    visibleEnvironmentLabel = rowLabels[row.key.environment],
                     source = sourcesByEnvironment[row.key.environment],
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
@@ -1065,6 +1115,7 @@ internal fun CombinedTransfersScreen(
         } else {
             items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
                 CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    visibleEnvironmentLabel = rowLabels[row.key.environment],
                     source = sourcesByEnvironment[row.key.environment],
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
@@ -1105,9 +1156,30 @@ internal fun CombinedTransfersScreen(
                 else listState.scrollToItem(0)
             }
         }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
-    }
+    } // scroll viewport
+    AuthenticatedTransfersFooter(
+        optionsOpen = showingViewOptions,
+        onTransfers = {
+            batchScope.launch {
+                if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
+                else listState.scrollToItem(0)
+            }
+        },
+        onAdd = { batchScope.launch { listState.scrollToItem(COMBINED_ADD_ITEM_INDEX) } },
+        onOptions = {
+            showingViewOptions = !showingViewOptions
+            batchScope.launch { listState.scrollToItem(COMBINED_VIEW_ITEM_INDEX) }
+        },
+        addDescription = "Choose where to add a torrent"
+    )
+    } // measured footer + viewport
     }
 }
+
+/** Unconditional leading items: header (0), Add destinations (1), batch (2), view (3). */
+private const val COMBINED_ADD_ITEM_KEY = "combined-add-destinations"
+internal const val COMBINED_ADD_ITEM_INDEX = 1
+internal const val COMBINED_VIEW_ITEM_INDEX = 3
 
 /**
  * Save only the exact read-only detail identity across rotation/process recreation.
@@ -1145,6 +1217,8 @@ private fun CombinedTransferRow(
     row: UnifiedTransferObservation,
     environmentLabel: String,
     hue: EnvironmentHue?,
+    /** Compact unique origin shown in the row; spoken actions keep [environmentLabel]. */
+    visibleEnvironmentLabel: String? = null,
     source: EnvironmentTransferSnapshot?,
     /** Null when not selecting. */
     selection: Boolean? = null,
@@ -1172,7 +1246,7 @@ private fun CombinedTransferRow(
             })
         Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(environmentLabel, style = MaterialTheme.typography.labelMedium,
+            Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelMedium,
                 color = labelColour, fontWeight = FontWeight.Bold)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {

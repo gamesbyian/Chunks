@@ -29,16 +29,23 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 internal fun AuthenticatedTransfersFooter(
-    optionsOpen: Boolean,
+    /** Null when Options is a destination rather than an expandable panel. */
+    optionsOpen: Boolean?,
     onTransfers: () -> Unit,
     onAdd: () -> Unit,
     onOptions: () -> Unit,
     /** Supplied by the phone route; a null scope preserves existing remote labels. */
-    environmentLabel: String? = null
+    environmentLabel: String? = null,
+    /** Spoken name for Add where no single environment owns it (Combined). */
+    addDescription: String? = null
 ) {
     Surface(color = ChunksColors.Surface) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val stacked = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
+            // At 412dp, 140% fonts already make "Transfers" wrap awkwardly
+            // in a three-column row. Give Options its own row before that
+            // threshold, without penalizing normal-scale everyday layouts.
+            val stacked = maxWidth < 380.dp ||
+                LocalDensity.current.fontScale >= 1.3f
             if (stacked) {
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
@@ -49,7 +56,7 @@ internal fun AuthenticatedTransfersFooter(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel)
-                        FooterAdd(onAdd, Modifier.weight(1f), environmentLabel)
+                        FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription)
                     }
                     FooterOptions(optionsOpen, onOptions, Modifier.fillMaxWidth(), environmentLabel)
                 }
@@ -59,7 +66,7 @@ internal fun AuthenticatedTransfersFooter(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel)
-                    FooterAdd(onAdd, Modifier.weight(1f), environmentLabel)
+                    FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription)
                     FooterOptions(optionsOpen, onOptions, Modifier.weight(1f), environmentLabel)
                 }
             }
@@ -78,10 +85,13 @@ private fun FooterTransfers(onClick: () -> Unit, modifier: Modifier, environment
 }
 
 @Composable
-private fun FooterAdd(onClick: () -> Unit, modifier: Modifier, environmentLabel: String?) {
+private fun FooterAdd(
+    onClick: () -> Unit, modifier: Modifier, environmentLabel: String?, description: String?
+) {
+    val spoken = description ?: environmentLabel?.let { "Add torrent on $it" }
     Button(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)
-        .then(if (environmentLabel == null) Modifier else Modifier.semantics {
-            contentDescription = "Add torrent on $environmentLabel"
+        .then(if (spoken == null) Modifier else Modifier.semantics {
+            contentDescription = spoken
         })) {
         Text("+ Add", maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
@@ -89,7 +99,7 @@ private fun FooterAdd(onClick: () -> Unit, modifier: Modifier, environmentLabel:
 
 @Composable
 private fun FooterOptions(
-    open: Boolean, onClick: () -> Unit, modifier: Modifier, environmentLabel: String?
+    open: Boolean?, onClick: () -> Unit, modifier: Modifier, environmentLabel: String?
 ) {
     OutlinedButton(
         onClick = onClick,
@@ -97,7 +107,7 @@ private fun FooterOptions(
             .semantics {
                 contentDescription = if (environmentLabel == null) "Options"
                     else "Options on $environmentLabel"
-                stateDescription = if (open) "Expanded" else "Collapsed"
+                if (open != null) stateDescription = if (open) "Expanded" else "Collapsed"
             }
     ) {
         Text("Options", maxLines = 2, overflow = TextOverflow.Ellipsis)

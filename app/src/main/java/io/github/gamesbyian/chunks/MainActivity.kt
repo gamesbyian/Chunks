@@ -8,7 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -30,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -269,6 +269,12 @@ private fun ChunksApp(
     var query by remember { mutableStateOf("") }
     // Secondary destinations appear only when requested on the ordinary list.
     var optionsOpen by rememberSaveable { mutableStateOf(false) }
+    // Navigation-only list state that survives moving between routes
+    // (phone ↔ All environments ↔ server ↔ settings) and rotation. It holds
+    // no selection, confirmation or command state.
+    val phoneListScroll = rememberScrollState()
+    val phoneSearch = rememberSaveable { mutableStateOf("") }
+    val combinedListState = rememberLazyListState()
     // A view-only filter; no hidden configuration or account scope is indexed.
     var optionsSearch by rememberSaveable { mutableStateOf("") }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
@@ -466,6 +472,7 @@ private fun ChunksApp(
             }
         } else if (section == Section.COMBINED) {
             CombinedTransfersScreen(
+                listState = combinedListState,
                 server = server?.let { remote ->
                     CombinedServerSource(aliasScope, transfers, stale = stale || loading,
                         fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt,
@@ -495,7 +502,8 @@ private fun ChunksApp(
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
                         aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials),
                         // Read-only "main" list with this profile's own saved credentials (HTTPS enforced).
-                        listOnly = { verifiedSavedProfileMainInventory(profile.credentials) })
+                        listOnly = { verifiedSavedProfileMainInventory(profile.credentials) },
+                        shortLabel = profile.label)
                 },
                 onOpenPhone = { localFromCombined = true; section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
@@ -546,9 +554,11 @@ private fun ChunksApp(
         } else if (section == Section.LOCAL && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                onBack = { leavePhone() }
+                onBack = { leavePhone() },
+                controlsInContent = true
             ) {
                 LocalEngineScreen(
+                    listScroll = phoneListScroll, searchState = phoneSearch,
                     onBack = { leavePhone() },
                     onSeedingRules = { section = Section.SEEDING },
                     onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
@@ -856,9 +866,11 @@ private fun ChunksApp(
                 // profile can still navigate to the separately gated phone.
                 LocalTransferPrivacyGate(
                     scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                    onBack = { leavePhone() }
+                    onBack = { leavePhone() },
+                    controlsInContent = true
                 ) {
                     LocalEngineScreen(
+                        listScroll = phoneListScroll, searchState = phoneSearch,
                         onBack = { leavePhone() },
                         onSeedingRules = { section = Section.SEEDING },
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
@@ -906,7 +918,8 @@ private fun ChunksApp(
             } else {
                 RemoteTransferPrivacyGate(
                     scope = remotePrivacyScope,
-                    onBack = { localFromCombined = false; section = Section.LOCAL }
+                    onBack = { localFromCombined = false; section = Section.LOCAL },
+                    controlsInContent = true
                 ) {
             val beginRemoteMutation: () -> Boolean = {
                 if (server === connectedRemote && !loading && !stale && mutationGate.tryStart()) {
@@ -956,8 +969,23 @@ private fun ChunksApp(
             val visibleDestinations = if (section == Section.TRANSFERS && optionsOpen)
                 optionsDestinations.filter { optionsDestinationMatches(it.label, optionsSearch) }
             else optionsDestinations
-            if (section == Section.TRANSFERS && optionsOpen) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            // Options (and every non-Transfers screen's destination list) is
+            // height-bounded and scrolls vertically, so wrapped destinations and
+            // expanded privacy controls can never push the screen and its footer
+            // out of reach at 320dp and 200% type.
+            // On other routes (Add, Places…) the destinations are a compact,
+            // two-row-high strip so the screen itself (and its keyboard) keeps
+            // its space; the open Transfers Options panel may use more.
+            if (section != Section.TRANSFERS || optionsOpen) Column(
+                Modifier.fillMaxWidth()
+                    .heightIn(max = if (section == Section.TRANSFERS)
+                        (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.45f).dp
+                        else 112.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (section == Section.TRANSFERS) {
                     ClearableTransferSearchField(
                         value = optionsSearch, onValueChange = { optionsSearch = it },
                         label = "Find a screen or tool"
@@ -967,30 +995,41 @@ private fun ChunksApp(
                             style = MaterialTheme.typography.bodySmall)
                     }
                 }
-            }
-            if (section != Section.TRANSFERS || optionsOpen) Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                for (tab in visibleDestinations) {
-                    FilterChip(
-                        selected = section == tab,
-                        onClick = {
-                            optionsSearch = ""
-                            if (tab == Section.LOCAL) localFromCombined = false
-                            section = tab
-                        },
-                        label = { Text(tab.label) },
-                        modifier = Modifier.heightIn(min = 48.dp)
-                    )
+                // Wrap rather than scroll sideways: every destination stays reachable
+                // by vertical layout, keyboard and TalkBack at 320dp and 200% type.
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    for (tab in visibleDestinations) {
+                        FilterChip(
+                            selected = section == tab,
+                            onClick = {
+                                optionsSearch = ""
+                                if (tab == Section.LOCAL) localFromCombined = false
+                                section = tab
+                            },
+                            label = { Text(tab.label) },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        )
+                    }
                 }
+                // Privacy & authentication belongs with Transfers Options, not pinned
+                // above every screen; Lock now stays on top while a policy is active.
+                if (section == Section.TRANSFERS)
+                    io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
             }
             if (error != null) {
                 Notice("Refresh problem", error.orEmpty())
             }
+            // Per-account list position survives visiting Places, Server or
+            // other routes; a different account starts at the top.
+            val remoteListState = remember(aliasScope) { androidx.compose.foundation.lazy.LazyListState() }
             when (section) {
                 Section.TRANSFERS -> RemoteEnvironmentCompositionBoundary(aliasScope, connectedRemote) {
                     TransfersScreen(
+                    listState = remoteListState,
                     remote = connectedRemote, onLifecycleSettled = settledRemoteMutation,
                     onMutationStarted = beginRemoteMutation,
                     aliasStore = aliasStore, aliasScope = aliasScope,
@@ -1546,6 +1585,7 @@ private fun ConnectionScreen(
 
 @Composable
 private fun TransfersScreen(
+    listState: androidx.compose.foundation.lazy.LazyListState,
     remote: RTorrentRemote, onLifecycleSettled: () -> Unit,
     onMutationStarted: () -> Boolean,
     aliasStore: TransferAliasStore, aliasScope: String,
@@ -1575,7 +1615,6 @@ private fun TransfersScreen(
             aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
         }
     }
-    val listState = rememberLazyListState()
     val topControlScope = rememberCoroutineScope()
     val context = LocalContext.current
     var serverMoveRevision by remember { mutableStateOf(0) }
@@ -1991,7 +2030,9 @@ private fun TransfersScreen(
             optionsOpen = optionsOpen,
             onTransfers = { topControlScope.launch { listState.scrollToItem(0) } },
             onAdd = onAdd,
-            onOptions = onOptions
+            onOptions = onOptions,
+            // Speak the exact Add target; the visible "+ Add" stays compact.
+            addDescription = "Add torrent on " + serverEnvironmentLabel(aliasScope)
         )
     }
 }
@@ -2329,10 +2370,9 @@ private fun OrganizeScreen(
                 modifier = Modifier.heightIn(min = 48.dp)) { Text("Show all collections") }
         }
         item {
-            OutlinedTextField(
+            ClearableTransferSearchField(
                 value = manualQuery, onValueChange = { manualQuery = it; collectionPage = 0 },
-                label = { Text("Find a transfer to organize") },
-                singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = "Find a transfer to organize"
             )
             Text("Found " + pagedMatches.totalMatches + " matching transfers in the loaded server view and selected collection. Page " +
                 (pagedMatches.pageIndex + 1) + " of " + pagedMatches.totalPages + ".",

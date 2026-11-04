@@ -258,7 +258,14 @@ internal fun LocalEngineScreen(
     onSearchConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
     /** Receives a verified exported .torrent for the server's Add review. */
-    onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null
+    onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null,
+    /**
+     * Navigation-only state owned by the caller so that leaving for All
+     * environments, Seeding rules or a server and returning keeps the list
+     * position and search. Never carries selections or confirmations.
+     */
+    listScroll: androidx.compose.foundation.ScrollState? = null,
+    searchState: androidx.compose.runtime.MutableState<String>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -283,7 +290,8 @@ internal fun LocalEngineScreen(
     val transfers = inventoryFrame.entries
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
-    var transferSearch by remember { mutableStateOf("") }
+    val transferSearchHolder = searchState ?: remember { mutableStateOf("") }
+    var transferSearch by transferSearchHolder
     // View-only disclosure; no native engine work is started by these flags.
     var showPhoneTools by rememberSaveable { mutableStateOf(false) }
     var showListOptions by rememberSaveable { mutableStateOf(false) }
@@ -292,6 +300,15 @@ internal fun LocalEngineScreen(
     fun chooseLocalFilter(choice: LocalQueueFilter) {
         transferFilter = choice
         localFilterStore.save(choice)
+    }
+    // Exact hash of the latest acknowledged phone Add, for "hidden by view" only.
+    var lastAddedHash by rememberSaveable { mutableStateOf<String?>(null) }
+    // The search/filter in effect when that Add happened. Any later deliberate
+    // view change retires the notice, so an old Add is never called "new".
+    var lastAddedView by rememberSaveable { mutableStateOf<String?>(null) }
+    fun rememberAdded(hash: String?) {
+        lastAddedHash = hash
+        lastAddedView = hash?.let { transferSearch + "\u0000" + transferFilter.name }
     }
     LaunchedEffect(initialSearch) {
         if (!initialSearch.isNullOrBlank()) {
@@ -604,7 +621,7 @@ internal fun LocalEngineScreen(
         }
     }
 
-    val scrollState = rememberScrollState()
+    val scrollState = listScroll ?: rememberScrollState()
     LaunchedEffect(repairReview?.first) {
         // The source chooser is launched from a card deep in a long queue.
         // Return to the review at the top rather than hide a confirmation
@@ -639,16 +656,30 @@ internal fun LocalEngineScreen(
             .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (onBack != null) OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
-        Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-        EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false,
-            environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
-        if (onCombined != null) OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text("All environments…")
+        // Compact orientation: who/where in two short rows, so the actual
+        // transfer inventory starts within the first viewport. Optional
+        // tools and settings live in "Phone options" beneath the list.
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (onBack != null) OutlinedButton(onClick = onBack,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
+            Text("On this phone (experimental)", style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.CenterVertically).semantics { heading() })
         }
-        if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text("Seeding rules…")
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false,
+                environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE,
+                modifier = Modifier.align(Alignment.CenterVertically))
+            if (onCombined != null) OutlinedButton(onClick = onCombined,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments…") }
         }
         PhoneIntakeDisclosure(
             expanded = addExpanded, pendingReview = pending != null,
@@ -707,6 +738,11 @@ internal fun LocalEngineScreen(
                                 if (startAfterAdd) "Magnet added. Discovering metadata; download begins automatically when metadata arrives and peers are available."
                                 else "Magnet added in metadata-only mode. Use Start after the metadata is ready."
                             is LocalAddResult.AddedStopped -> null
+                        }
+                        when (result) {
+                            is LocalAddResult.FetchingMetadata -> rememberAdded(result.status.infoHash)
+                            is LocalAddResult.AddedStopped -> rememberAdded(result.status.infoHash)
+                            is LocalAddResult.Refused -> Unit
                         }
                         if (result !is LocalAddResult.Refused) {
                             if (startAfterAdd) {
@@ -880,7 +916,10 @@ internal fun LocalEngineScreen(
         if (placeResolution != null && destination == null)
             Text("Phone storage for Chunks is unavailable right now.",
                 color = MaterialTheme.colorScheme.error)
-        message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        // Outcomes include successes ("Added and started…") as well as refusals,
+        // so present them as a neutral, politely announced status rather than
+        // colouring every result as an error. The wording carries the outcome.
+        message?.let { PhoneOutcomeNotice(it) }
         restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (inventoryStale) {
             Text("Phone torrent status unavailable. Showing the last confirmed transfers. " +
@@ -976,6 +1015,7 @@ internal fun LocalEngineScreen(
                             }
                         }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
+                        if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash)
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
@@ -1061,87 +1101,6 @@ internal fun LocalEngineScreen(
             )
         }
 
-        LocalSnapshotRestorePreviewPanel(
-            transfers = transfers,
-            inventoryConfirmed = hasConfirmedLocalInventory,
-            inventoryStale = inventoryStale,
-            busyEngine = busy,
-            mutationGeneration = LocalScreenReader.revision.snapshot(),
-            onPrepareAdd = { originalBytes ->
-                // This callback changes only the local Add DRAFT, not the
-                // engine, destination folder, existing transfers or data.
-                try {
-                    val bytes = originalBytes.copyOf()
-                    pending = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
-                    addStorage = null
-                    message = "Original snapshot .torrent is ready for manual phone Add review. " +
-                        "Check the destination and Start choice before confirming; no Add occurred."
-                    scope.launch { scrollState.animateScrollTo(0) }
-                } catch (failure: Exception) {
-                    pending = null
-                    message = "Snapshot definition could not populate Add review: " +
-                        (failure.message ?: "Unsupported original torrent")
-                }
-            },
-            onReviewOneRestore = { verified, entry, frozen, generation ->
-                // Assemble a canonical source fingerprint off the Compose lane.
-                // No journal mutation or engine Add happens at this stage.
-                val request = ++snapshotPreparationRevision
-                scope.launch {
-                    try {
-                        val draft = withContext(Dispatchers.IO) {
-                            val original = SnapshotVerifiedTorrentDocumentV1.prepare(
-                                verified, entry.infoHashV1)
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
-                            LocalSnapshotStoppedRestoreDraft(
-                                original,
-                                LocalSnapshotRestoreFingerprint.of(exactArchive),
-                                frozen.toList(), generation)
-                        }
-                        if (request == snapshotPreparationRevision &&
-                            LocalScreenReader.revision.snapshot() == generation &&
-                            !LocalScreenReader.revision.blocksMutations()) {
-                            snapshotRestoreDraft = draft
-                            pending = null
-                            message = "Review the new phone destination and explicitly confirm " +
-                                "the stopped restore. No torrent has been added."
-                            scrollState.animateScrollTo(0)
-                        } else {
-                            message = "The comparison changed before restore review. Reopen the snapshot."
-                        }
-                    } catch (cancel: kotlinx.coroutines.CancellationException) {
-                        throw cancel
-                    } catch (_: Exception) {
-                        message = "The verified original snapshot definition could not be prepared."
-                    }
-                }
-            }
-        )
-        OutlinedButton(
-            onClick = { showPhoneTools = !showPhoneTools },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .semantics { stateDescription = if (showPhoneTools) "Expanded" else "Collapsed" }
-        ) { Text(if (showPhoneTools) "Hide phone tools" else "More phone tools") }
-        if (showPhoneTools) {
-        LocalInventorySnapshotPanel(
-            transfers = transfers,
-            stale = inventoryStale,
-            busyEngine = busy
-        )
-        LocalTransferHealthExportPanel(
-            transfers = transfers,
-            stale = inventoryStale || busy
-        )
-        BatchMagnetExportPanel(
-            rows = displayedTransfers.map {
-                io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
-                    it.infoHash, it.name)
-            },
-            stale = inventoryStale || busy,
-            sourceLabel = "phone"
-        )
-        }
         moveServer?.let { server ->
             val digest = TransferMoveStore.scopeDigest(server.aliasScope)
             val pending = remember(transfers, moveRevision) {
@@ -1177,7 +1136,10 @@ internal fun LocalEngineScreen(
                 onFinished = { text -> message = text; moveRevision++ }
             )
         }
-        LocalBatchCollectionPanel(
+        // Batch selection acts on the list itself, so it sits with the list (as on
+        // rTorrent) and near the outcome/confirmation area above it. With no
+        // phone transfers there is nothing to select, so it is not shown.
+        if (transfers.isNotEmpty()) LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
             inventoryStale = inventoryStale || busy,
@@ -1294,12 +1256,6 @@ internal fun LocalEngineScreen(
                 }
             }
         )
-        CollectionNameManager(
-            scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-            registry = nameRegistry,
-            registeredNames = registeredNames,
-            onNamesChanged = { registeredNames = it }
-        )
         Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.bringIntoViewRequester(transfersRequester)
@@ -1312,7 +1268,6 @@ internal fun LocalEngineScreen(
         OutlinedButton(
             onClick = { showListOptions = !showListOptions },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .bringIntoViewRequester(optionsRequester)
                 .semantics { stateDescription = if (showListOptions) "Expanded" else "Collapsed" }
         ) {
             Text((if (showListOptions) "Hide" else "Choose") + " filters & sort · " +
@@ -1361,6 +1316,18 @@ internal fun LocalEngineScreen(
             onReverse = { chooseTransferSort(transferOrder,
                 TransferSortOrdering.reversed(transferDirection)) }
         )
+        }
+        val addedHidden = remember(lastAddedHash, lastAddedView, transfers, displayedTransfers,
+            transferSearch, transferFilter) {
+            lastAddedView == transferSearch + "\u0000" + transferFilter.name &&
+                PhoneAddedVisibility.hiddenByView(lastAddedHash, transfers.map { it.infoHash },
+                    displayedTransfers.map { it.infoHash })
+        }
+        if (addedHidden) {
+            PhoneAddedHiddenNotice(onShowAll = {
+                transferSearch = ""
+                chooseLocalFilter(LocalQueueFilter.ALL)
+            })
         }
         Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
             style = MaterialTheme.typography.bodySmall)
@@ -1779,6 +1746,105 @@ internal fun LocalEngineScreen(
             if (!inventoryStale && transfer.metadataKnown && transfer.progressPpm == 1_000_000)
                 LocalLibraryCopyPanel(transfer)
         }
+        // Optional phone tools and settings. The footer Options action
+        // brings this section into view; nothing here mutates on display.
+        Text("Phone options", style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 12.dp)
+                .bringIntoViewRequester(optionsRequester)
+                .semantics { heading() })
+        if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Seeding rules…")
+        }
+        io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
+        LocalSnapshotRestorePreviewPanel(
+            transfers = transfers,
+            inventoryConfirmed = hasConfirmedLocalInventory,
+            inventoryStale = inventoryStale,
+            busyEngine = busy,
+            mutationGeneration = LocalScreenReader.revision.snapshot(),
+            onPrepareAdd = { originalBytes ->
+                // This callback changes only the local Add DRAFT, not the
+                // engine, destination folder, existing transfers or data.
+                try {
+                    val bytes = originalBytes.copyOf()
+                    pending = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
+                    addStorage = null
+                    message = "Original snapshot .torrent is ready for manual phone Add review. " +
+                        "Check the destination and Start choice before confirming; no Add occurred."
+                    scope.launch { scrollState.animateScrollTo(0) }
+                } catch (failure: Exception) {
+                    pending = null
+                    message = "Snapshot definition could not populate Add review: " +
+                        (failure.message ?: "Unsupported original torrent")
+                }
+            },
+            onReviewOneRestore = { verified, entry, frozen, generation ->
+                // Assemble a canonical source fingerprint off the Compose lane.
+                // No journal mutation or engine Add happens at this stage.
+                val request = ++snapshotPreparationRevision
+                scope.launch {
+                    try {
+                        val draft = withContext(Dispatchers.IO) {
+                            val original = SnapshotVerifiedTorrentDocumentV1.prepare(
+                                verified, entry.infoHashV1)
+                            val exactArchive = SnapshotManifestV1.encode(
+                                verified.manifest, verified.metainfoByHash)
+                            LocalSnapshotStoppedRestoreDraft(
+                                original,
+                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                frozen.toList(), generation)
+                        }
+                        if (request == snapshotPreparationRevision &&
+                            LocalScreenReader.revision.snapshot() == generation &&
+                            !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotRestoreDraft = draft
+                            pending = null
+                            message = "Review the new phone destination and explicitly confirm " +
+                                "the stopped restore. No torrent has been added."
+                            scrollState.animateScrollTo(0)
+                        } else {
+                            message = "The comparison changed before restore review. Reopen the snapshot."
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        message = "The verified original snapshot definition could not be prepared."
+                    }
+                }
+            }
+        )
+        OutlinedButton(
+            onClick = { showPhoneTools = !showPhoneTools },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .semantics { stateDescription = if (showPhoneTools) "Expanded" else "Collapsed" }
+        ) { Text(if (showPhoneTools) "Hide phone tools" else "More phone tools") }
+        if (showPhoneTools) {
+        LocalInventorySnapshotPanel(
+            transfers = transfers,
+            stale = inventoryStale,
+            busyEngine = busy
+        )
+        LocalTransferHealthExportPanel(
+            transfers = transfers,
+            stale = inventoryStale || busy
+        )
+        BatchMagnetExportPanel(
+            rows = displayedTransfers.map {
+                io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
+                    it.infoHash, it.name)
+            },
+            stale = inventoryStale || busy,
+            sourceLabel = "phone"
+        )
+        }
+        CollectionNameManager(
+            scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+            registry = nameRegistry,
+            registeredNames = registeredNames,
+            onNamesChanged = { registeredNames = it }
+        )
         LocalZipInterruptedExtractions()
         LocalSpeedLimits()
     }
@@ -1794,7 +1860,8 @@ internal fun LocalEngineScreen(
     )
     } // scroll viewport
     AuthenticatedTransfersFooter(
-        optionsOpen = showListOptions,
+        // Phone Options is a scroll destination, not a disclosure.
+        optionsOpen = null,
         environmentLabel = "this phone",
         onTransfers = { scope.launch { transfersRequester.bringIntoView() } },
         onAdd = {
@@ -1802,12 +1869,26 @@ internal fun LocalEngineScreen(
             // Repeated taps also bring the real form into view above the footer.
             addNavigationRevision++
         },
-        onOptions = {
-            showListOptions = !showListOptions
-            scope.launch { optionsRequester.bringIntoView() }
-        }
+        onOptions = { scope.launch { optionsRequester.bringIntoView() } }
     )
     } // measured footer + viewport
+}
+
+/** Latest phone action outcome, announced to accessibility services once per change. */
+@Composable
+internal fun PhoneOutcomeNotice(text: String) {
+    // Fully qualified to keep the shared import block untouched.
+    androidx.compose.material3.Surface(
+        color = ChunksColors.SurfaceRaised,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, ChunksColors.Outline),
+        // Merge the text into the live-region node so its change is announced.
+        modifier = Modifier.fillMaxWidth()
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
+    ) {
+        Text(text, color = ChunksColors.Text, style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp))
+    }
 }
 
 /** This entry point is read-only until an existing Add operation is explicitly submitted. */
