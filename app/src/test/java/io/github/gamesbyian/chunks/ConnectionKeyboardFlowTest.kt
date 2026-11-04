@@ -56,4 +56,13 @@ class ConnectionScreenImeTest {
         rule.onNode(hasSetTextAction() and hasText("Username, if required"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Next))
     }
+
+    @Test fun phoneMagnetFieldClosesWithDone() {
+        rule.waitForIdle()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Add torrent on this phone"))
+            .performClick()
+        rule.waitForIdle()
+        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet link"))
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
+    }
 }
