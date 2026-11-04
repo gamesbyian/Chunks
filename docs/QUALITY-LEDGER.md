@@ -2,6 +2,10 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-04 #1264: installed phone delete-data, Combined C1/C2 on real engines
+
+Exact head `7cc6d801bde6c2408df0dfcef98a7faeebf15194`: API29 [41828619768](https://github.com/gamesbyian/Chunks/actions/runs/41828619768) and API35 [41828619811](https://github.com/gamesbyian/Chunks/actions/runs/41828619811) printed `CHUNKS_INTAKE_DELETE verified=true payload_absent=true session_absent=true canary_intact=true bytes=524288`. Two-server [41828619842](https://github.com/gamesbyian/Chunks/actions/runs/41828619842) passed all 17 stages through `process-death-unchanged`. Superseded harness reds on the same PR: 41825550812 (status toggle text) and 41827315011 (chip reflow tapped Organize). Emulator and disposable tiers only.
+
 ## 2026-11-04 protected three-server Combined (read-only) and per-target Combined batch
 
 Protected trusted-main [41805692606](https://github.com/gamesbyian/Chunks/actions/runs/41805692606) at `338e3af06511e7c73cba65240aa6520b924f5314` passed every enumerated stage (`ground-truth` through `unchanged`) on the real primary and numbered instances 2 and 3, with no mutation. Disposable [41804020846](https://github.com/gamesbyian/Chunks/actions/runs/41804020846) at `c68da2c` passed a Combined Start/Stop scoped to the signed-in server. Exact-main debug APK [41801819377](https://github.com/gamesbyian/Chunks/actions/runs/41801819377) (`ffc1534`, SHA-256 receipt in the release). Not Pixel, protected-mutation-from-Combined or signed-release evidence.

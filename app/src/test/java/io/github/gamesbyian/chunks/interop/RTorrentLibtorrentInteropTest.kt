@@ -8,6 +8,7 @@ import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LoopbackTracker
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
+import io.github.gamesbyian.chunks.rpc.FilePriorityOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
 import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
@@ -237,6 +238,76 @@ class RTorrentLibtorrentInteropTest {
             waitFor("phone engine upload counter", 30) {
                 (phone.status(seed.infoHash)?.payloadUploadedBytes ?: 0) >= total
             }
+        } finally {
+            seedParent.deleteRecursively()
+        }
+    }
+
+    /**
+     * L2 remote piece evidence: rTorrent leeches from the phone engine with
+     * one file turned OFF through the production setFilePriority. rTorrent's
+     * own per-file chunk counters must show the wanted files complete while
+     * the skipped file holds at most one boundary chunk shared with a wanted
+     * file; raising it to normal must then complete it with exact bytes.
+     */
+    @Test fun realRTorrentSkippedFileGetsNoPiecesUntilItsPriorityIsRaised() = runBlocking {
+        val rig = rig()
+        val seedParent = kotlin.io.path.createTempDirectory("chunks-interop-priority-seed").toFile()
+        try {
+            val (root, files) = fixture(seedParent, "Interop priorities", System.nanoTime())
+            val torrent = torrentFor(root)
+            val phone = engine()
+            val seed = (phone.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+            assertEquals(LocalCommandOutcome.VERIFIED, phone.resume(seed.infoHash).outcome)
+            waitFor("phone engine to verify its seed") {
+                phone.status(seed.infoHash)?.state == LocalTransferState.SEEDING
+            }
+            val leechParent = File(rig.dataRoot, "interop-priority-" + System.nanoTime()).apply { mkdirs() }
+            val hash = TorrentMetainfoReader.preview(torrent).infoHashV1
+            val added = rig.remote.loadStoppedTorrentBytes(torrent, leechParent.absolutePath)
+            assertTrue("Stopped Add not verified: $added",
+                added is RemoteAddOutcome.VerifiedStopped || added is RemoteAddOutcome.PendingVerification)
+            waitFor("rTorrent lists the stopped download", 30) {
+                runBlocking { remoteRow(rig.remote, hash) }?.started == false
+            }
+            val listed = rig.remote.listFiles(hash)
+            val skipIndex = listed.indexOfFirst { it.path == "video/part-2.bin" }
+            assertTrue("fixture file missing from rTorrent: $listed", skipIndex >= 0)
+            val skipFile = listed[skipIndex]
+            val off = rig.remote.setFilePriority(hash, skipIndex, skipFile.path, skipFile.sizeBytes,
+                skipFile.priority, 0)
+            assertTrue("Production priority Off not verified: $off", off is FilePriorityOutcome.Verified)
+            suspend fun chunks(index: Int, method: String) =
+                (rig.remote.call(method, listOf("$hash:f$index")) as Number).toLong()
+            val started = rig.remote.setStarted(hash, true)
+            assertTrue("Start not acknowledged: $started",
+                started is LifecycleOutcome.Verified || started is LifecycleOutcome.Pending)
+            val wanted = listed.indices.filter { it != skipIndex }
+            waitFor("rTorrent completes every wanted file from the phone peer") {
+                runBlocking { wanted.all { chunks(it, "f.completed_chunks") == chunks(it, "f.size_chunks") } }
+            }
+            // Let any in-flight requests settle, then sample the skipped file.
+            Thread.sleep(3_000)
+            val skippedDone = chunks(skipIndex, "f.completed_chunks")
+            val skippedTotal = chunks(skipIndex, "f.size_chunks")
+            println("CHUNKS_RT_PRIORITY: skipped completed_chunks=$skippedDone size_chunks=$skippedTotal")
+            assertTrue("fixture skipped file must span many pieces", skippedTotal >= 10)
+            assertTrue("Skipped file received pieces beyond a shared boundary chunk: " +
+                "$skippedDone/$skippedTotal", skippedDone <= 1)
+            for (index in wanted) {
+                val path = listed[index].path
+                assertArrayEquals("Exact wanted bytes for $path", files.getValue(path),
+                    File(leechParent, "Interop priorities/$path").readBytes())
+            }
+            val normal = rig.remote.setFilePriority(hash, skipIndex, skipFile.path, skipFile.sizeBytes, 0, 1)
+            assertTrue("Production priority Normal not verified: $normal", normal is FilePriorityOutcome.Verified)
+            waitFor("rTorrent completes the newly wanted file") {
+                runBlocking { chunks(skipIndex, "f.completed_chunks") == skippedTotal }
+            }
+            assertArrayEquals("Exact bytes after raising priority", files.getValue(skipFile.path),
+                File(leechParent, "Interop priorities/${skipFile.path}").readBytes())
+            rig.remote.setStarted(hash, false)
+            Unit
         } finally {
             seedParent.deleteRecursively()
         }

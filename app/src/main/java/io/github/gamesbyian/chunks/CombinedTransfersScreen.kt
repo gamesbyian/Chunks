@@ -209,9 +209,18 @@ internal data class SavedServerListing(
 
 internal fun listingFailure(failure: Throwable): String = when (failure) {
     is kotlinx.coroutines.TimeoutCancellationException -> "did not answer in time"
+    // A read timeout is an unresponsive server, not a generic network fault.
+    is java.net.SocketTimeoutException -> "did not answer in time"
     is java.net.UnknownHostException -> "host name not found"
     is java.net.ConnectException -> "connection refused"
     is javax.net.ssl.SSLException -> "secure connection failed"
+    // Only a genuine transport-observed status is classified; sign-in
+    // rejection and a gateway without its rTorrent need different actions.
+    is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException -> when (failure.status) {
+        401, 403 -> "sign-in rejected; check this saved login"
+        502, 503, 504 -> "server reached but rTorrent did not answer (HTTP ${failure.status})"
+        else -> "server returned HTTP ${failure.status}"
+    }
     is java.io.IOException -> "network error"
     else -> "unexpected reply"
 }
