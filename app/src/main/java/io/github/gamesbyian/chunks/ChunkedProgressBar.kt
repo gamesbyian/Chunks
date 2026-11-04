@@ -130,7 +130,8 @@ internal fun coalesceOldest(bands: List<Int>, maximum: Int): List<Int> {
     if (bands.size <= maximum) return bands
     val result = bands.toMutableList()
     while (result.size > maximum) {
-        result[1] += result.removeAt(0)
+        val oldest = result.removeAt(0)
+        result[0] += oldest
     }
     return result
 }
