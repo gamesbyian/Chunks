@@ -183,6 +183,28 @@ class ChunksMainActivityAtlasTest {
         return "http://127.0.0.1:" + listening.localPort + "/RPC2"
     }
 
+    /**
+     * IME focus can scroll/recompose the lazy Add form and drop the target
+     * node mid-input (native shard 0 at 9e5fa75 and 8eebf50, line 414).
+     * Re-scroll and retry a bounded number of times; never skip the input.
+     */
+    private fun replaceTextInLazyField(label: String, value: String) {
+        var last: AssertionError? = null
+        repeat(5) {
+            try {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label))
+                rule.waitForIdle()
+                rule.onNodeWithText(label).performTextReplacement(value)
+                rule.waitForIdle()
+                return
+            } catch (failure: AssertionError) {
+                last = failure
+                Thread.sleep(300)
+            }
+        }
+        throw requireNotNull(last)
+    }
+
     private fun dismissSearchKeyboard() {
         // The search field is an actual Android IME target. Hide the keyboard before
         // recording full-screen queue states or asserting below-the-fold content.
@@ -409,9 +431,7 @@ class ChunksMainActivityAtlasTest {
         addList.performScrollToNode(hasText("Magnet link"))
         rule.onNodeWithText("Magnet link").performTextReplacement(
             "magnet:?xt=urn:btih:" + "ab".repeat(20))
-        addList.performScrollToNode(hasText("Custom server folder (optional)"))
-        rule.onNodeWithText("Custom server folder (optional)")
-            .performTextReplacement("/srv/one-off")
+        replaceTextInLazyField("Custom server folder (optional)", "/srv/one-off")
         dismissSearchKeyboard()
         addList.performScrollToNode(hasText("Review Add"))
         rule.onNodeWithText("Review Add").performClick()
