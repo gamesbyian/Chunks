@@ -76,6 +76,9 @@ case "${1:-}" in
       echo "CHUNKS_INTAKE kind=$kind armed reviewed=true bytes=524288 stopped=true sha256=$digest"
       [[ "${BAD:-}" != duplicate_arm ]] || echo "CHUNKS_INTAKE kind=$kind armed reviewed=true bytes=524288 stopped=true sha256=$digest"
     fi
+    if [[ "$(cat "$MOCK_STATE/phase")" == delete && "${BAD:-}" != no_readd ]]; then
+      echo "CHUNKS_INTAKE_READD attempt=1"
+    fi
     if [[ "$(cat "$MOCK_STATE/phase")" == delete && "${BAD:-}" != no_delete ]]; then
       echo "CHUNKS_INTAKE_DELETE verified=true payload_absent=true session_absent=true canary_intact=true bytes=524288"
     fi
@@ -100,7 +103,7 @@ for bad in physical second_device devices_failure state_failure ambiguous_qemu i
            sdk_failure old_api stop_failure alive no_death no_arm duplicate_arm log_failure wrong_kind \
            false_ok skip fail duplicate_ok command_fail terminal_missing terminal_failed \
            terminal_duplicate terminal_mixed no_recovery changed_bytes no_seed duplicate_recovery \
-           no_delete delete_fail; do
+           no_delete delete_fail no_readd; do
   rm -f "$MOCK_STATE/stops" "$MOCK_STATE/instruments"
   if env -u ADB_SERIAL -u ANDROID_SERIAL BAD="$bad" bash "$root/phone_intake_journey.sh" > "$tmp/$bad.log" 2>&1; then
     echo "CHUNKS_INTAKE_MOCK: falsely accepted $bad" >&2; exit 1
