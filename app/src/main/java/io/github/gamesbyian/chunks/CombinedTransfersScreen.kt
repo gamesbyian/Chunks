@@ -767,13 +767,19 @@ internal fun CombinedTransfersScreen(
                     batchScope.launch {
                         // Dispatch may be queued behind a server/account switch.
                         if (latestBatchIdentity.value != owner) return@launch
+                        var unconfirmedPhoneStops = 0
                         try {
                             val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
                                 runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
-                                    reviewStillCurrent = { latestBatchIdentity.value == owner })
+                                    reviewStillCurrent = { latestBatchIdentity.value == owner },
+                                    onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
                             }
                             // A late completion is evidence about the OLD owner only.
-                            if (latestBatchIdentity.value == owner) batchResult = report
+                            if (latestBatchIdentity.value == owner) {
+                                val warning = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget
+                                    .warning(unconfirmedPhoneStops)
+                                batchResult = if (warning.isEmpty()) report else report + warning.trim()
+                            }
                         } finally {
                             if (latestBatchIdentity.value == owner) {
                                 selected = emptySet()
@@ -1235,7 +1241,9 @@ internal suspend fun runCombinedLifecycle(
     phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
     nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     /** Old session, privacy or saved-profile review cannot authorize another mutation. */
-    reviewStillCurrent: () -> Boolean = { true }
+    reviewStillCurrent: () -> Boolean = { true },
+    /** Phone Stop can be verified while its independent recovery save is still uncertain. */
+    onPhoneStopCheckpointUnconfirmed: (String) -> Unit = {}
 ): UnifiedBatchLifecycle.Report {
     // Confirmation can arrive between clock ticks, after the displayed source
     // expired. Re-evaluate it before acquiring any command lane.
@@ -1260,6 +1268,9 @@ internal suspend fun runCombinedLifecycle(
     val refusals = HashMap<EnvironmentId, String>()
     var phoneLeased = false
     var serverLeased = false
+    // Start this monotonic budget with the FIRST completed phone Stop, not
+    // before slow remote capability checks or unrelated account operations.
+    var phoneStopBudget: io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget? = null
     val expiredReview = "Reviewed session, privacy or profile scope changed; select transfers again"
     try {
         // An unavailable, incomplete or unobserved inventory cannot authorize
@@ -1283,7 +1294,17 @@ internal suspend fun runCombinedLifecycle(
                         phoneLeased = true
                         adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
                             withContext(Dispatchers.IO) {
-                                (if (on) engine.resume(hash) else engine.pause(hash)).outcome.toLifecycleReply()
+                                val outcome = (if (on) engine.resume(hash) else engine.pause(hash)).outcome
+                                if (!on && outcome == io.github.gamesbyian.chunks.engine.LocalCommandOutcome.VERIFIED) {
+                                    val budget = phoneStopBudget
+                                        ?: io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget()
+                                            .also { phoneStopBudget = it }
+                                    if (!budget.confirm(hash, engine::saveResumeDataFor))
+                                        onPhoneStopCheckpointUnconfirmed(hash)
+                                }
+                                // Failed persistence never changes a VERIFIED Stop into an
+                                // unknown command or invites replay of that command.
+                                outcome.toLifecycleReply()
                             }
                         }
                     }

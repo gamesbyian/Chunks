@@ -1259,16 +1259,30 @@ internal fun LocalEngineScreen(
                 val targets = transfers.filter { it.infoHash in ids }
                     .map { LocalBatchLifecycle.Target(it.infoHash, it.stopped) }
                 performLocalMutation {
-                    val report = withContext(Dispatchers.IO) {
+                    val (report, unconfirmedStops) = withContext(Dispatchers.IO) {
                         val engine = LocalEngineHolder.get(context)
-                        try {
+                        val confirmedStops = ArrayList<String>()
+                        val result = try {
                             LocalBatchLifecycle.run(targets, start) { hash, wanted ->
-                                if (wanted) engine.resume(hash).outcome else engine.pause(hash).outcome
+                                val outcome = if (wanted) engine.resume(hash).outcome
+                                    else engine.pause(hash).outcome
+                                if (!wanted && outcome == LocalCommandOutcome.VERIFIED)
+                                    confirmedStops += hash
+                                outcome
                             }
                         } catch (_: IllegalArgumentException) { null }
+                        // A verified Stop is not a committed post-Stop resume checkpoint.
+                        // Share one deadline across the whole selection, including a
+                        // partially completed batch. Never replay any Stop on failure.
+                        val budget = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget()
+                        val unconfirmed = if (start) 0 else confirmedStops.count { hash ->
+                            !budget.confirm(hash, engine::saveResumeDataFor)
+                        }
+                        result to unconfirmed
                     }
                     message = if (report == null) "This selection cannot be changed as a batch. Nothing changed."
-                    else LocalBatchLifecycle.describe(report)
+                    else LocalBatchLifecycle.describe(report) +
+                        io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget.warning(unconfirmedStops)
                     if (start && (report?.verified ?: 0) > 0) {
                         try { LocalEngineService.start(context) } catch (_: Exception) {
                             message += " Android refused the background service; keep Chunks open."
