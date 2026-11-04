@@ -26,11 +26,23 @@ class SeedhostP0CohortProvisionTest {
 
     private fun sha1(bytes: ByteArray) = MessageDigest.getInstance("SHA-1").digest(bytes)
 
+    /**
+     * The development host's `1_prepare` insert hook silently drops tracker-less
+     * torrents after acknowledging `load.raw_verbose` with 0 (diagnosis run
+     * 40254131404, RTORRENT-COMPATIBILITY-MATRIX). Protected run 41772139368
+     * reproduced exactly that with announce-free fixtures. A non-routable
+     * loopback tracker is retained by the host yet can never reach a public
+     * tracker, and the announce key is outside the info dict, so the stated
+     * per-run infohash contract is unchanged.
+     */
+    private val loopbackAnnounce = "http://127.0.0.1:1/announce"
+    private val outerPrefix = "d8:announce${loopbackAnnounce.length}:${loopbackAnnounce}4:info"
+
     private fun single(name: String, text: String, id: String): Fixture {
         val payload = text.toByteArray(Charsets.UTF_8)
         val infoPrefix = ("d6:lengthi${payload.size}e4:name${name.length}:$name" +
             "12:piece lengthi16384e6:pieces20:").toByteArray(Charsets.ISO_8859_1)
-        val metadata = "d4:info".toByteArray() +
+        val metadata = outerPrefix.toByteArray(Charsets.ISO_8859_1) +
             infoPrefix + sha1(payload) + "ee".toByteArray()
         return Fixture(id, name, metadata, 1)
     }
@@ -41,7 +53,7 @@ class SeedhostP0CohortProvisionTest {
         val a = ("first:" + text).toByteArray(Charsets.UTF_8)
         val b = ("second:" + text).toByteArray(Charsets.UTF_8)
         val header = (
-            "d4:infod5:filesl" +
+            outerPrefix + "d5:filesl" +
             "d6:lengthi${a.size}e4:pathl${first.length}:$first" + "ee" +
             "d6:lengthi${b.size}e4:pathl${second.length}:$second" + "ee" +
             "e4:name${name.length}:$name" +
@@ -85,6 +97,15 @@ class SeedhostP0CohortProvisionTest {
         assertNotEquals(a[0].hash, next[0].hash)
         assertEquals(listOf(1, 2), a.map { it.expectedFiles })
         assertTrue(a.all { it.hash.matches(Regex("[0-9a-fA-F]{40}")) })
+        // Regression for 41772139368: every staged fixture must carry exactly
+        // the loopback tracker, or the host drops it after a 0 acknowledgement.
+        for (f in a + b) {
+            val preview = TorrentMetainfoReader.preview(f.bytes)
+            assertEquals(1, preview.trackerCount)
+            assertEquals(listOf("127.0.0.1"), preview.trackerHosts)
+            assertEquals(f.expectedFiles, preview.fileCount)
+            assertEquals(f.name, preview.name)
+        }
         route("2", "https://ianseeds.wood.seedhost.eu/rutorrent2/")
         route("3", "https://ianseeds.wood.seedhost.eu/rutorrent3/")
         try {
@@ -166,10 +187,10 @@ class SeedhostP0CohortProvisionTest {
                 error("No verified stopped Add. Stop; do not retry or mutate this hash")
             }
             var observed: RemoteTransfer? = null
-            repeat(20) {
+            for (poll in 0 until 20) {
                 observed = remote.listTransfers("main")
                     .firstOrNull { it.hash.equals(fixture.hash, true) }
-                if (observed != null) return@repeat
+                if (observed != null) break
                 Thread.sleep(300)
             }
             val confirmed = observed
@@ -184,9 +205,10 @@ class SeedhostP0CohortProvisionTest {
                 error("Selected server-default target did not match readback")
             }
             var files: List<RemoteFile> = emptyList()
-            repeat(20) {
+            for (poll in 0 until 20) {
                 files = remote.listFiles(fixture.hash)
-                if (files.size != fixture.expectedFiles) Thread.sleep(300)
+                if (files.size == fixture.expectedFiles) break
+                Thread.sleep(300)
             }
             if (files.size != fixture.expectedFiles) {
                 snapshot(fixture, "file-inventory-incomplete-manual-reconciliation-required")
