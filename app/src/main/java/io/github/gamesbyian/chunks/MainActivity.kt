@@ -1058,7 +1058,7 @@ private fun ChunksApp(
                     io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
             }
             if (error != null) {
-                Notice("Refresh problem", error.orEmpty())
+                RefreshProblemNotice(error.orEmpty(), refreshing = loading, onRefresh = refresh)
             }
             // Per-account list position survives visiting Places, Server or
             // other routes; a different account starts at the top.
