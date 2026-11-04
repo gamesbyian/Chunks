@@ -4,9 +4,9 @@ import android.content.ContentResolver
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,7 +18,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -158,16 +157,16 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
             saveNotice?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
-            OutlinedTextField(
+            io.github.gamesbyian.chunks.ClearableTransferSearchField(
                 value = search,
                 onValueChange = { search = it; pageIndex = 0 },
-                singleLine = true,
-                label = { Text("Find original name or v1 infohash") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Find original name or v1 infohash"
             )
-            Row(
-                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Wrap so every recovery filter is reachable without sideways scrolling.
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 FilterChip(
                     selected = recoveryFilter == null,
