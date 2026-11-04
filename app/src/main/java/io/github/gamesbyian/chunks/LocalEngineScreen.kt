@@ -290,6 +290,8 @@ internal fun LocalEngineScreen(
         transferFilter = choice
         localFilterStore.save(choice)
     }
+    // Exact hash of the latest acknowledged phone Add, for "hidden by view" only.
+    var lastAddedHash by rememberSaveable { mutableStateOf<String?>(null) }
     LaunchedEffect(initialSearch) {
         if (!initialSearch.isNullOrBlank()) {
             transferSearch = initialSearch
@@ -719,6 +721,11 @@ internal fun LocalEngineScreen(
                                 else "Magnet added in metadata-only mode. Use Start after the metadata is ready."
                             is LocalAddResult.AddedStopped -> null
                         }
+                        lastAddedHash = when (result) {
+                            is LocalAddResult.FetchingMetadata -> result.status.infoHash
+                            is LocalAddResult.AddedStopped -> result.status.infoHash
+                            is LocalAddResult.Refused -> lastAddedHash
+                        }
                         if (result !is LocalAddResult.Refused) {
                             if (startAfterAdd) {
                                 try { LocalEngineService.start(context) } catch (_: Exception) {
@@ -990,6 +997,7 @@ internal fun LocalEngineScreen(
                             }
                         }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
+                        if (added is LocalAddResult.AddedStopped) lastAddedHash = added.status.infoHash
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
@@ -1170,6 +1178,13 @@ internal fun LocalEngineScreen(
             onReverse = { chooseTransferSort(transferOrder,
                 TransferSortOrdering.reversed(transferDirection)) }
         )
+        }
+        if (PhoneAddedVisibility.hiddenByView(lastAddedHash, transfers.map { it.infoHash },
+                displayedTransfers.map { it.infoHash })) {
+            PhoneAddedHiddenNotice(onShowAll = {
+                transferSearch = ""
+                chooseLocalFilter(LocalQueueFilter.ALL)
+            })
         }
         Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
             style = MaterialTheme.typography.bodySmall)
