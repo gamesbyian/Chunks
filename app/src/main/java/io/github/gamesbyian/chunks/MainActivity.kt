@@ -495,7 +495,8 @@ private fun ChunksApp(
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
                         aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials),
                         // Read-only "main" list with this profile's own saved credentials (HTTPS enforced).
-                        listOnly = { verifiedSavedProfileMainInventory(profile.credentials) })
+                        listOnly = { verifiedSavedProfileMainInventory(profile.credentials) },
+                        shortLabel = profile.label)
                 },
                 onOpenPhone = { localFromCombined = true; section = Section.LOCAL },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,

@@ -162,9 +162,40 @@ internal data class CombinedSavedProfile(
     val label: String,
     /** Authenticated endpoint + NUL + username, for its own privacy gate and aliases. */
     val aliasScope: String? = null,
+    /** The person's friendly profile name alone, for compact rows; [label] stays exact. */
+    val shortLabel: String? = null,
     /** Read-only list of its "main" view with its own saved credentials; null when unavailable. */
     val listOnly: (suspend () -> List<RemoteTransfer>)? = null
 )
+
+/**
+ * Compact visible origin labels for rows and view chips. The exact label
+ * (which includes the server address) remains in headings, confirmations,
+ * details and every spoken row action. A compact name is used only when it is
+ * unique among the environments shown; otherwise the exact label is kept, so
+ * two instances on one host can never look identical.
+ */
+internal fun compactEnvironmentLabels(
+    exact: Map<EnvironmentId, String>,
+    compact: Map<EnvironmentId, String>
+): Map<EnvironmentId, String> {
+    val counts = exact.keys.mapNotNull { compact[it]?.trim()?.takeIf(String::isNotEmpty) }
+        .groupingBy { it }.eachCount()
+    return exact.mapValues { (id, full) ->
+        val short = compact[id]?.trim()?.takeIf(String::isNotEmpty)
+        if (short != null && counts[short] == 1 &&
+            exact.none { (other, label) -> other != id && label == short }) short else full
+    }
+}
+
+/** "Server · user @ host" without the RPC path, for compact display only. */
+internal fun compactServerLabel(aliasScope: String): String {
+    val endpoint = aliasScope.substringBefore('\u0000')
+    val user = aliasScope.substringAfter('\u0000', "").trim()
+    val host = try { java.net.URI(endpoint.trim()).host } catch (_: Exception) { null }
+        ?.takeIf { it.isNotBlank() } ?: return serverEnvironmentLabel(aliasScope)
+    return "Server · " + (if (user.isEmpty()) host else "$user @ $host")
+}
 
 /** One read-only fetch of another saved server: never a command, never a sign-in switch. */
 internal data class SavedServerListing(
@@ -454,6 +485,14 @@ internal fun CombinedTransfersScreen(
             put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
+    val rowLabels = compactEnvironmentLabels(labels, buildMap {
+        put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
+        savedProfiles.forEach { profile ->
+            profile.shortLabel?.let { put(EnvironmentId(profile.id), "Server · $it") }
+        }
+        if (server != null && serverId != null && serverId !in this)
+            put(serverId, compactServerLabel(server.aliasScope))
+    })
     // Palette storage is a lifecycle effect, not work performed by remember or
     // by LazyColumn composition. Read external changes via the shared revision:
     // profile rename, navigation and chooser updates never overwrite user hues.
@@ -850,7 +889,7 @@ internal fun CombinedTransfersScreen(
                     val selected = scope is EnvironmentViewScope.Only && id in scope.ids
                     FilterChip(selected = selected, onClick = {
                         update(query.copy(scope = toggleScope(scope, id)))
-                    }, label = { Text(label) }, leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
+                    }, label = { Text(rowLabels[id] ?: label) }, leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
                         modifier = Modifier.heightIn(min = 48.dp))
                 }
             }
@@ -1059,6 +1098,7 @@ internal fun CombinedTransfersScreen(
                 }
                 items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
                     CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    visibleEnvironmentLabel = rowLabels[row.key.environment],
                     source = sourcesByEnvironment[row.key.environment],
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
@@ -1069,6 +1109,7 @@ internal fun CombinedTransfersScreen(
         } else {
             items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
                 CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    visibleEnvironmentLabel = rowLabels[row.key.environment],
                     source = sourcesByEnvironment[row.key.environment],
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
@@ -1170,6 +1211,8 @@ private fun CombinedTransferRow(
     row: UnifiedTransferObservation,
     environmentLabel: String,
     hue: EnvironmentHue?,
+    /** Compact unique origin shown in the row; spoken actions keep [environmentLabel]. */
+    visibleEnvironmentLabel: String? = null,
     source: EnvironmentTransferSnapshot?,
     /** Null when not selecting. */
     selection: Boolean? = null,
@@ -1197,7 +1240,7 @@ private fun CombinedTransferRow(
             })
         Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(environmentLabel, style = MaterialTheme.typography.labelMedium,
+            Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelMedium,
                 color = labelColour, fontWeight = FontWeight.Bold)
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -24,9 +24,11 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneFirstFooterAddRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    @Test fun freshPhoneLaunchPresentsInventoryBeforeOptionalTools() {
+    @Test fun freshPhoneLaunchKeepsOrientationAndReachesInventoryInOneTap() {
         rule.waitForIdle()
-        rule.onNodeWithText("Phone transfers").assertIsDisplayed()
+        // Launch does not scroll away from where-am-I and Back, even here.
+        rule.onNodeWithText("On this phone (experimental)").assertIsDisplayed()
+        rule.onNodeWithText("Back").assertIsDisplayed()
         rule.onNodeWithContentDescription("Show transfers on this phone")
             .assertIsDisplayed().performClick()
         rule.onNodeWithText("Phone transfers").assertIsDisplayed()

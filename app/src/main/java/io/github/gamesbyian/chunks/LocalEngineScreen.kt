@@ -623,21 +623,6 @@ internal fun LocalEngineScreen(
     }
     val transfersRequester = remember { BringIntoViewRequester() }
     val optionsRequester = remember { BringIntoViewRequester() }
-    // A fresh phone-only landing must actually expose downloads, even when
-    // optional Add, organization and settings tools precede the list in the
-    // scroll document. Incoming magnets and pending Add reviews retain their
-    // own starting context. This runs once per newly mounted phone route.
-    // Download-location resolution arrives asynchronously and inserts status
-    // lines above the list, so land again once it settles, but only while the
-    // person has not scrolled away from the automatic landing.
-    var autoLandedAt by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(placeResolution == null) {
-        val untouched = autoLandedAt == null || autoLandedAt == scrollState.value
-        if (untouched && initialMagnet == null && !addExpanded && pending == null) {
-            transfersRequester.bringIntoView()
-            autoLandedAt = scrollState.value
-        }
-    }
     val addRequester = remember { BringIntoViewRequester() }
     var addNavigationRevision by remember { mutableIntStateOf(0) }
     LaunchedEffect(addExpanded, addNavigationRevision) {
@@ -906,7 +891,10 @@ internal fun LocalEngineScreen(
         if (placeResolution != null && destination == null)
             Text("Phone storage for Chunks is unavailable right now.",
                 color = MaterialTheme.colorScheme.error)
-        message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        // Outcomes include successes ("Added and started…") as well as refusals,
+        // so present them as a neutral, politely announced status rather than
+        // colouring every result as an error. The wording carries the outcome.
+        message?.let { PhoneOutcomeNotice(it) }
         restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (inventoryStale) {
             Text("Phone torrent status unavailable. Showing the last confirmed transfers. " +
@@ -1790,6 +1778,21 @@ internal fun LocalEngineScreen(
         onOptions = { scope.launch { optionsRequester.bringIntoView() } }
     )
     } // measured footer + viewport
+}
+
+/** Latest phone action outcome, announced to accessibility services once per change. */
+@Composable
+internal fun PhoneOutcomeNotice(text: String) {
+    // Fully qualified to keep the shared import block untouched.
+    androidx.compose.material3.Surface(
+        color = ChunksColors.SurfaceRaised,
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, ChunksColors.Outline),
+        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }
+    ) {
+        Text(text, color = ChunksColors.Text, style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp))
+    }
 }
 
 /** This entry point is read-only until an existing Add operation is explicitly submitted. */

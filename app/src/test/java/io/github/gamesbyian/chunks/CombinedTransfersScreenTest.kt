@@ -175,8 +175,10 @@ class CombinedTransfersScreenTest {
         // Disclose the single selected server; the compact summary always identifies active scope.
         revealText("Choose environments & filters")
         rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
-        revealText(serverEnvironmentLabel(aliasScope))
-        rule.onAllNodesWithText(serverEnvironmentLabel(aliasScope))[0].performClick()
+        // The view chip shows the compact unique origin; the group heading below
+        // retains the exact address-bearing label.
+        revealText(compactServerLabel(aliasScope))
+        rule.onAllNodesWithText(compactServerLabel(aliasScope))[0].performClick()
         rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
         revealText("Showing 2")
         rule.onNodeWithText("Showing 2").assertExists()
