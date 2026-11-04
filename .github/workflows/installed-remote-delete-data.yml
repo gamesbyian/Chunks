@@ -27,13 +27,18 @@ jobs:
     timeout-minutes: 35
     env:
       CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
-      CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
-      CHUNKS_RUTORRENT_PHP_ROOT: ${{ runner.temp }}/chunks-rutorrent-web/rutorrent1
-      RU_PROFILE_PATH: ${{ runner.temp }}/chunks-rutorrent-profiles
       RU_SCGI_HOST: 127.0.0.1
       RU_SCGI_PORT: "5000"
     steps:
       - uses: actions/checkout@v4
+      # The runner context is unavailable in job-level env; export paths here.
+      - name: Disposable paths
+        run: |
+          {
+            echo "CHUNKS_DISPOSABLE_TARGET_DIR=$RUNNER_TEMP/chunks-data"
+            echo "CHUNKS_RUTORRENT_PHP_ROOT=$RUNNER_TEMP/chunks-rutorrent-web/rutorrent1"
+            echo "RU_PROFILE_PATH=$RUNNER_TEMP/chunks-rutorrent-profiles"
+          } >> "$GITHUB_ENV"
       - name: Start disposable rTorrent, SCGI proxy and pinned ruTorrent PHP
         run: |
           sudo timeout 180s apt-get update -qq
