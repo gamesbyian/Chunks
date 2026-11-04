@@ -37,7 +37,10 @@ def main():
     infohash = hashlib.sha1(bencode(info)).hexdigest()
     payload.write_bytes(data)
     canary.write_bytes(b"untouched foreign canary\n")
-    torrent_file.write_bytes(bencode({b"info": info}))
+    # ruTorrent deletes tied .torrent files as part of d.delete_tied.
+    # Preserve the originally verified metadata as a user-supplied source for re-Add.
+    torrent_bytes = bencode({b"info": info})
+    torrent_file.write_bytes(torrent_bytes)
     before_payload = hashlib.sha256(payload.read_bytes()).digest()
     before_canary = hashlib.sha256(canary.read_bytes()).digest()
     engine = ServerProxy(rpc, allow_none=True)
@@ -85,7 +88,7 @@ def main():
     # Same-hash new session arrives BEFORE the old async cleanup collector.
     # Use the SAME raw-metainfo Add RPC as the production Chunks adapter.
     # This is a single reviewed Add, never an automatic retry after timeout.
-    getattr(engine, "load.raw_verbose")("", Binary(torrent_file.read_bytes()))
+    getattr(engine, "load.raw_verbose")("", Binary(torrent_bytes))
     wait(True)
     if not check_exact():
         raise RuntimeError("Re-added session identity changed")
