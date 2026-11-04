@@ -248,7 +248,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         override fun types() = intArrayOf(AlertType.SAVE_RESUME_DATA.swig(),
             AlertType.SAVE_RESUME_DATA_FAILED.swig(), AlertType.METADATA_RECEIVED.swig(),
             AlertType.CACHE_FLUSHED.swig(), AlertType.TORRENT_DELETED.swig(),
-            AlertType.TORRENT_DELETE_FAILED.swig())
+            AlertType.TORRENT_DELETE_FAILED.swig(), AlertType.TORRENT_FINISHED.swig())
         override fun alert(alert: Alert<*>) {
             // Removed handles disappear from handles[] before the async alert.
             // Consume exactly the matching v1 infohash without acquiring the
@@ -286,6 +286,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 transitionMagnetMetadata(key, handle)
                 return
             }
+            if (alert.type() == AlertType.TORRENT_FINISHED) {
+                // Upstream libtorrent guidance (and qBittorrent / client_test):
+                // persist resume data when a torrent finishes. Otherwise the
+                // newest durable snapshot can be the zero-piece Add/metadata
+                // record, and a process death before the post-Stop checkpoint
+                // restores a complete payload as 0% (libtorrent trusts resume
+                // pieces and does not recheck). Never await in the dispatcher.
+                requestCompletionResumeSave(key, handle)
+                return
+            }
             var persisted = false
             try {
                 // A magnet without metadata has nothing restorable yet; never persist it half-known.
@@ -305,6 +315,28 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // dispatcher or overwrite the previous verified resume file.
             } finally {
                 pendingSaves.complete(key, handle, persisted)
+                // A completion that coalesced into an OLDER in-flight request
+                // must not be satisfied by that pre-completion snapshot.
+                if (completionResaveWanted.remove(key)) requestCompletionResumeSave(key, handle)
+            }
+        }
+    }
+
+    // Keys whose TORRENT_FINISHED arrived while an earlier save was pending.
+    private val completionResaveWanted = ConcurrentHashMap.newKeySet<String>()
+
+    /** Non-blocking, handle-fenced completion checkpoint; safe on the alert dispatcher. */
+    private fun requestCompletionResumeSave(key: String, handle: TorrentHandle) {
+        if (config.stateDirectory == null) return
+        synchronized(handles) {
+            if (!started || handles[key] != handle || !handle.isValid) return
+            if (pendingSaves.pendingFor(key, handle) != null) {
+                completionResaveWanted += key
+                return
+            }
+            pendingSaves.acquire(key, handle) {
+                handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT.or_(
+                    TorrentHandle.FLUSH_DISK_CACHE))
             }
         }
     }
@@ -1813,6 +1845,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         if (!started) return
         saveResumeData()
         pendingSaves.cancelAll()
+        completionResaveWanted.clear()
         pendingFlushes.cancelAll()
         handles.clear()
         awaitingMetadata.clear()
