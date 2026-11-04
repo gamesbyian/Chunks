@@ -131,6 +131,8 @@ open class ChunksServerRenderTest {
         // The authenticated Transfers screen now puts secondary destinations
         // behind its persistent Options footer. Exercise that actual disclosure
         // instead of assuming the old permanent tab rail still exists.
+        // The compact "+ Add" names its exact target for TalkBack.
+        rule.onNodeWithContentDescription("Add torrent on ", substring = true).assertExists()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         // Destinations wrap instead of hiding in a sideways scroller: each is

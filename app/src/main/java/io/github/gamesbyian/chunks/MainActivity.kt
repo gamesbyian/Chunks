@@ -1994,7 +1994,9 @@ private fun TransfersScreen(
             optionsOpen = optionsOpen,
             onTransfers = { topControlScope.launch { listState.scrollToItem(0) } },
             onAdd = onAdd,
-            onOptions = onOptions
+            onOptions = onOptions,
+            // Speak the exact Add target; the visible "+ Add" stays compact.
+            addDescription = "Add torrent on $environmentLabel"
         )
     }
 }
