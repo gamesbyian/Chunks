@@ -50,6 +50,10 @@ class CombinedTwoRealServersInstrumentedTest {
     private fun visible(text: String) =
         rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
 
+    // Compact server header: "<host> · <n> transfers" with the server's own
+    // Add action. Each disposable server holds exactly two fixtures.
+    private fun connectedQueue() = visible("127.0.0.1 · 2 transfers") && visible("+ Add torrent")
+
     private fun scrollTo(text: String) =
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
 
@@ -72,7 +76,7 @@ class CombinedTwoRealServersInstrumentedTest {
         scrollTo("Remember this server and login on this device")
         scrollTo("Connect to rTorrent")
         rule.onNodeWithText("Connect to rTorrent").performClick()
-        waitFor("server queue for the requested endpoint", 90_000) { visible("It's all here.") }
+        waitFor("server queue for the requested endpoint", 90_000) { connectedQueue() }
     }
 
     @Test fun combinedShowsSameHashOnTwoRealServersWithDistinctOriginsAndReconnects() {
@@ -143,7 +147,7 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("phone-first relaunch") { visible("On this phone (experimental)") }
             rule.onNodeWithText("Back").performScrollTo().performClick()
             waitFor("automatic read-only reconnect of remembered server", 90_000) {
-                visible("It's all here.")
+                connectedQueue()
             }
             stage("relaunch-reconnected")
         }
