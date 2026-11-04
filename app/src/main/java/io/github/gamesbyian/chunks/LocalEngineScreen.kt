@@ -623,6 +623,21 @@ internal fun LocalEngineScreen(
     }
     val transfersRequester = remember { BringIntoViewRequester() }
     val optionsRequester = remember { BringIntoViewRequester() }
+    // A fresh phone-only landing must actually expose downloads, even when
+    // optional Add, organization and settings tools precede the list in the
+    // scroll document. Incoming magnets and pending Add reviews retain their
+    // own starting context. This runs once per newly mounted phone route.
+    // Download-location resolution arrives asynchronously and inserts status
+    // lines above the list, so land again once it settles, but only while the
+    // person has not scrolled away from the automatic landing.
+    var autoLandedAt by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(placeResolution == null) {
+        val untouched = autoLandedAt == null || autoLandedAt == scrollState.value
+        if (untouched && initialMagnet == null && !addExpanded && pending == null) {
+            transfersRequester.bringIntoView()
+            autoLandedAt = scrollState.value
+        }
+    }
     val addRequester = remember { BringIntoViewRequester() }
     var addNavigationRevision by remember { mutableIntStateOf(0) }
     LaunchedEffect(addExpanded, addNavigationRevision) {
@@ -636,16 +651,30 @@ internal fun LocalEngineScreen(
             .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        if (onBack != null) OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
-        Text("On this phone (experimental)", style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-        EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false,
-            environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE)
-        if (onCombined != null) OutlinedButton(onClick = onCombined, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text("All environments…")
+        // Compact orientation: who/where in two short rows, so the actual
+        // transfer inventory starts within the first viewport. Optional
+        // tools and settings live in "Phone options" beneath the list.
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            if (onBack != null) OutlinedButton(onClick = onBack,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
+            Text("On this phone (experimental)", style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.align(Alignment.CenterVertically).semantics { heading() })
         }
-        if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text("Seeding rules…")
+        FlowRow(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false,
+                environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE,
+                modifier = Modifier.align(Alignment.CenterVertically))
+            if (onCombined != null) OutlinedButton(onClick = onCombined,
+                modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments…") }
         }
         PhoneIntakeDisclosure(
             expanded = addExpanded, pendingReview = pending != null,
@@ -1058,87 +1087,6 @@ internal fun LocalEngineScreen(
             )
         }
 
-        LocalSnapshotRestorePreviewPanel(
-            transfers = transfers,
-            inventoryConfirmed = hasConfirmedLocalInventory,
-            inventoryStale = inventoryStale,
-            busyEngine = busy,
-            mutationGeneration = LocalScreenReader.revision.snapshot(),
-            onPrepareAdd = { originalBytes ->
-                // This callback changes only the local Add DRAFT, not the
-                // engine, destination folder, existing transfers or data.
-                try {
-                    val bytes = originalBytes.copyOf()
-                    pending = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
-                    addStorage = null
-                    message = "Original snapshot .torrent is ready for manual phone Add review. " +
-                        "Check the destination and Start choice before confirming; no Add occurred."
-                    scope.launch { scrollState.animateScrollTo(0) }
-                } catch (failure: Exception) {
-                    pending = null
-                    message = "Snapshot definition could not populate Add review: " +
-                        (failure.message ?: "Unsupported original torrent")
-                }
-            },
-            onReviewOneRestore = { verified, entry, frozen, generation ->
-                // Assemble a canonical source fingerprint off the Compose lane.
-                // No journal mutation or engine Add happens at this stage.
-                val request = ++snapshotPreparationRevision
-                scope.launch {
-                    try {
-                        val draft = withContext(Dispatchers.IO) {
-                            val original = SnapshotVerifiedTorrentDocumentV1.prepare(
-                                verified, entry.infoHashV1)
-                            val exactArchive = SnapshotManifestV1.encode(
-                                verified.manifest, verified.metainfoByHash)
-                            LocalSnapshotStoppedRestoreDraft(
-                                original,
-                                LocalSnapshotRestoreFingerprint.of(exactArchive),
-                                frozen.toList(), generation)
-                        }
-                        if (request == snapshotPreparationRevision &&
-                            LocalScreenReader.revision.snapshot() == generation &&
-                            !LocalScreenReader.revision.blocksMutations()) {
-                            snapshotRestoreDraft = draft
-                            pending = null
-                            message = "Review the new phone destination and explicitly confirm " +
-                                "the stopped restore. No torrent has been added."
-                            scrollState.animateScrollTo(0)
-                        } else {
-                            message = "The comparison changed before restore review. Reopen the snapshot."
-                        }
-                    } catch (cancel: kotlinx.coroutines.CancellationException) {
-                        throw cancel
-                    } catch (_: Exception) {
-                        message = "The verified original snapshot definition could not be prepared."
-                    }
-                }
-            }
-        )
-        OutlinedButton(
-            onClick = { showPhoneTools = !showPhoneTools },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .semantics { stateDescription = if (showPhoneTools) "Expanded" else "Collapsed" }
-        ) { Text(if (showPhoneTools) "Hide phone tools" else "More phone tools") }
-        if (showPhoneTools) {
-        LocalInventorySnapshotPanel(
-            transfers = transfers,
-            stale = inventoryStale,
-            busyEngine = busy
-        )
-        LocalTransferHealthExportPanel(
-            transfers = transfers,
-            stale = inventoryStale || busy
-        )
-        BatchMagnetExportPanel(
-            rows = displayedTransfers.map {
-                io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
-                    it.infoHash, it.name)
-            },
-            stale = inventoryStale || busy,
-            sourceLabel = "phone"
-        )
-        }
         moveServer?.let { server ->
             val digest = TransferMoveStore.scopeDigest(server.aliasScope)
             val pending = remember(transfers, moveRevision) {
@@ -1174,129 +1122,6 @@ internal fun LocalEngineScreen(
                 onFinished = { text -> message = text; moveRevision++ }
             )
         }
-        LocalBatchCollectionPanel(
-            transfers = transfers,
-            shown = displayedTransfers,
-            inventoryStale = inventoryStale || busy,
-            store = collectionStore,
-            onMembershipChanged = {
-                registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
-                collectionRevision++
-            },
-            copyServerLabel = serverCopy?.hostLabel,
-            onBatchCopyToServer = serverCopy?.let { link ->
-                { ids ->
-                    val items = transfers.filter { it.infoHash in ids }
-                        .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
-                    performLocalMutation {
-                        val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
-                        message = if (problem != null) problem else try {
-                            val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
-                                exportTorrent = { hash ->
-                                    withContext(Dispatchers.IO) {
-                                        LocalEngineHolder.current()?.exportTorrentFile(hash)
-                                    }
-                                },
-                                addStopped = link.addStoppedAtDefault)
-                            report.summary() + report.results
-                                .filter { it.second != io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED }
-                                .take(10).joinToString("") { (item, result) ->
-                                    "\n• " + item.name.take(80) + ": " + result.label
-                                }
-                        } catch (cancel: kotlinx.coroutines.CancellationException) {
-                            throw cancel
-                        } catch (_: Exception) {
-                            "The batch copy stopped unexpectedly. Check the server list before " +
-                                "copying again; nothing is retried automatically."
-                        }
-                    }
-                }
-            },
-            onBatchMoveToServer = if (serverCopy == null || moveServer == null) null else { ids ->
-                val link = serverCopy
-                val server = moveServer
-                val items = transfers.filter { it.infoHash in ids }
-                    .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
-                performLocalMutation {
-                    val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
-                    message = if (problem != null) problem else try {
-                        val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
-                            exportTorrent = { hash ->
-                                withContext(Dispatchers.IO) { LocalEngineHolder.current()?.exportTorrentFile(hash) }
-                            },
-                            addStopped = link.addStoppedAtDefault)
-                        // Only destination jobs verified by readback (or already present) start a Move.
-                        val verified = report.results.filter {
-                            it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED ||
-                                it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ALREADY_ON_SERVER
-                        }
-                        val journaled = withContext(Dispatchers.IO) {
-                            verified.count { (item, _) ->
-                                val original = transfers.singleOrNull {
-                                    it.infoHash.equals(item.infoHash, ignoreCase = true) &&
-                                        it.name == item.name && it.nativeReviewToken.isNotBlank()
-                                }
-                                original != null && moveStore.save(TransferMove.start(
-                                    TransferMove.Direction.PHONE_TO_SERVER,
-                                    item.infoHash, item.name, TransferMoveStore.scopeDigest(server.aliasScope),
-                                    TransferMoveStore.hostLabel(server.aliasScope),
-                                    sourceReviewToken = original.nativeReviewToken
-                                ).copy(stage = TransferMove.Stage.TARGET_VERIFIED))
-                            }
-                        }
-                        moveRevision++
-                        report.summary() + " $journaled ready to finish moving: review removal of the " +
-                            "original phone jobs below."
-                    } catch (cancel: kotlinx.coroutines.CancellationException) {
-                        throw cancel
-                    } catch (_: Exception) {
-                        "The batch move stopped before removal. Check the server list; nothing was removed " +
-                            "and nothing is retried automatically."
-                    }
-                }
-            },
-            onBatchLifecycle = { ids, start ->
-                val targets = transfers.filter { it.infoHash in ids }
-                    .map { LocalBatchLifecycle.Target(it.infoHash, it.stopped) }
-                performLocalMutation {
-                    val (report, unconfirmedStops) = withContext(Dispatchers.IO) {
-                        val engine = LocalEngineHolder.get(context)
-                        val confirmedStops = ArrayList<String>()
-                        val result = try {
-                            LocalBatchLifecycle.run(targets, start) { hash, wanted ->
-                                val outcome = if (wanted) engine.resume(hash).outcome
-                                    else engine.pause(hash).outcome
-                                if (!wanted && outcome == LocalCommandOutcome.VERIFIED)
-                                    confirmedStops += hash
-                                outcome
-                            }
-                        } catch (_: IllegalArgumentException) { null }
-                        // A verified Stop is not a committed post-Stop resume checkpoint.
-                        // Share one deadline across the whole selection, including a
-                        // partially completed batch. Never replay any Stop on failure.
-                        val budget = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget()
-                        val unconfirmed = if (start) 0 else confirmedStops.count { hash ->
-                            !budget.confirm(hash, engine::saveResumeDataFor)
-                        }
-                        result to unconfirmed
-                    }
-                    message = if (report == null) "This selection cannot be changed as a batch. Nothing changed."
-                    else LocalBatchLifecycle.describe(report) +
-                        io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget.warning(unconfirmedStops)
-                    if (start && (report?.verified ?: 0) > 0) {
-                        try { LocalEngineService.start(context) } catch (_: Exception) {
-                            message += " Android refused the background service; keep Chunks open."
-                        }
-                    }
-                }
-            }
-        )
-        CollectionNameManager(
-            scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-            registry = nameRegistry,
-            registeredNames = registeredNames,
-            onNamesChanged = { registeredNames = it }
-        )
         Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.bringIntoViewRequester(transfersRequester)
@@ -1309,7 +1134,6 @@ internal fun LocalEngineScreen(
         OutlinedButton(
             onClick = { showListOptions = !showListOptions },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                .bringIntoViewRequester(optionsRequester)
                 .semantics { stateDescription = if (showListOptions) "Expanded" else "Collapsed" }
         ) {
             Text((if (showListOptions) "Hide" else "Choose") + " filters & sort · " +
@@ -1724,6 +1548,221 @@ internal fun LocalEngineScreen(
             if (!inventoryStale && transfer.metadataKnown && transfer.progressPpm == 1_000_000)
                 LocalLibraryCopyPanel(transfer)
         }
+        // Optional phone tools and settings. The footer Options action
+        // brings this section into view; nothing here mutates on display.
+        Text("Phone options", style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 12.dp)
+                .bringIntoViewRequester(optionsRequester)
+                .semantics { heading() })
+        if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Seeding rules…")
+        }
+        LocalSnapshotRestorePreviewPanel(
+            transfers = transfers,
+            inventoryConfirmed = hasConfirmedLocalInventory,
+            inventoryStale = inventoryStale,
+            busyEngine = busy,
+            mutationGeneration = LocalScreenReader.revision.snapshot(),
+            onPrepareAdd = { originalBytes ->
+                // This callback changes only the local Add DRAFT, not the
+                // engine, destination folder, existing transfers or data.
+                try {
+                    val bytes = originalBytes.copyOf()
+                    pending = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
+                    addStorage = null
+                    message = "Original snapshot .torrent is ready for manual phone Add review. " +
+                        "Check the destination and Start choice before confirming; no Add occurred."
+                    scope.launch { scrollState.animateScrollTo(0) }
+                } catch (failure: Exception) {
+                    pending = null
+                    message = "Snapshot definition could not populate Add review: " +
+                        (failure.message ?: "Unsupported original torrent")
+                }
+            },
+            onReviewOneRestore = { verified, entry, frozen, generation ->
+                // Assemble a canonical source fingerprint off the Compose lane.
+                // No journal mutation or engine Add happens at this stage.
+                val request = ++snapshotPreparationRevision
+                scope.launch {
+                    try {
+                        val draft = withContext(Dispatchers.IO) {
+                            val original = SnapshotVerifiedTorrentDocumentV1.prepare(
+                                verified, entry.infoHashV1)
+                            val exactArchive = SnapshotManifestV1.encode(
+                                verified.manifest, verified.metainfoByHash)
+                            LocalSnapshotStoppedRestoreDraft(
+                                original,
+                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                frozen.toList(), generation)
+                        }
+                        if (request == snapshotPreparationRevision &&
+                            LocalScreenReader.revision.snapshot() == generation &&
+                            !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotRestoreDraft = draft
+                            pending = null
+                            message = "Review the new phone destination and explicitly confirm " +
+                                "the stopped restore. No torrent has been added."
+                            scrollState.animateScrollTo(0)
+                        } else {
+                            message = "The comparison changed before restore review. Reopen the snapshot."
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        message = "The verified original snapshot definition could not be prepared."
+                    }
+                }
+            }
+        )
+        OutlinedButton(
+            onClick = { showPhoneTools = !showPhoneTools },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .semantics { stateDescription = if (showPhoneTools) "Expanded" else "Collapsed" }
+        ) { Text(if (showPhoneTools) "Hide phone tools" else "More phone tools") }
+        if (showPhoneTools) {
+        LocalInventorySnapshotPanel(
+            transfers = transfers,
+            stale = inventoryStale,
+            busyEngine = busy
+        )
+        LocalTransferHealthExportPanel(
+            transfers = transfers,
+            stale = inventoryStale || busy
+        )
+        BatchMagnetExportPanel(
+            rows = displayedTransfers.map {
+                io.github.gamesbyian.chunks.model.BatchMagnetHandoff.Row(
+                    it.infoHash, it.name)
+            },
+            stale = inventoryStale || busy,
+            sourceLabel = "phone"
+        )
+        }
+        LocalBatchCollectionPanel(
+            transfers = transfers,
+            shown = displayedTransfers,
+            inventoryStale = inventoryStale || busy,
+            store = collectionStore,
+            onMembershipChanged = {
+                registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+                collectionRevision++
+            },
+            copyServerLabel = serverCopy?.hostLabel,
+            onBatchCopyToServer = serverCopy?.let { link ->
+                { ids ->
+                    val items = transfers.filter { it.infoHash in ids }
+                        .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                    performLocalMutation {
+                        val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                        message = if (problem != null) problem else try {
+                            val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                                exportTorrent = { hash ->
+                                    withContext(Dispatchers.IO) {
+                                        LocalEngineHolder.current()?.exportTorrentFile(hash)
+                                    }
+                                },
+                                addStopped = link.addStoppedAtDefault)
+                            report.summary() + report.results
+                                .filter { it.second != io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED }
+                                .take(10).joinToString("") { (item, result) ->
+                                    "\n• " + item.name.take(80) + ": " + result.label
+                                }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            "The batch copy stopped unexpectedly. Check the server list before " +
+                                "copying again; nothing is retried automatically."
+                        }
+                    }
+                }
+            },
+            onBatchMoveToServer = if (serverCopy == null || moveServer == null) null else { ids ->
+                val link = serverCopy
+                val server = moveServer
+                val items = transfers.filter { it.infoHash in ids }
+                    .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                performLocalMutation {
+                    val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                    message = if (problem != null) problem else try {
+                        val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                            exportTorrent = { hash ->
+                                withContext(Dispatchers.IO) { LocalEngineHolder.current()?.exportTorrentFile(hash) }
+                            },
+                            addStopped = link.addStoppedAtDefault)
+                        // Only destination jobs verified by readback (or already present) start a Move.
+                        val verified = report.results.filter {
+                            it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED ||
+                                it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ALREADY_ON_SERVER
+                        }
+                        val journaled = withContext(Dispatchers.IO) {
+                            verified.count { (item, _) ->
+                                val original = transfers.singleOrNull {
+                                    it.infoHash.equals(item.infoHash, ignoreCase = true) &&
+                                        it.name == item.name && it.nativeReviewToken.isNotBlank()
+                                }
+                                original != null && moveStore.save(TransferMove.start(
+                                    TransferMove.Direction.PHONE_TO_SERVER,
+                                    item.infoHash, item.name, TransferMoveStore.scopeDigest(server.aliasScope),
+                                    TransferMoveStore.hostLabel(server.aliasScope),
+                                    sourceReviewToken = original.nativeReviewToken
+                                ).copy(stage = TransferMove.Stage.TARGET_VERIFIED))
+                            }
+                        }
+                        moveRevision++
+                        report.summary() + " $journaled ready to finish moving: review removal of the " +
+                            "original phone jobs below."
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        "The batch move stopped before removal. Check the server list; nothing was removed " +
+                            "and nothing is retried automatically."
+                    }
+                }
+            },
+            onBatchLifecycle = { ids, start ->
+                val targets = transfers.filter { it.infoHash in ids }
+                    .map { LocalBatchLifecycle.Target(it.infoHash, it.stopped) }
+                performLocalMutation {
+                    val (report, unconfirmedStops) = withContext(Dispatchers.IO) {
+                        val engine = LocalEngineHolder.get(context)
+                        val confirmedStops = ArrayList<String>()
+                        val result = try {
+                            LocalBatchLifecycle.run(targets, start) { hash, wanted ->
+                                val outcome = if (wanted) engine.resume(hash).outcome
+                                    else engine.pause(hash).outcome
+                                if (!wanted && outcome == LocalCommandOutcome.VERIFIED)
+                                    confirmedStops += hash
+                                outcome
+                            }
+                        } catch (_: IllegalArgumentException) { null }
+                        // A verified Stop is not a committed post-Stop resume checkpoint.
+                        // Share one deadline across the whole selection, including a
+                        // partially completed batch. Never replay any Stop on failure.
+                        val budget = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget()
+                        val unconfirmed = if (start) 0 else confirmedStops.count { hash ->
+                            !budget.confirm(hash, engine::saveResumeDataFor)
+                        }
+                        result to unconfirmed
+                    }
+                    message = if (report == null) "This selection cannot be changed as a batch. Nothing changed."
+                    else LocalBatchLifecycle.describe(report) +
+                        io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget.warning(unconfirmedStops)
+                    if (start && (report?.verified ?: 0) > 0) {
+                        try { LocalEngineService.start(context) } catch (_: Exception) {
+                            message += " Android refused the background service; keep Chunks open."
+                        }
+                    }
+                }
+            }
+        )
+        CollectionNameManager(
+            scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+            registry = nameRegistry,
+            registeredNames = registeredNames,
+            onNamesChanged = { registeredNames = it }
+        )
         LocalZipInterruptedExtractions()
         LocalSpeedLimits()
     }
@@ -1739,7 +1778,8 @@ internal fun LocalEngineScreen(
     )
     } // scroll viewport
     AuthenticatedTransfersFooter(
-        optionsOpen = showListOptions,
+        // Phone Options is a scroll destination, not a disclosure.
+        optionsOpen = null,
         environmentLabel = "this phone",
         onTransfers = { scope.launch { transfersRequester.bringIntoView() } },
         onAdd = {
@@ -1747,10 +1787,7 @@ internal fun LocalEngineScreen(
             // Repeated taps also bring the real form into view above the footer.
             addNavigationRevision++
         },
-        onOptions = {
-            showListOptions = !showListOptions
-            scope.launch { optionsRequester.bringIntoView() }
-        }
+        onOptions = { scope.launch { optionsRequester.bringIntoView() } }
     )
     } // measured footer + viewport
 }

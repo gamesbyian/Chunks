@@ -729,7 +729,11 @@ internal fun CombinedTransfersScreen(
             stallCheckError = stallFailure?.takeIf { stillStall(it.first) }?.second
         )
     } else {
-    Box(Modifier.fillMaxSize()) {
+    // The same measured Transfers / Add / Options footer as the phone and
+    // rTorrent lists. Each action only moves within this view: Add leads to
+    // the explicit destination choices, never to an inferred environment.
+    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.weight(1f)) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
                 .onSizeChanged { viewportHeightPx = it.height },
             state = listState, contentPadding = PaddingValues(bottom = 88.dp),
@@ -737,7 +741,7 @@ internal fun CombinedTransfersScreen(
         item {
             CombinedTransfersHeader(onBack)
         }
-        item {
+        item(key = COMBINED_ADD_ITEM_KEY) {
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
@@ -1105,9 +1109,30 @@ internal fun CombinedTransfersScreen(
                 else listState.scrollToItem(0)
             }
         }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
-    }
+    } // scroll viewport
+    AuthenticatedTransfersFooter(
+        optionsOpen = showingViewOptions,
+        onTransfers = {
+            batchScope.launch {
+                if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
+                else listState.scrollToItem(0)
+            }
+        },
+        onAdd = { batchScope.launch { listState.scrollToItem(COMBINED_ADD_ITEM_INDEX) } },
+        onOptions = {
+            showingViewOptions = !showingViewOptions
+            batchScope.launch { listState.scrollToItem(COMBINED_VIEW_ITEM_INDEX) }
+        },
+        addDescription = "Choose where to add a torrent"
+    )
+    } // measured footer + viewport
     }
 }
+
+/** Unconditional leading items: header (0), Add destinations (1), batch (2), view (3). */
+private const val COMBINED_ADD_ITEM_KEY = "combined-add-destinations"
+internal const val COMBINED_ADD_ITEM_INDEX = 1
+internal const val COMBINED_VIEW_ITEM_INDEX = 3
 
 /**
  * Save only the exact read-only detail identity across rotation/process recreation.
