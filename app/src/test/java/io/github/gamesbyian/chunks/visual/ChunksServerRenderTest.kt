@@ -115,8 +115,12 @@ open class ChunksServerRenderTest {
         }
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix.png")
+        val density = rule.activity.resources.displayMetrics.density
+        val small = rule.smallTouchTargets(density).toMutableList()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Our Planet S01 (2160p)"))
         rule.waitForIdle()
+        small += rule.smallTouchTargets(density)
+        org.junit.Assert.assertTrue("rTorrent touch targets under 48dp: ${small.distinct()}", small.isEmpty())
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-cards.png")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select transfers for a batch"))
         rule.onNodeWithText("Select transfers for a batch").performClick()
