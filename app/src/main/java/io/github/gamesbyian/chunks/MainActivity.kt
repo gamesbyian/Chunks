@@ -1400,6 +1400,15 @@ private fun ConnectionScreen(
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
+    // Submitting the form closes the keyboard, as forms conventionally do,
+    // so the next screen's persistent footer is not waiting on an IME hide.
+    val connectKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val connectFocus = androidx.compose.ui.platform.LocalFocusManager.current
+    val submitConnect: () -> Unit = {
+        connectKeyboard?.hide()
+        connectFocus.clearFocus()
+        onConnect()
+    }
     var pendingForget by remember { mutableStateOf<String?>(null) }
     var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
     var renameProfileId by remember { mutableStateOf<String?>(null) }
@@ -1588,7 +1597,7 @@ private fun ConnectionScreen(
                 value = password, onValueChange = onPassword,
                 modifier = Modifier.fillMaxWidth(),
                 // Go runs the same read-only Connect as the button, under its rules.
-                onGo = { if (!loading && endpoint.isNotBlank()) onConnect() }
+                onGo = { if (!loading && endpoint.isNotBlank()) submitConnect() }
             )
         }
         item {
@@ -1617,7 +1626,7 @@ private fun ConnectionScreen(
         }
         item {
             Button(
-                onClick = onConnect,
+                onClick = submitConnect,
                 enabled = !loading && endpoint.isNotBlank(),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
@@ -2206,14 +2215,15 @@ private fun TransferCard(
             }
             val conciseRates = buildList {
                 transfer.downBytesPerSecond?.let { add("↓ " + Units.bytes(it) + "/s") }
-                if (transfer.started && !stale && transfer.metadataPending != true)
-                    Units.timeLeft(transfer.sizeBytes - transfer.completedBytes,
-                        transfer.downBytesPerSecond)?.let { add(it) }
                 transfer.upBytesPerSecond?.let { add("↑ " + Units.bytes(it) + "/s") }
                 transfer.ratioThousandths?.takeIf { it >= 0 }?.let { ratio ->
                     add("Ratio " + String.format(java.util.Locale.US, "%.2f",
                         ratio.toDouble() / 1_000.0))
                 }
+                // Last, as on phone and Combined rows: rates first, then the estimate.
+                if (transfer.started && !stale && transfer.metadataPending != true)
+                    Units.timeLeft(transfer.sizeBytes - transfer.completedBytes,
+                        transfer.downBytesPerSecond)?.let { add(it) }
             }.joinToString(" · ").let { facts ->
                 // Rates from an out-of-date snapshot are not live.
                 if (stale && facts.isNotEmpty()) "Last read: $facts" else facts
@@ -2571,7 +2581,7 @@ private fun ServerScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text("Server settings · " + environmentLabel,
+            Text("Server settings · " + environmentLabel.removePrefix("Server · "),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
             Text("rTorrent " + version +

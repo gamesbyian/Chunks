@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -50,5 +52,19 @@ class PhoneOutcomeNoticeTest {
     @Test fun ordinaryOutcomesOfferNoAction() {
         rule.setContent { ChunksTheme { PhoneOutcomeNotice("Nothing was added.") } }
         rule.onAllNodesWithText("Show new transfer").assertCountEquals(0)
+    }
+
+    @Test fun problemOutcomesSayNeedsAttentionInWordsAndOthersDoNot() {
+        var problem by androidx.compose.runtime.mutableStateOf(true)
+        rule.setContent { ChunksTheme {
+            PhoneOutcomeNotice("Magnet Add was not confirmed.", needsAttention = problem)
+        } }
+        rule.onNodeWithText("Needs attention").assertExists()
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
+            .and(hasText("Needs attention", substring = true))
+            .and(hasText("Magnet Add was not confirmed.", substring = true))).assertExists()
+        problem = false
+        rule.waitForIdle()
+        rule.onAllNodesWithText("Needs attention").assertCountEquals(0)
     }
 }

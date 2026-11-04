@@ -384,6 +384,13 @@ internal fun LocalEngineScreen(
         mutableStateOf<Pair<String, LocalAddStoragePreflight>?>(null)
     }
     var message by remember { mutableStateOf<String?>(null) }
+    // The latest outcome that needs attention (refused, uncertain, failed).
+    // Tone is chosen where the outcome is known, never guessed from text.
+    var problemOutcome by remember { mutableStateOf<String?>(null) }
+    fun noteProblem(text: String) {
+        message = text
+        problemOutcome = text
+    }
     var busy by remember { mutableStateOf(false) }
     val progressHistory = remember { LocalProgressHistory() }
     var observedDeltas by remember {
@@ -598,9 +605,9 @@ internal fun LocalEngineScreen(
                     SharedTorrentDocument.read(context.contentResolver, uri)
                 }
                 if (reviewed.preview.infoHashV1 != selectedHash) {
-                    message = "This .torrent has a different infohash. The existing phone transfer was untouched."
+                    noteProblem("This .torrent has a different infohash. The existing phone transfer was untouched.")
                 } else if (reviewed.preview.trackerCount < 1) {
-                    message = "That .torrent contains no usable tracker announce endpoints. Nothing changed."
+                    noteProblem("That .torrent contains no usable tracker announce endpoints. Nothing changed.")
                 } else {
                     repairReview = selectedHash to reviewed
                     message = "Original identity verified. Review the tracker repair below before confirming."
@@ -608,7 +615,7 @@ internal fun LocalEngineScreen(
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
             } catch (_: Exception) {
-                message = "This .torrent was unavailable, invalid or unsupported. No tracker change occurred."
+                noteProblem("This .torrent was unavailable, invalid or unsupported. No tracker change occurred.")
             } finally {
                 repairSelectionBusy = false
             }
@@ -631,7 +638,7 @@ internal fun LocalEngineScreen(
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            message = "The shared file was unavailable, invalid or not supported v1 .torrent metadata. No torrent was added."
+            noteProblem("The shared file was unavailable, invalid or not supported v1 .torrent metadata. No torrent was added.")
         } finally {
             onTorrentConsumed()
         }
@@ -760,6 +767,7 @@ internal fun LocalEngineScreen(
                                 else "Magnet added in metadata-only mode. Use Start after the metadata is ready."
                             is LocalAddResult.AddedStopped -> null
                         }
+                        if (result is LocalAddResult.Refused) problemOutcome = message
                         when (result) {
                             is LocalAddResult.FetchingMetadata -> rememberAdded(result.status.infoHash, message)
                             is LocalAddResult.AddedStopped -> rememberAdded(result.status.infoHash, message)
@@ -768,7 +776,7 @@ internal fun LocalEngineScreen(
                         if (result !is LocalAddResult.Refused) {
                             if (startAfterAdd) {
                                 try { LocalEngineService.start(context) } catch (_: Exception) {
-                                    message = "Magnet added, but Android did not start the background service. Keep Chunks open."
+                                    noteProblem("Magnet added, but Android did not start the background service. Keep Chunks open.")
                                 }
                             }
                             magnet = ""
@@ -779,7 +787,7 @@ internal fun LocalEngineScreen(
                         throw cancel
                     } catch (_: Exception) {
                         inventoryFrame = inventoryFrame.copy(stale = true)
-                        message = "Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying."
+                        noteProblem("Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying.")
                     }
                 }
             }, enabled = !busy && !inventoryStale && !dhtSaving &&
@@ -798,7 +806,7 @@ internal fun LocalEngineScreen(
                         try { LocalDownloadPlaces.remember(context, choice) } catch (_: Exception) { false }
                     }
                     if (saved) placeResolution = placeResolution?.copy(selected = choice.place, notice = null)
-                    else message = "That download location could not be saved. The previous default is unchanged."
+                    else noteProblem("That download location could not be saved. The previous default is unchanged.")
                 }
             },
             onRequestStoragePermission = {
@@ -811,6 +819,11 @@ internal fun LocalEngineScreen(
             label = { Text("Optional phone download subfolder") },
             placeholder = { Text("Leave blank for Chunks default") },
             singleLine = true,
+            // A folder name is typed exactly: no autocorrect or auto-capitalisation.
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             // Only the typed name can be wrong; an unresolved download location is
             // reported separately ("Checking where this phone can save…").
             isError = addFolderNameInvalid,
@@ -915,8 +928,8 @@ internal fun LocalEngineScreen(
                                         throw cancel
                                     } catch (_: Exception) {
                                         inventoryFrame = inventoryFrame.copy(stale = true)
-                                        message = "Tracker repair was not confirmed. Check a fresh " +
-                                            "phone status before any other change."
+                                        noteProblem("Tracker repair was not confirmed. Check a fresh " +
+                                            "phone status before any other change.")
                                     }
                                 }
                             },
@@ -943,6 +956,7 @@ internal fun LocalEngineScreen(
             val newHash = addedOutcome?.takeIf { it.first == text }?.second
                 ?.takeIf { hash -> transfers.any { it.infoHash.equals(hash, ignoreCase = true) } }
             PhoneOutcomeNotice(text,
+                needsAttention = problemOutcome == text,
                 actionLabel = if (newHash != null) "Show new transfer" else null,
                 onAction = {
                     if (newHash != null) {
@@ -1048,6 +1062,10 @@ internal fun LocalEngineScreen(
                             }
                         }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
+                        // Typed result: a refused Add, or a Start that was not verified.
+                        if (added is LocalAddResult.Refused || (added is LocalAddResult.AddedStopped &&
+                                started != null && started.outcome != LocalCommandOutcome.VERIFIED))
+                            problemOutcome = message
                         if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash, message)
                         if (added !is LocalAddResult.Refused) {
                             pending = null
@@ -1058,7 +1076,7 @@ internal fun LocalEngineScreen(
                         throw cancel
                     } catch (_: Exception) {
                         inventoryFrame = inventoryFrame.copy(stale = true)
-                        message = "Torrent Add was not confirmed. Wait for a fresh transfer list and check for this torrent before retrying."
+                        noteProblem("Torrent Add was not confirmed. Wait for a fresh transfer list and check for this torrent before retrying.")
                     }
                 }
             },
@@ -1077,7 +1095,7 @@ internal fun LocalEngineScreen(
                 onConfirm = {
                     val selected = place
                     if (selected == null || !eligible) {
-                        message = "The destination or transfer list changed. Reopen the snapshot."
+                        noteProblem("The destination or transfer list changed. Reopen the snapshot.")
                     } else {
                         snapshotRestoreDraft = null
                         performLocalMutation {
@@ -1482,7 +1500,7 @@ internal fun LocalEngineScreen(
                             // The command may have reached libtorrent before the read or JNI call failed.
                             // Do not invite another write until a successful inventory read.
                             inventoryFrame = inventoryFrame.copy(stale = true)
-                            message = "Start/Stop was not confirmed. Wait for fresh phone torrent status before trying again."
+                            noteProblem("Start/Stop was not confirmed. Wait for fresh phone torrent status before trying again.")
                         }
                     }
                 },
@@ -1514,7 +1532,7 @@ internal fun LocalEngineScreen(
                         } catch (_: Exception) {
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             files = null
-                            message = "File selection or readback failed. Wait for fresh status before trying again."
+                            noteProblem("File selection or readback failed. Wait for fresh status before trying again.")
                         }
                     }
                 },
@@ -1571,7 +1589,7 @@ internal fun LocalEngineScreen(
                         } catch (_: Exception) {
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             files = null
-                            message = "Episode-priority change is uncertain. Refresh first."
+                            noteProblem("Episode-priority change is uncertain. Refresh first.")
                         }
                     }
                 },
@@ -1607,7 +1625,7 @@ internal fun LocalEngineScreen(
                         } catch (_: Exception) {
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             files = null
-                            message = "File priority outcome is uncertain. Refresh before another change."
+                            noteProblem("File priority outcome is uncertain. Refresh before another change.")
                         }
                     }
                 },
@@ -1644,8 +1662,8 @@ internal fun LocalEngineScreen(
                         } catch (_: Exception) {
                             inventoryFrame = inventoryFrame.copy(stale = true)
                             files = null
-                            message = "Native batch file selection was not confirmed. " +
-                                "Wait for fresh status before trying again."
+                            noteProblem("Native batch file selection was not confirmed. " +
+                                "Wait for fresh status before trying again.")
                         }
                     }
                 },
@@ -1762,7 +1780,7 @@ internal fun LocalEngineScreen(
                         } catch (_: Exception) {
                             // Session removal may have succeeded before the exception.
                             inventoryFrame = inventoryFrame.copy(stale = true)
-                            message = "Session removal was not confirmed. Wait for fresh status before trying again. Downloaded files were not requested for deletion."
+                            noteProblem("Session removal was not confirmed. Wait for fresh status before trying again. Downloaded files were not requested for deletion.")
                         }
                     }
                 })
@@ -1815,8 +1833,8 @@ internal fun LocalEngineScreen(
                     scope.launch { scrollState.animateScrollTo(0) }
                 } catch (failure: Exception) {
                     pending = null
-                    message = "Snapshot definition could not populate Add review: " +
-                        (failure.message ?: "Unsupported original torrent")
+                    noteProblem("Snapshot definition could not populate Add review: " +
+                        (failure.message ?: "Unsupported original torrent"))
                 }
             },
             onReviewOneRestore = { verified, entry, frozen, generation ->
@@ -1844,12 +1862,12 @@ internal fun LocalEngineScreen(
                                 "the stopped restore. No torrent has been added."
                             scrollState.animateScrollTo(0)
                         } else {
-                            message = "The comparison changed before restore review. Reopen the snapshot."
+                            noteProblem("The comparison changed before restore review. Reopen the snapshot.")
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
                     } catch (_: Exception) {
-                        message = "The verified original snapshot definition could not be prepared."
+                        noteProblem("The verified original snapshot definition could not be prepared.")
                     }
                 }
             }
@@ -1924,6 +1942,8 @@ internal fun LocalEngineScreen(
 @Composable
 internal fun PhoneOutcomeNotice(
     text: String,
+    /** Refused, uncertain or failed: shown with a text label and warning edge, not colour alone. */
+    needsAttention: Boolean = false,
     /** Optional view-only follow-up, e.g. showing the exact newly added transfer. */
     actionLabel: String? = null,
     onAction: () -> Unit = {}
@@ -1932,13 +1952,18 @@ internal fun PhoneOutcomeNotice(
     androidx.compose.material3.Surface(
         color = ChunksColors.SurfaceRaised,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, ChunksColors.Outline),
+        border = if (needsAttention) androidx.compose.foundation.BorderStroke(2.dp, ChunksColors.Yellow)
+            else androidx.compose.foundation.BorderStroke(1.dp, ChunksColors.Outline),
         // Merge the text into the live-region node so its change is announced.
         modifier = Modifier.fillMaxWidth()
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
     ) {
         Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // The label carries the tone in words (and is spoken first), so it
+            // never depends on the warning colour alone.
+            if (needsAttention) Text("Needs attention", color = ChunksColors.Yellow,
+                style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             Text(text, color = ChunksColors.Text, style = MaterialTheme.typography.bodyMedium)
             if (actionLabel != null) OutlinedButton(onClick = onAction,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(actionLabel) }
