@@ -1,5 +1,7 @@
 # Chunks CI optimization remainder: evidence and fresh-agent handoff
 
+> **Reconciled 2026-11-03 after the consolidated P0 release audit:** This document preserves the original CI investigation and candidate hypotheses; it does **not** own P0 implementation or add release gates. [#1164](https://github.com/gamesbyian/Chunks/pull/1164) has **merged** (the former 'open' statement and first continuation task below are superseded). Do not re-review, recreate or redispatch that PR merely because this handoff says it was pending. The [current outcome-based P0 board](WORK-QUEUE.md#one-consolidated-release-blocker-campaign-owner-review-2026-11-03) groups daily-use work into A Remove/recover (#1113), B Add/file controls, C restore/reconnect, D unified multi-profile UX and E a **shared** independent acceptance/APK pass (#9/#10). Treat #9/#10 evidence and pipeline work as *one reusable release acceptance layer* rather than a separate test per blocker. No repeating already accepted owner phone Add/Start or platform tiers unless changed source affects them. [#1227](https://github.com/gamesbyian/Chunks/pull/1227) authorizes populated rTorrent 2/3 test fixtures under the manual protected-host limits. User-confirmed Remove-and-data includes pre-existing exact torrent payloads; original creator-exclusive provenance is not a release prerequisite. Verify paths, permissions, overlap, physical outcome, uncertainty and safe non-target bytes. Current main, open PRs/issues and [QUALITY-LEDGER](QUALITY-LEDGER.md) always supersede this dated snapshot.
+
 **Snapshot:** November 3, 2026; live `main` was `8ed770af99c3cd2fa8c1a05664b1c8a379fff936`. This is a **handoff**, not a competing work queue. Recheck live main, PRs, issues and tests before acting. Priority belongs to [WORK-QUEUE](WORK-QUEUE.md), standards to [AGENTS.md](../AGENTS.md) and [CI-POLICY](CI-POLICY.md), and evidence to [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
 ## Already shipped: avoid redundant implementation
@@ -12,9 +14,9 @@
 
 ## Remaining proposals, in priority order
 
-### 1. Integrate existing measurement fix, then measure real follow-up revisions
+### 1. Measurement fix merged; use it on real follow-up revisions
 
-[#1164](https://github.com/gamesbyian/Chunks/pull/1164) was **open** at snapshot, head `24ccc07af9722e4f6df14545e881056eaa9d042e`, with [documentation validation green 41599203672](https://github.com/gamesbyian/Chunks/actions/runs/41599203672). It adds true **job activity window** (earliest actual job start to latest completion), distinguishing it from `workflow.updated_at - created_at` lifecycle delay, with null values for all-skipped runs. **Check live status; do not recreate.** Integrate only after the appropriate review.
+[#1164](https://github.com/gamesbyian/Chunks/pull/1164) **merged after this original snapshot** (tested head `24ccc07af9722e4f6df14545e881056eaa9d042e`, [documentation validation green 41599203672](https://github.com/gamesbyian/Chunks/actions/runs/41599203672)). It adds true **job activity window** (earliest actual job start to latest completion), distinguishing it from `workflow.updated_at - created_at` lifecycle delay, with null values for all-skipped runs. **No integration task remains for #1164.** Use the merged measurement to evaluate only newly evidenced waste; don't commission fresh native runs just for benchmarking.
 
 Use existing read-only report and workflow inventory on a complete recent multi-revision PR. Compare workflow dispatch counts, cancellation occupancy, actual job window, total runner-minutes, artifact retention, diagnostic usefulness, and draft-to-ready transitions. Control for changed source/runner conditions and absent data. The answer **“no further optimization supported”** is acceptable. Do not run new emulators merely to obtain benchmark data.
 
@@ -38,7 +40,7 @@ Live branch API reported `main.protected=false` at snapshot; [issue #10](https:/
 
 ### 6. Product acceptance is distinct from CI optimization
 
-Preserve [#1113](https://github.com/gamesbyian/Chunks/issues/1113) (owned-data Remove vs keep-data across local/rTorrent), [#1041](https://github.com/gamesbyian/Chunks/issues/1041) (genuine fixture rotation), [#901](https://github.com/gamesbyian/Chunks/issues/901) (Compose teardown failure), [#9](https://github.com/gamesbyian/Chunks/issues/9) (integration QA), [#5](https://github.com/gamesbyian/Chunks/issues/5) (engine/lifecycle), and [#569](https://github.com/gamesbyian/Chunks/issues/569) (physical/OEM/Doze/VPN). A green native Add emulator does not authorize deletion of data, certify real remote servers or establish physical phone acceptance. Do not conflate these proof tiers.
+Preserve [#1113](https://github.com/gamesbyian/Chunks/issues/1113) (user-authorized exact-payload Remove versus keep-data, including pre-existing matching payloads, across local/rTorrent), [#1041](https://github.com/gamesbyian/Chunks/issues/1041) (genuine fixture rotation), [#901](https://github.com/gamesbyian/Chunks/issues/901) (Compose teardown failure), [#9](https://github.com/gamesbyian/Chunks/issues/9) (integration QA), [#5](https://github.com/gamesbyian/Chunks/issues/5) (engine/lifecycle), and [#569](https://github.com/gamesbyian/Chunks/issues/569) (physical/OEM/Doze/VPN). A green native Add emulator does not authorize deletion of data, certify real remote servers or establish physical phone acceptance. Do not conflate these proof tiers.
 
 ## Practical optimization decision contract
 
@@ -47,9 +49,9 @@ For each candidate: (1) cite real evidence and distinguish queue/runner/latency/
 ## Fresh-agent continuation contract
 
 1. Inspect live `main`, all open PRs, open issues, `AGENTS.md`, `docs/INDEX.md`, `docs/AGENT-LANES.md`, `docs/WORK-QUEUE.md`, this report, `docs/CI-POLICY.md` and `docs/QUALITY-LEDGER.md`. Reconcile newer merged changes before touching files.
-2. First establish whether #1164 still needs review/integration. Avoid duplicate PRs or unsupported self-approval.
+2. #1164 is already merged; use existing read-only tooling to inspect recent actual workflow cost and accepted coverage. Do not reopen a completed optimization.
 3. Measure one recent complete PR development cycle using the existing accounting/inventory tools and Actions API. Produce a ranked list of real waste vs useful testing, with run IDs and contrary evidence.
 4. Choose the highest-leverage independent bounded change or explicitly record why none is justified. Avoid P0 app files and active UX ownership. If implementing, use a clean branch, offline tests first, and smallest real acceptance needed.
 5. Update the canonical CI policy/evidence/work queue only for actual new findings. Resolve or document red checks; don't produce repeated prose inventories. End with exact PR/run links, source identities, verified acceptance tier, measured impact and remaining blocker.
 
-**Highest-confidence next move:** reconcile #1164, then measure *actual* residual workflow waste. Per-method timing, font/SVG fan-out, retention and broader APK sharing remain hypotheses until evidence justifies an implementation.
+**Highest-confidence next move:** use the already merged #1164 tooling to measure *actual* residual workflow waste when it would improve packages A–E, without restarting a completed integration. Per-method timing, font/SVG fan-out, retention and broader APK sharing remain hypotheses until evidence justifies an implementation.
