@@ -9,6 +9,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
@@ -20,7 +24,6 @@ import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -52,7 +55,7 @@ class CombinedAddedBrowsingInstrumentedTest {
         rule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
-                ChunksTheme { Box(Modifier.requiredSize(320.dp, 700.dp)) { Surface {
+                ChunksTheme { Box(Modifier.requiredSize(320.dp, 700.dp).testTag("combined-browsing-viewport")) { Surface {
                     CombinedTransfersScreen(
                         server = CombinedServerSource(scope, listOf(row), false, true,
                             System.currentTimeMillis(), lifecycle = CombinedServerLifecycle(
@@ -63,6 +66,7 @@ class CombinedAddedBrowsingInstrumentedTest {
                 } } }
             }
         }
+        rule.onNodeWithTag("combined-browsing-viewport").assertWidthIsEqualTo(320.dp).assertHeightIsEqualTo(700.dp)
         val notice = "Your new transfer on ${serverEnvironmentLabel(scope)} is hidden by the current search, filter or environment view."
         rule.waitUntil(10_000) {
             runCatching {
@@ -96,7 +100,7 @@ class CombinedAddedBrowsingInstrumentedTest {
         rule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
-                ChunksTheme { Box(Modifier.requiredSize(320.dp, 700.dp)) { Surface {
+                ChunksTheme { Box(Modifier.requiredSize(320.dp, 700.dp).testTag("combined-browsing-viewport")) { Surface {
                     CombinedTransfersScreen(null, profiles, onOpenPhone = {}, onOpenServer = null, onBack = {})
                 } } }
             }
@@ -122,7 +126,7 @@ class CombinedAddedBrowsingInstrumentedTest {
     }
 
     private fun save(name: String) {
-        val image = rule.onRoot().captureToImage().asAndroidBitmap()
+        val image = rule.onNodeWithTag("combined-browsing-viewport").captureToImage().asAndroidBitmap()
         val resolver = InstrumentationRegistry.getInstrumentation().targetContext.contentResolver
         val uri = requireNotNull(resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             ContentValues().apply {
