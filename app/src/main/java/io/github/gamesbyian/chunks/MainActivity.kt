@@ -1679,29 +1679,25 @@ private fun TransfersScreen(
                     loading = loading, stale = stale,
                     onAdd = onAdd, onRefresh = onRefresh
                 )
-                val wideText = LocalDensity.current.fontScale >= 1.5f
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            selecting = !selecting
-                            batchHashes = emptySet()
-                            batchConfirm = false
-                            batchMessage = null
-                        },
-                        enabled = !loading && !stale && !batchBusy && list.isNotEmpty(),
-                        modifier = (if (wideText) Modifier.fillMaxWidth() else Modifier.weight(1f)).heightIn(min = 52.dp)
-                    ) {
-                        Text(if (selecting) "Exit batch selection" else "Select transfers for a batch")
-                    }
-                    // Occasional tools stay one tap away so the transfer list leads.
-                    OutlinedButton(onClick = { toolsOpen = !toolsOpen },
-                        modifier = Modifier.heightIn(min = 52.dp)
-                            .semantics { stateDescription = if (toolsOpen) "Expanded" else "Collapsed" }) {
-                        Text(if (toolsOpen) "Hide tools" else "More tools")
-                    }
-                }
-                if (toolsOpen) {
+                // Advanced controls are reachable from the persistent footer's
+                // Options destination, instead of occupying a permanent row
+                // above the actual transfer inventory. Keep Exit visible while
+                // selection is active, even if the server becomes stale.
+                RemoteAdvancedListActions(
+                    optionsOpen = optionsOpen,
+                    selecting = selecting,
+                    toolsOpen = toolsOpen,
+                    enabled = if (selecting) !batchBusy
+                        else !loading && !stale && !batchBusy && list.isNotEmpty(),
+                    onToggleSelection = {
+                        selecting = !selecting
+                        batchHashes = emptySet()
+                        batchConfirm = false
+                        batchMessage = null
+                    },
+                    onToggleTools = { toolsOpen = !toolsOpen }
+                )
+                if (optionsOpen && toolsOpen) {
                     OutlinedButton(onClick = onReviewNames,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Text("Review suggested queue names")
@@ -1726,7 +1722,7 @@ private fun TransfersScreen(
                 }
             }
         }
-        if (toolsOpen) item {
+        if (optionsOpen && toolsOpen) item {
             val down = remember(list) { RemoteRateEvidence.download(list) }
             val up = remember(list) { RemoteRateEvidence.upload(list) }
             RemoteRateStatTiles(down, up, list.count { it.started })
@@ -1737,7 +1733,7 @@ private fun TransfersScreen(
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
         }
-        if (toolsOpen) item {
+        if (optionsOpen && toolsOpen) item {
             val transferring = list.count {
                 (it.downBytesPerSecond ?: 0L) > 0L ||
                     (it.upBytesPerSecond ?: 0L) > 0L
