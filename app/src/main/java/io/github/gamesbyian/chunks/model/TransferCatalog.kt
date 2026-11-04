@@ -104,6 +104,28 @@ object Units {
         }
         return if (index == 0) "${safe} B" else String.format(java.util.Locale.US, "%.1f %s", result, values[index])
     }
+
+    /**
+     * Approximate time left at the current reported download rate, or null
+     * when there is nothing left, no meaningful rate (under 1 KiB/s) or the
+     * estimate exceeds a week. Always worded as an estimate ("about").
+     */
+    fun timeLeft(remainingBytes: Long, rateBytesPerSecond: Long?): String? {
+        val rate = rateBytesPerSecond ?: return null
+        if (remainingBytes <= 0 || rate < 1024) return null
+        val seconds = (remainingBytes + rate - 1) / rate
+        if (seconds > 7L * 24 * 3600) return null
+        if (seconds < 60) return "less than 1 min left"
+        val minutes = (seconds + 59) / 60
+        val text = when {
+            minutes < 60 -> "$minutes min"
+            minutes < 24 * 60 -> (minutes / 60).toString() + " h" +
+                (minutes % 60).let { if (it == 0L) "" else " $it min" }
+            else -> (minutes / (24 * 60)).toString() + " d" +
+                ((minutes / 60) % 24).let { if (it == 0L) "" else " $it h" }
+        }
+        return "about $text left"
+    }
 }
 
 data class AddDraft(val magnet: String, val destination: String) {

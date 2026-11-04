@@ -269,7 +269,13 @@ internal fun LocalEngineScreen(
      * position and search. Never carries selections or confirmations.
      */
     listScroll: androidx.compose.foundation.ScrollState? = null,
-    searchState: androidx.compose.runtime.MutableState<String>? = null
+    searchState: androidx.compose.runtime.MutableState<String>? = null,
+    /**
+     * Typed magnet draft held by the caller in process memory, so visiting All
+     * environments or Seeding rules does not discard it. Never saved to
+     * instance state: a magnet may carry a private tracker passkey.
+     */
+    magnetDraftState: androidx.compose.runtime.MutableState<String>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -404,8 +410,10 @@ internal fun LocalEngineScreen(
             }
         }
     }
-    var magnet by remember { mutableStateOf("") }
-    var addExpanded by rememberSaveable { mutableStateOf(false) }
+    val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
+    var magnet by magnetHolder
+    // A kept draft reopens its form on return, rather than hiding it.
+    var addExpanded by rememberSaveable { mutableStateOf(magnet.isNotEmpty()) }
     var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
     var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
     LaunchedEffect(pending?.preview?.infoHashV1) {
@@ -1400,6 +1408,7 @@ internal fun LocalEngineScreen(
                     }
                 }
             LocalTransferCard(transfer, busy || inventoryStale,
+                stale = inventoryStale,
                 onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
                     transfer.trackers?.total == 0) ({
                     repairReview = null
@@ -2084,7 +2093,9 @@ internal fun LocalTransferCard(
     onRepairTrackers: (() -> Unit)? = null,
     observedGrowth: LocalProgressHistory.ObservedDelta? = null,
     /** The Smart Seeding snapshot the phone controller stored; null before it has seen this transfer. */
-    seeding: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment? = null
+    seeding: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment? = null,
+    /** The engine status read failed; rates are from the last confirmed read. */
+    stale: Boolean = false
 ) {
     // An open confirmation belongs to the identity the user reviewed, not
     // just a hash that may now describe a moved or changed transfer. A stale
@@ -2141,9 +2152,12 @@ internal fun LocalTransferCard(
                 // The libtorrent status sample is an instantaneous estimate;
                 // unlike the independent observed-growth window below, it
                 // must not be presented as verified bytes or a lasting trend.
-                Text("Live payload ↓ " +
+                Text((if (stale) "Last read payload ↓ " else "Live payload ↓ ") +
                     Units.bytes(transfer.downloadPayloadRateBytesPerSecond.toLong()) + "/s · ↑ " +
-                    Units.bytes(transfer.uploadPayloadRateBytesPerSecond.toLong()) + "/s",
+                    Units.bytes(transfer.uploadPayloadRateBytesPerSecond.toLong()) + "/s" +
+                    (Units.timeLeft(transfer.wantedBytes - transfer.doneBytes,
+                        transfer.downloadPayloadRateBytesPerSecond.toLong())
+                        ?.takeIf { transfer.metadataKnown && !stale }?.let { " · $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall)
             }
             if (diagnosticsOpen) {

@@ -289,6 +289,8 @@ private fun ChunksApp(
     // no selection, confirmation or command state.
     val phoneListScroll = rememberScrollState()
     val phoneSearch = rememberSaveable { mutableStateOf("") }
+    // Process memory only (never instance state): a magnet may hold a passkey.
+    val phoneMagnetDraft = remember { mutableStateOf("") }
     val combinedListState = rememberLazyListState()
     // Per exact rTorrent account: list position and search survive route
     // switches (phone, All environments, Places) and Activity recreation.
@@ -592,6 +594,7 @@ private fun ChunksApp(
             ) {
                 LocalEngineScreen(
                     listScroll = phoneListScroll, searchState = phoneSearch,
+                    magnetDraftState = phoneMagnetDraft,
                     onBack = { leavePhone() },
                     onSeedingRules = { openFromPhone(Section.SEEDING) },
                     onCreateTorrent = { openFromPhone(Section.CREATE) },
@@ -906,6 +909,7 @@ private fun ChunksApp(
                 ) {
                     LocalEngineScreen(
                         listScroll = phoneListScroll, searchState = phoneSearch,
+                        magnetDraftState = phoneMagnetDraft,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
                         onCreateTorrent = { openFromPhone(Section.CREATE) },
@@ -1058,7 +1062,7 @@ private fun ChunksApp(
                     io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
             }
             if (error != null) {
-                Notice("Refresh problem", error.orEmpty())
+                RefreshProblemNotice(error.orEmpty(), refreshing = loading, onRefresh = refresh)
             }
             // Per-account list position survives visiting Places, Server or
             // other routes; a different account starts at the top.
@@ -2187,12 +2191,18 @@ private fun TransferCard(
             }
             val conciseRates = buildList {
                 transfer.downBytesPerSecond?.let { add("↓ " + Units.bytes(it) + "/s") }
+                if (transfer.started && !stale && transfer.metadataPending != true)
+                    Units.timeLeft(transfer.sizeBytes - transfer.completedBytes,
+                        transfer.downBytesPerSecond)?.let { add(it) }
                 transfer.upBytesPerSecond?.let { add("↑ " + Units.bytes(it) + "/s") }
                 transfer.ratioThousandths?.takeIf { it >= 0 }?.let { ratio ->
                     add("Ratio " + String.format(java.util.Locale.US, "%.2f",
                         ratio.toDouble() / 1_000.0))
                 }
-            }.joinToString(" · ")
+            }.joinToString(" · ").let { facts ->
+                // Rates from an out-of-date snapshot are not live.
+                if (stale && facts.isNotEmpty()) "Last read: $facts" else facts
+            }
             // Thin collapsed cards: at ordinary text sizes the disclosure shares
             // the rates line instead of adding a full-width row to every card.
             val inlineDisclosure = LocalDensity.current.fontScale < 1.5f

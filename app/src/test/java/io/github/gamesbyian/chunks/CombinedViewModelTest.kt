@@ -107,4 +107,17 @@ class CombinedViewModelTest {
             downloadBytesPerSecond = 0, uploadBytesPerSecond = 1024)
         assertEquals("Started · 50% · 2.0 KiB · ↓ 0 B/s · ↑ 1.0 KiB/s", combinedRowFacts(known))
     }
+
+    @Test fun timeLeftOnlyForAFreshStartedIncompleteRowWithARate() {
+        val row = UnifiedTransferObservation(UnifiedTransferKey.of(server, "c".repeat(40)), "x", "x",
+            null, null, null, null, null, null).copy(sizeBytes = 600L * 1024 * 1024,
+            progressPpm = 500_000, started = true, downloadBytesPerSecond = 1024L * 1024,
+            uploadBytesPerSecond = 0)
+        assertEquals("Started · 50% · 600.0 MiB · ↓ 1.0 MiB/s · ↑ 0 B/s · about 5 min left",
+            combinedRowFacts(row, fresh = true))
+        assertFalse("last-known facts never get an estimate",
+            combinedRowFacts(row, fresh = false).contains("left"))
+        assertFalse(combinedRowFacts(row.copy(started = false), fresh = true).contains("left"))
+        assertFalse(combinedRowFacts(row.copy(progressPpm = 1_000_000), fresh = true).contains("left"))
+    }
 }
