@@ -320,17 +320,26 @@ class ChunksMainActivityAtlasTest {
         val connectText = hasText("Connect to rTorrent")
         val connectButton = hasClickAction() and
             (connectText or hasAnyDescendant(connectText))
-        var connectComposed = false
+        // The unique-node check and the click lookup are separate tree reads,
+        // so an IME/viewport recomposition between them could still fail the
+        // lookup (native Add 41768151076 shard 0, this line). Retry the pair:
+        // performSemanticsAction throws only when its lookup fails, before
+        // dispatching, so Connect is still invoked at most once.
+        var connectClicked = false
         for (attempt in 1..5) {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
             rule.waitForIdle()
-            if (rule.onAllNodes(connectButton, useUnmergedTree = true).fetchSemanticsNodes().size == 1) {
-                connectComposed = true
+            if (rule.onAllNodes(connectButton, useUnmergedTree = true).fetchSemanticsNodes().size != 1) continue
+            try {
+                rule.onNode(connectButton, useUnmergedTree = true)
+                    .performSemanticsAction(SemanticsActions.OnClick)
+                connectClicked = true
                 break
+            } catch (_: AssertionError) {
+                // Lookup failed before any click was dispatched; scroll and retry.
             }
         }
-        assertTrue("Enabled Connect button was never composed after scrolling", connectComposed)
-        rule.onNode(connectButton, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick)
+        assertTrue("Enabled Connect button was never composed and clicked after scrolling", connectClicked)
         try {
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText("3 transfers", substring = true).fetchSemanticsNodes().isNotEmpty()
