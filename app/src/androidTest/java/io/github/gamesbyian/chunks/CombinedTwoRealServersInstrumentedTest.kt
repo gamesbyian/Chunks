@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import android.os.Bundle
 import android.util.Base64
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -31,8 +32,9 @@ import org.junit.runner.RunWith
  * the installed app's own Connect form saves both profiles, Combined shows the
  * union with the SAME infohash on both servers as two separately labelled
  * rows (two instances on one host must never look identical), and a fresh
- * activity launch reconnects the remembered server read-only. Independent
- * XML-RPC readback confirms both server inventories. No mutation is sent.
+ * activity launch reconnects the remembered server read-only. A mixed Combined
+ * batch Start/Stop over the same hash on both servers may change only the
+ * signed-in server B (independent XML-RPC readback); saved-only A is untouched.
  */
 @RunWith(AndroidJUnit4::class)
 class CombinedTwoRealServersInstrumentedTest {
@@ -158,6 +160,46 @@ class CombinedTwoRealServersInstrumentedTest {
                 assertTrue("Combined row missing: $name", visible(name))
             }
             stage("combined-rows")
+
+            // Per-target command scope: select the SAME infohash on saved-only
+            // server A and signed-in server B, then Start. Only B may change;
+            // independent XML-RPC is the postcondition, not the UI text.
+            fun selectRow(port: String) {
+                val box = hasContentDescription("Select $shared on", substring = true) and
+                    hasContentDescription(":$port", substring = true)
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(box)
+                rule.onNode(box).performClick()
+            }
+            fun startedOn(url: String) = runBlocking {
+                RTorrentRemote(RemoteCredentials(url, "", "")).listTransfers("main")
+            }.single { it.hash.equals(sharedHash, true) }.started
+            fun runBatch(action: String, confirm: String) {
+                scrollTo(action)
+                rule.onNodeWithText(action).performClick()
+                scrollTo(confirm)
+                rule.onNodeWithText(confirm).performClick()
+                waitFor("batch outcome", 60_000) { visible("Batch result available") }
+            }
+            fun ensureSelecting() {
+                val already = runCatching { scrollTo("Done selecting") }.isSuccess
+                if (!already) {
+                    scrollTo("Select…")
+                    rule.onNodeWithText("Select…").performClick()
+                }
+            }
+            ensureSelecting()
+            selectRow(portA)
+            selectRow(portB)
+            runBatch("Start…", "Start selected")
+            waitFor("server B started by Combined", 30_000) { startedOn(urlB) }
+            assertTrue("Saved-only server A must not be mutated by Combined", !startedOn(urlA))
+            stage("combined-start-scoped")
+            ensureSelecting()
+            selectRow(portB)
+            runBatch("Stop…", "Stop selected")
+            waitFor("server B stopped by Combined", 30_000) { !startedOn(urlB) }
+            assertTrue(!startedOn(urlA))
+            stage("combined-stop-scoped")
         }
 
         // Fresh activity in the same app process: the remembered verified
