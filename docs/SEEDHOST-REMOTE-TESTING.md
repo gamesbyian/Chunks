@@ -158,7 +158,11 @@ The owner created two more rTorrent/ruTorrent instances for cross-instance snaps
 
 **Secret names are case-sensitive**, including the capital R and T in `rTorrent_pass2`. Keep actual passwords in repository secrets only; never place them in tracked files, snapshot archives, workflow inputs or logs. Existing primary instance `/rutorrent/` uses the separate `rtorrent_user` and `rtorrent_pass` secrets. Existing CI workflows wired to that primary pair must not be pointed at the new URLs without explicitly mapping the correct credentials. Derive and verify each new instance's XML-RPC endpoint and capabilities independently.
 
-These two instances are configured by the owner for testing but Chunks connectivity, inventory, and restore have **not yet been verified**. Read-only probes, exports, and snapshot previews are suitable initial tests. Do not infer blanket permission for destructive operations on their existing inventory or payload files. Future restore acceptance should use explicitly reviewed disposable public test torrents, target-scoped preflight, clear opt-in, exact-hash verification, and failure journaling. Neither snapshot import nor a remote Add implies payload bytes were migrated.
+**Owner permission update (2026-11-03):** Under [D-SECONDARY-RTORRENT-TEST-FIXTURES-20261103](DECISIONS.md), agents may **populate instances 2 and 3** with real, identifiable test torrents/magnets and operate those fixtures as needed to test **combined browsing or any other Chunks feature**. This supersedes the earlier read-only-only interpretation for the secondary instances; no request for the owner to manually populate them is necessary. Earlier authenticated read-only evidence exists (run 40630941499); actual connected multi-job acceptance and restore are **not** proven merely by this authorization.
+
+**Practical test progression:** (1) authenticate each separately with its own case-sensitive secret over its exact numbered HTTPS route, read version and inventory, and select a dedicated known test destination; (2) add suitable known public/disposable fixtures to one or both secondary instances, deliberately including distinct and, where useful, same-hash/different-instance jobs; (3) verify exact-hash membership, downloaded/verified bytes, metadata and file priorities as appropriate; (4) conduct a **single coordinated real-engine/installed-app campaign** for phone plus two remotes: connected and disconnected inventories, selected subsets, search/sort/grouping, profile colours, settings and command targets, Stop/Start, retry/unknown states and cold restoration; (5) clean up only positively identified test-created or explicitly designated disposable jobs. Session-only Remove keeps bytes. Test **Remove and data** only with exact reviewed file mapping, provider permission and actual independent file-absence checks, including unrelated canaries; any uncertain result stays uncertain. Prefer one batched fixture provisioning and acceptance session to repeated per-feature protected-server setup.
+
+**Boundaries:** The new authorization does not permit arbitrary deletion of pre-existing inventory or payload, unreviewed remote filesystem/FTP access, credential spill, instance fallback or scope escalation. Protected mutating workflows stay manual, trusted-main-only, with explicit arm/target and no automatic repeat after timeout or 401. If no current protected workflow supports the requested scoped operation, add and independently qualify the smallest expressly armed workflow rather than broadening an existing read-only action. Snapshot import, Copy/Move and Add never by themselves prove that payload bytes migrated. Keep per-instance server, hash, destination, action, outcome and test-source receipts in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
 ## Owner-supplied torrent input security (2026-10-27)
 
@@ -242,7 +246,9 @@ separately proven ruTorrent path. The existing
 remains the two-instance matrix probe; the existing primary protected workflows
 remain authoritative for deeper primary acceptance. Never run live probes on PR
 heads, conflate a passing fixture/unit test with the dispatched live test, or
-send mutations to instances 2/3 simply because credentials work.
+send unscoped mutations to instances 2/3 merely because credentials work.
+Test-fixture mutations on instances 2/3 now have explicit owner authorization,
+but require the reviewed scope and manual trusted-main execution above.
 
 **Peer networking is separate:** HTTP(S) RPC and BitTorrent peer-wire
 reachability are different. The initial TCP refusal at
