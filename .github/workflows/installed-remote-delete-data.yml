@@ -49,8 +49,10 @@ jobs:
           directory.default.set = $RUNNER_TEMP/chunks-data
           session.path.set = $RUNNER_TEMP/chunks-session
           network.scgi.open_port = 127.0.0.1:5000
+          network.port_range.set = 6890-6890
+          network.port_random.set = no
           protocol.pex.set = no
-          dht.mode.set = disable
+          trackers.use_udp.set = no
           system.daemon.set = true
           EOF
           cat > "$RUNNER_TEMP/chunks-nginx.conf" <<EOF
@@ -72,12 +74,14 @@ jobs:
           mv "$RUNNER_TEMP/chunks-rutorrent-web/ruTorrent-bf9cd74b173940f2a7284e6acb45c4266f96f08b" "$CHUNKS_RUTORRENT_PHP_ROOT"
           nohup php -S 127.0.0.1:18082 -t "$RUNNER_TEMP/chunks-rutorrent-web" \
             > "$RUNNER_TEMP/chunks-rutorrent-php.log" 2>&1 </dev/null &
-          for attempt in $(seq 1 30); do
+          ready=0
+          for attempt in $(seq 1 60); do
             if curl -fsS --max-time 2 http://127.0.0.1:18082/rutorrent1/plugins/erasedata/plugin.info -o /dev/null &&
                curl -fsS --max-time 2 -H 'Content-Type: text/xml' --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
-                 http://127.0.0.1:18080/RPC2 -o /dev/null; then break; fi
+                 http://127.0.0.1:18080/RPC2 | grep -q '<string>'; then ready=1; break; fi
             sleep 1
           done
+          [ "$ready" = 1 ] || { echo "::error::disposable rTorrent/ruTorrent not ready"; cat "$RUNNER_TEMP/chunks-rtorrent.log"; exit 1; }
       - name: Stage exact fixture payload, foreign canary and stopped session
         run: |
           python3 tools/stage_disposable_rutorrent_adapter_delete.py stage | tee "$RUNNER_TEMP/chunks-stage.txt"
@@ -123,5 +127,6 @@ jobs:
             ${{ runner.temp }}/chunks-remote-delete-evidence/
             ${{ runner.temp }}/chunks-stage.txt
             ${{ runner.temp }}/chunks-rutorrent-php.log
+            ${{ runner.temp }}/chunks-rtorrent.log
           retention-days: 14
           if-no-files-found: warn
