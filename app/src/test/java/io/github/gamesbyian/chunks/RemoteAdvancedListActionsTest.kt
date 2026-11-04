@@ -30,13 +30,13 @@ class RemoteAdvancedListActionsTest {
 
     private fun show(
         options: Boolean, selecting: Boolean, tools: Boolean = false,
-        enabled: Boolean = true, scale: Float = 1f,
+        enabled: Boolean = true, scale: Float = 1f, widthDp: Int = 376,
         onSelect: () -> Unit = {}, onTools: () -> Unit = {}
     ) {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, scale)) {
                 ChunksTheme {
-                    Box(Modifier.width(376.dp)) {
+                    Box(Modifier.width(widthDp.dp)) {
                         RemoteAdvancedListActions(
                             optionsOpen = options,
                             selecting = selecting,
@@ -77,7 +77,7 @@ class RemoteAdvancedListActionsTest {
     @Config(qualifiers = "w320dp-h700dp-mdpi")
     fun activeBatchAlwaysOffersExitAfterOptionsClosesEvenWith200PercentText() {
         var exits = 0
-        show(options = false, selecting = true, scale = 2f,
+        show(options = false, selecting = true, scale = 2f, widthDp = 284,
             onSelect = { exits++ })
         val exit = rule.onNodeWithText("Exit batch selection")
         rule.onNodeWithText("More tools").assertDoesNotExist()
