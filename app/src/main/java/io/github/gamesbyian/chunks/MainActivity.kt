@@ -2206,14 +2206,15 @@ private fun TransferCard(
             }
             val conciseRates = buildList {
                 transfer.downBytesPerSecond?.let { add("↓ " + Units.bytes(it) + "/s") }
-                if (transfer.started && !stale && transfer.metadataPending != true)
-                    Units.timeLeft(transfer.sizeBytes - transfer.completedBytes,
-                        transfer.downBytesPerSecond)?.let { add(it) }
                 transfer.upBytesPerSecond?.let { add("↑ " + Units.bytes(it) + "/s") }
                 transfer.ratioThousandths?.takeIf { it >= 0 }?.let { ratio ->
                     add("Ratio " + String.format(java.util.Locale.US, "%.2f",
                         ratio.toDouble() / 1_000.0))
                 }
+                // Last, as on phone and Combined rows: rates first, then the estimate.
+                if (transfer.started && !stale && transfer.metadataPending != true)
+                    Units.timeLeft(transfer.sizeBytes - transfer.completedBytes,
+                        transfer.downBytesPerSecond)?.let { add(it) }
             }.joinToString(" · ").let { facts ->
                 // Rates from an out-of-date snapshot are not live.
                 if (stale && facts.isNotEmpty()) "Last read: $facts" else facts
