@@ -134,6 +134,12 @@ open class ChunksServerRenderTest {
         addList.performScrollToNode(hasText("Custom server folder (optional)"))
         rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/srv/one-off")
         rule.onNode(hasText("/srv/one-off")).assertExists()
+        // The same next steps as the installed atlas: review the one-off folder.
+        addList.performScrollToNode(hasText("Review Add"))
+        rule.onNodeWithText("Review Add").performClick()
+        rule.waitForIdle()
+        addList.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
+        rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()
         // The destination strip must not take over the Add screen.
         val list = addList.getUnclippedBoundsInRoot()
         val root = rule.onRoot().getUnclippedBoundsInRoot()
