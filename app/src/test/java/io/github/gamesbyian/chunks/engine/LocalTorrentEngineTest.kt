@@ -454,6 +454,43 @@ class LocalTorrentEngineTest {
         for ((name, bytes) in fixture.files) assertArrayEquals(bytes, File(fixture.root, name).readBytes())
     }
 
+    @Test fun userAuthorizedDeleteRemovesPreexistingExactPayloadAndPreservesCanaries() {
+        val source = fixture()
+        val destination = source.root.parentFile
+        val unrelated = File(source.root, "unrelated.txt").apply { writeText("keep me") }
+        val rootSibling = File(destination, "another-file.txt").apply { writeText("keep root sibling") }
+        val instance = engine()
+        // Payload existed BEFORE Chunks added the torrent. No creator proof is required.
+        val status = added(instance.addStopped(source.torrent, destination))
+        assertArrayEquals(source.files.getValue("episode.bin"), File(source.root, "episode.bin").readBytes())
+        val stale = instance.removeWithDataIfMatching(status.infoHash, status.name,
+            status.savePath, "not-this-generation")
+        assertEquals(LocalDeleteDataDispatch.REFUSED, stale.dispatch)
+        assertEquals(LocalDeleteDataReadback.UNAVAILABLE, stale.payloadReadback())
+        assertTrue(File(source.root, "episode.bin").exists())
+        val actual = requireNotNull(instance.status(status.infoHash))
+        val receipt = instance.removeWithDataIfMatching(
+            status.infoHash, actual.name, actual.savePath, actual.nativeReviewToken)
+        assertEquals(LocalDeleteDataDispatch.REQUESTED, receipt.dispatch)
+        assertNull(instance.status(status.infoHash))
+        assertEquals(source.files.size, receipt.targets.size)
+        waitFor(30_000) { receipt.payloadReadback() == LocalDeleteDataReadback.ABSENT }
+        for (name in source.files.keys) assertFalse(File(source.root, name).exists())
+        assertEquals("keep me", unrelated.readText())
+        assertEquals("keep root sibling", rootSibling.readText())
+    }
+
+    @Test fun deleteDataRefusesInvalidReviewedIdentityWithoutMutatingPayload() {
+        val source = fixture()
+        val instance = engine()
+        val added = added(instance.addStopped(source.torrent, source.root.parentFile))
+        val result = instance.removeWithDataIfMatching(
+            added.infoHash, added.name, added.savePath, "expired-review")
+        assertEquals(LocalDeleteDataDispatch.REFUSED, result.dispatch)
+        assertNotNull(instance.status(added.infoHash))
+        for ((name, bytes) in source.files) assertArrayEquals(bytes, File(source.root, name).readBytes())
+    }
+
     @Test fun rejectsMalformedIdentities() {
         val engine = engine()
         try {
