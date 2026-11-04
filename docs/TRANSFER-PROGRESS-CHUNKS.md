@@ -1,6 +1,6 @@
 # Recency-preserving transfer progress chunks
 
-**Status:** owner-approved visual/interaction requirement, **planned; not evidence of implementation** (2026-11-03). Normative product intent: [PRODUCT](PRODUCT.md); interaction/accessibility: [UX](UX.md). This focused document specifies the rendering and state algorithm. It is **post-P0 UI refinement** unless an actual daily-use regression makes basic transfer progress misleading or inaccessible.
+**Status:** owner-approved visual/interaction requirement. **Implementation candidate [PR #1251](https://github.com/gamesbyian/Chunks/pull/1251), not yet merged or accepted** (2026-11-03). Normative product intent: [PRODUCT](PRODUCT.md); interaction/accessibility: [UX](UX.md). This focused document specifies the rendering and state algorithm. It is **post-P0 UI refinement** unless an actual daily-use regression makes basic transfer progress misleading or inaccessible.
 
 ## Outcome
 
@@ -28,3 +28,9 @@ Across phone-local, each rTorrent profile, Combined transfers, expanded details 
 ## Engineering scope and scheduling
 
 Implement as one reusable bounded progression model/renderer used by relevant transfer surfaces. Prefer a small persisted event/coalesced-band record; do not store infinite per-poll data. Review current UI and model ownership before implementing. This requirement is accepted but **not shipped or visually qualified** by documentation alone. Track alongside the existing UI/UX improvements rather than spawning local and remote implementation campaigns. Changes to the progress display must not alter transfer engine state, network behaviour or verified progress calculations.
+
+## Implementation review note (PR #1251; pending CI and visual acceptance)
+
+The proposed shared renderer uses a pure bounded 20-band progress model and a 12dp Canvas track with ~22%-height corner radius. It orders same-environment reads by source observation timestamp to avoid older Combined snapshots rolling back newer direct-list state. It updates only from views displaying fresh known progress, retains compact histories in private app preferences keyed by the exact environment+hash digest, and shares one history between phone, the corresponding rTorrent profile and Combined rows. Historical subpixel growth is added to the newest painted band until eligible to appear as its own segment. No network polls, engine state, torrent metadata or transfer commands are changed.
+
+**Evidence still required:** exact-head Android foundation, installed/emulated atlas screenshots, large font, dark/light, TalkBack and physical phone review. Offscreen transfers can advance without a visible Chunks sample; their next observed growth is coalesced into one larger band, which is honest about the observation interval but does not reconstruct unseen refreshes. The implementation does not claim physical-device or operator aesthetic acceptance from source and unit tests.
