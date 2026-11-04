@@ -55,21 +55,33 @@ private fun Context.activityOrNull(): Activity? {
 internal fun LocalTransferPrivacyGate(
     scope: String,
     onBack: () -> Unit = {},
+    /** True when [content] places [LocalPrivacyControls] in its own Options area. */
+    controlsInContent: Boolean = false,
     content: @Composable () -> Unit
 ) {
     TransferPrivacyGate(scope, onBack, "Phone transfers", "Phone transfer",
-        redactLocalService = true, content = content)
+        redactLocalService = true, controlsInContent = controlsInContent, content = content)
 }
 
 @Composable
 internal fun RemoteTransferPrivacyGate(
     scope: String,
     onBack: () -> Unit,
+    controlsInContent: Boolean = false,
     content: @Composable () -> Unit
 ) {
     TransferPrivacyGate(scope, onBack, "rTorrent profile", "rTorrent profile",
-        redactLocalService = false, content = content)
+        redactLocalService = false, controlsInContent = controlsInContent, content = content)
 }
+
+/**
+ * The unlocked gate's Privacy & authentication controls, provided to content
+ * that hosts them in its Options area instead of a row pinned above every
+ * screen (UX: Options contains Privacy and authentication). Null outside a
+ * hosting gate. The controls and their authentication rules are unchanged.
+ */
+internal val LocalPrivacyControls =
+    androidx.compose.runtime.compositionLocalOf<(@Composable () -> Unit)?> { null }
 
 /** Never composes protected content while a scope is locked. */
 @Composable
@@ -79,6 +91,7 @@ private fun TransferPrivacyGate(
     lockedTitle: String,
     subject: String,
     redactLocalService: Boolean,
+    controlsInContent: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
@@ -353,61 +366,83 @@ private fun TransferPrivacyGate(
                 style = MaterialTheme.typography.bodySmall)
         }
     } else {
+        val lockNow: @Composable (Modifier) -> Unit = { modifier ->
+            OutlinedButton(
+                onClick = {
+                    session.lockNow(scope)
+                    localRevision++
+                    settingsOpen = false
+                    notice = null
+                },
+                enabled = !busy,
+                modifier = modifier.heightIn(min = 48.dp)
+            ) { Text("Lock now") }
+        }
+        val settings: @Composable () -> Unit = {
+            if (settingsOpen) {
+                Text(if (mode == TransferLockMode.NEVER)
+                    subject + " privacy is off. Enabling it requires a device " +
+                        "screen lock and will immediately hide transfers."
+                    else "Current privacy mode: " + mode.name.replace('_', ' ').lowercase() +
+                        ". Every change, including disabling, requires fresh Android authentication.",
+                    style = MaterialTheme.typography.bodySmall)
+                val options = listOf(
+                    TransferLockMode.NEVER to "Never (disable)",
+                    TransferLockMode.ONCE_PER_PROCESS to "Once per app process",
+                    TransferLockMode.EACH_FOREGROUND_RETURN to "On return from background",
+                    TransferLockMode.AFTER_FIVE_MINUTES_BACKGROUND to "After 5 minutes away",
+                    TransferLockMode.EVERY_ENTRY to "Every time opening transfers"
+                )
+                options.filter { it.first != mode }.forEach { (choice, label) ->
+                    OutlinedButton(
+                        onClick = { changeMode(choice) },
+                        enabled = !busy && (mode != TransferLockMode.NEVER ||
+                            (activity != null && TransferDeviceAuthenticator.hasSecureLock(activity))),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text(label) }
+                }
+            }
+        }
+        val privacyButton: @Composable (Modifier) -> Unit = { modifier ->
+            OutlinedButton(
+                onClick = { settingsOpen = !settingsOpen },
+                enabled = !busy,
+                modifier = modifier.heightIn(min = 48.dp)
+            ) {
+                Text("Privacy & authentication")
+            }
+        }
         Column(Modifier.fillMaxSize()) {
-            Column(
+            // Hosted: only contextual security stays on top (Lock now while a
+            // policy is active, and any authentication notice).
+            if (!controlsInContent || mode != TransferLockMode.NEVER || notice != null) Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(
-                        onClick = { settingsOpen = !settingsOpen },
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                    ) {
-                        Text("Privacy & authentication")
+                if (!controlsInContent) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        privacyButton(Modifier.weight(1f))
+                        if (mode != TransferLockMode.NEVER) lockNow(Modifier.weight(1f))
                     }
-                    if (mode != TransferLockMode.NEVER) {
-                        OutlinedButton(
-                            onClick = {
-                                session.lockNow(scope)
-                                localRevision++
-                                settingsOpen = false
-                                notice = null
-                            },
-                            enabled = !busy,
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                        ) { Text("Lock now") }
-                    }
-                }
-                if (settingsOpen) {
-                    Text(if (mode == TransferLockMode.NEVER)
-                        subject + " privacy is off. Enabling it requires a device " +
-                            "screen lock and will immediately hide transfers."
-                        else "Current privacy mode: " + mode.name.replace('_', ' ').lowercase() +
-                            ". Every change, including disabling, requires fresh Android authentication.",
-                        style = MaterialTheme.typography.bodySmall)
-                    val options = listOf(
-                        TransferLockMode.NEVER to "Never (disable)",
-                        TransferLockMode.ONCE_PER_PROCESS to "Once per app process",
-                        TransferLockMode.EACH_FOREGROUND_RETURN to "On return from background",
-                        TransferLockMode.AFTER_FIVE_MINUTES_BACKGROUND to "After 5 minutes away",
-                        TransferLockMode.EVERY_ENTRY to "Every time opening transfers"
-                    )
-                    options.filter { it.first != mode }.forEach { (choice, label) ->
-                        OutlinedButton(
-                            onClick = { changeMode(choice) },
-                            enabled = !busy && (mode != TransferLockMode.NEVER ||
-                                (activity != null && TransferDeviceAuthenticator.hasSecureLock(activity))),
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        ) { Text(label) }
-                    }
+                    settings()
+                } else if (mode != TransferLockMode.NEVER) {
+                    lockNow(Modifier.fillMaxWidth())
                 }
                 notice?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
             // A Column, not a Box: the connected route passes several
             // siblings (tabs, notices, screen) that must stack, not overlap.
             Column(Modifier.fillMaxWidth().weight(1f)) {
-                content()
+                if (controlsInContent) {
+                    val hosted: @Composable () -> Unit = {
+                        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            privacyButton(Modifier.fillMaxWidth())
+                            settings()
+                        }
+                    }
+                    androidx.compose.runtime.CompositionLocalProvider(
+                        LocalPrivacyControls provides hosted) { content() }
+                } else content()
             }
         }
     }

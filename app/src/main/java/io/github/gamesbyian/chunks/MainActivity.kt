@@ -546,7 +546,8 @@ private fun ChunksApp(
         } else if (section == Section.LOCAL && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                onBack = { leavePhone() }
+                onBack = { leavePhone() },
+                controlsInContent = true
             ) {
                 LocalEngineScreen(
                     onBack = { leavePhone() },
@@ -856,7 +857,8 @@ private fun ChunksApp(
                 // profile can still navigate to the separately gated phone.
                 LocalTransferPrivacyGate(
                     scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                    onBack = { leavePhone() }
+                    onBack = { leavePhone() },
+                    controlsInContent = true
                 ) {
                     LocalEngineScreen(
                         onBack = { leavePhone() },
@@ -906,7 +908,8 @@ private fun ChunksApp(
             } else {
                 RemoteTransferPrivacyGate(
                     scope = remotePrivacyScope,
-                    onBack = { localFromCombined = false; section = Section.LOCAL }
+                    onBack = { localFromCombined = false; section = Section.LOCAL },
+                    controlsInContent = true
                 ) {
             val beginRemoteMutation: () -> Boolean = {
                 if (server === connectedRemote && !loading && !stale && mutationGate.tryStart()) {
@@ -966,6 +969,13 @@ private fun ChunksApp(
                         Text("No matching Options screen. Clear search to see all destinations.",
                             style = MaterialTheme.typography.bodySmall)
                     }
+                }
+            }
+            // Privacy & authentication belongs to Options, not pinned above
+            // every screen; Lock now stays on top while a policy is active.
+            if (section == Section.TRANSFERS && optionsOpen) {
+                io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.let { controls ->
+                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { controls() }
                 }
             }
             // Wrap rather than scroll sideways: every destination stays reachable

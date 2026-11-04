@@ -140,6 +140,8 @@ open class ChunksServerRenderTest {
         for (tab in listOf("Places", "Organize", "Server", "Create", "ZIP review")) {
             rule.onNodeWithText(tab).assertIsDisplayed()
         }
+        // Privacy & authentication is an Option for this profile, not a pinned row.
+        rule.onNodeWithText("Privacy & authentication").assertIsDisplayed()
         for (tab in listOf("Places", "Organize", "Server")) {
             rule.onNodeWithText(tab).performClick()
             rule.waitForIdle()

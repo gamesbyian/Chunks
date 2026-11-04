@@ -1562,6 +1562,7 @@ internal fun LocalEngineScreen(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("Seeding rules…")
         }
+        io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
         LocalSnapshotRestorePreviewPanel(
             transfers = transfers,
             inventoryConfirmed = hasConfirmedLocalInventory,

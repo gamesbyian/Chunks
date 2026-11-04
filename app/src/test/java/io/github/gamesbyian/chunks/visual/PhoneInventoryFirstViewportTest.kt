@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -31,6 +33,10 @@ class PhoneInventoryFirstViewportTest {
         rule.onNodeWithText("On this phone (experimental)").assertIsDisplayed()
         rule.onNodeWithText("Phone transfers").assertIsDisplayed()
         rule.onNodeWithText("Search local names, aliases, folders or hashes").assertIsDisplayed()
+        // Privacy settings are not pinned above the inventory; they follow it.
+        val inventoryTop = rule.onNodeWithText("Phone transfers").getUnclippedBoundsInRoot().top
+        val privacyTop = rule.onNodeWithText("Privacy & authentication").getUnclippedBoundsInRoot().top
+        org.junit.Assert.assertTrue("privacy follows the inventory", privacyTop > inventoryTop)
     }
 
     @Test fun footerOptionsBringsPhoneOptionsAndToolsIntoView() {
@@ -38,6 +44,8 @@ class PhoneInventoryFirstViewportTest {
         rule.onNodeWithContentDescription("Options on this phone").assertIsDisplayed().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Phone options").assertIsDisplayed()
+        // Privacy settings are an Option on this screen, not a pinned top row.
+        rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
         // Returning to the list is one tap from the same persistent footer.
         rule.onNodeWithContentDescription("Show transfers on this phone").performClick()
         rule.waitForIdle()
