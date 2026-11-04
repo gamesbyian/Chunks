@@ -40,6 +40,7 @@ import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -75,10 +76,17 @@ class CombinedDetailIdentityInstrumentedTest {
         // At this density both real dp viewports fit inside the emulator's inset content window.
         val viewport = rule.onNodeWithTag("combined-detail-viewport")
         viewport.assertWidthIsEqualTo(width.dp).assertHeightIsEqualTo(height.dp)
-        val bounds = viewport.fetchSemanticsNode().boundsInRoot
+        val viewportNode = viewport.fetchSemanticsNode()
+        // Use unclipped geometry: clipped bounds alone could conceal overflow.
+        val origin = viewportNode.positionInRoot
+        val size = viewportNode.size
         val host = rule.onRoot().fetchSemanticsNode().boundsInRoot
         assertTrue("The complete viewport must fit inside the Activity content window",
-            bounds.left >= host.left && bounds.top >= host.top && bounds.right <= host.right && bounds.bottom <= host.bottom)
+            origin.x >= host.left && origin.y >= host.top &&
+                origin.x + size.width <= host.right && origin.y + size.height <= host.bottom)
+        val capturedViewport = viewport.captureToImage()
+        assertEquals(size.width, capturedViewport.width)
+        assertEquals(size.height, capturedViewport.height)
         val target = "Details for ${row.name} on ${serverEnvironmentLabel(scope)}"
         rule.waitUntil(10_000) {
             runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(target)) }.isSuccess
