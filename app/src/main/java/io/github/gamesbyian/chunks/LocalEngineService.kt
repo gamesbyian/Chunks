@@ -86,20 +86,33 @@ class LocalEngineService : Service() {
             val active = try { engine.list().filter { !it.stopped } }
                 catch (_: Exception) { null }
             var confirmed = 0
+            val confirmedStops = ArrayList<String>()
             active?.forEach { transfer ->
                 try {
                     val waitMs = timeoutBudget?.nextReadbackTimeoutMs() ?: 2_000L
                     if (engine.pause(transfer.infoHash, readbackTimeoutMs = waitMs).outcome ==
-                        LocalCommandOutcome.VERIFIED) confirmed++
+                        LocalCommandOutcome.VERIFIED) {
+                        confirmed++
+                        confirmedStops += transfer.infoHash
+                    }
                 } catch (_: Exception) {
                     // An uncertain outcome must be observed afresh, not retried.
                 }
             }
-            // Always attempt persistence, including after a failed Stop.
-            // During OS timeout, do not spend an additional default five
-            // seconds waiting for disk alerts after the shared Stop budget.
+            // User Stop all gets the same exact post-Stop generation receipts
+            // as the single and selected Stop paths, within ONE shared budget.
+            // The OS dataSync timeout has a shorter deadline and must finish
+            // its service teardown, so it retains a best-effort bulk save.
+            if (!timedOut) {
+                val budget = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget()
+                confirmedStops.forEach { hash ->
+                    budget.confirm(hash, engine::saveResumeDataFor)
+                }
+            }
+            // Best effort for unknown Stop outcomes and unrelated jobs, too.
+            // A bulk save does not certify an exact post-Stop generation.
             try {
-                engine.saveResumeData(timeoutMs = if (timedOut) 1_000L else 5_000L)
+                engine.saveResumeData(timeoutMs = 1_000L)
             } catch (_: Exception) { }
             return LocalServiceTimeoutNotice.PauseSummary(active?.size, confirmed)
         }
