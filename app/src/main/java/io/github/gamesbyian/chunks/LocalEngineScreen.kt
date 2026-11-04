@@ -269,7 +269,13 @@ internal fun LocalEngineScreen(
      * position and search. Never carries selections or confirmations.
      */
     listScroll: androidx.compose.foundation.ScrollState? = null,
-    searchState: androidx.compose.runtime.MutableState<String>? = null
+    searchState: androidx.compose.runtime.MutableState<String>? = null,
+    /**
+     * Typed magnet draft held by the caller in process memory, so visiting All
+     * environments or Seeding rules does not discard it. Never saved to
+     * instance state: a magnet may carry a private tracker passkey.
+     */
+    magnetDraftState: androidx.compose.runtime.MutableState<String>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -404,8 +410,10 @@ internal fun LocalEngineScreen(
             }
         }
     }
-    var magnet by remember { mutableStateOf("") }
-    var addExpanded by rememberSaveable { mutableStateOf(false) }
+    val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
+    var magnet by magnetHolder
+    // A kept draft reopens its form on return, rather than hiding it.
+    var addExpanded by rememberSaveable { mutableStateOf(magnet.isNotEmpty()) }
     var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
     var magnetFinishInOrder by remember(magnet) { mutableStateOf(finishInOrderDefault) }
     LaunchedEffect(pending?.preview?.infoHashV1) {

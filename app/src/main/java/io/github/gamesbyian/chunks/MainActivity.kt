@@ -289,6 +289,8 @@ private fun ChunksApp(
     // no selection, confirmation or command state.
     val phoneListScroll = rememberScrollState()
     val phoneSearch = rememberSaveable { mutableStateOf("") }
+    // Process memory only (never instance state): a magnet may hold a passkey.
+    val phoneMagnetDraft = remember { mutableStateOf("") }
     val combinedListState = rememberLazyListState()
     // Per exact rTorrent account: list position and search survive route
     // switches (phone, All environments, Places) and Activity recreation.
@@ -592,6 +594,7 @@ private fun ChunksApp(
             ) {
                 LocalEngineScreen(
                     listScroll = phoneListScroll, searchState = phoneSearch,
+                    magnetDraftState = phoneMagnetDraft,
                     onBack = { leavePhone() },
                     onSeedingRules = { openFromPhone(Section.SEEDING) },
                     onCreateTorrent = { openFromPhone(Section.CREATE) },
@@ -906,6 +909,7 @@ private fun ChunksApp(
                 ) {
                     LocalEngineScreen(
                         listScroll = phoneListScroll, searchState = phoneSearch,
+                        magnetDraftState = phoneMagnetDraft,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
                         onCreateTorrent = { openFromPhone(Section.CREATE) },
