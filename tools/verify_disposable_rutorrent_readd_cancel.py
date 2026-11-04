@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import time
 from urllib import parse, request
-from xmlrpc.client import ServerProxy
+from xmlrpc.client import Binary, ServerProxy
 from verify_disposable_rutorrent_php_delete import bencode
 
 def main():
@@ -83,7 +83,9 @@ def main():
     check_bytes()  # queued response has not deleted bytes
 
     # Same-hash new session arrives BEFORE the old async cleanup collector.
-    getattr(engine, "load.normal")("", str(torrent_file))
+    # Use the SAME raw-metainfo Add RPC as the production Chunks adapter.
+    # This is a single reviewed Add, never an automatic retry after timeout.
+    getattr(engine, "load.raw_verbose")("", Binary(torrent_file.read_bytes()))
     wait(True)
     if not check_exact():
         raise RuntimeError("Re-added session identity changed")
