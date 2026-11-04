@@ -152,11 +152,16 @@ class CombinedTwoRealServersInstrumentedTest {
         // login reconnects read-only once the Connection screen is entered,
         // without retyping any address or credential. Not process-death proof.
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("phone-first relaunch") { visible("On this phone (experimental)") }
-            rule.onNodeWithText("Back").performScrollTo().performClick()
+            // Run 41789912090: with a remembered verified server, launch opens
+            // that server's queue directly. Accept either entry route, but the
+            // queue must appear with no address or credential retyped.
+            waitFor("relaunch entry") { connectedQueue() || visible("On this phone (experimental)") }
+            if (!connectedQueue()) rule.onNodeWithText("Back").performScrollTo().performClick()
             waitFor("automatic read-only reconnect of remembered server", 90_000) {
                 connectedQueue()
             }
+            assertTrue("Relaunch must not require the Connect form",
+                !visible("Seedbox hostname, ruTorrent URL or RPC address"))
             stage("relaunch-reconnected")
         }
         // Read-only test: both inventories are exactly as before.
