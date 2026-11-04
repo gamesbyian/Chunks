@@ -1535,6 +1535,11 @@ private fun ConnectionScreen(
                 value = endpoint, onValueChange = onEndpoint,
                 label = { Text("Seedbox hostname, ruTorrent URL or RPC address") },
                 placeholder = { Text("server.example or https://server.example/rutorrent/") },
+                // Next moves to the following field; no autocorrect on an address.
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                    autoCorrectEnabled = false,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
             val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
@@ -1552,6 +1557,10 @@ private fun ConnectionScreen(
                     value = rpcPath, onValueChange = onRpcPath,
                     label = { Text("Exact RPC path (optional)") },
                     placeholder = { Text("/RPC2") },
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                    autoCorrectEnabled = false,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
                     singleLine = true, enabled = !loading, modifier = Modifier.fillMaxWidth()
                 )
                 Text("For a server your provider documents with a specific XML-RPC path. Enter only the " +
@@ -1563,13 +1572,19 @@ private fun ConnectionScreen(
             OutlinedTextField(
                 value = username, onValueChange = onUsername,
                 label = { Text("Username, if required") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
+                    autoCorrectEnabled = false,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
         }
         item {
             SecurePasswordInput(
                 value = password, onValueChange = onPassword,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                // Go runs the same read-only Connect as the button, under its rules.
+                onGo = { if (!loading && endpoint.isNotBlank()) onConnect() }
             )
         }
         item {
