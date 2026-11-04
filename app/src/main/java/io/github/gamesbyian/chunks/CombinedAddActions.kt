@@ -24,7 +24,10 @@ internal fun CombinedAddActions(
     serverLabel: String?,
     onOpenPhone: () -> Unit,
     onAddToServer: (() -> Unit)?,
-    hasOtherSavedServers: Boolean = false
+    hasOtherSavedServers: Boolean = false,
+    /** Saved palette colours, shown beside the text name; never colour alone. */
+    phoneHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
+    serverHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Add a download", style = MaterialTheme.typography.titleMedium)
@@ -34,12 +37,12 @@ internal fun CombinedAddActions(
         OutlinedButton(onClick = onOpenPhone,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
                 contentDescription = "Add download on this phone"
-            }) { Text("Add on this phone") }
+            }) { DestinationLabel(phoneHue, "Add on this phone") }
         if (!serverLabel.isNullOrBlank() && onAddToServer != null) {
             OutlinedButton(onClick = onAddToServer,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
                     contentDescription = "Add download on $serverLabel"
-                }) { Text("Add on $serverLabel") }
+                }) { DestinationLabel(serverHue, "Add on $serverLabel") }
         }
         if (hasOtherSavedServers) Text(
             "Other saved servers need their own connection before adding.",
@@ -49,5 +52,16 @@ internal fun CombinedAddActions(
             "Choosing which downloads to view never changes the Add destination.",
             style = MaterialTheme.typography.bodySmall
         )
+    }
+}
+
+@Composable
+private fun DestinationLabel(hue: io.github.gamesbyian.chunks.model.EnvironmentHue?, text: String) {
+    androidx.compose.foundation.layout.Row(
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (hue != null) EnvironmentDot(hue)
+        Text(text)
     }
 }

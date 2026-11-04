@@ -2,10 +2,9 @@ package io.github.gamesbyian.chunks.snapshots
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -264,16 +262,16 @@ internal fun SnapshotRestorePreviewPanel(
                     Text("No destination was selected. No torrent was added, started, " +
                         "stopped, deleted, downloaded or otherwise changed.",
                         color = MaterialTheme.colorScheme.primary)
-                    OutlinedTextField(
+                    io.github.gamesbyian.chunks.ClearableTransferSearchField(
                         value = search,
                         onValueChange = { search = it; pageIndex = 0 },
-                        label = { Text("Search compared names or infohashes") },
-                        singleLine = true, modifier = Modifier.fillMaxWidth()
+                        label = "Search compared names or infohashes"
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Wrap so every decision filter is reachable without sideways scrolling.
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         FilterChip(
                             selected = chosenDecision == null,
