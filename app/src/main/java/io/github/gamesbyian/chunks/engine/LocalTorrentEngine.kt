@@ -228,6 +228,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // session row. Each receipt owns the exact pending flag installed before
     // submitting its single delete_files request.
     private val pendingNativeDeletions = ConcurrentHashMap<String, AtomicReference<Boolean?>>()
+    private val deleteAlertsObserved = java.util.concurrent.atomic.AtomicInteger()
+    private val deleteAlertsUnmatched = java.util.concurrent.atomic.AtomicInteger()
+    /** Diagnostic counts only: no hashes, names, paths or credentials. */
+    internal fun nativeDeletionAlertCounts(): Pair<Int, Int> =
+        deleteAlertsObserved.get() to deleteAlertsUnmatched.get()
     // Restored stopped jobs must reclaim their declared paths before another
     // checked torrent can reserve the same backing files in this process.
     private val restoredNativeJobs = ConcurrentHashMap.newKeySet<String>()
@@ -250,13 +255,21 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // engine monitor (close() may be joining the dispatcher).
             when (alert) {
                 is TorrentDeletedAlert -> {
-                    val id = alert.infoHashes.getV1().toHex().lowercase(Locale.ROOT)
-                    pendingNativeDeletions.remove(id)?.set(true)
+                    deleteAlertsObserved.incrementAndGet()
+                    val ids = listOf(alert.infoHashes.getV1().toHex(),
+                        alert.infoHashes.getBest().toHex()).map { it.lowercase(Locale.ROOT) }.distinct()
+                    val matched = ids.firstNotNullOfOrNull { pendingNativeDeletions.remove(it) }
+                    if (matched == null) deleteAlertsUnmatched.incrementAndGet()
+                    matched?.set(true)
                     return
                 }
                 is TorrentDeleteFailedAlert -> {
-                    val id = alert.infoHashes.getV1().toHex().lowercase(Locale.ROOT)
-                    pendingNativeDeletions.remove(id)?.set(false)
+                    deleteAlertsObserved.incrementAndGet()
+                    val ids = listOf(alert.infoHashes.getV1().toHex(),
+                        alert.infoHashes.getBest().toHex()).map { it.lowercase(Locale.ROOT) }.distinct()
+                    val matched = ids.firstNotNullOfOrNull { pendingNativeDeletions.remove(it) }
+                    if (matched == null) deleteAlertsUnmatched.incrementAndGet()
+                    matched?.set(false)
                     return
                 }
             }

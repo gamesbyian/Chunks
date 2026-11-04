@@ -474,7 +474,17 @@ class LocalTorrentEngineTest {
         assertEquals(LocalDeleteDataDispatch.REQUESTED, receipt.dispatch)
         assertNull(instance.status(status.infoHash))
         assertEquals(source.files.size, receipt.targets.size)
-        waitFor(30_000) { receipt.payloadReadback() == LocalDeleteDataReadback.ABSENT }
+        val deadline = System.nanoTime() + 30_000_000_000L
+        var readback = receipt.payloadReadback()
+        while (readback == LocalDeleteDataReadback.UNAVAILABLE &&
+            System.nanoTime() < deadline) {
+            Thread.sleep(100)
+            readback = receipt.payloadReadback()
+        }
+        assertEquals("Native alert=" + receipt.nativeCompletion?.get() +
+            ", observed/unmatched alerts=" + instance.nativeDeletionAlertCounts() +
+            ", exact surviving files=" + receipt.targets.count { it.exists() },
+            LocalDeleteDataReadback.ABSENT, readback)
         for (name in source.files.keys) assertFalse(File(source.root, name).exists())
         assertEquals("keep me", unrelated.readText())
         assertEquals("keep root sibling", rootSibling.readText())
