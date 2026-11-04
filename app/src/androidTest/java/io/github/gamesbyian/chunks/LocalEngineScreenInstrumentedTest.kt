@@ -107,6 +107,30 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(1, cancelled)
     }
 
+    @Test fun transferCardOffersDistinctExplicitDeleteDataWithoutSendingKeepData() {
+        var kept = 0
+        var deleted = 0
+        val status = LocalTransferStatus("c".repeat(40), "Existing media",
+            LocalTransferState.SEEDING, stopped = true, progressPpm = 1_000_000,
+            wantedBytes = 1000, doneBytes = 1000, payloadDownloadedBytes = 1000,
+            payloadUploadedBytes = 0, peers = 0, savePath = "/chosen", error = null)
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    LocalTransferCard(status, busy = false, onToggle = {},
+                        onRemove = { kept++ }, onRemoveData = { deleted++ })
+                }
+            }
+        }
+        rule.onNodeWithContentDescription("Remove transfer Existing media from this phone").performClick()
+        rule.onNodeWithText("including matching files that were already there before Add",
+            substring = true).assertExists()
+        rule.onNodeWithText("Remove transfer and data").performScrollTo().assertIsEnabled().performClick()
+        assertEquals(0, kept)
+        assertEquals(1, deleted)
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+    }
+
     @Test fun transferCardRequiresConfirmationBeforeSessionOnlyRemoval() {
         var removed = 0
         val status = LocalTransferStatus("b".repeat(40), "Internet Archive public sample",

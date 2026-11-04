@@ -34,9 +34,11 @@ class RuTorrentDeleteDataTest {
     }
 
     @Test fun refusesHtmlOrFalseRatherThanClaimingDeletion() {
-        assertTrue(RuTorrentDeleteData.acceptedResponse("[]"))
         assertTrue(RuTorrentDeleteData.acceptedResponse("[0,0,0]"))
-        for (body in listOf("false", "null", "true", "<html>login</html>",
+        assertTrue(RuTorrentDeleteData.acceptedResponse("[\"\",\"0\",\"0\"]"))
+        assertTrue(RuTorrentDeleteData.acceptedResponse("[\"\",0,0]"))
+        for (body in listOf("[]", "[\"\"]", "[\"\",0]", "[\"\",\"\",\"\"]",
+            "[\"\",0,0,0]", "false", "null", "true", "<html>login</html>",
             "{\"result\":\"ok\"}", "[", "[]more")) {
             assertFalse(body, RuTorrentDeleteData.acceptedResponse(body))
         }

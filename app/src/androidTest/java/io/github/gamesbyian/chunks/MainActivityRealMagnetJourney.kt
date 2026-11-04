@@ -244,6 +244,11 @@ internal class MainActivityRealMagnetJourney(
             click("Remove from rTorrent…"); click("Remove transfer, keep data")
             await { runBlocking { remote.lookupName(hash) } == null }
             assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
+            // A follow-on Add must start from an unfiltered Transfers screen.
+            // Clearing the prior exact-hash search is read-only, and prevents
+            // the next fixture from inheriting an obsolete UI selection.
+            type("Search names or Places", "")
+            rule.waitUntil(30_000) { visible("+ Add torrent") }
         }
         for (group in groups) {
           var groupPassed = false

@@ -25,16 +25,22 @@ internal object RuTorrentDeleteData {
     }
 
     /**
-     * The erasedata endpoint returns a JSON array of XML-RPC scalar integer
-     * command results (sometimes encoded as decimal strings). Its failure
-     * sentinel is JSON false. Keep this parser deliberately limited to the
+     * For one hash, erasedata returns three XML-RPC command results as
+     * JSON, sometimes with a leading void (empty-string) setter result and
+     * decimal-string integer results. Its failure sentinel is JSON false.
+     * Empty arrays and the wrong scalar count are refused. Keep this parser deliberately limited to the
      * actual accepted response shape: no Android JSON stub in host JVM tests,
      * no HTML, objects, trailers, nested arrays or permissive prefix parsing.
      */
     private val scalarArray = Regex("""\[\s*(?:(?:-?[0-9]+|"-?[0-9]+")
         (?:\s*,\s*(?:-?[0-9]+|"-?[0-9]+"))*)?\s*\]""".replace("\n", "").replace(" ", ""))
+    // Real legacy rTorrent: d.set_custom5 -> "", then d.delete_tied/d.erase
+    // -> decimal zeroes, so upstream PHP sends ["","0","0"].
+    private val voidFirstThree = Regex("""\[\s*""\s*,\s*(?:-?[0-9]+|"-?[0-9]+")\s*,\s*(?:-?[0-9]+|"-?[0-9]+")\s*\]""")
     fun acceptedResponse(body: String): Boolean =
-        body.length in 2..16384 && scalarArray.matches(body)
+        body.length in 5..16384 &&
+            (voidFirstThree.matches(body) ||
+                (scalarArray.matches(body) && body.count { it == ',' } == 2))
 
 }
 
