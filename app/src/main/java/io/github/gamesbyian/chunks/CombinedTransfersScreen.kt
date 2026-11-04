@@ -1246,8 +1246,34 @@ private fun CombinedTransferRow(
             })
         Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelMedium,
-                color = labelColour, fontWeight = FontWeight.Bold)
+            // Thin collapsed rows: at ordinary text sizes Details/More share the
+            // origin line instead of adding a 48dp button row to every transfer.
+            // Enlarged text keeps them on their own row so the label is never squeezed.
+            val inlineActions = androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.5f
+            val details: @Composable (Modifier) -> Unit = { m ->
+                val d = "Details for ${row.displayName} on $environmentLabel"
+                if (inlineActions) androidx.compose.material3.TextButton(onClick = onDetails,
+                    modifier = m.heightIn(min = 48.dp).semantics { contentDescription = d }) { Text("Details") }
+                else OutlinedButton(onClick = onDetails,
+                    modifier = m.heightIn(min = 48.dp).semantics { contentDescription = d }) { Text("Details") }
+            }
+            val more: @Composable (Modifier) -> Unit = { m ->
+                val d = if (expanded) "Hide extra actions for ${row.displayName} on $environmentLabel"
+                    else "More actions for ${row.displayName} on $environmentLabel"
+                val sm = m.heightIn(min = 48.dp).semantics {
+                    contentDescription = d
+                    stateDescription = if (expanded) "Expanded" else "Collapsed"
+                }
+                val label = if (expanded) "Less" else "More"
+                if (inlineActions) androidx.compose.material3.TextButton(
+                    onClick = { expanded = !expanded }, modifier = sm) { Text(label) }
+                else OutlinedButton(onClick = { expanded = !expanded }, modifier = sm) { Text(label) }
+            }
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelMedium,
+                    color = labelColour, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                if (inlineActions) { details(Modifier); more(Modifier) }
+            }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TransferFileTypeBadge(row.originalName)
@@ -1269,18 +1295,9 @@ private fun CombinedTransferRow(
             }
             if (row.hasError) Text("Needs attention in its own list",
                 color = ChunksColors.Red, style = MaterialTheme.typography.bodySmall)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onDetails,
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics {
-                        contentDescription = "Details for ${row.displayName} on $environmentLabel"
-                    }) { Text("Details") }
-                OutlinedButton(onClick = { expanded = !expanded },
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics {
-                        contentDescription = if (expanded)
-                            "Hide extra actions for ${row.displayName} on $environmentLabel"
-                        else "More actions for ${row.displayName} on $environmentLabel"
-                        stateDescription = if (expanded) "Expanded" else "Collapsed"
-                    }) { Text(if (expanded) "Less" else "More") }
+            if (!inlineActions) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                details(Modifier.weight(1f))
+                more(Modifier.weight(1f))
             }
             if (expanded) {
                 if (row.displayName != row.originalName) Text(
