@@ -81,7 +81,11 @@ class RTorrentLibtorrentInteropTest {
     private fun waitFor(what: String, seconds: Int = 120, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + seconds * 1000L
         while (!condition()) {
-            if (System.currentTimeMillis() > deadline) fail("Timed out waiting for $what")
+            if (System.currentTimeMillis() > deadline) {
+                // Gradle's short test log omits assertion messages; name the wait.
+                println("CHUNKS_INTEROP_TIMEOUT: $what")
+                fail("Timed out waiting for $what")
+            }
             Thread.sleep(250)
         }
     }
@@ -301,7 +305,12 @@ class RTorrentLibtorrentInteropTest {
             }
             val normal = rig.remote.setFilePriority(hash, skipIndex, skipFile.path, skipFile.sizeBytes, 0, 1)
             assertTrue("Production priority Normal not verified: $normal", normal is FilePriorityOutcome.Verified)
-            waitFor("rTorrent completes the newly wanted file") {
+            // Having finished every wanted piece, rTorrent and the phone seed
+            // may no longer be connected, and rTorrent spaces re-announces by
+            // its own minimum (E sweep 41840562323). Ask for an announce now,
+            // as a user's "update trackers" would, instead of waiting it out.
+            rig.remote.call("d.tracker_announce", listOf(hash))
+            waitFor("rTorrent completes the newly wanted file", 240) {
                 runBlocking { chunks(skipIndex, "f.completed_chunks") == skippedTotal }
             }
             assertArrayEquals("Exact bytes after raising priority", files.getValue(skipFile.path),
