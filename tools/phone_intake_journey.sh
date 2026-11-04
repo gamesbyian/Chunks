@@ -101,6 +101,9 @@ if [[ "$(grep -Fxc 'OK (1 test)' <<< "$out_d" || true)" != 1 ]] ||
    grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$out_d"; then
   echo 'CHUNKS_INTAKE: delete-data journey did not execute exactly one passing test'; exit 1
 fi
+grep -E '^CHUNKS_INTAKE_READD attempt=[1-6]$' <<< "$log_d" || {
+  echo 'CHUNKS_INTAKE: missing same-hash re-add witness'; exit 1;
+}
 grep -E '^CHUNKS_INTAKE_DELETE verified=true payload_absent=true session_absent=true canary_intact=true bytes=524288$' <<< "$log_d" || {
   echo 'CHUNKS_INTAKE: missing delete-data absence/canary witness'; exit 1;
 }

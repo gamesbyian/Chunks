@@ -482,26 +482,65 @@ class PhoneIntakeJourneyInstrumentedTest {
                     waitForText("100% ·", substring = true)
                     click("Stop")
                     await("UI Stop readback") { phone.status(hash)?.stopped == true }
+                    // L5 first: keep-data Remove, then re-add the SAME hash.
                     click("Remove…")
-                    click("Remove transfer and data")
-                    await("verified native deletion message", failure = {
-                        "status=${phone.status(hash)} exists=${target.exists()}"
-                    }) {
-                        rule.onAllNodesWithText("Verified: the reviewed transfer was removed", substring = true)
-                            .fetchSemanticsNodes().isNotEmpty()
-                    }
-                    // Independent witnesses, not the app's own message.
-                    await("session absent") { phone.status(hash) == null }
-                    assertFalse("Exact payload must be gone", target.exists())
-                    assertFalse("No payload name may remain in the folder",
-                        publicRoot.list()?.contains(name) == true)
-                    assertArrayEquals("Unrelated canary in the same folder must survive",
-                        canaryBytes, canary.readBytes())
-                    assertTrue("Fixture seed source is not the phone's payload and must survive",
-                        sourceFile.readBytes().contentEquals(payload))
-                    android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_DELETE verified=true payload_absent=true " +
-                        "session_absent=true canary_intact=true bytes=${payload.size}")
+                    click("Remove transfer, keep data")
+                    await("keep-data session removal") { phone.status(hash) == null }
+                    assertPublicBytes(target, payload, "after keep-data Remove")
                 }
+                val phone = requireNotNull(LocalEngineHolder.current())
+                var readded = false
+                for (attempt in 1..6) {
+                    ActivityScenario.launch<MainActivity>(input).use {
+                        waitForText("Saves to: Downloads/Chunks Downloads")
+                        click("Add and start downloading")
+                        // A same-session re-add may be refused while native
+                        // I/O of the old handle drains; that is a refusal,
+                        // not an uncertain write, so a later user retry is valid.
+                        await("re-add outcome", 60) {
+                            phone.status(hash) != null || rule.onAllNodesWithText(
+                                "previous Remove is still finishing", substring = true)
+                                .fetchSemanticsNodes().isNotEmpty()
+                        }
+                        if (phone.status(hash) == null) return@use
+                        readded = true
+                        android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_READD attempt=$attempt")
+                        await("re-added same hash rechecks kept bytes to 100%",
+                            failure = { "phone=${phone.status(hash)}" }) {
+                            phone.status(hash)?.progressPpm == 1_000_000
+                        }
+                        val reused = requireNotNull(phone.status(hash))
+                        assertTrue("Re-add must reuse kept bytes, not download them again: $reused",
+                            reused.payloadDownloadedBytes < payload.size)
+                        assertPublicBytes(target, payload, "after same-hash re-add")
+                        waitForText("100% ·", substring = true)
+                        click("Stop")
+                        await("UI Stop readback after re-add") { phone.status(hash)?.stopped == true }
+                        // L6 on the NEW session generation.
+                        click("Remove…")
+                        click("Remove transfer and data")
+                        await("verified native deletion message", failure = {
+                            "status=${phone.status(hash)} exists=${target.exists()}"
+                        }) {
+                            rule.onAllNodesWithText("Verified: the reviewed transfer was removed", substring = true)
+                                .fetchSemanticsNodes().isNotEmpty()
+                        }
+                        // Independent witnesses, not the app's own message.
+                        await("session absent") { phone.status(hash) == null }
+                        assertFalse("Exact payload must be gone", target.exists())
+                        assertFalse("No payload name may remain in the folder",
+                            publicRoot.list()?.contains(name) == true)
+                        assertArrayEquals("Unrelated canary in the same folder must survive",
+                            canaryBytes, canary.readBytes())
+                        assertTrue("Fixture seed source is not the phone's payload and must survive",
+                            sourceFile.readBytes().contentEquals(payload))
+                        android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_DELETE verified=true payload_absent=true " +
+                            "session_absent=true canary_intact=true bytes=${payload.size}")
+                    }
+                    if (readded) break
+                    Thread.sleep(3_000)
+                }
+                assertTrue("Same-hash re-add was never admitted", readded)
             }
         } finally {
             seed.close()
