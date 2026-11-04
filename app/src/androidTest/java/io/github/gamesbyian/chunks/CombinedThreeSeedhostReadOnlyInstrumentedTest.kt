@@ -90,7 +90,9 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
     }
 
     private fun disconnect(label: String) {
-        rule.onNodeWithText("Options").performClick()
+        // The Options panel is remembered across Disconnect/reconnect (run
+        // 41800987696): tapping it again would close it. Open only if shut.
+        if (!visible("Find a screen or tool")) rule.onNodeWithText("Options").performClick()
         waitFor("options-$label-missing") { visible("Find a screen or tool") }
         rule.onNodeWithText("Server").performScrollTo().performClick()
         waitFor("server-screen-$label-missing") { visible("Disconnect") }
