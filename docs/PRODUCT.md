@@ -1,5 +1,9 @@
 # Chunks canonical product contract
 
+## Add source URLs and clipboard prefill (owner approved, 2026-11-04)
+
+The single Add screen SHALL accept valid magnets, authorized local `.torrent` content URIs, and HTTP(S) URLs returning valid `.torrent` metainfo, including extensionless tracker download links. On foreground Add entry, eligible copied magnet/torrent URLs SHALL populate an otherwise empty source field by default, with an opt-out and manual Paste; never overwrite an existing draft or perform a network fetch/Add from clipboard alone. Android Share/Open With SHALL enter the same Add screen. Exact behavior, source precedence, security and acceptance: [ADD-SOURCE-INTAKE](ADD-SOURCE-INTAKE.md). This is an expansion of the existing Add work, not a reopened P0 A–E gate.
+
 ## Transfer progress as recency-preserving chunks (owner approved; planned 2026-11-03)
 
 The segmented progress bar SHALL begin empty and accumulate contiguous width-proportional chunks for *observed positive increases* in verified completed download progress. The bar represents chronological download growth, not piece positions, and does not pre-render future slots. The newest progress increments remain individually visible as older increments coalesce under a default cap of 20 visible chunks. Use the same per-environment transfer history in phone, rTorrent and Combined views; preserve numerical progress, trustworthy corrections and accessible status independently. This is visual/UI refinement, not an alteration to BitTorrent or rTorrent accounting and not a new P0 release gate. Algorithm and acceptance: [TRANSFER-PROGRESS-CHUNKS](TRANSFER-PROGRESS-CHUNKS.md).

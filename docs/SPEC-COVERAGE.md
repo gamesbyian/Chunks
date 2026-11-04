@@ -1,5 +1,9 @@
 # Chunks specification coverage and acceptance map
 
+## 2026-11-04 new Add intake requirement (planned; not accepted)
+
+[ADD-SOURCE-INTAKE](ADD-SOURCE-INTAKE.md) now requires HTTP(S) remote `.torrent` URL importing (including extensionless/private tracker-token links), one-time foreground clipboard prefill for eligible links when Add source is empty, configurable default-on behavior, manual Paste, Android Share/Open With parity, no implicit fetch/Add, safe URL retrieval and phone/rTorrent equivalence. **No newly completed implementation/CI/Pixel evidence is claimed.** Track via existing Add/UX work (#8 and adapter #1/#5), not an additional P0 release gate; keep earlier Add proof valid where unaffected.
+
 ## 2026-11-03 evidence correction
 
 The owner reports ordinary Add, Start, Stop and Restart working on the physical Android phone; preserve that report and do not demand repetitive requalification of unchanged behavior. [41563247925](https://github.com/gamesbyian/Chunks/actions/runs/41563247925) separately passed actual API35 emulator reboot/reseed and process-death recovery on source `df3f2c8d086b13b45f6a10a145e13191d139453f`; it does not prove physical reboot or OEM endurance. [#1125](https://github.com/gamesbyian/Chunks/pull/1125) and [#1126](https://github.com/gamesbyian/Chunks/pull/1126) merged phone/remote confirmation identity and freshness work, while owned-payload deletion, local uncertain-removal recovery, full multi-profile real-engine scope and physical removal remain open in [#1113](https://github.com/gamesbyian/Chunks/issues/1113). See [quality ledger](QUALITY-LEDGER.md) and [work queue](WORK-QUEUE.md) for exact receipts and live priorities.
