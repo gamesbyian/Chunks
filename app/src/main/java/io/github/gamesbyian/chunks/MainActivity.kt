@@ -1991,6 +1991,8 @@ private fun TransfersScreen(
                     saved
                 },
                 onLifecycleSettled = onLifecycleSettled,
+                progressEnvironmentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                    .serverIdOfAliasScope(aliasScope)?.value,
                 transfer = transfer, expanded = selectedHash == transfer.hash,
                 snapshotRevision = snapshotRevision,
                 otherTransferDownloading = RemoteQueueActivityContext.otherTransferReportsDownloading(
@@ -2044,6 +2046,7 @@ private fun TransferCard(
     alias: String?, aliasSession: TransferAliasEditSession,
     onAliasSave: (String?) -> Boolean,
     onLifecycleSettled: () -> Unit,
+    progressEnvironmentId: String?,
     transfer: RemoteTransfer, expanded: Boolean,
     snapshotRevision: Long,
     otherTransferDownloading: Boolean,
@@ -2091,9 +2094,13 @@ private fun TransferCard(
                 alias = alias, onSave = onAliasSave, session = aliasSession
             )
             }
-            ChunkedProgressBar(
+            if (transfer.metadataPending != true && transfer.sizeBytes > 0) ChunkedProgressBar(
                 progress = transfer.fractionComplete,
                 modifier = Modifier.fillMaxWidth(),
+                historyKey = progressEnvironmentId?.let {
+                    ProgressChunkStore.identity(it, transfer.hash)
+                },
+                observeFresh = !stale,
                 tone = when {
                     transfer.fractionComplete >= 1f -> ChunksTone.COMPLETE
                     !transfer.started -> ChunksTone.PAUSED
