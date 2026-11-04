@@ -445,16 +445,29 @@ internal fun LocalEngineScreen(
     // Foreground clipboard prefill: read once each time the Add form opens.
     var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
     var clipboardFilled by remember { mutableStateOf<String?>(null) }
+    val offeredClips = remember { HashSet<String>() }
     LaunchedEffect(Unit) {
         clipboardPrefillOn = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
     }
-    LaunchedEffect(addExpanded, clipboardPrefillOn) {
+    // Returning to Chunks (for example after copying a magnet in a browser)
+    // re-checks once while the Add form is open and still empty.
+    var resumeTick by remember { mutableIntStateOf(0) }
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) resumeTick++
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    LaunchedEffect(addExpanded, clipboardPrefillOn, resumeTick) {
         if (!addExpanded || clipboardPrefillOn != true) return@LaunchedEffect
         val filled = ClipboardMagnetPrefill.decide(
             enabled = true, currentDraft = magnet,
             otherSourcePresent = pending != null || initialMagnet != null || initialTorrentUri != null,
             clipText = ClipboardMagnetPrefill.readText(context))
-        if (filled != null) {
+        // Offer each copied magnet once: never refill one the person cleared or already added.
+        if (filled != null && offeredClips.add(filled)) {
             magnet = filled
             clipboardFilled = filled
         }
