@@ -385,6 +385,9 @@ private fun ChunksApp(
     // Process memory only: an exact verified hash, its account and the view
     // in force at Add. It never selects, expands or commands a transfer.
     var remoteAdded by remember { mutableStateOf<RemoteAddedRecord?>(null) }
+    // The most recent acknowledged Add from the phone or a server, for Combined.
+    // A server key is re-checked against the current account when it is used.
+    var latestAdded by remember { mutableStateOf<io.github.gamesbyian.chunks.model.UnifiedTransferKey?>(null) }
     fun setRemoteQuery(value: String) {
         query = value
         remoteContinuity.rememberQuery(aliasScope, value)
@@ -520,7 +523,10 @@ private fun ChunksApp(
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
-                recentlyAddedTransfer = remoteAdded?.takeIf { server != null }?.combinedKey(aliasScope),
+                recentlyAddedTransfer = latestAdded?.takeIf { key ->
+                    key.environment == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE ||
+                        (server != null && remoteAdded?.combinedKey(aliasScope) == key)
+                },
                 server = server?.let { remote ->
                     CombinedServerSource(aliasScope, transfers, stale = stale || loading,
                         fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt,
@@ -616,6 +622,7 @@ private fun ChunksApp(
                     initialMagnet = phoneHandoffMagnet,
                     initialSearch = phoneSearchPrefill,
                     onSearchConsumed = { phoneSearchPrefill = null },
+                    onAcknowledgedAdd = { hash -> latestAdded = phoneAddedKey(hash) },
                     initialTorrentUri = incomingTorrent,
                     onTorrentConsumed = onIncomingTorrentConsumed,
                     onPrefillConsumed = { phoneHandoffMagnet = null },
@@ -931,6 +938,7 @@ private fun ChunksApp(
                         initialMagnet = phoneHandoffMagnet,
                         initialSearch = phoneSearchPrefill,
                         onSearchConsumed = { phoneSearchPrefill = null },
+                        onAcknowledgedAdd = { hash -> latestAdded = phoneAddedKey(hash) },
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
                         serverCopy = if (remotePrivacyScope == null) null
@@ -1371,8 +1379,11 @@ private fun ChunksApp(
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->
-                            if (server === connectedRemote) remoteAdded = RemoteAddedRecord(
-                                aliasScope, hash, RemoteAddedRecord.viewKey(query, filter.name))
+                            if (server === connectedRemote) {
+                                remoteAdded = RemoteAddedRecord(
+                                    aliasScope, hash, RemoteAddedRecord.viewKey(query, filter.name))
+                                latestAdded = remoteAdded?.combinedKey(aliasScope)
+                            }
                         },
                         onViewVerifiedTransfer = { hash ->
                             // The Add result came from this exact authenticated

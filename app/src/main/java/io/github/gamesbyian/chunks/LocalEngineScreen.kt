@@ -260,6 +260,8 @@ internal fun LocalEngineScreen(
     /** Pre-fills the list search (for example an exact infohash from All environments). */
     initialSearch: String? = null,
     onSearchConsumed: () -> Unit = {},
+    /** Reports each Add the phone engine acknowledged and read back, by its exact hash. */
+    onAcknowledgedAdd: (String) -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
     /** Receives a verified exported .torrent for the server's Add review. */
     onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null,
@@ -323,6 +325,7 @@ internal fun LocalEngineScreen(
         lastAddedHash = hash
         lastAddedView = hash?.let { transferSearch + "\u0000" + transferFilter.name }
         addedOutcome = hash?.let { outcome to it }
+        hash?.let(onAcknowledgedAdd)
     }
     LaunchedEffect(initialSearch) {
         if (!initialSearch.isNullOrBlank()) {

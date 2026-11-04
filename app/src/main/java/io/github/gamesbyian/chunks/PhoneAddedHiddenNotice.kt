@@ -79,3 +79,11 @@ internal data class RemoteAddedRecord(val aliasScope: String, val hash: String, 
         fun viewKey(query: String, filterName: String) = query + "\u0000" + filterName
     }
 }
+
+/** The phone's exact Combined key for an acknowledged Add, or null for a malformed hash. */
+internal fun phoneAddedKey(hash: String): io.github.gamesbyian.chunks.model.UnifiedTransferKey? = try {
+    io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE, hash)
+} catch (_: IllegalArgumentException) {
+    null
+}

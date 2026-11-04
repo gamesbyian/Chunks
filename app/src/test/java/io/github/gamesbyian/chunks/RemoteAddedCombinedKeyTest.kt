@@ -28,4 +28,13 @@ class RemoteAddedCombinedKeyTest {
         assertNull(RemoteAddedRecord("no-separator", hash, "").combinedKey("no-separator"))
         assertNull(RemoteAddedRecord(two, "not-a-hash", "").combinedKey(two))
     }
+
+    @Test fun phoneAddIsKeyedToThePhoneOnly() {
+        val key = phoneAddedKey(hash)!!
+        assertEquals(EnvironmentSnapshots.PHONE, key.environment)
+        assertEquals(hash.lowercase(), key.infoHash)
+        assertNull(phoneAddedKey("not-a-hash"))
+        // The same hash on a server is a different transfer identity.
+        assert(key != record.combinedKey(two))
+    }
 }
