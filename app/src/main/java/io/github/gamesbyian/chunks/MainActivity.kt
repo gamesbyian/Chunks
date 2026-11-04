@@ -292,6 +292,8 @@ private fun ChunksApp(
     // Process memory only (never instance state): a magnet may hold a passkey.
     val phoneMagnetDraft = remember { mutableStateOf("") }
     val combinedListState = rememberLazyListState()
+    // Combined search text, like the phone's: navigation state, not a preference.
+    val combinedSearch = rememberSaveable { mutableStateOf("") }
     // Per exact rTorrent account: list position and search survive route
     // switches (phone, All environments, Places) and Activity recreation.
     val remoteContinuity = rememberSaveable(saver = RemoteListContinuity.Saver) {
@@ -508,6 +510,7 @@ private fun ChunksApp(
         } else if (section == Section.COMBINED) {
             CombinedTransfersScreen(
                 listState = combinedListState,
+                searchState = combinedSearch,
                 server = server?.let { remote ->
                     CombinedServerSource(aliasScope, transfers, stale = stale || loading,
                         fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt,
