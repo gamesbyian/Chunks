@@ -143,13 +143,22 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.change(0, skip_thirty_three)
         self.assertEqual(33, self.check()["junit"]["skipped"])
 
-    def test_reject_unreviewed_increase_in_skipped_cases(self):
+    def test_accepts_reviewed_remote_delete_skip(self):
         def skip_thirty_four(d):
             for case in d["test_cases"][:34]:
                 case["outcome"] = "skipped"
             d["junit"]["executed"] = 147
             d["junit"]["skipped"] = 34
         self.change(0, skip_thirty_four)
+        self.assertEqual(34, self.check()["junit"]["skipped"])
+
+    def test_reject_unreviewed_increase_in_skipped_cases(self):
+        def skip_thirty_five(d):
+            for case in d["test_cases"][:35]:
+                case["outcome"] = "skipped"
+            d["junit"]["executed"] = 146
+            d["junit"]["skipped"] = 35
+        self.change(0, skip_thirty_five)
         with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
 

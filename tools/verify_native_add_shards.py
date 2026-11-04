@@ -19,11 +19,12 @@ REPO = Path(__file__).resolve().parent.parent
 # 28 deliberately skipped. Android console's '362 tests' is NOT 362 executed.
 BASELINE_JUNIT_TESTS = 334
 BASELINE_EXECUTED_TESTS = 306
-MAX_BASELINE_SKIPPED = 33  # 28 accepted skips + 1 opt-in native delete research
+MAX_BASELINE_SKIPPED = 34  # 28 accepted skips + 1 opt-in native delete research
 #   + 1 CombinedTwoRealServersInstrumentedTest (runs only in its two-server workflow)
 #   + 1 CombinedThreeSeedhostReadOnlyInstrumentedTest (protected manual dispatch only)
 #   + 1 PhoneIntakeJourney phaseDelete (runs only from tools/phone_intake_journey.sh)
 #   + 1 CombinedTwoRealServers process-death phase 2 (two-server workflow only)
+#   + 1 RemoteDeleteDataInstalledInstrumentedTest (disposable ruTorrent workflow only)
 
 
 def verify(root, count, sha, screenshot_manifest=None):

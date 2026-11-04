@@ -1,0 +1,132 @@
+name: Installed remote Remove transfer and data (disposable ruTorrent)
+
+# Remote L6 through the installed app on a DISPOSABLE real rTorrent behind the
+# pinned upstream ruTorrent PHP tree. No secrets, no protected host.
+on:
+  pull_request:
+    paths:
+      - "app/src/main/java/io/github/gamesbyian/chunks/TransferSessionRemoveControl.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDeleteData.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
+      - "tools/installed_remote_delete_data.sh"
+      - "tools/stage_disposable_rutorrent_adapter_delete.py"
+      - ".github/workflows/installed-remote-delete-data.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-installed-remote-delete-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  remote-delete-data:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
+      RU_SCGI_HOST: 127.0.0.1
+      RU_SCGI_PORT: "5000"
+    steps:
+      - uses: actions/checkout@v4
+      # The runner context is unavailable in job-level env; export paths here.
+      - name: Disposable paths
+        run: |
+          {
+            echo "CHUNKS_DISPOSABLE_TARGET_DIR=$RUNNER_TEMP/chunks-data"
+            echo "CHUNKS_RUTORRENT_PHP_ROOT=$RUNNER_TEMP/chunks-rutorrent-web/rutorrent1"
+            echo "RU_PROFILE_PATH=$RUNNER_TEMP/chunks-rutorrent-profiles"
+          } >> "$GITHUB_ENV"
+      - name: Start disposable rTorrent, SCGI proxy and pinned ruTorrent PHP
+        run: |
+          sudo timeout 180s apt-get update -qq
+          sudo timeout 180s env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rtorrent nginx php-cli php-xml php-mbstring php-curl
+          mkdir -p "$RUNNER_TEMP/chunks-home" "$RUNNER_TEMP/chunks-data" "$RUNNER_TEMP/chunks-session" \
+            "$RUNNER_TEMP/chunks-rutorrent-web" "$RU_PROFILE_PATH"
+          cat > "$RUNNER_TEMP/chunks-home/.rtorrent.rc" <<EOF
+          directory.default.set = $RUNNER_TEMP/chunks-data
+          session.path.set = $RUNNER_TEMP/chunks-session
+          network.scgi.open_port = 127.0.0.1:5000
+          network.port_range.set = 6890-6890
+          network.port_random.set = no
+          protocol.pex.set = no
+          trackers.use_udp.set = no
+          system.daemon.set = true
+          EOF
+          cat > "$RUNNER_TEMP/chunks-nginx.conf" <<EOF
+          worker_processes 1;
+          pid $RUNNER_TEMP/chunks-nginx.pid;
+          error_log $RUNNER_TEMP/chunks-nginx.error notice;
+          events { worker_connections 64; }
+          http { server { listen 127.0.0.1:18080; location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000; } } }
+          EOF
+          nohup rtorrent -n -o "import=$RUNNER_TEMP/chunks-home/.rtorrent.rc" \
+            > "$RUNNER_TEMP/chunks-rtorrent.log" 2>&1 < /dev/null &
+          echo $! > "$RUNNER_TEMP/chunks-rtorrent.pid"
+          sudo nginx -c "$RUNNER_TEMP/chunks-nginx.conf"
+          # Immutable upstream tree, the same pin as disposable-rtorrent-probe.
+          curl -fsSL --retry 3 --connect-timeout 15 --max-time 90 \
+            https://github.com/Novik/ruTorrent/archive/bf9cd74b173940f2a7284e6acb45c4266f96f08b.tar.gz \
+            -o "$RUNNER_TEMP/chunks-rutorrent.tar.gz"
+          tar -xzf "$RUNNER_TEMP/chunks-rutorrent.tar.gz" -C "$RUNNER_TEMP/chunks-rutorrent-web"
+          mv "$RUNNER_TEMP/chunks-rutorrent-web/ruTorrent-bf9cd74b173940f2a7284e6acb45c4266f96f08b" "$CHUNKS_RUTORRENT_PHP_ROOT"
+          nohup php -S 127.0.0.1:18082 -t "$RUNNER_TEMP/chunks-rutorrent-web" \
+            > "$RUNNER_TEMP/chunks-rutorrent-php.log" 2>&1 </dev/null &
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl -fsS --max-time 2 http://127.0.0.1:18082/rutorrent1/plugins/erasedata/plugin.info -o /dev/null &&
+               curl -fsS --max-time 2 -H 'Content-Type: text/xml' --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
+                 http://127.0.0.1:18080/RPC2 | grep -q '<string>'; then ready=1; break; fi
+            sleep 1
+          done
+          [ "$ready" = 1 ] || { echo "::error::disposable rTorrent/ruTorrent not ready"; cat "$RUNNER_TEMP/chunks-rtorrent.log"; exit 1; }
+      - name: Stage exact fixture payload, foreign canary and stopped session
+        run: |
+          python3 tools/stage_disposable_rutorrent_adapter_delete.py stage | tee "$RUNNER_TEMP/chunks-stage.txt"
+          sed -n 's/.*; hash \([0-9a-f]\{40\}\)$/\1/p' "$RUNNER_TEMP/chunks-stage.txt" > "$RUNNER_TEMP/chunks-remote-delete-hash.txt"
+          grep -Eq '^[0-9a-f]{40}$' "$RUNNER_TEMP/chunks-remote-delete-hash.txt"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build app and instrumentation APKs
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Prepare emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed app Remove transfer and data, real collector and independent witness
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/installed_remote_delete_data.sh
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-installed-remote-delete-data
+          path: |
+            ${{ runner.temp }}/chunks-remote-delete-evidence/
+            ${{ runner.temp }}/chunks-stage.txt
+            ${{ runner.temp }}/chunks-rutorrent-php.log
+            ${{ runner.temp }}/chunks-rtorrent.log
+          retention-days: 14
+          if-no-files-found: warn
