@@ -41,6 +41,12 @@ internal object ChunksColors {
     val SurfaceRaised = Color(0xFF232A39)
     val Muted = Color(0xFF2E3647)
     val Outline = Color(0xFF4A5468)
+    /**
+     * Progress track edge: 5.2:1 on [Background], 4.4:1 on [Surface], 3.9:1 on
+     * [SurfaceRaised], 3.3:1 on [Muted], 5.4:1 on [Trough]. The unfilled part of
+     * a bar must stay perceivable (WCAG 1.4.11, 3:1) so the whole length reads.
+     */
+    val ProgressEdge = Color(0xFF7A8599)
 
     val Text = Color(0xFFF8FAFC)
     /** 10.5:1 on [Background], 9.0:1 on [Surface], 6.6:1 on [Muted]: AA everywhere. */

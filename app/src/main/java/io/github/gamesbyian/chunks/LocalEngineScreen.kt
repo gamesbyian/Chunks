@@ -1756,6 +1756,9 @@ internal fun LocalEngineScreen(
             Text("Seeding rules…")
         }
         io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
+        // Settings first, then occasional tools: the person looking for a
+        // speed limit does not have to scroll past snapshot and export panels.
+        LocalSpeedLimits()
         LocalSnapshotRestorePreviewPanel(
             transfers = transfers,
             inventoryConfirmed = hasConfirmedLocalInventory,
@@ -1844,7 +1847,6 @@ internal fun LocalEngineScreen(
             onNamesChanged = { registeredNames = it }
         )
         LocalZipInterruptedExtractions()
-        LocalSpeedLimits()
     }
     ReturnToTopControl(
         visible = showBackToTop,
@@ -2505,13 +2507,22 @@ internal fun parseSpeedLimit(text: String): Int? {
     return if (kib in 0..(Int.MAX_VALUE / 1024)) kib * 1024 else null
 }
 
+/** Current saved value and where it came from, in one sentence. */
+internal fun speedLimitSummary(limits: LocalRateLimits): String {
+    fun one(bytes: Int) = if (bytes == 0) "unlimited" else "${bytes / 1024} KiB/s"
+    return if (limits == LocalRateLimits())
+        "Now: unlimited download and upload (default)."
+    else "Now: download ${one(limits.downloadBytesPerSecond)}, upload " +
+        "${one(limits.uploadBytesPerSecond)} (your saved limit)."
+}
+
 private fun speedText(bytesPerSecond: Int) = if (bytesPerSecond == 0) "" else (bytesPerSecond / 1024).toString()
 
 @Composable
 internal fun LocalSpeedLimits() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val saved = remember { LocalEngineHolder.rateLimitsPreferred(context) }
+    var saved by remember { mutableStateOf(LocalEngineHolder.rateLimitsPreferred(context)) }
     var download by remember { mutableStateOf(speedText(saved.downloadBytesPerSecond)) }
     var upload by remember { mutableStateOf(speedText(saved.uploadBytesPerSecond)) }
     var result by remember { mutableStateOf<String?>(null) }
@@ -2519,6 +2530,7 @@ internal fun LocalSpeedLimits() {
     val downloadLimit = parseSpeedLimit(download)
     val uploadLimit = parseSpeedLimit(upload)
     Text("Speed limits", fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+    Text(speedLimitSummary(saved), style = MaterialTheme.typography.bodyMedium)
     SettingScopeNote(PHONE_ENVIRONMENT_LABEL)
     Text("In KiB per second; leave blank for unlimited. Devices on your own network are not limited.",
         style = MaterialTheme.typography.bodySmall)
@@ -2545,6 +2557,7 @@ internal fun LocalSpeedLimits() {
                     val confirmed = withContext(Dispatchers.IO) {
                         LocalEngineHolder.setRateLimitsPreferred(context, wanted)
                     }
+                    if (confirmed) saved = wanted
                     result = if (confirmed)
                         "Speed limits verified (if the engine is running) and saved on this phone."
                     else
@@ -2561,6 +2574,36 @@ internal fun LocalSpeedLimits() {
     }, enabled = !saving && downloadLimit != null && uploadLimit != null,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
         Text(if (saving) "Checking speed limits…" else "Save speed limits")
+    }
+    // Contextual reset beside the value it changes; it follows the same
+    // engine-confirmed save path, so an unconfirmed reset is reported as such.
+    if (saved != LocalRateLimits()) OutlinedButton(onClick = {
+        if (!saving) {
+            saving = true
+            result = null
+            scope.launch {
+                try {
+                    val confirmed = withContext(Dispatchers.IO) {
+                        LocalEngineHolder.setRateLimitsPreferred(context, LocalRateLimits())
+                    }
+                    if (confirmed) {
+                        saved = LocalRateLimits()
+                        download = ""
+                        upload = ""
+                    }
+                    result = if (confirmed) "Speed limits reset to unlimited on this phone."
+                    else "Speed limits were not reset. The engine did not confirm, or local storage could not commit. Live limits may be uncertain."
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    result = "Speed limits were not confirmed or reset. Check the engine state before trying again."
+                } finally {
+                    saving = false
+                }
+            }
+        }
+    }, enabled = !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        Text("Reset to unlimited (default)")
     }
     result?.let { Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
 }

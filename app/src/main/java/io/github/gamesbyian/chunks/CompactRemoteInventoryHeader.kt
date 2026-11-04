@@ -10,6 +10,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
@@ -33,15 +39,22 @@ internal fun CompactRemoteInventoryHeader(
     view: String,
     stale: Boolean,
     loading: Boolean,
-    onAllEnvironments: () -> Unit
+    onAllEnvironments: () -> Unit,
+    /** Wall-clock time of the last successful list read, if any. */
+    observedAtEpochMillis: Long? = null
 ) {
     val countText = "$loadedCount " + if (loadedCount == 1) "transfer" else "transfers"
     val viewText = if (view == "main") "" else " · $view view"
-    val freshness = when {
-        stale -> " · last known"
-        loading -> " · refreshing"
-        else -> ""
+    // Only an out-of-date list needs its age; keep the clock ticking so
+    // "2 min ago" does not silently stay "just now".
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    if (stale && observedAtEpochMillis != null) LaunchedEffect(observedAtEpochMillis) {
+        while (true) {
+            now = System.currentTimeMillis()
+            delay(30_000)
+        }
     }
+    val freshness = remoteFreshnessText(stale, loading, observedAtEpochMillis, now)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // The transfer-list gutters leave 376dp on the primary 412dp
         // phone. It can hold a named environment badge and the All
@@ -72,6 +85,29 @@ internal fun CompactRemoteInventoryHeader(
                 }
             }
         }
+    }
+}
+
+/**
+ * Honest list freshness. A stale list says how old its last successful read
+ * is; a list that has never been read says so instead of implying an age.
+ */
+internal fun remoteFreshnessText(
+    stale: Boolean, loading: Boolean, observedAtEpochMillis: Long?, nowEpochMillis: Long
+): String = when {
+    stale && observedAtEpochMillis == null -> " · last known, not yet read"
+    stale -> " · last known, " + observedAgeText(nowEpochMillis - observedAtEpochMillis!!)
+    loading -> " · refreshing"
+    else -> ""
+}
+
+internal fun observedAgeText(ageMillis: Long): String {
+    val minutes = (ageMillis.coerceAtLeast(0) / 60_000)
+    return when {
+        minutes < 1 -> "read just now"
+        minutes < 60 -> "read $minutes min ago"
+        minutes < 48 * 60 -> "read ${minutes / 60} h ago"
+        else -> "read ${minutes / (24 * 60)} days ago"
     }
 }
 

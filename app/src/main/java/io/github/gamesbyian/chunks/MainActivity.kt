@@ -1698,7 +1698,8 @@ private fun TransfersScreen(
                     view = view,
                     stale = stale,
                     loading = loading,
-                    onAllEnvironments = onCombined
+                    onAllEnvironments = onCombined,
+                    observedAtEpochMillis = progressObservedAt
                 )
                 RemoteTransfersPrimaryActions(
                     loading = loading, stale = stale,

@@ -45,8 +45,8 @@ internal fun ChunkedProgressBar(
     modifier: Modifier = Modifier,
     segments: Int = ProgressChunkHistory.MAX_BANDS,
     tone: ChunksTone = ChunksTone.ACTIVE,
-    activeColor: Color = tone.color,
-    trackColor: Color = ChunksColors.Muted,
+    activeColor: Color = tone.progressFill,
+    trackColor: Color = ChunksColors.ProgressEdge,
     historyKey: String? = null,
     observeFresh: Boolean = true,
     observationEpochMillis: Long? = null
@@ -123,6 +123,14 @@ internal fun ChunkedProgressBar(
         }
     }
 }
+
+/**
+ * Fill for a tone on the dark [ChunksColors.Trough]. Every accent already
+ * exceeds 6:1; the neutral inactive outline (2.7:1) is too faint to show how
+ * much is complete, so waiting/unknown bars use the 11:1 secondary text grey.
+ */
+internal val ChunksTone.progressFill: Color
+    get() = if (this == ChunksTone.INACTIVE) ChunksColors.TextSecondary else color
 
 /** Re-render with fewer bands on narrow rows without changing persisted history. */
 internal fun coalesceOldest(bands: List<Int>, maximum: Int): List<Int> {
