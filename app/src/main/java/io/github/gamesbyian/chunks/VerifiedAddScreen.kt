@@ -83,7 +83,9 @@ fun VerifiedAddScreen(
     /** Exact server account and address this Add goes to, shown in the confirmation. */
     environmentLabel: String? = null,
     /** View only a positively verified hash in this authenticated server inventory. */
-    onViewVerifiedTransfer: (String) -> Unit = {}
+    onViewVerifiedTransfer: (String) -> Unit = {},
+    /** Reports each positively verified Add hash once, so the list can explain a hidden result. */
+    onVerifiedAdd: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -97,6 +99,7 @@ fun VerifiedAddScreen(
     var uncertain by remember { mutableStateOf(false) }
     var alreadyAttempted by remember { mutableStateOf(false) }
     var verifiedHash by remember(remote) { mutableStateOf<String?>(null) }
+    LaunchedEffect(verifiedHash) { verifiedHash?.let(onVerifiedAdd) }
     // Freeze the command actually submitted: mutable checkbox values do not
     // authorize treating an already-started Add as a stopped Add on recheck.
     var nativeStartedAttempt by remember { mutableStateOf(false) }

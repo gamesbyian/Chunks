@@ -3,6 +3,15 @@ package io.github.gamesbyian.chunks
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -142,5 +151,54 @@ class AuthenticatedTransfersFooterTest {
         add.performClick()
         options.performClick()
         assertEquals(1, adds)
+    }
+
+    @Test fun softKeyboardYieldsFooterSpaceAndRestoresTheSameActionsWhenClosed() {
+        var ime by mutableStateOf(true)
+        var adds = 0
+        rule.setContent {
+            ChunksTheme {
+                Box(Modifier.width(412.dp)) {
+                    AuthenticatedTransfersFooter(false, {}, { adds++ }, {}, imeVisible = ime)
+                }
+            }
+        }
+        rule.onAllNodesWithText("Transfers").assertCountEquals(0)
+        rule.onAllNodesWithText("+ Add").assertCountEquals(0)
+        rule.onAllNodesWithText("Options").assertCountEquals(0)
+        ime = false
+        rule.waitForIdle()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
+        assertEquals(1, adds)
+    }
+
+    @Test fun platformImeInsetsHideFooterThroughTheDefaultParameter() {
+        var view: android.view.View? = null
+        rule.setContent {
+            view = LocalView.current
+            ChunksTheme {
+                Box(Modifier.width(412.dp)) { AuthenticatedTransfersFooter(false, {}, {}, {}) }
+            }
+        }
+        rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        rule.runOnIdle {
+            val root = requireNotNull(view).rootView
+            ViewCompat.dispatchApplyWindowInsets(root, WindowInsetsCompat.Builder()
+                .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, 300))
+                .setVisible(WindowInsetsCompat.Type.ime(), true)
+                .build())
+        }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("+ Add").assertCountEquals(0)
+        rule.runOnIdle {
+            ViewCompat.dispatchApplyWindowInsets(requireNotNull(view).rootView,
+                WindowInsetsCompat.Builder()
+                    .setInsets(WindowInsetsCompat.Type.ime(), Insets.NONE)
+                    .setVisible(WindowInsetsCompat.Type.ime(), false)
+                    .build())
+        }
+        rule.waitForIdle()
+        rule.onAllNodesWithText("+ Add").assertCountEquals(1)
     }
 }
