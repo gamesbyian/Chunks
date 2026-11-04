@@ -925,7 +925,7 @@ internal fun CombinedTransfersScreen(
                     query = query.copy(search = it)
                     searchState?.value = it
                 },
-                label = "Search all selected"
+                label = "Search names or hashes"
             )
             // The search affordance itself remains in place while typing.
             // This hint comes AFTER the field so it never displaces its focus.

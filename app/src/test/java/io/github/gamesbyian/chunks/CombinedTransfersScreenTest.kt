@@ -48,13 +48,17 @@ class CombinedTransfersScreenTest {
 
     // Wrapped scope/filter/sort groups can push rows below the first lazy viewport.
     // Reveal actual list items before tapping; never depend on initial composition.
-    private fun revealText(text: String) {
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
+    // The saved view preference loads off the main thread (not an idling
+    // resource) and can recompose the list mid-scroll (CI foundation
+    // 41888303641 attempt 1). Retry the scroll until the list settles; the
+    // assertions that follow are unchanged.
+    private fun reveal(matcher: androidx.compose.ui.test.SemanticsMatcher) {
+        rule.waitUntil(10_000) {
+            runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(matcher) }.isSuccess
+        }
     }
-    private fun revealDescription(description: String) {
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasContentDescription(description))
-    }
+    private fun revealText(text: String) = reveal(hasText(text, substring = true))
+    private fun revealDescription(description: String) = reveal(hasContentDescription(description))
 
     private val commands = ArrayList<Pair<String, Boolean>>()
     private var settles = 0
@@ -197,8 +201,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun clearSearchRestoresAllMatchesWithoutChangingSelectedEnvironments() {
         show()
-        revealText("Search all selected")
-        rule.onNodeWithText("Search all selected").performTextInput("Small Episode")
+        revealText("Search names or hashes")
+        rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
         rule.onNodeWithText("Showing 1", substring = true).assertExists()
         rule.onNodeWithText("New downloads may not match this search.", substring = true)
             .assertExists()
@@ -221,7 +225,7 @@ class CombinedTransfersScreenTest {
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
         show()
-        rule.onNodeWithText("Search all selected").performTextInput("not-in-any-transfer")
+        rule.onNodeWithText("Search names or hashes").performTextInput("not-in-any-transfer")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
         revealText("New downloads may not match this search.")
         rule.onNodeWithText("New downloads may not match this search.", substring = true)
@@ -251,8 +255,8 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         revealText("Stopped")
         rule.onNodeWithText("Stopped").performClick()
-        revealText("Search all selected")
-        rule.onNodeWithText("Search all selected").performTextInput("Big Archive")
+        revealText("Search names or hashes")
+        rule.onNodeWithText("Search names or hashes").performTextInput("Big Archive")
         revealText("Showing 0")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
         revealText("New downloads may be hidden by this view.")

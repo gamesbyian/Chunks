@@ -489,7 +489,10 @@ class ChunksMainActivityAtlasTest {
         // A compact Transfers header merges the filtered count and the
         // actionable sort criterion. Require both after the real UI search,
         // preserving the one-match test instead of accepting the query alone.
-        val oneMatchSort = hasText("1 shown · Sort:", substring = true) and hasClickAction()
+        // A narrowed list reads "1 of N shown"; an unnarrowed one "1 shown".
+        val oneMatchSort = (hasText("· 1 of ", substring = true) and
+            hasText(" shown · Sort:", substring = true) or
+            hasText("· 1 shown · Sort:", substring = true)) and hasClickAction()
         try {
             rule.onNode(hasScrollToIndexAction())
                 .performScrollToNode(oneMatchSort)
