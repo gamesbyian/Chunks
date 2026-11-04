@@ -13,6 +13,7 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
       - "tools/preload_combined_two_servers.py"
       - "tools/installed_combined_two_servers.sh"
+      - "tools/combined_fault_controller.py"
       - ".github/workflows/installed-combined-two-servers.yml"
   workflow_dispatch:
 
@@ -78,6 +79,10 @@ jobs:
             --a http://127.0.0.1:18080/RPC2 --b http://127.0.0.1:18082/RPC2 \
             --dir-a "$RUNNER_TEMP/chunks-combined/a/data" --dir-b "$RUNNER_TEMP/chunks-combined/b/data" \
             --run "$GITHUB_RUN_ID" --receipt "$RUNNER_TEMP/chunks-combined/receipt.json"
+      - name: Start disposable-only fault switch for server A
+        run: |
+          nohup python3 tools/combined_fault_controller.py "$RUNNER_TEMP/chunks-combined" \
+            > "$RUNNER_TEMP/chunks-combined/fault.log" 2>&1 < /dev/null &
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -124,5 +129,6 @@ jobs:
           path: |
             ${{ runner.temp }}/chunks-combined/receipt.json
             ${{ runner.temp }}/chunks-combined/evidence/
+            ${{ runner.temp }}/chunks-combined/fault.log
           retention-days: 14
           if-no-files-found: warn

@@ -35,6 +35,7 @@ import org.junit.runner.RunWith
  * activity launch reconnects the remembered server read-only. A mixed Combined
  * batch Start/Stop over the same hash on both servers may change only the
  * signed-in server B (independent XML-RPC readback); saved-only A is untouched.
+ * Finally A's daemon is stopped mid-session and Combined must report it truthfully.
  */
 @RunWith(AndroidJUnit4::class)
 class CombinedTwoRealServersInstrumentedTest {
@@ -224,5 +225,42 @@ class CombinedTwoRealServersInstrumentedTest {
         assertEquals(truthA.map { it.hash to it.started }.toSet(), afterA.map { it.hash to it.started }.toSet())
         assertEquals(truthB.map { it.hash to it.started }.toSet(), afterB.map { it.hash to it.started }.toSet())
         stage("unchanged")
+
+        // C2 through a real adapter: server A's daemon goes away mid-session
+        // (its gateway still answers). Combined must report A's refresh
+        // failure, keep its last rows marked out of date, keep B live, and
+        // never claim A is current.
+        ActivityScenario.launch(MainActivity::class.java).use {
+            waitFor("relaunch entry for C2") { connectedQueue() || visible("On this phone (experimental)") }
+            if (!connectedQueue()) rule.onNodeWithText("Back").performScrollTo().performClick()
+            waitFor("reconnect for C2", 90_000) { connectedQueue() }
+            rule.onAllNodesWithText("All environments…")[0].performClick()
+            waitFor("Combined for C2") { visible("All environments") && !visible("All environments…") }
+            scrollTo("Load other saved servers (read-only)")
+            rule.onNodeWithText("Load other saved servers (read-only)").performClick()
+            waitFor("union before fault", 60_000) { visible("Showing 4") }
+            val fault = java.net.URL("http://127.0.0.1:18083/offline-a").openConnection()
+                as java.net.HttpURLConnection
+            fault.connectTimeout = 10_000
+            fault.readTimeout = 30_000
+            assertEquals("Harness could not take server A offline", 200, fault.responseCode)
+            fault.disconnect()
+            stage("server-a-offline")
+            scrollTo("Refresh other saved servers")
+            rule.onNodeWithText("Refresh other saved servers").performClick()
+            scrollTo("Environment status")
+            if (!visible(":$portA")) rule.onNodeWithText("Environment status", substring = true).performClick()
+            fun line(port: String, text: String) = rule.onAllNodes(
+                hasText(":$port", substring = true) and hasText(text, substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+            waitFor("A reported failed with last list retained", 90_000) {
+                line(portA, "Refresh failed") && line(portA, "showing last list")
+            }
+            assertTrue("Offline server A must not be shown as Live", !line(portA, ": Live"))
+            assertTrue("Signed-in server B stays live", line(portB, "· 2 transfers") && !line(portB, "Refresh failed"))
+            assertTrue("Combined must flag an out-of-date source",
+                visible("some environments are missing or out of date"))
+            stage("c2-offline-truthful")
+        }
     }
 }
