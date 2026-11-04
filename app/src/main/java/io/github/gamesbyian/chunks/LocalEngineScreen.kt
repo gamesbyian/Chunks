@@ -1400,6 +1400,7 @@ internal fun LocalEngineScreen(
                     }
                 }
             LocalTransferCard(transfer, busy || inventoryStale,
+                stale = inventoryStale,
                 onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
                     transfer.trackers?.total == 0) ({
                     repairReview = null
@@ -2084,7 +2085,9 @@ internal fun LocalTransferCard(
     onRepairTrackers: (() -> Unit)? = null,
     observedGrowth: LocalProgressHistory.ObservedDelta? = null,
     /** The Smart Seeding snapshot the phone controller stored; null before it has seen this transfer. */
-    seeding: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment? = null
+    seeding: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment? = null,
+    /** The engine status read failed; rates are from the last confirmed read. */
+    stale: Boolean = false
 ) {
     // An open confirmation belongs to the identity the user reviewed, not
     // just a hash that may now describe a moved or changed transfer. A stale
@@ -2141,12 +2144,12 @@ internal fun LocalTransferCard(
                 // The libtorrent status sample is an instantaneous estimate;
                 // unlike the independent observed-growth window below, it
                 // must not be presented as verified bytes or a lasting trend.
-                Text("Live payload ↓ " +
+                Text((if (stale) "Last read payload ↓ " else "Live payload ↓ ") +
                     Units.bytes(transfer.downloadPayloadRateBytesPerSecond.toLong()) + "/s · ↑ " +
                     Units.bytes(transfer.uploadPayloadRateBytesPerSecond.toLong()) + "/s" +
                     (Units.timeLeft(transfer.wantedBytes - transfer.doneBytes,
                         transfer.downloadPayloadRateBytesPerSecond.toLong())
-                        ?.takeIf { transfer.metadataKnown }?.let { " · $it" } ?: ""),
+                        ?.takeIf { transfer.metadataKnown && !stale }?.let { " · $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall)
             }
             if (diagnosticsOpen) {
