@@ -1,0 +1,112 @@
+name: P0 one-time protected numbered-instance fixture provisioning
+
+# This is a preparation tool, NOT a release gate. It leaves tiny, stopped
+# session entries alive for shared full-journey testing across other workflows.
+# Protected live Add is manual/trusted-main/first-attempt/explicitly armed only.
+# No automatic retry, Start, Stop, Erase, file deletion or arbitrary path input.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/seedhost-p0-cohort-once.yml"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/SeedhostP0CohortProvisionTest.kt"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "I authorize stopped-only, run-unique fixture Add on BOTH approved numbered rTorrent test instances"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.event_name == 'workflow_dispatch' && 'chunks-android-seedhost-scope-mutation' || format('chunks-p0-cohort-plan-{0}', github.event.pull_request.number || github.run_id) }}
+  cancel-in-progress: false
+
+jobs:
+  offline-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Android compile SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Verify stable samehash, separate profiles and refused cross-instance route
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostP0CohortProvisionTest.fixtureIdentitiesAreStablePerDispatchAndDistinctAcrossRuns'
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostP0CohortProvisionTest.xml
+          grep -q 'tests="1" skipped="0" failures="0" errors="0"' "$report"
+
+  protected-stopped-add:
+    # First attempt only. Rerunning the entire workflow cannot resubmit
+    # mutation. Input true is required and ordinary PRs have no credentials.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' &&
+          github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          inputs.apply }}
+    needs: offline-plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    strategy:
+      fail-fast: false
+      matrix:
+        instance: ["2", "3"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Refuse missing numbered-instance secret before any RPC
+        env:
+          CHUNKS_P0_COHORT_PASS: ${{ secrets[matrix.instance == '2' && 'rTorrent_pass2' || 'rtorrent_pass3'] }}
+        run: |
+          test -n "$CHUNKS_P0_COHORT_PASS" || {
+            echo "::error::Selected instance secret unavailable; no Add sent"
+            exit 1
+          }
+      - name: Production Kotlin adapter stages run-unique stopped cohort
+        env:
+          CHUNKS_P0_COHORT_URL: https://ianseeds.wood.seedhost.eu/rutorrent${{ matrix.instance }}/
+          CHUNKS_P0_COHORT_INSTANCE: ${{ matrix.instance }}
+          CHUNKS_P0_COHORT_RUN_ID: ${{ github.run_id }}
+          CHUNKS_P0_COHORT_ATTEMPT: ${{ github.run_attempt }}
+          CHUNKS_P0_COHORT_APPLY: ${{ inputs.apply }}
+          CHUNKS_P0_COHORT_USER: ianseeds
+          CHUNKS_P0_COHORT_PASS: ${{ secrets[matrix.instance == '2' && 'rTorrent_pass2' || 'rtorrent_pass3'] }}
+          CHUNKS_P0_COHORT_RECEIPT: ${{ runner.temp }}/cohort-instance-${{ matrix.instance }}.tsv
+        run: |
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.SeedhostP0CohortProvisionTest.addStoppedMetadataOnlyToExactlyReviewedDevelopmentInstance'
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostP0CohortProvisionTest.xml
+          grep -q 'tests="1" skipped="0" failures="0" errors="0"' "$report"
+      - name: Retain credential-free exact fixture and stage receipts even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-p0-live-cohort-instance-${{ matrix.instance }}
+          path: ${{ runner.temp }}/cohort-instance-${{ matrix.instance }}.tsv
+          if-no-files-found: warn
+          retention-days: 21
