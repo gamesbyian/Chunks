@@ -2,6 +2,11 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-04 non-P0 UX #1287: installed soft-keyboard footer and phone search recreation
+
+- Native Add [41912638476](https://github.com/gamesbyian/Chunks/actions/runs/41912638476) on PR head `0ab91309` (merge ref `b3c00d64`). Per-case shard receipts were matched by the digest's SHA-256 test identity (`classname\0name`), not the aggregate: `FooterImeInstalledInstrumentedTest.footerYieldsToTheSoftKeyboardAndReturnsAfterSearchKey` **passed** in shard 1 (the IME-absent assumption did not trigger) and `phoneSearchSurvivesActivityRecreation` **passed** in shard 0. Shards: 161 executed/19 skipped and 167/15 by identity; the skips are pre-existing cases.
+- Scope: emulator soft keyboard and Activity recreation only. Physical Pixel keyboard, third-party IMEs and TalkBack remain unverified.
+
 ## 2026-11-04 CI #1286: Robolectric prefetch mirror-payload fallback
 
 - **[#1286](https://github.com/gamesbyian/Chunks/pull/1286)** squash-merged as `0fe0cc37cebf06cf1f77f662adbc540e348247ea` from exact head `f949ee82ac2dab86906483c55f3dff33df6f42fc`. Passed: foundation [41910436861](https://github.com/gamesbyian/Chunks/actions/runs/41910436861), which ran the modified prefetch, and docs [41910436649](https://github.com/gamesbyian/Chunks/actions/runs/41910436649).
