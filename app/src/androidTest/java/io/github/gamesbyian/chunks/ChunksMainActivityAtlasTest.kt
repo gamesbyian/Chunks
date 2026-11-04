@@ -193,6 +193,19 @@ class ChunksMainActivityAtlasTest {
             input.hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
             activity.currentFocus?.clearFocus()
         }
+        // adjustResize relayouts while the IME animates away. Wait (bounded) until
+        // the window reports the keyboard hidden, so a following scroll-then-tap
+        // cannot target a position that moves underneath it (native Add
+        // 41765640619 attempt 1 failed tapping Review Add right after this step).
+        rule.waitUntil(5_000) {
+            var hidden = true
+            rule.runOnUiThread {
+                hidden = androidx.core.view.ViewCompat
+                    .getRootWindowInsets(rule.activity.window.decorView)
+                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) != true
+            }
+            hidden
+        }
         rule.waitForIdle()
     }
 
