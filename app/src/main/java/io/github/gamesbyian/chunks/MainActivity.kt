@@ -275,6 +275,11 @@ private fun ChunksApp(
     val phoneListScroll = rememberScrollState()
     val phoneSearch = rememberSaveable { mutableStateOf("") }
     val combinedListState = rememberLazyListState()
+    // Per exact rTorrent account: list position and search survive route
+    // switches (phone, All environments, Places) and Activity recreation.
+    val remoteContinuity = rememberSaveable(saver = RemoteListContinuity.Saver) {
+        RemoteListContinuity()
+    }
     // A view-only filter; no hidden configuration or account scope is indexed.
     var optionsSearch by rememberSaveable { mutableStateOf("") }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
@@ -347,7 +352,16 @@ private fun ChunksApp(
         // search/filter. Search is transient; only this exact profile's filter
         // is restored from durable view-only preferences.
         filter = remoteFilterStore.load(sortEnvironment)
-        query = ""
+        // Restores only this exact account's own search; another account
+        // (or no account) starts empty.
+        query = if (sortEnvironment == null) "" else remoteContinuity.query(aliasScope)
+    }
+    // Process memory only: an exact verified hash, its account and the view
+    // in force at Add. It never selects, expands or commands a transfer.
+    var remoteAdded by remember { mutableStateOf<RemoteAddedRecord?>(null) }
+    fun setRemoteQuery(value: String) {
+        query = value
+        remoteContinuity.rememberQuery(aliasScope, value)
     }
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
@@ -522,7 +536,7 @@ private fun ChunksApp(
                             section = Section.LOCAL
                         }
                         ExactOwningListNavigation.Route.AUTHENTICATED_SERVER -> {
-                            query = key.infoHash
+                            setRemoteQuery(key.infoHash)
                             filter = TransferFilter.ALL
                             // Combined may show a full "main" inventory while
                             // the signed-in screen is still on a filtered view.
@@ -1025,7 +1039,7 @@ private fun ChunksApp(
             }
             // Per-account list position survives visiting Places, Server or
             // other routes; a different account starts at the top.
-            val remoteListState = remember(aliasScope) { androidx.compose.foundation.lazy.LazyListState() }
+            val remoteListState = remember(aliasScope) { remoteContinuity.listState(aliasScope) }
             when (section) {
                 Section.TRANSFERS -> RemoteEnvironmentCompositionBoundary(aliasScope, connectedRemote) {
                     TransfersScreen(
@@ -1041,13 +1055,14 @@ private fun ChunksApp(
                     }?.label?.takeIf { it.isNotBlank() } ?: "rTorrent",
                     snapshotRevision = snapshotRevision,
                     progressObservedAt = transfersObservedAt,
-                    query = query, onQuery = { query = it },
+                    addedRecord = remoteAdded,
+                    query = query, onQuery = { setRemoteQuery(it) },
                     filter = filter, onFilter = { next ->
                         filter = next
                         remoteFilterStore.save(sortEnvironment, next)
                     },
                     onClearView = {
-                        query = ""
+                        setRemoteQuery("")
                         filter = TransferFilter.ALL
                         remoteFilterStore.save(sortEnvironment, TransferFilter.ALL)
                     },
@@ -1285,11 +1300,15 @@ private fun ChunksApp(
                         onMagnet = { magnet = it }, onDestination = { draftPath = it },
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,
+                        onVerifiedAdd = { hash ->
+                            if (server === connectedRemote) remoteAdded = RemoteAddedRecord(
+                                aliasScope, hash, RemoteAddedRecord.viewKey(query, filter.name))
+                        },
                         onViewVerifiedTransfer = { hash ->
                             // The Add result came from this exact authenticated
                             // server; switching accounts must never redirect it.
                             if (server === connectedRemote) {
-                                query = hash
+                                setRemoteQuery(hash)
                                 filter = TransferFilter.ALL
                                 remoteFilterStore.save(sortEnvironment, TransferFilter.ALL)
                                 requestedView = "main"
@@ -1607,7 +1626,9 @@ private fun TransfersScreen(
     onPreparePhone: (RemoteTransfer) -> Unit,
     onCopyToPhone: (String) -> Unit,
     selectedHash: String?, files: List<RemoteFile>?, filesError: String?,
-    filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit
+    filesLoading: Boolean, onInspect: (RemoteTransfer) -> Unit,
+    /** Latest verified Add on this exact account; explains a result the view hides. */
+    addedRecord: RemoteAddedRecord? = null
 ) {
     val knownDownloadingHashes = remember(list) {
         RemoteQueueActivityContext.hashesReportingDownloadTraffic(list)
@@ -1616,6 +1637,10 @@ private fun TransfersScreen(
         TransferCatalog.visible(list, query, filter, order, direction) { transfer ->
             aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
         }
+    }
+    val addedHidden = remember(addedRecord, aliasScope, query, filter, list, visible) {
+        addedRecord?.hiddenIn(aliasScope, RemoteAddedRecord.viewKey(query, filter.name),
+            list.map { it.hash }, visible.map { it.hash }) == true
     }
     val topControlScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -1938,6 +1963,10 @@ private fun TransfersScreen(
                     serverMoveMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             }
+        }
+        if (addedHidden) item(key = "remote-added-hidden") {
+            PhoneAddedHiddenNotice(onShowAll = onClearView,
+                showAllLabel = "Show all transfers on $environmentLabel")
         }
         if (visible.isEmpty()) item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

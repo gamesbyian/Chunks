@@ -3,6 +3,9 @@ package io.github.gamesbyian.chunks
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -26,7 +29,14 @@ import androidx.compose.ui.unit.dp
  * choose another server or change the torrent. A two-row fallback preserves
  * readable labels at enlarged type instead of squeezing three actions into
  * equally narrow buttons. All touch targets stay at least 48dp.
+ *
+ * While the soft keyboard is open (search, rename, Add path) the footer
+ * yields its height to the focused field and the list above it, as Android
+ * bottom navigation conventionally does; the root `safeDrawingPadding()`
+ * already keeps the field above the keyboard, so no extra `imePadding` is
+ * added. A hardware keyboard shows no IME, so keyboard users keep the footer.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun AuthenticatedTransfersFooter(
     /** Null when Options is a destination rather than an expandable panel. */
@@ -37,8 +47,11 @@ internal fun AuthenticatedTransfersFooter(
     /** Supplied by the phone route; a null scope preserves existing remote labels. */
     environmentLabel: String? = null,
     /** Spoken name for Add where no single environment owns it (Combined). */
-    addDescription: String? = null
+    addDescription: String? = null,
+    /** Soft keyboard currently shown; injectable for deterministic tests. */
+    imeVisible: Boolean = WindowInsets.isImeVisible
 ) {
+    if (imeVisible) return
     Surface(color = ChunksColors.Surface) {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             // At 412dp, 140% fonts already make "Transfers" wrap awkwardly

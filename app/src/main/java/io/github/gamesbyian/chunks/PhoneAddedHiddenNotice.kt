@@ -27,16 +27,39 @@ internal object PhoneAddedVisibility {
     }
 }
 
-/** Clearing changes only the view (search text and filter), never sort, jobs or destinations. */
+/**
+ * Clearing changes only the view (search text and filter), never sort, jobs or destinations.
+ * The same notice serves the phone and each rTorrent account; only the
+ * environment wording differs, so the interaction stays identical.
+ */
 @Composable
-internal fun PhoneAddedHiddenNotice(onShowAll: () -> Unit) {
+internal fun PhoneAddedHiddenNotice(
+    onShowAll: () -> Unit,
+    showAllLabel: String = "Show all phone transfers"
+) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Your new transfer was added but is hidden by the current search or filter.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         OutlinedButton(onClick = onShowAll,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Show all phone transfers")
+            Text(showAllLabel)
         }
+    }
+}
+
+/**
+ * A verified rTorrent Add remembered with its exact account and the list view
+ * (search + filter) in force when it was added. Changing the view, or another
+ * account, retires the notice just as on the phone.
+ */
+internal data class RemoteAddedRecord(val aliasScope: String, val hash: String, val viewKey: String) {
+    fun hiddenIn(
+        scope: String, currentViewKey: String, inventory: List<String>, shown: List<String>
+    ): Boolean = scope == aliasScope && currentViewKey == viewKey &&
+        PhoneAddedVisibility.hiddenByView(hash, inventory, shown)
+
+    companion object {
+        fun viewKey(query: String, filterName: String) = query + "\u0000" + filterName
     }
 }
