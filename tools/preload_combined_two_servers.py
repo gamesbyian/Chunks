@@ -37,9 +37,11 @@ def torrent(name, payload):
     return meta, hashlib.sha1(bencode(info)).hexdigest()
 
 
-def load(url, meta, infohash, directory):
+def load(url, meta, infohash, directory, user="", password=""):
     if not url.startswith("http://127.0.0.1:"):
         raise SystemExit("disposable loopback servers only")
+    if user:
+        url = url.replace("http://", "http://%s:%s@" % (user, password), 1)
     server = xmlrpc.client.ServerProxy(url)
     if infohash.upper() in [h.upper() for h in server.download_list("", "main")]:
         raise SystemExit("fixture hash unexpectedly present; refusing")
@@ -57,6 +59,8 @@ def load(url, meta, infohash, directory):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--a", required=True)
+    parser.add_argument("--a-user", default="")
+    parser.add_argument("--a-pass", default="")
     parser.add_argument("--b", required=True)
     parser.add_argument("--dir-a", required=True)
     parser.add_argument("--dir-b", required=True)
@@ -69,8 +73,8 @@ def main():
     shared, shared_hash = torrent(shared_name, b"shared:" + args.run.encode() * 64)
     only_a, hash_a = torrent(only_a_name, b"only-a:" + args.run.encode() * 64)
     only_b, hash_b = torrent(only_b_name, b"only-b:" + args.run.encode() * 64)
-    load(args.a, shared, shared_hash, args.dir_a)
-    load(args.a, only_a, hash_a, args.dir_a)
+    load(args.a, shared, shared_hash, args.dir_a, args.a_user, args.a_pass)
+    load(args.a, only_a, hash_a, args.dir_a, args.a_user, args.a_pass)
     load(args.b, shared, shared_hash, args.dir_b)
     load(args.b, only_b, hash_b, args.dir_b)
     receipt = {"shared": shared_name, "shared_hash": shared_hash,

@@ -18,6 +18,8 @@ adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.CombinedTwoRealServersInstrumentedTest#combinedShowsSameHashOnTwoRealServersWithDistinctOriginsAndReconnects \
   -e chunks_combined_disposable authorized \
   -e chunks_combined_a_b64 "$(b64 http://127.0.0.1:18080/RPC2)" \
+  -e chunks_combined_a_user_b64 "$(b64 chunks)" \
+  -e chunks_combined_a_pass_b64 "$(b64 chunks-one)" \
   -e chunks_combined_b_b64 "$(b64 http://127.0.0.1:18082/RPC2)" \
   -e chunks_combined_shared_b64 "$(b64 "$(field shared)")" \
   -e chunks_combined_only_a_b64 "$(b64 "$(field only_a)")" \

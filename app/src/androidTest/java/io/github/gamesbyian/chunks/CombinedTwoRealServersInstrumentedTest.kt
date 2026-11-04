@@ -88,10 +88,12 @@ class CombinedTwoRealServersInstrumentedTest {
         throw AssertionError("Could not enter $label", last)
     }
 
-    private fun connect(url: String) {
-        // Both disposable daemons are anonymous: the username and password
-        // fields stay empty from the fresh install onward and are not retyped.
+    private fun connect(url: String, user: String = "", password: String = "") {
+        // Server A sits behind basic auth; server B is anonymous, so its
+        // fields are explicitly cleared after A's login was typed.
         typeInto("Seedbox hostname, ruTorrent URL or RPC address", url)
+        typeInto("Username, if required", user)
+        typeInto("Password", password)
         scrollTo("Remember this server and login on this device")
         scrollTo("Connect to rTorrent")
         rule.onNodeWithText("Connect to rTorrent").performClick()
@@ -126,6 +128,10 @@ class CombinedTwoRealServersInstrumentedTest {
         assumeTrue("Requires the two-disposable-server workflow",
             args.getString("chunks_combined_disposable") == "authorized")
         val urlA = decoded("chunks_combined_a_b64")
+        val userA = decoded("chunks_combined_a_user_b64")
+        val passA = decoded("chunks_combined_a_pass_b64")
+        fun credsFor(url: String) = if (url == urlA) RemoteCredentials(url, userA, passA)
+            else RemoteCredentials(url, "", "")
         val urlB = decoded("chunks_combined_b_b64")
         val shared = decoded("chunks_combined_shared_b64")
         val onlyA = decoded("chunks_combined_only_a_b64")
@@ -136,7 +142,7 @@ class CombinedTwoRealServersInstrumentedTest {
         val portB = urlB.substringAfter("127.0.0.1:").substringBefore('/')
 
         // Independent ground truth before any UI step.
-        val truthA = runBlocking { RTorrentRemote(RemoteCredentials(urlA, "", "")).listTransfers("main") }
+        val truthA = runBlocking { RTorrentRemote(credsFor(urlA)).listTransfers("main") }
         val truthB = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
         assertEquals(setOf(shared, onlyA), truthA.map { it.name }.toSet())
         assertEquals(setOf(shared, onlyB), truthB.map { it.name }.toSet())
@@ -147,7 +153,7 @@ class CombinedTwoRealServersInstrumentedTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             waitFor("phone-first launch") { visible("On this phone (experimental)") }
             rule.onNodeWithText("Back").performScrollTo().performClick()
-            connect(urlA)
+            connect(urlA, userA, passA)
             stage("connected-a")
             // Options lists screen destinations; Disconnect is on "Server".
             rule.onNodeWithText("Options").performClick()
@@ -206,7 +212,7 @@ class CombinedTwoRealServersInstrumentedTest {
                 rule.onNode(box).performClick()
             }
             fun startedOn(url: String) = runBlocking {
-                RTorrentRemote(RemoteCredentials(url, "", "")).listTransfers("main")
+                RTorrentRemote(credsFor(url)).listTransfers("main")
             }.single { it.hash.equals(sharedHash, true) }.started
             fun runBatch(action: String, confirm: String) {
                 scrollTo(action)
@@ -254,7 +260,7 @@ class CombinedTwoRealServersInstrumentedTest {
             stage("relaunch-reconnected")
         }
         // Read-only test: both inventories are exactly as before.
-        val afterA = runBlocking { RTorrentRemote(RemoteCredentials(urlA, "", "")).listTransfers("main") }
+        val afterA = runBlocking { RTorrentRemote(credsFor(urlA)).listTransfers("main") }
         val afterB = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
         assertEquals(truthA.map { it.hash to it.started }.toSet(), afterA.map { it.hash to it.started }.toSet())
         assertEquals(truthB.map { it.hash to it.started }.toSet(), afterB.map { it.hash to it.started }.toSet())
@@ -297,7 +303,7 @@ class CombinedTwoRealServersInstrumentedTest {
             stage("server-a-frozen")
             refreshOthers()
             waitFor("A unresponsive reported failed with last list", 120_000) {
-                line(portA, "Refresh failed") && line(portA, "showing last list")
+                line(portA, "Refresh failed (did not answer in time") && line(portA, "showing last list")
             }
             assertTrue("Unresponsive server A must not be Live", !line(portA, ": Live"))
             stage("c2-timeout-truthful")
@@ -312,6 +318,16 @@ class CombinedTwoRealServersInstrumentedTest {
                 line(portA, ": Live") && line(portA, "· 2 transfers") && !line(portA, "Refresh failed")
             }
             stage("c2-recovered")
+            // Auth rejection: A's gateway password changes under the saved
+            // login. Combined must name the sign-in failure, not "network".
+            fault("rotate-auth-a")
+            refreshOthers()
+            waitFor("A sign-in rejection named with last list", 90_000) {
+                line(portA, "sign-in rejected") && line(portA, "showing last list")
+            }
+            assertTrue("Rejected server A must not be Live", !line(portA, ": Live"))
+            stage("c2-auth-rejected-truthful")
+            fault("restore-auth-a")
             fault("offline-a")
             stage("server-a-offline")
             refreshOthers()

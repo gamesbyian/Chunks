@@ -61,14 +61,16 @@ jobs:
           error_log $root/nginx.error notice;
           events { worker_connections 64; }
           http {
-            server { listen 127.0.0.1:18080; location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000; } }
+            server { listen 127.0.0.1:18080; location /RPC2 { auth_basic "chunks-a"; auth_basic_user_file /tmp/chunks-combined-a.htpasswd; include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000; } }
             server { listen 127.0.0.1:18082; location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5001; } }
           }
           EOF
+          # Disposable basic-auth login for server A only (C2 sign-in rejection).
+          printf 'chunks:%s\n' "$(openssl passwd -apr1 chunks-one)" > /tmp/chunks-combined-a.htpasswd && chmod 644 /tmp/chunks-combined-a.htpasswd
           sudo nginx -c "$root/nginx.conf"
           for port in 18080 18082; do
             for i in $(seq 1 40); do
-              curl -fsS -H 'Content-Type: text/xml' --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
+              curl -fsS -u chunks:chunks-one -H 'Content-Type: text/xml' --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
                 "http://127.0.0.1:$port/RPC2" >/dev/null && break
               sleep 0.5
             done
@@ -76,7 +78,7 @@ jobs:
       - name: Preload same-hash and distinct stopped fixtures on both servers
         run: |
           python3 tools/preload_combined_two_servers.py \
-            --a http://127.0.0.1:18080/RPC2 --b http://127.0.0.1:18082/RPC2 \
+            --a http://127.0.0.1:18080/RPC2 --a-user chunks --a-pass chunks-one --b http://127.0.0.1:18082/RPC2 \
             --dir-a "$RUNNER_TEMP/chunks-combined/a/data" --dir-b "$RUNNER_TEMP/chunks-combined/b/data" \
             --run "$GITHUB_RUN_ID" --receipt "$RUNNER_TEMP/chunks-combined/receipt.json"
       - name: Start disposable-only fault switch for server A
