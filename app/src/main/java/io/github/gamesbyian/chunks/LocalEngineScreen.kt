@@ -2143,7 +2143,10 @@ internal fun LocalTransferCard(
                 // must not be presented as verified bytes or a lasting trend.
                 Text("Live payload ↓ " +
                     Units.bytes(transfer.downloadPayloadRateBytesPerSecond.toLong()) + "/s · ↑ " +
-                    Units.bytes(transfer.uploadPayloadRateBytesPerSecond.toLong()) + "/s",
+                    Units.bytes(transfer.uploadPayloadRateBytesPerSecond.toLong()) + "/s" +
+                    (Units.timeLeft(transfer.wantedBytes - transfer.doneBytes,
+                        transfer.downloadPayloadRateBytesPerSecond.toLong())
+                        ?.takeIf { transfer.metadataKnown }?.let { " · $it" } ?: ""),
                     style = MaterialTheme.typography.bodySmall)
             }
             if (diagnosticsOpen) {

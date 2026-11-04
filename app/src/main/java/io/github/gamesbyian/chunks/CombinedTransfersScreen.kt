@@ -1208,15 +1208,24 @@ internal fun toggleScope(scope: EnvironmentViewScope, id: EnvironmentId): Enviro
     }
 }
 
+/** Estimate only for a started, size-known, incomplete row with a reported rate. */
+internal fun combinedTimeLeft(row: UnifiedTransferObservation): String? {
+    if (row.started != true || row.metadataPending == true) return null
+    val size = row.sizeBytes ?: return null
+    val ppm = row.progressPpm ?: return null
+    val remaining = size - (size.toDouble() * ppm / 1_000_000).toLong()
+    return Units.timeLeft(remaining, row.downloadBytesPerSecond)
+}
+
 /** Text summary of one row; unknown facts are said as unknown, never as zero. */
-internal fun combinedRowFacts(row: UnifiedTransferObservation): String = listOf(
+internal fun combinedRowFacts(row: UnifiedTransferObservation, fresh: Boolean = false): String = listOf(
     if (row.metadataPending == true) "Fetching metadata" else
         when (row.started) { true -> "Started"; false -> "Stopped"; null -> "State unknown" },
     row.progressPpm?.let { "${it / 10_000}%" } ?: "Progress unknown",
     row.sizeBytes?.let { Units.bytes(it) } ?: "Size unknown",
     "↓ " + (row.downloadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),
     "↑ " + (row.uploadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported")
-).plus(row.ratioThousandths?.let {
+).plus(listOfNotNull(combinedTimeLeft(row).takeIf { fresh })).plus(row.ratioThousandths?.let {
     listOf("Ratio " + String.format(java.util.Locale.US, "%.2f",
         it.toDouble() / 1_000.0))
 } ?: emptyList()).joinToString(" · ")
@@ -1293,7 +1302,9 @@ private fun CombinedTransferRow(
                         contentDescription = row.displayName
                     })
             }
-            Text(combinedRowFacts(row), style = MaterialTheme.typography.bodySmall)
+            // A time estimate needs a live, complete source; last-known facts never get one.
+            Text(combinedRowFacts(row, fresh = source?.canClaimCompleteLiveInventory == true),
+                style = MaterialTheme.typography.bodySmall)
             row.progressPpm?.let { ppm ->
                 ChunkedProgressBar(
                     progress = ppm / 1_000_000f,

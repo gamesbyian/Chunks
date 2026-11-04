@@ -2187,6 +2187,9 @@ private fun TransferCard(
             }
             val conciseRates = buildList {
                 transfer.downBytesPerSecond?.let { add("↓ " + Units.bytes(it) + "/s") }
+                if (transfer.started && !stale && transfer.metadataPending != true)
+                    Units.timeLeft(transfer.sizeBytes - transfer.completedBytes,
+                        transfer.downBytesPerSecond)?.let { add(it) }
                 transfer.upBytesPerSecond?.let { add("↑ " + Units.bytes(it) + "/s") }
                 transfer.ratioThousandths?.takeIf { it >= 0 }?.let { ratio ->
                     add("Ratio " + String.format(java.util.Locale.US, "%.2f",
