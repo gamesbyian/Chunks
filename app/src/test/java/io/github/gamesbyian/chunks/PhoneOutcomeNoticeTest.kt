@@ -7,6 +7,13 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.unit.dp
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,5 +33,22 @@ class PhoneOutcomeNoticeTest {
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
             .and(hasText(text)))
             .assertExists()
+    }
+
+    @Test fun anAddOutcomeCanOfferOneViewOnlyFollowUpAsItsOwnTarget() {
+        var shown = 0
+        rule.setContent { ChunksTheme {
+            PhoneOutcomeNotice("Magnet added.", actionLabel = "Show new transfer", onAction = { shown++ })
+        } }
+        val action = rule.onNodeWithText("Show new transfer")
+        val box = action.getUnclippedBoundsInRoot()
+        assertTrue("follow-up is a 48dp-class target", box.bottom - box.top >= 48.dp)
+        action.performClick()
+        assertEquals(1, shown)
+    }
+
+    @Test fun ordinaryOutcomesOfferNoAction() {
+        rule.setContent { ChunksTheme { PhoneOutcomeNotice("Nothing was added.") } }
+        rule.onAllNodesWithText("Show new transfer").assertCountEquals(0)
     }
 }

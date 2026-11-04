@@ -307,9 +307,13 @@ internal fun LocalEngineScreen(
     // The search/filter in effect when that Add happened. Any later deliberate
     // view change retires the notice, so an old Add is never called "new".
     var lastAddedView by rememberSaveable { mutableStateOf<String?>(null) }
-    fun rememberAdded(hash: String?) {
+    // The outcome text an acknowledged Add produced, with its exact hash, so
+    // only that notice offers "Show new transfer". Process memory only.
+    var addedOutcome by remember { mutableStateOf<Pair<String?, String>?>(null) }
+    fun rememberAdded(hash: String?, outcome: String?) {
         lastAddedHash = hash
         lastAddedView = hash?.let { transferSearch + "\u0000" + transferFilter.name }
+        addedOutcome = hash?.let { outcome to it }
     }
     LaunchedEffect(initialSearch) {
         if (!initialSearch.isNullOrBlank()) {
@@ -741,8 +745,8 @@ internal fun LocalEngineScreen(
                             is LocalAddResult.AddedStopped -> null
                         }
                         when (result) {
-                            is LocalAddResult.FetchingMetadata -> rememberAdded(result.status.infoHash)
-                            is LocalAddResult.AddedStopped -> rememberAdded(result.status.infoHash)
+                            is LocalAddResult.FetchingMetadata -> rememberAdded(result.status.infoHash, message)
+                            is LocalAddResult.AddedStopped -> rememberAdded(result.status.infoHash, message)
                             is LocalAddResult.Refused -> Unit
                         }
                         if (result !is LocalAddResult.Refused) {
@@ -917,7 +921,22 @@ internal fun LocalEngineScreen(
         // Outcomes include successes ("Added and started…") as well as refusals,
         // so present them as a neutral, politely announced status rather than
         // colouring every result as an error. The wording carries the outcome.
-        message?.let { PhoneOutcomeNotice(it) }
+        message?.let { text ->
+            // Only an Add outcome whose exact hash is in the observed
+            // inventory can offer to show it; refusals never do.
+            val newHash = addedOutcome?.takeIf { it.first == text }?.second
+                ?.takeIf { hash -> transfers.any { it.infoHash.equals(hash, ignoreCase = true) } }
+            PhoneOutcomeNotice(text,
+                actionLabel = if (newHash != null) "Show new transfer" else null,
+                onAction = {
+                    if (newHash != null) {
+                        // View only: search for the exact hash and show all states.
+                        transferSearch = newHash
+                        chooseLocalFilter(LocalQueueFilter.ALL)
+                        scope.launch { transfersRequester.bringIntoView() }
+                    }
+                })
+        }
         restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (inventoryStale) {
             Text("Phone torrent status unavailable. Showing the last confirmed transfers. " +
@@ -1013,7 +1032,7 @@ internal fun LocalEngineScreen(
                             }
                         }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
-                        if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash)
+                        if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash, message)
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
@@ -1876,7 +1895,12 @@ internal fun LocalEngineScreen(
 
 /** Latest phone action outcome, announced to accessibility services once per change. */
 @Composable
-internal fun PhoneOutcomeNotice(text: String) {
+internal fun PhoneOutcomeNotice(
+    text: String,
+    /** Optional view-only follow-up, e.g. showing the exact newly added transfer. */
+    actionLabel: String? = null,
+    onAction: () -> Unit = {}
+) {
     // Fully qualified to keep the shared import block untouched.
     androidx.compose.material3.Surface(
         color = ChunksColors.SurfaceRaised,
@@ -1886,8 +1910,12 @@ internal fun PhoneOutcomeNotice(text: String) {
         modifier = Modifier.fillMaxWidth()
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
     ) {
-        Text(text, color = ChunksColors.Text, style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp))
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(text, color = ChunksColors.Text, style = MaterialTheme.typography.bodyMedium)
+            if (actionLabel != null) OutlinedButton(onClick = onAction,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(actionLabel) }
+        }
     }
 }
 
