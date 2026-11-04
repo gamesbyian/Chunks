@@ -66,3 +66,10 @@ jobs:
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostAdapterSmokeTest.xml
           grep -o 'CHUNKS_KOTLIN_SEEDHOST_READONLY: [^<]*' "$report" | head -1 | tee -a "$GITHUB_STEP_SUMMARY"
           grep -q 'CHUNKS_KOTLIN_SEEDHOST_READONLY: authenticated' "$report"
+          # Run 41777405480 passed but left no exact-hash receipt: the audit
+          # line exists only in the XML report. Publish it and require it
+          # whenever audit inputs were supplied (hash/alias only, no paths).
+          if [ -n "$CHUNKS_P0_AUDIT_RUN_ID$CHUNKS_P0_AUDIT_HASH" ]; then
+            grep -o 'CHUNKS_P0_EXACT_READONLY: [^<]*' "$report" | head -1 | tee -a "$GITHUB_STEP_SUMMARY"
+            grep -q "CHUNKS_P0_EXACT_READONLY: instance=${{ matrix.instance }} run=$CHUNKS_P0_AUDIT_RUN_ID " "$report"
+          fi
