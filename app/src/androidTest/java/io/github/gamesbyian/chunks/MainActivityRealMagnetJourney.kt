@@ -222,7 +222,7 @@ internal class MainActivityRealMagnetJourney(
         }
         fun refreshAndFind(hash: String) {
             click("Refresh")
-            type("Search names or Places", hash)
+            type("Search names, aliases, folders or hashes", hash)
         }
         // Current compact transfer cards intentionally hide secondary actions
         // behind a read-only disclosure. Open it for the exact searched hash,
@@ -247,7 +247,7 @@ internal class MainActivityRealMagnetJourney(
             // A follow-on Add must start from an unfiltered Transfers screen.
             // Clearing the prior exact-hash search is read-only, and prevents
             // the next fixture from inheriting an obsolete UI selection.
-            type("Search names or Places", "")
+            type("Search names, aliases, folders or hashes", "")
             rule.waitUntil(30_000) { visible("+ Add torrent") }
         }
         for (group in groups) {

@@ -74,7 +74,7 @@ class ClearableTransferSearchFieldInstrumentedTest {
                     ClearableTransferSearchField(
                         value = query,
                         onValueChange = { query = it },
-                        label = "Search names or Places"
+                        label = "Search names, aliases, folders or hashes"
                     )
                 }
             }

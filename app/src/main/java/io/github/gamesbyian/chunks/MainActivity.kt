@@ -1836,7 +1836,7 @@ private fun TransfersScreen(
         item {
             ClearableTransferSearchField(
                 value = query, onValueChange = onQuery,
-                label = "Search names or Places"
+                label = "Search names, aliases, folders or hashes"
             )
         }
         item {
