@@ -92,7 +92,11 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
     private fun disconnect(label: String) {
         // The Options panel is remembered across Disconnect/reconnect (run
         // 41800987696): tapping it again would close it. Open only if shut.
-        if (!visible("Find a screen or tool")) rule.onNodeWithText("Options").performClick()
+        if (!visible("Find a screen or tool")) {
+            // The footer yields to the soft keyboard; wait for it after Connect.
+            rule.waitUntil(15_000) { visible("Options") }
+            rule.onNodeWithText("Options").performClick()
+        }
         waitFor("options-$label-missing") { visible("Find a screen or tool") }
         // Chips can reflow between scroll and tap; verify and re-tap.
         var opened = false

@@ -1400,6 +1400,15 @@ private fun ConnectionScreen(
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit
 ) {
+    // Submitting the form closes the keyboard, as forms conventionally do,
+    // so the next screen's persistent footer is not waiting on an IME hide.
+    val connectKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val connectFocus = androidx.compose.ui.platform.LocalFocusManager.current
+    val submitConnect: () -> Unit = {
+        connectKeyboard?.hide()
+        connectFocus.clearFocus()
+        onConnect()
+    }
     var pendingForget by remember { mutableStateOf<String?>(null) }
     var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
     var renameProfileId by remember { mutableStateOf<String?>(null) }
@@ -1588,7 +1597,7 @@ private fun ConnectionScreen(
                 value = password, onValueChange = onPassword,
                 modifier = Modifier.fillMaxWidth(),
                 // Go runs the same read-only Connect as the button, under its rules.
-                onGo = { if (!loading && endpoint.isNotBlank()) onConnect() }
+                onGo = { if (!loading && endpoint.isNotBlank()) submitConnect() }
             )
         }
         item {
@@ -1617,7 +1626,7 @@ private fun ConnectionScreen(
         }
         item {
             Button(
-                onClick = onConnect,
+                onClick = submitConnect,
                 enabled = !loading && endpoint.isNotBlank(),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)

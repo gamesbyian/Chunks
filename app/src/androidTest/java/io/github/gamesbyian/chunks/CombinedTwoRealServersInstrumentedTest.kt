@@ -156,6 +156,9 @@ class CombinedTwoRealServersInstrumentedTest {
             connect(urlA, userA, passA)
             stage("connected-a")
             // Options lists screen destinations; Disconnect is on "Server".
+            // The footer yields to the soft keyboard (#1274); wait for it to
+            // return after Connect instead of racing the IME hide animation.
+            waitFor("footer Options after connect") { visible("Options") }
             rule.onNodeWithText("Options").performClick()
             waitFor("Options destinations") { visible("Find a screen or tool") }
             // Destination chips can reflow between scroll and tap (run
