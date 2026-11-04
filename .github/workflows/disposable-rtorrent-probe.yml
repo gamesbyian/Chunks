@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/disposable-rtorrent-probe.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableFullJourneyTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableNativeStartedAddTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableServerTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
@@ -113,7 +114,9 @@ jobs:
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableServerTest'
           # Only after the empty-server proof, use the same ephemeral process
           # for deliberate Add/duplicate/start/stop mutation acceptance.
-          if ! gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest'; then
+          if ! gradle --no-daemon :app:testDebugUnitTest \
+              --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest' \
+              --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableFullJourneyTest'; then
             # Extract bounded nonsecret failed assertions from the disposable rig.
             python3 - <<'PY'
           import pathlib, xml.etree.ElementTree as ET
@@ -333,7 +336,9 @@ jobs:
         run: |
           status=0
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableServerTest' || status=1
-          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest' || status=1
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest' \
+            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableFullJourneyTest' || status=1
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeStartedAddTest' || status=1
           python3 - <<'PY'
           import pathlib, xml.etree.ElementTree as ET
