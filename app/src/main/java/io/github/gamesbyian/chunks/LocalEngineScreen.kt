@@ -2103,8 +2103,14 @@ internal fun LocalTransferCard(
                 }
                 seeding?.let { SeedingSnapshotSummary(transfer.infoHash, it) }
             }
-            ChunkedProgressBar(progress = transfer.progressPpm / 1_000_000f, tone = stateTone(transfer),
-                modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" })
+            if (transfer.metadataKnown) ChunkedProgressBar(
+                progress = transfer.progressPpm / 1_000_000f,
+                tone = stateTone(transfer),
+                historyKey = ProgressChunkStore.identity("phone", transfer.infoHash),
+                observeFresh = !busy,
+                modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" }
+            ) else Text("Progress unknown until torrent metadata arrives",
+                style = MaterialTheme.typography.bodySmall)
             // totalWantedDone is hash-verified completed payload; allTimeDownload
             // is a libtorrent network counter and may exclude HTTPS web seeds.
             val verifiedText = "Verified on disk " + Units.bytes(transfer.doneBytes) + " of " +
