@@ -43,7 +43,11 @@ internal fun CompactRemoteInventoryHeader(
         else -> ""
     }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val stacked = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
+        // The transfer-list gutters leave 376dp on the primary 412dp
+        // phone. It can hold a named environment badge and the All
+        // environments button side by side at ordinary text sizes.
+        // Preserve stacking at 320dp and when accessibility fonts enlarge.
+        val stacked = maxWidth < 352.dp || LocalDensity.current.fontScale >= 1.5f
         val label = "$environmentLabel · $countText$viewText$freshness"
         if (stacked) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
