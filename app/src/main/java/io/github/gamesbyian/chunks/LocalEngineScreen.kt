@@ -255,7 +255,14 @@ internal fun LocalEngineScreen(
     onSearchConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
     /** Receives a verified exported .torrent for the server's Add review. */
-    onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null
+    onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null,
+    /**
+     * Navigation-only state owned by the caller so that leaving for All
+     * environments, Seeding rules or a server and returning keeps the list
+     * position and search. Never carries selections or confirmations.
+     */
+    listScroll: androidx.compose.foundation.ScrollState? = null,
+    searchState: androidx.compose.runtime.MutableState<String>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -280,7 +287,8 @@ internal fun LocalEngineScreen(
     val transfers = inventoryFrame.entries
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
-    var transferSearch by remember { mutableStateOf("") }
+    val transferSearchHolder = searchState ?: remember { mutableStateOf("") }
+    var transferSearch by transferSearchHolder
     // View-only disclosure; no native engine work is started by these flags.
     var showPhoneTools by rememberSaveable { mutableStateOf(false) }
     var showListOptions by rememberSaveable { mutableStateOf(false) }
@@ -610,7 +618,7 @@ internal fun LocalEngineScreen(
         }
     }
 
-    val scrollState = rememberScrollState()
+    val scrollState = listScroll ?: rememberScrollState()
     LaunchedEffect(repairReview?.first) {
         // The source chooser is launched from a card deep in a long queue.
         // Return to the review at the top rather than hide a confirmation

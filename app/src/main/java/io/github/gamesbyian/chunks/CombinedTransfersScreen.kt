@@ -294,7 +294,9 @@ internal fun CombinedTransfersScreen(
     onAddToServer: (() -> Unit)? = null,
     /** Opens this exact transfer in its own environment's list; only phone and the signed-in server. */
     onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    /** Caller-owned list position, kept when visiting an owning list and returning. */
+    listState: androidx.compose.foundation.lazy.LazyListState? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -615,7 +617,7 @@ internal fun CombinedTransfersScreen(
         onDispose { if (secure) activity?.window?.clearFlags(WindowManager.LayoutParams.FLAG_SECURE) }
     }
 
-    val listState = rememberLazyListState()
+    val listState = listState ?: rememberLazyListState()
     // Reading LazyListState.layoutInfo during composition creates a feedback
     // loop: layout publishes info, composition reads it, then remeasures.
     // Capture only actual size changes and use stable scroll state for visibility.

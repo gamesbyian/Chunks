@@ -269,6 +269,12 @@ private fun ChunksApp(
     var query by remember { mutableStateOf("") }
     // Secondary destinations appear only when requested on the ordinary list.
     var optionsOpen by rememberSaveable { mutableStateOf(false) }
+    // Navigation-only list state that survives moving between routes
+    // (phone ↔ All environments ↔ server ↔ settings) and rotation. It holds
+    // no selection, confirmation or command state.
+    val phoneListScroll = rememberScrollState()
+    val phoneSearch = rememberSaveable { mutableStateOf("") }
+    val combinedListState = rememberLazyListState()
     // A view-only filter; no hidden configuration or account scope is indexed.
     var optionsSearch by rememberSaveable { mutableStateOf("") }
     var filter by remember { mutableStateOf(TransferFilter.ALL) }
@@ -466,6 +472,7 @@ private fun ChunksApp(
             }
         } else if (section == Section.COMBINED) {
             CombinedTransfersScreen(
+                listState = combinedListState,
                 server = server?.let { remote ->
                     CombinedServerSource(aliasScope, transfers, stale = stale || loading,
                         fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt,
@@ -551,6 +558,7 @@ private fun ChunksApp(
                 controlsInContent = true
             ) {
                 LocalEngineScreen(
+                    listScroll = phoneListScroll, searchState = phoneSearch,
                     onBack = { leavePhone() },
                     onSeedingRules = { section = Section.SEEDING },
                     onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
@@ -862,6 +870,7 @@ private fun ChunksApp(
                     controlsInContent = true
                 ) {
                     LocalEngineScreen(
+                        listScroll = phoneListScroll, searchState = phoneSearch,
                         onBack = { leavePhone() },
                         onSeedingRules = { section = Section.SEEDING },
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
