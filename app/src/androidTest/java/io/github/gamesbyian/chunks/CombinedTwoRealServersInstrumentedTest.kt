@@ -106,7 +106,11 @@ class CombinedTwoRealServersInstrumentedTest {
             rule.onNodeWithText("Back").performScrollTo().performClick()
             connect(urlA)
             stage("connected-a")
+            // Options lists screen destinations; Disconnect is on "Server".
             rule.onNodeWithText("Options").performClick()
+            waitFor("Options destinations") { visible("Find a screen or tool") }
+            rule.onNodeWithText("Server").performScrollTo().performClick()
+            waitFor("Server screen") { visible("Disconnect") }
             scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
             waitFor("connection screen after Disconnect") {
