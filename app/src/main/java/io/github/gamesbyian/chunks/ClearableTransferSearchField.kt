@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -17,6 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,6 +42,8 @@ internal fun ClearableTransferSearchField(
     modifier: Modifier = Modifier
 ) {
     val fieldFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     val clear: () -> Unit = {
         onValueChange("")
         // Only re-focus after an explicit clear gesture, not recomposition.
@@ -60,6 +67,13 @@ internal fun ClearableTransferSearchField(
                 onValueChange = onValueChange,
                 label = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 singleLine = true,
+                // Results already filter as you type, so the keyboard's Search
+                // key just closes the keyboard and returns the persistent footer.
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = {
+                    keyboard?.hide()
+                    focusManager.clearFocus()
+                }),
                 trailingIcon = if (!compact && value.isNotEmpty()) {
                     {
                         IconButton(
