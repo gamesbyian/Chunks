@@ -1,5 +1,8 @@
 # Chunks active engineering work queue
 
+> **Current autonomous UX execution (2026-11-04):** [two-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) assigns Codex Combined/remote presentation and Claude PR #1287 plus phone/Add/navigation presentation with nonoverlapping source files; implementation and automated UX acceptance may continue while owner Pixel validation is pending. This is one prioritized UX execution pass, not a reopening of the accepted P0 A–E campaign. Historical continuation instructions below are non-executable when contradicted by the [current reconciliation](P0-UX-RECONCILIATION-2026-11-04.md).
+
+
 > **2026-11-04 current P0/UX reconciliation:** [P0-UX-RECONCILIATION-2026-11-04](P0-UX-RECONCILIATION-2026-11-04.md) separates the completed automated A–E sweep from physical/human acceptance and records the still-open #1287 installed-IME evidence obligation. Its chronology supersedes older “next autonomous” instructions below; this file remains the one active priority queue.
 
 

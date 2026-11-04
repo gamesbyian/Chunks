@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+**Start here for the November 4 concurrent UX sessions:** [UX dual-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) assigns Codex/Claude separate source files and ordered executable work without an extended P0 re-audit. [P0/UX reconciliation](P0-UX-RECONCILIATION-2026-11-04.md) is the accepted P0 baseline; [WORK-QUEUE](WORK-QUEUE.md) is the only priority authority; [UX-73-CANDIDATE-TRACE](UX-73-CANDIDATE-TRACE-2026-11-03.md) is evidence-indexed coverage, not independent jobs. Historical live-status notes below may predate this dispatch.
+
+
 - [Recency-preserving transfer progress chunks](TRANSFER-PROGRESS-CHUNKS.md): owner-approved proportional, bounded, chronological progress segments, oldest-first coalescing, smaller rounded-rectangle corners, visual/accessibility behaviour and acceptance; source merged in #1251; installed dynamic pixel geometry verified in #1252, while owner-phone/TalkBack review remains.
 
 - [Transfer sharing](TRANSFER-SHARING.md): planned local/rTorrent magnet share/copy and conditional verified `.torrent` export, including acceptance.

@@ -1,0 +1,49 @@
+# UX/UI dual-agent dispatch — 2026-11-04
+
+> **Operational dispatch, not a second product specification or backlog.** This file is the short entry point for simultaneous Codex and Claude work after the automated P0 A–E campaign. [WORK-QUEUE](WORK-QUEUE.md) remains priority authority; [UX](UX.md) and [PRODUCT](PRODUCT.md) govern design; [UX-73-CANDIDATE-TRACE](UX-73-CANDIDATE-TRACE-2026-11-03.md) records stable coverage numbers, not 73 mandatory jobs. [P0/UX reconciliation](P0-UX-RECONCILIATION-2026-11-04.md) records historical evidence; [QUALITY-LEDGER](QUALITY-LEDGER.md) owns receipts. Check live PRs and CI before touching work. Never infer an active agent from this dated assignment if sessions have stopped.
+
+## Ready-to-start state
+
+- At authoring, main is `e058d3578013118abbe90e2a6200a763983a4e3d`. Automated P0 A–E has accepted evidence, but physical Pixel 6 Pro/human review, particular vendor providers and signed release remain outstanding. Do not reopen complete P0 harnesses as a pretext for UX work, or claim emulator proof equals physical acceptance.
+- At authoring [PR #1287](https://github.com/gamesbyian/Chunks/pull/1287) was the only open source PR: installed soft-keyboard footer/Search/recreation tests, all six CI checks green. Shard aggregates **328 executed, 34 skipped**; the specific new tests have not yet been confirmed executed rather than skipped. Treat PR as an **existing Claude-owned pending evidence seam**, not a fresh implementation task. Check its current status before taking it over.
+- UX trace: **39 source-present; 34 partial**, where partial can mean remaining implementation, lacking installed proof, or reserved human review. Batch 15 is the last owner-reported broad campaign; the live trace has November 4 entries through suffix `n`, so do not assume batch count is an implementation/acceptance metric.
+- These two lanes are additive and independent, and neither may modify local/remote engine payload semantics, deletion, auth, credentials, protected server mutation, shared transfer identity or storage without a newly observed release regression and scoped review.
+
+## Codex lane NOW: Combined + remote transfer UX, exclusively
+
+**Primary source ownership while active:** `CombinedTransfersScreen.kt`, `UnifiedTransferDetailPanel.kt`, and newly created small presentation helpers/tests for Combined/remote transfer browsing, plus clearly relevant non-conflicting remote presentation files. **Do not edit** `MainActivity.kt`, `LocalEngineScreen.kt`, `AuthenticatedTransfersFooter.kt`, `ClearableTransferSearchField.kt`, `AGENT-LANES.md`, `WORK-QUEUE.md`, `QUALITY-LEDGER.md`, `UX-73-CANDIDATE-TRACE-2026-11-03.md` while Claude is active; leave central docs to a serial integration follow-up. MainActivity-dependent fixes: implement a separately owned helper and tests and describe one small integration patch for Claude, or wait until ownership is released. Do not privately change overlapping central files.
+
+**Ordered source candidates (test what actually exists, do not assume missing):**
+1. Trace **#24**: Combined newly added exact-hash transfer hidden by active query/filter should explain why it is absent and offer a safe view-only Show all, matching already implemented phone/remote behaviours. Require observed exact Add identity and no cross-environment false positive. If its data isn't available in Combined without shared state edits, use a narrow independently tested presentation contract and leave the one-line integration seam explicit.
+2. Trace **#13/#18/#44/#48/#49**: polished compact populated rows/details and exact-scope user-facing actions; long paths/names, measured-zero vs unavailable, actual save Place and supported file controls. Avoid changing real engine commands.
+3. Trace **#53–55/#59–60**: named and coloured environment identity in Combined, stale/auth/timeout/offline wording, per-environment repair/refresh affordances and accessible scopes. Never claim a retry replays mutations.
+4. Trace **#63/#66/#67/#72**: 320×700 and 412×892, 200% text, 48dp laid-out targets, high contrast/redundant state, TalkBack semantics, screenshot/atlas regression.
+
+**After each coherent slice:** add focused JVM/Compose proof, and batched installed atlas/instrumentation where it checks the real screen. Prefer a small exact-head PR and work on independent next slice while CI runs. Do not turn source-present rows into repeated design work. When every useful ownable Combined slice is complete, review code/tests and document concrete shortcomings or develop nonconflicting tests rather than idling.
+
+## Claude lane LATER: phone / Add / keyboard / navigation UX, exclusively
+
+**First:** finish or correctly dispose of [#1287](https://github.com/gamesbyian/Chunks/pull/1287). Inspect exact-case instrumented JUnit XML/artifacts for the new `FooterImeInstalledInstrumentedTest` cases. If skipped, fix deterministic IME setup and rerun actual installed proof; do not count the green aggregate alone. If executed, record the test names/count and merge once the exact head is qualified. Do not duplicate the PR in a new branch.
+
+**Primary source ownership while active:** `MainActivity.kt`, `LocalEngineScreen.kt`, `AuthenticatedTransfersFooter.kt`, `ClearableTransferSearchField.kt`, phone/connection/Add presentation components and nonconflicting new tests. **Do not edit** `CombinedTransfersScreen.kt` or `UnifiedTransferDetailPanel.kt` while Codex owns them. Common components should be touched only by their assigned owner; negotiate seam changes via PR comments, not simultaneous writes.
+
+**Ordered source candidates:**
+1. Trace **#1/#6/#8/#10/#68/#73**: phone-first destination/navigation recovery, footer/IME Search and Next/Go interaction, restoration of current search and scroll/focus after recreation. Ensure the persistent footer never crowds real keyboard, accessibility pane focus remains truthful, and offline transfers remain discoverable.
+2. Trace **#31/#33/#35/#37–40**: compact Add with explicit local/server destination, recent Place scope/provenance, selected files, noncompulsory seeding-rule explanation, draft restoration on refusal/cancel, exact verified View transfer; no new mutation or silent defaults.
+3. Trace **#55–58/#62** on the phone/settings surfaces: visible default/override and contextual reset controls, readable current settings scope, non-punitive defaults, settings discoverability. Reuse existing settings surfaces, not a second setting system.
+4. Trace **#63/#66/#67/#72**: device-size/font/contrast/keyboard consistency and tests across phone and Add; physical TalkBack/ergonomics are reserved for user validation.
+
+**If a task needs Combined source:** leave a narrowly scoped request or contract for Codex and continue the next phone-only slice. Continue with coherent batches after the immediate #1287 evidence gate without waiting idly for full native CI.
+
+## Common operating contract (both agents)
+
+1. Start with [AGENTS.md](../AGENTS.md), the Android evidence-first skill, [CI-POLICY](CI-POLICY.md), [UX](UX.md), [WORK-QUEUE](WORK-QUEUE.md), this dispatch, and focused source/tests. **No broad investigation of already accepted P0** unless a new regression is reproduced. Verify current main and PR file lists with a short targeted check, not a history re-audit.
+2. Work in independent branches and **announce lane + files in PR description**. Respect active ownership by *file*, not by vague area. Never cherry-pick other agent's unmerged work into a parallel branch or overwrite work on main. Coordinate shared code, trace and ledger with one small serial integration commit after PR qualification; PR descriptions temporarily hold exact test receipts, avoiding simultaneous ledger edits.
+3. Preference order: implementation correctness and useful user experience, then focused tests, then selected assembled native checks. Batch compatible tests to avoid CI fan-out; do not omit installed verification for a native UX assertion. Inspect exact tests that executed versus skipped, not just green workflows. Classify red as compile, test assertion, flaky harness, SDK/emulator boot or missing proof; fix actual product failures and preserve original red evidence.
+4. Build/run emulators, Android SDK, ADB, static checkers, Gradle and internet research freely in the agent's own environment. Do not use Desktop Commander or the owner's PC. Do not touch the isolated font/lab lane. Do not run protected-host destructive operations for a visual task. Real data-bearing integration remains governed by existing acceptance contracts.
+5. Merge only qualified nonoverlapping PRs after reviewing changes and evidence, rebase on newly merged main rather than force-overwrite, and validate exact resulting source where required. **No merge solely because CI labels are green.** Avoid edit conflicts by serializing shared docs/central files; other agent can proceed on its assigned scope while CI is running.
+6. After each merge select the next executable owned slice. If a lane runs out of direct source edits, audit real UX screenshots or add a valuable independent regression test, then publish a concise, concrete remaining-gap handoff. Maintain physical/human evidence as *unverified*, and avoid cosmetic churn, repeated audits or speculative features.
+
+## Exit / second-wave handoff
+
+At end of either session, report merged and open PRs, exact main/head SHAs, tests actually executed (and skipped), runs and prior red classification, ownership released, remaining source-specific tasks and whether the other agent needs a narrow integration seam. The last finisher serially updates [UX trace](UX-73-CANDIDATE-TRACE-2026-11-03.md), [QUALITY-LEDGER](QUALITY-LEDGER.md), and issue #8 with *only actual new receipts*, rather than creating competing handoffs. Preserve the 73 stable row numbers. Any new physical approval remains for the Pixel owner.
