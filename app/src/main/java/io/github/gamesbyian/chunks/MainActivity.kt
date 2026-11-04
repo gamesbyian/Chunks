@@ -8,7 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -969,9 +968,12 @@ private fun ChunksApp(
                     }
                 }
             }
-            if (section != Section.TRANSFERS || optionsOpen) Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            // Wrap rather than scroll sideways: every destination stays reachable
+            // by vertical layout, keyboard and TalkBack at 320dp and 200% type.
+            if (section != Section.TRANSFERS || optionsOpen) FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 for (tab in visibleDestinations) {
                     FilterChip(

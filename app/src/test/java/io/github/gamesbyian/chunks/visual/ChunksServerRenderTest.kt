@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -131,6 +132,12 @@ open class ChunksServerRenderTest {
         // behind its persistent Options footer. Exercise that actual disclosure
         // instead of assuming the old permanent tab rail still exists.
         rule.onNodeWithContentDescription("Options").performClick()
+        rule.waitForIdle()
+        // Destinations wrap instead of hiding in a sideways scroller: each is
+        // on screen at 411dp, including at 200% text, before any tap.
+        for (tab in listOf("Places", "Organize", "Server", "Create", "ZIP review")) {
+            rule.onNodeWithText(tab).assertIsDisplayed()
+        }
         for (tab in listOf("Places", "Organize", "Server")) {
             rule.onNodeWithText(tab).performClick()
             rule.waitForIdle()
