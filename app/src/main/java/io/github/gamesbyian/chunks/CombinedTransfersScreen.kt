@@ -310,7 +310,9 @@ internal fun CombinedTransfersScreen(
      * Caller-owned search text, kept when opening a transfer in its owning
      * list and coming Back. It is still never written to preferences.
      */
-    searchState: androidx.compose.runtime.MutableState<String>? = null
+    searchState: androidx.compose.runtime.MutableState<String>? = null,
+    /** Caller-supplied verified Add identity, never inferred from a title or an inventory delta. */
+    recentlyAddedTransfer: UnifiedTransferKey? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -477,6 +479,51 @@ internal fun CombinedTransfersScreen(
                 activeSavedScopes[id] == listing.sourceAliasScope
         }
     }
+    val loadable = savedProfiles.filter { profile ->
+        val id = EnvironmentId(profile.id)
+        id != serverId && profile.listOnly != null && profile.aliasScope != null &&
+            activeSavedScopes[id] == profile.aliasScope
+    }
+    // Both the all-server and exact-server buttons share the same fenced, read-only path.
+    fun loadSavedServers(profiles: List<CombinedSavedProfile>) {
+        profiles.forEach { profile ->
+            val id = EnvironmentId(profile.id)
+            val load = profile.listOnly ?: return@forEach
+            val identity = profile.aliasScope ?: return@forEach
+            if (activeSavedScopes[id] != identity || listings[id]?.loading == true) return@forEach
+            val ticket = savedListingFence.begin(
+                SavedListingResponseFence.Source(id, identity))
+            val previous = listings[id]?.takeIf { it.sourceAliasScope == identity }
+                ?: SavedServerListing(sourceAliasScope = identity)
+            listings = listings + (id to previous.copy(loading = true, error = null))
+            batchScope.launch {
+                // Profile removal/lock may occur between the tap and dispatch.
+                if (!savedListingFence.accepts(ticket, currentSavedScopes.value))
+                    return@launch
+                val next = try {
+                    val list = withContext(Dispatchers.IO) {
+                        kotlinx.coroutines.withTimeout(45_000) { load() }
+                    }
+                    SavedServerListing(list, System.currentTimeMillis(),
+                        sourceAliasScope = identity)
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    if (cancel is kotlinx.coroutines.TimeoutCancellationException)
+                        previous.copy(loading = false, error = listingFailure(cancel))
+                    else throw cancel
+                } catch (failure: Exception) {
+                    // Keep last-known rows, never claim the failed read is live.
+                    previous.copy(loading = false, error = listingFailure(failure))
+                }
+                // A slow response from another account or a pre-lock read may
+                // neither replace current rows nor resurrect hidden content.
+                if (savedListingFence.accepts(ticket, currentSavedScopes.value)) {
+                    listings = listings + (id to next)
+                    now = System.currentTimeMillis()
+                }
+            }
+        }
+    }
+
     // A selection and its confirmation belong to an exact authenticated UI
     // session, saved-profile roster and privacy state, not merely to a hash.
     // Preserve independent browse/sort state when a session changes, but never
@@ -623,6 +670,8 @@ internal fun CombinedTransfersScreen(
         CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
     val result = remember(sources, query) { UnifiedTransferCatalog.query(sources, query) }
+    val addedHidden = combinedAddedTransferHidden(recentlyAddedTransfer, sources,
+        result.transfers.map { it.key })
     val sourcesByEnvironment = result.sources.associateBy { it.environment }
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
@@ -881,7 +930,7 @@ internal fun CombinedTransfersScreen(
             }
             // Search has its own clear affordance; do not insert a second button
             // above the text field as the user types and shift its focus/position.
-            if (!showingViewOptions && result.transfers.isNotEmpty() &&
+            if (!addedHidden && !showingViewOptions && result.transfers.isNotEmpty() &&
                 (query.filter != UnifiedTransferFilter.ALL ||
                     query.scope != EnvironmentViewScope.All)) {
                 OutlinedButton(onClick = { update(CombinedViewPreferences.showAll(query)) },
@@ -889,7 +938,7 @@ internal fun CombinedTransfersScreen(
                     Text("Show all transfers")
                 }
             }
-            if (result.transfers.isNotEmpty() &&
+            if (!addedHidden && result.transfers.isNotEmpty() &&
                 (query.filter != UnifiedTransferFilter.ALL ||
                     query.scope != EnvironmentViewScope.All)) {
                 Text(
@@ -1026,51 +1075,25 @@ internal fun CombinedTransfersScreen(
                     }
                     Text(labels[source.environment].orEmpty() + ": " + status + " · " +
                         source.transfers.size + " transfers", style = MaterialTheme.typography.bodySmall)
-                }
-                val loadable = savedProfiles.filter { profile ->
-                    val id = EnvironmentId(profile.id)
-                    id != serverId && profile.listOnly != null && profile.aliasScope != null &&
-                        activeSavedScopes[id] == profile.aliasScope
+                    loadable.firstOrNull { it.id == source.environment.value }?.let { profile ->
+                        val label = labels[source.environment].orEmpty()
+                        val verb = if (listing?.observedAtEpochMillis == null) "Load" else "Refresh"
+                        OutlinedButton(
+                            onClick = { loadSavedServers(listOf(profile)) },
+                            enabled = listing?.loading != true,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                                contentDescription = "$verb transfers on $label; read only"
+                                stateDescription = if (listing?.loading == true) "Loading" else "Ready"
+                            }
+                        ) { Text(if (listing?.loading == true) "Loading $label transfers…"
+                            else "$verb $label transfers") }
+                    }
                 }
                 if (loadable.isNotEmpty()) OutlinedButton(enabled = listings.none { (id, listing) ->
                     listing.loading && activeSavedScopes[id] == listing.sourceAliasScope
                 },
                     onClick = {
-                        loadable.forEach { profile ->
-                            val id = EnvironmentId(profile.id)
-                            val load = profile.listOnly ?: return@forEach
-                            val identity = profile.aliasScope ?: return@forEach
-                            val ticket = savedListingFence.begin(
-                                SavedListingResponseFence.Source(id, identity))
-                            val previous = listings[id]?.takeIf { it.sourceAliasScope == identity }
-                                ?: SavedServerListing(sourceAliasScope = identity)
-                            listings = listings + (id to previous.copy(loading = true, error = null))
-                            batchScope.launch {
-                                // Profile removal/lock may occur between the tap and dispatch.
-                                if (!savedListingFence.accepts(ticket, currentSavedScopes.value))
-                                    return@launch
-                                val next = try {
-                                    val list = withContext(Dispatchers.IO) {
-                                        kotlinx.coroutines.withTimeout(45_000) { load() }
-                                    }
-                                    SavedServerListing(list, System.currentTimeMillis(),
-                                        sourceAliasScope = identity)
-                                } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                    if (cancel is kotlinx.coroutines.TimeoutCancellationException)
-                                        previous.copy(loading = false, error = listingFailure(cancel))
-                                    else throw cancel
-                                } catch (failure: Exception) {
-                                    // Keep last-known rows, never claim the failed read is live.
-                                    previous.copy(loading = false, error = listingFailure(failure))
-                                }
-                                // A slow response from another account or a pre-lock read may
-                                // neither replace current rows nor resurrect hidden content.
-                                if (savedListingFence.accepts(ticket, currentSavedScopes.value)) {
-                                    listings = listings + (id to next)
-                                    now = System.currentTimeMillis()
-                                }
-                            }
-                        }
+                        loadSavedServers(loadable)
                     }, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text(if (listings.isEmpty()) "Load other saved servers (read-only)" else "Refresh other saved servers")
                 }
@@ -1089,7 +1112,11 @@ internal fun CombinedTransfersScreen(
         // Even when a saved subset or a filter hides every row, the way back
         // remains visible without finding an offscreen chip or opening Settings.
         // This changes presentation only, never an Add destination or command target.
-        if (result.transfers.isEmpty() && CombinedViewPreferences.narrowingActive(query)) {
+        if (addedHidden) item(key = "combined-added-hidden") {
+            CombinedAddedHiddenNotice(labels[recentlyAddedTransfer?.environment].orEmpty(),
+                onShowAll = { update(CombinedViewPreferences.showAll(query)) })
+        }
+        if (!addedHidden && result.transfers.isEmpty() && CombinedViewPreferences.narrowingActive(query)) {
             item(key = "recover-empty-combined-view") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("No transfers are visible with these view choices. " +
