@@ -59,6 +59,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -2061,7 +2062,15 @@ internal fun LocalTransferCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TransferFileTypeBadge(transfer.name)
                 Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                    fontWeight = FontWeight.Bold,
+                    // Keep phone cards as scannable as the already bounded remote
+                    // and Combined rows. Expanded details reveal the full title.
+                    // TalkBack always gets the entire exact visible display name.
+                    maxLines = if (diagnosticsOpen) Int.MAX_VALUE else 2,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).semantics {
+                        contentDescription = alias ?: transfer.name
+                    })
             }
             if (diagnosticsOpen) {
                 if (alias != null) {
