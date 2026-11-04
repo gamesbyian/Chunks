@@ -417,6 +417,8 @@ internal fun LocalEngineScreen(
             }
         }
     }
+    val addKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val addFocus = androidx.compose.ui.platform.LocalFocusManager.current
     val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
     var magnet by magnetHolder
     // A kept draft reopens its form on return, rather than hiding it.
@@ -742,6 +744,10 @@ internal fun LocalEngineScreen(
             )
             ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
                 ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
+                // Submitting closes the keyboard, so the form's collapse is not
+                // racing an IME animation (see the Connect transition fix).
+                addKeyboard?.hide()
+                addFocus.clearFocus()
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
                 val selectedMagnet = magnet

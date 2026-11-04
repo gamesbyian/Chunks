@@ -99,6 +99,8 @@ fun VerifiedAddScreen(
     var uncertain by remember { mutableStateOf(false) }
     var alreadyAttempted by remember { mutableStateOf(false) }
     var verifiedHash by remember(remote) { mutableStateOf<String?>(null) }
+    val reviewKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+    val reviewFocus = androidx.compose.ui.platform.LocalFocusManager.current
     LaunchedEffect(verifiedHash) { verifiedHash?.let(onVerifiedAdd) }
     // Freeze the command actually submitted: mutable checkbox values do not
     // authorize treating an already-started Add as a stopped Add on recheck.
@@ -450,7 +452,12 @@ fun VerifiedAddScreen(
             if (!awaitingConfirmation) {
                 item {
                     Button(
-                        onClick = { awaitingConfirmation = true },
+                        onClick = {
+                            // The review replaces the form; close the keyboard first.
+                            reviewKeyboard?.hide()
+                            reviewFocus.clearFocus()
+                            awaitingConfirmation = true
+                        },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
                         enabled = !submitting && !choosing
                     ) { Text("Review Add") }
