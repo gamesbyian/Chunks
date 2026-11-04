@@ -197,8 +197,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun clearSearchRestoresAllMatchesWithoutChangingSelectedEnvironments() {
         show()
-        revealText("Search all selected")
-        rule.onNodeWithText("Search all selected").performTextInput("Small Episode")
+        revealText("Search names or hashes")
+        rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
         rule.onNodeWithText("Showing 1", substring = true).assertExists()
         rule.onNodeWithText("New downloads may not match this search.", substring = true)
             .assertExists()
@@ -221,7 +221,7 @@ class CombinedTransfersScreenTest {
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
         show()
-        rule.onNodeWithText("Search all selected").performTextInput("not-in-any-transfer")
+        rule.onNodeWithText("Search names or hashes").performTextInput("not-in-any-transfer")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
         revealText("New downloads may not match this search.")
         rule.onNodeWithText("New downloads may not match this search.", substring = true)
@@ -251,8 +251,8 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
         revealText("Stopped")
         rule.onNodeWithText("Stopped").performClick()
-        revealText("Search all selected")
-        rule.onNodeWithText("Search all selected").performTextInput("Big Archive")
+        revealText("Search names or hashes")
+        rule.onNodeWithText("Search names or hashes").performTextInput("Big Archive")
         revealText("Showing 0")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
         revealText("New downloads may be hidden by this view.")

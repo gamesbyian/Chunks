@@ -35,7 +35,7 @@ class CombinedSearchContinuityTest {
         rule.onNodeWithText("All environments…").performScrollTo().performClick()
         rule.waitForIdle()
         pane("All environments")
-        rule.onNode(hasSetTextAction() and hasText("Search all selected"))
+        rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
             .performScrollTo().performTextInput("ubuntu")
         rule.onNodeWithText("Open On this phone").performScrollTo().performClick()
         rule.waitForIdle()
