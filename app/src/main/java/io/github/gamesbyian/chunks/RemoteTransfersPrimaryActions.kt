@@ -29,7 +29,11 @@ internal fun RemoteTransfersPrimaryActions(
     onRefresh: () -> Unit
 ) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val stacked = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
+        // A 412dp phone has 376dp after the transfer list's 18dp side
+        // gutters. That space fits two normal-text actions; the former 380dp
+        // cutoff stacked them and spent an unnecessary extra 52dp row.
+        // Keep genuinely narrow or >=1.5x text layouts stacked.
+        val stacked = maxWidth < 340.dp || LocalDensity.current.fontScale >= 1.5f
         if (stacked) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onAdd, enabled = !loading && !stale,
