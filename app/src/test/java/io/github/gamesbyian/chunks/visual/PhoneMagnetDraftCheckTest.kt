@@ -49,6 +49,7 @@ class PhoneMagnetDraftCheckTest {
         rule.waitForIdle()
         rule.onNodeWithText(MagnetDraftCheck.BAD_HASH).assertExists()
         addTile().assertIsNotEnabled()
+        rule.onNodeWithText("Seeding: your phone Seeding rules", substring = true).assertDoesNotExist()
     }
 
     @Test fun notAMagnetIsExplained() {
@@ -67,6 +68,7 @@ class PhoneMagnetDraftCheckTest {
         rule.onNodeWithText("Magnet for: Sintel trailer").assertExists()
         rule.onNodeWithText("Hash dd8255ec…db1f6d1c · no trackers listed").assertExists()
         rule.onNodeWithText(MagnetDraftCheck.BAD_HASH).assertDoesNotExist()
+        rule.onNodeWithText("Seeding: your phone Seeding rules choose a policy", substring = true).assertExists()
     }
 
     @Test fun pasteFillsTheDraftOnlyWhenTapped() {

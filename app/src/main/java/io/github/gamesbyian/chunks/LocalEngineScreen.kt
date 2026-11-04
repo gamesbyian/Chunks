@@ -755,6 +755,10 @@ internal fun LocalEngineScreen(
             onPaste = { magnet = it },
             onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet link first." })
         MagnetDraftSummary(magnetCheck)
+        if (magnetCheck is MagnetDraftCheck.Valid) Text(
+            "Seeding: your phone Seeding rules choose a policy when this magnet's metadata " +
+                "arrives (its trackers and private flag are known then); otherwise the phone default applies.",
+            style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = startAfterAdd, enabled = !busy && !inventoryStale,
                 role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
