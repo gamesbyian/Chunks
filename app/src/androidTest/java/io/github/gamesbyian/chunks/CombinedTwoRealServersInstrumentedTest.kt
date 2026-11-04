@@ -67,16 +67,28 @@ class CombinedTwoRealServersInstrumentedTest {
         }
     }
 
+    /** IME focus can recompose the lazy form mid-input; re-scroll and retry. */
+    private fun typeInto(label: String, value: String) {
+        var last: Throwable? = null
+        repeat(5) {
+            try {
+                scrollTo(label)
+                rule.waitForIdle()
+                rule.onNodeWithText(label).performTextReplacement(value)
+                rule.waitForIdle()
+                return
+            } catch (failure: AssertionError) {
+                last = failure
+                Thread.sleep(400)
+            }
+        }
+        throw AssertionError("Could not enter $label", last)
+    }
+
     private fun connect(url: String) {
-        scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
-        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
-        // Disposable daemons are anonymous loopback HTTP endpoints. Saved
-        // server rows above the form keep later fields out of composition
-        // until scrolled to.
-        scrollTo("Username, if required")
-        rule.onNodeWithText("Username, if required").performTextReplacement("")
-        scrollTo("Password")
-        rule.onNodeWithText("Password").performTextReplacement("")
+        // Both disposable daemons are anonymous: the username and password
+        // fields stay empty from the fresh install onward and are not retyped.
+        typeInto("Seedbox hostname, ruTorrent URL or RPC address", url)
         scrollTo("Remember this server and login on this device")
         scrollTo("Connect to rTorrent")
         rule.onNodeWithText("Connect to rTorrent").performClick()
