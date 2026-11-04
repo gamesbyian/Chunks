@@ -454,6 +454,59 @@ class LocalTorrentEngineTest {
         for ((name, bytes) in fixture.files) assertArrayEquals(bytes, File(fixture.root, name).readBytes())
     }
 
+    @Test fun sameHashReaddAfterKeepDataRequiresFreshGenerationAndCanDeleteExactFiles() {
+        val source = fixture()
+        val destination = source.root.parentFile
+        val foreign = File(destination, "foreign-not-part-of-torrent.txt").apply {
+            writeText("preserve unrelated file")
+        }
+        val instance = engine()
+        val original = added(instance.addStopped(source.torrent, destination))
+        val firstReview = original.nativeReviewToken
+        assertTrue("First native generation must have a review token", firstReview.isNotBlank())
+        assertTrue("Session-only Remove must be verified", instance.removeKeepingData(original.infoHash))
+        assertNull(instance.status(original.infoHash))
+        for ((name, bytes) in source.files) {
+            assertArrayEquals(name, bytes, File(source.root, name).readBytes())
+        }
+
+        // New Add of the same exact torrent is a distinct native handle, even
+        // though the same files remain at the originally authorized path.
+        val readded = added(instance.addStopped(source.torrent, destination))
+        assertEquals(original.infoHash, readded.infoHash)
+        assertNotEquals("A new session must mint a fresh native review generation",
+            firstReview, readded.nativeReviewToken)
+        val stale = instance.removeWithDataIfMatching(
+            readded.infoHash, readded.name, readded.savePath, firstReview)
+        assertEquals(LocalDeleteDataDispatch.REFUSED, stale.dispatch)
+        assertEquals(LocalDeleteDataReadback.UNAVAILABLE, stale.payloadReadback())
+        assertNotNull("Old Remove authorization must not touch the new session",
+            instance.status(readded.infoHash))
+        for ((name, bytes) in source.files) {
+            assertArrayEquals(name, bytes, File(source.root, name).readBytes())
+        }
+
+        // The new user's deliberate review may Remove-and-data. It includes
+        // exact pre-existing files and cannot authorize deleting a sibling.
+        val latest = requireNotNull(instance.status(readded.infoHash))
+        val approved = instance.removeWithDataIfMatching(latest.infoHash,
+            latest.name, latest.savePath, latest.nativeReviewToken)
+        assertEquals(LocalDeleteDataDispatch.REQUESTED, approved.dispatch)
+        assertNull(instance.status(readded.infoHash))
+        val deadline = System.nanoTime() + 30_000_000_000L
+        var readback = approved.payloadReadback()
+        while (readback == LocalDeleteDataReadback.UNAVAILABLE &&
+            System.nanoTime() < deadline) {
+            Thread.sleep(100)
+            readback = approved.payloadReadback()
+        }
+        assertEquals("Native completion=" + approved.nativeCompletion?.get() +
+            ", observed alerts=" + instance.nativeDeletionAlertCounts(),
+            LocalDeleteDataReadback.ABSENT, readback)
+        for (name in source.files.keys) assertFalse(File(source.root, name).exists())
+        assertEquals("preserve unrelated file", foreign.readText())
+    }
+
     @Test fun userAuthorizedDeleteWithForeignDirectoryCanaryReportsNativeFailureEvenWhenBytesGone() {
         val source = fixture()
         val destination = source.root.parentFile
