@@ -292,6 +292,13 @@ internal fun LocalEngineScreen(
     }
     // Exact hash of the latest acknowledged phone Add, for "hidden by view" only.
     var lastAddedHash by rememberSaveable { mutableStateOf<String?>(null) }
+    // The search/filter in effect when that Add happened. Any later deliberate
+    // view change retires the notice, so an old Add is never called "new".
+    var lastAddedView by rememberSaveable { mutableStateOf<String?>(null) }
+    fun rememberAdded(hash: String?) {
+        lastAddedHash = hash
+        lastAddedView = hash?.let { transferSearch + "\u0000" + transferFilter.name }
+    }
     LaunchedEffect(initialSearch) {
         if (!initialSearch.isNullOrBlank()) {
             transferSearch = initialSearch
@@ -721,10 +728,10 @@ internal fun LocalEngineScreen(
                                 else "Magnet added in metadata-only mode. Use Start after the metadata is ready."
                             is LocalAddResult.AddedStopped -> null
                         }
-                        lastAddedHash = when (result) {
-                            is LocalAddResult.FetchingMetadata -> result.status.infoHash
-                            is LocalAddResult.AddedStopped -> result.status.infoHash
-                            is LocalAddResult.Refused -> lastAddedHash
+                        when (result) {
+                            is LocalAddResult.FetchingMetadata -> rememberAdded(result.status.infoHash)
+                            is LocalAddResult.AddedStopped -> rememberAdded(result.status.infoHash)
+                            is LocalAddResult.Refused -> Unit
                         }
                         if (result !is LocalAddResult.Refused) {
                             if (startAfterAdd) {
@@ -997,7 +1004,7 @@ internal fun LocalEngineScreen(
                             }
                         }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
-                        if (added is LocalAddResult.AddedStopped) lastAddedHash = added.status.infoHash
+                        if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash)
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
@@ -1118,6 +1125,125 @@ internal fun LocalEngineScreen(
                 onFinished = { text -> message = text; moveRevision++ }
             )
         }
+        // Batch selection acts on the list itself, so it sits with the list (as on
+        // rTorrent) and near the outcome/confirmation area above it.
+        LocalBatchCollectionPanel(
+            transfers = transfers,
+            shown = displayedTransfers,
+            inventoryStale = inventoryStale || busy,
+            store = collectionStore,
+            onMembershipChanged = {
+                registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+                collectionRevision++
+            },
+            copyServerLabel = serverCopy?.hostLabel,
+            onBatchCopyToServer = serverCopy?.let { link ->
+                { ids ->
+                    val items = transfers.filter { it.infoHash in ids }
+                        .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                    performLocalMutation {
+                        val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                        message = if (problem != null) problem else try {
+                            val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                                exportTorrent = { hash ->
+                                    withContext(Dispatchers.IO) {
+                                        LocalEngineHolder.current()?.exportTorrentFile(hash)
+                                    }
+                                },
+                                addStopped = link.addStoppedAtDefault)
+                            report.summary() + report.results
+                                .filter { it.second != io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED }
+                                .take(10).joinToString("") { (item, result) ->
+                                    "\n• " + item.name.take(80) + ": " + result.label
+                                }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            "The batch copy stopped unexpectedly. Check the server list before " +
+                                "copying again; nothing is retried automatically."
+                        }
+                    }
+                }
+            },
+            onBatchMoveToServer = if (serverCopy == null || moveServer == null) null else { ids ->
+                val link = serverCopy
+                val server = moveServer
+                val items = transfers.filter { it.infoHash in ids }
+                    .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
+                performLocalMutation {
+                    val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
+                    message = if (problem != null) problem else try {
+                        val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
+                            exportTorrent = { hash ->
+                                withContext(Dispatchers.IO) { LocalEngineHolder.current()?.exportTorrentFile(hash) }
+                            },
+                            addStopped = link.addStoppedAtDefault)
+                        // Only destination jobs verified by readback (or already present) start a Move.
+                        val verified = report.results.filter {
+                            it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED ||
+                                it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ALREADY_ON_SERVER
+                        }
+                        val journaled = withContext(Dispatchers.IO) {
+                            verified.count { (item, _) ->
+                                val original = transfers.singleOrNull {
+                                    it.infoHash.equals(item.infoHash, ignoreCase = true) &&
+                                        it.name == item.name && it.nativeReviewToken.isNotBlank()
+                                }
+                                original != null && moveStore.save(TransferMove.start(
+                                    TransferMove.Direction.PHONE_TO_SERVER,
+                                    item.infoHash, item.name, TransferMoveStore.scopeDigest(server.aliasScope),
+                                    TransferMoveStore.hostLabel(server.aliasScope),
+                                    sourceReviewToken = original.nativeReviewToken
+                                ).copy(stage = TransferMove.Stage.TARGET_VERIFIED))
+                            }
+                        }
+                        moveRevision++
+                        report.summary() + " $journaled ready to finish moving: review removal of the " +
+                            "original phone jobs below."
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        "The batch move stopped before removal. Check the server list; nothing was removed " +
+                            "and nothing is retried automatically."
+                    }
+                }
+            },
+            onBatchLifecycle = { ids, start ->
+                val targets = transfers.filter { it.infoHash in ids }
+                    .map { LocalBatchLifecycle.Target(it.infoHash, it.stopped) }
+                performLocalMutation {
+                    val (report, unconfirmedStops) = withContext(Dispatchers.IO) {
+                        val engine = LocalEngineHolder.get(context)
+                        val confirmedStops = ArrayList<String>()
+                        val result = try {
+                            LocalBatchLifecycle.run(targets, start) { hash, wanted ->
+                                val outcome = if (wanted) engine.resume(hash).outcome
+                                    else engine.pause(hash).outcome
+                                if (!wanted && outcome == LocalCommandOutcome.VERIFIED)
+                                    confirmedStops += hash
+                                outcome
+                            }
+                        } catch (_: IllegalArgumentException) { null }
+                        // A verified Stop is not a committed post-Stop resume checkpoint.
+                        // Share one deadline across the whole selection, including a
+                        // partially completed batch. Never replay any Stop on failure.
+                        val budget = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget()
+                        val unconfirmed = if (start) 0 else confirmedStops.count { hash ->
+                            !budget.confirm(hash, engine::saveResumeDataFor)
+                        }
+                        result to unconfirmed
+                    }
+                    message = if (report == null) "This selection cannot be changed as a batch. Nothing changed."
+                    else LocalBatchLifecycle.describe(report) +
+                        io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget.warning(unconfirmedStops)
+                    if (start && (report?.verified ?: 0) > 0) {
+                        try { LocalEngineService.start(context) } catch (_: Exception) {
+                            message += " Android refused the background service; keep Chunks open."
+                        }
+                    }
+                }
+            }
+        )
         Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.bringIntoViewRequester(transfersRequester)
@@ -1179,8 +1305,13 @@ internal fun LocalEngineScreen(
                 TransferSortOrdering.reversed(transferDirection)) }
         )
         }
-        if (PhoneAddedVisibility.hiddenByView(lastAddedHash, transfers.map { it.infoHash },
-                displayedTransfers.map { it.infoHash })) {
+        val addedHidden = remember(lastAddedHash, lastAddedView, transfers, displayedTransfers,
+            transferSearch, transferFilter) {
+            lastAddedView == transferSearch + "\u0000" + transferFilter.name &&
+                PhoneAddedVisibility.hiddenByView(lastAddedHash, transfers.map { it.infoHash },
+                    displayedTransfers.map { it.infoHash })
+        }
+        if (addedHidden) {
             PhoneAddedHiddenNotice(onShowAll = {
                 transferSearch = ""
                 chooseLocalFilter(LocalQueueFilter.ALL)
@@ -1644,123 +1775,6 @@ internal fun LocalEngineScreen(
             sourceLabel = "phone"
         )
         }
-        LocalBatchCollectionPanel(
-            transfers = transfers,
-            shown = displayedTransfers,
-            inventoryStale = inventoryStale || busy,
-            store = collectionStore,
-            onMembershipChanged = {
-                registeredNames = nameRegistry.names(TransferCollectionStore.LOCAL_ENGINE_SCOPE)
-                collectionRevision++
-            },
-            copyServerLabel = serverCopy?.hostLabel,
-            onBatchCopyToServer = serverCopy?.let { link ->
-                { ids ->
-                    val items = transfers.filter { it.infoHash in ids }
-                        .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
-                    performLocalMutation {
-                        val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
-                        message = if (problem != null) problem else try {
-                            val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
-                                exportTorrent = { hash ->
-                                    withContext(Dispatchers.IO) {
-                                        LocalEngineHolder.current()?.exportTorrentFile(hash)
-                                    }
-                                },
-                                addStopped = link.addStoppedAtDefault)
-                            report.summary() + report.results
-                                .filter { it.second != io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED }
-                                .take(10).joinToString("") { (item, result) ->
-                                    "\n• " + item.name.take(80) + ": " + result.label
-                                }
-                        } catch (cancel: kotlinx.coroutines.CancellationException) {
-                            throw cancel
-                        } catch (_: Exception) {
-                            "The batch copy stopped unexpectedly. Check the server list before " +
-                                "copying again; nothing is retried automatically."
-                        }
-                    }
-                }
-            },
-            onBatchMoveToServer = if (serverCopy == null || moveServer == null) null else { ids ->
-                val link = serverCopy
-                val server = moveServer
-                val items = transfers.filter { it.infoHash in ids }
-                    .map { io.github.gamesbyian.chunks.model.BatchServerCopy.Item(it.infoHash, it.name) }
-                performLocalMutation {
-                    val problem = io.github.gamesbyian.chunks.model.BatchServerCopy.validate(items)
-                    message = if (problem != null) problem else try {
-                        val report = io.github.gamesbyian.chunks.model.BatchServerCopy.run(items,
-                            exportTorrent = { hash ->
-                                withContext(Dispatchers.IO) { LocalEngineHolder.current()?.exportTorrentFile(hash) }
-                            },
-                            addStopped = link.addStoppedAtDefault)
-                        // Only destination jobs verified by readback (or already present) start a Move.
-                        val verified = report.results.filter {
-                            it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ADDED ||
-                                it.second == io.github.gamesbyian.chunks.model.BatchServerCopy.Result.ALREADY_ON_SERVER
-                        }
-                        val journaled = withContext(Dispatchers.IO) {
-                            verified.count { (item, _) ->
-                                val original = transfers.singleOrNull {
-                                    it.infoHash.equals(item.infoHash, ignoreCase = true) &&
-                                        it.name == item.name && it.nativeReviewToken.isNotBlank()
-                                }
-                                original != null && moveStore.save(TransferMove.start(
-                                    TransferMove.Direction.PHONE_TO_SERVER,
-                                    item.infoHash, item.name, TransferMoveStore.scopeDigest(server.aliasScope),
-                                    TransferMoveStore.hostLabel(server.aliasScope),
-                                    sourceReviewToken = original.nativeReviewToken
-                                ).copy(stage = TransferMove.Stage.TARGET_VERIFIED))
-                            }
-                        }
-                        moveRevision++
-                        report.summary() + " $journaled ready to finish moving: review removal of the " +
-                            "original phone jobs below."
-                    } catch (cancel: kotlinx.coroutines.CancellationException) {
-                        throw cancel
-                    } catch (_: Exception) {
-                        "The batch move stopped before removal. Check the server list; nothing was removed " +
-                            "and nothing is retried automatically."
-                    }
-                }
-            },
-            onBatchLifecycle = { ids, start ->
-                val targets = transfers.filter { it.infoHash in ids }
-                    .map { LocalBatchLifecycle.Target(it.infoHash, it.stopped) }
-                performLocalMutation {
-                    val (report, unconfirmedStops) = withContext(Dispatchers.IO) {
-                        val engine = LocalEngineHolder.get(context)
-                        val confirmedStops = ArrayList<String>()
-                        val result = try {
-                            LocalBatchLifecycle.run(targets, start) { hash, wanted ->
-                                val outcome = if (wanted) engine.resume(hash).outcome
-                                    else engine.pause(hash).outcome
-                                if (!wanted && outcome == LocalCommandOutcome.VERIFIED)
-                                    confirmedStops += hash
-                                outcome
-                            }
-                        } catch (_: IllegalArgumentException) { null }
-                        // A verified Stop is not a committed post-Stop resume checkpoint.
-                        // Share one deadline across the whole selection, including a
-                        // partially completed batch. Never replay any Stop on failure.
-                        val budget = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget()
-                        val unconfirmed = if (start) 0 else confirmedStops.count { hash ->
-                            !budget.confirm(hash, engine::saveResumeDataFor)
-                        }
-                        result to unconfirmed
-                    }
-                    message = if (report == null) "This selection cannot be changed as a batch. Nothing changed."
-                    else LocalBatchLifecycle.describe(report) +
-                        io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget.warning(unconfirmedStops)
-                    if (start && (report?.verified ?: 0) > 0) {
-                        try { LocalEngineService.start(context) } catch (_: Exception) {
-                            message += " Android refused the background service; keep Chunks open."
-                        }
-                    }
-                }
-            }
-        )
         CollectionNameManager(
             scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
             registry = nameRegistry,
@@ -1804,7 +1818,9 @@ internal fun PhoneOutcomeNotice(text: String) {
         color = ChunksColors.SurfaceRaised,
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, ChunksColors.Outline),
-        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite }
+        // Merge the text into the live-region node so its change is announced.
+        modifier = Modifier.fillMaxWidth()
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
     ) {
         Text(text, color = ChunksColors.Text, style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp))

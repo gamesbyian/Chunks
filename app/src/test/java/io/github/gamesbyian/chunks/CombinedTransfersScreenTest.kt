@@ -314,6 +314,7 @@ class CombinedTransfersScreenTest {
             ": Out of date, showing last list · 2 transfers"
         revealText(staleLabel)
         rule.onNodeWithText(staleLabel).assertExists()
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)
@@ -332,6 +333,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {
         show()
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)
@@ -374,6 +376,7 @@ class CombinedTransfersScreenTest {
                     onOpenPhone = {}, onOpenServer = {}, onBack = {})
             } }
         }
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)
@@ -395,6 +398,7 @@ class CombinedTransfersScreenTest {
 
         // Reconnect to the same account also retires the new session's
         // selection even though both its hash and authenticated scope match.
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val otherRow = "Select Big Archive on " + serverEnvironmentLabel(otherScope)
         revealDescription(otherRow)
@@ -422,6 +426,7 @@ class CombinedTransfersScreenTest {
                     onOpenPhone = {}, onOpenServer = {}, onBack = {})
             } }
         }
+        revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(selectRow)

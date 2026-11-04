@@ -22,8 +22,9 @@ class PhoneOutcomeNoticeTest {
         val text = "Added and started. Check peer availability and downloaded bytes in the transfer list."
         rule.setContent { ChunksTheme { PhoneOutcomeNotice(text) } }
         rule.onNodeWithText(text).assertExists()
+        // The text is merged into the live-region node itself, so its change is announced.
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.LiveRegion, LiveRegionMode.Polite)
-            .and(androidx.compose.ui.test.hasAnyDescendant(hasText(text))))
+            .and(hasText(text)))
             .assertExists()
     }
 }

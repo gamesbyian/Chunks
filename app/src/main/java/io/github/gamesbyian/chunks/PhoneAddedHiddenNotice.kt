@@ -30,10 +30,10 @@ internal object PhoneAddedVisibility {
 /** Clearing changes only the view (search text and filter), never sort, jobs or destinations. */
 @Composable
 internal fun PhoneAddedHiddenNotice(onShowAll: () -> Unit) {
-    Column(Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
-        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text("Your new transfer was added but is hidden by the current search or filter.",
-            style = MaterialTheme.typography.bodyMedium)
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         OutlinedButton(onClick = onShowAll,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("Show all phone transfers")

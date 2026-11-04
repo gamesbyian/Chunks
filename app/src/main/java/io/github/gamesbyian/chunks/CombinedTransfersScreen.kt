@@ -485,14 +485,16 @@ internal fun CombinedTransfersScreen(
             put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
-    val rowLabels = compactEnvironmentLabels(labels, buildMap {
+    val rowLabels = remember(labels, savedProfiles, server?.aliasScope) {
+        compactEnvironmentLabels(labels, buildMap {
         put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
         savedProfiles.forEach { profile ->
             profile.shortLabel?.let { put(EnvironmentId(profile.id), "Server · $it") }
         }
         if (server != null && serverId != null && serverId !in this)
             put(serverId, compactServerLabel(server.aliasScope))
-    })
+        })
+    }
     // Palette storage is a lifecycle effect, not work performed by remember or
     // by LazyColumn composition. Read external changes via the shared revision:
     // profile rename, navigation and chooser updates never overwrite user hues.
@@ -785,7 +787,9 @@ internal fun CombinedTransfersScreen(
                 serverLabel = serverId?.let { labels[it] },
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
                 onOpenPhone = onOpenPhone,
-                onAddToServer = onAddToServer
+                onAddToServer = onAddToServer,
+                phoneHue = palette.hueOf(EnvironmentSnapshots.PHONE),
+                serverHue = serverId?.let { palette.hueOf(it) }
             )
         }
         item {

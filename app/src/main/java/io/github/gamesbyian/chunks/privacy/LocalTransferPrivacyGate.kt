@@ -415,7 +415,7 @@ private fun TransferPrivacyGate(
         Column(Modifier.fillMaxSize()) {
             // Hosted: only contextual security stays on top (Lock now while a
             // policy is active, and any authentication notice).
-            if (!controlsInContent || mode != TransferLockMode.NEVER || notice != null) Column(
+            if (!controlsInContent || mode != TransferLockMode.NEVER) Column(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
@@ -425,10 +425,10 @@ private fun TransferPrivacyGate(
                         if (mode != TransferLockMode.NEVER) lockNow(Modifier.weight(1f))
                     }
                     settings()
-                } else if (mode != TransferLockMode.NEVER) {
+                    notice?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                } else {
                     lockNow(Modifier.fillMaxWidth())
                 }
-                notice?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
             }
             // A Column, not a Box: the connected route passes several
             // siblings (tabs, notices, screen) that must stack, not overlap.
@@ -438,6 +438,8 @@ private fun TransferPrivacyGate(
                         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             privacyButton(Modifier.fillMaxWidth())
                             settings()
+                            // Outcomes of these controls appear where they were used.
+                            notice?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         }
                     }
                     androidx.compose.runtime.CompositionLocalProvider(

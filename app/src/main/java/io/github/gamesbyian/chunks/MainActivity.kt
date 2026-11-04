@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -959,8 +960,18 @@ private fun ChunksApp(
             val visibleDestinations = if (section == Section.TRANSFERS && optionsOpen)
                 optionsDestinations.filter { optionsDestinationMatches(it.label, optionsSearch) }
             else optionsDestinations
-            if (section == Section.TRANSFERS && optionsOpen) {
-                Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            // Options (and every non-Transfers screen's destination list) is
+            // height-bounded and scrolls vertically, so wrapped destinations and
+            // expanded privacy controls can never push the screen and its footer
+            // out of reach at 320dp and 200% type.
+            if (section != Section.TRANSFERS || optionsOpen) Column(
+                Modifier.fillMaxWidth()
+                    .heightIn(max = (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.45f).dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                if (section == Section.TRANSFERS) {
                     ClearableTransferSearchField(
                         value = optionsSearch, onValueChange = { optionsSearch = it },
                         label = "Find a screen or tool"
@@ -970,33 +981,29 @@ private fun ChunksApp(
                             style = MaterialTheme.typography.bodySmall)
                     }
                 }
-            }
-            // Privacy & authentication belongs to Options, not pinned above
-            // every screen; Lock now stays on top while a policy is active.
-            if (section == Section.TRANSFERS && optionsOpen) {
-                io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.let { controls ->
-                    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { controls() }
+                // Wrap rather than scroll sideways: every destination stays reachable
+                // by vertical layout, keyboard and TalkBack at 320dp and 200% type.
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    for (tab in visibleDestinations) {
+                        FilterChip(
+                            selected = section == tab,
+                            onClick = {
+                                optionsSearch = ""
+                                if (tab == Section.LOCAL) localFromCombined = false
+                                section = tab
+                            },
+                            label = { Text(tab.label) },
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        )
+                    }
                 }
-            }
-            // Wrap rather than scroll sideways: every destination stays reachable
-            // by vertical layout, keyboard and TalkBack at 320dp and 200% type.
-            if (section != Section.TRANSFERS || optionsOpen) FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                for (tab in visibleDestinations) {
-                    FilterChip(
-                        selected = section == tab,
-                        onClick = {
-                            optionsSearch = ""
-                            if (tab == Section.LOCAL) localFromCombined = false
-                            section = tab
-                        },
-                        label = { Text(tab.label) },
-                        modifier = Modifier.heightIn(min = 48.dp)
-                    )
-                }
+                // Privacy & authentication belongs with Options, not pinned above
+                // every screen; Lock now stays on top while a policy is active.
+                io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
             }
             if (error != null) {
                 Notice("Refresh problem", error.orEmpty())
@@ -2006,7 +2013,7 @@ private fun TransfersScreen(
             onAdd = onAdd,
             onOptions = onOptions,
             // Speak the exact Add target; the visible "+ Add" stays compact.
-            addDescription = "Add torrent on $environmentLabel"
+            addDescription = "Add torrent on " + serverEnvironmentLabel(aliasScope)
         )
     }
 }

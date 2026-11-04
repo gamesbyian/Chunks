@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks.visual
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -135,13 +136,15 @@ open class ChunksServerRenderTest {
         rule.onNodeWithContentDescription("Add torrent on ", substring = true).assertExists()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        // Destinations wrap instead of hiding in a sideways scroller: each is
-        // on screen at 411dp, including at 200% text, before any tap.
+        // Destinations wrap in a height-bounded, vertically scrollable panel
+        // instead of a sideways scroller: each can be brought on screen at
+        // 411dp, including at 200% text, and the footer is never pushed away.
         for (tab in listOf("Places", "Organize", "Server", "Create", "ZIP review")) {
-            rule.onNodeWithText(tab).assertIsDisplayed()
+            rule.onNodeWithText(tab).performScrollTo().assertIsDisplayed()
         }
         // Privacy & authentication is an Option for this profile, not a pinned row.
-        rule.onNodeWithText("Privacy & authentication").assertIsDisplayed()
+        rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithContentDescription("Options").assertIsDisplayed()
         for (tab in listOf("Places", "Organize", "Server")) {
             rule.onNodeWithText(tab).performClick()
             rule.waitForIdle()
@@ -156,4 +159,10 @@ open class ChunksServerRenderTest {
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi", fontScale = 2.0f)
 class ChunksServerLargeTextRenderTest : ChunksServerRenderTest() {
     override val prefix = "server-200pct"
+}
+
+/** The reviewed overflow case: 320dp at 200% font with wrapped Options and privacy controls. */
+@Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi", fontScale = 2.0f)
+class ChunksServerNarrowLargeTextRenderTest : ChunksServerRenderTest() {
+    override val prefix = "server-320-200pct"
 }
