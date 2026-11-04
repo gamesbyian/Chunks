@@ -454,7 +454,7 @@ class LocalTorrentEngineTest {
         for ((name, bytes) in fixture.files) assertArrayEquals(bytes, File(fixture.root, name).readBytes())
     }
 
-    @Test fun userAuthorizedDeleteRemovesPreexistingExactPayloadAndPreservesCanaries() {
+    @Test fun userAuthorizedDeleteWithForeignDirectoryCanaryReportsNativeFailureEvenWhenBytesGone() {
         val source = fixture()
         val destination = source.root.parentFile
         val unrelated = File(source.root, "unrelated.txt").apply { writeText("keep me") }
@@ -484,10 +484,38 @@ class LocalTorrentEngineTest {
         assertEquals("Native alert=" + receipt.nativeCompletion?.get() +
             ", observed/unmatched alerts=" + instance.nativeDeletionAlertCounts() +
             ", exact surviving files=" + receipt.targets.count { it.exists() },
-            LocalDeleteDataReadback.ABSENT, readback)
+            LocalDeleteDataReadback.NATIVE_FAILED, readback)
+        // libtorrent may remove exact files yet report a native error when the
+        // containing directory still holds a foreign file. Never claim success.
         for (name in source.files.keys) assertFalse(File(source.root, name).exists())
         assertEquals("keep me", unrelated.readText())
         assertEquals("keep root sibling", rootSibling.readText())
+    }
+
+    @Test fun userAuthorizedDeleteCompletesWithNativeSuccessAndExactFileAbsence() {
+        val source = fixture()
+        val destination = source.root.parentFile
+        val unrelatedSibling = File(destination, "unrelated-sibling.txt").apply {
+            writeText("keep sibling")
+        }
+        val instance = engine()
+        val added = added(instance.addStopped(source.torrent, destination))
+        val current = requireNotNull(instance.status(added.infoHash))
+        val receipt = instance.removeWithDataIfMatching(
+            current.infoHash, current.name, current.savePath, current.nativeReviewToken)
+        assertEquals(LocalDeleteDataDispatch.REQUESTED, receipt.dispatch)
+        val deadline = System.nanoTime() + 30_000_000_000L
+        var observed = receipt.payloadReadback()
+        while (observed == LocalDeleteDataReadback.UNAVAILABLE && System.nanoTime() < deadline) {
+            Thread.sleep(100)
+            observed = receipt.payloadReadback()
+        }
+        assertEquals("Native alert=" + receipt.nativeCompletion?.get() +
+            ", observed/unmatched alerts=" + instance.nativeDeletionAlertCounts() +
+            ", exact surviving files=" + receipt.targets.count { it.exists() },
+            LocalDeleteDataReadback.ABSENT, observed)
+        for (name in source.files.keys) assertFalse(File(source.root, name).exists())
+        assertEquals("keep sibling", unrelatedSibling.readText())
     }
 
     @Test fun deleteReceiptRequiresNativeConfirmationEvenWhenPathsAreAlreadyAbsent() {
