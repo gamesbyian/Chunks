@@ -763,6 +763,7 @@ internal fun CombinedTransfersScreen(
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
+            environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
             onOpenOwningList = openFor(focusedKey),
             onCheckCapabilities = readOnlyProbe?.let { probe ->
