@@ -98,6 +98,30 @@ class CombinedTwoRealServersInstrumentedTest {
         waitFor("server queue for the requested endpoint", 90_000) { connectedQueue() }
     }
 
+    /**
+     * Second instrumentation run after the harness force-stops the app
+     * process: the remembered verified server reconnects read-only from a
+     * truly new process, with no Connect form and no command replay.
+     */
+    @Test fun afterProcessDeathRememberedServerReconnects() {
+        assumeTrue("Requires the two-disposable-server workflow phase 2",
+            args.getString("chunks_combined_phase") == "after-process-death")
+        val urlB = decoded("chunks_combined_b_b64")
+        val before = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
+            .map { it.hash to it.started }.toSet()
+        ActivityScenario.launch(MainActivity::class.java).use {
+            waitFor("entry after process death") { connectedQueue() || visible("On this phone (experimental)") }
+            if (!connectedQueue()) rule.onNodeWithText("Back").performScrollTo().performClick()
+            waitFor("reconnect after process death", 90_000) { connectedQueue() }
+            assertTrue(!visible("Seedbox hostname, ruTorrent URL or RPC address"))
+            stage("process-death-reconnected")
+        }
+        val after = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
+            .map { it.hash to it.started }.toSet()
+        assertEquals("Reconnect must not replay any command", before, after)
+        stage("process-death-unchanged")
+    }
+
     @Test fun combinedShowsSameHashOnTwoRealServersWithDistinctOriginsAndReconnects() {
         assumeTrue("Requires the two-disposable-server workflow",
             args.getString("chunks_combined_disposable") == "authorized")
@@ -128,7 +152,17 @@ class CombinedTwoRealServersInstrumentedTest {
             // Options lists screen destinations; Disconnect is on "Server".
             rule.onNodeWithText("Options").performClick()
             waitFor("Options destinations") { visible("Find a screen or tool") }
-            rule.onNodeWithText("Server").performScrollTo().performClick()
+            // Destination chips can reflow between scroll and tap (run
+            // 41827315011 selected the neighbouring Organize chip). Verify
+            // the Server screen opened and re-tap the exact chip if not.
+            var opened = false
+            repeat(4) {
+                if (opened) return@repeat
+                rule.onNodeWithText("Server").performScrollTo()
+                rule.waitForIdle()
+                rule.onNodeWithText("Server").performClick()
+                opened = runCatching { rule.waitUntil(10_000) { visible("Disconnect") } }.isSuccess
+            }
             waitFor("Server screen") { visible("Disconnect") }
             scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
@@ -239,20 +273,48 @@ class CombinedTwoRealServersInstrumentedTest {
             scrollTo("Load other saved servers (read-only)")
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
             waitFor("union before fault", 60_000) { visible("Showing 4") }
-            val fault = java.net.URL("http://127.0.0.1:18083/offline-a").openConnection()
-                as java.net.HttpURLConnection
-            fault.connectTimeout = 10_000
-            fault.readTimeout = 30_000
-            assertEquals("Harness could not take server A offline", 200, fault.responseCode)
-            fault.disconnect()
-            stage("server-a-offline")
-            scrollTo("Refresh other saved servers")
-            rule.onNodeWithText("Refresh other saved servers").performClick()
-            scrollTo("Environment status")
-            if (!visible(":$portA")) rule.onNodeWithText("Environment status", substring = true).performClick()
+            fun fault(action: String) {
+                val c = java.net.URL("http://127.0.0.1:18083/$action").openConnection()
+                    as java.net.HttpURLConnection
+                c.connectTimeout = 10_000
+                c.readTimeout = 40_000
+                assertEquals("Harness fault switch $action failed", 200, c.responseCode)
+                c.disconnect()
+            }
             fun line(port: String, text: String) = rule.onAllNodes(
                 hasText(":$port", substring = true) and hasText(text, substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
+            fun refreshOthers() {
+                scrollTo("Refresh other saved servers")
+                rule.onNodeWithText("Refresh other saved servers").performClick()
+                // Expanded, the toggle reads "Hide environment status".
+                scrollTo("nvironment status")
+                if (!visible("Hide environment status"))
+                    rule.onNodeWithText("Environment status", substring = true).performClick()
+            }
+            // Timeout: A's daemon is frozen (gateway accepts, no reply).
+            fault("freeze-a")
+            stage("server-a-frozen")
+            refreshOthers()
+            waitFor("A unresponsive reported failed with last list", 120_000) {
+                line(portA, "Refresh failed") && line(portA, "showing last list")
+            }
+            assertTrue("Unresponsive server A must not be Live", !line(portA, ": Live"))
+            stage("c2-timeout-truthful")
+            // Recovery: the same saved profile reads live again after an
+            // explicit refresh, never from the previous failed read.
+            fault("thaw-a")
+            waitFor("refresh enabled after timeout", 60_000) {
+                rule.onAllNodesWithText("Refresh other saved servers").fetchSemanticsNodes().isNotEmpty()
+            }
+            refreshOthers()
+            waitFor("A live again after explicit refresh", 90_000) {
+                line(portA, ": Live") && line(portA, "· 2 transfers") && !line(portA, "Refresh failed")
+            }
+            stage("c2-recovered")
+            fault("offline-a")
+            stage("server-a-offline")
+            refreshOthers()
             waitFor("A reported failed with last list retained", 90_000) {
                 line(portA, "Refresh failed") && line(portA, "showing last list")
             }

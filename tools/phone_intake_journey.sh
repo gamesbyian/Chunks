@@ -89,3 +89,20 @@ for kind in share magnet; do
   adb shell am force-stop "$pkg"
 done
 echo 'CHUNKS_INTAKE: both real Share/magnet UI journeys verified on this disposable emulator only'
+
+# L6: production "Remove transfer and data" with independent absence/canary.
+adb shell am force-stop "$pkg"
+adb logcat -c
+out_d="$(adb shell am instrument -w -r -e class "$cls#phaseDelete_realUiRemoveTransferAndDataDeletesOnlyExactPayload" \
+  -e chunksIntakePhase delete "$runner")"
+printf '%s\n' "$out_d"
+log_d="$(adb logcat -d -v raw -s ChunksIntake:I)"
+if [[ "$(grep -Fxc 'OK (1 test)' <<< "$out_d" || true)" != 1 ]] ||
+   grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$out_d"; then
+  echo 'CHUNKS_INTAKE: delete-data journey did not execute exactly one passing test'; exit 1
+fi
+grep -E '^CHUNKS_INTAKE_DELETE verified=true payload_absent=true session_absent=true canary_intact=true bytes=524288$' <<< "$log_d" || {
+  echo 'CHUNKS_INTAKE: missing delete-data absence/canary witness'; exit 1;
+}
+adb shell am force-stop "$pkg"
+echo 'CHUNKS_INTAKE: real UI Remove transfer and data verified on this disposable emulator only'

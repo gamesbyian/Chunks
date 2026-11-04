@@ -94,7 +94,15 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
         // 41800987696): tapping it again would close it. Open only if shut.
         if (!visible("Find a screen or tool")) rule.onNodeWithText("Options").performClick()
         waitFor("options-$label-missing") { visible("Find a screen or tool") }
-        rule.onNodeWithText("Server").performScrollTo().performClick()
+        // Chips can reflow between scroll and tap; verify and re-tap.
+        var opened = false
+        repeat(4) {
+            if (opened) return@repeat
+            rule.onNodeWithText("Server").performScrollTo()
+            rule.waitForIdle()
+            rule.onNodeWithText("Server").performClick()
+            opened = runCatching { rule.waitUntil(10_000) { visible("Disconnect") } }.isSuccess
+        }
         waitFor("server-screen-$label-missing") { visible("Disconnect") }
         scrollTo("Disconnect")
         rule.onNodeWithText("Disconnect").performClick()
