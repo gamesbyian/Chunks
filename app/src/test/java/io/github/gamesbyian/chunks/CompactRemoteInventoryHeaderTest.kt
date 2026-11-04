@@ -47,6 +47,50 @@ class CompactRemoteInventoryHeaderTest {
     }
 
     @Test
+    @Config(qualifiers = "w412dp-h892dp-mdpi")
+    fun actual412dpPhoneListGuttersKeepAllEnvironmentsInlineAtNormalType() {
+        var opens = 0
+        rule.setContent {
+            ChunksTheme {
+                Box(Modifier.width(376.dp)) {
+                    CompactRemoteInventoryHeader(
+                        environmentLabel = "Wood", environment = null,
+                        loadedCount = 32, view = "main",
+                        stale = false, loading = false,
+                        onAllEnvironments = { opens++ }
+                    )
+                }
+            }
+        }
+        val badge = rule.onNodeWithText("Wood · 32 transfers").getUnclippedBoundsInRoot()
+        val all = rule.onNodeWithText("All environments…").getUnclippedBoundsInRoot()
+        assertTrue("Keep identity and All environments on a single row", badge.top < all.bottom && all.top < badge.bottom)
+        assertTrue("All environments must fit the content area", all.right <= 376.dp)
+        assertTrue("All environments remains a 48dp target", all.bottom - all.top >= 48.dp)
+        rule.onNodeWithText("All environments…").performClick()
+        assertEquals(1, opens)
+    }
+
+    @Test
+    @Config(qualifiers = "w320dp-h700dp-mdpi")
+    fun actual320dpPhoneGuttersKeepHeaderAndScopeActionStacked() {
+        rule.setContent {
+            ChunksTheme {
+                Box(Modifier.width(284.dp)) {
+                    CompactRemoteInventoryHeader(
+                        environmentLabel = "Wood", environment = null,
+                        loadedCount = 32, view = "main",
+                        stale = false, loading = false, onAllEnvironments = {}
+                    )
+                }
+            }
+        }
+        val badge = rule.onNodeWithText("Wood · 32 transfers").getUnclippedBoundsInRoot()
+        val all = rule.onNodeWithText("All environments…").getUnclippedBoundsInRoot()
+        assertTrue("On a genuinely narrow phone, stack rather than squeeze", all.top >= badge.bottom)
+    }
+
+    @Test
     @Config(qualifiers = "w320dp-h700dp-mdpi")
     fun largeTextShowsStaleAndNonmainScopeWithoutRawEndpoint() {
         var opens = 0
