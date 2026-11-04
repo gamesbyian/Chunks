@@ -50,6 +50,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
@@ -262,6 +263,9 @@ internal fun LocalEngineScreen(
     onSearchConsumed: () -> Unit = {},
     /** Reports each Add the phone engine acknowledged and read back, by its exact hash. */
     onAcknowledgedAdd: (String) -> Unit = {},
+    /** The Phone options tool just closed ("SEEDING", "CREATE", "ARCHIVES"); its button regains focus. */
+    returnFocusTool: String? = null,
+    onReturnFocusConsumed: () -> Unit = {},
     onPrepareRemote: ((String) -> Unit)? = null,
     /** Receives a verified exported .torrent for the server's Add review. */
     onPrepareRemoteTorrent: ((ByteArray) -> Unit)? = null,
@@ -671,6 +675,22 @@ internal fun LocalEngineScreen(
     }
     val transfersRequester = remember { BringIntoViewRequester() }
     val optionsRequester = remember { BringIntoViewRequester() }
+    // Back from a phone tool returns keyboard focus to the button that opened it.
+    val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val createFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val zipFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(returnFocusTool) {
+        val target = when (returnFocusTool) {
+            "SEEDING" -> seedingFocus
+            "CREATE" -> createFocus
+            "ARCHIVES" -> zipFocus
+            else -> null
+        } ?: return@LaunchedEffect
+        // Wait one frame so the restored list is laid out before focusing.
+        androidx.compose.runtime.withFrameNanos { }
+        try { target.requestFocus() } catch (_: IllegalStateException) { }
+        onReturnFocusConsumed()
+    }
     val addRequester = remember { BringIntoViewRequester() }
     var addNavigationRevision by remember { mutableIntStateOf(0) }
     LaunchedEffect(addExpanded, addNavigationRevision) {
@@ -1836,7 +1856,7 @@ internal fun LocalEngineScreen(
                 .bringIntoViewRequester(optionsRequester)
                 .semantics { heading() })
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(seedingFocus)) {
             Text("Seeding rules…")
         }
         io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
@@ -1901,11 +1921,11 @@ internal fun LocalEngineScreen(
             }
         )
         if (onCreateTorrent != null) OutlinedButton(onClick = onCreateTorrent,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(createFocus)) {
             Text("Create a torrent…")
         }
         if (onZipReview != null) OutlinedButton(onClick = onZipReview,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(zipFocus)) {
             Text("Review ZIP archives…")
         }
         OutlinedButton(

@@ -273,12 +273,15 @@ private fun ChunksApp(
     // opened it, e.g. the phone or Server, instead of always to the
     // server/connection entry. Navigation only; no command or draft.
     var toolOrigin by rememberSaveable { mutableStateOf<String?>(null) }
+    var phoneReturnFocus by remember { mutableStateOf<String?>(null) }
     fun openTool(tool: Section, from: Section) {
         toolOrigin = from.name
         section = tool
     }
     fun openFromPhone(tool: Section) = openTool(tool, Section.LOCAL)
     fun leaveTool() {
+        // Returning to the phone: the button that opened this tool regains focus.
+        if (toolOrigin == Section.LOCAL.name) phoneReturnFocus = section.name
         section = toolOrigin?.let { origin -> Section.entries.firstOrNull { it.name == origin } }
             ?: Section.TRANSFERS
         toolOrigin = null
@@ -623,6 +626,7 @@ private fun ChunksApp(
                     initialSearch = phoneSearchPrefill,
                     onSearchConsumed = { phoneSearchPrefill = null },
                     onAcknowledgedAdd = { hash -> latestAdded = phoneAddedKey(hash) },
+                    returnFocusTool = phoneReturnFocus, onReturnFocusConsumed = { phoneReturnFocus = null },
                     initialTorrentUri = incomingTorrent,
                     onTorrentConsumed = onIncomingTorrentConsumed,
                     onPrefillConsumed = { phoneHandoffMagnet = null },
@@ -939,6 +943,7 @@ private fun ChunksApp(
                         initialSearch = phoneSearchPrefill,
                         onSearchConsumed = { phoneSearchPrefill = null },
                         onAcknowledgedAdd = { hash -> latestAdded = phoneAddedKey(hash) },
+                        returnFocusTool = phoneReturnFocus, onReturnFocusConsumed = { phoneReturnFocus = null },
                         initialTorrentUri = incomingTorrent,
                         canReviewOnConnectedServer = true,
                         serverCopy = if (remotePrivacyScope == null) null

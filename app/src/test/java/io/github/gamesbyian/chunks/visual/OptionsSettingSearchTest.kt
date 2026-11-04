@@ -117,7 +117,7 @@ class OptionsSettingSearchTest {
         connectAndOpenOptions()
         search.performTextInput("speed")
         rule.waitForIdle()
-        rule.onNodeWithText("Speed limits, DHT and the phone download location · opens On this phone, then Options")
+        rule.onNodeWithText("Speed limits are in phone Options; DHT and the download location are in phone Add · opens On this phone")
             .performScrollTo()
         search.performTextReplacement("lock")
         rule.waitForIdle()
