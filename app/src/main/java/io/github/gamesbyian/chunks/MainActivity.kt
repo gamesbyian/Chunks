@@ -1690,10 +1690,15 @@ private fun TransfersScreen(
                     enabled = if (selecting) !batchBusy
                         else !loading && !stale && !batchBusy && list.isNotEmpty(),
                     onToggleSelection = {
-                        selecting = !selecting
+                        val enteringSelection = !selecting
+                        selecting = enteringSelection
                         batchHashes = emptySet()
                         batchConfirm = false
                         batchMessage = null
+                        // Reveal the actual rows to select immediately rather than
+                        // leaving the large Options navigation above the batch.
+                        // The persistent footer still reopens Options at any time.
+                        if (enteringSelection && optionsOpen) onOptions()
                     },
                     onToggleTools = { toolsOpen = !toolsOpen }
                 )
