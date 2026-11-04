@@ -1,5 +1,7 @@
 # Chunks: agent concurrency and ownership
 
+> **Latest integration checkpoint:** Paired Remove #1231, docs #1232, and integrated UX #1230 all merged into live main `91311baf70c7d55bd2d14606be62c2cd70133ac9`. The open PR roster was empty at reconciliation. The earlier #1224/#1226 staging and old UX merge conflict are resolved, not active work leases. Read [P0 recovery checkpoint](P0-RECOVERY-CHECKPOINT-2026-11-03.md) and current [WORK-QUEUE](WORK-QUEUE.md); coordinate unfinished A and B–D as outcomes sharing one E acceptance, not separate redundant gates.
+
 
 > **Live scheduling reconciliation (2026-10-31):** The preceding live-audit checkpoint had zero open PRs; that is a dated snapshot, **not the current roster**. Always inspect live PRs (including docs PRs) before claiming ownership. #868/#869 are merged; old #812/#856 are closed; the old #869 API35 failure belongs to a superseded head and its integrated replacement passed. The only executable priority order is [WORK-QUEUE's authoritative next-work dispatch](WORK-QUEUE.md#one-ranked-dispatch-table). Recheck live repository state before dispatch and never revive a closed branch merely because an older handoff called it active. Historical evidence remains in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
