@@ -45,6 +45,7 @@ jobs:
           fi
       - name: Verify stable samehash, separate profiles and refused cross-instance route
         run: |
+          python3 -m unittest discover -s tools -p 'test_seedhost_p0_directory_probe.py' -v
           gradle --no-daemon :app:testDebugUnitTest \
             --tests 'io.github.gamesbyian.chunks.rpc.SeedhostP0CohortProvisionTest.fixtureIdentitiesAreStablePerDispatchAndDistinctAcrossRuns'
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostP0CohortProvisionTest.xml
@@ -87,6 +88,15 @@ jobs:
             echo "::error::Selected instance secret unavailable; no Add sent"
             exit 1
           }
+      - name: Read-only verify exact downloads parent on selected numbered profile
+        env:
+          CHUNKS_P0_COHORT_INSTANCE: ${{ matrix.instance }}
+          CHUNKS_P0_COHORT_RUN_ID: ${{ github.run_id }}
+          CHUNKS_P0_COHORT_USER: ianseeds
+          CHUNKS_P0_COHORT_PASS: ${{ secrets[matrix.instance == '2' && 'rTorrent_pass2' || 'rtorrent_pass3'] }}
+          CHUNKS_P0_COHORT_DEST_FILE: ${{ runner.temp }}/cohort-confirmed-dir-${{ matrix.instance }}.txt
+        run: |
+          python3 tools/seedhost_p0_directory_probe.py
       - name: Production Kotlin adapter stages run-unique stopped cohort
         env:
           CHUNKS_P0_COHORT_URL: https://ianseeds.wood.seedhost.eu/rutorrent${{ matrix.instance }}/
@@ -97,6 +107,7 @@ jobs:
           CHUNKS_P0_COHORT_USER: ianseeds
           CHUNKS_P0_COHORT_PASS: ${{ secrets[matrix.instance == '2' && 'rTorrent_pass2' || 'rtorrent_pass3'] }}
           CHUNKS_P0_COHORT_RECEIPT: ${{ runner.temp }}/cohort-instance-${{ matrix.instance }}.tsv
+          CHUNKS_P0_COHORT_DEST_FILE: ${{ runner.temp }}/cohort-confirmed-dir-${{ matrix.instance }}.txt
         run: |
           gradle --no-daemon --console=plain :app:testDebugUnitTest \
             --tests 'io.github.gamesbyian.chunks.rpc.SeedhostP0CohortProvisionTest.addStoppedMetadataOnlyToExactlyReviewedDevelopmentInstance'

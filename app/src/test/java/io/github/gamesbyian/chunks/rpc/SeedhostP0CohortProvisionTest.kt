@@ -122,28 +122,40 @@ class SeedhostP0CohortProvisionTest {
             // filesystem path, tracker links, or original inventory content.
             rows.removeAll { it.startsWith(f.id + "\t") }
             rows += listOf(f.id, "remote-$instance", runId, f.hash,
-                "generated-validated-stopped-metainfo-$runId", "server-default",
+                "generated-validated-stopped-metainfo-$runId", "verified-picker-shared-download-parent",
                 if (f.expectedFiles == 2) "first.bin;second.bin" else f.name,
                 "reviewed-priority/start/stop/reconnect/keep-data", "no", state
             ).joinToString("\t")
             receipt.writeText(rows.joinToString("\n", postfix = "\n"))
         }
 
-        val default = remote.defaultDirectory()
-            ?: error("No verified server-default destination; no mutation sent")
-        require(default.startsWith("/") && default != "/" && !default.contains("/../") &&
-            default.length <= 1024) {
-            "Unsafe or missing server default; no mutation sent"
+        // Write a fail-closed receipt before *any* remote mutation. The earlier
+        // attempted run failed before the first fixture record when
+        // directory.default was unavailable on these empty instances.
+        for (fixture in fixtures) snapshot(fixture, "not-dispatched")
+        // An already verified primary download parent is only a CANDIDATE:
+        // the numbered instance must independently validate that exact path
+        // through its read-only ruTorrent directory picker in this same job.
+        val picked = System.getenv("CHUNKS_P0_COHORT_DEST_FILE").orEmpty()
+        require(picked.endsWith("/cohort-confirmed-dir-$instance.txt"))
+        val pickedFile = File(picked)
+        if (!pickedFile.isFile) {
+            fixtures.forEach { snapshot(it, "blocked-numbered-directory-preflight-no-write") }
+            error("Numbered-instance directory preflight unavailable; no Add sent")
+        }
+        val selectedParent = pickedFile.readText().trim()
+        if (selectedParent != "/home20/ianseeds/downloads") {
+            fixtures.forEach { snapshot(it, "blocked-directory-identity-mismatch-no-write") }
+            error("Read-only picked directory differed from reviewed parent; no Add sent")
         }
         for (fixture in fixtures) {
-            snapshot(fixture, "not-dispatched")
             // An old or hidden session with this hash is an absolute refusal.
             require(remote.lookupName(fixture.hash) == null) {
                 "Unexpected pre-existing test infohash; no Add was sent"
             }
             snapshot(fixture, "dispatch-possible-manual-reconciliation-if-interrupted")
             val result = remote.loadStoppedTorrentBytes(
-                fixture.bytes, default, useServerDefault = true)
+                fixture.bytes, selectedParent, useServerDefault = false)
             if (result is RemoteAddOutcome.Uncertain) {
                 snapshot(fixture, "uncertain-manual-reconciliation-required")
                 error("Exact Add outcome uncertain. No retry or cleanup permitted")
@@ -165,8 +177,8 @@ class SeedhostP0CohortProvisionTest {
                 snapshot(fixture, "not-verified-manual-reconciliation-required")
                 error("Fresh exact stopped state not verified; manual reconcile")
             }
-            val expected = if (fixture.expectedFiles == 1) default
-                else default.trimEnd('/') + "/" + fixture.name
+            val expected = if (fixture.expectedFiles == 1) selectedParent
+                else selectedParent.trimEnd('/') + "/" + fixture.name
             if (confirmed.directory != expected) {
                 snapshot(fixture, "destination-mismatch-manual-reconciliation-required")
                 error("Selected server-default target did not match readback")
