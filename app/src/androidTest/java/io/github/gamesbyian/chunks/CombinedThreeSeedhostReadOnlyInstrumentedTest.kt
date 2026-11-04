@@ -98,7 +98,11 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
         waitFor("server-screen-$label-missing") { visible("Disconnect") }
         scrollTo("Disconnect")
         rule.onNodeWithText("Disconnect").performClick()
-        waitFor("disconnect-$label-failed") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
+        // With saved servers listed first, the address field may be below the
+        // lazy fold (run 41803179533); either marks the Connection screen.
+        waitFor("disconnect-$label-failed") {
+            visible("Saved servers") || visible("Seedbox hostname, ruTorrent URL or RPC address")
+        }
         stage("disconnected-$label")
     }
 
