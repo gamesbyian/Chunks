@@ -152,7 +152,17 @@ class CombinedTwoRealServersInstrumentedTest {
             // Options lists screen destinations; Disconnect is on "Server".
             rule.onNodeWithText("Options").performClick()
             waitFor("Options destinations") { visible("Find a screen or tool") }
-            rule.onNodeWithText("Server").performScrollTo().performClick()
+            // Destination chips can reflow between scroll and tap (run
+            // 41827315011 selected the neighbouring Organize chip). Verify
+            // the Server screen opened and re-tap the exact chip if not.
+            var opened = false
+            repeat(4) {
+                if (opened) return@repeat
+                rule.onNodeWithText("Server").performScrollTo()
+                rule.waitForIdle()
+                rule.onNodeWithText("Server").performClick()
+                opened = runCatching { rule.waitUntil(10_000) { visible("Disconnect") } }.isSuccess
+            }
             waitFor("Server screen") { visible("Disconnect") }
             scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
