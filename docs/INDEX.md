@@ -1,6 +1,6 @@
 # Chunks documentation index
 
-- [Recency-preserving transfer progress chunks](TRANSFER-PROGRESS-CHUNKS.md): owner-approved proportional, bounded, chronological progress segments, oldest-first coalescing, smaller rounded-rectangle corners, visual/accessibility behaviour and acceptance; source merged in #1251, further installed dynamic-geometry and owner-phone review remain.
+- [Recency-preserving transfer progress chunks](TRANSFER-PROGRESS-CHUNKS.md): owner-approved proportional, bounded, chronological progress segments, oldest-first coalescing, smaller rounded-rectangle corners, visual/accessibility behaviour and acceptance; source merged in #1251; installed dynamic pixel geometry verified in #1252, while owner-phone/TalkBack review remains.
 
 - [Transfer sharing](TRANSFER-SHARING.md): planned local/rTorrent magnet share/copy and conditional verified `.torrent` export, including acceptance.
 - [Expository file associations](EXPOSITORY-FILE-ASSOCIATIONS.md): planned opt-in, scoped read-only seedbox file-membership feed for Expository Transfer.
