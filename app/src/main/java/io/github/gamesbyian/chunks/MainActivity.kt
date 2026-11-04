@@ -1017,9 +1017,13 @@ private fun ChunksApp(
             if (error != null) {
                 Notice("Refresh problem", error.orEmpty())
             }
+            // Per-account list position survives visiting Places, Server or
+            // other routes; a different account starts at the top.
+            val remoteListState = remember(aliasScope) { androidx.compose.foundation.lazy.LazyListState() }
             when (section) {
                 Section.TRANSFERS -> RemoteEnvironmentCompositionBoundary(aliasScope, connectedRemote) {
                     TransfersScreen(
+                    listState = remoteListState,
                     remote = connectedRemote, onLifecycleSettled = settledRemoteMutation,
                     onMutationStarted = beginRemoteMutation,
                     aliasStore = aliasStore, aliasScope = aliasScope,
@@ -1575,6 +1579,7 @@ private fun ConnectionScreen(
 
 @Composable
 private fun TransfersScreen(
+    listState: androidx.compose.foundation.lazy.LazyListState,
     remote: RTorrentRemote, onLifecycleSettled: () -> Unit,
     onMutationStarted: () -> Boolean,
     aliasStore: TransferAliasStore, aliasScope: String,
@@ -1604,7 +1609,6 @@ private fun TransfersScreen(
             aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
         }
     }
-    val listState = rememberLazyListState()
     val topControlScope = rememberCoroutineScope()
     val context = LocalContext.current
     var serverMoveRevision by remember { mutableStateOf(0) }
