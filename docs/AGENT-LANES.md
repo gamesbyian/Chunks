@@ -1,5 +1,7 @@
 # Chunks: agent concurrency and ownership
 
+> **One P0 integration owner, two overlapping implementation workstreams:** [P0 daily-use journeys](P0-DAILY-USE-JOURNEYS.md) is the execution model. Workstream 1 **Transfer lifecycle (A+B)** handles local/remote Add, destinations, priorities, controls, Remove and re-add. Workstream 2 **Environment continuity (C+D)** handles restart/reconnect, exact inventory identity and Combined UI. Integrator owns shared Compose/model writes, fixture leases, [single cohort manifest](P0-DAILY-USE-FIXTURES.tsv), [journey receipts](P0-DAILY-USE-EVIDENCE.tsv), merge and APK. E is independent acceptance only. Avoid parallel central-file writers and redundant gates; consult live ownership before editing.
+
 > **Latest integration checkpoint:** Paired Remove #1231, docs #1232, and integrated UX #1230 all merged into live main `91311baf70c7d55bd2d14606be62c2cd70133ac9`. The open PR roster was empty at reconciliation. The earlier #1224/#1226 staging and old UX merge conflict are resolved, not active work leases. Read [P0 recovery checkpoint](P0-RECOVERY-CHECKPOINT-2026-11-03.md) and current [WORK-QUEUE](WORK-QUEUE.md); coordinate unfinished A and B–D as outcomes sharing one E acceptance, not separate redundant gates.
 
 

@@ -1,0 +1,11 @@
+scenario_id	category	workstream	fixture_id	environment_alias	session_generation	source_sha	apk_or_build_sha	device_or_server_tier	actual_outcome	independent_receipt	result	notes
+L1	A+B	transfer-lifecycle									not-run	Add + exact selected destination + real pieces
+L2	B	transfer-lifecycle									not-run	Real engine multi-file priority and observed order
+L3	A+B	transfer-lifecycle									not-run	Start/Stop and actual resume checkpoint
+C1	C	environment-continuity									not-run	Cold restart, saved profile, inventory refresh
+D1	D	environment-continuity									not-run	Combined exact server scope and same-hash separation
+L4	A	transfer-lifecycle									not-run	Remove exact session; preserve payload
+L5	A	transfer-lifecycle									not-run	Re-add same hash, fresh generation
+L6	A	transfer-lifecycle									not-run	Delete exact payload, canary and deliberate recovery
+C2	C+D	environment-continuity									not-run	Offline/auth/timeout and no blind mutations
+E1	E	shared-acceptance									not-run	Physical Pixel full journey + SHA identified APK
