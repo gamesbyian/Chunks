@@ -161,6 +161,9 @@ open class ChunksServerRenderTest {
         small += rule.smallTouchTargets(density)
         org.junit.Assert.assertTrue("rTorrent touch targets under 48dp: ${small.distinct()}", small.isEmpty())
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-cards.png")
+        // The batch entry is now explicitly behind the persistent Options
+        // footer; selecting immediately closes Options so real rows are visible.
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select transfers for a batch"))
         rule.onNodeWithText("Select transfers for a batch").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Collection name for selected transfers"))
