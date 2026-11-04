@@ -442,6 +442,23 @@ internal fun LocalEngineScreen(
             onPrefillConsumed()
         }
     }
+    // Foreground clipboard prefill: read once each time the Add form opens.
+    var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
+    var clipboardFilled by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        clipboardPrefillOn = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
+    }
+    LaunchedEffect(addExpanded, clipboardPrefillOn) {
+        if (!addExpanded || clipboardPrefillOn != true) return@LaunchedEffect
+        val filled = ClipboardMagnetPrefill.decide(
+            enabled = true, currentDraft = magnet,
+            otherSourcePresent = pending != null || initialMagnet != null || initialTorrentUri != null,
+            clipText = ClipboardMagnetPrefill.readText(context))
+        if (filled != null) {
+            magnet = filled
+            clipboardFilled = filled
+        }
+    }
     var startAfterAdd by remember { mutableStateOf(true) }
     var addFolderDraft by remember { mutableStateOf("") }
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
@@ -754,6 +771,17 @@ internal fun LocalEngineScreen(
             enabled = !busy && !inventoryStale,
             onPaste = { magnet = it },
             onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet link first." })
+        clipboardPrefillOn?.let { on ->
+            ClipboardPrefillToggle(checked = on, enabled = true, onChange = { next ->
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.setEnabled(context, next) }
+                    if (saved) clipboardPrefillOn = next
+                    else noteProblem("That clipboard choice could not be saved. It is unchanged.")
+                }
+            })
+        }
+        if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
+            onClear = { magnet = ""; clipboardFilled = null }, enabled = !busy)
         MagnetDraftSummary(magnetCheck)
         if (magnetCheck is MagnetDraftCheck.Valid) Text(
             "Seeding: your phone Seeding rules choose a policy when this magnet's metadata " +

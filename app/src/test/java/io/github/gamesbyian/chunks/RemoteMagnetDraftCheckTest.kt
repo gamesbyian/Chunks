@@ -61,4 +61,14 @@ class RemoteMagnetDraftCheckTest {
         rule.onNodeWithText(MagnetDraftCheck.BAD_HASH).assertExists()
         rule.onNodeWithText("Review Add").assertDoesNotExist()
     }
+
+    @Test fun copiedMagnetFillsAnEmptyServerAddWithItsNote() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+            .setPrimaryClip(android.content.ClipData.newPlainText("copied",
+                "magnet:?xt=urn:btih:" + "e".repeat(40) + "&dn=Copied"))
+        show("")
+        reveal("Magnet for: Copied")
+        rule.onNodeWithText("Filled from your clipboard. Nothing is added until you confirm.").assertExists()
+    }
 }

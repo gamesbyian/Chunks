@@ -71,16 +71,62 @@ class PhoneMagnetDraftCheckTest {
         rule.onNodeWithText("Seeding: your phone Seeding rules choose a policy", substring = true).assertExists()
     }
 
-    @Test fun pasteFillsTheDraftOnlyWhenTapped() {
-        val link = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=pasted"
+    private fun copy(text: String) {
         val clipboard = rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText("magnet", "  $link\n"))
+        clipboard.setPrimaryClip(ClipData.newPlainText("copied", text))
+    }
+
+    @Test fun copiedMagnetFillsAnEmptyAddOnceWhenItOpens() {
+        val link = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=pasted"
+        copy("  $link\n")
         openAdd()
-        // Nothing is read before the tap.
+        rule.waitForIdle()
+        rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
+        rule.onNodeWithText("Magnet for: pasted").assertExists()
+        rule.onNodeWithText("Filled from your clipboard. Nothing is added until you confirm.").assertExists()
+        // Undo empties the draft and the note; it is not re-filled while the form stays open.
+        rule.onNode(hasText("Clear") and hasClickAction()).performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
+        rule.onNodeWithText("Filled from your clipboard", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun unrelatedClipboardTextIsNeverFilledIn() {
+        copy("https://example.invalid/not-a-magnet and some other words")
+        openAdd()
+        rule.waitForIdle()
+        rule.onNode(hasSetTextAction() and hasText("https://example.invalid", substring = true)).assertDoesNotExist()
+        rule.onNodeWithText("Filled from your clipboard", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun withPrefillOffPasteFillsOnlyWhenTapped() {
+        val link = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=pasted"
+        openAdd()
+        rule.onNodeWithText("Fill in a copied magnet link when Add opens").performScrollTo().performClick()
+        rule.waitUntil(5_000) {
+            rule.activity.getSharedPreferences("add-clipboard-prefill", Context.MODE_PRIVATE)
+                .getBoolean("enabled", true).not()
+        }
+        copy(link)
+        // Closing and reopening Add does not read the clipboard while prefill is off.
+        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
         rule.onNodeWithText("Paste magnet link").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
-        rule.onNodeWithText("Magnet for: pasted").assertExists()
+    }
+
+    @Test fun aTypedDraftIsNeverReplacedByTheClipboard() {
+        openAdd()
+        val typed = "magnet:?xt=urn:btih:" + "c".repeat(40) + "&dn=typed"
+        field.performScrollTo().performTextInput(typed)
+        copy("magnet:?xt=urn:btih:" + "d".repeat(40) + "&dn=copied")
+        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Back").performClick()
+        rule.waitForIdle()
+        rule.onNode(hasSetTextAction() and hasText(typed)).assertExists()
+        rule.onNodeWithText("Magnet for: copied").assertDoesNotExist()
     }
 }
