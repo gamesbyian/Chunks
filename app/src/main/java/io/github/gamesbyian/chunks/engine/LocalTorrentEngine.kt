@@ -37,6 +37,7 @@ import org.libtorrent4j.swig.libtorrent
 import org.libtorrent4j.swig.ip_filter
 import org.libtorrent4j.swig.settings_pack
 import org.libtorrent4j.swig.torrent_flags_t
+import org.libtorrent4j.swig.session_handle
 
 /**
  * In-process local BitTorrent engine on Arvid Norberg's libtorrent (via libtorrent4j).
@@ -131,6 +132,36 @@ data class LocalCommandResult(val outcome: LocalCommandOutcome, val status: Loca
 
 /** Exact v1 identity-gated, stopped-only repair of a legacy transfer with no trackers. */
 enum class LocalTrackerRepairOutcome { VERIFIED, REFUSED, UNCERTAIN, NOT_FOUND }
+
+/**
+ * A verified exact-identity user request, not a claim that asynchronous native
+ * deletion has finished. Separate readback must inspect the real payload files.
+ */
+enum class LocalDeleteDataDispatch { REQUESTED, REFUSED, UNCERTAIN, NOT_FOUND }
+enum class LocalDeleteDataReadback { ABSENT, STILL_PRESENT, UNAVAILABLE }
+
+data class LocalDeleteDataReceipt(
+    val dispatch: LocalDeleteDataDispatch,
+    val targets: List<File> = emptyList(),
+    val reason: String? = null
+) {
+    /** Independent read-only witness, including pre-existing ordinary payload files. */
+    fun payloadReadback(): LocalDeleteDataReadback {
+        if (targets.isEmpty() || dispatch !in setOf(
+                LocalDeleteDataDispatch.REQUESTED, LocalDeleteDataDispatch.UNCERTAIN))
+            return LocalDeleteDataReadback.UNAVAILABLE
+        for (target in targets) {
+            val path = target.toPath()
+            try {
+                if (Files.exists(path, LinkOption.NOFOLLOW_LINKS))
+                    return LocalDeleteDataReadback.STILL_PRESENT
+                if (!Files.notExists(path, LinkOption.NOFOLLOW_LINKS))
+                    return LocalDeleteDataReadback.UNAVAILABLE
+            } catch (_: Exception) { return LocalDeleteDataReadback.UNAVAILABLE }
+        }
+        return LocalDeleteDataReadback.ABSENT
+    }
+}
 
 sealed class LocalAddResult {
     data class AddedStopped(val status: LocalTransferStatus) : LocalAddResult()
@@ -1470,22 +1501,103 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         return removeKeepingData(key)
     }
 
+    /**
+     * Reviewed delete-data request. Existing files are valid user-authorized
+     * targets, regardless of who created them. No directory-wide deletion and
+     * no native mutation before the full per-file + competing-job survey.
+     *
+     * The returned REQUESTED is a dispatch receipt, NEVER a deletion success.
+     * Call payloadReadback() after asynchronous native removal; a pending or
+     * failed readback remains visibly incomplete, without blind retry.
+     */
+    @Synchronized
+    fun removeWithDataIfMatching(
+        infoHash: String, expectedName: String, expectedSavePath: String,
+        expectedReviewToken: String
+    ): LocalDeleteDataReceipt {
+        if (expectedName.isBlank() || !expectedSavePath.startsWith("/") ||
+            expectedReviewToken.isBlank())
+            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Invalid reviewed identity")
+        val key = normal(infoHash)
+        val handle = handles[key] ?: return LocalDeleteDataReceipt(LocalDeleteDataDispatch.NOT_FOUND)
+        val current = try { snapshot(key, handle) } catch (_: Exception) { null }
+            ?: return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Native identity unavailable")
+        if (current.infoHash != key || current.name != expectedName ||
+            current.savePath != expectedSavePath ||
+            current.nativeReviewToken != expectedReviewToken)
+            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Review is stale")
+        val storage = try { handle.torrentFile()?.files() } catch (_: Exception) { null }
+            ?: return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Payload metadata unavailable")
+        if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(storage.numFiles()))
+            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Unsupported file count")
+        val relatives = try {
+            (0 until storage.numFiles()).asSequence().filterNot { storage.padFileAt(it) }
+                .map { storage.filePath(it) }.toList()
+        } catch (_: Exception) {
+            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Payload file list unavailable")
+        }
+        if (relatives.isEmpty())
+            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "No payload files")
+        val root = File(expectedSavePath)
+        if (LocalPayloadCollisionSurvey.inspect(root, relatives) is LocalPayloadCollisionSurvey.Result.Unknown)
+            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Unsafe payload path")
+        fun absolute(save: String, relative: String) =
+            File(save, relative).absoluteFile.toPath().normalize().toString()
+                .lowercase(Locale.ROOT)
+        val selected = relatives.map { absolute(expectedSavePath, it) }.toSet()
+        // Other registered native jobs could reference the same physical files.
+        // An unreadable competing inventory cannot be interpreted as no conflict.
+        for ((otherKey, otherHandle) in synchronized(handles) { handles.toList() }) {
+            if (otherKey == key) continue
+            val otherInfo = try { otherHandle.torrentFile()?.files() } catch (_: Exception) { null }
+                ?: return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Other transfer inventory unavailable")
+            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(otherInfo.numFiles()))
+                return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Other transfer inventory unsupported")
+            val otherSave = try { otherHandle.savePath() } catch (_: Exception) { null }
+                ?: return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Other transfer destination unknown")
+            try {
+                for (i in 0 until otherInfo.numFiles()) {
+                    if (!otherInfo.padFileAt(i) && absolute(otherSave, otherInfo.filePath(i)) in selected)
+                        return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Payload shared by another transfer")
+                }
+            } catch (_: Exception) {
+                return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Other transfer file list unavailable")
+            }
+        }
+        val targets = relatives.map { File(root, it) }
+        val dispatch = retireNativeTransfer(key, handle, deletePayload = true)
+        return LocalDeleteDataReceipt(dispatch, targets)
+    }
+
     /** Remove from the session only. Payload files are never deleted here. */
     @Synchronized
     fun removeKeepingData(infoHash: String): Boolean {
         val key = normal(infoHash)
         val handle = handles[key] ?: return false
-        // Persist REMOVE_INTENT before asynchronous JNI removal. A crash,
-        // timeout or rejected native call must not resurrect the old job.
+        return retireNativeTransfer(key, handle, deletePayload = false) ==
+            LocalDeleteDataDispatch.REQUESTED
+    }
+
+    /**
+     * A single mutation point for both confirmed Remove choices. Native delete
+     * uses libtorrent's own per-torrent file mapping, never a custom unlinker.
+     * The filesystem operation is asynchronous, so dispatch != completion.
+     */
+    private fun retireNativeTransfer(
+        key: String, handle: TorrentHandle, deletePayload: Boolean
+    ): LocalDeleteDataDispatch {
         val store = resumeEvents
-        if (config.stateDirectory != null && store == null) return false
-        try { store?.removeIntent(key) } catch (_: Exception) { return false }
-        try { session.remove(handle) } catch (_: Exception) { return false }
+        if (config.stateDirectory != null && store == null)
+            return LocalDeleteDataDispatch.REFUSED
+        try { store?.removeIntent(key) } catch (_: Exception) {
+            return LocalDeleteDataDispatch.REFUSED
+        }
+        try {
+            if (deletePayload) session.remove(handle, session_handle.delete_files)
+            else session.remove(handle)
+        } catch (_: Exception) { return LocalDeleteDataDispatch.UNCERTAIN }
         retiredThisSession += key
         retiredNativeHandles[key] = handle
-        // Must use the same monitor held across an asynchronous resume write.
-        // Any writer already admitted finishes before retirement; any
-        // late alert for this handle is refused by LocalResumeWriteFence.
         synchronized(handles) { handles.remove(key) }
         nativeReviewTokens.remove(key)
         awaitingMetadata.remove(key)
@@ -1494,14 +1606,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         checkedFirstStarts.remove(key)
         restoredNativeJobs.remove(key)
         checkedStartProblems.remove(key)
-        // remove_torrent is non-blocking: the old native handle may still
-        // have queued payload I/O. Keep its path claim as a tombstone until
-        // session.stop() joins native work; immediate reuse is unsafe.
         pendingFlushes.cancel(key, handle)
         pendingSaves.cancel(key, handle)
-        // Never unlink a mutable path, including legacy .resume/.resume.tmp.
-        // A failed commit is uncertain, but the fsynced intent bars restore.
-        return try { store?.removeCommit(key); true } catch (_: Exception) { false }
+        return try {
+            store?.removeCommit(key)
+            LocalDeleteDataDispatch.REQUESTED
+        } catch (_: Exception) {
+            // Native removal may already have removed files. Reconcile by
+            // exact paths and the durable intent; never blindly resubmit.
+            LocalDeleteDataDispatch.UNCERTAIN
+        }
     }
 
     @Synchronized
