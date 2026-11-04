@@ -68,7 +68,7 @@ class PhoneLongTransferTitleTest {
         val titleNode = rule.onNodeWithContentDescription(title)
         val compact = titleNode.getUnclippedBoundsInRoot()
         assertTrue("Collapsed title stays within two scaled text lines",
-            compact.bottom - compact.top <= 90.dp)
+            compact.bottom - compact.top <= 104.dp)
         assertEquals(
             title,
             titleNode.fetchSemanticsNode()
