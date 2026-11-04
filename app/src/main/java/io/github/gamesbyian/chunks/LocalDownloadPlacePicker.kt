@@ -33,7 +33,9 @@ internal fun LocalDownloadPlacePicker(
     resolution: LocalPlaceResolution?,
     enabled: Boolean,
     onChoose: (LocalPlaceChoice) -> Unit,
-    onRequestStoragePermission: () -> Unit = {}
+    onRequestStoragePermission: () -> Unit = {},
+    /** Forget a saved choice; shown only while one is saved. */
+    onUseAutomatic: (() -> Unit)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -75,6 +77,14 @@ internal fun LocalDownloadPlacePicker(
             TextButton(onClick = { expanded = !expanded }, enabled = enabled,
                 modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(if (expanded) "Done choosing location" else "Change download location")
+            }
+        }
+        val savedChoice = resolution?.provenance == LocalPlaceResolution.Provenance.SAVED_CHOICE ||
+            resolution?.provenance == LocalPlaceResolution.Provenance.FALLBACK
+        if (savedChoice && onUseAutomatic != null) {
+            TextButton(onClick = onUseAutomatic, enabled = enabled,
+                modifier = Modifier.heightIn(min = 48.dp)) {
+                Text("Use automatic location for new phone downloads")
             }
         }
         if (expanded && resolution != null) {

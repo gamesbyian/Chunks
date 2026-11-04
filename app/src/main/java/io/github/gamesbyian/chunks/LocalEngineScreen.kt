@@ -818,8 +818,20 @@ internal fun LocalEngineScreen(
                     val saved = withContext(Dispatchers.IO) {
                         try { LocalDownloadPlaces.remember(context, choice) } catch (_: Exception) { false }
                     }
-                    if (saved) placeResolution = placeResolution?.copy(selected = choice.place, notice = null)
+                    // Re-read the saved choice so the location and its provenance stay truthful.
+                    if (saved) placeCheck++
                     else noteProblem("That download location could not be saved. The previous default is unchanged.")
+                }
+            },
+            onUseAutomatic = {
+                scope.launch {
+                    val forgotten = withContext(Dispatchers.IO) {
+                        try { LocalDownloadPlaces.forget(context) } catch (_: Exception) { false }
+                    }
+                    if (forgotten) {
+                        placeCheck++
+                        message = "New phone downloads use the automatic location. Existing transfers keep their files where they are."
+                    } else noteProblem("The saved download location could not be cleared. It is unchanged.")
                 }
             },
             onRequestStoragePermission = {
