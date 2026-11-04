@@ -10,6 +10,10 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertWidthIsEqualTo
+import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
@@ -20,7 +24,6 @@ import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -61,14 +64,21 @@ class CombinedDetailIdentityInstrumentedTest {
             false, path, null, 0)
         rule.setContent {
             val density = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
-                ChunksTheme { Box(Modifier.requiredSize(width.dp, height.dp)) { Surface {
+            CompositionLocalProvider(LocalDensity provides Density(density.density * 0.75f, 2f)) {
+                ChunksTheme { Box(Modifier.requiredSize(width.dp, height.dp).testTag("combined-detail-viewport")) { Surface {
                     CombinedTransfersScreen(CombinedServerSource(scope, listOf(row), false, true,
                         System.currentTimeMillis()), emptyList(), onOpenPhone = {},
                         onOpenServer = {}, onBack = {})
                 } } }
             }
         }
+        // At this density both real dp viewports fit inside the emulator's inset content window.
+        val viewport = rule.onNodeWithTag("combined-detail-viewport")
+        viewport.assertWidthIsEqualTo(width.dp).assertHeightIsEqualTo(height.dp)
+        val bounds = viewport.fetchSemanticsNode().boundsInRoot
+        val host = rule.onRoot().fetchSemanticsNode().boundsInRoot
+        assertTrue("The complete viewport must fit inside the Activity content window",
+            bounds.left >= host.left && bounds.top >= host.top && bounds.right <= host.right && bounds.bottom <= host.bottom)
         val target = "Details for ${row.name} on ${serverEnvironmentLabel(scope)}"
         rule.waitUntil(10_000) {
             runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(target)) }.isSuccess
@@ -82,7 +92,7 @@ class CombinedDetailIdentityInstrumentedTest {
         rule.onNodeWithText("Environment: ${serverEnvironmentLabel(scope)}").performScrollTo().assertExists()
         // Palette preferences are read off-main; require the actual rendered result.
         fun colourPixels(): Int {
-            val pixels = rule.onRoot().captureToImage().toPixelMap()
+            val pixels = rule.onNodeWithTag("combined-detail-viewport").captureToImage().toPixelMap()
             var count = 0
             for (y in 0 until pixels.height) for (x in 0 until pixels.width) {
                 if (pixels[x, y].toArgb() == hue.argb.toInt()) count++
@@ -92,7 +102,7 @@ class CombinedDetailIdentityInstrumentedTest {
         runCatching { rule.waitUntil(5_000) { colourPixels() >= 32 } }
         val matching = colourPixels()
         assertTrue("The chosen environment colour must survive opening details", matching >= 32)
-        save("combined-detail-identity-$width-200pct", rule.onRoot().captureToImage().asAndroidBitmap())
+        save("combined-detail-identity-$width-200pct", rule.onNodeWithTag("combined-detail-viewport").captureToImage().asAndroidBitmap())
         val place = rule.onNodeWithText("Save folder reported by engine: $path").performScrollTo()
         place.assertExists()
         val layouts = mutableListOf<TextLayoutResult>()
@@ -101,7 +111,7 @@ class CombinedDetailIdentityInstrumentedTest {
         assertFalse("Long save folder must wrap without losing text", layouts.single().hasVisualOverflow)
         rule.onNodeWithText("Download rate: not reported").performScrollTo().assertExists()
         rule.onNodeWithText("Upload rate: 0 B/s").performScrollTo().assertExists()
-        save("combined-detail-place-$width-200pct", rule.onRoot().captureToImage().asAndroidBitmap())
+        save("combined-detail-place-$width-200pct", rule.onNodeWithTag("combined-detail-viewport").captureToImage().asAndroidBitmap())
         rule.onNodeWithText("Back to transfers").performScrollTo().assertHeightIsAtLeast(48.dp).performClick()
     }
 
