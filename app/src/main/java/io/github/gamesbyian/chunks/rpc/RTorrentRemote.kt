@@ -931,6 +931,101 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
 
 
     /**
+     * Remove one exact reviewed rTorrent transfer AND ask ruTorrent erasedata
+     * for non-force asynchronous payload cleanup. Only the matching mounted
+     * ruTorrent instance qualifies. An HTTP acknowledgement is not file proof.
+     * Never repeat the mutation after a timeout or unexpected response.
+     */
+    suspend fun removeWithDataViaRuTorrent(
+        hash: String, expectedName: String, expectedDirectory: String
+    ): RemoteDeleteDataOutcome {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash))
+        val plugin = RuTorrentDeleteData.endpoint(endpoint)
+            ?: return RemoteDeleteDataOutcome.Unsupported
+        if (expectedName.isBlank() || !expectedDirectory.startsWith("/") ||
+            expectedDirectory.any { it.code < 32 || it.code == 127 })
+            return RemoteDeleteDataOutcome.Refused
+
+        val inventory = try { listTransfers("main") }
+            catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
+        val current = inventory.filter { it.hash.equals(hash, true) }
+        if (current.size != 1 || current.single().name != expectedName ||
+            current.single().directory != expectedDirectory)
+            return RemoteDeleteDataOutcome.Refused
+        val files = try { listFiles(hash) }
+            catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
+        if (!RuTorrentDeleteData.safeFilePaths(files))
+            return RemoteDeleteDataOutcome.Refused
+        // Check other visible jobs whose destination can overlap these exact
+        // files. A shared path must be resolved by a separate user decision.
+        fun full(dir: String, file: String) =
+            (dir.trimEnd('/') + "/" + file).lowercase(java.util.Locale.ROOT)
+        val selectedPaths = files.map { full(expectedDirectory, it.path) }.toSet()
+        for (other in inventory) {
+            if (other.hash.equals(hash, true)) continue
+            val a = expectedDirectory.trimEnd('/')
+            val b = other.directory.trimEnd('/')
+            if (a != b && !a.startsWith("$b/") && !b.startsWith("$a/")) continue
+            val otherFiles = try { listFiles(other.hash) }
+                catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
+            if (!RuTorrentDeleteData.safeFilePaths(otherFiles) ||
+                otherFiles.any { full(other.directory, it.path) in selectedPaths })
+                return RemoteDeleteDataOutcome.Refused
+        }
+
+        // An old view snapshot does not authorize a destructive mutation.
+        val fresh = try {
+            sessionContainsExactHash(hash) &&
+                lookupName(hash) == expectedName &&
+                (call("d.directory", listOf(hash)) as? String) == expectedDirectory &&
+                sessionContainsExactHash(hash)
+        } catch (_: Exception) { false }
+        if (!fresh) return RemoteDeleteDataOutcome.Refused
+
+        val accepted = try {
+            withContext(Dispatchers.IO) {
+                val target = plugin.rawPath
+                // Credentials, when required, are learned through a harmless
+                // HEAD challenge at this exact plugin endpoint, not a POST retry.
+                val authorization = preauthorizeWrite(plugin, target)
+                val bytes = "mode=removewithdata&hash=$hash&v=1".toByteArray(Charsets.US_ASCII)
+                val connection = plugin.toURL().openConnection() as HttpURLConnection
+                connection.connectTimeout = 8_000
+                connection.readTimeout = 20_000
+                connection.instanceFollowRedirects = false
+                connection.requestMethod = "POST"
+                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                connection.setRequestProperty("Accept", "application/json")
+                if (authorization != null) connection.setRequestProperty("Authorization", authorization)
+                connection.doOutput = true
+                connection.setFixedLengthStreamingMode(bytes.size)
+                try {
+                    connection.outputStream.use { it.write(bytes) }
+                    if (connection.responseCode !in 200..299)
+                        return@withContext false
+                    if (connection.contentLengthLong > 16_384L)
+                        return@withContext false
+                    val response = connection.inputStream.use { it.readNBytes(16_385) }
+                    response.size <= 16_384 && RuTorrentDeleteData.acceptedResponse(
+                        response.toString(Charsets.UTF_8))
+                } finally { connection.disconnect() }
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) { return RemoteDeleteDataOutcome.Uncertain(hash) }
+        if (!accepted) return RemoteDeleteDataOutcome.Uncertain(hash)
+        // A valid plugin response means it staged cleanup; its collector may
+        // take a while and may refuse unsafe targets. No false "files deleted".
+        return try {
+            if (sessionContainsExactHash(hash))
+                RemoteDeleteDataOutcome.Uncertain(hash)
+            else RemoteDeleteDataOutcome.QueuedForCleanup(hash)
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) { RemoteDeleteDataOutcome.Uncertain(hash) }
+    }
+
+    /**
      * A new user action after an unsuccessful/uncertain session removal, never
      * an automatic command replay. Check the exact session, not the main view:
      * another client may have removed, replaced, renamed or moved the job.
