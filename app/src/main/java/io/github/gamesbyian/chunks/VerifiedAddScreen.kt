@@ -200,6 +200,7 @@ fun VerifiedAddScreen(
         }
     }
 
+    val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
     var invalidDestination = false
     val useServerDefault = destination.isBlank()
     val effectiveDestination = if (useServerDefault) configuredDefault.orEmpty() else destination
@@ -214,7 +215,7 @@ fun VerifiedAddScreen(
         else {
             val link = if (useFile && selectedTorrent != null && selectedBytes != null)
                 "magnet:?xt=urn:btih:" + selectedTorrent!!.infoHashV1
-            else magnet
+            else (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: magnet
             if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, effectiveDestination)
             else StoppedRemoteAddPlan.fromMagnet(link, effectiveDestination)
         }
@@ -262,6 +263,7 @@ fun VerifiedAddScreen(
                     }
                 },
                 label = { Text("Magnet link") },
+                isError = !useFile && magnetCheck is MagnetDraftCheck.Problem,
                 // Autocorrect must never rewrite a magnet's hash or trackers.
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
@@ -272,6 +274,15 @@ fun VerifiedAddScreen(
                 minLines = 2,
                 maxLines = 4
             )
+            if (magnet.isBlank() && !alreadyAttempted) PasteMagnetButton(
+                enabled = !submitting && !choosing,
+                onPaste = {
+                    onMagnet(it)
+                    useFile = false
+                    awaitingConfirmation = false
+                },
+                onNothingToPaste = { fileError = "The clipboard has no text to paste. Copy a magnet link first." })
+            if (!useFile) MagnetDraftSummary(magnetCheck)
         }
         item {
             OutlinedButton(
