@@ -5,6 +5,17 @@ name: Seedhost instances 2 and 3 read-only adapter probe
 # the app's own Kotlin adapter. No Add, Start, Stop, Erase or file access.
 on:
   workflow_dispatch:
+    inputs:
+      audit_run_id:
+        description: "Optional earlier run ID for read-only exact cohort reconciliation"
+        type: string
+        required: false
+        default: ""
+      audit_hash:
+        description: "Optional exact 40-hex infohash from that run receipt"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -41,6 +52,8 @@ jobs:
         env:
           CHUNKS_LIVE_RUTORRENT_URL: https://ianseeds.wood.seedhost.eu/rutorrent${{ matrix.instance }}/
           CHUNKS_LIVE_RTORRENT_USER: ianseeds
+          CHUNKS_P0_AUDIT_RUN_ID: ${{ inputs.audit_run_id }}
+          CHUNKS_P0_AUDIT_HASH: ${{ inputs.audit_hash }}
           # Owner-named, per-instance secrets; never the primary instance's pair.
           # Resolve the selected name after the choice: an absent instance 2
           # secret must never fall through to instance 3's password.
