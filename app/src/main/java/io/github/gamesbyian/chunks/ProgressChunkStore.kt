@@ -54,6 +54,10 @@ internal object ProgressChunkStore {
         val next = previous.observe(ppm, minVisiblePpm)
         if (next == previous) return
         histories[identity] = next
+        if (histories.size > MAX_STORED) {
+            // A large lifetime of viewed transfers must not grow the UI cache forever.
+            histories.keys.firstOrNull { it != identity }?.let { histories.remove(it) }
+        }
         withContext(Dispatchers.IO) {
             val prefs = context.applicationContext
                 .getSharedPreferences(PREFS, Context.MODE_PRIVATE)
