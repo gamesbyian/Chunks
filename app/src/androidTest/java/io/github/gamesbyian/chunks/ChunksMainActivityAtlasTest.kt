@@ -479,8 +479,8 @@ class ChunksMainActivityAtlasTest {
         // actual editable field first, not merely to the queue's header.
         // This keeps a real installed-app SetText + one-match assertion.
         rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Search names or Places"))
-        rule.onNodeWithText("Search names or Places").performTextReplacement("Public.Example")
+            .performScrollToNode(hasText("Search names, aliases, folders or hashes"))
+        rule.onNodeWithText("Search names, aliases, folders or hashes").performTextReplacement("Public.Example")
         dismissSearchKeyboard()
         // The long remote header can place the filtered result count outside
         // the composed LazyColumn viewport when the keyboard closes. A query
@@ -502,7 +502,7 @@ class ChunksMainActivityAtlasTest {
             val lines = rule.onRoot(useUnmergedTree = true).printToString()
                 .lineSequence()
                 .filter { it.contains("shown") ||
-                    it.contains("Search names or Places") ||
+                    it.contains("Search names, aliases, folders or hashes") ||
                     it.contains("Public.Example") ||
                     it.contains("InputText") }
                 .take(25).joinToString(" | ").take(2800)

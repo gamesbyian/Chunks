@@ -104,7 +104,7 @@ class RemoteDeleteDataInstalledInstrumentedTest {
                 visible("· ${before.size} transfer") && visible("+ Add torrent")
             }
             stage("connected")
-            typeInto("Search names or Places", hash)
+            typeInto("Search names, aliases, folders or hashes", hash)
             // The search filter applies asynchronously (run on 18a8e87): wait
             // for the filtered card, open its disclosure, then the action.
             // Disclosure is read-only, so repeating it is safe.
