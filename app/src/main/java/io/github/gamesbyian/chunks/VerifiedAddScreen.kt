@@ -749,11 +749,11 @@ internal fun RemoteAddScopeIntro(environmentLabel: String?, aliasScope: String?)
                 io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
             })
     }
-    Text("This server downloads to its own save folder. Nothing is copied to " +
-        "this phone by Add. Paste a magnet or choose a .torrent; the server's " +
-        "default folder is used unless you change it. Review before starting. " +
+    // The visible controls already say how to add and where; keep only the
+    // facts a person could otherwise get wrong (where bytes go, who seeds).
+    Text("Downloads to this server's own folder. Nothing is copied to this phone by Add. " +
         "Saved Chunks server-seeding rules are not applied yet; rTorrent controls seeding.",
-        style = MaterialTheme.typography.bodyMedium)
+        style = MaterialTheme.typography.bodySmall)
 }
 
 /**
