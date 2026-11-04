@@ -63,6 +63,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
@@ -460,8 +461,11 @@ private fun ChunksApp(
         }
     }
 
+    val paneTitle = ScreenPaneTitles.of(section.name, section.label,
+        if (server != null && aliasScope.isNotBlank()) serverEnvironmentLabel(aliasScope) else null)
     Column(
-        modifier = Modifier.fillMaxSize().background(Cream).safeDrawingPadding(),
+        modifier = Modifier.fillMaxSize().background(Cream).safeDrawingPadding()
+            .semantics { this.paneTitle = paneTitle },
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         if (section == Section.TRANSFERS && server != null) {
