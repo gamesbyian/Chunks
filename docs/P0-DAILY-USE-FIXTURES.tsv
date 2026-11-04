@@ -1,0 +1,11 @@
+fixture_id	kind	environment_alias	session_generation	infohash_v1	source_ref	selected_destination_alias	expected_relative_files	sha256_or_piece_expectation	allowed_mutations	delete_data_authorized	observed_state	evidence_ref	lease_owner
+local-single	single-file	phone	unverified	unverified	unverified	unverified	unverified	unverified	add/start/stop/priority/keep-data	no	not-staged	unverified	unverified
+local-multifile	multi-file	phone	unverified	unverified	unverified	unverified	unverified	unverified	add/file-priority/start/stop/restore	no	not-staged	unverified	unverified
+remote-primary-partial	partial-real-peer	remote-primary	unverified	unverified	unverified	unverified	unverified	unverified	add/start/stop/reconnect/keep-data	no	not-staged	unverified	unverified
+remote-primary-magnet	metadata-resolving-magnet	remote-primary	unverified	unverified	unverified	unverified	unverified	unverified	add/metadata/start/stop	no	not-staged	unverified	unverified
+remote-secondary-samehash	samehash-cross-server	remote-secondary	unverified	unverified	unverified	unverified	unverified	unverified	add/start/stop/combined	no	not-staged	unverified	unverified
+remote-tertiary-samehash	samehash-cross-server	remote-tertiary	unverified	unverified	unverified	unverified	unverified	unverified	add/start/stop/combined	no	not-staged	unverified	unverified
+remote-secondary-multifile	multi-file	remote-secondary	unverified	unverified	unverified	unverified	unverified	unverified	add/file-priority/start/stop	no	not-staged	unverified	unverified
+remote-tertiary-complete	pre-completed	remote-tertiary	unverified	unverified	unverified	unverified	unverified	unverified	start/stop/combined	no	not-staged	unverified	unverified
+remote-tertiary-delete	disposable-delete-readd	remote-tertiary	unverified	unverified	unverified	unverified	unverified	unverified	reviewed-keep-data/readd;delete-after-proof	no	not-staged	unverified	unverified
+local-disposable-delete	disposable-delete-readd	phone	unverified	unverified	unverified	unverified	unverified	unverified	reviewed-keep-data/readd;delete-after-proof	no	not-staged	unverified	unverified

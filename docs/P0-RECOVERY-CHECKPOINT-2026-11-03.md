@@ -1,5 +1,7 @@
 # Chunks P0 recovery checkpoint, 2026-11-03 (live reconciliation)
 
+> **Execution supersession:** The owner consolidated remaining P0 into [one full-transfer daily-use campaign](P0-DAILY-USE-JOURNEYS.md) with **Transfer lifecycle (A+B)** and **Environment continuity (C+D)**. A–E below are still evidence categories, not competing development lanes. Reuse the [single fixture inventory](P0-DAILY-USE-FIXTURES.tsv), [journey matrix](P0-DAILY-USE-EVIDENCE.tsv), existing qualified proof and one final APK.
+
 **Authority:** This is a status/evidence handoff, not a competing specification or another release gate. Follow `AGENTS.md`, canonical `docs/WORK-QUEUE.md` packages A–E, `docs/DECISIONS.md`, `docs/AGENT-LANES.md`, and live GitHub state. Historical handoffs never take priority over this source of truth.
 
 ## Integrated main, preserved work and release

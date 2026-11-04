@@ -1,5 +1,7 @@
 # Real-transfer-first acceptance and upstream reuse
 
+> **P0 execution:** [One full-journey daily-use campaign](P0-DAILY-USE-JOURNEYS.md) reuses a single [fixture cohort](P0-DAILY-USE-FIXTURES.tsv) and [scenario evidence index](P0-DAILY-USE-EVIDENCE.tsv) across local + 3 remote environments. This document continues to govern actual peer and installed-engine evidence, not a separate full-suite acceptance campaign.
+
 ## Current magnet qualification contract (2026-11-02)
 
 Preserve the installed `.torrent` positive [41363266446](https://github.com/gamesbyian/Chunks/actions/runs/41363266446). The repaired real host/JVM BEP9 test [41380769579](https://github.com/gamesbyian/Chunks/actions/runs/41380769579) proves the development rTorrent can obtain peer metadata and verified pieces. It does not qualify an Android APK or establish public tracker availability.
