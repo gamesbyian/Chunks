@@ -18,6 +18,8 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 
 ## Agent entry points
 
+- [Latest dated P0 integration checkpoint (2026-11-03)](P0-INTEGRATION-CHECKPOINT-2026-11-03.md): merged code/evidence, exact protected-rTorrent Add uncertainty, red-CI classification, and non-physical continuation. Not a second work queue; use live GitHub and the canonical daily-use manifest first.
+
 - [Android TV and multi-backend remote roadmap](ANDROID-TV-AND-REMOTE-BACKENDS.md): binding future TV UX, protocol adapter generalization, BiglyBT reuse/license audit, stage gates; deferred until foundational acceptance.
 
 - [AGENTS](../AGENTS.md): required operating instructions and safety rules.
