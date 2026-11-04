@@ -1,4 +1,4 @@
-name: Research native delete-files boundary (isolated Linux)
+name: Research native delete-files boundary (Linux and Android 29/35)
 
 on:
   pull_request:
@@ -50,9 +50,13 @@ jobs:
           retention-days: 7
 
   targeted-android-jni-probe:
-    # One disposable JNI test only, not the full native Add acceptance campaign.
+    # Exactly one opt-in JNI test per Android version, not the broad native suite.
     runs-on: ubuntu-latest
     timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 35]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -75,10 +79,10 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
           test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
-      - name: Run only disposable native delete test on API 35
+      - name: Run only disposable native delete test on API ${{ matrix.api }}
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
+          api-level: ${{ matrix.api }}
           target: google_apis
           arch: x86_64
           profile: pixel_6
@@ -89,7 +93,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-native-delete-android-diagnostic
+          name: chunks-native-delete-android-api${{ matrix.api }}-diagnostic
           path: ${{ runner.temp }}/chunks-native-delete-android/TEST-native-delete.xml
           if-no-files-found: warn
           retention-days: 7
