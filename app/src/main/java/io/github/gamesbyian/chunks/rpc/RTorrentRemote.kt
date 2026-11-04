@@ -930,6 +930,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
 
+    /** Endpoint shape permits an erasedata request; plugin presence is verified by its POST receipt. */
+    fun supportsRuTorrentDeleteData(): Boolean = RuTorrentDeleteData.endpoint(endpoint) != null
+
     /**
      * Remove one exact reviewed rTorrent transfer AND ask ruTorrent erasedata
      * for non-force asynchronous payload cleanup. Only the matching mounted
