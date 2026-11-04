@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+- [Recency-preserving transfer progress chunks](TRANSFER-PROGRESS-CHUNKS.md): owner-approved proportional, bounded, chronological progress segments, oldest-first coalescing, visual/accessibility behaviour and acceptance; planned post-P0 UI work.
+
+
 - [Transfer sharing](TRANSFER-SHARING.md): planned local/rTorrent magnet share/copy and conditional verified `.torrent` export, including acceptance.
 - [Expository file associations](EXPOSITORY-FILE-ASSOCIATIONS.md): planned opt-in, scoped read-only seedbox file-membership feed for Expository Transfer.
 
