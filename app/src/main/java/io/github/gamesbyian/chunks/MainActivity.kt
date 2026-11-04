@@ -262,6 +262,17 @@ private fun ChunksApp(
     // One safe navigation return edge only, never an Add draft or authority.
     // When entering phone from Combined, the phone's own Back returns there.
     var localFromCombined by rememberSaveable { mutableStateOf(false) }
+    // A tool opened from the phone (Seeding rules, Create, ZIP review)
+    // returns there, not to the server/connection entry. Navigation only.
+    var toolReturnsToPhone by rememberSaveable { mutableStateOf(false) }
+    fun openFromPhone(tool: Section) {
+        toolReturnsToPhone = true
+        section = tool
+    }
+    fun leaveTool() {
+        section = if (toolReturnsToPhone) Section.LOCAL else Section.TRANSFERS
+        toolReturnsToPhone = false
+    }
     fun leavePhone() {
         val returnToCombined = localFromCombined
         localFromCombined = false
@@ -386,6 +397,7 @@ private fun ChunksApp(
     LaunchedEffect(incomingCreate) {
         if (incomingCreate != null) {
             createRequest = incomingCreate
+            toolReturnsToPhone = false
             section = Section.CREATE
             onIncomingCreateConsumed()
         }
@@ -477,9 +489,9 @@ private fun ChunksApp(
         if (section == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                onBack = { section = Section.TRANSFERS }
+                onBack = { leaveTool() }
             ) {
-                LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
+                LocalZipReviewScreen(onBack = { leaveTool() })
             }
         } else if (section == Section.SNAPSHOT_INSPECT) {
             LocalTransferPrivacyGate(
@@ -565,9 +577,9 @@ private fun ChunksApp(
                 }
             )
         } else if (section == Section.SEEDING) {
-            SeedingRulesScreen(seedingEnvironments, onBack = { section = Section.TRANSFERS })
+            SeedingRulesScreen(seedingEnvironments, onBack = { leaveTool() })
         } else if (section == Section.CREATE && server == null) {
-            io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { section = Section.TRANSFERS },
+            io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { leaveTool() },
                 shared = createRequest, onSharedConsumed = { createRequest = null })
         } else if (section == Section.LOCAL && server == null) {
             LocalTransferPrivacyGate(
@@ -578,7 +590,9 @@ private fun ChunksApp(
                 LocalEngineScreen(
                     listScroll = phoneListScroll, searchState = phoneSearch,
                     onBack = { leavePhone() },
-                    onSeedingRules = { section = Section.SEEDING },
+                    onSeedingRules = { openFromPhone(Section.SEEDING) },
+                    onCreateTorrent = { openFromPhone(Section.CREATE) },
+                    onZipReview = { openFromPhone(Section.ARCHIVES) },
                     onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                     initialMagnet = phoneHandoffMagnet,
                     initialSearch = phoneSearchPrefill,
@@ -721,10 +735,10 @@ private fun ChunksApp(
                         }
                     }
                 },
-                onLocalZipReview = { section = Section.ARCHIVES },
+                onLocalZipReview = { toolReturnsToPhone = false; section = Section.ARCHIVES },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                 onLocalEngine = { localFromCombined = false; section = Section.LOCAL },
-                onCreateTorrent = { section = Section.CREATE },
+                onCreateTorrent = { toolReturnsToPhone = false; section = Section.CREATE },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {
@@ -890,7 +904,9 @@ private fun ChunksApp(
                     LocalEngineScreen(
                         listScroll = phoneListScroll, searchState = phoneSearch,
                         onBack = { leavePhone() },
-                        onSeedingRules = { section = Section.SEEDING },
+                        onSeedingRules = { openFromPhone(Section.SEEDING) },
+                        onCreateTorrent = { openFromPhone(Section.CREATE) },
+                        onZipReview = { openFromPhone(Section.ARCHIVES) },
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                         initialMagnet = phoneHandoffMagnet,
                         initialSearch = phoneSearchPrefill,
@@ -1183,15 +1199,15 @@ private fun ChunksApp(
                 }
                 Section.ARCHIVES -> LocalTransferPrivacyGate(
                     scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                    onBack = { section = Section.TRANSFERS }
+                    onBack = { leaveTool() }
                 ) {
-                    LocalZipReviewScreen(onBack = { section = Section.TRANSFERS })
+                    LocalZipReviewScreen(onBack = { leaveTool() })
                 }
                 Section.LOCAL -> Unit // Composed by the independent local gate above.
                 Section.SEEDING -> Unit // Composed by the top-level route above.
                 Section.COMBINED -> Unit // Composed by the top-level route above.
                 Section.CREATE -> io.github.gamesbyian.chunks.create.CreateTorrentScreen(
-                    onBack = { section = Section.TRANSFERS },
+                    onBack = { leaveTool() },
                     shared = createRequest, onSharedConsumed = { createRequest = null })
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     draftPath = path
