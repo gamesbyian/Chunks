@@ -2199,17 +2199,10 @@ private fun TransferCard(
                     (transfer.fractionComplete * 100).toInt().toString() + "% · " +
                     Units.bytes(transfer.completedBytes) + " of " + Units.bytes(transfer.sizeBytes),
                     style = MaterialTheme.typography.bodySmall)
-                // rTorrent's started flag is a requested state, not proof of activity.
-                StatusPill(when {
-                    transfer.metadataPending == true -> "Fetching metadata"
-                    transfer.fractionComplete >= 1f -> "Complete"
-                    transfer.started -> "Start state set"
-                    else -> "Stopped"
-                }, when {
-                    transfer.fractionComplete >= 1f -> ChunksTone.COMPLETE
-                    transfer.started -> ChunksTone.ACTIVE
-                    else -> ChunksTone.PAUSED
-                })
+                // Same words as the phone, from observed facts only: the started
+                // flag alone never reads as "Downloading".
+                val status = RemoteStatusLabel.of(transfer, stale)
+                StatusPill(status.label, status.tone)
             }
             val conciseRates = buildList {
                 transfer.downBytesPerSecond?.let { add("↓ " + Units.bytes(it) + "/s") }

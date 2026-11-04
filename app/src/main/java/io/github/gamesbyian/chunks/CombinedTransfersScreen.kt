@@ -1229,8 +1229,16 @@ internal fun combinedTimeLeft(row: UnifiedTransferObservation): String? {
 
 /** Text summary of one row; unknown facts are said as unknown, never as zero. */
 internal fun combinedRowFacts(row: UnifiedTransferObservation, fresh: Boolean = false): String = listOf(
-    if (row.metadataPending == true) "Fetching metadata" else
-        when (row.started) { true -> "Started"; false -> "Stopped"; null -> "State unknown" },
+    // Same words as the phone and rTorrent rows, from observed facts only.
+    if (row.metadataPending == true) "Fetching metadata" else when (row.started) {
+        true -> when {
+            row.progressPpm == 1_000_000 -> "Sharing"
+            fresh && (row.downloadBytesPerSecond ?: 0L) > 0L -> "Downloading"
+            else -> "Started"
+        }
+        false -> "Stopped"
+        null -> "State unknown"
+    },
     row.progressPpm?.let { "${it / 10_000}%" } ?: "Progress unknown",
     row.sizeBytes?.let { Units.bytes(it) } ?: "Size unknown",
     "↓ " + (row.downloadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),

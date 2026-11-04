@@ -113,8 +113,11 @@ class CombinedViewModelTest {
             null, null, null, null, null, null).copy(sizeBytes = 600L * 1024 * 1024,
             progressPpm = 500_000, started = true, downloadBytesPerSecond = 1024L * 1024,
             uploadBytesPerSecond = 0)
-        assertEquals("Started · 50% · 600.0 MiB · ↓ 1.0 MiB/s · ↑ 0 B/s · about 5 min left",
+        assertEquals("Downloading · 50% · 600.0 MiB · ↓ 1.0 MiB/s · ↑ 0 B/s · about 5 min left",
             combinedRowFacts(row, fresh = true))
+        assertTrue("an old rate never reads as Downloading",
+            combinedRowFacts(row, fresh = false).startsWith("Started · "))
+        assertTrue(combinedRowFacts(row.copy(progressPpm = 1_000_000), fresh = true).startsWith("Sharing · "))
         assertFalse("last-known facts never get an estimate",
             combinedRowFacts(row, fresh = false).contains("left"))
         assertFalse(combinedRowFacts(row.copy(started = false), fresh = true).contains("left"))
