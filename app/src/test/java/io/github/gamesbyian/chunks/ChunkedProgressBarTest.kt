@@ -1,25 +1,24 @@
 package io.github.gamesbyian.chunks
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChunkedProgressBarTest {
-    @Test fun partialChunkRemainsAccurateRatherThanRoundingUp() {
-        val progress = 0.31f
-        val values = (0 until 12).map { chunkFillFraction(progress, it, 12) }
-        assertEquals(1f, values[0], 0f)
-        assertEquals(1f, values[1], 0f)
-        assertEquals(1f, values[2], 0f)
-        assertEquals(0.72f, values[3], 0.0001f)
-        assertEquals(0f, values[4], 0f)
-        assertEquals(progress * 12, values.sum(), 0.0001f)
+    @Test fun zeroIsEmptyAndFullIsExactWithoutImaginarySlots() {
+        val zero = io.github.gamesbyian.chunks.model.ProgressChunkHistory().observe(0, 3_000)
+        assertTrue(zero.paintedBands().isEmpty())
+        val complete = zero.observe(1_000_000, 3_000)
+        assertEquals(listOf(1_000_000), complete.paintedBands())
     }
 
-    @Test fun zeroAndFullFillAllChunksExactly() {
-        for (index in 0 until 12) {
-            assertEquals(0f, chunkFillFraction(0f, index, 12), 0f)
-            assertEquals(1f, chunkFillFraction(1f, index, 12), 0f)
-        }
+    @Test fun oldestFirstCompressionPreservesOrderAreaAndRecentBands() {
+        val bands = List(20) { 10_000 }
+        val compact = coalesceOldest(bands, 8)
+        assertEquals(8, compact.size)
+        assertEquals(200_000, compact.sum())
+        assertEquals(130_000, compact.first())
+        assertEquals(List(7) { 10_000 }, compact.drop(1))
     }
 
     @Test fun invalidOrOutOfRangeProgressDoesNotProduceFalseCompletion() {
@@ -27,10 +26,10 @@ class ChunkedProgressBarTest {
         assertEquals(0f, safeProgressFraction(Float.POSITIVE_INFINITY), 0f)
         assertEquals(0f, safeProgressFraction(-2f), 0f)
         assertEquals(1f, safeProgressFraction(2f), 0f)
-        assertEquals(0f, chunkFillFraction(Float.NaN, 0, 12), 0f)
     }
 
-    @Test fun supportsSingleChunkWithoutRounding() {
-        assertEquals(0.375f, chunkFillFraction(0.375f, 0, 1), 0.0001f)
+    @Test fun smallWindowCanHaveOneProportionalBand() {
+        assertEquals(listOf(75_000), coalesceOldest(listOf(25_000, 25_000, 25_000), 1))
+        assertEquals(listOf(10_000, 20_000), coalesceOldest(listOf(10_000, 20_000), 20))
     }
 }
