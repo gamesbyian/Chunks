@@ -2,6 +2,11 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-04 non-P0 UX #1283: atlas polish, Needs attention tone, Connect closes the keyboard
+
+- **[#1283](https://github.com/gamesbyian/Chunks/pull/1283)** squash-merged as `e69030912f2bf04943d8bb487eb964101c444237` from exact head `5f8428dadc320fc16811c9f4ad7fdac219e42fbc` after 11/11 **first-attempt** checks: foundation [41903715079](https://github.com/gamesbyian/Chunks/actions/runs/41903715079), native Add two shards plus coordinator [41903714917](https://github.com/gamesbyian/Chunks/actions/runs/41903714917), installed Combined two-server [41903715390](https://github.com/gamesbyian/Chunks/actions/runs/41903715390), remote delete-data [41903714933](https://github.com/gamesbyian/Chunks/actions/runs/41903714933), API29 [41903715211](https://github.com/gamesbyian/Chunks/actions/runs/41903715211), R8 [41903715146](https://github.com/gamesbyian/Chunks/actions/runs/41903715146), atlas [41903714897](https://github.com/gamesbyian/Chunks/actions/runs/41903714897) and docs [41903714896](https://github.com/gamesbyian/Chunks/actions/runs/41903714896).
+- The installed Combined journey, which failed twice on the previous head, passed first time with the Connect keyboard fix. One pass is evidence, not proof of eliminated flakiness; keep watching.
+
 ## 2026-11-04 Connect-transition instability in installed Combined (diagnosis and fix)
 
 Three installed Combined failures all occurred in the Connect → Transfers transition while the soft keyboard was still closing:
