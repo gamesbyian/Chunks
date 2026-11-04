@@ -1,5 +1,9 @@
 # Chunks canonical product contract
 
+## Transfer progress as recency-preserving chunks (owner approved; planned 2026-11-03)
+
+The segmented progress bar SHALL begin empty and accumulate contiguous width-proportional chunks for *observed positive increases* in verified completed download progress. The bar represents chronological download growth, not piece positions, and does not pre-render future slots. The newest progress increments remain individually visible as older increments coalesce under a default cap of 20 visible chunks. Use the same per-environment transfer history in phone, rTorrent and Combined views; preserve numerical progress, trustworthy corrections and accessible status independently. This is visual/UI refinement, not an alteration to BitTorrent or rTorrent accounting and not a new P0 release gate. Algorithm and acceptance: [TRANSFER-PROGRESS-CHUNKS](TRANSFER-PROGRESS-CHUNKS.md).
+
 ## Planned transfer sharing and optional Expository file associations (not shipped)
 
 After a user has added a transfer, Chunks shall offer **Share magnet**, **Copy magnet**, and, when its verified complete metadata is accessible, **Share .torrent**, consistently for phone and native rTorrent sources even when the original input is gone. Sharing never changes a torrent or promises the same live peers. Preserve exact v1/v2 swarm identity, tracker information where known, environment origin, and private-tracker disclosure. See [TRANSFER-SHARING](TRANSFER-SHARING.md).
