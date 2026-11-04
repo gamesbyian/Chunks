@@ -1040,6 +1040,7 @@ private fun ChunksApp(
                         RemoteVerifiedUiIdentity.aliasScopeOf(it.credentials) == aliasScope
                     }?.label?.takeIf { it.isNotBlank() } ?: "rTorrent",
                     snapshotRevision = snapshotRevision,
+                    progressObservedAt = transfersObservedAt,
                     query = query, onQuery = { query = it },
                     filter = filter, onFilter = { next ->
                         filter = next
@@ -1594,6 +1595,7 @@ private fun TransfersScreen(
     list: List<RemoteTransfer>, view: String, loading: Boolean, stale: Boolean,
     environmentLabel: String,
     snapshotRevision: Long,
+    progressObservedAt: Long?,
     query: String, onQuery: (String) -> Unit, filter: TransferFilter,
     onCombined: () -> Unit,
     onFilter: (TransferFilter) -> Unit, onClearView: () -> Unit, order: TransferOrder,
@@ -1993,6 +1995,7 @@ private fun TransfersScreen(
                 onLifecycleSettled = onLifecycleSettled,
                 progressEnvironmentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
                     .serverIdOfAliasScope(aliasScope)?.value,
+                progressObservedAt = progressObservedAt,
                 transfer = transfer, expanded = selectedHash == transfer.hash,
                 snapshotRevision = snapshotRevision,
                 otherTransferDownloading = RemoteQueueActivityContext.otherTransferReportsDownloading(
@@ -2047,6 +2050,7 @@ private fun TransferCard(
     onAliasSave: (String?) -> Boolean,
     onLifecycleSettled: () -> Unit,
     progressEnvironmentId: String?,
+    progressObservedAt: Long?,
     transfer: RemoteTransfer, expanded: Boolean,
     snapshotRevision: Long,
     otherTransferDownloading: Boolean,
@@ -2101,6 +2105,7 @@ private fun TransferCard(
                     ProgressChunkStore.identity(it, transfer.hash)
                 },
                 observeFresh = !stale,
+                observationEpochMillis = progressObservedAt,
                 tone = when {
                     transfer.fractionComplete >= 1f -> ChunksTone.COMPLETE
                     !transfer.started -> ChunksTone.PAUSED

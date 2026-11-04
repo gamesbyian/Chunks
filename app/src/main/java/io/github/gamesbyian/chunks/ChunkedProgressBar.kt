@@ -48,7 +48,8 @@ internal fun ChunkedProgressBar(
     activeColor: Color = tone.color,
     trackColor: Color = ChunksColors.Muted,
     historyKey: String? = null,
-    observeFresh: Boolean = true
+    observeFresh: Boolean = true,
+    observationEpochMillis: Long? = null
 ) {
     require(segments in 1..ProgressChunkHistory.MAX_BANDS)
     val value = safeProgressFraction(progress)
@@ -60,14 +61,17 @@ internal fun ChunkedProgressBar(
     val minimumPpm = if (widthPx == 0) 3_000 else
         ceil(3.0 * 1_000_000 / widthPx).toInt().coerceIn(1, 1_000_000)
     val history = historyKey?.let(ProgressChunkStore::current)
-    val projection = if (observeFresh) (history ?: ProgressChunkHistory())
+    val acceptedFresh = observeFresh && (historyKey == null ||
+        !ProgressChunkStore.isOutOfOrder(historyKey, observationEpochMillis))
+    val projection = if (acceptedFresh) (history ?: ProgressChunkHistory())
         .observe(ppm, minimumPpm)
     else history?.takeIf { it.totalPpm == ppm }
         ?: ProgressChunkHistory().observe(ppm, minimumPpm)
 
-    LaunchedEffect(historyKey, ppm, minimumPpm, observeFresh) {
-        if (historyKey != null && observeFresh) {
-            ProgressChunkStore.observe(context, historyKey, ppm, minimumPpm)
+    LaunchedEffect(historyKey, ppm, minimumPpm, acceptedFresh, observationEpochMillis) {
+        if (historyKey != null && acceptedFresh) {
+            ProgressChunkStore.observe(context, historyKey, ppm, minimumPpm,
+                observationEpochMillis)
         }
     }
     val minBandPx = with(density) { 4.dp.toPx() }

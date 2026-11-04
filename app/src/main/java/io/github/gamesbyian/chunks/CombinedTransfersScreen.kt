@@ -1291,7 +1291,8 @@ private fun CombinedTransferRow(
                     modifier = Modifier.fillMaxWidth(),
                     historyKey = ProgressChunkStore.identity(
                         row.key.environment.value, row.key.infoHash),
-                    observeFresh = source?.canClaimCompleteLiveInventory == true
+                    observeFresh = source?.canClaimCompleteLiveInventory == true,
+                    observationEpochMillis = source?.observedAtEpochMillis
                 )
             }
             combinedRowFreshnessLabel(source)?.let { warning ->

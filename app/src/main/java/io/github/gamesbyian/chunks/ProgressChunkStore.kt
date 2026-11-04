@@ -20,6 +20,9 @@ internal object ProgressChunkStore {
     private const val PREFIX = "progress:"
     private const val MAX_STORED = 512
     private val histories = mutableStateMapOf<String, ProgressChunkHistory>()
+    // Live process ordering only. Cold relaunch accepts a newly verified recheck,
+    // even if the device clock changed while Chunks was absent.
+    private val latestObservedAt = mutableMapOf<String, Long>()
 
     internal fun identity(environment: String, infoHash: String): String? {
         if (environment.isBlank() ||
@@ -35,10 +38,16 @@ internal object ProgressChunkStore {
 
     fun current(identity: String): ProgressChunkHistory? = histories[identity]
 
+    fun isOutOfOrder(identity: String, observedAtEpochMillis: Long?): Boolean =
+        observedAtEpochMillis != null &&
+            (latestObservedAt[identity]?.let { observedAtEpochMillis < it } == true)
+
     suspend fun observe(
-        context: Context, identity: String, ppm: Int, minVisiblePpm: Int
+        context: Context, identity: String, ppm: Int, minVisiblePpm: Int,
+        observedAtEpochMillis: Long? = null
     ) {
         if (ppm !in 0..1_000_000) return
+        val sampleTime = observedAtEpochMillis ?: System.currentTimeMillis()
         if (histories[identity] == null) {
             val saved = withContext(Dispatchers.IO) {
                 val value = context.applicationContext
@@ -50,13 +59,20 @@ internal object ProgressChunkStore {
             // Another visible surface may have installed a newer observation.
             if (histories[identity] == null) histories[identity] = saved ?: ProgressChunkHistory()
         }
+        // Saved-profile and direct-server views can overlap. An older read must
+        // not overwrite newer completed area or synthesize a backward correction.
+        if (isOutOfOrder(identity, sampleTime)) return
+        latestObservedAt[identity] = sampleTime
         val previous = histories[identity] ?: ProgressChunkHistory()
         val next = previous.observe(ppm, minVisiblePpm)
         if (next == previous) return
         histories[identity] = next
         if (histories.size > MAX_STORED) {
             // A large lifetime of viewed transfers must not grow the UI cache forever.
-            histories.keys.firstOrNull { it != identity }?.let { histories.remove(it) }
+            histories.keys.firstOrNull { it != identity }?.let {
+                histories.remove(it)
+                latestObservedAt.remove(it)
+            }
         }
         withContext(Dispatchers.IO) {
             val prefs = context.applicationContext
