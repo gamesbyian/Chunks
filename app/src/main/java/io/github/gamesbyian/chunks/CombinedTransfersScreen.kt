@@ -305,13 +305,18 @@ internal fun CombinedTransfersScreen(
     onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
     onBack: () -> Unit,
     /** Caller-owned list position, kept when visiting an owning list and returning. */
-    listState: androidx.compose.foundation.lazy.LazyListState? = null
+    listState: androidx.compose.foundation.lazy.LazyListState? = null,
+    /**
+     * Caller-owned search text, kept when opening a transfer in its owning
+     * list and coming Back. It is still never written to preferences.
+     */
+    searchState: androidx.compose.runtime.MutableState<String>? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
     // Persistent preference reads run off the composition thread. A saved
     // snapshot cannot replace a scope/filter/search chosen while it loads.
-    var query by remember { mutableStateOf(UnifiedTransferQuery()) }
+    var query by remember { mutableStateOf(UnifiedTransferQuery(search = searchState?.value.orEmpty())) }
     var queryTouched by remember { mutableStateOf(false) }
     // Read the mutable query state inside each callback. A remembered updated
     // value only refreshes on recomposition, so two rapid clicks (sort key,
@@ -323,7 +328,9 @@ internal fun CombinedTransfersScreen(
                 val store = CombinedViewPreferences(context)
                 store to store.load()
             }
+            // Saved preferences hold no search; keep the session's own text.
             query = CombinedViewPreferences.reconcileLoadedView(query, saved, queryTouched)
+                .copy(search = query.search)
             loadedPreferences = store
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
@@ -334,6 +341,7 @@ internal fun CombinedTransfersScreen(
     fun update(next: UnifiedTransferQuery) {
         queryTouched = true
         query = next
+        searchState?.value = next.search
         // Save at the explicit event, not during composition; no queued write
         // can reorder a newer choice behind a late preference read.
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
@@ -915,6 +923,7 @@ internal fun CombinedTransfersScreen(
                 onValueChange = {
                     queryTouched = true
                     query = query.copy(search = it)
+                    searchState?.value = it
                 },
                 label = "Search all selected"
             )
