@@ -20,6 +20,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
@@ -65,6 +66,48 @@ class TransferSessionRemoveLargeTextTest {
                 }
             }
         }
+    }
+
+    @Test fun mountedRuTorrentOffersExplicitDeleteDataWithoutSendingSessionOnlyErase() {
+        val mounted = RTorrentRemote(RemoteCredentials(
+            "http://127.0.0.1:1/rutorrent/plugins/httprpc/action.php", "", ""))
+        var keepCalls = 0
+        var dataCalls = 0
+        var mutationGates = 0
+        rule.setContent {
+            val density = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
+                ChunksTheme {
+                    Surface {
+                        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                            TransferSessionRemoveControl(mounted, transfer,
+                                snapshotStale = false, mainView = true,
+                                onMutationStarted = { mutationGates++; true },
+                                onSettled = {},
+                                performErase = { _, _, _ ->
+                                    keepCalls++
+                                    SessionEraseOutcome.VerifiedRemoved(transfer.hash)
+                                },
+                                performDataErase = { hash, name, path ->
+                                    assertEquals(transfer.hash, hash)
+                                    assertEquals(transfer.name, name)
+                                    assertEquals(transfer.directory, path)
+                                    dataCalls++
+                                    RemoteDeleteDataOutcome.QueuedForCleanup(hash)
+                                })
+                        }
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("Remove from rTorrent", substring = true).performScrollTo().performClick()
+        rule.onNodeWithText("including files present before Add", substring = true).assertExists()
+        rule.onNodeWithText("Remove transfer and data").performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals(1, mutationGates)
+        assertEquals(1, dataCalls)
+        assertEquals(0, keepCalls)
+        rule.onNodeWithText("physical data deletion is NOT yet verified", substring = true).assertExists()
     }
 
     @Test fun confirmAndCancelGrowWith200PercentTextAt320DpWithoutMutation() {

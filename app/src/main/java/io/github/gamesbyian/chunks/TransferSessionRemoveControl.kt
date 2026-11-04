@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import io.github.gamesbyian.chunks.rpc.SessionEraseRecheck
@@ -59,6 +60,7 @@ fun TransferSessionRemoveControl(
     onMutationStarted: () -> Boolean,
     onSettled: () -> Unit,
     performErase: suspend (String, String, String) -> SessionEraseOutcome = remote::eraseFromSession,
+    performDataErase: suspend (String, String, String) -> RemoteDeleteDataOutcome = remote::removeWithDataViaRuTorrent,
     recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase,
     environmentLabel: String? = "rTorrent",
     snapshotRevision: Long = 0L
@@ -95,6 +97,7 @@ fun TransferSessionRemoveControl(
         mutableStateOf(false)
     }
     val scope = rememberCoroutineScope()
+    val canRequestDataDeletion = remember(remote) { remote.supportsRuTorrentDeleteData() }
 
     if (!validHash) {
         Text("Remove is available only for torrents with an exact v1 infohash.",
@@ -137,10 +140,49 @@ fun TransferSessionRemoveControl(
                     Text("Choose what to remove. Removing the transfer keeps downloaded files on the server. Custom server hooks could still have additional effects.",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(
-                        onClick = {}, enabled = false,
+                        onClick = {
+                            if (canRequestDataDeletion && environmentLabel != null &&
+                                mainView && !snapshotStale && !pending && !checking &&
+                                onMutationStarted()) {
+                                confirming = false
+                                attempted = true
+                                verified = false
+                                pending = true
+                                scope.launch {
+                                    try {
+                                        feedback = when (performDataErase(
+                                            transfer.hash, transfer.name, transfer.directory)) {
+                                            is RemoteDeleteDataOutcome.QueuedForCleanup ->
+                                                "Verified: this exact rTorrent session is absent after ruTorrent accepted a nonforce delete-data request. The plugin cleans up files asynchronously; physical data deletion is NOT yet verified."
+                                            RemoteDeleteDataOutcome.Unsupported ->
+                                                "No deletion command was sent. This server route does not expose the required ruTorrent erasedata plugin."
+                                            RemoteDeleteDataOutcome.Refused ->
+                                                "No deletion command was sent: the reviewed transfer, files or destination could not be confirmed."
+                                            is RemoteDeleteDataOutcome.Uncertain ->
+                                                "Data deletion outcome is uncertain. No request will be retried automatically. Inspect the exact rTorrent session and server files."
+                                        }
+                                    } catch (cancel: CancellationException) {
+                                        throw cancel
+                                    } catch (_: Exception) {
+                                        feedback = "Delete-data outcome could not be verified. The request may have reached the server. No automatic retry."
+                                    } finally {
+                                        pending = false
+                                        onSettled()
+                                    }
+                                }
+                            } else {
+                                feedback = "No delete-data command was sent. Refresh the connected server and review this transfer again."
+                                confirming = false
+                            }
+                        },
+                        enabled = canRequestDataDeletion && environmentLabel != null &&
+                            !pending && !checking && mainView && !snapshotStale,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text("Remove transfer and data (unavailable)") }
-                    Text("Deleting server files is unavailable: rTorrent session removal cannot safely identify and delete only this transfer's data. Use your server file manager if you choose to remove those files.",
+                    ) { Text(if (canRequestDataDeletion) "Remove transfer and data"
+                        else "Remove transfer and data (unavailable)") }
+                    Text(if (canRequestDataDeletion)
+                        "Requests ruTorrent erasedata to delete this transfer's exact payload files, including files present before Add. The server processes cleanup asynchronously; the operation is not complete until the actual files are gone. This choice cannot be undone."
+                        else "This connection does not expose a supported ruTorrent erasedata route. Session-only Remove keeps the downloaded data, and cannot be substituted for file deletion.",
                         style = MaterialTheme.typography.bodySmall)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
