@@ -277,8 +277,10 @@ class CombinedTwoRealServersInstrumentedTest {
             fun refreshOthers() {
                 scrollTo("Refresh other saved servers")
                 rule.onNodeWithText("Refresh other saved servers").performClick()
-                scrollTo("Environment status")
-                if (!visible(":$portA")) rule.onNodeWithText("Environment status", substring = true).performClick()
+                // Expanded, the toggle reads "Hide environment status".
+                scrollTo("nvironment status")
+                if (!visible("Hide environment status"))
+                    rule.onNodeWithText("Environment status", substring = true).performClick()
             }
             // Timeout: A's daemon is frozen (gateway accepts, no reply).
             fault("freeze-a")
