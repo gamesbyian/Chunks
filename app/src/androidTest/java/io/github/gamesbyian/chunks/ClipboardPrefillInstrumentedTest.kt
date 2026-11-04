@@ -6,7 +6,11 @@ import android.content.Context
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -39,9 +43,19 @@ class ClipboardPrefillInstrumentedTest {
 
     @Test fun copiedMagnetPrefillsTheForegroundPhoneAdd() {
         val link = "magnet:?xt=urn:btih:" + "f".repeat(40) + "&dn=Installed%20clipboard"
-        waitOrExplain("the phone screen", 30_000) {
-            rule.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Phone transfers"))
-                .fetchSemanticsNodes().isNotEmpty()
+        val phone = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Phone transfers")
+        val entry = hasText("Open phone downloads") and hasClickAction()
+        // A login remembered by an earlier installed test starts on the server
+        // entry instead; reach the phone the way a person would, from there.
+        waitOrExplain("the phone screen or its entry", 30_000) {
+            rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() ||
+                rule.onAllNodes(entry).fetchSemanticsNodes().isNotEmpty() ||
+                rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty() &&
+                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open phone downloads")) }.isSuccess
+        }
+        if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
+            rule.onNode(entry).performScrollTo().performClick()
+            waitOrExplain("the phone screen", 15_000) { rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() }
         }
         rule.runOnUiThread {
             (rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
