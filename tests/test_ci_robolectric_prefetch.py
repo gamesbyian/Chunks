@@ -7,7 +7,8 @@ import unittest
 import zipfile
 
 from tools.prefetch_robolectric_sdk import (
-    ARTIFACT, SDK_TO_ARTIFACT, PrefetchFailure, prefetch, read_limited,
+    ARTIFACT, PAYLOAD_MIRROR_ROOT, SDK_TO_ARTIFACT, PrefetchFailure, prefetch,
+    prefetch_with_mirror_fallback, read_limited,
 )
 
 VERSION = SDK_TO_ARTIFACT[35]
@@ -168,3 +169,50 @@ class PrefetchTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MirrorFallbackTests(unittest.TestCase):
+    """A rate-limited Central payload falls back to the mirror; checksums never do."""
+    setUp = PrefetchTests.setUp
+
+    def test_central_exhaustion_uses_mirror_payload_with_central_checksum(self):
+        blobs = fixtures()
+        class Routed(BytesOpener):
+            def __call__(self, url, timeout):
+                self.requests.append(url)
+                name = url.rsplit("/", 1)[-1]
+                if url.startswith("https://repo.maven.apache.org") and name.endswith(".jar"):
+                    raise OSError("HTTP 429")
+                return BytesIO(self.blobs[name])
+        opener = Routed(blobs)
+        result = prefetch_with_mirror_fallback(sdk=35, gradle_file=self.gradle, home=self.home,
+            opener=opener, pause=lambda _: None)
+        self.assertEqual("verified-mirror-payload", result["source"])
+        mirror = [u for u in opener.requests if u.startswith(PAYLOAD_MIRROR_ROOT)]
+        self.assertTrue(mirror and all(not u.endswith(".sha512") for u in mirror),
+                        "checksums must come from Central, never the mirror")
+        self.assertTrue((self.folder / (BASENAME + ".jar")).is_file())
+
+    def test_mirror_payload_that_disagrees_with_central_checksum_is_rejected(self):
+        blobs = fixtures()
+        class Tampered(BytesOpener):
+            def __call__(self, url, timeout):
+                self.requests.append(url)
+                name = url.rsplit("/", 1)[-1]
+                if url.startswith("https://repo.maven.apache.org") and name.endswith(".jar"):
+                    raise OSError("HTTP 429")
+                if url.startswith(PAYLOAD_MIRROR_ROOT) and name.endswith(".jar"):
+                    return BytesIO(fake_jar() + b"tampered")
+                return BytesIO(self.blobs[name])
+        with self.assertRaises(PrefetchFailure):
+            prefetch_with_mirror_fallback(sdk=35, gradle_file=self.gradle, home=self.home,
+                opener=Tampered(blobs), pause=lambda _: None)
+        self.assertFalse((self.folder / (BASENAME + ".jar")).exists())
+
+    def test_non_network_failures_do_not_fall_back(self):
+        self.gradle.write_text('testImplementation("org.robolectric:robolectric:9.9")', encoding="utf-8")
+        opener = BytesOpener(fixtures())
+        with self.assertRaises(PrefetchFailure):
+            prefetch_with_mirror_fallback(sdk=35, gradle_file=self.gradle, home=self.home,
+                opener=opener, pause=lambda _: None)
+        self.assertEqual([], opener.requests)

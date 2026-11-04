@@ -23,6 +23,10 @@ SDK_TO_ARTIFACT = {35: "15-robolectric-13954326-i7"}
 GROUP_PATH = "org/robolectric/android-all-instrumented"
 ARTIFACT = "android-all-instrumented"
 MAVEN_ROOT = "https://repo.maven.apache.org/maven2"
+# Google's official Maven Central mirror. It serves only the payload when
+# Central rate-limits large downloads; the SHA-512 sidecar is still read from
+# Central itself, so the trust anchor does not move.
+PAYLOAD_MIRROR_ROOT = "https://maven-central.storage-download.googleapis.com/maven2"
 JAR_LIMIT = 300 * 1024 * 1024
 POM_LIMIT = 512 * 1024
 CHECKSUM_LIMIT = 256
@@ -59,7 +63,7 @@ def read_limited(url: str, destination: Path, *, limit: int, opener=urlopen) -> 
 
 def verified_download(base: str, filename: str, scratch: Path, *, limit: int,
                       attempts: int = MAX_ATTEMPTS, opener=urlopen,
-                      pause=time.sleep) -> tuple[Path, Path, int]:
+                      pause=time.sleep, payload_base: str | None = None) -> tuple[Path, Path, int]:
     if not re.fullmatch(r"android-all-instrumented-[A-Za-z0-9.\-]+\.(?:pom|jar)", filename):
         raise PrefetchFailure("unexpected-artifact-name")
     payload = scratch / filename
@@ -71,7 +75,7 @@ def verified_download(base: str, filename: str, scratch: Path, *, limit: int,
             expected = checksum.read_text(encoding="ascii").strip().lower()
             if not re.fullmatch(r"[0-9a-f]{128}", expected):
                 raise PrefetchFailure("invalid-maven-checksum")
-            read_limited(f"{base}/{filename}", payload, limit=limit, opener=opener)
+            read_limited(f"{payload_base or base}/{filename}", payload, limit=limit, opener=opener)
             actual = hashlib.sha512()
             with payload.open("rb") as stream:
                 for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -112,7 +116,7 @@ def validate_pom(path: Path, version: str) -> None:
 
 def prefetch(*, sdk: int, gradle_file: Path, home: Path,
              maven_root: str = MAVEN_ROOT, opener=urlopen,
-             pause=time.sleep) -> dict:
+             pause=time.sleep, payload_root: str | None = None) -> dict:
     if sdk not in SDK_TO_ARTIFACT:
         raise PrefetchFailure("unsupported-sdk")
     check_robolectric_pin(gradle_file)
@@ -148,18 +152,32 @@ def prefetch(*, sdk: int, gradle_file: Path, home: Path,
         return {"sdk": sdk, "source": "verified-cache", "attempts": 0}
 
     base = f"{maven_root.rstrip('/')}/{GROUP_PATH}/{version}"
+    payload_base = f"{payload_root.rstrip('/')}/{GROUP_PATH}/{version}" if payload_root else None
+    if payload_base is not None and not payload_base.startswith("https://"):
+        raise PrefetchFailure("insecure-url")
     with tempfile.TemporaryDirectory(prefix=".robolectric-staging-", dir=target) as tmp:
         scratch = Path(tmp)
         pom, pom_sha, pom_tries = verified_download(base, pom_name, scratch,
-            limit=POM_LIMIT, opener=opener, pause=pause)
+            limit=POM_LIMIT, opener=opener, pause=pause, payload_base=payload_base)
         validate_pom(pom, version)
         jar, jar_sha, jar_tries = verified_download(base, jar_name, scratch,
-            limit=JAR_LIMIT, opener=opener, pause=pause)
+            limit=JAR_LIMIT, opener=opener, pause=pause, payload_base=payload_base)
         validate_jar(jar)
         # Robolectric treats jar existence as the fetched marker: install last.
         for name in (pom_sha.name, pom.name, jar_sha.name, jar.name):
             os.replace(scratch / name, target / name)
-    return {"sdk": sdk, "source": "verified-prefetch", "attempts": max(pom_tries, jar_tries)}
+    return {"sdk": sdk, "source": "verified-mirror-payload" if payload_base else "verified-prefetch",
+            "attempts": max(pom_tries, jar_tries)}
+
+
+def prefetch_with_mirror_fallback(**kwargs) -> dict:
+    """Central first; only an exhausted download falls back to mirror payloads."""
+    try:
+        return prefetch(**kwargs)
+    except PrefetchFailure as exc:
+        if exc.args[0] != "verified-download-exhausted":
+            raise
+    return prefetch(payload_root=PAYLOAD_MIRROR_ROOT, **kwargs)
 
 
 def main() -> None:
@@ -169,7 +187,8 @@ def main() -> None:
     args = parser.parse_args()
     started = time.monotonic()
     try:
-        result = prefetch(sdk=args.sdk, gradle_file=args.gradle_file, home=Path.home())
+        result = prefetch_with_mirror_fallback(sdk=args.sdk, gradle_file=args.gradle_file,
+                                               home=Path.home())
     except (PrefetchFailure, OSError) as exc:
         kind = exc.args[0] if isinstance(exc, PrefetchFailure) else "filesystem-error"
         print(f"CHUNKS_ROBOLECTRIC_PREFLIGHT: status=failed kind={kind}")
