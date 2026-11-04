@@ -2195,7 +2195,10 @@ private fun TransferCard(
                     add("Ratio " + String.format(java.util.Locale.US, "%.2f",
                         ratio.toDouble() / 1_000.0))
                 }
-            }.joinToString(" · ")
+            }.joinToString(" · ").let { facts ->
+                // Rates from an out-of-date snapshot are not live.
+                if (stale && facts.isNotEmpty()) "Last read: $facts" else facts
+            }
             // Thin collapsed cards: at ordinary text sizes the disclosure shares
             // the rates line instead of adding a full-width row to every card.
             val inlineDisclosure = LocalDensity.current.fontScale < 1.5f
