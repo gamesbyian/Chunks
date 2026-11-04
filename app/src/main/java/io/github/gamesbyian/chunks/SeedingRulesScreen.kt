@@ -199,7 +199,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                     val overrides = environments.count { snapshot.defaults.containsKey(it.id) }
                     Text(
                         (if (defaultsOpen) "Hide" else "Review") + " defaults · " +
-                            environments.size + " environments · " + overrides + " saved"
+                            environments.size + (if (environments.size == 1) " environment · " else " environments · ") + overrides + " saved"
                     )
                 }
                 if (defaultsOpen) {

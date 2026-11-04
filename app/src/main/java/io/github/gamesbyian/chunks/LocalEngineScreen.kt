@@ -767,7 +767,7 @@ internal fun LocalEngineScreen(
         }
         // Keep both intake methods discoverable before optional storage, seeding
         // and engine explanations. Existing Place and safety gates remain authoritative.
-        Text("Downloads and seeds with Chunks' own engine. While a transfer runs, an ongoing notification keeps it going in the background, with Stop all; Android may still stop it, and from Android 15 limits this kind of background transfer to about 6 hours a day, after which Chunks pauses everything. Nothing connects to the network until you add a torrent. Transfers are remembered and come back stopped after Chunks restarts. Peers and trackers can see this phone's IP address.")
+        PhoneEngineAbout()
         LocalDownloadPlacePicker(
             resolution = placeResolution,
             enabled = !busy && !inventoryStale,
@@ -796,11 +796,8 @@ internal fun LocalEngineScreen(
             enabled = !busy && !inventoryStale,
             modifier = Modifier.fillMaxWidth()
         )
-        Text("Optional: give this new local transfer its own subfolder inside the " +
-            "download location above. Leave blank to save directly there. " +
-            "An empty existing subfolder can be reused; a nonempty folder is " +
-            "refused to prevent collisions. No folder is created until Add is confirmed, " +
-            "and nothing is ever created on a remote server.",
+        Text("Optional. Leave blank to save directly in the download location above. " +
+            "A nonempty folder is refused; nothing is created until Add is confirmed.",
             style = MaterialTheme.typography.bodySmall)
         if (addFolderNameInvalid)
             Text("Use one plain folder name, without slashes, dot-prefixed names, " +
