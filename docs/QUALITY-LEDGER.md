@@ -2,6 +2,18 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-04 non-P0 UX #1293 and #1295: phone Add seam, footer label, keyboard focus return, clipboard prefill
+
+- **[#1293](https://github.com/gamesbyian/Chunks/pull/1293)** squash-merged as `e4ca51b50e2303a68e567d72a301299ddd818740` from exact head `4636f3f85e929ac29526cd8bc5f177a904b37c9e`.
+  - Passed: foundation [41931166348](https://github.com/gamesbyian/Chunks/actions/runs/41931166348), with 1655 JUnit cases, 1615 executed, 0 failed and 40 skipped.
+  - Passed: native Add [41931166343](https://github.com/gamesbyian/Chunks/actions/runs/41931166343). Installed `PhoneToolFocusReturnInstrumentedTest` executed and passed 2/2, and `FooterImeInstalledInstrumentedTest` still passed.
+  - Passed: two-server Combined, atlas, API 29 downloads, remote delete-data and minified smoke.
+  - Prior red, preserved: foundation [41928620595](https://github.com/gamesbyian/Chunks/actions/runs/41928620595) on `7aac0324`, where `CombinedDetailSessionCapabilityTest` failed once. Classified as a flaky harness: it passed 3/3 locally and on the next head.
+- **[#1295](https://github.com/gamesbyian/Chunks/pull/1295)** squash-merged as `98e35bdbc7d0cf496d5f054f7c27f6aa9600e851` from exact head `5d36f730f17f4ee96051edafa0f22f686e2c477d`.
+  - Passed: foundation [41936142988](https://github.com/gamesbyian/Chunks/actions/runs/41936142988) and native Add [41936142836](https://github.com/gamesbyian/Chunks/actions/runs/41936142836), including installed `ClipboardPrefillInstrumentedTest`.
+  - Prior red, preserved: shard 0 of [41933287597](https://github.com/gamesbyian/Chunks/actions/runs/41933287597) and [41934704493](https://github.com/gamesbyian/Chunks/actions/runs/41934704493). In both, the new test timed out before its clipboard step, because the app started on the server entry rather than the phone. Classified as test setup, not product failure. The test now uses **Open phone downloads** as a person would.
+- Limits: there is no live phone Add → Combined journey. The Android 12+ system paste notice on a physical Pixel, OEM clipboard behaviour, URL import, hardware keyboard and TalkBack remain unverified.
+
 ## 2026-11-04 non-P0 UX #1292: magnet draft check, Options setting search, Combined Add seam, phone Place reset
 
 - **[#1292](https://github.com/gamesbyian/Chunks/pull/1292)** squash-merged as `82828eff305afb9da00b77fc1f93393755fed551` from exact head `e1e5891c430e016e2d9463cb863d1e541661d5f5`. Passed:
