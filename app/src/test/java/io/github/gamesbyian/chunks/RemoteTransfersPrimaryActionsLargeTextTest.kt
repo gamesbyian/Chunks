@@ -66,6 +66,28 @@ class RemoteTransfersPrimaryActionsLargeTextTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
+    fun normalTextOn412dpScreenUsesOneRowAfterListGutters() {
+        // The actual list has 18dp left/right padding, leaving 376dp.
+        show(376, 1f)
+        val add = rule.onNodeWithText("+ Add torrent").getUnclippedBoundsInRoot()
+        val refresh = rule.onNodeWithText("Refresh").getUnclippedBoundsInRoot()
+        assertEquals("412dp phone must not waste a second row", add.top, refresh.top)
+        assertTrue(add.right < refresh.left)
+        assertTrue("Refresh remains within the 376dp content area", refresh.right <= 376.dp)
+        assertTrue(add.bottom - add.top >= 48.dp)
+        assertTrue(refresh.bottom - refresh.top >= 48.dp)
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-add-refresh-412x892-default-inline.png")
+    }
+
+    @Test fun narrow320dpScreenStillStacksAfterListGutters() {
+        show(284, 1f)
+        val add = rule.onNodeWithText("+ Add torrent").getUnclippedBoundsInRoot()
+        val refresh = rule.onNodeWithText("Refresh").getUnclippedBoundsInRoot()
+        assertTrue(refresh.top >= add.bottom)
+    }
+
+    @Test
+    @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
     fun biggerPhoneStillStacksAt200Percent() {
         show(412, 2f)
         val add = rule.onNodeWithText("+ Add torrent").getUnclippedBoundsInRoot()
