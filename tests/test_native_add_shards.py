@@ -102,13 +102,35 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.change(0, skip_twenty_nine)
         self.assertEqual(29, self.check()["junit"]["skipped"])
 
-    def test_reject_unreviewed_increase_in_skipped_cases(self):
+    def test_accepts_reviewed_two_server_combined_skip(self):
+        # CombinedTwoRealServersInstrumentedTest runs only in its own
+        # two-disposable-server workflow and is skipped in native Add.
         def skip_thirty(d):
             for case in d["test_cases"][:30]:
                 case["outcome"] = "skipped"
             d["junit"]["executed"] = 151
             d["junit"]["skipped"] = 30
         self.change(0, skip_thirty)
+        self.assertEqual(30, self.check()["junit"]["skipped"])
+
+    def test_accepts_reviewed_protected_combined_skip(self):
+        # CombinedThreeSeedhostReadOnlyInstrumentedTest runs only on a
+        # protected trusted-main manual dispatch.
+        def skip_thirty_one(d):
+            for case in d["test_cases"][:31]:
+                case["outcome"] = "skipped"
+            d["junit"]["executed"] = 150
+            d["junit"]["skipped"] = 31
+        self.change(0, skip_thirty_one)
+        self.assertEqual(31, self.check()["junit"]["skipped"])
+
+    def test_reject_unreviewed_increase_in_skipped_cases(self):
+        def skip_thirty_two(d):
+            for case in d["test_cases"][:32]:
+                case["outcome"] = "skipped"
+            d["junit"]["executed"] = 149
+            d["junit"]["skipped"] = 32
+        self.change(0, skip_thirty_two)
         with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
 

@@ -1,0 +1,73 @@
+name: Protected Seedhost three-server Combined read-only
+
+# Manual, trusted-main only. Installed app connects to the owner's primary and
+# numbered development instances 2 and 3 and opens Combined. No Add, Start,
+# Stop, Remove or file operation is sent. Requires an already staged
+# same-hash cohort fixture (seedhost-p0-cohort-once.yml receipt).
+on:
+  workflow_dispatch:
+    inputs:
+      shared_hash:
+        description: "Exact staged same-hash cohort infohash present on instances 2 and 3"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-seedhost-android-manual
+  cancel-in-progress: false
+
+jobs:
+  combined-three-readonly:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse missing secrets before any request
+        env:
+          U: ${{ secrets.rtorrent_user }}
+          P1: ${{ secrets.rtorrent_pass }}
+          P2: ${{ secrets.rTorrent_pass2 }}
+          P3: ${{ secrets.rtorrent_pass3 }}
+        run: |
+          test -n "$U" && test -n "$P1" && test -n "$P2" && test -n "$P3"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build app and instrumentation APKs
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Prepare emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed Combined across primary, instance 2 and instance 3 (read-only)
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          CHUNKS_P1_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_P1_PASS: ${{ secrets.rtorrent_pass }}
+          CHUNKS_P2_PASS: ${{ secrets.rTorrent_pass2 }}
+          CHUNKS_P3_PASS: ${{ secrets.rtorrent_pass3 }}
+          CHUNKS_SHARED_HASH: ${{ inputs.shared_hash }}
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/seedhost_combined_three_readonly.sh

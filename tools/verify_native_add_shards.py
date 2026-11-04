@@ -19,7 +19,9 @@ REPO = Path(__file__).resolve().parent.parent
 # 28 deliberately skipped. Android console's '362 tests' is NOT 362 executed.
 BASELINE_JUNIT_TESTS = 334
 BASELINE_EXECUTED_TESTS = 306
-MAX_BASELINE_SKIPPED = 29  # 28 accepted skips + 1 explicitly opt-in native delete research
+MAX_BASELINE_SKIPPED = 31  # 28 accepted skips + 1 opt-in native delete research
+#   + 1 CombinedTwoRealServersInstrumentedTest (runs only in its two-server workflow)
+#   + 1 CombinedThreeSeedhostReadOnlyInstrumentedTest (protected manual dispatch only)
 
 
 def verify(root, count, sha, screenshot_manifest=None):
