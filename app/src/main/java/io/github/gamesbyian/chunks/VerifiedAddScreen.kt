@@ -201,6 +201,21 @@ fun VerifiedAddScreen(
     }
 
     val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
+    // Foreground clipboard prefill, once when this Add screen opens.
+    var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
+    var clipboardFilled by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(Unit) {
+        val on = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
+        clipboardPrefillOn = on
+        if (!on) return@LaunchedEffect
+        val filled = ClipboardMagnetPrefill.decide(true, magnet,
+            otherSourcePresent = initialTorrent != null || selectedTorrent != null || alreadyAttempted,
+            clipText = ClipboardMagnetPrefill.readText(context))
+        if (filled != null) {
+            onMagnet(filled)
+            clipboardFilled = filled
+        }
+    }
     var invalidDestination = false
     val useServerDefault = destination.isBlank()
     val effectiveDestination = if (useServerDefault) configuredDefault.orEmpty() else destination
@@ -282,7 +297,17 @@ fun VerifiedAddScreen(
                     awaitingConfirmation = false
                 },
                 onNothingToPaste = { fileError = "The clipboard has no text to paste. Copy a magnet link first." })
+            if (clipboardFilled != null && magnet == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
+                onClear = { onMagnet(""); clipboardFilled = null }, enabled = !submitting)
             if (!useFile) MagnetDraftSummary(magnetCheck)
+            clipboardPrefillOn?.let { on ->
+                ClipboardPrefillToggle(checked = on, enabled = !submitting, onChange = { next ->
+                    scope.launch {
+                        if (withContext(Dispatchers.IO) { ClipboardMagnetPrefill.setEnabled(context, next) })
+                            clipboardPrefillOn = next
+                    }
+                })
+            }
         }
         item {
             OutlinedButton(
