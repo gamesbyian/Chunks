@@ -59,6 +59,22 @@ internal data class RemoteAddedRecord(val aliasScope: String, val hash: String, 
     ): Boolean = scope == aliasScope && currentViewKey == viewKey &&
         PhoneAddedVisibility.hiddenByView(hash, inventory, shown)
 
+    /**
+     * The exact Combined key for this verified Add, only while the same
+     * authenticated account is current. Another numbered instance or account
+     * never inherits it; Combined still requires a fresh observed inventory.
+     */
+    fun combinedKey(currentAliasScope: String): io.github.gamesbyian.chunks.model.UnifiedTransferKey? {
+        if (currentAliasScope != aliasScope) return null
+        val environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+            .serverIdOfAliasScope(aliasScope) ?: return null
+        return try {
+            io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(environment, hash)
+        } catch (_: IllegalArgumentException) {
+            null
+        }
+    }
+
     companion object {
         fun viewKey(query: String, filterName: String) = query + "\u0000" + filterName
     }

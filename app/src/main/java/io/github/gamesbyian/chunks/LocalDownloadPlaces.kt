@@ -110,6 +110,13 @@ internal object LocalDownloadPlaces {
             .putString(KEY_RESOLVED_ROOT, choice.place.root.absolutePath).commit()
 
     /**
+     * Forget the saved choice so new phone Adds use the automatic default
+     * again. Only the preference changes; no folder or file is touched.
+     */
+    fun forget(context: Context): Boolean =
+        prefs(context).edit().remove(KEY_DEFAULT).commit()
+
+    /**
      * The folder storage panels should measure: the last resolved default if
      * it currently exists, otherwise Chunks' app folder. Never creates folders.
      */

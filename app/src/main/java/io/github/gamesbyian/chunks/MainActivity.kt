@@ -519,6 +519,8 @@ private fun ChunksApp(
             CombinedTransfersScreen(
                 listState = combinedListState,
                 searchState = combinedSearch,
+                // Only this session's positively verified Add on the current account.
+                recentlyAddedTransfer = remoteAdded?.takeIf { server != null }?.combinedKey(aliasScope),
                 server = server?.let { remote ->
                     CombinedServerSource(aliasScope, transfers, stale = stale || loading,
                         fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt,
@@ -1042,9 +1044,36 @@ private fun ChunksApp(
                         value = optionsSearch, onValueChange = { optionsSearch = it },
                         label = "Find a screen or tool"
                     )
-                    if (visibleDestinations.isEmpty()) {
+                    val shortcuts = OptionsShortcut.search(optionsSearch)
+                    if (visibleDestinations.isEmpty() && shortcuts.isEmpty()) {
                         Text("No matching Options screen. Clear search to see all destinations.",
                             style = MaterialTheme.typography.bodySmall)
+                    }
+                    // Settings that live inside existing screens. Each result only
+                    // opens that screen; nothing is changed by searching or tapping.
+                    shortcuts.forEach { shortcut ->
+                        OutlinedButton(
+                            onClick = {
+                                optionsSearch = ""
+                                when (shortcut) {
+                                    OptionsShortcut.SEEDING_RULES -> openTool(Section.SEEDING, Section.TRANSFERS)
+                                    OptionsShortcut.PHONE_SETTINGS -> { localFromCombined = false; section = Section.LOCAL }
+                                    OptionsShortcut.ENVIRONMENT_COLOURS -> { combinedFromPhone = false; section = Section.COMBINED }
+                                    OptionsShortcut.NAMES -> section = Section.NAMES
+                                    OptionsShortcut.BACKUP -> section = Section.SNAPSHOT
+                                    OptionsShortcut.INSPECT_BACKUP -> section = Section.SNAPSHOT_INSPECT
+                                    // Already in this panel: clearing the search shows the
+                                    // whole panel, which ends with Privacy & authentication.
+                                    OptionsShortcut.PRIVACY -> Unit
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text(shortcut.title, fontWeight = FontWeight.Bold)
+                                Text(shortcut.where, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                     }
                 }
                 // Wrap rather than scroll sideways: every destination stays reachable
