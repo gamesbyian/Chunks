@@ -1080,7 +1080,8 @@ internal fun CombinedTransfersScreen(
                     color = ChunksColors.Yellow)
                 Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
                     style = MaterialTheme.typography.bodySmall)
-                Text("Showing ${result.transfers.size}" +
+                Text(combinedShowingText(result.transfers.size,
+                    result.sources.sumOf { it.transfers.size }) +
                     if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
                     style = MaterialTheme.typography.titleSmall)
             }
@@ -1592,6 +1593,10 @@ private fun EnvironmentColourChooser(
 }
 
 /** Live-only totals in words, saying what is unknown or left out. */
+/** "Showing 4", or "Showing 1 of 4" when search or a filter narrows the selected environments. */
+internal fun combinedShowingText(shown: Int, inSelectedEnvironments: Int): String =
+    if (shown >= inSelectedEnvironments) "Showing $shown" else "Showing $shown of $inSelectedEnvironments"
+
 internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTransferTotals): String =
     "Live total: ↓ " + (if (t.downloadTotalBeyondRange) "exceeds reporting range"
                          else Units.bytes(t.downloadBytesPerSecond) + "/s") +

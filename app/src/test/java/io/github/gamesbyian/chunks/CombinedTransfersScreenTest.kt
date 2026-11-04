@@ -203,7 +203,7 @@ class CombinedTransfersScreenTest {
         show()
         revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
-        rule.onNodeWithText("Showing 1", substring = true).assertExists()
+        rule.onNodeWithText("Showing 1 of 2", substring = true).assertExists()
         rule.onNodeWithText("New downloads may not match this search.", substring = true)
             .assertExists()
         // This 411dp Robolectric viewport has 16dp list padding on each side:
