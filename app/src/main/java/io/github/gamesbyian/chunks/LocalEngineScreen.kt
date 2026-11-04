@@ -307,9 +307,13 @@ internal fun LocalEngineScreen(
     // The search/filter in effect when that Add happened. Any later deliberate
     // view change retires the notice, so an old Add is never called "new".
     var lastAddedView by rememberSaveable { mutableStateOf<String?>(null) }
-    fun rememberAdded(hash: String?) {
+    // The outcome text an acknowledged Add produced, with its exact hash, so
+    // only that notice offers "Show new transfer". Process memory only.
+    var addedOutcome by remember { mutableStateOf<Pair<String?, String>?>(null) }
+    fun rememberAdded(hash: String?, outcome: String?) {
         lastAddedHash = hash
         lastAddedView = hash?.let { transferSearch + "\u0000" + transferFilter.name }
+        addedOutcome = hash?.let { outcome to it }
     }
     LaunchedEffect(initialSearch) {
         if (!initialSearch.isNullOrBlank()) {
@@ -741,8 +745,8 @@ internal fun LocalEngineScreen(
                             is LocalAddResult.AddedStopped -> null
                         }
                         when (result) {
-                            is LocalAddResult.FetchingMetadata -> rememberAdded(result.status.infoHash)
-                            is LocalAddResult.AddedStopped -> rememberAdded(result.status.infoHash)
+                            is LocalAddResult.FetchingMetadata -> rememberAdded(result.status.infoHash, message)
+                            is LocalAddResult.AddedStopped -> rememberAdded(result.status.infoHash, message)
                             is LocalAddResult.Refused -> Unit
                         }
                         if (result !is LocalAddResult.Refused) {
@@ -917,7 +921,22 @@ internal fun LocalEngineScreen(
         // Outcomes include successes ("Added and started…") as well as refusals,
         // so present them as a neutral, politely announced status rather than
         // colouring every result as an error. The wording carries the outcome.
-        message?.let { PhoneOutcomeNotice(it) }
+        message?.let { text ->
+            // Only an Add outcome whose exact hash is in the observed
+            // inventory can offer to show it; refusals never do.
+            val newHash = addedOutcome?.takeIf { it.first == text }?.second
+                ?.takeIf { hash -> transfers.any { it.infoHash.equals(hash, ignoreCase = true) } }
+            PhoneOutcomeNotice(text,
+                actionLabel = if (newHash != null) "Show new transfer" else null,
+                onAction = {
+                    if (newHash != null) {
+                        // View only: search for the exact hash and show all states.
+                        transferSearch = newHash
+                        chooseLocalFilter(LocalQueueFilter.ALL)
+                        scope.launch { transfersRequester.bringIntoView() }
+                    }
+                })
+        }
         restoreNotice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         if (inventoryStale) {
             Text("Phone torrent status unavailable. Showing the last confirmed transfers. " +
@@ -1013,7 +1032,7 @@ internal fun LocalEngineScreen(
                             }
                         }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
-                        if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash)
+                        if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash, message)
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
@@ -1756,6 +1775,9 @@ internal fun LocalEngineScreen(
             Text("Seeding rules…")
         }
         io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
+        // Settings first, then occasional tools: the person looking for a
+        // speed limit does not have to scroll past snapshot and export panels.
+        LocalSpeedLimits()
         LocalSnapshotRestorePreviewPanel(
             transfers = transfers,
             inventoryConfirmed = hasConfirmedLocalInventory,
@@ -1844,7 +1866,6 @@ internal fun LocalEngineScreen(
             onNamesChanged = { registeredNames = it }
         )
         LocalZipInterruptedExtractions()
-        LocalSpeedLimits()
     }
     ReturnToTopControl(
         visible = showBackToTop,
@@ -1874,7 +1895,12 @@ internal fun LocalEngineScreen(
 
 /** Latest phone action outcome, announced to accessibility services once per change. */
 @Composable
-internal fun PhoneOutcomeNotice(text: String) {
+internal fun PhoneOutcomeNotice(
+    text: String,
+    /** Optional view-only follow-up, e.g. showing the exact newly added transfer. */
+    actionLabel: String? = null,
+    onAction: () -> Unit = {}
+) {
     // Fully qualified to keep the shared import block untouched.
     androidx.compose.material3.Surface(
         color = ChunksColors.SurfaceRaised,
@@ -1884,8 +1910,12 @@ internal fun PhoneOutcomeNotice(text: String) {
         modifier = Modifier.fillMaxWidth()
             .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite }
     ) {
-        Text(text, color = ChunksColors.Text, style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp))
+        Column(Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(text, color = ChunksColors.Text, style = MaterialTheme.typography.bodyMedium)
+            if (actionLabel != null) OutlinedButton(onClick = onAction,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(actionLabel) }
+        }
     }
 }
 
@@ -2505,13 +2535,22 @@ internal fun parseSpeedLimit(text: String): Int? {
     return if (kib in 0..(Int.MAX_VALUE / 1024)) kib * 1024 else null
 }
 
+/** Current saved value and where it came from, in one sentence. */
+internal fun speedLimitSummary(limits: LocalRateLimits): String {
+    fun one(bytes: Int) = if (bytes == 0) "unlimited" else "${bytes / 1024} KiB/s"
+    return if (limits == LocalRateLimits())
+        "Now: unlimited download and upload (default)."
+    else "Now: download ${one(limits.downloadBytesPerSecond)}, upload " +
+        "${one(limits.uploadBytesPerSecond)} (your saved limit)."
+}
+
 private fun speedText(bytesPerSecond: Int) = if (bytesPerSecond == 0) "" else (bytesPerSecond / 1024).toString()
 
 @Composable
 internal fun LocalSpeedLimits() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val saved = remember { LocalEngineHolder.rateLimitsPreferred(context) }
+    var saved by remember { mutableStateOf(LocalEngineHolder.rateLimitsPreferred(context)) }
     var download by remember { mutableStateOf(speedText(saved.downloadBytesPerSecond)) }
     var upload by remember { mutableStateOf(speedText(saved.uploadBytesPerSecond)) }
     var result by remember { mutableStateOf<String?>(null) }
@@ -2519,6 +2558,7 @@ internal fun LocalSpeedLimits() {
     val downloadLimit = parseSpeedLimit(download)
     val uploadLimit = parseSpeedLimit(upload)
     Text("Speed limits", fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
+    Text(speedLimitSummary(saved), style = MaterialTheme.typography.bodyMedium)
     SettingScopeNote(PHONE_ENVIRONMENT_LABEL)
     Text("In KiB per second; leave blank for unlimited. Devices on your own network are not limited.",
         style = MaterialTheme.typography.bodySmall)
@@ -2545,6 +2585,7 @@ internal fun LocalSpeedLimits() {
                     val confirmed = withContext(Dispatchers.IO) {
                         LocalEngineHolder.setRateLimitsPreferred(context, wanted)
                     }
+                    if (confirmed) saved = wanted
                     result = if (confirmed)
                         "Speed limits verified (if the engine is running) and saved on this phone."
                     else
@@ -2561,6 +2602,36 @@ internal fun LocalSpeedLimits() {
     }, enabled = !saving && downloadLimit != null && uploadLimit != null,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
         Text(if (saving) "Checking speed limits…" else "Save speed limits")
+    }
+    // Contextual reset beside the value it changes; it follows the same
+    // engine-confirmed save path, so an unconfirmed reset is reported as such.
+    if (saved != LocalRateLimits()) OutlinedButton(onClick = {
+        if (!saving) {
+            saving = true
+            result = null
+            scope.launch {
+                try {
+                    val confirmed = withContext(Dispatchers.IO) {
+                        LocalEngineHolder.setRateLimitsPreferred(context, LocalRateLimits())
+                    }
+                    if (confirmed) {
+                        saved = LocalRateLimits()
+                        download = ""
+                        upload = ""
+                    }
+                    result = if (confirmed) "Speed limits reset to unlimited on this phone."
+                    else "Speed limits were not reset. The engine did not confirm, or local storage could not commit. Live limits may be uncertain."
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
+                } catch (_: Exception) {
+                    result = "Speed limits were not confirmed or reset. Check the engine state before trying again."
+                } finally {
+                    saving = false
+                }
+            }
+        }
+    }, enabled = !saving, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+        Text("Reset to unlimited (default)")
     }
     result?.let { Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }) }
 }

@@ -108,7 +108,7 @@ class CompactRemoteInventoryHeaderTest {
                 }
             }
         }
-        val label = rule.onNodeWithText("Wood · 1 transfer · stopped view · last known")
+        val label = rule.onNodeWithText("Wood · 1 transfer · stopped view · last known, not yet read")
         label.assertIsDisplayed()
         val action = rule.onNodeWithText("All environments…")
         val badgeRect = label.getUnclippedBoundsInRoot()
@@ -117,5 +117,18 @@ class CompactRemoteInventoryHeaderTest {
             actionRect.top >= badgeRect.bottom)
         action.performClick()
         assertEquals(1, opens)
+    }
+
+    @Test fun staleListStatesTheAgeOfItsLastSuccessfulRead() {
+        val now = 10_000_000L
+        assertEquals("", remoteFreshnessText(false, false, now - 5_000, now))
+        assertEquals(" · refreshing", remoteFreshnessText(false, true, now, now))
+        assertEquals(" · last known, read just now", remoteFreshnessText(true, false, now - 20_000, now))
+        assertEquals(" · last known, read 7 min ago", remoteFreshnessText(true, true, now - 7 * 60_000, now))
+        assertEquals(" · last known, read 3 h ago", remoteFreshnessText(true, false, now - 3 * 3_600_000, now))
+        assertEquals(" · last known, read 2 days ago",
+            remoteFreshnessText(true, false, now - 50L * 3_600_000, now))
+        assertEquals("read just now", observedAgeText(-1))
+        assertEquals(" · last known, not yet read", remoteFreshnessText(true, false, null, now))
     }
 }
