@@ -6,6 +6,7 @@ on:
       - ".github/workflows/disposable-rtorrent-probe.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableFullJourneyTest.kt"
+      - "tools/verify_disposable_rutorrent_readd_cancel.py"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableNativeStartedAddTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableServerTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
@@ -174,6 +175,7 @@ jobs:
             exit 1
           fi
           python3 tools/stage_disposable_rutorrent_adapter_delete.py verify
+          python3 tools/verify_disposable_rutorrent_readd_cancel.py
           echo "CHUNKS_ERASEDATA: real rTorrent exact-session removal + pinned upstream PHP plugin and collector + independent exact-file absence; foreign canary unchanged" >> "$GITHUB_STEP_SUMMARY"
       - name: Native start-on-load file and magnet acceptance on real rTorrent
         env:
