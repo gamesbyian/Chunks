@@ -2332,10 +2332,9 @@ private fun OrganizeScreen(
                 modifier = Modifier.heightIn(min = 48.dp)) { Text("Show all collections") }
         }
         item {
-            OutlinedTextField(
+            ClearableTransferSearchField(
                 value = manualQuery, onValueChange = { manualQuery = it; collectionPage = 0 },
-                label = { Text("Find a transfer to organize") },
-                singleLine = true, modifier = Modifier.fillMaxWidth()
+                label = "Find a transfer to organize"
             )
             Text("Found " + pagedMatches.totalMatches + " matching transfers in the loaded server view and selected collection. Page " +
                 (pagedMatches.pageIndex + 1) + " of " + pagedMatches.totalPages + ".",
