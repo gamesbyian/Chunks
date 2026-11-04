@@ -90,14 +90,18 @@
 
 > **Live-state rule:** The dated checkpoints below preserve prior integration evidence; they are not a live list of PRs or agents. Before accepting any task, fetch current `main`, open PRs and issues and read [AGENT-LANES](AGENT-LANES.md). Use the G0–G5 dependency order here for priorities, [CI-POLICY](CI-POLICY.md) for validation selection and [QUALITY-LEDGER](QUALITY-LEDGER.md) for exact-source receipts. Do not redispatch closed or superseded PRs based on historical prose.
 
-**Dated non-P0 UX checkpoint (2026-11-04, not live PR inventory):** [#1274](https://github.com/gamesbyian/Chunks/pull/1274)–[#1278](https://github.com/gamesbyian/Chunks/pull/1278) merged after exact-head CI. Receipts are in [QUALITY-LEDGER](QUALITY-LEDGER.md) and coverage in the [73-candidate trace](UX-73-CANDIDATE-TRACE-2026-11-03.md). They cover:
-- the keyboard-aware footer and Search/Next/Go keyboard actions;
-- rTorrent and Combined list, search and draft continuity, and tool return to origin;
-- a hidden-Add notice and Show new transfer;
-- a ≥3:1 progress track, phone setting value, provenance and reset;
-- stale-age and Last-read rate honesty, an approximate time-left estimate, a read-only refresh repair, and TalkBack route pane titles.
+**Dated non-P0 UX checkpoint (2026-11-04, not live PR inventory):** [#1274](https://github.com/gamesbyian/Chunks/pull/1274)–[#1285](https://github.com/gamesbyian/Chunks/pull/1285) merged after exact-head CI. Receipts and every rerun classification are in [QUALITY-LEDGER](QUALITY-LEDGER.md); coverage is in the [73-candidate trace](UX-73-CANDIDATE-TRACE-2026-11-03.md). The batches cover:
+- **keyboard:** the footer yields to the IME; Search/Next/Go/Done actions; submits close the keyboard;
+- **continuity:** rTorrent, Combined and phone list, search and draft continuity; tools return to their origin;
+- **Add results:** hidden-Add notices and Show new transfer;
+- **visuals:** a ≥3:1 progress track; phone setting value, provenance and Reset;
+- **truthful status:** a shared status vocabulary; "N of M shown"; stale age and "Last read" rates; a time-left estimate; read-only refresh repair with honest HTTP status explanations and Open Server for a refused login; "Needs attention" outcome tone; TalkBack route pane titles.
 
-All are emulator- or JVM-tier presentation changes. Physical Pixel 6 Pro TalkBack, keyboard, IME and visual approval remain the owner-device tier under [#8](https://github.com/gamesbyian/Chunks/issues/8), not a new P0 gate.
+All are emulator- or JVM-tier presentation changes; physical Pixel 6 Pro TalkBack, keyboard, IME and visual approval remain the owner-device tier under [#8](https://github.com/gamesbyian/Chunks/issues/8), not a new P0 gate.
+
+**Watch item:** the Connect → Transfers transition produced three distinct installed Combined harness failures while the IME was closing. #1283's submit-time keyboard dismissal passed first time; recurrence should reopen that diagnosis rather than be rerun silently.
+
+**Next unclaimed UI work:** rTorrent per-engine tracker and file-control parity in details (#49); an installed rotation/IME journey for the continuity changes; and owner-device review of the new wording ("Sharing", "Started", "Needs attention").
 
 **Historical completed compact-UX checkpoint (2026-11-03 UTC; not live PR inventory):** at that checkpoint, zero development PRs remained open at [main `55c6cab6`](https://github.com/gamesbyian/Chunks/commit/55c6cab6e3cf17dc194a5f3b2e7e9b1ca5154891). [#1128](https://github.com/gamesbyian/Chunks/pull/1128) (`bbddc525`) merged compact Combined list filters/source-status and optional technical details; [#1129](https://github.com/gamesbyian/Chunks/pull/1129) (`a73a52ec`) merged phone transfers-first Add, optional tools and list controls; [#1130](https://github.com/gamesbyian/Chunks/pull/1130) (`55c6cab6`) merged rTorrent selected-filter/sort/current-count disclosure. All three exact PR heads passed Android foundation, R8 and two-shard native instrumentation; #1129 also passed API29 shared Downloads, and #1130 passed the native visual atlas. Full run IDs and superseded red diagnostics: [QUALITY-LEDGER](QUALITY-LEDGER.md). These are emulator, source- and UI-qualified presentation changes, **not** a new owner-handset, signed-release, protected-host or delete-payload receipt. Do not reopen these PRs or run separate campaigns for each presentation surface; the next full APK can accept their combined UX in one coherent installed session under [#8](https://github.com/gamesbyian/Chunks/issues/8).
 
