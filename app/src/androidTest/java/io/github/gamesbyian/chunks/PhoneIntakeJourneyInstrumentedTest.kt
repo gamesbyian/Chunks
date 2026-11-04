@@ -417,6 +417,100 @@ class PhoneIntakeJourneyInstrumentedTest {
         assertTrue(target.delete())
         work.deleteRecursively()
     }
+
+    /**
+     * L6 on the installed app: a real Share Add downloads from a fixture seed
+     * into the default public Downloads Place, then the production card's
+     * "Remove transfer and data" runs. Independent readback must show the
+     * exact payload gone, the session gone and an unrelated canary in the
+     * SAME folder byte-identical. Disposable emulator only.
+     */
+    @Test fun phaseDelete_realUiRemoveTransferAndDataDeletesOnlyExactPayload() {
+        assumeTrue("Run with tools/phone_intake_journey.sh",
+            arguments.getString("chunksIntakePhase") == "delete")
+        configurePermissions()
+        assertNull("Harness must begin in a fresh process", LocalEngineHolder.current())
+        work.deleteRecursively()
+        assertTrue(work.mkdir())
+        val name = "chunks-intake-delete-${System.nanoTime().toString(16)}.bin"
+        val source = File(work, "source").apply { mkdir() }
+        val payload = ByteArray(512 * 1024).also { Random(7741).nextBytes(it) }
+        val sourceFile = File(source, name).apply { writeBytes(payload) }
+        publicRoot.mkdirs()
+        val canary = File(publicRoot, "chunks-intake-canary-${System.nanoTime().toString(16)}.bin")
+        val canaryBytes = ByteArray(4096).also { Random(99).nextBytes(it) }
+        canary.writeBytes(canaryBytes)
+        val seed = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
+            allowMultipleConnectionsPerIp = true, rateLimitLocalPeers = true))
+        seed.start()
+        try {
+            PhoneIntakeTracker().use { tracker ->
+                val torrent = TorrentBuilder().path(sourceFile).pieceSize(16 * 1024)
+                    .flags(TorrentBuilder.V1_ONLY).addTracker(tracker.url).generate().entry().bencode()
+                val hash = requireNotNull(TorrentMetainfoReader.preview(torrent).infoHashV1)
+                assertTrue(seed.addStopped(torrent, source) is LocalAddResult.AddedStopped)
+                assertEquals(LocalCommandOutcome.VERIFIED, seed.resume(hash).outcome)
+                await("fixture seed") { seed.status(hash)?.state == LocalTransferState.SEEDING }
+                tracker.serve(hash, seed.listenPort())
+                val tree = FixtureDocumentsProvider.treeUri(context)
+                val root = DocumentsContract.buildDocumentUriUsingTree(tree,
+                    DocumentsContract.getTreeDocumentId(tree))
+                val document = requireNotNull(DocumentsContract.createDocument(context.contentResolver,
+                    root, "application/x-bittorrent", "delete.torrent"))
+                context.contentResolver.openOutputStream(document, "w").use { requireNotNull(it).write(torrent) }
+                val input = intent(Intent.ACTION_SEND).apply {
+                    type = "application/x-bittorrent"
+                    putExtra(Intent.EXTRA_STREAM, document)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                }
+                val target = File(publicRoot, name)
+                ActivityScenario.launch<MainActivity>(input).use {
+                    waitForText("Saves to: Downloads/Chunks Downloads")
+                    assertFalse("Review cannot create payload", target.exists())
+                    click("Add and start downloading")
+                    await("real UI registered the exact native job", 30) {
+                        LocalEngineHolder.current()?.status(hash) != null
+                    }
+                    val phone = requireNotNull(LocalEngineHolder.current())
+                    if (phone.status(hash)?.progressPpm != 1_000_000)
+                        phone.connectPeer(hash, InetSocketAddress("127.0.0.1", seed.listenPort()))
+                    await("real UI Add and peer download", failure = { "phone=${phone.status(hash)}" }) {
+                        phone.status(hash)?.progressPpm == 1_000_000
+                    }
+                    assertTrue(phone.flushCompletedForLibraryRead(hash, 30_000))
+                    assertPublicBytes(target, payload, "before delete-data")
+                    waitForText("100% ·", substring = true)
+                    click("Stop")
+                    await("UI Stop readback") { phone.status(hash)?.stopped == true }
+                    click("Remove…")
+                    click("Remove transfer and data")
+                    await("verified native deletion message", failure = {
+                        "status=${phone.status(hash)} exists=${target.exists()}"
+                    }) {
+                        rule.onAllNodesWithText("Verified: the reviewed transfer was removed", substring = true)
+                            .fetchSemanticsNodes().isNotEmpty()
+                    }
+                    // Independent witnesses, not the app's own message.
+                    await("session absent") { phone.status(hash) == null }
+                    assertFalse("Exact payload must be gone", target.exists())
+                    assertFalse("No payload name may remain in the folder",
+                        publicRoot.list()?.contains(name) == true)
+                    assertArrayEquals("Unrelated canary in the same folder must survive",
+                        canaryBytes, canary.readBytes())
+                    assertTrue("Fixture seed source is not the phone's payload and must survive",
+                        sourceFile.readBytes().contentEquals(payload))
+                    android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_DELETE verified=true payload_absent=true " +
+                        "session_absent=true canary_intact=true bytes=${payload.size}")
+                }
+            }
+        } finally {
+            seed.close()
+            context.stopService(Intent(context, LocalEngineService::class.java))
+            LocalEngineHolder.current()?.close()
+            canary.delete()
+            work.deleteRecursively()
+        }
+    }
 }
 
 /** One loopback-only fixture tracker; never handles a real user's swarm. */
