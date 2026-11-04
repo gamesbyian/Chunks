@@ -66,6 +66,9 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
+import io.github.gamesbyian.chunks.engine.LocalDeleteDataDispatch
+import io.github.gamesbyian.chunks.engine.LocalDeleteDataReadback
+import io.github.gamesbyian.chunks.engine.LocalDeleteDataReceipt
 import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
@@ -1670,6 +1673,58 @@ internal fun LocalEngineScreen(
                         revision = moveRevision
                     )
                 },
+                onRemoveData = if (transfer.metadataKnown && transfer.infoHash.length == 40 &&
+                    !inventoryStale) { {
+                    performLocalMutation {
+                        message = "Requesting removal of the reviewed transfer and its data..."
+                        val receipt = try {
+                            withContext(Dispatchers.IO) {
+                                LocalEngineHolder.current()?.removeWithDataIfMatching(
+                                    transfer.infoHash, transfer.name, transfer.savePath,
+                                    transfer.nativeReviewToken)
+                                    ?: LocalDeleteDataReceipt(LocalDeleteDataDispatch.NOT_FOUND)
+                            }
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            LocalDeleteDataReceipt(LocalDeleteDataDispatch.UNCERTAIN)
+                        }
+                        val deletion = if (receipt.dispatch in setOf(
+                                LocalDeleteDataDispatch.REQUESTED,
+                                LocalDeleteDataDispatch.UNCERTAIN) &&
+                            receipt.nativeCompletion != null) {
+                            withContext(Dispatchers.IO) {
+                                val deadline = System.nanoTime() + 15_000_000_000L
+                                var value = receipt.payloadReadback()
+                                while (value == LocalDeleteDataReadback.UNAVAILABLE &&
+                                    System.nanoTime() < deadline) {
+                                    Thread.sleep(150)
+                                    value = receipt.payloadReadback()
+                                }
+                                value
+                            }
+                        } else LocalDeleteDataReadback.UNAVAILABLE
+                        message = when (receipt.dispatch) {
+                            LocalDeleteDataDispatch.REFUSED ->
+                                "Deletion was not requested: " +
+                                    (receipt.reason ?: "The transfer or its destination needs fresh review.")
+                            LocalDeleteDataDispatch.NOT_FOUND ->
+                                "Deletion was not requested: this transfer is no longer in the phone engine."
+                            LocalDeleteDataDispatch.REQUESTED, LocalDeleteDataDispatch.UNCERTAIN ->
+                                when (deletion) {
+                                    LocalDeleteDataReadback.ABSENT ->
+                                        "Verified: the reviewed transfer was removed, native deletion completed and all its exact payload files are absent. Unrelated folder contents were not requested for deletion."
+                                    LocalDeleteDataReadback.STILL_PRESENT ->
+                                        "Native deletion finished but at least one reviewed payload file remains. The operation is incomplete. Recheck the folder before any new action."
+                                    LocalDeleteDataReadback.NATIVE_FAILED ->
+                                        "Native deletion failed. No retry was sent; inspect the remaining files and transfer state before trying again."
+                                    LocalDeleteDataReadback.UNAVAILABLE ->
+                                        "Deletion outcome is still uncertain. The transfer may already be removed. No automatic retry will be sent; refresh the folder and engine state before acting."
+                                }
+                        }
+                        inventoryFrame = inventoryFrame.copy(stale = true)
+                    }
+                } } else null,
                 onRemove = {
                     performLocalMutation {
                         try {
@@ -1893,6 +1948,7 @@ internal fun LocalTransferCard(
     busy: Boolean,
     onToggle: () -> Unit,
     onRemove: () -> Unit,
+    onRemoveData: (() -> Unit)? = null,
     files: List<LocalTransferFile>? = null,
     filesShown: Boolean = false,
     onShowFiles: () -> Unit = {},
@@ -2105,10 +2161,19 @@ internal fun LocalTransferCard(
                     onCancel = { confirmRemove = false }
                 )
                 OutlinedButton(
-                    onClick = {}, enabled = false,
+                    onClick = {
+                        if (onRemoveData != null) {
+                            confirmRemove = false
+                            onRemoveData()
+                        }
+                    },
+                    enabled = !busy && onRemoveData != null,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                ) { Text("Remove transfer and data (unavailable)") }
-                Text("Deleting downloaded data is not yet available: Chunks must first verify exactly which files belong only to this transfer. You can manage downloaded files separately in Android Files. If re-adding this torrent is temporarily unavailable, wait for its previous disk work to finish and try again.",
+                ) { Text(if (onRemoveData == null) "Remove transfer and data (unavailable)"
+                    else "Remove transfer and data") }
+                Text(if (onRemoveData == null)
+                    "Delete-data is unavailable for this transfer while its file mapping or inventory cannot be verified. Keeping data remains available."
+                    else "This removes the transfer and deletes its exact torrent files in this folder, including matching files that were already there before Add. Unrelated files are kept. This cannot be undone. The result is independently checked; an interrupted or partial cleanup will not be described as successful.",
                     style = MaterialTheme.typography.bodySmall)
             }
         }

@@ -23,6 +23,9 @@ import org.libtorrent4j.alerts.Alert
 import org.libtorrent4j.alerts.AlertType
 import org.libtorrent4j.alerts.SaveResumeDataAlert
 import org.libtorrent4j.alerts.TorrentAlert
+import org.libtorrent4j.alerts.TorrentDeletedAlert
+import org.libtorrent4j.alerts.TorrentDeleteFailedAlert
+import java.util.concurrent.atomic.AtomicReference
 import org.libtorrent4j.SessionManager
 import org.libtorrent4j.SessionParams
 import org.libtorrent4j.SettingsPack
@@ -138,18 +141,26 @@ enum class LocalTrackerRepairOutcome { VERIFIED, REFUSED, UNCERTAIN, NOT_FOUND }
  * deletion has finished. Separate readback must inspect the real payload files.
  */
 enum class LocalDeleteDataDispatch { REQUESTED, REFUSED, UNCERTAIN, NOT_FOUND }
-enum class LocalDeleteDataReadback { ABSENT, STILL_PRESENT, UNAVAILABLE }
+enum class LocalDeleteDataReadback { ABSENT, STILL_PRESENT, UNAVAILABLE, NATIVE_FAILED }
 
 data class LocalDeleteDataReceipt(
     val dispatch: LocalDeleteDataDispatch,
     val targets: List<File> = emptyList(),
-    val reason: String? = null
+    val reason: String? = null,
+    internal val nativeCompletion: AtomicReference<Boolean?>? = null
 ) {
     /** Independent read-only witness, including pre-existing ordinary payload files. */
     fun payloadReadback(): LocalDeleteDataReadback {
         if (targets.isEmpty() || dispatch !in setOf(
                 LocalDeleteDataDispatch.REQUESTED, LocalDeleteDataDispatch.UNCERTAIN))
             return LocalDeleteDataReadback.UNAVAILABLE
+        // JNI removal is asynchronous. Mere absence before a matching native
+        // deletion alert cannot certify this delete-data operation.
+        when (nativeCompletion?.get()) {
+            true -> Unit
+            false -> return LocalDeleteDataReadback.NATIVE_FAILED
+            null -> return LocalDeleteDataReadback.UNAVAILABLE
+        }
         for (target in targets) {
             val path = target.toPath()
             try {
@@ -213,6 +224,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // Only after invalidation may its same-session path claim be released.
     // Both additions and removals hold this engine's monitor.
     private val retiredNativeHandles = HashMap<String, TorrentHandle>()
+    // Asynchronous native confirmation is never inferred from a vanished
+    // session row. Each receipt owns the exact pending flag installed before
+    // submitting its single delete_files request.
+    private val pendingNativeDeletions = ConcurrentHashMap<String, AtomicReference<Boolean?>>()
     // Restored stopped jobs must reclaim their declared paths before another
     // checked torrent can reserve the same backing files in this process.
     private val restoredNativeJobs = ConcurrentHashMap.newKeySet<String>()
@@ -227,8 +242,24 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private val engineListener = object : AlertListener {
         override fun types() = intArrayOf(AlertType.SAVE_RESUME_DATA.swig(),
             AlertType.SAVE_RESUME_DATA_FAILED.swig(), AlertType.METADATA_RECEIVED.swig(),
-            AlertType.CACHE_FLUSHED.swig())
+            AlertType.CACHE_FLUSHED.swig(), AlertType.TORRENT_DELETED.swig(),
+            AlertType.TORRENT_DELETE_FAILED.swig())
         override fun alert(alert: Alert<*>) {
+            // Removed handles disappear from handles[] before the async alert.
+            // Consume exactly the matching v1 infohash without acquiring the
+            // engine monitor (close() may be joining the dispatcher).
+            when (alert) {
+                is TorrentDeletedAlert -> {
+                    val id = alert.infoHashes.getV1().toHex().lowercase(Locale.ROOT)
+                    pendingNativeDeletions.remove(id)?.set(true)
+                    return
+                }
+                is TorrentDeleteFailedAlert -> {
+                    val id = alert.infoHashes.getV1().toHex().lowercase(Locale.ROOT)
+                    pendingNativeDeletions.remove(id)?.set(false)
+                    return
+                }
+            }
             val handle = (alert as? TorrentAlert<*>)?.handle() ?: return
             val key = synchronized(handles) { handles.entries.firstOrNull { it.value == handle }?.key } ?: return
             if (alert.type() == AlertType.CACHE_FLUSHED) {
@@ -1519,6 +1550,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             expectedReviewToken.isBlank())
             return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Invalid reviewed identity")
         val key = normal(infoHash)
+        // v2-only alert IDs are not yet correlated to a stable exact hash.
+        if (key.length != 40)
+            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Only exact v1 deletion alerts are supported")
         val handle = handles[key] ?: return LocalDeleteDataReceipt(LocalDeleteDataDispatch.NOT_FOUND)
         val current = try { snapshot(key, handle) } catch (_: Exception) { null }
             ?: return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED, reason = "Native identity unavailable")
@@ -1565,8 +1599,14 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             }
         }
         val targets = relatives.map { File(root, it) }
+        val completion = AtomicReference<Boolean?>(null)
+        if (pendingNativeDeletions.putIfAbsent(key, completion) != null)
+            return LocalDeleteDataReceipt(LocalDeleteDataDispatch.REFUSED,
+                reason = "A prior deletion is still unresolved")
         val dispatch = retireNativeTransfer(key, handle, deletePayload = true)
-        return LocalDeleteDataReceipt(dispatch, targets)
+        if (dispatch == LocalDeleteDataDispatch.REFUSED || dispatch == LocalDeleteDataDispatch.NOT_FOUND)
+            pendingNativeDeletions.remove(key, completion)
+        return LocalDeleteDataReceipt(dispatch, targets, nativeCompletion = completion)
     }
 
     /** Remove from the session only. Payload files are never deleted here. */

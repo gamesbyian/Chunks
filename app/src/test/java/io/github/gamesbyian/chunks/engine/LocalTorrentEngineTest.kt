@@ -480,6 +480,21 @@ class LocalTorrentEngineTest {
         assertEquals("keep root sibling", rootSibling.readText())
     }
 
+    @Test fun deleteReceiptRequiresNativeConfirmationEvenWhenPathsAreAlreadyAbsent() {
+        val empty = temp.newFile("already-gone.txt")
+        assertTrue(empty.delete())
+        val native = java.util.concurrent.atomic.AtomicReference<Boolean?>(null)
+        val receipt = LocalDeleteDataReceipt(LocalDeleteDataDispatch.REQUESTED,
+            listOf(empty), nativeCompletion = native)
+        assertEquals(LocalDeleteDataReadback.UNAVAILABLE, receipt.payloadReadback())
+        native.set(false)
+        assertEquals(LocalDeleteDataReadback.NATIVE_FAILED, receipt.payloadReadback())
+        native.set(true)
+        assertEquals(LocalDeleteDataReadback.ABSENT, receipt.payloadReadback())
+        empty.writeText("still here")
+        assertEquals(LocalDeleteDataReadback.STILL_PRESENT, receipt.payloadReadback())
+    }
+
     @Test fun deleteDataRefusesInvalidReviewedIdentityWithoutMutatingPayload() {
         val source = fixture()
         val instance = engine()
