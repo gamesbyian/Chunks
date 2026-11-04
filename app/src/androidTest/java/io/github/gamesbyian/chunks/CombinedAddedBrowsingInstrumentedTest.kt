@@ -111,6 +111,7 @@ class CombinedAddedBrowsingInstrumentedTest {
         reveal("Load Server · Server 2 transfers")
         rule.onNodeWithText("Load Server · Server 2 transfers").assertHeightIsAtLeast(48.dp).performClick()
         reveal("Server · Server 2: Could not load (did not answer in time) · 0 transfers")
+        reveal("Load Server · Server 2 transfers")
         rule.onNodeWithText("Load Server · Server 2 transfers").assertHeightIsAtLeast(48.dp).performClick()
         reveal("Refresh Server · Server 2 transfers")
         reveal(row.name)
