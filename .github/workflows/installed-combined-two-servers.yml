@@ -7,6 +7,9 @@ on:
   pull_request:
     paths:
       - "app/src/main/java/io/github/gamesbyian/chunks/CombinedTransfersScreen.kt"
+      # Navigation and remote header changes can break these real journeys.
+      - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/CompactRemoteInventoryHeader.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/RememberedRemoteProfileRoster.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/RemoteStartupReconnectPolicy.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteConnectIdentity.kt"
