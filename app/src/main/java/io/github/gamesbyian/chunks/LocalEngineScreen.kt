@@ -1362,8 +1362,10 @@ internal fun LocalEngineScreen(
                 chooseLocalFilter(LocalQueueFilter.ALL)
             })
         }
-        Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
-            style = MaterialTheme.typography.bodySmall)
+        // An empty phone says so once, instead of "Showing 0 of 0" above it.
+        if (transfers.isNotEmpty())
+            Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
+                style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
             Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
         } else if (displayedTransfers.isEmpty()) {
