@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -15,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -23,6 +25,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.EnvironmentOperation
+import io.github.gamesbyian.chunks.model.EnvironmentHue
 import io.github.gamesbyian.chunks.rpc.RemoteStallEvidence
 import io.github.gamesbyian.chunks.model.TransferDetailReadState
 import io.github.gamesbyian.chunks.model.UnifiedTransferDetail
@@ -53,7 +56,9 @@ internal fun UnifiedTransferDetailPanel(
     onInspectStall: (() -> Unit)? = null,
     stallCheckInProgress: Boolean = false,
     stallReport: RemoteStallEvidence? = null,
-    stallCheckError: String? = null
+    stallCheckError: String? = null,
+    /** Exact owning environment's existing palette choice; its name remains the identity. */
+    environmentHue: EnvironmentHue? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
     // Presentation state only. Never retain a mutation authority or stale command review.
@@ -75,7 +80,12 @@ internal fun UnifiedTransferDetailPanel(
             Text((if (detail.readState == TransferDetailReadState.CURRENT) "" else "Last known: ") +
                 transferAtAGlance(transfer), style = MaterialTheme.typography.titleMedium)
         }
-        Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleMedium)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            EnvironmentDot(environmentHue)
+            Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f))
+        }
         if (!hidden) detail.observation?.let { TransferDetailFacts(it) }
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
