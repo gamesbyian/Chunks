@@ -174,6 +174,10 @@ private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
+/** "12 shown", or "3 of 12 shown" when a search or filter narrows the list (as on the phone). */
+internal fun remoteShownCount(shown: Int, loaded: Int): String =
+    if (shown == loaded) "$shown shown" else "$shown of $loaded shown"
+
 /** Search the existing connected-server Options routes without new authority. */
 internal fun optionsDestinationMatches(label: String, rawQuery: String): Boolean {
     val needle = rawQuery.trim().lowercase(java.util.Locale.ROOT)
@@ -1844,7 +1848,7 @@ private fun TransfersScreen(
                     }
             ) {
                 Text((if (listControlsOpen) "Hide" else "Choose") + " filters & sort · " +
-                    visible.size + " shown · Sort: " + order.label + " · " +
+                    remoteShownCount(visible.size, list.size) + " · Sort: " + order.label + " · " +
                     order.directionLabel(direction) + " · " + filter.label)
             }
         }
