@@ -78,6 +78,9 @@ def main():
         value = json.load(resp)
     if not isinstance(value, list) or len(value) == 0:
         raise RuntimeError("PHP plugin did not positively acknowledge a real erase")
+    # Disposable no-secret scalar response shape: regression diagnosis for the
+    # production adapter parser, not a remote credential or full RPC payload.
+    print("DISPOSABLE_RUTORRENT_PHP_RESPONSE", repr(value)[:240])
     for _ in range(30):
         if infohash.upper() not in [str(x).upper() for x in peer.download_list("")]:
             break

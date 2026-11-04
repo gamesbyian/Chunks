@@ -39,10 +39,11 @@ class RTorrentDisposableRealPhpErasedataTest {
         assertNotNull("A refused mutation must leave the exact session intact",
             rtorrent.lookupName(hash))
         val result = rtorrent.removeWithDataViaRuTorrent(hash, matching.name, matching.directory)
-        assertEquals("PHP must stage cleanup and remove the exact rTorrent session",
+        val sessionAfter = rtorrent.lookupName(hash)
+        assertEquals("PHP must stage cleanup and remove the exact rTorrent session; " +
+            "adapter result=$result, fresh session readback=$sessionAfter",
             RemoteDeleteDataOutcome.QueuedForCleanup(hash), result)
-        assertNull("Only exact session absence can justify queued cleanup",
-            rtorrent.lookupName(hash))
+        assertNull("Only exact session absence can justify queued cleanup", sessionAfter)
         // Do not claim physical byte deletion here. The independent Python
         // fixture invokes upstream update.php and checks target/canary bytes.
     }
