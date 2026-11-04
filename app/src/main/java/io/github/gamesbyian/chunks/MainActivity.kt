@@ -2572,7 +2572,7 @@ private fun ServerScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Text("Server settings · " + environmentLabel,
+            Text("Server settings · " + environmentLabel.removePrefix("Server · "),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
             Text("rTorrent " + version +
