@@ -70,8 +70,12 @@ class CombinedTwoRealServersInstrumentedTest {
     private fun connect(url: String) {
         scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
-        // Disposable daemons are anonymous loopback HTTP endpoints.
+        // Disposable daemons are anonymous loopback HTTP endpoints. Saved
+        // server rows above the form keep later fields out of composition
+        // until scrolled to.
+        scrollTo("Username, if required")
         rule.onNodeWithText("Username, if required").performTextReplacement("")
+        scrollTo("Password")
         rule.onNodeWithText("Password").performTextReplacement("")
         scrollTo("Remember this server and login on this device")
         scrollTo("Connect to rTorrent")
