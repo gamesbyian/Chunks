@@ -717,14 +717,21 @@ internal fun LocalEngineScreen(
         ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
             enabled = !busy && !inventoryStale && destination != null,
             modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
+        val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
             label = { Text("Or paste a magnet link") }, singleLine = true,
+            isError = magnetCheck is MagnetDraftCheck.Problem,
             // Autocorrect must never rewrite a magnet's hash or trackers.
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
                 autoCorrectEnabled = false,
                 imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             modifier = Modifier.fillMaxWidth())
+        if (magnet.isEmpty()) PasteMagnetButton(
+            enabled = !busy && !inventoryStale,
+            onPaste = { magnet = it },
+            onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet link first." })
+        MagnetDraftSummary(magnetCheck)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = startAfterAdd, enabled = !busy && !inventoryStale,
                 role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
@@ -750,7 +757,7 @@ internal fun LocalEngineScreen(
                 addFocus.clearFocus()
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
-                val selectedMagnet = magnet
+                val selectedMagnet = (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: magnet
                 val autoStart = startAfterAdd
                 val orderLater = magnetFinishInOrder
                 performLocalMutation {
@@ -797,7 +804,7 @@ internal fun LocalEngineScreen(
                     }
                 }
             }, enabled = !busy && !inventoryStale && !dhtSaving &&
-                proposedAddDestination != null,
+                proposedAddDestination != null && magnetCheck is MagnetDraftCheck.Valid,
                 modifier = Modifier.fillMaxWidth())
         }
         // Keep both intake methods discoverable before optional storage, seeding
