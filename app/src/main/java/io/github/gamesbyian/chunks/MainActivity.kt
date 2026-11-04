@@ -519,6 +519,8 @@ private fun ChunksApp(
             CombinedTransfersScreen(
                 listState = combinedListState,
                 searchState = combinedSearch,
+                // Only this session's positively verified Add on the current account.
+                recentlyAddedTransfer = remoteAdded?.takeIf { server != null }?.combinedKey(aliasScope),
                 server = server?.let { remote ->
                     CombinedServerSource(aliasScope, transfers, stale = stale || loading,
                         fullView = currentView == "main", observedAtEpochMillis = transfersObservedAt,
