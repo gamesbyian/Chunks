@@ -2,6 +2,10 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-04 assembled E sweep on exact main 0168703
+
+Ten workflows were dispatched once on main `01687038f96f18d2cad0b7f797085d903bb93dfb`. Eight passed directly. Foundation 41840572494 failed only in its Robolectric SDK prefetch step and passed on its single failed-job rerun. Disposable probe 41840562323 failed in the new L2 interop test, a rediscovery wait after the priority raise. #1271 fixed it with a tracker announce and named waits, and the probe re-passed on `62c99283` ([41846901953](https://github.com/gamesbyian/Chunks/actions/runs/41846901953), 5/5 interop). Installed remote Remove-and-data #1270: [41838678040](https://github.com/gamesbyian/Chunks/actions/runs/41838678040). Not a Pixel, signed-release or protected-mutation claim.
+
 ## 2026-11-04 #1264: installed phone delete-data, Combined C1/C2 on real engines
 
 Exact head `7cc6d801bde6c2408df0dfcef98a7faeebf15194`: API29 [41828619768](https://github.com/gamesbyian/Chunks/actions/runs/41828619768) and API35 [41828619811](https://github.com/gamesbyian/Chunks/actions/runs/41828619811) printed `CHUNKS_INTAKE_DELETE verified=true payload_absent=true session_absent=true canary_intact=true bytes=524288`. Two-server [41828619842](https://github.com/gamesbyian/Chunks/actions/runs/41828619842) passed all 17 stages through `process-death-unchanged`. Superseded harness reds on the same PR: 41825550812 (status toggle text) and 41827315011 (chip reflow tapped Organize). Emulator and disposable tiers only.
