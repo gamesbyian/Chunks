@@ -48,13 +48,17 @@ class CombinedTransfersScreenTest {
 
     // Wrapped scope/filter/sort groups can push rows below the first lazy viewport.
     // Reveal actual list items before tapping; never depend on initial composition.
-    private fun revealText(text: String) {
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
+    // The saved view preference loads off the main thread (not an idling
+    // resource) and can recompose the list mid-scroll (CI foundation
+    // 41888303641 attempt 1). Retry the scroll until the list settles; the
+    // assertions that follow are unchanged.
+    private fun reveal(matcher: androidx.compose.ui.test.SemanticsMatcher) {
+        rule.waitUntil(10_000) {
+            runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(matcher) }.isSuccess
+        }
     }
-    private fun revealDescription(description: String) {
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasContentDescription(description))
-    }
+    private fun revealText(text: String) = reveal(hasText(text, substring = true))
+    private fun revealDescription(description: String) = reveal(hasContentDescription(description))
 
     private val commands = ArrayList<Pair<String, Boolean>>()
     private var settles = 0
