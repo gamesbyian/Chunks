@@ -34,7 +34,12 @@ internal fun SecurePasswordInput(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    label: String = "Password"
+    label: String = "Password",
+    /**
+     * Optional keyboard Go action (for example Connect, a read-only check).
+     * Null keeps the keyboard's ordinary Done key.
+     */
+    onGo: (() -> Unit)? = null
 ) {
     var visible by remember { mutableStateOf(false) }
     val inputFocus = remember { FocusRequester() }
@@ -45,6 +50,12 @@ internal fun SecurePasswordInput(
         singleLine = true,
         enabled = enabled,
         visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Password,
+            autoCorrectEnabled = false,
+            imeAction = if (onGo != null) androidx.compose.ui.text.input.ImeAction.Go
+                else androidx.compose.ui.text.input.ImeAction.Done),
+        keyboardActions = androidx.compose.foundation.text.KeyboardActions(onGo = { onGo?.invoke() }),
         trailingIcon = {
             IconButton(
                 onClick = {

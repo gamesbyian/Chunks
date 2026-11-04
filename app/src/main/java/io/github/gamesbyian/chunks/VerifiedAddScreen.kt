@@ -260,6 +260,11 @@ fun VerifiedAddScreen(
                     }
                 },
                 label = { Text("Magnet link") },
+                // Autocorrect must never rewrite a magnet's hash or trackers.
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                    autoCorrectEnabled = false,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                 enabled = !submitting && !choosing && !alreadyAttempted,
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 2,
@@ -321,6 +326,10 @@ fun VerifiedAddScreen(
                     }
                 },
                 label = { Text("Custom server folder (optional)") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                    autoCorrectEnabled = false,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                 enabled = !submitting && !alreadyAttempted,
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 1,
