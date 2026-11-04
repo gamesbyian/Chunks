@@ -449,8 +449,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun environmentColourChoicePersistsAndRestores() {
         show()
-        rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
-            .performScrollToNode(androidx.compose.ui.test.hasText("Environment colours…"))
+        revealText("Environment colours…")
         rule.onNodeWithText("Environment colours…").performClick()
         val serverId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
             aliasScope.substringBefore('\u0000'), "ian")
@@ -460,6 +459,9 @@ class CombinedTransfersScreenTest {
         assertNotNull(automatic)
         assertNotEquals("phone and server differ automatically", automatic,
             EnvironmentColourStore(context).load().hueOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))
+        // A completed preference write does not mean its lazy controls have
+        // entered the current viewport. Await the real control before one tap.
+        revealDescription(serverEnvironmentLabel(aliasScope) + " colour Pink")
         rule.onNodeWithContentDescription(serverEnvironmentLabel(aliasScope) + " colour Pink")
             .performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.waitUntil(5_000) {
@@ -469,8 +471,7 @@ class CombinedTransfersScreenTest {
         assertEquals(io.github.gamesbyian.chunks.model.EnvironmentHue.PINK,
             stored.load().hueOf(serverId))
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-colours.png")
-        rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
-            .performScrollToNode(androidx.compose.ui.test.hasText("Restore automatic colour"))
+        revealText("Restore automatic colour")
         rule.onNodeWithText("Restore automatic colour").performClick()
         rule.waitUntil(5_000) { stored.load().hueOf(serverId) == automatic }
         assertEquals(automatic, stored.load().hueOf(serverId))
