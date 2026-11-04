@@ -242,6 +242,9 @@ internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
     /** Opens Smart Seeding Rules; null hides the entry. */
     onSeedingRules: (() -> Unit)? = null,
+    /** App-wide phone tools, reachable from Phone options without leaving via the server entry. */
+    onCreateTorrent: (() -> Unit)? = null,
+    onZipReview: (() -> Unit)? = null,
     /** Opens the read-only All environments view; null hides the entry. */
     onCombined: (() -> Unit)? = null,
     initialMagnet: String? = null,
@@ -1835,6 +1838,14 @@ internal fun LocalEngineScreen(
                 }
             }
         )
+        if (onCreateTorrent != null) OutlinedButton(onClick = onCreateTorrent,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Create a torrent…")
+        }
+        if (onZipReview != null) OutlinedButton(onClick = onZipReview,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Review ZIP archives…")
+        }
         OutlinedButton(
             onClick = { showPhoneTools = !showPhoneTools },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
