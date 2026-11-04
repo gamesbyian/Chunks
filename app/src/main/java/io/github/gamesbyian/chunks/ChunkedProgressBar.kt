@@ -27,6 +27,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.ProgressChunkHistory
 import kotlin.math.ceil
+import kotlin.math.roundToInt
 
 /**
  * Progress consists only of observed chronological growth bands. No imaginary
@@ -51,7 +52,7 @@ internal fun ChunkedProgressBar(
 ) {
     require(segments in 1..ProgressChunkHistory.MAX_BANDS)
     val value = safeProgressFraction(progress)
-    val ppm = (value.toDouble() * 1_000_000).toInt().coerceIn(0, 1_000_000)
+    val ppm = (value.toDouble() * 1_000_000).roundToInt().coerceIn(0, 1_000_000)
     val context = LocalContext.current
     val density = LocalDensity.current
     var widthPx by remember(historyKey) { mutableIntStateOf(0) }
@@ -88,6 +89,11 @@ internal fun ChunkedProgressBar(
         // Fill the whole track first. Historical bands cover only known completion.
         drawRoundRect(color = ChunksColors.Trough, cornerRadius = CornerRadius(size.height * .22f))
         val completedPx = size.width * value
+        if (completedPx > 0f) drawRoundRect(
+            color = activeColor,
+            size = Size(completedPx, size.height),
+            cornerRadius = CornerRadius(minOf(size.height * .22f, completedPx * .22f))
+        )
         var start = 0f
         visible.forEachIndexed { i, delta ->
             if (delta <= 0) return@forEachIndexed
