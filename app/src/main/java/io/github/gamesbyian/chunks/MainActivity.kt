@@ -2210,8 +2210,11 @@ private fun TransferCard(
             RemoteRateEvidence.detailLines(transfer).forEach { fact ->
                 Text(fact, style = MaterialTheme.typography.bodySmall)
             }
+            // Collapsed rows stay scannable; expanded details show the whole
+            // Place, because the exact destination is what a person checks.
             Text("Place: " + transfer.directory, style = MaterialTheme.typography.bodySmall,
-                color = ChunksColors.TextSecondary, maxLines = if (expanded) 5 else 2,
+                color = ChunksColors.TextSecondary,
+                maxLines = if (expanded) Int.MAX_VALUE else 2,
                 overflow = TextOverflow.Ellipsis)
             val suggestion = remember(transfer.name) { Classifier.suggest(transfer.name) }
             if (suggestion.category != "Unsorted") {
@@ -2492,7 +2495,8 @@ private fun OrganizeScreen(
             Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.Surface),
                 shape = RoundedCornerShape(16.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(transfer.name, fontWeight = FontWeight.SemiBold, maxLines = 2)
+                    Text(transfer.name, fontWeight = FontWeight.SemiBold, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis)
                     Text(idea.category + (idea.collection?.let { " · " + it } ?: "") +
                         " · " + idea.confidence.toString() + "% category hint",
                         color = Blue, style = MaterialTheme.typography.bodySmall)
