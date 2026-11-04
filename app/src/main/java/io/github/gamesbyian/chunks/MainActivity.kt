@@ -262,16 +262,19 @@ private fun ChunksApp(
     // One safe navigation return edge only, never an Add draft or authority.
     // When entering phone from Combined, the phone's own Back returns there.
     var localFromCombined by rememberSaveable { mutableStateOf(false) }
-    // A tool opened from the phone (Seeding rules, Create, ZIP review)
-    // returns there, not to the server/connection entry. Navigation only.
-    var toolReturnsToPhone by rememberSaveable { mutableStateOf(false) }
-    fun openFromPhone(tool: Section) {
-        toolReturnsToPhone = true
+    // A tool (Seeding rules, Create, ZIP review) returns to the screen that
+    // opened it, e.g. the phone or Server, instead of always to the
+    // server/connection entry. Navigation only; no command or draft.
+    var toolOrigin by rememberSaveable { mutableStateOf<String?>(null) }
+    fun openTool(tool: Section, from: Section) {
+        toolOrigin = from.name
         section = tool
     }
+    fun openFromPhone(tool: Section) = openTool(tool, Section.LOCAL)
     fun leaveTool() {
-        section = if (toolReturnsToPhone) Section.LOCAL else Section.TRANSFERS
-        toolReturnsToPhone = false
+        section = toolOrigin?.let { origin -> Section.entries.firstOrNull { it.name == origin } }
+            ?: Section.TRANSFERS
+        toolOrigin = null
     }
     fun leavePhone() {
         val returnToCombined = localFromCombined
@@ -397,7 +400,7 @@ private fun ChunksApp(
     LaunchedEffect(incomingCreate) {
         if (incomingCreate != null) {
             createRequest = incomingCreate
-            toolReturnsToPhone = false
+            toolOrigin = null
             section = Section.CREATE
             onIncomingCreateConsumed()
         }
@@ -735,10 +738,10 @@ private fun ChunksApp(
                         }
                     }
                 },
-                onLocalZipReview = { toolReturnsToPhone = false; section = Section.ARCHIVES },
+                onLocalZipReview = { toolOrigin = null; section = Section.ARCHIVES },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                 onLocalEngine = { localFromCombined = false; section = Section.LOCAL },
-                onCreateTorrent = { toolReturnsToPhone = false; section = Section.CREATE },
+                onCreateTorrent = { toolOrigin = null; section = Section.CREATE },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {
@@ -1259,7 +1262,7 @@ private fun ChunksApp(
                         }
                     },
                     onRefresh = refresh,
-                    onSeedingRules = { section = Section.SEEDING },
+                    onSeedingRules = { openTool(Section.SEEDING, Section.SERVER) },
                     environmentLabel = serverEnvironmentLabel(aliasScope),
                     onDisconnect = {
                         // Invalidate every in-flight read and credential save
