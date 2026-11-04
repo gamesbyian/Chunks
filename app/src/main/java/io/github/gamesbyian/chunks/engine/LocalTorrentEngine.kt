@@ -325,11 +325,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // Keys whose TORRENT_FINISHED arrived while an earlier save was pending.
     private val completionResaveWanted = ConcurrentHashMap.newKeySet<String>()
 
-    /** Non-blocking, handle-fenced completion checkpoint; safe on the alert dispatcher. */
-    private fun requestCompletionResumeSave(key: String, handle: TorrentHandle) {
+    /**
+     * Non-blocking, handle-fenced completion checkpoint; safe on the alert
+     * dispatcher. [alertHandle] only identifies the job: an alert's handle
+     * wraps native memory owned by that alert, which is released with its
+     * batch, so the pending request must hold the session's own handle.
+     */
+    private fun requestCompletionResumeSave(key: String, alertHandle: TorrentHandle) {
         if (config.stateDirectory == null) return
         synchronized(handles) {
-            if (!started || handles[key] != handle || !handle.isValid) return
+            val handle = handles[key] ?: return
+            if (!started || handle != alertHandle || !handle.isValid) return
             if (pendingSaves.pendingFor(key, handle) != null) {
                 completionResaveWanted += key
                 return
@@ -509,10 +515,16 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * points call this, and pendingSaves coalesces duplicates for this handle.
      * Serialize registration against Remove/Close but NEVER await an alert here.
      */
-    private fun requestMetadataResumeSave(key: String, handle: TorrentHandle) {
+    private fun requestMetadataResumeSave(key: String, candidate: TorrentHandle) {
         if (config.stateDirectory == null) return
         synchronized(handles) {
-            if (!started || handles[key] != handle || !handle.isValid) return
+            // The metadata callback passes an alert-owned handle wrapper whose
+            // native storage is freed with its alert batch. A pending request
+            // that kept it could never match its completion later, leaving a
+            // permanent "prior" save that makes the post-Stop checkpoint time
+            // out (#5). Register only the session's own handle.
+            val handle = handles[key] ?: return
+            if (!started || handle != candidate || !handle.isValid) return
             pendingSaves.acquire(key, handle) {
                 handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT)
             }

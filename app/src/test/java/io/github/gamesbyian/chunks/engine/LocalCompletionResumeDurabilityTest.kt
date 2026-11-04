@@ -21,15 +21,29 @@ import org.libtorrent4j.TorrentHandle
  */
 class LocalCompletionResumeDurabilityTest {
     @Test fun completedDownloadSurvivesProcessDeathBeforeStopCheckpoint() {
+        DesktopLibtorrent.ensureLoaded()
         val root = Files.createTempDirectory("chunks-finished-resume-").toFile()
         try {
             val first = runPhase(root, "download-then-die")
             assertTrue(first, first.contains("FINISHED_RESUME: phase1 complete"))
-            val second = runPhase(root, "restore")
-            assertTrue(second, second.contains("FINISHED_RESUME: restored"))
-            val line = second.lines().single { it.startsWith("FINISHED_RESUME: restored") }
-            assertTrue("Restored complete payload lost its pieces: $line\n$first",
-                line.contains("progressPpm=1000000"))
+            // Restore in THIS JVM: restore admission uses Android framework
+            // stubs that the bare child classpath does not provide.
+            val hash = File(root, "hash.txt").readText().trim()
+            val phone = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
+                allowMultipleConnectionsPerIp = true, stateDirectory = File(root, "resume-state")))
+            phone.start()
+            try {
+                assertTrue(phone.restoreProblems.toString(), phone.restoreProblems.isEmpty())
+                val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+                while (phone.status(hash)?.state == LocalTransferState.CHECKING &&
+                    System.nanoTime() < deadline) Thread.sleep(10)
+                val status = requireNotNull(phone.status(hash)) { "Restored job missing\n$first" }
+                assertTrue("Restored jobs never start on their own", status.stopped)
+                assertEquals("Restored complete payload lost its pieces: $status\n$first",
+                    1_000_000, status.progressPpm)
+            } finally {
+                phone.close()
+            }
         } finally {
             root.deleteRecursively()
         }
@@ -110,21 +124,6 @@ object LocalCompletionResumeWitness {
                     "now=${generations(state, hash)}")
                 System.out.flush()
                 Runtime.getRuntime().halt(0)
-            }
-            "restore" -> {
-                val hash = hashFile.readText().trim()
-                val phone = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
-                    allowMultipleConnectionsPerIp = true, stateDirectory = state))
-                phone.start()
-                check(phone.restoreProblems.isEmpty()) { "restore problems ${phone.restoreProblems}" }
-                // Restored jobs stay stopped; resume pieces are applied once
-                // libtorrent finishes checking the resume record.
-                await(10) { phone.status(hash)?.let { it.state != LocalTransferState.CHECKING } == true }
-                val status = requireNotNull(phone.status(hash))
-                println("FINISHED_RESUME: restored stopped=${status.stopped} " +
-                    "progressPpm=${status.progressPpm} doneBytes=${status.doneBytes} state=${status.state}")
-                System.out.flush()
-                phone.close()
             }
             else -> error("unknown phase")
         }
