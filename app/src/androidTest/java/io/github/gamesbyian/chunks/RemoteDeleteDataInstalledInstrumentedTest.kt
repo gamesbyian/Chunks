@@ -105,7 +105,18 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             }
             stage("connected")
             typeInto("Search names or Places", hash)
-            if (visible("More details")) clickOnce("More details")
+            // The search filter applies asynchronously (run on 18a8e87): wait
+            // for the filtered card, open its disclosure, then the action.
+            // Disclosure is read-only, so repeating it is safe.
+            waitFor("Remove action reachable on the exact transfer", 60_000) {
+                val reachable = runCatching { scrollTo("Remove from rTorrent…"); true }.getOrDefault(false)
+                if (!reachable) runCatching {
+                    scrollTo("More details")
+                    rule.onNodeWithText("More details").performScrollTo().performClick()
+                    rule.waitForIdle()
+                }
+                reachable
+            }
             clickOnce("Remove from rTorrent…")
             waitFor("data deletion offered on the ruTorrent route") {
                 visible("Remove transfer and data") && !visible("Remove transfer and data (unavailable)")
