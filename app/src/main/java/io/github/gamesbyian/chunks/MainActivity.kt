@@ -248,6 +248,9 @@ private fun ChunksApp(
     var snapshotRevision by remember { mutableLongStateOf(0L) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    // The current refresh error is an observed login refusal (HTTP 401/403).
+    // Derived per message, so any later error or success clears it.
+    var loginRefusedError by remember { mutableStateOf<String?>(null) }
     var connectDiagnostics by remember { mutableStateOf(ConnectionDiagnostics()) }
     var connectJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var stale by remember { mutableStateOf(false) }
@@ -473,6 +476,7 @@ private fun ChunksApp(
                             if (server === remote && remoteFence.current(ticket)) {
                                 stale = true
                                 error = readableFailure(failure)
+                                loginRefusedError = if (isLoginRefused(failure)) error else null
                             }
                         }
                         again = server === remote && remoteFence.current(ticket) &&
@@ -1069,7 +1073,10 @@ private fun ChunksApp(
                     io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
             }
             if (error != null) {
-                RefreshProblemNotice(error.orEmpty(), refreshing = loading, onRefresh = refresh)
+                RefreshProblemNotice(error.orEmpty(), refreshing = loading, onRefresh = refresh,
+                    // Signing in again is the real repair for a refused login.
+                    onOpenServer = if (loginRefusedError != null && loginRefusedError == error)
+                        ({ section = Section.SERVER }) else null)
             }
             // Per-account list position survives visiting Places, Server or
             // other routes; a different account starts at the top.
@@ -1370,14 +1377,32 @@ private fun ChunksApp(
     }
 }
 
-private fun readableFailure(failure: Exception): String = when (failure) {
+internal fun readableFailure(failure: Exception): String = when (failure) {
     is RemoteSmartConnect.ConnectionFailed -> failure.message.orEmpty()
+    // A real HTTP status from the transport says more than "network error".
+    is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException -> httpStatusExplanation(failure.status)
     is java.net.UnknownHostException -> "The server hostname could not be resolved."
     is java.net.SocketTimeoutException -> "The server did not respond before the timeout. If a command was submitted, its outcome must be checked before retrying."
     is java.net.ConnectException -> "The server did not accept the connection."
     is java.io.IOException -> "Network or proxy error. Check your connection and server settings."
     else -> "The server returned an incompatible or unsupported RPC response. Check its configuration before retrying an operation."
 }
+
+/** Plain-language meaning of an observed gateway HTTP status; never a retry instruction for writes. */
+internal fun httpStatusExplanation(status: Int): String = when (status) {
+    401, 403 -> "The server refused this login (HTTP $status). Its password or access may have " +
+        "changed. Open Server, Disconnect, then sign in again; your torrents are unchanged."
+    407 -> "A proxy between this phone and the server requires its own login (HTTP 407)."
+    429 -> "The server is limiting requests (HTTP 429). Wait a moment, then refresh."
+    in 500..599 -> "The server's web gateway returned HTTP $status. It may be restarting or " +
+        "overloaded; refresh again shortly."
+    else -> "The server returned HTTP $status for this list request."
+}
+
+/** True for an observed login refusal, where the repair is signing in again. */
+internal fun isLoginRefused(failure: Exception): Boolean =
+    failure is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException &&
+        (failure.status == 401 || failure.status == 403)
 
 @Composable
 private fun ConnectionScreen(

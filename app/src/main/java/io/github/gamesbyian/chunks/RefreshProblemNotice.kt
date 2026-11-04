@@ -17,13 +17,22 @@ import androidx.compose.ui.unit.dp
  * resubmits a command, so a timed-out mutation still needs its own review.
  */
 @Composable
-internal fun RefreshProblemNotice(message: String, refreshing: Boolean, onRefresh: () -> Unit) {
+internal fun RefreshProblemNotice(
+    message: String, refreshing: Boolean,
+    /** Present only for a refused login: opens Server, where sign-in lives. Navigation only. */
+    onOpenServer: (() -> Unit)? = null,
+    onRefresh: () -> Unit
+) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 2.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)) {
         ChunksBanner("Refresh problem", message, ChunksTone.ERROR)
         OutlinedButton(onClick = onRefresh, enabled = !refreshing,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text(if (refreshing) "Refreshing…" else "Refresh list again")
+        }
+        if (onOpenServer != null) OutlinedButton(onClick = onOpenServer,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Open Server")
         }
     }
 }
