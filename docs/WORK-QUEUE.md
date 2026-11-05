@@ -1,5 +1,8 @@
 # Chunks active engineering work queue
 
+> **LIVE EXECUTION POINTER — 2026-11-05 UTC:** Claude and Codex have both stopped, leaving **no active file leases** and **zero open PRs** at main `55306cdf`. [Final UX reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md) supersedes the older agent-roster and unfinished-PR statements below. The next independent UX tasks are (1) actually **Add/download from a fetched HTTPS torrent URL** on installed phone and remote target, and (2) distinguish **one-off phone Place** from saved default with narrow scope/review. Installed phone Add → Combined hidden-Add and PR #1287 IME proof are **already accepted**. The 73-item partial count is *not* a list of 34 unimplemented tasks.
+
+
 > **2026-11-05 status:** Codex is paused and Claude is the **sole active UX agent**, owning every shared Compose/presentation file, the UX trace, QUALITY-LEDGER and this queue's UX section. The two-lane file split in the [dual-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is **released** and kept only as history. **Earlier (2026-11-04):** the two-agent dispatch assigned Codex Combined/remote presentation and Claude PR #1287 plus phone/Add/navigation presentation with nonoverlapping source files; implementation and automated UX acceptance may continue while owner Pixel validation is pending. This is one prioritized UX execution pass, not a reopening of the accepted P0 A–E campaign. Historical continuation instructions below are non-executable when contradicted by the [current reconciliation](P0-UX-RECONCILIATION-2026-11-04.md).
 
 
