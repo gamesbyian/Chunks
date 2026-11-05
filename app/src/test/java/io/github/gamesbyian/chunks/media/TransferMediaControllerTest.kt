@@ -264,4 +264,53 @@ class TransferMediaControllerTest {
         c.applyChoiceTo(phone, listOf(target.value.key))
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, target.value.state)
     }
+
+    @Test fun localEmbeddedTagsDriveTheLookupAndOfferTheirCover() {
+        val tagged = javaClass.classLoader!!.getResource("media-fixtures/embedded/tagged.flac")!!.readBytes()
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val mbHttp = FakeMediaHttp().on("musicbrainz.org", body = fixture("mb-releasegroup-search-ok-computer.json"))
+        val service = MediaEnrichmentService(listOf(io.github.gamesbyian.chunks.media.providers.MusicBrainzProvider()), mbHttp,
+            InMemoryMediaQueryCache(), { clock.now }, clock::sleep)
+        val c = TransferMediaController(service, ArtworkRepository(mbHttp, ArtworkDiskCache(File(dir, "art2")), hostPolicyFor = { null }, memoryBytes = 1_000_000),
+            { InMemoryTransferMediaAssignmentStore() }, { settings }, { MediaNetworkState(true, false) },
+            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined, { clock.now })
+        val files = listOf(MediaFileHint("rip/01.flac", 30_000_000), MediaFileHint("rip/02.flac", 30_000_000))
+        val flow = c.observe(phone, "rip", files)
+        c.inspectLocalAudio(phone, files) { io.github.gamesbyian.chunks.media.inspection.ByteArrayMediaByteSource(tagged) }
+        assertEquals("OK Computer", flow.value.recognition.title); assertTrue(flow.value.embeddedTags!!.picture != null)
+        c.lookup(phone)
+        assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
+        assertTrue(mbHttp.requests.single().contains("artist%3A%22Radiohead%22"))
+        c.importUserImage(phone, flow.value.embeddedTags!!.picture!!) // "Use album art from the files"
+        assertEquals(LOCAL_PROVIDER, flow.value.artworkSource!!.provider)
+    }
+
+    @Test fun futureArrivalRulesFillOnlyUnassignedMatchingTransfersAndPersist() {
+        val rules = File(dir, "rules.json")
+        fun ctl() = TransferMediaController(
+            MediaEnrichmentService(listOf(TvMazeProvider()), http, InMemoryMediaQueryCache(), { clock.now }, clock::sleep),
+            ArtworkRepository(http, ArtworkDiskCache(File(dir, "art")), hostPolicyFor = { TvMazeProvider().info.artworkHostPolicy }, memoryBytes = 4_000_000),
+            { FileTransferMediaAssignmentStore(File(dir, "assign.json")) }, { settings }, { MediaNetworkState(true, false) },
+            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined, { clock.now },
+            ruleStoreFactory = { FileMediaRuleStore(rules) })
+        val c = ctl()
+        val k = { n: Int -> MediaTransferKey("phone|" + "%040x".format(n)) }
+        c.observe(k(1), "Babylon.5.S02E07.mkv")
+        val show = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_EPISODE,
+            "Babylon 5", 1993, season = 2, episode = 7, attribution = MediaAttribution("TVmaze", "CC", null))
+        c.choose(k(1), show); c.saveRuleFrom(k(1))
+        assertEquals(1, c.rules().size)
+        // New process; a future arrival inherits the rule with its own episode, without any lookup.
+        val c2 = ctl()
+        val arrival = c2.observe(k(2), "Babylon 5 S04E03 720p.mkv")
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, arrival.value.state); assertEquals(4, arrival.value.match!!.season)
+        assertEquals(3, arrival.value.match!!.episode)
+        val unrelated = c2.observe(k(3), "Babylon.Berlin.S01E01.mkv"); assertEquals(MediaAssignmentState.NOT_LOOKED_UP, unrelated.value.state)
+        assertTrue(http.requests.none { it.contains("search/shows") })
+        // Existing decisions are never overridden; removing the rule stops future inheritance.
+        assertNotNull(c2.ruleFor(k(2)))
+        c2.removeRule(c2.rules().single().id)
+        assertEquals(MediaAssignmentState.NOT_LOOKED_UP, ctl().observe(k(4), "Babylon.5.S05E01.mkv").value.state)
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, ctl().observe(k(2), "Babylon 5 S04E03 720p.mkv").value.state)
+    }
 }

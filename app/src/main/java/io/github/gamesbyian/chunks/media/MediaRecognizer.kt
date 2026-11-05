@@ -266,6 +266,25 @@ object MediaRecognizer {
 
     fun recognize(name: String, files: List<MediaFileHint> = emptyList()) = recognize(MediaRecognitionInput(name, files))
 
+    /**
+     * Refine a proposal with the file's own embedded tags (album/artist/year), which are stronger
+     * evidence than filename parsing for music and audiobooks. Still a local proposal, never a
+     * verified catalog identity; the raw name and its spans are untouched.
+     */
+    fun withEmbeddedTags(r: MediaRecognition, tags: io.github.gamesbyian.chunks.media.inspection.EmbeddedMediaTags): MediaRecognition {
+        if (r.kind == MediaKind.ADULT || !tags.hasIdentity) return r
+        val audiobook = r.kind == MediaKind.AUDIOBOOK || tags.format == io.github.gamesbyian.chunks.media.inspection.EmbeddedTagFormat.MP4 &&
+            Regex("(?i)audiobook|unabridged|abridged").containsMatchIn(tags.album ?: "")
+        val kind = when {
+            audiobook -> MediaKind.AUDIOBOOK
+            r.kind == MediaKind.MUSIC_ALBUM || r.kind == MediaKind.AUDIO || r.kind == MediaKind.UNKNOWN -> MediaKind.MUSIC_ALBUM
+            else -> return r // embedded audio tags never reclassify video, books or software
+        }
+        val album = if (kind == MediaKind.AUDIOBOOK) tags.album!!.replace(Regex("(?i)\\s*[\\[(](?:un)?abridged[\\])]"), "").trim() else tags.album!!
+        return r.copy(kind = kind, title = album, artist = tags.albumArtist ?: tags.artist, year = tags.year ?: r.year,
+            confidence = MediaConfidence.HIGH, evidence = r.evidence + "Embedded ${tags.format.name} tags")
+    }
+
     private fun finish(raw: String, interpretation: MediaNameInterpretation, kind: MediaKind, confidence: MediaConfidence,
                        title: String, year: Int?, yearRange: IntRange?, season: Int?, episode: Int?, lastEpisode: Int?,
                        absolute: Int?, episodeTitle: String?, issue: Int?, volume: Int?, artist: String?,
