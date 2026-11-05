@@ -22,7 +22,8 @@ object MediaCodec {
         "attr" to Json.obj("n" to Json.Str(c.attribution.providerName), "l" to Json.Str(c.attribution.license),
             "u" to Json.str(c.attribution.pageUrl)),
         "score" to Json.num(c.providerScore),
-        "xref" to Json.arr(c.crossReferences.map { key(it) }))
+        "xref" to Json.arr(c.crossReferences.map { key(it) }),
+        "alias" to Json.arr(c.aliases.take(12).map { Json.Str(it) }))
 
     fun candidate(j: Json?): MediaCandidate? = runCatching {
         j!!
@@ -39,7 +40,8 @@ object MediaCodec {
             }.getOrNull() } ?: emptyList(),
             attribution = MediaAttribution(attr["n"]!!.string!!, attr["l"]!!.string!!, attr["u"]?.string),
             providerScore = j["score"]?.double,
-            crossReferences = j["xref"]?.array?.mapNotNull { key(it) } ?: emptyList())
+            crossReferences = j["xref"]?.array?.mapNotNull { key(it) } ?: emptyList(),
+            aliases = j["alias"]?.array?.mapNotNull { it.string } ?: emptyList())
     }.getOrNull()
 
     fun receipt(r: MediaMetadataCacheReceipt): Json = Json.obj("key" to key(r.key), "rev" to Json.num(r.revision),

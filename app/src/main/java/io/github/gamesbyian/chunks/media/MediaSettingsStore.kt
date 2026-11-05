@@ -23,6 +23,7 @@ class MediaSettingsStore(context: Context) {
         onlineLookupConsent = prefs.getBoolean(K_CONSENT, false),
         automaticLookup = prefs.getBoolean(K_AUTO, false),
         disabledProviders = prefs.getStringSet(K_DISABLED, emptySet())?.toSet() ?: emptySet(),
+        enabledProviders = prefs.getStringSet(K_ENABLED, emptySet())?.toSet() ?: emptySet(),
         showArtwork = prefs.getBoolean(K_SHOW, true),
         downloadArtwork = prefs.getBoolean(K_DOWNLOAD, true),
         artworkOnMeteredNetwork = prefs.getBoolean(K_METERED, false))
@@ -30,7 +31,7 @@ class MediaSettingsStore(context: Context) {
     fun save(s: MediaPrivacySettings) {
         prefs.edit().putBoolean(K_CONSENT, s.onlineLookupConsent)
             .putBoolean(K_AUTO, s.automaticLookup && s.onlineLookupConsent)
-            .putStringSet(K_DISABLED, s.disabledProviders)
+            .putStringSet(K_DISABLED, s.disabledProviders).putStringSet(K_ENABLED, s.enabledProviders)
             .putBoolean(K_SHOW, s.showArtwork).putBoolean(K_DOWNLOAD, s.downloadArtwork)
             .putBoolean(K_METERED, s.artworkOnMeteredNetwork).apply()
     }
@@ -75,6 +76,7 @@ class MediaSettingsStore(context: Context) {
         const val K_CONSENT = "online_lookup_consent"
         const val K_AUTO = "automatic_lookup"
         const val K_DISABLED = "disabled_providers"
+        const val K_ENABLED = "enabled_providers"
         const val K_SHOW = "show_artwork"
         const val K_DOWNLOAD = "download_artwork"
         const val K_METERED = "artwork_on_metered"

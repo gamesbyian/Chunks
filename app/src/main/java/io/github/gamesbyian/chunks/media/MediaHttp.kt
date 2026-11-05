@@ -30,6 +30,11 @@ fun mediaHostPolicy(hosts: Collection<String>): MediaHostPolicy = MediaHostPolic
 /** Blocking, bounded GET. Callers run it off the main thread. */
 interface MediaHttp {
     fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String> = emptyMap(), maxBytes: Int = 1_000_000): MediaHttpResponse
+
+    /** Bounded JSON POST (GraphQL providers). No redirects are followed for POST. */
+    fun postJson(url: String, hosts: MediaHostPolicy, body: String, headers: Map<String, String> = emptyMap(),
+                 maxBytes: Int = 1_000_000): MediaHttpResponse =
+        throw MediaHttpException(MediaHttpFailure.IO, "POST not supported")
 }
 
 object MediaUserAgent {
@@ -46,7 +51,14 @@ class UrlConnectionMediaHttp(
     private val readTimeoutMs: Int = 12_000,
     private val userAgent: String = MediaUserAgent.VALUE
 ) : MediaHttp {
-    override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+    override fun postJson(url: String, hosts: MediaHostPolicy, body: String, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse =
+        request(url, hosts, headers, maxBytes, body.toByteArray(Charsets.UTF_8))
+
+    override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse =
+        request(url, hosts, headers, maxBytes, null)
+
+    private fun request(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int, post: ByteArray?): MediaHttpResponse {
+        if (post != null && post.size > 64 * 1024) throw MediaHttpException(MediaHttpFailure.TOO_LARGE, "Request too large")
         var current = url
         repeat(4) {
             val uri = try { URI(current) } catch (e: Exception) { throw MediaHttpException(MediaHttpFailure.IO, "Malformed URL") }
@@ -61,11 +73,21 @@ class UrlConnectionMediaHttp(
                 setRequestProperty("User-Agent", userAgent)
                 setRequestProperty("Accept-Encoding", "identity")
                 headers.forEach { (k, v) -> setRequestProperty(k, v) }
+                if (post != null) {
+                    requestMethod = "POST"; doOutput = true
+                    setRequestProperty("Content-Type", "application/json")
+                    setFixedLengthStreamingMode(post.size)
+                }
             }
+            if (post != null) try { conn.outputStream.use { it.write(post) } } catch (e: UnknownHostException) {
+                throw MediaHttpException(MediaHttpFailure.OFFLINE, "Network unavailable")
+            } catch (e: SocketTimeoutException) { throw MediaHttpException(MediaHttpFailure.TIMEOUT, "Timed out")
+            } catch (e: IOException) { throw MediaHttpException(MediaHttpFailure.IO, "Network error") }
             try {
                 val status = try { conn.responseCode } catch (e: UnknownHostException) {
                     throw MediaHttpException(MediaHttpFailure.OFFLINE, "Network unavailable")
                 } catch (e: SocketTimeoutException) { throw MediaHttpException(MediaHttpFailure.TIMEOUT, "Timed out") }
+                if (status in 300..399 && post != null) throw MediaHttpException(MediaHttpFailure.TOO_MANY_REDIRECTS, "Unexpected redirect")
                 if (status in 300..399) {
                     val location = conn.getHeaderField("Location") ?: throw MediaHttpException(MediaHttpFailure.IO, "Redirect without location")
                     current = uri.resolve(location).toString()

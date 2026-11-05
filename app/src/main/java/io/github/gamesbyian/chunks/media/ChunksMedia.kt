@@ -11,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import io.github.gamesbyian.chunks.media.artwork.ArtworkDiskCache
 import io.github.gamesbyian.chunks.media.artwork.ArtworkRepository
+import io.github.gamesbyian.chunks.media.providers.AniListProvider
 import io.github.gamesbyian.chunks.media.providers.MusicBrainzProvider
 import io.github.gamesbyian.chunks.media.providers.OpenLibraryProvider
 import io.github.gamesbyian.chunks.media.providers.TmdbProvider
@@ -36,7 +37,7 @@ class ChunksMedia private constructor(context: Context) {
     private val queryCache by lazy { FileMediaQueryCache(File(app.filesDir, "media/queries.json")) }
     private val artworkDisk by lazy { ArtworkDiskCache(File(app.cacheDir, "media-art")) }
     val providers: List<MediaMetadataProvider> = listOf(TvMazeProvider(), TmdbProvider { settingsStore.tmdbCredential() },
-        MusicBrainzProvider(), OpenLibraryProvider())
+        MusicBrainzProvider(), OpenLibraryProvider(), AniListProvider())
     private val service by lazy { MediaEnrichmentService(providers, http, lazyCache()) }
 
     @OptIn(ExperimentalCoroutinesApi::class)

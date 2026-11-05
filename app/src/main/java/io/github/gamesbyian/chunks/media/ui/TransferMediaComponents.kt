@@ -64,6 +64,7 @@ import io.github.gamesbyian.chunks.media.MediaPrivacySettings
 import io.github.gamesbyian.chunks.media.MediaProviderInfo
 import io.github.gamesbyian.chunks.media.ProviderAttempt
 import io.github.gamesbyian.chunks.media.TransferMediaUiState
+import io.github.gamesbyian.chunks.media.providerOn
 
 /**
  * Square transfer artwork: real art only for a confident automatic match or a user choice,
@@ -398,12 +399,14 @@ fun MediaPrivacySettingsPanel(
 
         Text("Providers", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
         providers.forEach { p ->
-            val on = p.id !in settings.disabledProviders
+            val on = settings.providerOn(p)
             Column(Modifier.fillMaxWidth().background(ChunksColors.Surface, RoundedCornerShape(12.dp)).padding(12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 SettingSwitch(p.displayName, p.kinds.map { it.label }.distinct().joinToString(", ") +
-                    if (p.requiresUserKey) (if (configured(p.id)) " · your key is set" else " · needs your own key") else "", on) {
-                    onChange(settings.copy(disabledProviders = if (it) settings.disabledProviders - p.id else settings.disabledProviders + p.id))
+                    (if (p.requiresUserKey) (if (configured(p.id)) " · your key is set" else " · needs your own key") else "") +
+                    (if (!p.enabledByDefault) " · off unless you turn it on" else ""), on) {
+                    onChange(if (p.enabledByDefault) settings.copy(disabledProviders = if (it) settings.disabledProviders - p.id else settings.disabledProviders + p.id)
+                        else settings.copy(enabledProviders = if (it) settings.enabledProviders + p.id else settings.enabledProviders - p.id))
                 }
                 Text(p.attribution, style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary)
                 if (p.requiresUserKey && onSetProviderKey != null) {

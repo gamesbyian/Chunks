@@ -27,12 +27,19 @@ object MediaCandidateMatcher {
     const val MIN_TITLE_SIMILARITY = 0.78
     const val CONFIDENT_TITLE_SIMILARITY = 0.92
     const val CLOSE_MARGIN = 0.06
+    const val PREFIX_ONLY_SIMILARITY = 0.9
 
     fun score(query: MediaLookupQuery, c: MediaCandidate, episodeTitle: String? = null): ScoredCandidate {
         val reasons = mutableListOf<String>()
         var eligible = query.kind.compatibleWith(c.kind)
         if (!eligible) reasons.add("Different kind (${c.kind.label})")
-        val sim = maxOf(MediaText.similarity(query.title, c.title), c.originalTitle?.let { MediaText.similarity(query.title, it) } ?: 0.0)
+        val names = listOfNotNull(c.title, c.originalTitle) + c.aliases.take(12)
+        val full = names.maxOf { MediaText.similarity(query.title, it) }
+        // "Frieren" vs "Frieren: Beyond Journey's End": a title-before-subtitle match is capped below the
+        // confidence threshold, so it can only ever be Suggested, never applied automatically.
+        val prefix = names.mapNotNull { n -> n.substringBefore(':', "").takeIf { it.isNotBlank() } }
+            .maxOfOrNull { minOf(MediaText.similarity(query.title, it), PREFIX_ONLY_SIMILARITY) } ?: 0.0
+        val sim = maxOf(full, prefix)
         if (sim >= 1.0) reasons.add("Title matches") else if (sim >= MIN_TITLE_SIMILARITY) reasons.add("Title is similar")
         else { reasons.add("Title differs"); eligible = false }
         var score = sim * 0.8

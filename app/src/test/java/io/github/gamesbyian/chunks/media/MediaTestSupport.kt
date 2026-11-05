@@ -17,6 +17,12 @@ class FakeMediaHttp : MediaHttp {
     val routes = mutableListOf<Route>()
     val requests = mutableListOf<String>()
     val requestHeaders = mutableListOf<Map<String, String>>()
+    val postBodies = mutableListOf<String>()
+
+    override fun postJson(url: String, hosts: MediaHostPolicy, body: String, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+        postBodies.add(body)
+        return get(url, hosts, headers, maxBytes)
+    }
     var offline = false
 
     fun on(contains: String, status: Int = 200, body: String = "", headers: Map<String, String> = emptyMap()) = apply {

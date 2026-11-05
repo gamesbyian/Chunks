@@ -17,7 +17,9 @@ class MediaLookupQuery private constructor(
     val creator: String?,
     val issue: Int?,
     /** True when typed by the user in manual search rather than derived from a transfer name. */
-    val manual: Boolean
+    val manual: Boolean,
+    /** Local naming evidence of anime (absolute numbering, fansub group, Japanese script). Not identity. */
+    val animeHint: Boolean = false
 ) {
     /** Stable cache identity of the outbound query (not of the transfer). */
     val canonical: String get() = listOf(kind.name, MediaText.normalize(title), year ?: "", season ?: "",
@@ -29,11 +31,12 @@ class MediaLookupQuery private constructor(
     override fun hashCode() = canonical.hashCode()
     override fun toString() = "MediaLookupQuery($canonical)"
 
-    fun withKind(kind: MediaKind) = MediaLookupQuery(kind, title, year, season, episode, creator, issue, manual)
+    fun withKind(kind: MediaKind) = MediaLookupQuery(kind, title, year, season, episode, creator, issue, manual, animeHint)
 
     internal companion object {
         fun create(kind: MediaKind, title: String, year: Int?, season: Int?, episode: Int?, creator: String?,
-                   issue: Int?, manual: Boolean) = MediaLookupQuery(kind, title, year, season, episode, creator, issue, manual)
+                   issue: Int?, manual: Boolean, animeHint: Boolean = false) =
+            MediaLookupQuery(kind, title, year, season, episode, creator, issue, manual, animeHint)
     }
 }
 
@@ -71,8 +74,12 @@ object MediaQuerySanitizer {
         if (r.kind !in lookupKinds) return MediaQueryDecision.Refused("${r.kind.label} transfers are not looked up online")
         if (r.confidence == MediaConfidence.NONE || r.title == null) return MediaQueryDecision.Refused("Not enough information to identify")
         val kind = if (r.kind == MediaKind.VIDEO) MediaKind.MOVIE else r.kind
+        val leaf = r.raw.substringAfterLast('/').trim()
+        val anime = r.kind.isTv && (r.absoluteEpisode != null || leaf.startsWith("[") ||
+            r.title.any { Character.UnicodeScript.of(it.code).let { s -> s == Character.UnicodeScript.HIRAGANA ||
+                s == Character.UnicodeScript.KATAKANA || s == Character.UnicodeScript.HAN } })
         return build(kind, r.title, r.year, r.season, r.episode ?: r.absoluteEpisode?.takeIf { r.season != null },
-            r.artist, r.issue, manual = false)
+            r.artist, r.issue, manual = false, animeHint = anime)
     }
 
     fun manual(kind: MediaKind, text: String, year: Int? = null, season: Int? = null, episode: Int? = null,
@@ -83,7 +90,7 @@ object MediaQuerySanitizer {
     }
 
     private fun build(kind: MediaKind, rawTitle: String, year: Int?, season: Int?, episode: Int?, creator: String?,
-                      issue: Int?, manual: Boolean): MediaQueryDecision {
+                      issue: Int?, manual: Boolean, animeHint: Boolean = false): MediaQueryDecision {
         val title = tidy(rawTitle) ?: return MediaQueryDecision.Refused("Search text is empty")
         val cleanCreator = creator?.let { tidy(it) }
         for (part in listOfNotNull(title, cleanCreator)) {
@@ -92,7 +99,7 @@ object MediaQuerySanitizer {
         }
         if (year != null && year !in 1870..2100) return MediaQueryDecision.Refused("Year out of range")
         return MediaQueryDecision.Allowed(MediaLookupQuery.create(kind, title, year, season?.takeIf { it in 0..99 },
-            episode?.takeIf { it in 0..9999 }, cleanCreator, issue, manual))
+            episode?.takeIf { it in 0..9999 }, cleanCreator, issue, manual, animeHint))
     }
 
     private fun tidy(s: String): String? = Normalizer.normalize(s, Normalizer.Form.NFC)

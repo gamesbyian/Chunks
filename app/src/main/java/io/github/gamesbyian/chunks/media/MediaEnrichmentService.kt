@@ -12,10 +12,15 @@ data class MediaPrivacySettings(
     /** Look up transfers as they become visible, without a tap. Needs [onlineLookupConsent]. */
     val automaticLookup: Boolean = false,
     val disabledProviders: Set<String> = emptySet(),
+    /** Providers that are off by default (e.g. AniList) and that the user explicitly turned on. */
+    val enabledProviders: Set<String> = emptySet(),
     val showArtwork: Boolean = true,
     val downloadArtwork: Boolean = true,
     val artworkOnMeteredNetwork: Boolean = false
 )
+
+fun MediaPrivacySettings.providerOn(info: MediaProviderInfo): Boolean =
+    if (info.enabledByDefault) info.id !in disabledProviders else info.id in enabledProviders
 
 data class MediaNetworkState(val online: Boolean, val metered: Boolean, val powerSaver: Boolean = false)
 
@@ -80,7 +85,7 @@ class MediaEnrichmentService(
             message = "Online lookup is off. Turn it on in media settings to search providers.")
         if (origin == MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT && (!settings.automaticLookup || network.metered || network.powerSaver))
             return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = "Automatic lookup waits for an unmetered connection")
-        val eligible = providers.filter { it.info.id !in settings.disabledProviders && it.supports(query) && it.isConfigured() }
+        val eligible = providers.filter { settings.providerOn(it.info) && it.supports(query) && it.isConfigured() }
         if (eligible.isEmpty()) return MediaLookupResult(MediaLookupStatus.NO_PROVIDER,
             message = "No enabled provider covers ${query.kind.label.lowercase()} lookups" +
                 if (providers.any { it.supports(query) && !it.isConfigured() }) " (add your own key in media settings)" else "")

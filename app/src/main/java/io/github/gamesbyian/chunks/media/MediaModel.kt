@@ -64,7 +64,9 @@ data class MediaCandidate(
     /** Provider's own relevance hint; used only as a tie-breaker. */
     val providerScore: Double? = null,
     /** Other provider-scoped identifiers the record itself asserts (e.g. TVmaze → IMDb/TheTVDB). */
-    val crossReferences: List<MediaMetadataCacheKey> = emptyList()
+    val crossReferences: List<MediaMetadataCacheKey> = emptyList(),
+    /** Alternative titles the record itself lists (romanized, translated, native script). */
+    val aliases: List<String> = emptyList()
 ) {
     init { require(title.isNotBlank()) }
 }

@@ -55,9 +55,11 @@ interface MediaMetadataProvider {
 /** Shared status → outcome mapping and safe JSON fetching for adapters. */
 internal object ProviderHttp {
     fun fetchJson(http: MediaHttp, info: MediaProviderInfo, url: String, headers: Map<String, String> = emptyMap(),
-                  now: () -> Long = System::currentTimeMillis): Pair<Json?, MediaProviderOutcome?> {
+                  now: () -> Long = System::currentTimeMillis, postBody: String? = null): Pair<Json?, MediaProviderOutcome?> {
         val resp = try {
-            http.get(url, info.apiHostPolicy, mapOf("Accept" to "application/json") + headers, maxBytes = 1_500_000)
+            val h = mapOf("Accept" to "application/json") + headers
+            if (postBody != null) http.postJson(url, info.apiHostPolicy, postBody, h, maxBytes = 1_500_000)
+            else http.get(url, info.apiHostPolicy, h, maxBytes = 1_500_000)
         } catch (e: MediaHttpException) {
             return null to MediaProviderOutcome.Failed(when (e.failure) {
                 MediaHttpFailure.OFFLINE -> "Offline"

@@ -30,7 +30,7 @@ class MediaLiveProviderTest {
     private val http = UrlConnectionMediaHttp()
     private val consent = MediaPrivacySettings(onlineLookupConsent = true)
     private val online = MediaNetworkState(true, false)
-    private val providers = listOf(TvMazeProvider(), MusicBrainzProvider(), OpenLibraryProvider())
+    private val providers = listOf(TvMazeProvider(), MusicBrainzProvider(), OpenLibraryProvider(), io.github.gamesbyian.chunks.media.providers.AniListProvider())
     private val service = MediaEnrichmentService(providers, http, InMemoryMediaQueryCache())
     private val art = ArtworkRepository(http, ArtworkDiskCache(Files.createTempDirectory("live-art").toFile()),
         hostPolicyFor = { id: String -> providers.firstOrNull { it.info.id == id }?.info?.artworkHostPolicy })
@@ -68,5 +68,13 @@ class MediaLiveProviderTest {
         println("LIVE openlibrary: ${r.status} ${r.match?.ref} ${r.match?.year}")
         assertEquals(MediaLookupStatus.MATCHED, r.status); assertEquals("OL893414W", r.match!!.ref.externalId)
         println("LIVE ol art: ${squareArt(r.match!!).source.url}")
+    }
+
+    @Test fun animeEndToEndViaGraphQlPost() {
+        val r = service.lookup(MediaRecognizer.recognize("[SubsPlease] Sousou no Frieren - 12 (1080p) [ABCD1234].mkv"),
+            consent.copy(enabledProviders = setOf("anilist")), online)
+        println("LIVE anilist: ${r.status} ${r.match?.ref} attempts=${r.attempts}")
+        assertEquals(MediaLookupStatus.MATCHED, r.status)
+        println("LIVE anilist art: ${squareArt(r.match!!).source.url}")
     }
 }
