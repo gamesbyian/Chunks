@@ -115,7 +115,9 @@ class InstalledRealMediaInstrumentedTest {
         click("Close media identification"); click("Hide details")
     }
     private fun verifyArtworkPixels(index: Int) {
-        scroll(fixtures[index].first)
+        // The original name also appears in read-only detail/continuity text.
+        // The card header's full accessibility label uniquely identifies this row.
+        rule.onNodeWithContentDescription(fixtures[index].first).performScrollTo().assertIsDisplayed()
         val s = state(index)
         val bitmap = requireNotNull(s.artwork)
         val node = rule.onAllNodes(hasContentDescription("Artwork: ${s.match!!.title}", substring = true), useUnmergedTree = true)
@@ -249,6 +251,7 @@ class InstalledRealMediaInstrumentedTest {
                     verifyArtworkPixels(index)
                     assertEquals(fixtures[index].third, state(index).match!!.ref.provider)
                 }
+                type(searchLabel, "")
                 assertTrue("Offline UI restoration made zero HTTPS attempts", requests.uris.isEmpty())
                 android.util.Log.i("ChunksRealMedia", "CHUNKS_REAL_MEDIA phase=offline new_process=true providers=3 persisted=true pixels=true requests=0")
             }
