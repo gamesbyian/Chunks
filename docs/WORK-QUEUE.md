@@ -34,7 +34,7 @@ Automated evidence only; owner Pixel, TalkBack, hardware-keyboard and visual app
 1. **Real Add through a fetched torrent link.** #1297 fetches real HTTPS links (extensionless LinuxTracker, redirected Internet Archive) and reaches the reviewed .torrent Add on phone and server. Still to do: run a positive installed phone Add and an authorized rTorrent Add from a link with piece progress, under [REAL-TRANSFER-ACCEPTANCE](REAL-TRANSFER-ACCEPTANCE.md). Plain `http://` links are deliberately not fetched; revisit only with a reviewed trust policy.
 2. **Phone → Combined hidden-Add journey end to end** (trace #24). Each half is unit- and screen-tested; there is no single installed journey.
 3. **One-off phone Place versus the saved default** (trace #58). This changes which folder an Add uses, so it needs scoped review before implementation.
-4. **Contrast sweep for the rTorrent server list.** `CombinedContrastSweepTest` guards Combined and details. `PhoneContrastSweepTest` guards the phone inventory, Add form and Phone options at 320dp/200%, skipping disabled controls by walking each text node's ancestors. The connected server list needs the loopback RPC fixture used by `ChunksServerRenderTest`.
+Done in this pass: rendered contrast sweeps now cover Combined and Transfer details (`CombinedContrastSweepTest`), the phone inventory, Add form and Phone options at 320dp/200% (`PhoneContrastSweepTest`), and the connected rTorrent list, cards and Options at 411dp, 411dp/200% and 320dp/200% (`ChunksServer*RenderTest.serverListTextMeetsContrast`). Every fully visible, enabled text must reach 4.5:1; disabled controls are exempt.
 
 ## Owner-approved Add source-intake slice (2026-11-04; implemented 2026-11-05 except live Add from a link)
 

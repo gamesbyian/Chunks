@@ -150,6 +150,25 @@ open class ChunksServerRenderTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-add.png")
     }
 
+    /** Every fully visible, enabled text on the connected server list, its cards and Options reads at 4.5:1. */
+    @Test fun serverListTextMeetsContrast() {
+        connectToFixture()
+        val density = rule.activity.resources.displayMetrics.density
+        val low = ArrayList<String>()
+        fun sweep(tag: String) {
+            rule.waitForIdle()
+            val (measured, found) = rule.lowContrastText(tag, rule.onRoot().fetchSemanticsNode().size.height, density)
+            org.junit.Assert.assertTrue("$tag measured nothing", measured > 3)
+            low += found
+        }
+        sweep("$prefix-top")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Our Planet S01 (2160p)"))
+        sweep("$prefix-cards")
+        rule.onNodeWithContentDescription("Options").performClick()
+        sweep("$prefix-options")
+        org.junit.Assert.assertTrue("Text below 4.5:1: $low", low.isEmpty())
+    }
+
     @Test fun serverTransfers() {
         connectToFixture()
         rule.waitForIdle()
