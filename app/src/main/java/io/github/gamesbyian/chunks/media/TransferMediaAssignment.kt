@@ -29,6 +29,8 @@ data class TransferMediaAssignment(
     val userArtwork: ArtworkCandidate? = null,
     /** Provenance of [match] before the user's image was added, restored when the image is removed. */
     val stateBeforeImage: MediaAssignmentState? = null,
+    /** URL of the poster-role image of [match] the user chose for the detail header; resolved against [match]. */
+    val userPosterUrl: String? = null,
     val lastStatus: MediaLookupStatus? = null,
     val lastMessage: String? = null,
     val attempts: List<ProviderAttempt> = emptyList(),
@@ -91,7 +93,7 @@ class FileTransferMediaAssignmentStore(private val file: File, private val maxEn
                 // A chosen provider image keeps its source and role (its cache key); imports omit both.
                 "p" to Json.str(u.provider.takeIf { it != LOCAL_PROVIDER }), "r" to Json.str(u.role.name.takeIf { u.provider != LOCAL_PROVIDER })) }, "ls" to Json.str(a.lastStatus?.name), "lm" to Json.str(a.lastMessage),
             "at" to Json.arr(a.attempts.map { Json.obj("p" to Json.Str(it.provider), "o" to Json.Str(it.outcome), "c" to Json.Bool(it.fromCache)) }),
-            "u" to Json.num(a.updatedAtMs), "rv" to Json.num(a.recognizerVersion))
+            "up" to Json.str(a.userPosterUrl), "u" to Json.num(a.updatedAtMs), "rv" to Json.num(a.recognizerVersion))
 
         fun decode(j: Json): TransferMediaAssignment? = runCatching {
             TransferMediaAssignment(
@@ -104,6 +106,7 @@ class FileTransferMediaAssignmentStore(private val file: File, private val maxEn
                     val role = if (provider == LOCAL_PROVIDER) ArtworkRole.SQUARE
                         else u["r"]?.string?.let { r -> ArtworkRole.valueOf(r) } ?: ArtworkRole.SQUARE
                     ArtworkCandidate(provider, u["u"]!!.string!!, role, u["w"]?.int, u["h"]?.int) }.getOrNull() },
+                userPosterUrl = j["up"]?.string?.takeIf { it.startsWith("https://") && it.length <= 2048 },
                 stateBeforeImage = j["sbi"]?.string?.let { runCatching { MediaAssignmentState.valueOf(it) }.getOrNull() },
                 lastStatus = j["ls"]?.string?.let { runCatching { MediaLookupStatus.valueOf(it) }.getOrNull() },
                 lastMessage = j["lm"]?.string,

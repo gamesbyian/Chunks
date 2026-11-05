@@ -210,10 +210,11 @@ class TransferMediaController(
         val f = flow(key) ?: return
         scope.launch(lookupDispatcher) {
             val prev = store.get(key)
-            prev?.takeIf { it.match?.ref != candidate.ref }?.let { releaseChosenArt(it) }
+            val sameMatch = prev?.match?.ref == candidate.ref
+            prev?.takeIf { !sameMatch }?.let { releaseChosenArt(it); releasePoster(it) }
             val a = TransferMediaAssignment(key, MediaAssignmentState.CHOSEN_BY_USER, candidate,
                 suggestions = (listOfNotNull(prev?.match) + (prev?.suggestions ?: emptyList())).filter { it.ref != candidate.ref },
-                userArtwork = prev?.userArtwork,
+                userArtwork = prev?.userArtwork, userPosterUrl = prev?.userPosterUrl?.takeIf { sameMatch },
                 lastStatus = prev?.lastStatus, lastMessage = "Chosen by you", attempts = prev?.attempts ?: emptyList(), updatedAtMs = clock())
             store.put(a)
             f.update { it.copy(assignment = a, searchResults = null, artwork = null, artworkSource = null, poster = null, message = null) }
@@ -323,7 +324,7 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) {
             val prev = store.get(key)
             prev?.userArtwork?.let { releaseIfUnreferenced(it, except = key) }
-            prev?.let { releaseChosenArt(it) }
+            prev?.let { releaseChosenArt(it); releasePoster(it) }
             val a = TransferMediaAssignment(key, MediaAssignmentState.CATEGORY_ART_BY_USER, prev?.match,
                 prev?.suggestions ?: emptyList(), categoryOverride = kind ?: f.value.recognition.kind, updatedAtMs = clock())
             store.put(a)
@@ -337,7 +338,7 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) {
             val prev = store.get(key)
             prev?.userArtwork?.let { releaseIfUnreferenced(it, except = key) }
-            prev?.let { releaseChosenArt(it) }
+            prev?.let { releaseChosenArt(it); releasePoster(it) }
             store.remove(key)
             f.update { it.copy(assignment = null, artwork = null, artworkSource = null, poster = null, searchResults = null, message = null) }
         }
@@ -427,6 +428,13 @@ class TransferMediaController(
         if (!shared) m.artwork.forEach { artwork.unpin(it, ArtworkRole.SQUARE) }
     }
 
+    /** Unpin a chosen detail poster unless another transfer's choice still uses the same image. */
+    private fun releasePoster(prev: TransferMediaAssignment) {
+        val url = prev.userPosterUrl ?: return
+        val c = prev.match?.artwork?.firstOrNull { it.role == ArtworkRole.POSTER && it.url == url } ?: return
+        if (store.all().none { it.key != prev.key && it.userPosterUrl == url }) artwork.unpin(c, ArtworkRole.POSTER)
+    }
+
     /** Never delete an imported image another transfer still uses. */
     private fun releaseIfUnreferenced(image: ArtworkCandidate, except: MediaTransferKey) {
         if (store.all().none { it.key != except && it.userArtwork == image }) {
@@ -461,6 +469,46 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) {
             artwork.pin(candidate, ArtworkRole.SQUARE)
             applyImported(key, candidate)
+        }
+    }
+
+    /**
+     * Explicitly requested gallery of the current match's poster/cover-role images (original aspect),
+     * for choosing the detail header image. Same consent, network and adult rules as [alternatives].
+     */
+    suspend fun posterAlternatives(key: MediaTransferKey, limit: Int = 8): List<ArtworkAlternative> =
+        kotlinx.coroutines.withContext(artworkDispatcher) {
+            val cur = flow(key)?.value ?: return@withContext emptyList()
+            val match = cur.match ?: return@withContext emptyList()
+            val s = settings()
+            if (!s.showArtwork || cur.displayKind == MediaKind.ADULT || cur.userArtwork != null) return@withContext emptyList()
+            val net = network()
+            val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            posterCandidates(match).distinctBy { it.url }.take(limit.coerceIn(1, 24))
+                .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.POSTER, allowNetwork) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
+        }
+
+    private fun posterCandidates(match: MediaCandidate) =
+        match.artwork.filter { it.role == ArtworkRole.POSTER && (it.season == null || it.season == match.season) }
+
+    /**
+     * The user picked the detail poster from the current match's own poster images: pin it and
+     * remember it for this transfer only. List tiles are unchanged; the match is not changed.
+     */
+    fun choosePoster(key: MediaTransferKey, candidate: ArtworkCandidate) {
+        val f = flow(key) ?: return
+        val cur = f.value
+        val match = cur.match ?: return
+        if (candidate !in posterCandidates(match) || cur.displayKind == MediaKind.ADULT) return
+        scope.launch(lookupDispatcher) {
+            val prev = store.get(key)?.takeIf { it.displayMatch?.ref == match.ref } ?: return@launch
+            if (prev.userPosterUrl == candidate.url) return@launch
+            artwork.pin(candidate, ArtworkRole.POSTER)
+            releasePoster(prev)
+            val a = prev.copy(userPosterUrl = candidate.url, updatedAtMs = clock())
+            store.put(a)
+            f.update { it.copy(assignment = a, poster = null) }
+            requestPoster(key)
         }
     }
 
@@ -531,8 +579,11 @@ class TransferMediaController(
             if (!s.showArtwork) return@launch
             val net = network()
             val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
-            val posters = match.artwork.filter { it.role == ArtworkRole.POSTER && (it.season == null || it.season == match.season) }
-            val r = artwork.load(posters, ArtworkRole.POSTER, allowNetwork, service.providerInfos().map { it.id })
+            val posters = posterCandidates(match)
+            // The user's chosen poster first (pinned, so offline-capable); otherwise deterministic order.
+            val chosen = cur.assignment?.userPosterUrl?.let { u -> posters.firstOrNull { it.url == u } }
+            val r = chosen?.let { artwork.loadOne(it, ArtworkRole.POSTER, allowNetwork) }?.takeIf { it is ArtworkLoadResult.Loaded }
+                ?: artwork.load(posters, ArtworkRole.POSTER, allowNetwork, service.providerInfos().map { it.id })
             if (r is ArtworkLoadResult.Loaded) f.update { now -> if (now.match?.ref == match.ref && now.userArtwork == null) now.copy(poster = r.bitmap) else now }
         }
     }

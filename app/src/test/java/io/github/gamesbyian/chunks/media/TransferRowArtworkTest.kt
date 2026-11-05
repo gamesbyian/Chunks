@@ -19,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsSelected
 import io.github.gamesbyian.chunks.visual.smallTouchTargets
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -289,6 +290,61 @@ class TransferRowArtworkTest {
         c.removeUserImage(k)
         assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
         assertNull(flow.value.userArtwork)
+    }
+
+    @Test fun choosingADetailPosterIsPerTransferSurvivesOfflineRestartAndClearsOnReset() {
+        val c = controller()
+        val k = MediaTransferKey.of(phone)
+        val flow = c.observe(k, name); c.lookup(k)
+        val base = flow.value.match!!
+        val a = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/uploads/images/original_untouched/1/a.jpg", ArtworkRole.POSTER)
+        val b = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/uploads/images/original_untouched/1/b.jpg", ArtworkRole.POSTER)
+        c.choose(k, base.copy(artwork = listOf(a, b) + base.artwork.filter { it.role != ArtworkRole.POSTER }))
+        val posters = kotlinx.coroutines.runBlocking { c.posterAlternatives(k) }
+        assertEquals(listOf(a, b), posters.map { it.candidate })
+        c.choosePoster(k, b)
+        assertEquals(b.url, flow.value.assignment?.userPosterUrl)
+        assertNotNull("The chosen poster is loaded for details", flow.value.poster)
+        assertNull("List tiles keep their own image", flow.value.userArtwork)
+        // Not from this match: refused.
+        c.choosePoster(k, ArtworkCandidate("tvmaze", "https://static.tvmaze.com/other.jpg", ArtworkRole.POSTER))
+        assertEquals(b.url, flow.value.assignment?.userPosterUrl)
+        // New process, offline: restored and loaded from the pinned cache.
+        val before = http.requests.size
+        http.offline = true
+        val c2 = controller()
+        val restored = c2.observe(k, name)
+        c2.requestPoster(k)
+        assertEquals(b.url, restored.value.assignment?.userPosterUrl); assertNotNull(restored.value.poster)
+        assertEquals(before, http.requests.size)
+        http.offline = false
+        c.reset(k)
+        assertNull(flow.value.assignment)
+        assertNull(controller().observe(k, name).value.assignment?.userPosterUrl)
+    }
+
+    @Test fun posterGalleryAppearsOnlyForSeveralPostersAndMarksTheChoice() {
+        val st0 = TransferMediaUiState(MediaTransferKey.of(phone), MediaRecognizer.recognize(name))
+        val a = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/a.jpg", ArtworkRole.POSTER)
+        val b = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/b.jpg", ArtworkRole.POSTER)
+        val m = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_SERIES, "Babylon 5",
+            artwork = listOf(a, b), attribution = MediaAttribution("TVmaze", "CC BY-SA", null))
+        val st = st0.copy(assignment = TransferMediaAssignment(st0.key, MediaAssignmentState.CHOSEN_BY_USER, m, userPosterUrl = b.url))
+        val bmp = Bitmap.createBitmap(68, 100, Bitmap.Config.ARGB_8888)
+        var picked: ArtworkCandidate? = null
+        rule.setContent {
+            ChunksTheme { Surface { androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState())) {
+                io.github.gamesbyian.chunks.media.ui.MediaIdentifyPanel(st, settings, onEnableLookup = {}, onLookup = {},
+                    onSearch = { _, _, _ -> }, onChoose = {}, onUseCategoryArt = {}, onReset = {},
+                    onLoadPosters = {}, posters = listOf(TransferMediaController.ArtworkAlternative(a, bmp), TransferMediaController.ArtworkAlternative(b, bmp)),
+                    onChoosePoster = { picked = it })
+            } } }
+        }
+        rule.onNodeWithText("Detail poster").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithContentDescription("Poster 2 of 2 from TVmaze").performScrollTo()
+            .assertIsSelected()
+        rule.onNodeWithContentDescription("Poster 1 of 2 from TVmaze").performScrollTo().performClick()
+        assertEquals(a, picked)
     }
 
     @Test fun galleryShowsOnlyOnRequestAndRespectsDownloadSettings() {
