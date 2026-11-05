@@ -836,7 +836,13 @@ internal fun CombinedTransfersScreen(
             },
             stallCheckInProgress = stillStall(pendingStall),
             stallReport = stallEvidence?.takeIf { stillStall(it.first) }?.second,
-            stallCheckError = stallFailure?.takeIf { stillStall(it.first) }?.second
+            stallCheckError = stallFailure?.takeIf { stillStall(it.first) }?.second,
+            similar = { transfer ->
+                SimilarTransfersHost(transfer, sources,
+                    environmentLabel = { labels[it] },
+                    environmentColor = { id -> palette.hueOf(id)?.let { Color(it.argb) } ?: ChunksColors.Outline },
+                    onOpen = { key -> savedDetailTarget = arrayListOf(key.environment.value, key.infoHash) })
+            }
         )
     } else {
     // The same measured Transfers / Add / Options footer as the phone and

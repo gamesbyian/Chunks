@@ -175,4 +175,48 @@ class TransferRowArtworkTest {
         assertEquals("Media actions never toggle, remove or open files", 0, mutations)
         assertTrue(http.requests.none { it.contains("My show") || it.contains("My%20show") })
     }
+
+    private fun obs(key: UnifiedTransferKey, name: String) = io.github.gamesbyian.chunks.model.UnifiedTransferObservation(
+        key, name, name, 1_000, 500_000, true, 0, 0, 1)
+    private fun snapshot(env: EnvironmentId, locked: Boolean, vararg rows: io.github.gamesbyian.chunks.model.UnifiedTransferObservation) =
+        io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot(env,
+            if (locked) io.github.gamesbyian.chunks.model.EnvironmentAvailability.LOCKED else io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE,
+            true, clock.now, if (locked) emptyList() else rows.toList())
+
+    @Test fun similarTransfersUseOnlyConfirmedIdsFromAuthorizedInventoryAndOpenTheExactTarget() {
+        val c = controller()
+        val otherHash = "d".repeat(40)
+        val serverOther = UnifiedTransferKey.of(EnvironmentId("rtorrent:seedbox-2"), otherHash)
+        val lockedEnv = EnvironmentId("rtorrent:seedbox-3")
+        val lockedKey = UnifiedTransferKey.of(lockedEnv, "e".repeat(40))
+        val unidentified = UnifiedTransferKey.of(EnvironmentId("rtorrent:seedbox-2"), "f".repeat(40))
+        // Confirmed identity for the source and one other server transfer; the locked one is
+        // identified too, but its source is LOCKED and must contribute nothing.
+        listOf(phone, serverOther, lockedKey).forEach { k ->
+            c.observe(MediaTransferKey.of(k), name); c.lookup(MediaTransferKey.of(k))
+        }
+        c.observe(MediaTransferKey.of(unidentified), name) // same title, never looked up
+        val sources = listOf(
+            snapshot(EnvironmentId("phone"), false, obs(phone, name)),
+            snapshot(EnvironmentId("rtorrent:seedbox-2"), false, obs(serverOther, "B5 copy on server"), obs(unidentified, name)),
+            snapshot(lockedEnv, true))
+        val before = http.requests.size
+        var opened: UnifiedTransferKey? = null
+        rule.setContent {
+            CompositionLocalProvider(LocalTransferMediaController provides c) {
+                ChunksTheme { Surface {
+                    io.github.gamesbyian.chunks.SimilarTransfersHost(obs(phone, name), sources,
+                        environmentLabel = { if (it.value == "phone") "This phone" else "Seedbox 2" },
+                        environmentColor = { androidx.compose.ui.graphics.Color.Cyan },
+                        onOpen = { opened = it })
+                } }
+            }
+        }
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("Similar transfers").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("B5 copy on server").assertExists().performClick()
+        assertEquals(serverOther, opened)
+        assertEquals("Title-only and locked rows never appear", 1,
+            rule.onAllNodesWithText("Seedbox 2", substring = true).fetchSemanticsNodes().size)
+        assertEquals("Similar Transfers issues no lookup", before, http.requests.size)
+    }
 }

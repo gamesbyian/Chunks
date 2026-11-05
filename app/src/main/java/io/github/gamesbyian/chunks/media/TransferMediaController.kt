@@ -65,6 +65,8 @@ class TransferMediaController(
         val AUDIO_TAG_EXTENSIONS = setOf("mp3", "flac", "m4a", "m4b", "mp4", "aac")
         const val MAX_STATES = 96
         const val MAX_PENDING_AUTOMATIC = 6
+        /** Bounds one Similar Transfers index build (visible inventory, all environments). */
+        const val MAX_SIMILAR_INVENTORY = 5_000
     }
     private val pendingAutomatic = java.util.concurrent.atomic.AtomicInteger(0)
 
@@ -406,6 +408,21 @@ class TransferMediaController(
     private fun releaseIfUnreferenced(image: ArtworkCandidate, except: MediaTransferKey) {
         if (store.all().none { it.key != except && it.userArtwork == image }) artwork.removeLocal(image)
     }
+
+    /**
+     * Similar Transfers over the caller's already-authorized, visible inventory. Only confirmed
+     * (automatic or user-chosen) identities count; title-only or suggested matches never join.
+     * Reads local assignments on the lookup dispatcher; never starts a lookup.
+     */
+    suspend fun similarFor(source: io.github.gamesbyian.chunks.model.UnifiedTransferKey,
+                           visible: Collection<io.github.gamesbyian.chunks.model.UnifiedTransferKey>,
+                           limit: Int = 20): List<io.github.gamesbyian.chunks.model.RelatedTransferCandidate> =
+        kotlinx.coroutines.withContext(lookupDispatcher) {
+            val keys = (listOf(source) + visible).distinct().take(MAX_SIMILAR_INVENTORY)
+            val index = io.github.gamesbyian.chunks.model.MediaRelationIndex.build(
+                MediaRelationBridge.members(keys.map { it to store.get(MediaTransferKey.of(it)) }))
+            index.similar(source, keys.toSet(), limit = limit.coerceIn(1, 100))
+        }
 
     /**
      * Apply changed presentation settings to rows already on screen: turning artwork off drops
