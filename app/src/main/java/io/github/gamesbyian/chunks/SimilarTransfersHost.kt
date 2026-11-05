@@ -61,3 +61,22 @@ internal fun SimilarTransfersHost(
         modifier = modifier
     )
 }
+
+/** The phone's own list as a Similar Transfers source (same-environment scope in phone details). */
+internal fun phoneSimilarSource(transfers: List<io.github.gamesbyian.chunks.engine.LocalTransferStatus>, stale: Boolean): EnvironmentTransferSnapshot {
+    val env = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE
+    val rows = transfers.distinctBy { it.infoHash.lowercase() }.mapNotNull {
+        runCatching { io.github.gamesbyian.chunks.model.UnifiedTransferObservations.fromPhone(env, it) }.getOrNull()
+    }
+    return EnvironmentTransferSnapshot(env, if (stale) EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
+        !stale, System.currentTimeMillis(), rows)
+}
+
+/** One authenticated rTorrent list as a Similar Transfers source (same-environment scope in its cards). */
+internal fun remoteSimilarSource(environment: EnvironmentId, transfers: List<io.github.gamesbyian.chunks.rpc.RemoteTransfer>, stale: Boolean): EnvironmentTransferSnapshot {
+    val rows = transfers.distinctBy { it.hash.lowercase() }.mapNotNull {
+        runCatching { io.github.gamesbyian.chunks.model.UnifiedTransferObservations.fromRTorrent(environment, it) }.getOrNull()
+    }
+    return EnvironmentTransferSnapshot(environment, if (stale) EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
+        !stale, System.currentTimeMillis(), rows)
+}

@@ -2195,7 +2195,19 @@ private fun TransfersScreen(
                 onCopyToPhone = onCopyToPhone,
                 removalEnvironmentLabel = RemoteVerifiedUiIdentity.removalScopeLabel(aliasScope),
                 moveScope = aliasScope,
-                finishInOrderScope = aliasScope
+                finishInOrderScope = aliasScope,
+                // Same-account relations; opening one filters this list to that exact transfer.
+                similar = serverEnvironment?.let { envId -> {
+                    val source = remember(list, stale, loading) {
+                        remoteSimilarSource(io.github.gamesbyian.chunks.model.EnvironmentId(envId), list, stale || loading)
+                    }
+                    source.transfers.firstOrNull { it.key.infoHash == transfer.hash.lowercase() }?.let { self ->
+                        SimilarTransfersHost(self, listOf(source),
+                            environmentLabel = { environmentLabel },
+                            environmentColor = { ChunksColors.Blue },
+                            onOpen = { key -> onQuery(key.infoHash) })
+                    }
+                } }
             )
             }
             }
@@ -2250,7 +2262,9 @@ private fun TransferCard(
     /** Authenticated endpoint + account scope, or null when ambiguous. */
     moveScope: String? = null,
     /** Authenticated endpoint + account scope for Finish in Order; null when ambiguous. */
-    finishInOrderScope: String? = null
+    finishInOrderScope: String? = null,
+    /** Similar Transfers in this card's details; null hides it. */
+    similar: (@Composable () -> Unit)? = null
 ) {
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     // Exact profile/hash identity prevents a recycled row inheriting another
@@ -2384,6 +2398,7 @@ private fun TransferCard(
             rememberRemoteTransferKey(progressEnvironmentId, transfer.hash)?.let { key ->
                 TransferMediaDetailSection(key, transfer.name)
             }
+            similar?.invoke()
             ActionTile(if (expanded) "Hide files" else "Inspect files", ChunksColors.Cyan,
                 onClick = onInspect, modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_folder, stacked = false)
             if (TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null) {

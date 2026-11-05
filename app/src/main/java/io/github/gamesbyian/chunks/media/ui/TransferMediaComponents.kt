@@ -439,16 +439,18 @@ private fun CandidateList(items: List<MediaCandidate>, selected: MediaCandidate?
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun ManualSearch(state: TransferMediaUiState, onSearch: (MediaKind, String, Int?) -> Unit) {
     var text by rememberSaveable(state.key.value) { mutableStateOf(state.recognition.title ?: "") }
     var year by rememberSaveable(state.key.value) { mutableStateOf(state.recognition.year?.toString() ?: "") }
     var kind by rememberSaveable(state.key.value) { mutableStateOf(searchKindFor(state.recognition.kind)) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Search by title", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Wraps so every kind stays reachable at 320dp/200%; 48dp targets.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(MediaKind.MOVIE, MediaKind.TV_SERIES, MediaKind.MUSIC_ALBUM, MediaKind.BOOK).forEach { k ->
                 val sel = kind == k
-                Text(k.label, Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(10.dp))
+                Text(k.label, Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(10.dp))
                     .border(BorderStroke(1.dp, if (sel) ChunksColors.Cyan else ChunksColors.Outline), RoundedCornerShape(10.dp))
                     .background(if (sel) ChunksColors.Muted else ChunksColors.Background)
                     .selectable(sel, role = Role.RadioButton) { kind = k }.padding(horizontal = 10.dp, vertical = 10.dp),
