@@ -86,6 +86,13 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         rule.onNodeWithText(label).performImeAction()
     }
 
+    /** Test-side native observation only: no production hooks, picker changes or status rewriting. */
+    @Suppress("UNCHECKED_CAST")
+    private fun nativeHandle(engine: LocalTorrentEngine, hash: String): org.libtorrent4j.TorrentHandle? {
+        val field = LocalTorrentEngine::class.java.getDeclaredField("handles").apply { isAccessible = true }
+        return (field.get(engine) as Map<String, org.libtorrent4j.TorrentHandle>)[hash.lowercase()]
+    }
+
     @Test fun fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault() {
         assumeTrue("Explicit assembled HTTPS acceptance only",
             InstrumentationRegistry.getArguments().getString("chunks_https_add") == "authorized")
@@ -250,8 +257,28 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // whole file, so other pieces can finish while piece 0 is still partial (observed:
                 // done=22 MB, only 48 KiB of piece 0 on disk). Wait for piece 0 itself before Stop.
                 val firstPieceFile = File(destination, preview.name)
+                var lastPeerSample = 0L
                 await("piece 0 itself on disk before Stop") {
-                    firstPieceFile.isFile && firstPieceFile.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
+                    val head = if (firstPieceFile.isFile) firstPieceFile.inputStream().use { it.readNBytes(piece.size) } else ByteArray(0)
+                    if (System.currentTimeMillis() - lastPeerSample >= 1_000) {
+                        lastPeerSample = System.currentTimeMillis()
+                        val handle = nativeHandle(phone, preview.infoHashV1)
+                        val status = phone.status(preview.infoHashV1)
+                        val source = seed.status(preview.infoHashV1)
+                        val peers = handle?.peerInfo().orEmpty()
+                        val flags = peers.take(8).joinToString(",") { it.flags().toString() }
+                        val available = handle?.pieceAvailability()?.getOrNull(0)
+                        val queue = handle?.getDownloadQueue().orEmpty().take(8).joinToString(",") {
+                            "${it.pieceIndex()}:${it.finished()}:${it.writing()}:${it.requested()}"
+                        }
+                        val prefix = head.indices.firstOrNull { head[it] != piece[it] } ?: head.size
+                        android.util.Log.i("ChunksHttps", "CHUNKS_PHONE_PEER epoch_ms=$lastPeerSample " +
+                            "received=${status?.payloadDownloadedBytes} verified=${status?.doneBytes} " +
+                            "rate=${status?.downloadPayloadRateBytesPerSecond} peers=${status?.peers} " +
+                            "piece0=${handle?.havePiece(0)} available0=$available disk_prefix=$prefix " +
+                            "seed_uploaded=${source?.payloadUploadedBytes} seed_peers=${source?.peers} flags=$flags queue=$queue")
+                    }
+                    head.contentEquals(piece)
                 }
                 stage("pieces-received")
                 assertFalse("An Android permission prompt cannot cover the Stop action",

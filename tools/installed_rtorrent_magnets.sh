@@ -56,6 +56,10 @@ adb pull "$installed_apk" "$RUNNER_TEMP/chunks-installed-base.apk" >/dev/null 2>
 cmp -s app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/chunks-installed-base.apk"
 rm "$RUNNER_TEMP/chunks-installed-base.apk"
 unset installed_apk
+if [[ "${CHUNKS_REAL_MEDIA:-0}" = 1 ]]; then
+  # Deliberate manual opt-in only; ordinary PR runs never contact media providers.
+  bash tools/installed_real_media.sh "$candidate_package"
+fi
 if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   milestone 'running production phone HTTPS and one-time Place journey'
   adb logcat -c
