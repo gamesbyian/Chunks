@@ -73,7 +73,7 @@ import io.github.gamesbyian.chunks.media.TransferMediaUiState
 fun TransferMediaArtwork(state: TransferMediaUiState, size: Dp, modifier: Modifier = Modifier,
                          showArtwork: Boolean = true, description: String? = null) {
     val shape = RoundedCornerShape(size * 0.18f)
-    val bitmap = state.artwork?.takeIf { showArtwork && state.match != null && state.displayKind != MediaKind.ADULT }
+    val bitmap = state.artwork?.takeIf { showArtwork && state.mayShowRealArt }
     val semantics = if (description != null) Modifier.semantics { contentDescription = description } else Modifier.clearAndSetSemantics {}
     Box(modifier.size(size).then(semantics)) {
         if (bitmap != null) {
@@ -155,7 +155,10 @@ fun MediaIdentifyPanel(
     onChoose: (MediaCandidate) -> Unit,
     onUseCategoryArt: (MediaKind) -> Unit,
     onReset: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Opens the system Photo Picker; null hides the option. Works with online lookup off. */
+    onPickImage: (() -> Unit)? = null,
+    onRemoveImage: (() -> Unit)? = null
 ) {
     var showWhy by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -185,6 +188,15 @@ fun MediaIdentifyPanel(
         }
 
         if (settings.onlineLookupConsent) ManualSearch(state, onSearch)
+
+        if (onPickImage != null) {
+            Text("Your own image", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onPickImage, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Choose image from device…") }
+                if (state.userArtwork != null && onRemoveImage != null)
+                    TextButton(onClick = onRemoveImage, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove my image") }
+            }
+        }
 
         Text("Or use built-in art", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

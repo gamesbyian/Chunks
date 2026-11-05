@@ -138,4 +138,45 @@ class TransferMediaControllerTest {
         assertEquals(0L, art.sizeBytes())
         assertTrue(FileTransferMediaAssignmentStore(File(dir, "assign.json")).all().isEmpty())
     }
+
+    private fun png(color: Int): ByteArray {
+        val b = Bitmap.createBitmap(400, 300, Bitmap.Config.ARGB_8888); Canvas(b).drawColor(color)
+        return ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
+    }
+
+    @Test fun userImageWorksOfflineWinsOverProviderArtAndSurvivesRestart() {
+        val c = controller(); val flow = c.observe(phone, name)
+        c.importUserImage(phone, png(Color.GREEN))
+        val s = flow.value
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, s.state); assertTrue(s.mayShowRealArt)
+        assertEquals(LOCAL_PROVIDER, s.artworkSource!!.provider); assertEquals(Color.GREEN, s.artwork!!.getPixel(192, 192))
+        assertTrue(http.requests.isEmpty()) // no consent, no network: local images still work
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        c.lookup(phone)
+        assertEquals(LOCAL_PROVIDER, flow.value.artworkSource!!.provider) // lookup never overrides the user's choice
+        // Restart; the pinned import survives heavy cache churn.
+        val art = ArtworkDiskCache(File(dir, "art"), maxBytes = 1)
+        art.put("%040x".format(99), ByteArray(4000))
+        val restored = controller().observe(phone, name).value
+        assertEquals(LOCAL_PROVIDER, restored.artworkSource!!.provider)
+    }
+
+    @Test fun sharedImportIsKeptUntilTheLastReferenceIsRemoved() {
+        val c = controller()
+        val f1 = c.observe(phone, name); val f2 = c.observe(server, name)
+        c.importUserImage(phone, png(Color.RED)); c.importUserImage(server, png(Color.RED))
+        assertEquals(f1.value.userArtwork, f2.value.userArtwork)
+        c.removeUserImage(phone)
+        assertNull(f1.value.userArtwork)
+        val reopened = controller().observe(server, name).value
+        assertNotNull("other transfer's identical image must survive", reopened.artwork)
+        c.reset(server)
+        assertNull(f2.value.assignment)
+    }
+
+    @Test fun rejectedImportsExplainWithoutChangingAssignment() {
+        val c = controller(); val flow = c.observe(phone, name)
+        c.importUserImage(phone, "<svg/>".padEnd(500).toByteArray())
+        assertNull(flow.value.assignment); assertEquals("Unsupported image format", flow.value.message)
+    }
 }

@@ -24,6 +24,9 @@ data class TransferMediaUiState(
 ) {
     val state: MediaAssignmentState get() = assignment?.state ?: MediaAssignmentState.NOT_LOOKED_UP
     val match: MediaCandidate? get() = assignment?.displayMatch
+    val userArtwork: ArtworkCandidate? get() = assignment?.userArtwork
+    /** Real (non-category) art may be shown: confident/chosen match or the user's own image; never adult. */
+    val mayShowRealArt: Boolean get() = (match != null || userArtwork != null) && displayKind != MediaKind.ADULT
     /** Category used for bundled art; adult always stays the neutral adult tile. */
     val displayKind: MediaKind get() = when {
         recognition.kind == MediaKind.ADULT -> MediaKind.ADULT
@@ -71,7 +74,7 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) {
             val a = store.get(key)
             flow.update { it.copy(assignment = a) }
-            if (a?.displayMatch != null) loadArtwork(key) else if (a == null) maybeAutomatic(key)
+            if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key) else if (a == null) maybeAutomatic(key)
         }
         return flow
     }
@@ -147,6 +150,7 @@ class TransferMediaController(
             val prev = store.get(key)
             val a = TransferMediaAssignment(key, MediaAssignmentState.CHOSEN_BY_USER, candidate,
                 suggestions = (listOfNotNull(prev?.match) + (prev?.suggestions ?: emptyList())).filter { it.ref != candidate.ref },
+                userArtwork = prev?.userArtwork,
                 lastStatus = prev?.lastStatus, lastMessage = "Chosen by you", attempts = prev?.attempts ?: emptyList(), updatedAtMs = clock())
             store.put(a)
             f.update { it.copy(assignment = a, searchResults = null, artwork = null, artworkSource = null, message = null) }
@@ -159,6 +163,7 @@ class TransferMediaController(
         val f = flow(key) ?: return
         scope.launch(lookupDispatcher) {
             val prev = store.get(key)
+            prev?.userArtwork?.let { releaseIfUnreferenced(it, except = key) }
             val a = TransferMediaAssignment(key, MediaAssignmentState.CATEGORY_ART_BY_USER, prev?.match,
                 prev?.suggestions ?: emptyList(), categoryOverride = kind ?: f.value.recognition.kind, updatedAtMs = clock())
             store.put(a)
@@ -170,9 +175,57 @@ class TransferMediaController(
     fun reset(key: MediaTransferKey) {
         val f = flow(key) ?: return
         scope.launch(lookupDispatcher) {
+            val prev = store.get(key)
+            prev?.userArtwork?.let { releaseIfUnreferenced(it, except = key) }
+            if (prev?.state == MediaAssignmentState.CHOSEN_BY_USER) prev.match?.let { m ->
+                val shared = store.all().any { it.key != key && it.state == MediaAssignmentState.CHOSEN_BY_USER && it.match?.ref == m.ref }
+                if (!shared) m.artwork.forEach { artwork.unpin(it, ArtworkRole.SQUARE) }
+            }
             store.remove(key)
             f.update { it.copy(assignment = null, artwork = null, artworkSource = null, searchResults = null, message = null) }
         }
+    }
+
+    /**
+     * Use an image the user picked on the device (bytes read by the host with a size bound). Works
+     * with online lookup off. The processed copy lives in app storage; the source is never modified.
+     */
+    fun importUserImage(key: MediaTransferKey, bytes: ByteArray) {
+        val f = flow(key) ?: return
+        f.update { it.copy(busy = true, message = null) }
+        scope.launch(lookupDispatcher) {
+            val (candidate, error) = runCatching { artwork.importLocal(bytes) }.getOrElse { null to "Image could not be used" }
+            if (candidate == null) { f.update { it.copy(busy = false, message = error) }; return@launch }
+            val prev = store.get(key)
+            prev?.userArtwork?.takeIf { it != candidate }?.let { releaseIfUnreferenced(it, except = key) }
+            val a = (prev ?: TransferMediaAssignment(key, MediaAssignmentState.CHOSEN_BY_USER)).copy(
+                state = MediaAssignmentState.CHOSEN_BY_USER, userArtwork = candidate, categoryOverride = null,
+                // Keep a still-confident match visible as metadata alongside the user's image.
+                match = prev?.match?.takeIf { prev.state == MediaAssignmentState.AUTOMATIC || prev.state == MediaAssignmentState.CHOSEN_BY_USER },
+                lastMessage = "Your image", updatedAtMs = clock())
+            store.put(a)
+            f.update { it.copy(assignment = a, busy = false, artwork = null, artworkSource = null) }
+            loadArtwork(key)
+        }
+    }
+
+    fun removeUserImage(key: MediaTransferKey) {
+        val f = flow(key) ?: return
+        scope.launch(lookupDispatcher) {
+            val prev = store.get(key) ?: return@launch
+            val image = prev.userArtwork ?: return@launch
+            releaseIfUnreferenced(image, except = key)
+            val a = prev.copy(userArtwork = null, state = if (prev.match == null) MediaAssignmentState.NOT_LOOKED_UP else prev.state,
+                updatedAtMs = clock())
+            if (a.match == null && a.categoryOverride == null) store.remove(key) else store.put(a)
+            f.update { it.copy(assignment = a.takeIf { it.match != null || it.categoryOverride != null }, artwork = null, artworkSource = null) }
+            if (a.displayMatch != null) loadArtwork(key)
+        }
+    }
+
+    /** Never delete an imported image another transfer still uses. */
+    private fun releaseIfUnreferenced(image: ArtworkCandidate, except: MediaTransferKey) {
+        if (store.all().none { it.key != except && it.userArtwork == image }) artwork.removeLocal(image)
     }
 
     fun dismissSearch(key: MediaTransferKey) { flow(key)?.update { it.copy(searchResults = null, message = null) } }
@@ -190,16 +243,24 @@ class TransferMediaController(
     private fun loadArtwork(key: MediaTransferKey, pin: Boolean = false) {
         val f = flow(key) ?: return
         val s = settings()
-        val match = f.value.assignment?.displayMatch ?: return
-        if (!s.showArtwork || match.artwork.isEmpty() || f.value.recognition.kind == MediaKind.ADULT) return
+        val a = f.value.assignment ?: return
+        val match = a.displayMatch
+        val candidates = listOfNotNull(a.userArtwork) + (match?.artwork ?: emptyList())
+        if (!s.showArtwork || candidates.isEmpty() || f.value.recognition.kind == MediaKind.ADULT) return
         val net = network()
         val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
         scope.launch(artworkDispatcher) {
             val providerOrder = service.providerInfos().map { it.id }
-            when (val r = artwork.load(match.artwork, ArtworkRole.SQUARE, allowNetwork, providerOrder)) {
+            // The user's own image always wins (explicit pin > provider art); otherwise deterministic order.
+            val r = a.userArtwork?.let { artwork.loadOne(it, ArtworkRole.SQUARE, false) }?.takeIf { it is ArtworkLoadResult.Loaded }
+                ?: artwork.load(match?.artwork ?: emptyList(), ArtworkRole.SQUARE, allowNetwork, providerOrder)
+            when (r) {
                 is ArtworkLoadResult.Loaded -> {
-                    if (pin) artwork.pin(r.source, ArtworkRole.SQUARE)
-                    f.update { cur -> if (cur.assignment?.displayMatch?.ref == match.ref) cur.copy(artwork = r.bitmap, artworkSource = r.source) else cur }
+                    if (pin && r.source.provider != LOCAL_PROVIDER) artwork.pin(r.source, ArtworkRole.SQUARE)
+                    f.update { cur ->
+                        val still = cur.assignment?.let { now -> now.userArtwork == a.userArtwork && now.displayMatch?.ref == match?.ref } == true
+                        if (still) cur.copy(artwork = r.bitmap, artworkSource = r.source) else cur
+                    }
                 }
                 is ArtworkLoadResult.Unavailable -> {}
             }

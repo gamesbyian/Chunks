@@ -103,6 +103,7 @@ class ArtworkRepository(
         ArtworkBytesPolicy.cacheKey(source.url, role, if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE)
 
     fun pin(source: ArtworkCandidate, role: ArtworkRole) = disk.pin(key(source, role))
+    fun unpin(source: ArtworkCandidate, role: ArtworkRole) = disk.unpin(key(source, role))
 
     /** Try candidates in deterministic order; the first usable one wins. */
     fun load(candidates: List<ArtworkCandidate>, role: ArtworkRole, allowNetwork: Boolean, providerOrder: List<String> = emptyList()): ArtworkLoadResult {
@@ -117,13 +118,41 @@ class ArtworkRepository(
         return ArtworkLoadResult.Unavailable(reasons)
     }
 
+    /**
+     * Import a user-picked image (already read with a size bound). Same validation and composition as
+     * remote art; the derivative is pinned in app-private storage, so the original URI is not retained.
+     */
+    fun importLocal(bytes: ByteArray): Pair<ArtworkCandidate?, String?> {
+        val check = ArtworkBytesPolicy.check(bytes, null)
+        if (check is ArtworkBytesCheck.Rejected) return null to check.reason
+        val (decoded, err) = ArtworkComposer.decodeBounded(bytes, SQUARE_SIZE)
+        if (decoded == null) return null to (err ?: "Image could not be decoded")
+        val square = ArtworkComposer.square(decoded, SQUARE_SIZE)
+        if (square !== decoded) decoded.recycle()
+        val encoded = ArtworkComposer.encode(square)
+        val digest = java.security.MessageDigest.getInstance("SHA-256").digest(encoded).take(20).joinToString("") { "%02x".format(it) }
+        val candidate = ArtworkCandidate(io.github.gamesbyian.chunks.media.LOCAL_PROVIDER, "local:$digest", ArtworkRole.SQUARE,
+            square.width, square.height)
+        val k = key(candidate, ArtworkRole.SQUARE)
+        disk.put(k, encoded); disk.pin(k); memory.put(k, square)
+        return candidate to null
+    }
+
+    /** Forget a user import (caller has verified no other assignment references it). */
+    fun removeLocal(c: ArtworkCandidate) {
+        if (c.provider != io.github.gamesbyian.chunks.media.LOCAL_PROVIDER) return
+        val k = key(c, ArtworkRole.SQUARE); memory.remove(k); disk.remove(k)
+    }
+
     fun loadOne(c: ArtworkCandidate, role: ArtworkRole, allowNetwork: Boolean): ArtworkLoadResult {
-        val k = key(c, role)
+        val local = c.provider == io.github.gamesbyian.chunks.media.LOCAL_PROVIDER
+        val k = key(c, if (local) ArtworkRole.SQUARE else role)
         memory.get(k)?.let { return ArtworkLoadResult.Loaded(it, c, true) }
         disk.get(k)?.let { bytes ->
             BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { memory.put(k, it); return ArtworkLoadResult.Loaded(it, c, true) }
-            disk.remove(k)
+            if (!local) disk.remove(k)
         }
+        if (local) return ArtworkLoadResult.Unavailable(listOf("Your image is no longer stored"))
         if (disk.isNegative(k)) return ArtworkLoadResult.Unavailable(listOf("Recently failed; will retry later"))
         if (!allowNetwork) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
         val policy = hostPolicyFor(c.provider) ?: return ArtworkLoadResult.Unavailable(listOf("Unknown artwork source"))

@@ -14,6 +14,7 @@ class ArtworkDiskCache(
     private val clock: () -> Long = System::currentTimeMillis
 ) {
     private val negativeFile = File(dir, "negative.json")
+    private val pinsFile = File(dir, "pins.json")
     private val negative = HashMap<String, Long>()
     private val pinned = HashSet<String>()
 
@@ -27,6 +28,11 @@ class ArtworkDiskCache(
         runCatching {
             if (negativeFile.isFile && negativeFile.length() < 1_000_000) Json.parse(negativeFile.readText()).obj.forEach { (k, v) ->
                 v.long?.let { negative[k] = it }
+            }
+        }
+        runCatching {
+            if (pinsFile.isFile && pinsFile.length() < 1_000_000) Json.parse(pinsFile.readText()).array.forEach { j ->
+                j.string?.takeIf { it.matches(Regex("[0-9a-f]{16,64}")) }?.let { pinned.add(it) }
             }
         }
     }
@@ -57,10 +63,12 @@ class ArtworkDiskCache(
         trim()
     }
 
-    @Synchronized fun pin(key: String) { pinned.add(key) }
-    @Synchronized fun unpin(key: String) { pinned.remove(key) }
+    /** Pinned (user-chosen/imported) derivatives survive eviction and restarts until unpinned. */
+    @Synchronized fun pin(key: String) { ensureLoaded(); if (pinned.add(key)) savePins() }
+    @Synchronized fun unpin(key: String) { ensureLoaded(); if (pinned.remove(key)) savePins() }
+    @Synchronized fun isPinned(key: String): Boolean { ensureLoaded(); return key in pinned }
 
-    @Synchronized fun remove(key: String) { file(key).delete() }
+    @Synchronized fun remove(key: String) { ensureLoaded(); file(key).delete(); if (pinned.remove(key)) savePins() }
 
     @Synchronized fun markFailed(key: String, ttlMs: Long) {
         ensureLoaded()
@@ -82,7 +90,7 @@ class ArtworkDiskCache(
         ensureLoaded()
         // Explicit user purge: assignments are cleared together, so pinned derivatives go too.
         images().forEach { it.delete() }
-        pinned.clear(); negative.clear(); saveNegative()
+        pinned.clear(); negative.clear(); saveNegative(); savePins()
     }
 
     private fun images() = dir.listFiles { f -> f.isFile && f.name.endsWith(".img") }?.toList() ?: emptyList()
@@ -95,6 +103,12 @@ class ArtworkDiskCache(
             if (f.nameWithoutExtension in pinned) continue
             total -= f.length(); f.delete()
         }
+    }
+
+    private fun savePins() {
+        val tmp = File(dir, "pins.json.tmp")
+        tmp.writeText(Json.Arr(pinned.sorted().map { Json.Str(it) }).encode())
+        if (!tmp.renameTo(pinsFile)) { pinsFile.delete(); tmp.renameTo(pinsFile) }
     }
 
     private fun saveNegative() {

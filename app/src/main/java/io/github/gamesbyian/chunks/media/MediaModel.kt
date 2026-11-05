@@ -36,10 +36,13 @@ data class ArtworkCandidate(
     val language: String? = null
 ) {
     init {
-        require(url.startsWith("https://")) { "Artwork must be HTTPS" }
+        // Remote art is HTTPS only; "local:<digest>" names a user-imported derivative in app storage.
+        require(url.startsWith("https://") || (provider == LOCAL_PROVIDER && url.matches(Regex("local:[0-9a-f]{40}")))) { "Artwork must be HTTPS" }
         require(width == null || width > 0); require(height == null || height > 0)
     }
 }
+
+const val LOCAL_PROVIDER = "user"
 
 data class MediaAttribution(val providerName: String, val license: String, val pageUrl: String?)
 

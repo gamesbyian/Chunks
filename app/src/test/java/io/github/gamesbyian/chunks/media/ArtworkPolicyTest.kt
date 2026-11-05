@@ -82,6 +82,6 @@ class ArtworkPolicyTest {
         cache.clear()
         assertEquals(0L, cache.sizeBytes())
         // Directory listing contains only digests: no titles leak through filenames.
-        assertTrue(dir.list()!!.all { it.matches(Regex("[0-9a-f]{40}\\.img|negative\\.json")) })
+        assertTrue(dir.list()!!.all { it.matches(Regex("[0-9a-f]{40}\\.img|negative\\.json|pins\\.json")) })
     }
 }

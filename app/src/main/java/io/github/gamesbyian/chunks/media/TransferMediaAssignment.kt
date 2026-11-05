@@ -25,6 +25,8 @@ data class TransferMediaAssignment(
     val suggestions: List<MediaCandidate> = emptyList(),
     /** User deliberately chose a bundled category tile (optionally a different category). */
     val categoryOverride: MediaKind? = null,
+    /** Explicit user image (imported from the device); highest artwork precedence. */
+    val userArtwork: ArtworkCandidate? = null,
     val lastStatus: MediaLookupStatus? = null,
     val lastMessage: String? = null,
     val attempts: List<ProviderAttempt> = emptyList(),
@@ -74,7 +76,8 @@ class FileTransferMediaAssignmentStore(private val file: File, private val maxEn
             "k" to Json.Str(a.key.value), "s" to Json.Str(a.state.name),
             "m" to a.match?.let(MediaCodec::candidate),
             "sg" to Json.arr(a.suggestions.map(MediaCodec::candidate)),
-            "cat" to Json.str(a.categoryOverride?.name), "ls" to Json.str(a.lastStatus?.name), "lm" to Json.str(a.lastMessage),
+            "cat" to Json.str(a.categoryOverride?.name),
+            "ua" to a.userArtwork?.let { u -> Json.obj("u" to Json.Str(u.url), "w" to Json.num(u.width), "h" to Json.num(u.height)) }, "ls" to Json.str(a.lastStatus?.name), "lm" to Json.str(a.lastMessage),
             "at" to Json.arr(a.attempts.map { Json.obj("p" to Json.Str(it.provider), "o" to Json.Str(it.outcome), "c" to Json.Bool(it.fromCache)) }),
             "u" to Json.num(a.updatedAtMs), "rv" to Json.num(a.recognizerVersion))
 
@@ -84,6 +87,8 @@ class FileTransferMediaAssignmentStore(private val file: File, private val maxEn
                 match = j["m"]?.let(MediaCodec::candidate),
                 suggestions = j["sg"]?.array?.mapNotNull(MediaCodec::candidate) ?: emptyList(),
                 categoryOverride = j["cat"]?.string?.let { runCatching { MediaKind.valueOf(it) }.getOrNull() },
+                userArtwork = j["ua"]?.let { u -> runCatching { ArtworkCandidate(LOCAL_PROVIDER, u["u"]!!.string!!, ArtworkRole.SQUARE,
+                    u["w"]?.int, u["h"]?.int) }.getOrNull() },
                 lastStatus = j["ls"]?.string?.let { runCatching { MediaLookupStatus.valueOf(it) }.getOrNull() },
                 lastMessage = j["lm"]?.string,
                 attempts = j["at"]?.array?.mapNotNull { a -> runCatching {
