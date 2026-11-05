@@ -204,6 +204,11 @@ class MediaEnrichmentService(
                 attempts.add(ProviderAttempt(id, "Rate limited")); FetchResult.Cooldown(retry)
             }
             MediaProviderOutcome.Unauthorized -> {
+                if (!provider.info.requiresUserKey) {
+                    val retry = now + 10 * 60_000L
+                    cooldownUntil[id] = retry
+                    attempts.add(ProviderAttempt(id, "Access refused; will retry later")); return FetchResult.Cooldown(retry)
+                }
                 unauthorized.add(id)
                 attempts.add(ProviderAttempt(id, "Rejected key or access")); FetchResult.Nothing
             }

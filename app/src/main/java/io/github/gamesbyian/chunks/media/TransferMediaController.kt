@@ -50,11 +50,24 @@ class TransferMediaController(
     private val scope: CoroutineScope,
     private val lookupDispatcher: CoroutineDispatcher,
     private val artworkDispatcher: CoroutineDispatcher,
-    private val clock: () -> Long = System::currentTimeMillis
+    private val clock: () -> Long = System::currentTimeMillis,
+    /** Separate lane so automatic lookups never queue ahead of explicit user actions. */
+    private val backgroundDispatcher: CoroutineDispatcher = lookupDispatcher
 ) {
+    companion object {
+        const val MAX_STATES = 96
+        const val MAX_PENDING_AUTOMATIC = 6
+    }
+    private val pendingAutomatic = java.util.concurrent.atomic.AtomicInteger(0)
+
     private val store by lazy(storeFactory)
     private val states = object : LinkedHashMap<MediaTransferKey, MutableStateFlow<TransferMediaUiState>>(64, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MediaTransferKey, MutableStateFlow<TransferMediaUiState>>) = size > 1_500
+        // Each state may reference a ~0.6 MB bitmap: keep only recently observed rows (visible + margin).
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MediaTransferKey, MutableStateFlow<TransferMediaUiState>>): Boolean {
+            val evict = size > MAX_STATES
+            if (evict) inputs.remove(eldest.key)
+            return evict
+        }
     }
     private val inputs = HashMap<MediaTransferKey, MediaRecognitionInput>()
 
@@ -84,7 +97,14 @@ class TransferMediaController(
     private fun maybeAutomatic(key: MediaTransferKey) {
         val s = settings()
         if (!s.onlineLookupConsent || !s.automaticLookup) return
-        runLookup(key, MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
+        // Bounded: extra rows are simply retried the next time they are observed.
+        if (pendingAutomatic.incrementAndGet() > MAX_PENDING_AUTOMATIC) { pendingAutomatic.decrementAndGet(); return }
+        scope.launch(backgroundDispatcher) {
+            try {
+                // Skip rows scrolled far away (evicted) before their turn came.
+                if (flow(key) != null && store.get(key) == null) runLookup(key, MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
+            } finally { pendingAutomatic.decrementAndGet() }
+        }
     }
 
     /** Explicit user request: "Look up online". */
@@ -99,7 +119,9 @@ class TransferMediaController(
         val existing = store.get(key)
         // A user choice always wins over automatic results; never overwrite it from a lookup.
         if (existing?.state == MediaAssignmentState.CHOSEN_BY_USER || existing?.state == MediaAssignmentState.CATEGORY_ART_BY_USER) {
-            f.update { it.copy(busy = false, assignment = existing) }; return
+            f.update { it.copy(busy = false, assignment = existing,
+                message = if (origin == MediaLookupOrigin.USER_REQUEST) "Your choice is kept. Use Reset to automatic to look up again, or search below." else it.message) }
+            return
         }
         val result = runCatching { service.lookup(recognition, settings(), network(), origin) }.getOrElse {
             MediaLookupResult(MediaLookupStatus.ERROR_RETRYABLE, message = "Lookup failed; try again")
@@ -148,6 +170,7 @@ class TransferMediaController(
         val f = flow(key) ?: return
         scope.launch(lookupDispatcher) {
             val prev = store.get(key)
+            prev?.takeIf { it.match?.ref != candidate.ref }?.let { releaseChosenArt(it) }
             val a = TransferMediaAssignment(key, MediaAssignmentState.CHOSEN_BY_USER, candidate,
                 suggestions = (listOfNotNull(prev?.match) + (prev?.suggestions ?: emptyList())).filter { it.ref != candidate.ref },
                 userArtwork = prev?.userArtwork,
@@ -164,6 +187,7 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) {
             val prev = store.get(key)
             prev?.userArtwork?.let { releaseIfUnreferenced(it, except = key) }
+            prev?.let { releaseChosenArt(it) }
             val a = TransferMediaAssignment(key, MediaAssignmentState.CATEGORY_ART_BY_USER, prev?.match,
                 prev?.suggestions ?: emptyList(), categoryOverride = kind ?: f.value.recognition.kind, updatedAtMs = clock())
             store.put(a)
@@ -177,10 +201,7 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) {
             val prev = store.get(key)
             prev?.userArtwork?.let { releaseIfUnreferenced(it, except = key) }
-            if (prev?.state == MediaAssignmentState.CHOSEN_BY_USER) prev.match?.let { m ->
-                val shared = store.all().any { it.key != key && it.state == MediaAssignmentState.CHOSEN_BY_USER && it.match?.ref == m.ref }
-                if (!shared) m.artwork.forEach { artwork.unpin(it, ArtworkRole.SQUARE) }
-            }
+            prev?.let { releaseChosenArt(it) }
             store.remove(key)
             f.update { it.copy(assignment = null, artwork = null, artworkSource = null, searchResults = null, message = null) }
         }
@@ -198,8 +219,10 @@ class TransferMediaController(
             if (candidate == null) { f.update { it.copy(busy = false, message = error) }; return@launch }
             val prev = store.get(key)
             prev?.userArtwork?.takeIf { it != candidate }?.let { releaseIfUnreferenced(it, except = key) }
+            val keptMatch = prev?.state == MediaAssignmentState.AUTOMATIC || prev?.state == MediaAssignmentState.CHOSEN_BY_USER
             val a = (prev ?: TransferMediaAssignment(key, MediaAssignmentState.CHOSEN_BY_USER)).copy(
                 state = MediaAssignmentState.CHOSEN_BY_USER, userArtwork = candidate, categoryOverride = null,
+                stateBeforeImage = if (prev?.userArtwork != null) prev.stateBeforeImage else prev?.state?.takeIf { keptMatch },
                 // Keep a still-confident match visible as metadata alongside the user's image.
                 match = prev?.match?.takeIf { prev.state == MediaAssignmentState.AUTOMATIC || prev.state == MediaAssignmentState.CHOSEN_BY_USER },
                 lastMessage = "Your image", updatedAtMs = clock())
@@ -215,12 +238,22 @@ class TransferMediaController(
             val prev = store.get(key) ?: return@launch
             val image = prev.userArtwork ?: return@launch
             releaseIfUnreferenced(image, except = key)
-            val a = prev.copy(userArtwork = null, state = if (prev.match == null) MediaAssignmentState.NOT_LOOKED_UP else prev.state,
+            val restored = prev.stateBeforeImage ?: if (prev.match == null) MediaAssignmentState.NOT_LOOKED_UP else prev.state
+            val a = prev.copy(userArtwork = null, stateBeforeImage = null, state = restored,
+                match = prev.match.takeIf { restored == MediaAssignmentState.AUTOMATIC || restored == MediaAssignmentState.CHOSEN_BY_USER },
                 updatedAtMs = clock())
             if (a.match == null && a.categoryOverride == null) store.remove(key) else store.put(a)
             f.update { it.copy(assignment = a.takeIf { it.match != null || it.categoryOverride != null }, artwork = null, artworkSource = null) }
             if (a.displayMatch != null) loadArtwork(key)
         }
+    }
+
+    /** Unpin a user-chosen provider image unless another user choice still uses it. */
+    private fun releaseChosenArt(prev: TransferMediaAssignment) {
+        if (prev.state != MediaAssignmentState.CHOSEN_BY_USER || prev.stateBeforeImage == MediaAssignmentState.AUTOMATIC) return
+        val m = prev.match ?: return
+        val shared = store.all().any { it.key != prev.key && it.state == MediaAssignmentState.CHOSEN_BY_USER && it.match?.ref == m.ref }
+        if (!shared) m.artwork.forEach { artwork.unpin(it, ArtworkRole.SQUARE) }
     }
 
     /** Never delete an imported image another transfer still uses. */
@@ -231,14 +264,13 @@ class TransferMediaController(
     fun dismissSearch(key: MediaTransferKey) { flow(key)?.update { it.copy(searchResults = null, message = null) } }
 
     /** Purge assignments, lookup history and downloaded artwork. Transfers are untouched. */
-    fun clearAllMediaData(clearQueryCache: () -> Unit, clearArtwork: () -> Unit) {
+    fun clearAllMediaData(clearQueryCache: () -> Unit, clearArtwork: () -> Unit): kotlinx.coroutines.Job =
         scope.launch(lookupDispatcher) {
             store.clear(); clearQueryCache(); clearArtwork(); artwork.clearMemory()
             synchronized(this@TransferMediaController) { states.values.toList() }.forEach { f ->
                 f.update { it.copy(assignment = null, artwork = null, artworkSource = null, searchResults = null, message = null) }
             }
         }
-    }
 
     private fun loadArtwork(key: MediaTransferKey, pin: Boolean = false) {
         val f = flow(key) ?: return

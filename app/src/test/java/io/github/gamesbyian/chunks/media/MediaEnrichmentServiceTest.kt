@@ -150,4 +150,16 @@ class MediaEnrichmentServiceTest {
         assertEquals(MediaLookupStatus.MATCHED, r.status); assertEquals("OL893414W", r.match!!.ref.externalId)
         assertTrue(http.requests.single().contains("title=Dune&author=Frank%20Herbert"))
     }
+
+    @Test fun forbiddenFromKeylessProviderIsTemporaryCooldownNotKeyPause() {
+        val http = FakeMediaHttp().on("api.tvmaze.com", status = 403)
+        val s = service(http, TvMazeProvider())
+        val r = s.lookup(rec("Babylon.5.S02E07.mkv"), consent, online)
+        assertEquals(MediaLookupStatus.PROVIDER_COOLDOWN, r.status)
+        assertEquals("Access refused; will retry later", r.attempts.single().outcome)
+        clock.now += 10 * 60_000L + 1
+        http.routes.clear(); http.on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
+            .on("/shows/475/episodebynumber", body = fixture("tvmaze-episode-475-s02e07.json")).on("/shows/57926/", status = 404)
+        assertEquals(MediaLookupStatus.MATCHED, s.lookup(rec("Babylon.5.S02E07.mkv"), consent, online).status)
+    }
 }

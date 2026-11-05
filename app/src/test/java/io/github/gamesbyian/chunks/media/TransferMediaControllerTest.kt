@@ -179,4 +179,33 @@ class TransferMediaControllerTest {
         c.importUserImage(phone, "<svg/>".padEnd(500).toByteArray())
         assertNull(flow.value.assignment); assertEquals("Unsupported image format", flow.value.message)
     }
+
+    @Test fun removingImportedImageRestoresAutomaticProvenance() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val c = controller(); val flow = c.observe(phone, name)
+        c.lookup(phone); assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
+        c.importUserImage(phone, png(Color.GREEN)); assertEquals(MediaAssignmentState.CHOSEN_BY_USER, flow.value.state)
+        c.removeUserImage(phone)
+        assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state); assertEquals("475", flow.value.match!!.ref.externalId)
+    }
+
+    @Test fun explicitLookupOnUserChoiceExplainsInsteadOfSilentlyDoingNothing() {
+        val c = controller(); val flow = c.observe(phone, name)
+        c.useCategoryArt(phone, MediaKind.MOVIE)
+        c.lookup(phone)
+        assertTrue(flow.value.message!!.contains("Reset to automatic"))
+    }
+
+    @Test fun replacingAChoiceUnpinsTheOldArtwork() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val c = controller(); val flow = c.observe(phone, name)
+        c.lookup(phone)
+        val first = flow.value.match!!
+        c.choose(phone, first)
+        val art = ArtworkDiskCache(File(dir, "art"))
+        val k = io.github.gamesbyian.chunks.media.artwork.ArtworkBytesPolicy.cacheKey(first.artwork.first().url, ArtworkRole.SQUARE, 384)
+        assertTrue(art.isPinned(k))
+        c.useCategoryArt(phone, MediaKind.TV_SERIES)
+        assertTrue(!ArtworkDiskCache(File(dir, "art")).isPinned(k))
+    }
 }

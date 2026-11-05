@@ -21,7 +21,9 @@ class MediaLookupQuery private constructor(
 ) {
     /** Stable cache identity of the outbound query (not of the transfer). */
     val canonical: String get() = listOf(kind.name, MediaText.normalize(title), year ?: "", season ?: "",
-        episode ?: "", creator?.let { MediaText.normalize(it) } ?: "", issue ?: "").joinToString("|")
+        episode ?: "", creator?.let { MediaText.normalize(it) } ?: "", issue ?: "",
+        // Manual searches keep their own (shorter) negative-cache receipts.
+        if (manual) "manual" else "auto").joinToString("|")
 
     override fun equals(other: Any?) = other is MediaLookupQuery && other.canonical == canonical && other.manual == manual
     override fun hashCode() = canonical.hashCode()
@@ -57,8 +59,9 @@ object MediaQuerySanitizer {
         Regex("[A-Za-z0-9_-]{24,}"),                                // long opaque tokens
         Regex("\\b\\d{1,3}(?:\\.\\d{1,3}){3}\\b"),                  // IPv4
         Regex("(?i)\\b[a-z0-9-]+\\.(?:com|org|net|io|to|me|cc|tv|xyz|info|ru|se|club|site|onion|local|lan)\\b"),
-        Regex("[/\\\\]"),                                            // paths
-        Regex("@"),                                                  // emails, handles
+        // Paths: leading slash, "//", backslash or 2+ separators ("Face/Off", "AC/DC" stay allowed).
+        Regex("^/|//|\\\\|/[^/]*/"),
+        Regex("\\S@\\S+\\.\\S"),                                     // emails
         Regex("%[0-9A-Fa-f]{2}"),                                   // URL-encoded content
         Regex("\\d{7,}")                                             // phone/account/ID-like numbers
     )

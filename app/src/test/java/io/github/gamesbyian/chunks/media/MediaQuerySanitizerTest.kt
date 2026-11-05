@@ -64,4 +64,16 @@ class MediaQuerySanitizerTest {
         assertTrue(MediaText.similarity("Back to the Future Part 2", "Back to the Future Part 3") <= 0.6)
         assertTrue(MediaText.similarity("Babylon 5", "Babylon Berlin") < 0.78)
     }
+
+    @Test fun slashAndAtTitlesAllowedButPathsAndEmailsRefused() {
+        listOf("Face/Off", "Fahrenheit 9/11", "AC/DC", "Up@Night").forEach { assertTrue(it, manual(it) is MediaQueryDecision.Allowed) }
+        listOf("a/b/c", "//host", "/root", "x@y.com").forEach { assertTrue(it, manual(it) is MediaQueryDecision.Refused) }
+    }
+
+    @Test fun manualAndAutomaticQueriesHaveSeparateCacheIdentity() {
+        val auto = (MediaQuerySanitizer.fromRecognition(MediaRecognizer.recognize("Heat.1995.1080p.mkv")) as MediaQueryDecision.Allowed).query
+        val man = (MediaQuerySanitizer.manual(MediaKind.MOVIE, "Heat", 1995) as MediaQueryDecision.Allowed).query
+        assertFalse(auto.canonical == man.canonical)
+        assertFalse(MediaQueryKeys.of("tmdb", auto) == MediaQueryKeys.of("tmdb", man))
+    }
 }

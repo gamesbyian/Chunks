@@ -50,7 +50,8 @@ class ChunksMedia private constructor(context: Context) {
             network = { networkState() },
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             lookupDispatcher = Dispatchers.IO.limitedParallelism(1),
-            artworkDispatcher = Dispatchers.IO.limitedParallelism(2))
+            artworkDispatcher = Dispatchers.IO.limitedParallelism(2),
+            backgroundDispatcher = Dispatchers.IO.limitedParallelism(1))
     }
 
     /** Delegates resolve the lazily-created stores only when first used off the main thread. */

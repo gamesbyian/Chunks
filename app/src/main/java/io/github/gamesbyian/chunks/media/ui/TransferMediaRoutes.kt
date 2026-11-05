@@ -67,9 +67,12 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
         providerNames = media.providers.map { it.info.displayName },
         onConfirm = {
             askConsent = false
-            val next = settings.copy(onlineLookupConsent = true)
-            settings = next
-            scope.launch(Dispatchers.IO) { media.updateSettings(next) }
+            // Build from the stored preferences, never from a not-yet-loaded default copy.
+            scope.launch {
+                settings = withContext(Dispatchers.IO) {
+                    media.loadSettings().copy(onlineLookupConsent = true).also { media.updateSettings(it) }
+                }
+            }
         },
         onDismiss = { askConsent = false })
 }
@@ -92,32 +95,34 @@ fun MediaLookupConsentDialog(providerNames: List<String>, onConfirm: () -> Unit,
 fun MediaSettingsRoute(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val media = remember(context) { ChunksMedia.get(context) }
-    var settings by remember { mutableStateOf(MediaPrivacySettings()) }
+    var loaded by remember { mutableStateOf<MediaPrivacySettings?>(null) }
     var summary by remember { mutableStateOf("") }
     var keySet by remember { mutableStateOf(false) }
     var generation by remember { mutableStateOf(0) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(media, generation) {
         withContext(Dispatchers.IO) {
-            settings = media.loadSettings()
+            loaded = media.loadSettings()
             summary = media.cacheSummary()
             keySet = media.settingsStore.tmdbCredential()?.let { TmdbProvider.isPlausibleCredential(it) } == true
         }
     }
     var askConsent by remember { mutableStateOf<MediaPrivacySettings?>(null) }
+    // Render nothing editable until stored preferences are loaded, so no default can overwrite them.
+    val settings = loaded ?: return
     MediaPrivacySettingsPanel(settings, media.providers.map { it.info },
         configured = { id -> id == TmdbProvider.ID && keySet },
         onChange = { next ->
             if (next.onlineLookupConsent && !settings.onlineLookupConsent) askConsent = next
-            else { settings = next; scope.launch(Dispatchers.IO) { media.updateSettings(next) } }
+            else { loaded = next; scope.launch(Dispatchers.IO) { media.updateSettings(next) } }
         },
         onSetProviderKey = { id, value -> scope.launch(Dispatchers.IO) { media.setProviderKey(id, value); generation++ } },
         cacheSummary = summary,
-        onClearData = { scope.launch(Dispatchers.IO) { media.clearAllMediaData(); generation++ } },
+        onClearData = { scope.launch { media.clearAllMediaData().join(); generation++ } },
         modifier = modifier)
     askConsent?.let { pending ->
         MediaLookupConsentDialog(media.providers.map { it.info.displayName },
-            onConfirm = { askConsent = null; settings = pending; scope.launch(Dispatchers.IO) { media.updateSettings(pending) } },
+            onConfirm = { askConsent = null; loaded = pending; scope.launch(Dispatchers.IO) { media.updateSettings(pending) } },
             onDismiss = { askConsent = null })
     }
 }
