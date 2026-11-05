@@ -1,5 +1,8 @@
 # Chunks: permanent agent operating contract
 
+> **Current next-session pointer (2026-11-05):** For the owner-authorized comprehensive UX/UI + media integration push, begin with [Claude execution handoff](docs/CLAUDE-UI-MEDIA-EXECUTION-2026-11-05.md) after one brief live PR/main/CI check. Last observed main `7625c634`, no open PRs or inherited file leases. Media #1302/#1305 and first Combined detail integration #1306 are merged, but artwork is **not yet in ordinary phone/rTorrent/Combined list rows**, and media settings lack a host entry point. This dated pointer supersedes earlier “next action” notes about finishing #1301. The permanent safety and evidence obligations below remain authoritative.
+
+
 > **Current UX handoff (2026-11-05 UTC):** The sole-agent integrated campaign [#1301](https://github.com/gamesbyian/Chunks/pull/1301) is merged and qualified on immutable source `f07a8331f81f`: real HTTPS-link phone/rTorrent transfers and one-time phone Place versus saved default. Read [the reconciled handoff](docs/UX-FINAL-RECONCILIATION-2026-11-05.md), [WORK-QUEUE](docs/WORK-QUEUE.md) and [QUALITY-LEDGER](docs/QUALITY-LEDGER.md), then make a brief live-state check. No inherited file leases remain; dated agent rosters below are historical. Physical/human/provider/signing boundaries remain open.
 
 **Mission:** deliver a safe, delightful Android BitTorrent client and first-class rTorrent remote as **one consistent user experience**, without losing downloaded data or overstating verified functionality. This file governs *agent behavior*. Normative product, UX and technical requirements live in their canonical documents, not in accumulating session narratives.
