@@ -90,6 +90,10 @@ class RealPeerPrefixTest(unittest.TestCase):
             self.assertGreater(peer.fixtures["magnet"]["payload_uploaded_bytes"], 0)
             self.assertGreater(peer.events["magnet"].get("in_request", 0), 0)
             self.assertGreater(peer.events["magnet"].get("blocks_uploaded", 0), 0)
+            self.assertTrue(peer.requests["magnet"])
+            self.assertLessEqual(len(peer.requests["magnet"]), 8)
+            self.assertTrue(all(0 <= request["piece"] < 16 and request["length"] > 0
+                                for request in peer.requests["magnet"]))
 
 
 if __name__ == "__main__":

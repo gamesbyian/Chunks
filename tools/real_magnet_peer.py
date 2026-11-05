@@ -144,6 +144,7 @@ class Peer:
         # native alert messages enter this bounded, timestamp-aligned diagnostic.
         self.timeline = {label: [] for label in fixtures}
         self.events = {label: {} for label in fixtures}
+        self.requests = {label: [] for label in fixtures}
         self.last_sample = 0.0
 
     def save(self):
@@ -238,15 +239,25 @@ class Peer:
                         elif isinstance(alert, lt.block_uploaded_alert):
                             events = self.events[label]
                             events["blocks_uploaded"] = events.get("blocks_uploaded", 0) + 1
+                        elif isinstance(alert, lt.invalid_request_alert):
+                            events = self.events[label]
+                            events["invalid_requests"] = events.get("invalid_requests", 0) + 1
                         elif isinstance(alert, lt.peer_log_alert):
                             # Python does not bind C++'s event_type/direction fields.
                             # Extract ONLY fixed protocol tokens from its formatted
                             # message; never retain or print the message/address.
-                            event = re.search(r"\s(<==|==>|<<<|>>>) (REQUEST|CANCEL|CHOKE|UNCHOKE|INTERESTED|NOT_INTERESTED|HAVE|BITFIELD) \[", alert.message())
+                            message = alert.message()
+                            event = re.search(r"\s(<==|==>|<<<|>>>) (REQUEST|CANCEL|CHOKE|UNCHOKE|INTERESTED|NOT_INTERESTED|HAVE|BITFIELD) \[", message)
                             if event:
                                 name = ("in_" if event[1] in ("<==", "<<<") else "out_") + event[2].lower()
                                 events = self.events[label]
                                 events[name] = events.get(name, 0) + 1
+                                if name == "in_request":
+                                    request = re.search(r"piece: (\d+) s: (\d+) l: (\d+)", message)
+                                    if request:
+                                        self.requests[label].append({"epoch_ms": time.time_ns() // 1_000_000,
+                                            "piece": int(request[1]), "offset": int(request[2]), "length": int(request[3])})
+                                        del self.requests[label][:-8]
                 if time.monotonic() - self.last_sample >= 1:
                     self.last_sample = time.monotonic()
                     for label, (session, handle) in self.active.items():
@@ -261,6 +272,7 @@ class Peer:
                             "upload_rate": status.upload_payload_rate,
                             "peer_count": status.num_peers,
                             "events": dict(self.events[label]),
+                            "recent_requests": list(self.requests[label]),
                             "peers": [{"flags": int(p.flags), "pieces": p.num_pieces,
                                        "upload_queue": p.upload_queue_length,
                                        "download_queue": p.download_queue_length,
@@ -298,6 +310,10 @@ def main():
             def do_GET(self):
                 if self.path == "/ready":
                     body = json.dumps(peer.fixtures).encode()
+                elif self.path == "/diagnostics":
+                    with peer.lock:
+                        body = json.dumps({"source_sha": os.getenv("GITHUB_SHA"), "run_id": os.getenv("GITHUB_RUN_ID"),
+                                           "libtorrent_version": lt.version, "timeline": peer.timeline}).encode()
                 elif self.path == "/magnet3.seed.torrent":
                     # The independent on-device seed must never fetch missing ISO
                     # bytes. Keep the publisher's exact info dictionary and strip

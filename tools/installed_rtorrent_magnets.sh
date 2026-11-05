@@ -56,30 +56,12 @@ adb pull "$installed_apk" "$RUNNER_TEMP/chunks-installed-base.apk" >/dev/null 2>
 cmp -s app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/chunks-installed-base.apk"
 rm "$RUNNER_TEMP/chunks-installed-base.apk"
 unset installed_apk
-if [[ "${CHUNKS_REAL_MEDIA:-0}" = 1 ]]; then
-  # Deliberate manual opt-in only; ordinary PR runs never contact media providers.
-  bash tools/installed_real_media.sh "$candidate_package"
-fi
+phone_status=0
 if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
-  milestone 'running production phone HTTPS and one-time Place journey'
-  adb logcat -c
-  adb shell am instrument -w -r \
-    -e class io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest \
-    -e chunks_https_add authorized \
-    "${candidate_package}.test/androidx.test.runner.AndroidJUnitRunner" \
-    > "$RUNNER_TEMP/chunks-https-phone.raw" 2>&1
-  # Capture the disposable public-fixture process crash before parsing can fail.
-  # No account has been entered at this point; never retain a protected host log.
-  if [[ "${CHUNKS_DISPOSABLE:-0}" = 1 ]]; then
-    adb logcat -d -b crash > "$RUNNER_TEMP/chunks-https-phone-crash.txt"
-  fi
-  adb logcat -d -v raw -s ChunksHttps:I > "$RUNNER_TEMP/chunks-https-phone-witness.txt"
-  python3 tools/parse_instrumentation_stream.py --raw "$RUNNER_TEMP/chunks-https-phone.raw" \
-    --junit "$RUNNER_TEMP/chunks-https-phone.xml"
-  python3 tools/ci_failure_digest.py --suite https-phone --status success --require-executed \
-    --glob "$RUNNER_TEMP/chunks-https-phone.xml" --output "$RUNNER_TEMP/chunks-https-phone-digest.json"
-  grep -E '^CHUNKS_HTTPS_PHONE verified=true received=[1-9][0-9]* pieces_bytes=[1-9][0-9]* complete=false default_preserved=true piece_sha256=[0-9a-f]{64}$' \
-    "$RUNNER_TEMP/chunks-https-phone-witness.txt"
+  set +e
+  bash tools/installed_https_phone.sh "$candidate_package"
+  phone_status=$?
+  set -e
   adb shell am force-stop "$candidate_package"
 fi
 milestone 'starting Android instrumentation'
@@ -93,7 +75,26 @@ adb shell am instrument -w -r \
 acceptance_status=$?
 set -e
 adb logcat -d -v raw -s ChunksPeer:I > "$RUNNER_TEMP/chunks-peer-ui-witness.txt"
+# Snapshot the core attempt before longer independent provider cases can age out
+# the bounded native ring. This is a read-only diagnostic, not acceptance success.
+curl -fsS --max-time 5 http://127.0.0.1:18081/diagnostics \
+  -o "$RUNNER_TEMP/chunks-peer-core-timeline.json" || echo 'CHUNKS_PEER: core timing snapshot unavailable'
 printf '%s\n' "$acceptance_status" > "$RUNNER_TEMP/chunks-installed-magnets.exit"
 printf '%s\n' "$(( $(date +%s) - acceptance_started ))" > "$RUNNER_TEMP/chunks-installed-magnets.runtime"
 unset url64 user64 pass64 args
 echo 'CHUNKS_INSTALLED_MAGNET: instrumentation process completed; structured evidence follows'
+
+# Preserve separately attributable outcomes on the same installed APK/emulator.
+# Finish still refuses publication unless every requested source-bound case passed.
+media_status=0
+if [[ "${CHUNKS_REAL_MEDIA:-0}" = 1 ]]; then
+  set +e
+  bash tools/installed_real_media.sh "$candidate_package"
+  media_status=$?
+  set -e
+  adb shell am force-stop "$candidate_package"
+fi
+if (( phone_status != 0 || media_status != 0 )); then
+  echo 'CHUNKS_INSTALLED_SOURCE: a requested phone/media case failed; all evidence retained; no qualified APK'
+  exit 1
+fi

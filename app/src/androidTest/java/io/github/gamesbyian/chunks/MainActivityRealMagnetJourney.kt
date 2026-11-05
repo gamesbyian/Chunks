@@ -403,7 +403,10 @@ internal class MainActivityRealMagnetJourney(
                         android.util.Log.i("ChunksPeer", "CHUNKS_PEER_SAMPLE epoch_ms=${System.currentTimeMillis()} " +
                             "label=$label received=${sample.receivedBytes} verified=${sample.verifiedBytes} " +
                             "rate=${sample.rateBytesPerSecond} peers=${sample.peers} " +
-                            "ui_downloading=$downloading ui_read_failed=${visible("Transfer status could not be refreshed.")}")
+                            "ui_downloading=$downloading ui_read_failed=${visible("Transfer status could not be refreshed.")} " +
+                            "ui_payload=${visible("Payload:")} ui_wait_traffic=${visible("Waiting for payload traffic.")} " +
+                            "ui_wait_peers=${visible("Waiting for peers.")} ui_wait_active=${visible("Waiting for rTorrent to activate")} " +
+                            "ui_meta_unknown=${visible("Metadata status is unavailable")} ui_outcome=${visible("Operation outcome")}")
                     }
                     visible("Payload:") && (downloading ||
                         (publicDiscovery && visible("Download complete. All payload pieces verified by rTorrent.")))

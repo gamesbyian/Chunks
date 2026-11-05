@@ -18,6 +18,7 @@ on:
       - "tests/test_preload_disposable_magnet.py"
       - "tests/test_finish_installed_magnet_evidence.py"
       - "tools/installed_rtorrent_magnets.sh"
+      - "tools/installed_https_phone.sh"
       - "tools/finish_installed_magnet_evidence.py"
       - "tools/parse_installed_magnet_add_receipt.py"
       - ".github/workflows/installed-rtorrent-magnets.yml"
@@ -88,8 +89,10 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_preload_disposable_magnet.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_real_media.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_journey_gate.py
           python3 -m py_compile tools/real_magnet_peer.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
+          bash -n tools/installed_https_phone.sh tools/installed_real_media.sh
       - name: Start genuine public-magnet metadata and payload peer
         run: |
           sudo timeout 180s apt-get update -qq
@@ -235,6 +238,7 @@ jobs:
           path: |
             ${{ runner.temp }}/chunks-real-peer/PEER-TIMELINE.json
             ${{ runner.temp }}/chunks-peer-ui-witness.txt
+            ${{ runner.temp }}/chunks-peer-core-timeline.json
           retention-days: 14
           if-no-files-found: warn
       - name: Retain opt-in real-provider installed acceptance

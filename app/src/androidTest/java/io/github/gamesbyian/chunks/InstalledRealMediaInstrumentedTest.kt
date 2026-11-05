@@ -152,11 +152,20 @@ class InstalledRealMediaInstrumentedTest {
         }
     }
 
-    @Test fun phaseA_realLookupsConsentSelectionAndTransferArtwork() {
+    @Test fun phaseA_tvmazeConsentSelectionAndArtwork() = online(0)
+    @Test fun phaseA_musicbrainzSelectionAndArtwork() = online(1)
+    @Test fun phaseA_openlibrarySelectionAndArtwork() = online(2)
+    @Test fun phaseB_tvmazeOfflineProcess() = offline(0)
+    @Test fun phaseB_musicbrainzOfflineProcess() = offline(1)
+    @Test fun phaseB_openlibraryOfflineProcess() = offline(2)
+
+    private fun online(index: Int) {
         authorized()
-        RememberedRemoteLogin(context).clear(); RememberedRemoteProfileRoster(context).clearAll()
-        runBlocking { media.clearAllMediaData().join() }
-        media.updateSettings(MediaPrivacySettings(disabledProviders = setOf("tmdb", "wikidata", "anilist")))
+        if (index == 0) {
+            RememberedRemoteLogin(context).clear(); RememberedRemoteProfileRoster(context).clearAll()
+            runBlocking { media.clearAllMediaData().join() }
+            media.updateSettings(MediaPrivacySettings(disabledProviders = setOf("tmdb", "wikidata", "anilist")))
+        }
         val previous = ProxySelector.getDefault()
         val requests = ObserveRequests(previous, offline = false)
         ProxySelector.setDefault(requests)
@@ -164,76 +173,83 @@ class InstalledRealMediaInstrumentedTest {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { visible("On this phone (experimental)") }
-                val engine = LocalEngineHolder.get(context)
-                fixtures.forEachIndexed { index, f ->
-                    val root = File(context.filesDir, "real-media-fixture-$index").apply { mkdirs() }
-                    val file = File(root, f.first).apply { writeBytes(ByteArray(16_384) { (it % 251).toByte() }) }
-                    val raw = TorrentBuilder().path(file).pieceSize(16_384).setPrivate(true)
-                        .addTracker("https://private.invalid/announce?passkey=chunks-test-private-token")
-                        .comment("credential=chunks-test-credential").generate().entry().bencode()
-                    val result = engine.addStopped(raw, root)
-                    assertTrue("Stopped real native job for media presentation", result is LocalAddResult.AddedStopped)
-                    val hash = (result as LocalAddResult.AddedStopped).status.infoHash
-                    assertTrue(prefs.edit().putString("hash-$index", hash).commit())
-                    assertTrue("Stopped job metadata saved for cold process restore", engine.saveResumeDataFor(hash, 30_000))
+                if (index == 0) {
+                    val engine = LocalEngineHolder.get(context)
+                    fixtures.forEachIndexed { index, f ->
+                        val root = File(context.filesDir, "real-media-fixture-$index").apply { mkdirs() }
+                        val file = File(root, f.first).apply { writeBytes(ByteArray(16_384) { (it % 251).toByte() }) }
+                        val raw = TorrentBuilder().path(file).pieceSize(16_384).setPrivate(true)
+                            .addTracker("https://private.invalid/announce?passkey=chunks-test-private-token")
+                            .comment("credential=chunks-test-credential").generate().entry().bencode()
+                        val result = engine.addStopped(raw, root)
+                        assertTrue("Stopped real native job for media presentation", result is LocalAddResult.AddedStopped)
+                        val hash = (result as LocalAddResult.AddedStopped).status.infoHash
+                        assertTrue(prefs.edit().putString("hash-$index", hash).commit())
+                        assertTrue("Stopped job metadata saved for cold process restore", engine.saveResumeDataFor(hash, 30_000))
+                    }
+                    rule.waitUntil(20_000) { visible(fixtures[0].first) }
                 }
-                rule.waitUntil(20_000) { visible(fixtures[0].first) }
-                openRow(0)
-                assertFalse(media.settingsStore.load().onlineLookupConsent)
-                assertTrue("Opening a transfer/Identify cannot query a provider", requests.uris.isEmpty())
-                click("Turn on online lookup…")
-                rule.onNodeWithText("Turn on online lookup?").assertExists()
-                rule.onNodeWithText("These services can see your network address.", substring = true).assertExists()
-                assertTrue("Consent dialog makes no request", requests.uris.isEmpty())
-                click("Not now")
-                assertFalse(media.settingsStore.load().onlineLookupConsent)
-                click("Turn on online lookup…"); click("Turn on")
-                rule.waitUntil(10_000) { media.settingsStore.load().onlineLookupConsent && visible("Look up online") }
-                assertTrue("Enabling manual lookup alone makes no request", requests.uris.isEmpty())
-                for (index in fixtures.indices) {
-                    if (index != 0) openRow(index)
-                    click("Look up online")
-                    awaitMedia(index, "lookup") { !state(index).busy &&
-                        (state(index).match != null || state(index).assignment?.suggestions?.isNotEmpty() == true) }
-                    // Ambiguous results are a supported outcome: select the correct
-                    // candidate explicitly before requiring its image, never silently
-                    // turn a suggestion into a confirmed/automatic match for the test.
-                    val proposed = listOfNotNull(state(index).match) + state(index).assignment?.suggestions.orEmpty()
-                    assertTrue("Correct provider candidate returned", proposed.any { correctCandidate(index, it) })
-                    // Explicitly choose the correct provider result through the actual manual search UI.
-                    type("Title", fixtures[index].second)
-                    click("Search")
-                    awaitMedia(index, "manual search") { !state(index).busy && state(index).searchResults?.isNotEmpty() == true }
-                    val chosen = state(index).searchResults!!.first { correctCandidate(index, it) }
-                    val choice = rule.onNode(hasClickAction() and
-                        SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role,
-                            androidx.compose.ui.semantics.Role.RadioButton) and
-                        (hasText(chosen.title) or hasAnyDescendant(hasText(chosen.title))) and
-                        (hasText(candidateSubtitle(chosen)) or hasAnyDescendant(hasText(candidateSubtitle(chosen)))))
-                    choice.performScrollTo().assertIsDisplayed()
-                    choice.performSemanticsAction(SemanticsActions.OnClick)
-                    awaitMedia(index, "selected artwork", 30_000) { state(index).state == MediaAssignmentState.CHOSEN_BY_USER && state(index).artwork != null }
-                    assertEquals("The visible candidate selection must preserve exact provider identity", chosen.ref, state(index).match!!.ref)
-                    assertEquals(fixtures[index].third, state(index).match!!.ref.provider)
-                    closeRow()
-                    verifyArtworkPixels(index)
-                    android.util.Log.i("ChunksRealMedia", "CHUNKS_REAL_MEDIA_PROVIDER provider=${fixtures[index].third} selected=true pixels=true navigated=true")
-                    // Navigate away/back without losing the assignment or the rendered image.
-                    click("All environments…"); click("Back")
-                    type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
-                    verifyArtworkPixels(index)
+                openRow(index)
+                if (index == 0) {
+                    assertFalse(media.settingsStore.load().onlineLookupConsent)
+                    assertTrue("Opening a transfer/Identify cannot query a provider", requests.uris.isEmpty())
+                    click("Turn on online lookup…")
+                    rule.onNodeWithText("Turn on online lookup?").assertExists()
+                    rule.onNodeWithText("These services can see your network address.", substring = true).assertExists()
+                    assertTrue("Consent dialog makes no request", requests.uris.isEmpty())
+                    click("Not now")
+                    assertFalse(media.settingsStore.load().onlineLookupConsent)
+                    click("Turn on online lookup…"); click("Turn on")
+                    rule.waitUntil(10_000) { media.settingsStore.load().onlineLookupConsent && visible("Look up online") }
+                    assertTrue("Enabling manual lookup alone makes no request", requests.uris.isEmpty())
+                } else {
+                    assertTrue("Explicit global consent persists for the next provider", media.settingsStore.load().onlineLookupConsent)
+                    assertTrue("Opening another row makes no request", requests.uris.isEmpty())
                 }
+                click("Look up online")
+                awaitMedia(index, "lookup") { !state(index).busy && state(index).assignment?.lastStatus != null }
+                assertTrue("A permitted provider response is required, got ${state(index).assignment?.lastStatus}",
+                    state(index).assignment?.lastStatus in setOf(MediaLookupStatus.MATCHED, MediaLookupStatus.NEEDS_REVIEW))
+                // Ambiguous results are a supported outcome: select the correct
+                // candidate explicitly before requiring its image, never silently
+                // turn a suggestion into a confirmed/automatic match for the test.
+                val proposed = listOfNotNull(state(index).match) + state(index).assignment?.suggestions.orEmpty()
+                assertTrue("Correct provider candidate returned", proposed.any { correctCandidate(index, it) })
+                // Explicitly choose the correct provider result through the actual manual search UI.
+                type("Title", fixtures[index].second)
+                click("Search")
+                awaitMedia(index, "manual search") { !state(index).busy && state(index).searchResults != null }
+                assertTrue("A real provider search must return candidates", state(index).searchResults!!.isNotEmpty())
+                val chosen = state(index).searchResults!!.first { correctCandidate(index, it) }
+                val choice = rule.onNode(hasClickAction() and
+                    SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role,
+                        androidx.compose.ui.semantics.Role.RadioButton) and
+                    (hasText(chosen.title) or hasAnyDescendant(hasText(chosen.title))) and
+                    (hasText(candidateSubtitle(chosen)) or hasAnyDescendant(hasText(candidateSubtitle(chosen)))))
+                choice.performScrollTo().assertIsDisplayed()
+                choice.performSemanticsAction(SemanticsActions.OnClick)
+                awaitMedia(index, "selected artwork", 30_000) { state(index).state == MediaAssignmentState.CHOSEN_BY_USER && state(index).artwork != null }
+                assertEquals("The visible candidate selection must preserve exact provider identity", chosen.ref, state(index).match!!.ref)
+                assertEquals(fixtures[index].third, state(index).match!!.ref.provider)
+                closeRow()
+                verifyArtworkPixels(index)
+                // Navigate away/back without losing the assignment or the rendered image.
+                click("All environments…"); click("Back")
+                type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
+                verifyArtworkPixels(index)
                 assertSanitized(requests)
-                assertTrue(prefs.edit().putInt("online-pid", android.os.Process.myPid()).commit())
-                android.util.Log.i("ChunksRealMedia", "CHUNKS_REAL_MEDIA phase=online providers=3 consent=true selected=true pixels=true sanitized=true requests=${requests.uris.size}")
+                assertTrue(prefs.edit().putInt("online-pid-$index", android.os.Process.myPid()).commit())
+                type(searchLabel, "")
+                android.util.Log.i("ChunksRealMedia", "CHUNKS_REAL_MEDIA_PROVIDER provider=${fixtures[index].third} phase=online consent=true selected=true pixels=true navigated=true sanitized=true requests=${requests.uris.size}")
             }
         } finally { ProxySelector.setDefault(previous) }
     }
 
-    @Test fun phaseB_newOfflineProcessRestoresMatchesAndDrawnArtworkWithoutRequests() {
+    private fun offline(index: Int) {
         authorized()
         capturePhase = "offline"
-        assertNotEquals("A genuinely new app process is required", prefs.getInt("online-pid", 0), android.os.Process.myPid())
+        assertTrue("The corresponding online case must pass first", prefs.contains("online-pid-$index"))
+        assertNotEquals("A genuinely new app process is required", prefs.getInt("online-pid-$index", 0), android.os.Process.myPid())
         val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
         rule.waitUntil(15_000) { cm.activeNetwork == null }
         assertNull("Runner must remove the default network before offline restart", cm.activeNetwork)
@@ -245,21 +261,23 @@ class InstalledRealMediaInstrumentedTest {
                 scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { visible("On this phone (experimental)") }
                 assertTrue("Consent persisted", media.settingsStore.load().onlineLookupConsent)
-                for (index in fixtures.indices) {
-                    type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
-                    rule.waitUntil(30_000) { state(index).state == MediaAssignmentState.CHOSEN_BY_USER && state(index).artwork != null }
-                    verifyArtworkPixels(index)
-                    assertEquals(fixtures[index].third, state(index).match!!.ref.provider)
+                type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
+                awaitMedia(index, "offline restoration", 30_000) {
+                    state(index).state == MediaAssignmentState.CHOSEN_BY_USER && state(index).artwork != null
                 }
+                verifyArtworkPixels(index)
+                assertTrue("Correct provider identity persists", correctCandidate(index, state(index).match!!))
                 type(searchLabel, "")
                 assertTrue("Offline UI restoration made zero HTTPS attempts", requests.uris.isEmpty())
-                android.util.Log.i("ChunksRealMedia", "CHUNKS_REAL_MEDIA phase=offline new_process=true providers=3 persisted=true pixels=true requests=0")
+                android.util.Log.i("ChunksRealMedia", "CHUNKS_REAL_MEDIA_PROVIDER provider=${fixtures[index].third} phase=offline new_process=true persisted=true pixels=true requests=0")
             }
         } finally {
             ProxySelector.setDefault(previous)
-            fixtures.indices.forEach { index -> LocalEngineHolder.current()?.removeKeepingData(requireNotNull(prefs.getString("hash-$index", null))) }
-            runBlocking { media.clearAllMediaData().join() }
-            media.updateSettings(MediaPrivacySettings())
+            if (index == 2) {
+                fixtures.indices.forEach { i -> prefs.getString("hash-$i", null)?.let { LocalEngineHolder.current()?.removeKeepingData(it) } }
+                runBlocking { media.clearAllMediaData().join() }
+                media.updateSettings(MediaPrivacySettings())
+            }
         }
     }
 }

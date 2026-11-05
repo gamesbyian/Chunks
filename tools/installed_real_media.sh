@@ -18,21 +18,30 @@ collect_and_restore() {
   adb shell svc data enable
 }
 trap collect_and_restore EXIT
-for phase in phaseA_realLookupsConsentSelectionAndTransferArtwork phaseB_newOfflineProcessRestoresMatchesAndDrawnArtworkWithoutRequests; do
-  if [[ "$phase" == phaseB_* ]]; then
-    adb shell am force-stop "$pkg"
-    adb shell svc wifi disable
-    adb shell svc data disable
-  fi
-  adb shell am instrument -w -r -e class "$cls#$phase" -e chunks_real_media authorized \
-    "$runner" > "$out/$phase.raw" 2>&1
-  python3 tools/parse_instrumentation_stream.py --raw "$out/$phase.raw" --junit "$out/$phase.xml"
-  python3 tools/ci_failure_digest.py --suite "installed-real-media-$phase" --status success \
-    --require-executed --glob "$out/$phase.xml" --output "$out/$phase-digest.json"
+failed=0
+run_case() {
+  local method=$1 status=success
+  if ! adb shell am instrument -w -r -e class "$cls#$method" -e chunks_real_media authorized \
+      "$runner" > "$out/$method.raw" 2>&1; then status=failure; fi
+  python3 tools/parse_instrumentation_stream.py --raw "$out/$method.raw" --junit "$out/$method.xml" || return 1
+  python3 tools/ci_failure_digest.py --suite "installed-real-media-$method" --status "$status" \
+    --require-executed --glob "$out/$method.xml" --output "$out/$method-digest.json" || return 1
+}
+for method in phaseA_tvmazeConsentSelectionAndArtwork phaseA_musicbrainzSelectionAndArtwork phaseA_openlibrarySelectionAndArtwork; do
+  if ! run_case "$method"; then failed=1; fi
+  adb shell am force-stop "$pkg"
+done
+adb shell svc wifi disable
+adb shell svc data disable
+for method in phaseB_tvmazeOfflineProcess phaseB_musicbrainzOfflineProcess phaseB_openlibraryOfflineProcess; do
+  if ! run_case "$method"; then failed=1; fi
+  adb shell am force-stop "$pkg"
 done
 adb logcat -d -v raw -s ChunksRealMedia:I > "$out/WITNESS.txt"
 adb pull "/sdcard/Android/data/$pkg/files/real-media-evidence/." "$out/" >/dev/null
-grep -E '^CHUNKS_REAL_MEDIA phase=online providers=3 consent=true selected=true pixels=true sanitized=true requests=[1-9][0-9]*$' "$out/WITNESS.txt"
-grep -Fx 'CHUNKS_REAL_MEDIA phase=offline new_process=true providers=3 persisted=true pixels=true requests=0' "$out/WITNESS.txt"
-adb shell am force-stop "$pkg"
 printf 'source_sha=%s\n' "$GITHUB_SHA" > "$out/SOURCE.txt"
+for provider in tvmaze musicbrainz openlibrary; do
+  grep -E "^CHUNKS_REAL_MEDIA_PROVIDER provider=$provider phase=online consent=true selected=true pixels=true navigated=true sanitized=true requests=[1-9][0-9]*$" "$out/WITNESS.txt" || failed=1
+  grep -Fx "CHUNKS_REAL_MEDIA_PROVIDER provider=$provider phase=offline new_process=true persisted=true pixels=true requests=0" "$out/WITNESS.txt" || failed=1
+done
+exit "$failed"
