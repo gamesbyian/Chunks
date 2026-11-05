@@ -1,5 +1,8 @@
 # Add source intake: URLs, clipboard and Android handoff
 
+> **Implementation status correction (2026-11-05 UTC):** The contract below was drafted before implementation. Merged [#1295](https://github.com/gamesbyian/Chunks/pull/1295), [#1296](https://github.com/gamesbyian/Chunks/pull/1296), [#1297](https://github.com/gamesbyian/Chunks/pull/1297) and [#1299](https://github.com/gamesbyian/Chunks/pull/1299) deliver foreground magnet/HTTPS clipboard suggestion, opt-out and explicit Paste, and bounded HTTPS torrent-metainfo retrieval with token redaction and existing reviewed Add integration. Real public HTTPS source retrieval and installed clipboard UI evidence are in [QUALITY-LEDGER](QUALITY-LEDGER.md). Full installed **fetch → phone/rTorrent Add → real piece progress** and physical Pixel clipboard/Share behaviour still lack proof. This correction supersedes the historical “implementation not established” wording below; it does not relax this normative contract or falsely claim every Android intent/provider case is accepted.
+
+
 **Status:** Owner-approved product/UX requirement, 2026-11-04; implementation and acceptance not established by this document. **Scope:** phone-only, remote-only and Combined Add. This is the single detailed contract for source recognition; [PRODUCT](PRODUCT.md), [UX](UX.md), [SECURITY](SECURITY.md) and [WORK-QUEUE](WORK-QUEUE.md) cross-reference it. Do not create another P0 campaign or reopen accepted A–E evidence merely to implement this addition.
 
 ## Ordinary journey and priority
