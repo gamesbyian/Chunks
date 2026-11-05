@@ -249,3 +249,27 @@ internal fun SettingScopeNote(environmentLabel: String, modifier: Modifier = Mod
         style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary, modifier = modifier)
 }
 
+
+/**
+ * An outlined button inside a coloured (accent) card. Material's default
+ * outlined content is the lavender primary, which measured near-invisible on
+ * the lavender result card and pale on the green confirmation card. This uses
+ * the card's own content colour (dark [ChunksColors.OnAccent] on accents) for
+ * the text and outline; a disabled button is dimmed but keeps its words.
+ */
+@androidx.compose.runtime.Composable
+internal fun AccentCardOutlinedButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier,
+    content: @androidx.compose.runtime.Composable androidx.compose.foundation.layout.RowScope.() -> Unit
+) {
+    val ink = androidx.compose.material3.LocalContentColor.current
+    androidx.compose.material3.OutlinedButton(
+        onClick = onClick, enabled = enabled, modifier = modifier,
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+            contentColor = ink, disabledContentColor = ink.copy(alpha = 0.6f)),
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, if (enabled) ink else ink.copy(alpha = 0.45f)),
+        content = content
+    )
+}

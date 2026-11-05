@@ -78,12 +78,13 @@ internal fun UnifiedTransferDetailPanel(
             Text(transfer.displayName, style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.semantics { heading() })
             Text((if (detail.readState == TransferDetailReadState.CURRENT) "" else "Last known: ") +
-                transferAtAGlance(transfer), style = MaterialTheme.typography.titleMedium)
+                transferAtAGlance(transfer), style = MaterialTheme.typography.titleSmall)
         }
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             EnvironmentDot(environmentHue)
-            Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleMedium,
+            // Running text, not a heading: the readable sans per ChunksTypography.
+            Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f))
         }
         if (!hidden) detail.observation?.let { TransferDetailFacts(it) }

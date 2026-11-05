@@ -31,7 +31,7 @@ class PhoneAddDraftContinuityTest {
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet link"))
+        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
             .performScrollTo().performTextInput(draft)
         rule.onNodeWithText("All environments…").performScrollTo().performClick()
         rule.waitForIdle()

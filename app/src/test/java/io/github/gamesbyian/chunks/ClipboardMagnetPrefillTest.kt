@@ -23,7 +23,14 @@ class ClipboardMagnetPrefillTest {
         assertNull(ClipboardMagnetPrefill.decide(true, "", true, magnet))
         assertNull(ClipboardMagnetPrefill.decide(true, "", false, null))
         assertNull(ClipboardMagnetPrefill.decide(true, "", false, "a shopping list"))
-        assertNull(ClipboardMagnetPrefill.decide(true, "", false, "https://example.invalid/file.torrent"))
+        assertNull(ClipboardMagnetPrefill.decide(true, "", false, "https://news.example/today"))
+        assertNull(ClipboardMagnetPrefill.decide(true, "", false, "http://example.invalid/file.torrent"))
         assertNull(ClipboardMagnetPrefill.decide(true, "", false, "magnet:?xt=urn:btih:abc"))
+    }
+
+    @Test fun aTorrentShapedHttpsLinkIsFilledAsTextOnly() {
+        val link = "https://linuxtracker.org/torrents/abc/download/"
+        assertEquals(link, ClipboardMagnetPrefill.decide(true, "", false, " $link\n"))
+        assertNull(ClipboardMagnetPrefill.decide(true, "typed", false, link))
     }
 }

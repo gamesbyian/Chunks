@@ -45,7 +45,7 @@ class LocalPhoneFirstfoldEntryTest {
         showPhoneAt200Percent()
         val title = rule.onNodeWithText("Add a download on this phone")
         val torrent = rule.onNodeWithText("Choose .torrent file")
-        val magnet = rule.onNodeWithText("Or paste a magnet link")
+        val magnet = rule.onNodeWithText("Or paste a magnet or torrent link")
         val warning = rule.onNodeWithText("Downloads and seeds with Chunks' own engine.", substring = true)
         title.assertExists()
         torrent.assertExists()
@@ -70,7 +70,7 @@ class LocalPhoneFirstfoldEntryTest {
     fun alternatePhoneViewportKeepsBothIntakeChoicesBeforeExplanation() {
         showPhoneAt200Percent()
         val torrent = rule.onNodeWithText("Choose .torrent file")
-        val magnet = rule.onNodeWithText("Or paste a magnet link")
+        val magnet = rule.onNodeWithText("Or paste a magnet or torrent link")
         val warning = rule.onNodeWithText("Downloads and seeds with Chunks' own engine.", substring = true)
         assertTrue(torrent.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
         assertTrue(magnet.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)

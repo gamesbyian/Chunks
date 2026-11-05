@@ -423,13 +423,13 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(remoteAdd)
         rule.onNode(remoteAdd).performClick()
         rule.onNodeWithText("Add a download to this server").assertExists()
-        rule.onNodeWithText("Magnet link").assertExists()
+        rule.onNodeWithText("Magnet or torrent link").assertExists()
         // Exercise the production Add screen, including the parent-owned draft.
         // Reset must invalidate the custom-folder review before a default-folder
         // review can be confirmed. This synthetic RPC fixture permits reads only.
         val addList = rule.onNode(hasScrollToIndexAction())
-        addList.performScrollToNode(hasText("Magnet link"))
-        rule.onNodeWithText("Magnet link").performTextReplacement(
+        addList.performScrollToNode(hasText("Magnet or torrent link"))
+        rule.onNodeWithText("Magnet or torrent link").performTextReplacement(
             "magnet:?xt=urn:btih:" + "ab".repeat(20))
         replaceTextInLazyField("Custom server folder (optional)", "/srv/one-off")
         dismissSearchKeyboard()

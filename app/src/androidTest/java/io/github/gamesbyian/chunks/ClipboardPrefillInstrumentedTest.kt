@@ -57,6 +57,13 @@ class ClipboardPrefillInstrumentedTest {
             rule.onNode(entry).performScrollTo().performClick()
             waitOrExplain("the phone screen", 15_000) { rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() }
         }
+        // The journey under test is "copy, then open Add": if the form is already
+        // open on arrival, close it first so opening it is a real transition.
+        val hideAdd = hasText("Hide phone Add options") and hasClickAction()
+        if (rule.onAllNodes(hideAdd).fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNode(hideAdd).performScrollTo().performClick()
+            rule.waitForIdle()
+        }
         rule.runOnUiThread {
             (rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                 .setPrimaryClip(ClipData.newPlainText("magnet", link))

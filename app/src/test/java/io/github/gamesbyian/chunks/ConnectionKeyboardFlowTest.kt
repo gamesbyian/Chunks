@@ -62,7 +62,7 @@ class ConnectionScreenImeTest {
         rule.onNode(androidx.compose.ui.test.hasContentDescription("Add torrent on this phone"))
             .performClick()
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet link"))
+        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
         rule.onNode(hasSetTextAction() and hasText("Optional phone download subfolder"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
