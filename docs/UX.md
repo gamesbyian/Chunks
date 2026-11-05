@@ -1,5 +1,10 @@
 # Chunks interaction and accessibility contract
 
+## Future Chunks-to-Chunks artwork handoff (deferred pending artwork decisions)
+
+A later Transfer Details > Share extension may include the sender's selected thumbnail/poster and alternate custom art in a portable Chunks bundle, with independently standard magnet/.torrent sharing. Receiver preview/import must preserve existing explicit local artwork choices unless separately authorized to replace them. Do not finalize radio choices, include-by-default behavior, automatic apply semantics or conflict screens until metadata identity, artwork selection, provenance, persistence and override policies are finalized and accepted in [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md). No image-rights interrogation or mandatory attribution prompts for small user-shared thumbnails. See [TRANSFER-SHARING](TRANSFER-SHARING.md). This is planned downstream UX, not current UI.
+
+
 ## URL and clipboard-aware Add (owner approved, 2026-11-04)
 
 One Add source field accepts magnet, local `.torrent` via Android picker/Share/Open With and HTTP(S) `.torrent` download URLs even if the URL has no `.torrent` suffix. A recent eligible copied link automatically fills an **empty** source field when Add is foregrounded; default on, configurable off, explicit Paste available. Existing typed value, intent payload, restored draft, target environment and Save to choice take precedence; no polling, network request, transfer creation or review-page insertion on clipboard detection. Show understandable fetch/validation errors and preserve the draft. [ADD-SOURCE-INTAKE](ADD-SOURCE-INTAKE.md) is the detailed UI and acceptance contract.
