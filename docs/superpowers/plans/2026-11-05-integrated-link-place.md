@@ -19,20 +19,22 @@ Execution card: outcome = real reviewed HTTPS Add/Start/pieces and scoped phone 
 ## Task 1: phone destination scope
 
 Files: `LocalDownloadPlacePolicy.kt`, `LocalDownloadPlacePicker.kt`, `LocalEngineScreen.kt`; matching JVM and native tests.
-- [ ] Add failing policy/Compose/persistence tests for one-time choice, explicit default save, unavailable exact root and recreation.
-- [ ] Implement exact verified draft selection, accessible scope wording and explicit saved-default action; clear after successful Add/cancel, retain on refusal.
-- [ ] Run focused host checks and commit this independently understandable slice.
+- [x] Add failing policy/Compose/persistence tests for one-time choice, explicit default save, unavailable exact root and recreation.
+- [x] Implement exact verified draft selection, accessible scope wording and explicit saved-default action; clear after successful Add/cancel, retain on refusal.
+- [x] Run focused host checks and commit this independently understandable slice.
 
 ## Task 2: production HTTPS transfer acceptance
 
 Files: existing installed real-peer journey utilities and scripts/workflows; add focused installed link journeys where reuse requires it.
-- [ ] Reuse public metainfo and controlled real peer fixtures; enter genuine public HTTPS URL through installed production source field.
-- [ ] Prove review is non-mutating, explicit Add, Start, received/verified piece growth and exact target/root; retain errors and unchanged unrelated inventory.
-- [ ] Combine phone one-time/default persistence and recovery with link journey where compatible; commit acceptance slice.
+- [x] Reuse public metainfo and controlled real peer fixtures; enter genuine public HTTPS URL through installed production source field.
+- [x] Prove review is non-mutating, explicit Add, Start, received/verified piece growth and exact target/root; retain errors and unchanged unrelated inventory.
+- [x] Combine phone one-time/default persistence and recovery with link journey where compatible; commit acceptance slice.
 
 ## Task 3: assembled qualification and integration
 
-- [ ] Review complete diff separately; no subagents under owner's sole-agent instruction.
-- [ ] Freeze one candidate; run coordinated foundation, API29/API35, R8 and real-rTorrent acceptance without intermediate full CI.
-- [ ] Diagnose exact phase/assertion on failure; rerun only invalidated tiers. Record executed/skipped receipts.
-- [ ] Merge after required checks; reconcile canonical queue/trace/ledger/handoff once and publish source-matched debug/preview APK only after publication gates.
+- [x] Review complete diff separately; no subagents under owner's sole-agent instruction.
+- [x] Freeze one candidate; run coordinated foundation, API29/API35, R8 and real-rTorrent acceptance without intermediate full CI.
+- [x] Diagnose exact phase/assertion on failure; rerun only invalidated tiers. Record executed/skipped receipts.
+- [x] Merge after required checks; reconcile canonical queue/trace/ledger/handoff once and publish source-matched debug/preview APK only after publication gates.
+
+Qualification: merged #1301 as `19ff3145`; immutable checkout `f07a8331f81f` and complete executed/skipped receipts in [QUALITY-LEDGER](../../QUALITY-LEDGER.md). Author performed the separate full-diff review under the explicit sole-agent mandate. Earlier failed diagnostic source experiments were discarded; no subagents or protected host writes. The final tracking refresh changes documentation only.

@@ -1,12 +1,6 @@
 # Chunks: agent concurrency and ownership
 
-> **Current status (2026-11-05 UTC, owner report):** Claude and Codex have **both stopped**. There are no active UX file leases. Start from [final UX reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md) and one [WORK-QUEUE](WORK-QUEUE.md), then make a brief live PR check. The former one-agent and dual-agent rosters below are historical. When new agents start concurrently, establish fresh per-file ownership rather than inheriting a stale split.
-
-
-> **2026-11-05 status:** Codex is paused and Claude is the **sole active UX agent**, owning every shared Compose/presentation file, the UX trace, QUALITY-LEDGER and this queue's UX section. The two-lane file split in the [dual-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is **released** and kept only as history.
->
-> **Historical 2026-11-04 UX parallel dispatch:** [UX-DUAL-AGENT-DISPATCH-2026-11-04](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) provides the current *task-bound* two-agent file ownership and a short no-reconciliation starting path. Codex owns Combined/remote presentation; Claude owns existing IME PR #1287 plus phone/Add/navigation presentation. Shared central code and the UX trace/quality ledger must be edited serially. This active dispatch supersedes the older P0 rosters and unpopulated-server remarks below; those paragraphs are historical evidence, **not live work assignments**. Automated P0 A–E already passed; physical Pixel/human gates remain open. Verify current PRs before following either agent lane.
-
+> **Current status (2026-11-05 UTC):** The owner-directed sole-agent campaign [#1301](https://github.com/gamesbyian/Chunks/pull/1301) is merged after one assembled qualification. There are no inherited UX file leases. [Final UX reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md) and [WORK-QUEUE](WORK-QUEUE.md) replace the old Claude/Codex rosters and dual-agent dispatch. New concurrent work needs fresh ownership; historical P0 workstream descriptions below do not assign live agents.
 
 > **One P0 integration owner, two overlapping implementation workstreams:** [P0 daily-use journeys](P0-DAILY-USE-JOURNEYS.md) is the execution model. Workstream 1 **Transfer lifecycle (A+B)** handles local/remote Add, destinations, priorities, controls, Remove and re-add. Workstream 2 **Environment continuity (C+D)** handles restart/reconnect, exact inventory identity and Combined UI. Integrator owns shared Compose/model writes, fixture leases, [single cohort manifest](P0-DAILY-USE-FIXTURES.tsv), [journey receipts](P0-DAILY-USE-EVIDENCE.tsv), merge and APK. E is independent acceptance only. Avoid parallel central-file writers and redundant gates; consult live ownership before editing.
 
