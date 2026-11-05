@@ -174,7 +174,15 @@ class InstalledMediaArtworkInstrumentedTest {
         return ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
     }
 
+    /** Connecting remembers the login by default; later tests expect a fresh, phone-first launch. */
+    private fun forgetLogins() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        RememberedRemoteLogin(context).clear()
+        RememberedRemoteProfileRoster(context).clearAll()
+    }
+
     @Before fun freshMediaState() {
+        forgetLogins()
         runBlocking { media.clearAllMediaData().join() }
         media.updateSettings(MediaPrivacySettings())
     }
@@ -182,6 +190,7 @@ class InstalledMediaArtworkInstrumentedTest {
     @After fun cleanup() {
         shutdown.set(true)
         server?.close()
+        forgetLogins()
         runBlocking { media.clearAllMediaData().join() }
         media.updateSettings(MediaPrivacySettings())
     }
@@ -225,6 +234,11 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.onNodeWithText("Show artwork").performScrollTo().performClick()
         rule.waitUntil(5_000) { !media.settingsStore.load().showArtwork }
         rule.onNodeWithText("Back").performScrollTo().performClick()
+        // Close Options so the list has its full height, then bring the exact row into composition.
+        rule.waitUntil(10_000) { rule.onAllNodes(hasClickAction() and hasText("Options")).fetchSemanticsNodes().isNotEmpty() }
+        if (rule.onAllNodesWithText("Find a screen or tool").fetchSemanticsNodes().isNotEmpty())
+            rule.onNode(hasClickAction() and hasText("Options")).performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(episode))
         waitForDescription("TV episode category artwork. $format")
 
         assertEquals("Media display and settings must not issue any further RPC beyond list refreshes",
