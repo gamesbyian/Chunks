@@ -182,6 +182,12 @@ jobs:
             grep -A40 'INSTRUMENTATION_STATUS: stack=' "$raw" | head -80 \
               | sed -E 's#[a-zA-Z][a-zA-Z0-9+.-]*://[^ "]*#<url>#g' > "$out" || true
           fi
+          # Name a disposable SERVER crash (upstream rakshasa libtorrent internal_error) so it is
+          # never triaged as a Chunks or tunnel fault. The disposable environment holds no secrets.
+          log="$RUNNER_TEMP/chunks-disposable/rtorrent.log"
+          if [ -f "$log" ] && grep -q 'Caught internal_error' "$log"; then
+            echo "::error title=Disposable rTorrent crashed::$(grep -m1 'Caught internal_error' "$log" | cut -c1-160)"
+          fi
       - name: Verify disposable precompleted bytes were preserved
         if: env.CHUNKS_DISPOSABLE == '1' && env.CHUNKS_PUBLIC_DISCOVERY != '1'
         run: |
