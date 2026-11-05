@@ -20,6 +20,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -35,9 +37,14 @@ internal fun LocalDownloadPlacePicker(
     onChoose: (LocalPlaceChoice) -> Unit,
     onRequestStoragePermission: () -> Unit = {},
     /** Forget a saved choice; shown only while one is saved. */
-    onUseAutomatic: (() -> Unit)? = null
+    onUseAutomatic: (() -> Unit)? = null,
+    /** Add changes are ephemeral; changing the saved default requires its own action. */
+    currentAdd: Boolean = false,
+    defaultResolution: LocalPlaceResolution? = null,
+    onUseDefault: (() -> Unit)? = null,
+    onSaveDefault: ((LocalPlaceChoice) -> Unit)? = null
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var expanded by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         val selected = resolution?.selected
         when {
@@ -57,13 +64,35 @@ internal fun LocalDownloadPlacePicker(
                         Text("Temporary fallback: your saved location is unavailable. " +
                             "The saved choice is preserved for when it works again.",
                             style = MaterialTheme.typography.bodySmall)
+                    LocalPlaceResolution.Provenance.CURRENT_ADD ->
+                        Text("For this Add only. Saving a phone default is a separate action.",
+                            style = MaterialTheme.typography.bodySmall)
                     null -> Unit
                 }
                 Text(selected.detail, style = MaterialTheme.typography.bodySmall)
             }
         }
+        if (currentAdd) {
+            Text("Phone default: " + when {
+                defaultResolution == null -> "Checking availability…"
+                defaultResolution.selected == null -> "Unavailable"
+                else -> defaultResolution.selected.title
+            },
+                style = MaterialTheme.typography.bodySmall)
+            if (resolution?.provenance == LocalPlaceResolution.Provenance.CURRENT_ADD) {
+                if (onUseDefault != null) TextButton(onClick = onUseDefault, enabled = enabled,
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Use phone default for this Add") }
+                val chosen = resolution.choices.singleOrNull {
+                    it.place == resolution.selected && it.verified
+                }
+                if (chosen != null && onSaveDefault != null) TextButton(
+                    onClick = { onSaveDefault(chosen) }, enabled = enabled,
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Save this location as phone default") }
+            }
+        }
         resolution?.notice?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
         }
         // Android 10 only: an explicit, user-started request. Granting it lets
         // the regular write probe decide; it is never asked for on its own.
@@ -90,13 +119,13 @@ internal fun LocalDownloadPlacePicker(
         if (expanded && resolution != null) {
             Column(Modifier.fillMaxWidth().selectableGroup()) {
                 resolution.choices.forEach { choice ->
-                    val isSelected = choice.place.kind == selected?.kind
+                    val isSelected = choice.place == selected
                     Row(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(
                             selected = isSelected,
                             enabled = enabled && choice.verified,
                             role = Role.RadioButton,
-                            onClick = { onChoose(choice) }
+                            onClick = { onChoose(choice); expanded = false }
                         ).padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -110,8 +139,9 @@ internal fun LocalDownloadPlacePicker(
                     }
                 }
             }
-            Text("Your choice is remembered for new phone Adds only. Existing transfers " +
-                "keep their files where they are.", style = MaterialTheme.typography.bodySmall)
+            Text(if (currentAdd) "Choose a location for this Add only. Existing transfers keep their files where they are."
+                else "Your choice is remembered for new phone Adds only. Existing transfers keep their files where they are.",
+                style = MaterialTheme.typography.bodySmall)
         }
     }
 }

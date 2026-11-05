@@ -301,6 +301,9 @@ private fun ChunksApp(
     val phoneSearch = rememberSaveable { mutableStateOf("") }
     // Process memory only (never instance state): a magnet may hold a passkey.
     val phoneMagnetDraft = remember { mutableStateOf("") }
+    val phoneAddPlace = rememberSaveable { mutableStateOf<String?>(null) }
+    val phoneAddFolder = rememberSaveable { mutableStateOf("") }
+    val phoneAddStart = rememberSaveable { mutableStateOf(true) }
     val combinedListState = rememberLazyListState()
     // Combined search text, like the phone's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
@@ -617,6 +620,7 @@ private fun ChunksApp(
                 LocalEngineScreen(
                     listScroll = phoneListScroll, searchState = phoneSearch,
                     magnetDraftState = phoneMagnetDraft,
+                    addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     onBack = { leavePhone() },
                     onSeedingRules = { openFromPhone(Section.SEEDING) },
                     onCreateTorrent = { openFromPhone(Section.CREATE) },
@@ -934,6 +938,7 @@ private fun ChunksApp(
                     LocalEngineScreen(
                         listScroll = phoneListScroll, searchState = phoneSearch,
                         magnetDraftState = phoneMagnetDraft,
+                    addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
                         onCreateTorrent = { openFromPhone(Section.CREATE) },
