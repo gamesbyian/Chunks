@@ -68,7 +68,12 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         if (text == "Stop") stage("stop-ready")
         rule.onNodeWithText(text).performScrollTo()
         if (text == "Stop") stage("stop-visible")
-        rule.onNodeWithText(text).performClick()
+        // A semantic click cannot miss when the list re-lays out between lookup and touch
+        // injection (a lost Start tap left no permission prompt). Touch only if not clickable.
+        val node = rule.onNodeWithText(text)
+        if (androidx.compose.ui.semantics.SemanticsActions.OnClick in node.fetchSemanticsNode().config)
+            node.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        else node.performClick()
         if (text == "Stop") stage("stop-clicked")
     }
     private fun type(label: String, value: String) {
