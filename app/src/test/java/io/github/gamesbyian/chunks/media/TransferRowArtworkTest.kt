@@ -253,4 +253,42 @@ class TransferRowArtworkTest {
         assertEquals("A local cover never touches the network", before, http.requests.size)
         assertTrue("The payload file is unchanged", File(folder, "$album/cover.jpg").readBytes().contentEquals(cover))
     }
+
+    @Test fun choosingAnotherProviderImageIsAUserChoiceThatSurvivesRestartAndIsReversible() {
+        val c = controller()
+        val k = MediaTransferKey.of(phone)
+        val flow = c.observe(k, name); c.lookup(k)
+        assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
+        val alts = kotlinx.coroutines.runBlocking { c.alternatives(k) }
+        assertTrue("Episode matches offer poster and still", alts.size >= 2)
+        val pick = alts.last().candidate
+        c.chooseAlternative(k, pick)
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, flow.value.state)
+        assertEquals(pick, flow.value.userArtwork)
+        assertEquals("The match itself is kept", "Babylon 5", flow.value.match?.title)
+        // A different candidate not from this match is refused.
+        c.chooseAlternative(k, ArtworkCandidate("tvmaze", "https://static.tvmaze.com/other.jpg", ArtworkRole.POSTER))
+        assertEquals(pick, flow.value.userArtwork)
+        // New process, offline: the pinned choice is restored from the local cache.
+        val before = http.requests.size
+        http.offline = true
+        val restored = controller().observe(k, name).value
+        assertEquals(pick, restored.userArtwork); assertNotNull(restored.artwork)
+        assertEquals(before, http.requests.size)
+        http.offline = false
+        c.removeUserImage(k)
+        assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
+        assertNull(flow.value.userArtwork)
+    }
+
+    @Test fun galleryShowsOnlyOnRequestAndRespectsDownloadSettings() {
+        val c = controller()
+        val k = MediaTransferKey.of(phone)
+        c.observe(k, name); c.lookup(k)
+        settings = settings.copy(downloadArtwork = false)
+        val cachedOnly = kotlinx.coroutines.runBlocking { c.alternatives(k) }
+        assertTrue("Without downloads only already cached images appear", cachedOnly.size <= 1)
+        settings = settings.copy(showArtwork = false)
+        assertTrue(kotlinx.coroutines.runBlocking { c.alternatives(k) }.isEmpty())
+    }
 }

@@ -406,7 +406,39 @@ class TransferMediaController(
 
     /** Never delete an imported image another transfer still uses. */
     private fun releaseIfUnreferenced(image: ArtworkCandidate, except: MediaTransferKey) {
-        if (store.all().none { it.key != except && it.userArtwork == image }) artwork.removeLocal(image)
+        if (store.all().none { it.key != except && it.userArtwork == image }) {
+            if (image.provider == LOCAL_PROVIDER) artwork.removeLocal(image) else artwork.unpin(image, ArtworkRole.SQUARE)
+        }
+    }
+
+    /** One loaded alternative image for the current match (square role), for the user to choose from. */
+    data class ArtworkAlternative(val candidate: ArtworkCandidate, val bitmap: Bitmap)
+
+    /**
+     * Explicitly requested gallery of the current match's other square-role images. Downloads only
+     * with "Download artwork" on and an allowed network; otherwise shows what is already cached.
+     * Never for adult content, and never changes the assignment by itself.
+     */
+    suspend fun alternatives(key: MediaTransferKey, limit: Int = 8): List<ArtworkAlternative> =
+        kotlinx.coroutines.withContext(artworkDispatcher) {
+            val cur = flow(key)?.value ?: return@withContext emptyList()
+            val match = cur.match ?: return@withContext emptyList()
+            val s = settings()
+            if (!s.showArtwork || cur.displayKind == MediaKind.ADULT) return@withContext emptyList()
+            val net = network()
+            val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            match.artwork.filter { it.season == null || it.season == match.season }.distinctBy { it.url }.take(limit.coerceIn(1, 24))
+                .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.SQUARE, allowNetwork) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
+        }
+
+    /** The user picked one provider image: pin it and use it ahead of automatic selection. */
+    fun chooseAlternative(key: MediaTransferKey, candidate: ArtworkCandidate) {
+        val cur = flow(key)?.value ?: return
+        if (cur.match?.artwork?.contains(candidate) != true) return
+        scope.launch(lookupDispatcher) {
+            artwork.pin(candidate, ArtworkRole.SQUARE)
+            applyImported(key, candidate)
+        }
     }
 
     /**

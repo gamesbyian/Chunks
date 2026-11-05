@@ -59,6 +59,9 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
         }
     }
 
+    // Gallery state belongs to the match on screen; a different match starts closed.
+    var alternatives by remember(key, state.match?.ref) { mutableStateOf<List<io.github.gamesbyian.chunks.media.TransferMediaController.ArtworkAlternative>?>(null) }
+    var alternativesLoading by remember(key, state.match?.ref) { mutableStateOf(false) }
     MediaIdentifyPanel(state, settings,
         onEnableLookup = { askConsent = true },
         onLookup = { controller.lookup(key) },
@@ -77,6 +80,12 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
         onSaveRule = { controller.saveRuleFrom(key); ruleVersion++ },
         ruleSummary = remember(state.assignment, ruleVersion) { controller.ruleFor(key)?.let { "Future transfers with this name use “${it.candidate.title}”." } },
         onRemoveRule = { controller.ruleFor(key)?.let { controller.removeRule(it.id) }; ruleVersion++ },
+        onLoadAlternatives = {
+            alternativesLoading = true
+            scope.launch { alternatives = controller.alternatives(key); alternativesLoading = false }
+        },
+        alternatives = alternatives, alternativesLoading = alternativesLoading,
+        onChooseAlternative = { controller.chooseAlternative(key, it) },
         onUseLocalCover = localCover?.takeIf { readLocalFile != null }?.let { cover -> {
             scope.launch {
                 val bytes = withContext(Dispatchers.IO) { runCatching { readLocalFile!!(cover) }.getOrNull() }

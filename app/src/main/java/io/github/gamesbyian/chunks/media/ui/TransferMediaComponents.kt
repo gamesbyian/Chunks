@@ -206,7 +206,13 @@ fun MediaIdentifyPanel(
     onSaveRule: (() -> Unit)? = null,
     /** A saved rule that matches this transfer, with its removal action. */
     ruleSummary: String? = null,
-    onRemoveRule: (() -> Unit)? = null
+    onRemoveRule: (() -> Unit)? = null,
+    /** Loads the current match's other images on request; null hides the gallery. */
+    onLoadAlternatives: (() -> Unit)? = null,
+    /** Null until requested; empty when none could be shown. */
+    alternatives: List<io.github.gamesbyian.chunks.media.TransferMediaController.ArtworkAlternative>? = null,
+    alternativesLoading: Boolean = false,
+    onChooseAlternative: ((io.github.gamesbyian.chunks.media.ArtworkCandidate) -> Unit)? = null
 ) {
     var showWhy by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -249,6 +255,33 @@ fun MediaIdentifyPanel(
         if (ruleSummary != null) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(ruleSummary, style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary, modifier = Modifier.weight(1f))
             if (onRemoveRule != null) TextButton(onClick = onRemoveRule, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove rule") }
+        }
+
+        val match = state.match
+        if (match != null && onLoadAlternatives != null && onChooseAlternative != null &&
+            state.displayKind != MediaKind.ADULT && match.artwork.distinctBy { it.url }.size > 1) {
+            Text("Other images for this match", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text,
+                modifier = Modifier.semantics { heading() })
+            when {
+                alternatives == null -> OutlinedButton(onClick = onLoadAlternatives, enabled = !alternativesLoading,
+                    modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(if (alternativesLoading) "Loading images…" else "Show other images")
+                }
+                alternatives.isEmpty() -> Text("No other images can be shown right now (offline, downloads off or none cached).",
+                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+                else -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    alternatives.forEachIndexed { i, alt ->
+                        val selected = state.userArtwork == alt.candidate
+                        val image = remember(alt.bitmap) { alt.bitmap.asImageBitmap() }
+                        val dims = if (alt.candidate.width != null && alt.candidate.height != null) ", ${alt.candidate.width}×${alt.candidate.height}" else ""
+                        Image(image, contentDescription = null, contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp))
+                                .border(if (selected) 3.dp else 1.dp, if (selected) ChunksColors.Green else ChunksColors.Outline, RoundedCornerShape(12.dp))
+                                .selectable(selected, role = Role.RadioButton) { onChooseAlternative(alt.candidate) }
+                                .semantics { contentDescription = "Image ${i + 1} of ${alternatives.size} from ${match.attribution.providerName}$dims" })
+                    }
+                }
+            }
         }
 
         if (settings.onlineLookupConsent) ManualSearch(state, onSearch)
