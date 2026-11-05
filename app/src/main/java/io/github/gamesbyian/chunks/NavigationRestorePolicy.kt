@@ -12,7 +12,8 @@ package io.github.gamesbyian.chunks
  */
 internal object NavigationRestorePolicy {
     fun restorableSection(name: String?): String = when (name) {
-        "LOCAL", "COMBINED" -> name
+        // Media settings hold no transfer data, server session or command.
+        "LOCAL", "COMBINED", "MEDIA" -> name
         else -> "TRANSFERS"
     }
 }

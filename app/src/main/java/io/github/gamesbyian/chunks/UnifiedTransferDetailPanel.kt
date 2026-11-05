@@ -58,7 +58,9 @@ internal fun UnifiedTransferDetailPanel(
     stallReport: RemoteStallEvidence? = null,
     stallCheckError: String? = null,
     /** Exact owning environment's existing palette choice; its name remains the identity. */
-    environmentHue: EnvironmentHue? = null
+    environmentHue: EnvironmentHue? = null,
+    /** Optional Similar Transfers over authorized inventory; null hides the section. */
+    similar: (@Composable (UnifiedTransferObservation) -> Unit)? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
     // Presentation state only. Never retain a mutation authority or stale command review.
@@ -90,6 +92,7 @@ internal fun UnifiedTransferDetailPanel(
         if (!hidden) detail.observation?.let { TransferDetailFacts(it) }
         if (!hidden) detail.observation?.let { transfer ->
             TransferMediaDetailSection(transfer)
+            similar?.invoke(transfer)
         }
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)

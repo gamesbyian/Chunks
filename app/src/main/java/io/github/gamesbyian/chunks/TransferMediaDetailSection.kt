@@ -30,15 +30,29 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
 internal fun TransferMediaDetailSection(
     transfer: UnifiedTransferObservation,
     modifier: Modifier = Modifier
+) = TransferMediaDetailSection(transfer.key, transfer.originalName, modifier)
+
+/**
+ * The same section for the phone and rTorrent list cards' expanded details, keyed by the exact
+ * environment + infohash so an assignment made here is the one Combined shows, and vice versa.
+ * [originalName] is the torrent's own name, never the user's display alias.
+ */
+@Composable
+internal fun TransferMediaDetailSection(
+    transferKey: io.github.gamesbyian.chunks.model.UnifiedTransferKey,
+    originalName: String,
+    modifier: Modifier = Modifier,
+    /** Completed phone files only; null for remote or Combined observations. */
+    localFiles: LocalCompletedMediaFiles? = null
 ) {
-    val key = MediaTransferKey.of(transfer.key)
+    val key = MediaTransferKey.of(transferKey)
     var editing by rememberSaveable(key.value) { mutableStateOf(false) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Artwork & media information", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() })
         TransferMediaSummaryRoute(
             key = key,
-            originalName = transfer.originalName,
+            originalName = originalName,
             onChange = { editing = !editing }
         )
         if (editing) {
@@ -46,9 +60,11 @@ internal fun TransferMediaDetailSection(
                 onClick = { editing = false },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Close media identification") }
-            // No file read callback: an rTorrent listing does not establish device-side
-            // permission to read a payload, and even phone observations here are metadata only.
-            TransferMediaIdentifyRoute(key = key, originalName = transfer.originalName)
+            // Remote listings never get a read callback: an rTorrent listing does not establish
+            // device-side permission to read a payload. Phone cards pass only verified completed files.
+            if (localFiles == null) TransferMediaIdentifyRoute(key = key, originalName = originalName)
+            else TransferMediaIdentifyRoute(key = key, originalName = originalName, files = localFiles.hints,
+                readLocalFile = localFiles::read, openLocalFile = localFiles::open)
         }
     }
 }

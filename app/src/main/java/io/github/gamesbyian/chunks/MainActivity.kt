@@ -137,6 +137,13 @@ class MainActivity : ComponentActivity() {
         accept(intent)
         setContent {
             ChunksTheme {
+                // One process-wide media controller for rows, details and settings alike.
+                val mediaController = androidx.compose.runtime.remember {
+                    io.github.gamesbyian.chunks.media.ChunksMedia.get(applicationContext).controller
+                }
+                androidx.compose.runtime.CompositionLocalProvider(
+                    io.github.gamesbyian.chunks.media.LocalTransferMediaController provides mediaController
+                ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChunksApp(
                         sharedMagnet = incomingMagnet,
@@ -146,6 +153,7 @@ class MainActivity : ComponentActivity() {
                         incomingCreate = incomingCreate,
                         onIncomingCreateConsumed = { incomingCreate = null }
                     )
+                }
                 }
             }
         }
@@ -171,7 +179,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 /** "12 shown", or "3 of 12 shown" when a search or filter narrows the list (as on the phone). */
@@ -190,6 +198,7 @@ internal fun optionsDestinationMatches(label: String, rawQuery: String): Boolean
         "Server" -> "connection endpoint profile account login settings server"
         "ZIP review" -> "zip archives compressed inspect"
         "Create" -> "create torrent publish share new"
+        "Artwork & info" -> "artwork art poster cover image media metadata identify match provider tmdb lookup"
         else -> ""
     }
     val haystack = (label + " " + aliases).lowercase(java.util.Locale.ROOT)
@@ -608,6 +617,8 @@ private fun ChunksApp(
             )
         } else if (section == Section.SEEDING) {
             SeedingRulesScreen(seedingEnvironments, onBack = { leaveTool() })
+        } else if (section == Section.MEDIA) {
+            MediaSettingsScreen(onBack = { leaveTool() })
         } else if (section == Section.CREATE && server == null) {
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { leaveTool() },
                 shared = createRequest, onSharedConsumed = { createRequest = null })
@@ -623,6 +634,7 @@ private fun ChunksApp(
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     onBack = { leavePhone() },
                     onSeedingRules = { openFromPhone(Section.SEEDING) },
+                    onMediaSettings = { openFromPhone(Section.MEDIA) },
                     onCreateTorrent = { openFromPhone(Section.CREATE) },
                     onZipReview = { openFromPhone(Section.ARCHIVES) },
                     onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
@@ -941,6 +953,7 @@ private fun ChunksApp(
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
+                    onMediaSettings = { openFromPhone(Section.MEDIA) },
                         onCreateTorrent = { openFromPhone(Section.CREATE) },
                         onZipReview = { openFromPhone(Section.ARCHIVES) },
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
@@ -1075,6 +1088,7 @@ private fun ChunksApp(
                                 optionsSearch = ""
                                 when (shortcut) {
                                     OptionsShortcut.SEEDING_RULES -> openTool(Section.SEEDING, Section.TRANSFERS)
+                                    OptionsShortcut.MEDIA -> openTool(Section.MEDIA, Section.TRANSFERS)
                                     OptionsShortcut.PHONE_SETTINGS -> { localFromCombined = false; section = Section.LOCAL }
                                     OptionsShortcut.ENVIRONMENT_COLOURS -> { combinedFromPhone = false; section = Section.COMBINED }
                                     OptionsShortcut.NAMES -> section = Section.NAMES
@@ -1107,6 +1121,7 @@ private fun ChunksApp(
                             onClick = {
                                 optionsSearch = ""
                                 if (tab == Section.LOCAL) localFromCombined = false
+                                if (tab == Section.MEDIA) openTool(Section.MEDIA, Section.TRANSFERS) else
                                 section = tab
                             },
                             label = { Text(tab.label) },
@@ -1273,6 +1288,7 @@ private fun ChunksApp(
                 }
                 Section.LOCAL -> Unit // Composed by the independent local gate above.
                 Section.SEEDING -> Unit // Composed by the top-level route above.
+                Section.MEDIA -> Unit // Composed by the top-level route above.
                 Section.COMBINED -> Unit // Composed by the top-level route above.
                 Section.CREATE -> io.github.gamesbyian.chunks.create.CreateTorrentScreen(
                     onBack = { leaveTool() },
@@ -2241,7 +2257,7 @@ private fun TransferCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransferFileTypeBadge(transfer.name)
+                TransferRowArtwork(rememberRemoteTransferKey(progressEnvironmentId, transfer.hash), transfer.name)
                 Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                     // Collapsed rows stay compact, but full names are available
                     // to TalkBack and when the user expands this exact card.
@@ -2354,6 +2370,11 @@ private fun TransferCard(
                 Text("Suggested: " + suggestion.category +
                     (suggestion.collection?.let { " / " + it } ?: ""),
                     style = MaterialTheme.typography.labelLarge, color = Blue)
+            }
+            // Presentation only, keyed by the exact authenticated account + hash. No remote
+            // payload is read and no RPC is issued for identification or artwork.
+            rememberRemoteTransferKey(progressEnvironmentId, transfer.hash)?.let { key ->
+                TransferMediaDetailSection(key, transfer.name)
             }
             ActionTile(if (expanded) "Hide files" else "Inspect files", ChunksColors.Cyan,
                 onClick = onInspect, modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_folder, stacked = false)

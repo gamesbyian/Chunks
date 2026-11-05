@@ -87,7 +87,9 @@ class FileTransferMediaAssignmentStore(private val file: File, private val maxEn
             "m" to a.match?.let(MediaCodec::candidate),
             "sg" to Json.arr(a.suggestions.map(MediaCodec::candidate)),
             "cat" to Json.str(a.categoryOverride?.name), "sbi" to Json.str(a.stateBeforeImage?.name),
-            "ua" to a.userArtwork?.let { u -> Json.obj("u" to Json.Str(u.url), "w" to Json.num(u.width), "h" to Json.num(u.height)) }, "ls" to Json.str(a.lastStatus?.name), "lm" to Json.str(a.lastMessage),
+            "ua" to a.userArtwork?.let { u -> Json.obj("u" to Json.Str(u.url), "w" to Json.num(u.width), "h" to Json.num(u.height),
+                // A chosen provider image keeps its source and role (its cache key); imports omit both.
+                "p" to Json.str(u.provider.takeIf { it != LOCAL_PROVIDER }), "r" to Json.str(u.role.name.takeIf { u.provider != LOCAL_PROVIDER })) }, "ls" to Json.str(a.lastStatus?.name), "lm" to Json.str(a.lastMessage),
             "at" to Json.arr(a.attempts.map { Json.obj("p" to Json.Str(it.provider), "o" to Json.Str(it.outcome), "c" to Json.Bool(it.fromCache)) }),
             "u" to Json.num(a.updatedAtMs), "rv" to Json.num(a.recognizerVersion))
 
@@ -97,8 +99,11 @@ class FileTransferMediaAssignmentStore(private val file: File, private val maxEn
                 match = j["m"]?.let(MediaCodec::candidate),
                 suggestions = j["sg"]?.array?.mapNotNull(MediaCodec::candidate) ?: emptyList(),
                 categoryOverride = j["cat"]?.string?.let { runCatching { MediaKind.valueOf(it) }.getOrNull() },
-                userArtwork = j["ua"]?.let { u -> runCatching { ArtworkCandidate(LOCAL_PROVIDER, u["u"]!!.string!!, ArtworkRole.SQUARE,
-                    u["w"]?.int, u["h"]?.int) }.getOrNull() },
+                userArtwork = j["ua"]?.let { u -> runCatching {
+                    val provider = u["p"]?.string?.takeIf { it.matches(Regex("[a-z][a-z0-9-]{0,31}")) } ?: LOCAL_PROVIDER
+                    val role = if (provider == LOCAL_PROVIDER) ArtworkRole.SQUARE
+                        else u["r"]?.string?.let { r -> ArtworkRole.valueOf(r) } ?: ArtworkRole.SQUARE
+                    ArtworkCandidate(provider, u["u"]!!.string!!, role, u["w"]?.int, u["h"]?.int) }.getOrNull() },
                 stateBeforeImage = j["sbi"]?.string?.let { runCatching { MediaAssignmentState.valueOf(it) }.getOrNull() },
                 lastStatus = j["ls"]?.string?.let { runCatching { MediaLookupStatus.valueOf(it) }.getOrNull() },
                 lastMessage = j["lm"]?.string,

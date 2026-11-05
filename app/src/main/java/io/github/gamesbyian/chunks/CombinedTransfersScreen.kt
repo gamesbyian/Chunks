@@ -836,7 +836,13 @@ internal fun CombinedTransfersScreen(
             },
             stallCheckInProgress = stillStall(pendingStall),
             stallReport = stallEvidence?.takeIf { stillStall(it.first) }?.second,
-            stallCheckError = stallFailure?.takeIf { stillStall(it.first) }?.second
+            stallCheckError = stallFailure?.takeIf { stillStall(it.first) }?.second,
+            similar = { transfer ->
+                SimilarTransfersHost(transfer, sources,
+                    environmentLabel = { labels[it] },
+                    environmentColor = { id -> palette.hueOf(id)?.let { Color(it.argb) } ?: ChunksColors.Outline },
+                    onOpen = { key -> savedDetailTarget = arrayListOf(key.environment.value, key.infoHash) })
+            }
         )
     } else {
     // The same measured Transfers / Add / Options footer as the phone and
@@ -1340,7 +1346,8 @@ private fun CombinedTransferRow(
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransferFileTypeBadge(row.originalName)
+                TransferRowArtwork(row.key, row.originalName,
+                    hidden = source?.availability == EnvironmentAvailability.LOCKED)
                 Text(row.displayName, style = MaterialTheme.typography.titleSmall,
                     maxLines = if (expanded) Int.MAX_VALUE else 2,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

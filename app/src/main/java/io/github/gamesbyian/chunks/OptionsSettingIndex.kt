@@ -15,6 +15,8 @@ internal enum class OptionsShortcut(val title: String, val where: String, privat
         "speed limit limits bandwidth throttle rate dht peer peers discovery download location place phone storage"),
     ENVIRONMENT_COLOURS("Environment colours", "Colours for the phone and each server · opens All environments",
         "colour colours color colors palette environment environments identity combined all"),
+    MEDIA("Artwork & media info", "Online lookup consent, providers, artwork downloads and cache · opens Artwork & info",
+        "artwork art poster cover image picture media metadata info identify identification match provider providers tmdb key tvmaze musicbrainz lookup online cache consent"),
     NAMES("Names", "Display names (aliases) for transfers · opens Names",
         "name names rename alias aliases title titles display label"),
     BACKUP("Inventory backup", "Export a list of this server's transfers · opens Inventory backup",

@@ -65,6 +65,8 @@ class TransferMediaController(
         val AUDIO_TAG_EXTENSIONS = setOf("mp3", "flac", "m4a", "m4b", "mp4", "aac")
         const val MAX_STATES = 96
         const val MAX_PENDING_AUTOMATIC = 6
+        /** Bounds one Similar Transfers index build (visible inventory, all environments). */
+        const val MAX_SIMILAR_INVENTORY = 5_000
     }
     private val pendingAutomatic = java.util.concurrent.atomic.AtomicInteger(0)
 
@@ -404,7 +406,70 @@ class TransferMediaController(
 
     /** Never delete an imported image another transfer still uses. */
     private fun releaseIfUnreferenced(image: ArtworkCandidate, except: MediaTransferKey) {
-        if (store.all().none { it.key != except && it.userArtwork == image }) artwork.removeLocal(image)
+        if (store.all().none { it.key != except && it.userArtwork == image }) {
+            if (image.provider == LOCAL_PROVIDER) artwork.removeLocal(image) else artwork.unpin(image, ArtworkRole.SQUARE)
+        }
+    }
+
+    /** One loaded alternative image for the current match (square role), for the user to choose from. */
+    data class ArtworkAlternative(val candidate: ArtworkCandidate, val bitmap: Bitmap)
+
+    /**
+     * Explicitly requested gallery of the current match's other square-role images. Downloads only
+     * with "Download artwork" on and an allowed network; otherwise shows what is already cached.
+     * Never for adult content, and never changes the assignment by itself.
+     */
+    suspend fun alternatives(key: MediaTransferKey, limit: Int = 8): List<ArtworkAlternative> =
+        kotlinx.coroutines.withContext(artworkDispatcher) {
+            val cur = flow(key)?.value ?: return@withContext emptyList()
+            val match = cur.match ?: return@withContext emptyList()
+            val s = settings()
+            if (!s.showArtwork || cur.displayKind == MediaKind.ADULT) return@withContext emptyList()
+            val net = network()
+            val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            match.artwork.filter { it.season == null || it.season == match.season }.distinctBy { it.url }.take(limit.coerceIn(1, 24))
+                .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.SQUARE, allowNetwork) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
+        }
+
+    /** The user picked one provider image: pin it and use it ahead of automatic selection. */
+    fun chooseAlternative(key: MediaTransferKey, candidate: ArtworkCandidate) {
+        val cur = flow(key)?.value ?: return
+        if (cur.match?.artwork?.contains(candidate) != true) return
+        scope.launch(lookupDispatcher) {
+            artwork.pin(candidate, ArtworkRole.SQUARE)
+            applyImported(key, candidate)
+        }
+    }
+
+    /**
+     * Similar Transfers over the caller's already-authorized, visible inventory. Only confirmed
+     * (automatic or user-chosen) identities count; title-only or suggested matches never join.
+     * Reads local assignments on the lookup dispatcher; never starts a lookup.
+     */
+    suspend fun similarFor(source: io.github.gamesbyian.chunks.model.UnifiedTransferKey,
+                           visible: Collection<io.github.gamesbyian.chunks.model.UnifiedTransferKey>,
+                           limit: Int = 20): List<io.github.gamesbyian.chunks.model.RelatedTransferCandidate> =
+        kotlinx.coroutines.withContext(lookupDispatcher) {
+            val keys = (listOf(source) + visible).distinct().take(MAX_SIMILAR_INVENTORY)
+            val index = io.github.gamesbyian.chunks.model.MediaRelationIndex.build(
+                MediaRelationBridge.members(keys.map { it to store.get(MediaTransferKey.of(it)) }))
+            index.similar(source, keys.toSet(), limit = limit.coerceIn(1, 100))
+        }
+
+    /**
+     * Apply changed presentation settings to rows already on screen: turning artwork off drops
+     * loaded images immediately (category art shows instead); turning it on reloads only from
+     * existing assignments. Never starts an identification lookup.
+     */
+    fun onSettingsChanged() {
+        val snapshot = synchronized(this) { states.entries.map { it.key to it.value } }
+        scope.launch(artworkDispatcher) {
+            val s = settings()
+            snapshot.forEach { (key, f) ->
+                if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
+                else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
+            }
+        }
     }
 
     fun dismissSearch(key: MediaTransferKey) { flow(key)?.update { it.copy(searchResults = null, message = null) } }
