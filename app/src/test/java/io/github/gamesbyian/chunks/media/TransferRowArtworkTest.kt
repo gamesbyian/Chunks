@@ -355,4 +355,20 @@ class TransferRowArtworkTest {
         rule.waitForIdle()
         assertEquals(0, rule.onAllNodesWithText("Inspect media").fetchSemanticsNodes().size)
     }
+
+    @Test fun largerListArtworkSettingResizesVisibleRowsWithoutChangingIdentity() {
+        val c = controller()
+        c.observe(MediaTransferKey.of(phone), name); c.lookup(MediaTransferKey.of(phone))
+        rule.setContent {
+            CompositionLocalProvider(LocalTransferMediaController provides c) {
+                ChunksTheme { Surface { TransferRowArtwork(phone, name) } }
+            }
+        }
+        val node = rule.onNodeWithContentDescription("Artwork: Babylon 5 (automatic). $format")
+        node.assertWidthIsEqualTo(TransferRowArtworkSize)
+        settings = settings.copy(largeListArtwork = true); c.onSettingsChanged()
+        rule.waitForIdle()
+        node.assertWidthIsEqualTo(io.github.gamesbyian.chunks.TransferRowArtworkLargeSize)
+            .assertHeightIsEqualTo(io.github.gamesbyian.chunks.TransferRowArtworkLargeSize)
+    }
 }

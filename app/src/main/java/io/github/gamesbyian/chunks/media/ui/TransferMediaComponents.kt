@@ -512,6 +512,8 @@ fun MediaPrivacySettingsPanel(
         SettingSwitch("Download artwork", "Metadata can be used without downloading images.", settings.downloadArtwork) { onChange(settings.copy(downloadArtwork = it)) }
         SettingSwitch("Artwork on mobile data", "Download images on metered networks.", settings.artworkOnMeteredNetwork,
             enabled = settings.downloadArtwork) { onChange(settings.copy(artworkOnMeteredNetwork = it)) }
+        SettingSwitch("Larger artwork in lists", "64dp images in transfer lists instead of compact 40dp rows.",
+            settings.largeListArtwork) { onChange(settings.copy(largeListArtwork = it)) }
         Text("Adult content is never looked up and always uses neutral art.", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
 
         Text("Providers", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })

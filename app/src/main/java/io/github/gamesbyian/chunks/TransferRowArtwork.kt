@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -15,6 +16,8 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 
 /** Same footprint as the earlier format badge, so rows keep their compact density. */
 internal val TransferRowArtworkSize: Dp = 40.dp
+/** The optional "Larger artwork in lists" size, within TRANSFER-ARTWORK's 64–80dp row guidance. */
+internal val TransferRowArtworkLargeSize: Dp = 64.dp
 
 /**
  * Fixed-size, read-only artwork for a transfer list row (phone, rTorrent and Combined).
@@ -40,7 +43,10 @@ internal fun TransferRowArtwork(
     val state by rememberTransferMedia(mediaKey, originalName)
     val format = remember(originalName) { transferNameFormatHint(originalName) }
     val description = transferRowArtworkDescription(state, format)
-    TransferMediaArtwork(state, TransferRowArtworkSize, modifier = modifier, description = description)
+    val large = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
+        ?.largeListArtwork?.collectAsState()?.value == true
+    TransferMediaArtwork(state, if (large) TransferRowArtworkLargeSize else TransferRowArtworkSize,
+        modifier = modifier, description = description)
 }
 
 /** TalkBack text: what is drawn and its provenance first (never a provider title for adult content), then the format hint. */
