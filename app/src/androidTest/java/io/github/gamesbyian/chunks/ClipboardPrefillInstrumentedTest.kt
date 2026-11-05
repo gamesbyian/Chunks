@@ -12,6 +12,8 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -37,8 +39,23 @@ class ClipboardPrefillInstrumentedTest {
             val shown = rule.onAllNodes(hasText("", substring = true), useUnmergedTree = true)
                 .fetchSemanticsNodes().mapNotNull { it.config.getOrNull(SemanticsProperties.Text)?.joinToString() }
                 .take(40)
+            // The CI receipt omits exception text; a screenshot in the uploaded atlas folder shows the state.
+            runCatching { saveDiagnostic("clipboard-diagnostic-" + what.replace(Regex("[^a-z]+"), "-")) }
             throw AssertionError("Waited for $what; screen showed: $shown", timeout)
         }
+    }
+
+    private fun saveDiagnostic(name: String) {
+        val image = rule.onNode(androidx.compose.ui.test.isRoot()).captureToImage().asAndroidBitmap()
+        val resolver = rule.activity.contentResolver
+        val values = android.content.ContentValues().apply {
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "$name.png")
+            put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
+            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH,
+                android.os.Environment.DIRECTORY_PICTURES + "/ChunksAddAtlas")
+        }
+        val uri = resolver.insert(android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return
+        resolver.openOutputStream(uri)?.use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     @Test fun copiedMagnetPrefillsTheForegroundPhoneAdd() {
