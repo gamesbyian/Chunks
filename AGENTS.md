@@ -1,5 +1,8 @@
 # Chunks: permanent agent operating contract
 
+> **Current UX handoff (2026-11-05 UTC):** Both Claude and Codex have stopped (owner report); no active UX file ownership lease remains. Their work through merged #1299 and the next executable tasks are summarized in [UX final reconciliation](docs/UX-FINAL-RECONCILIATION-2026-11-05.md). The old dual-agent dispatch and older “Claude active” note below are chronological history, not current instructions. Read current main/PRs once before proceeding.
+
+
 > **Dated coordination pointer (2026-11-05):** Codex is paused; one agent (Claude) owns all UX/UI source and tracking documents. The 2026-11-04 [dual-agent dispatch](docs/UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is superseded for ownership; take remaining UX work from [WORK-QUEUE](docs/WORK-QUEUE.md). It does not supersede the permanent safety/product/evidence contract below. Check live PRs before starting. The older P0 A–E execution campaign has passed automated evidence; owner Pixel/human acceptance is still open.
 
 
