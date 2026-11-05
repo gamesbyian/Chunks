@@ -138,8 +138,9 @@ internal fun PhoneStoragePanel(
             val total = snapshot.totalBytes
             val free = snapshot.availableBytes
             if (total != null && free != null) {
+                // Numeric values stay in the readable sans at 200% (UX visual-language target).
                 Text(Units.bytes(free) + " free of " + Units.bytes(total),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold)
                 val occupied = snapshot.occupiedFraction
                 if (occupied != null) {

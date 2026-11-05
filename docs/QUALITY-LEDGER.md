@@ -2,6 +2,20 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-05 non-P0 UX #1297: HTTPS torrent link import, accent-card contrast, contrast sweep
+
+- **[#1297](https://github.com/gamesbyian/Chunks/pull/1297)** squash-merged as `a841c266bc134d7857b7d094437d0dfb274d2427` from exact head `85faac4af3880bea478acef3daa8a6ede659c513`. Passed foundation [41944975265](https://github.com/gamesbyian/Chunks/actions/runs/41944975265) and native Add [41944975469](https://github.com/gamesbyian/Chunks/actions/runs/41944975469), including installed `ClipboardPrefillInstrumentedTest`.
+- Real public HTTPS fetch through the production fetcher was run locally and opt-in (`CHUNKS_REAL_LINK_FETCH=1`):
+  - extensionless `linuxtracker.org/torrents/f6a86eee…/download/`: 28,599 bytes, infohash `f6a86eee64d65f3f970f22f64e584dfbf3a76d84`;
+  - Internet Archive `…_archive.torrent`: one redirect to `dn720200.ca.archive.org`, 35,048 bytes, infohash `e531c7ca2cca262ea75a3496a7bdbb53de90abed`.
+
+  Both infohashes equal `catalog.json`. On the production server Add screen, the Archive link was fetched and reviewed as `Infohash: e531c7ca…`. This proves link retrieval and metainfo identity, not peer bytes.
+- Negative controls: green-card Cancel was 1.05:1 and the removal-card buttons 1.77:1 without `AccentCardOutlinedButton`.
+- Prior red, preserved:
+  - native Add shard 1 of [41941420412](https://github.com/gamesbyian/Chunks/actions/runs/41941420412): `FinishInOrderFinishNextInstrumentedTest`, in untouched code, passed on the next head. Classified as a flaky harness.
+  - shard 0 of [41943470758](https://github.com/gamesbyian/Chunks/actions/runs/41943470758): `ClipboardPrefillInstrumentedTest` arrived with phone Add already open, so the step was not an opening transition. Test setup; the test now closes Add first.
+  - installed real-magnet lifecycle [41944975337](https://github.com/gamesbyian/Chunks/actions/runs/41944975337), attempt 1: failed at the Add-field typing step, with code identical to the head that passed. Classified as a flaky harness. Attempt 2 passed: two public magnets, resumed verified pieces, truthful peerless state and cleanup.
+
 ## 2026-11-04 non-P0 UX #1293 and #1295: phone Add seam, footer label, keyboard focus return, clipboard prefill
 
 - **[#1293](https://github.com/gamesbyian/Chunks/pull/1293)** squash-merged as `e4ca51b50e2303a68e567d72a301299ddd818740` from exact head `4636f3f85e929ac29526cd8bc5f177a904b37c9e`.

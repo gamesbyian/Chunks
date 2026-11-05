@@ -1,6 +1,6 @@
 # Chunks: permanent agent operating contract
 
-> **Dated coordination pointer (2026-11-04):** For the currently authorized parallel UX sessions, use [UX dual-agent dispatch](docs/UX-DUAL-AGENT-DISPATCH-2026-11-04.md) for file ownership and next executable work. It does not supersede the permanent safety/product/evidence contract below. Check live PRs: Claude resumes the existing #1287 IME proof; Codex owns nonoverlapping Combined/remote presentation. The older P0 A–E execution campaign has passed automated evidence; owner Pixel/human acceptance is still open.
+> **Dated coordination pointer (2026-11-05):** Codex is paused; one agent (Claude) owns all UX/UI source and tracking documents. The 2026-11-04 [dual-agent dispatch](docs/UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is superseded for ownership; take remaining UX work from [WORK-QUEUE](docs/WORK-QUEUE.md). It does not supersede the permanent safety/product/evidence contract below. Check live PRs before starting. The older P0 A–E execution campaign has passed automated evidence; owner Pixel/human acceptance is still open.
 
 
 **Mission:** deliver a safe, delightful Android BitTorrent client and first-class rTorrent remote as **one consistent user experience**, without losing downloaded data or overstating verified functionality. This file governs *agent behavior*. Normative product, UX and technical requirements live in their canonical documents, not in accumulating session narratives.

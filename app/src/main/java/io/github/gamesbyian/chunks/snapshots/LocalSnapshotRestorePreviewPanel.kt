@@ -253,8 +253,9 @@ internal fun SnapshotRestorePreviewPanel(
                 }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 result?.let { preview ->
+                    // A sentence, not a heading: the readable sans (see ChunksTypography).
                     Text("Compared with ${preview.targetInventoryCount} current ${target.noun} transfers.",
-                        style = MaterialTheme.typography.titleMedium)
+                        style = MaterialTheme.typography.titleSmall)
                     Text("Already present: ${preview.alreadyPresentCount}. " +
                         "Missing definitions needing individual review: " +
                         "${preview.candidateCount}. " +
