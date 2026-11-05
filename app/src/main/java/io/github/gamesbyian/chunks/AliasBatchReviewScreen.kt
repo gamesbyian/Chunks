@@ -148,17 +148,18 @@ internal fun AliasBatchReviewScreen(
                 Text("Existing custom names and filenames without a safe suggestion are skipped. Nothing is selected or saved automatically.",
                     style = MaterialTheme.typography.bodySmall)
                 if (proposals.isNotEmpty()) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         OutlinedButton(onClick = {
                             proposals.forEach { selected[it.hash] = true }
                             feedback = null
-                        }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                        }, modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Select shown")
                         }
                         OutlinedButton(onClick = {
                             selected.clear()
                             feedback = null
-                        }, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                        }, modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Clear")
                         }
                     }

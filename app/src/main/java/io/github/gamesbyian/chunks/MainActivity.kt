@@ -1986,7 +1986,9 @@ private fun TransfersScreen(
                     Text("${batchHashes.size} selected from the loaded '$view' view. " +
                         "Select shown means only the ${visible.size} filtered matches " +
                         "currently loaded by Chunks, not hidden views or unloaded transfers.")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    // Wraps instead of splitting "Select shown" letter by letter at 320dp/200%.
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxWidth()) {
                         OutlinedButton(onClick = {
                             val next = batchHashes + visible.map { it.hash }
@@ -1998,14 +2000,14 @@ private fun TransfersScreen(
                                 batchMessage = null
                             }
                         }, enabled = !stale && !loading && !batchBusy && visible.isNotEmpty(),
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Select shown")
                         }
                         OutlinedButton(onClick = {
                             batchHashes = emptySet()
                             batchConfirm = false
                         }, enabled = !batchBusy && batchHashes.isNotEmpty(),
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Clear")
                         }
                     }
