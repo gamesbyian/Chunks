@@ -241,6 +241,14 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(episode))
         waitForDescription("TV episode category artwork. $format")
 
+        // Artwork back on: the user's image returns from the app's own processed copy (no network).
+        media.updateSettings(media.settingsStore.load().copy(showArtwork = true))
+        waitForDescription("Your artwork. $format")
+        // Clear artwork, matches & lookup history: the visible row falls back to category art at once.
+        runBlocking { media.clearAllMediaData().join() }
+        waitForDescription("TV episode category artwork. $format")
+        assertTrue("Cleared assignments leave no searchable title", media.controller.searchableTitles().isEmpty())
+
         assertEquals("Media display and settings must not issue any further RPC beyond list refreshes",
             methodsBeforeMedia, receivedMethods.filter { it != "d.multicall2" && it != "system.client_version" })
         assertTrue("A user image is local: online lookup stays off", !media.settingsStore.load().onlineLookupConsent)
