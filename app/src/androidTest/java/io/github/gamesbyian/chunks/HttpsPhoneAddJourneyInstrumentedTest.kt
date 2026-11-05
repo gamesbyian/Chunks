@@ -205,7 +205,10 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     val allow = androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(
                         ".*:id/permission_allow_button"))
                     val button = device.wait(androidx.test.uiautomator.Until.findObject(allow), 20_000)
-                    assertNotNull("Expected Android's notification permission prompt", button)
+                    assertNotNull("Expected Android's notification permission prompt (foreground=" +
+                        device.currentPackageName + " granted=" + (context.checkSelfPermission(
+                        android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) +
+                        " engineStopped=" + LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped + ")", button)
                     button.click()
                     assertTrue("Notification prompt must dismiss before app controls are used",
                         device.wait(androidx.test.uiautomator.Until.gone(allow), 10_000))
