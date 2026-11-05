@@ -12,6 +12,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.media.*
+import io.github.gamesbyian.chunks.media.ui.candidateSubtitle
 import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import org.libtorrent4j.TorrentBuilder
@@ -99,6 +100,7 @@ class InstalledRealMediaInstrumentedTest {
     private fun correctCandidate(index: Int, candidate: MediaCandidate): Boolean =
         candidate.title.equals(fixtures[index].second, ignoreCase = true) &&
             candidate.ref.provider == fixtures[index].third && when (index) {
+                0 -> candidate.ref.externalId == "475" // Original 1993 series, not the announced CW reboot.
                 1 -> candidate.creators.any { it.contains("Radiohead", true) }
                 2 -> candidate.creators.any { it.contains("Frank Herbert", true) }
                 else -> true
@@ -204,10 +206,12 @@ class InstalledRealMediaInstrumentedTest {
                     val choice = rule.onNode(hasClickAction() and
                         SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role,
                             androidx.compose.ui.semantics.Role.RadioButton) and
-                        (hasText(chosen.title) or hasAnyDescendant(hasText(chosen.title))))
+                        (hasText(chosen.title) or hasAnyDescendant(hasText(chosen.title))) and
+                        (hasText(candidateSubtitle(chosen)) or hasAnyDescendant(hasText(candidateSubtitle(chosen)))))
                     choice.performScrollTo().assertIsDisplayed()
                     choice.performSemanticsAction(SemanticsActions.OnClick)
                     awaitMedia(index, "selected artwork", 30_000) { state(index).state == MediaAssignmentState.CHOSEN_BY_USER && state(index).artwork != null }
+                    assertEquals("The visible candidate selection must preserve exact provider identity", chosen.ref, state(index).match!!.ref)
                     assertEquals(fixtures[index].third, state(index).match!!.ref.provider)
                     closeRow()
                     verifyArtworkPixels(index)
