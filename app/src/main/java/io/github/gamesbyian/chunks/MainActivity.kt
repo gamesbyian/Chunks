@@ -953,7 +953,7 @@ private fun ChunksApp(
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
-                    onMediaSettings = { openFromPhone(Section.MEDIA) },
+                        onMediaSettings = { openFromPhone(Section.MEDIA) },
                         onCreateTorrent = { openFromPhone(Section.CREATE) },
                         onZipReview = { openFromPhone(Section.ARCHIVES) },
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },

@@ -135,7 +135,10 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
     if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(match?.ref, state.userArtwork, state.poster == null) {
         if (match != null && state.userArtwork == null && state.poster == null) onRequestPoster()
     }
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
+    // Narrow screen with large text: art above the words, so the title is not squeezed beside it.
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
+    val stacked = maxWidth < 360.dp && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.3f
+    val content: @Composable () -> Unit = {
         val poster = state.poster?.takeIf { showArtwork && state.mayShowRealArt && state.userArtwork == null }
         if (poster != null) {
             val image = remember(poster) { poster.asImageBitmap() }
@@ -147,7 +150,7 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                 modifier = Modifier.width(96.dp).aspectRatio(aspect).clip(shape)
                     .border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape).clearAndSetSemantics {})
         } else TransferMediaArtwork(state, 96.dp, showArtwork = showArtwork)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (match != null) {
                 Text(match.title, style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text, fontWeight = FontWeight.Bold,
                     maxLines = 3, overflow = TextOverflow.Ellipsis)
@@ -156,9 +159,12 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                 val r = state.recognition
                 Text(r.title?.let { "Looks like: $it" } ?: "Not identified", style = MaterialTheme.typography.titleSmall,
                     color = ChunksColors.Text, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                Text(state.displayKind.label + (r.year?.let { " · $it" } ?: "") +
-                    (if (r.season != null && r.episode != null) " · S%02dE%02d".format(r.season, r.episode) else ""),
-                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+                // "Transfer" (unknown kind) says nothing; show only facts that were recognized.
+                listOfNotNull(state.displayKind.takeIf { it != MediaKind.UNKNOWN }?.label, r.year?.toString(),
+                    if (r.season != null && r.episode != null) "S%02dE%02d".format(r.season, r.episode) else null)
+                    .joinToString(" · ").takeIf { it.isNotEmpty() }?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+                    }
             }
             MediaStateChip(state.state)
             recognizedFacts(state)?.let {
@@ -173,6 +179,9 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                 Text(if (match == null) "Identify…" else "Change match or artwork…")
             }
         }
+    }
+    if (stacked) Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
+    else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) { content() }
     }
 }
 

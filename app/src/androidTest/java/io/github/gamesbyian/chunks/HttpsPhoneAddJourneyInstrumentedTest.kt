@@ -46,10 +46,10 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             return connection.inputStream.use { it.readNBytes(limit + 1) }.also { require(it.size <= limit) }
         } finally { connection.disconnect() }
     }
-    private fun await(what: String, condition: () -> Boolean) {
+    private fun await(what: String, detail: () -> String = { "" }, condition: () -> Boolean) {
         val end = System.nanoTime() + 90_000_000_000
         while (!condition()) {
-            if (System.nanoTime() > end) fail("HTTPS phone journey: $what")
+            if (System.nanoTime() > end) fail("HTTPS phone journey: $what" + runCatching { detail() }.getOrDefault("").let { if (it.isEmpty()) "" else " ($it)" })
             Thread.sleep(150)
         }
     }
@@ -226,7 +226,15 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     phone.saveResumeDataFor(preview.infoHashV1, 30_000))
                 stage("checkpoint-confirmed")
                 val target = File(destination, preview.name)
-                await("independent piece byte readback") {
+                // On timeout, say what was actually on disk: absent, short, zeros or different bytes.
+                await("independent piece byte readback", detail = {
+                    val head = if (target.isFile) target.inputStream().use { it.readNBytes(piece.size) } else ByteArray(0)
+                    val matching = head.indices.firstOrNull { i -> i >= piece.size || head[i] != piece[i] } ?: head.size
+                    val st = phone.status(preview.infoHashV1)
+                    "exists=${target.exists()} file=${target.isFile} length=${target.length()} read=${head.size} " +
+                        "matchingPrefix=$matching zeroHead=${head.isNotEmpty() && head.all { it == 0.toByte() }} " +
+                        "done=${st?.doneBytes} progressPpm=${st?.progressPpm} stopped=${st?.stopped} piece=${piece.size}"
+                }) {
                     target.isFile && target.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
                 }
                 val status = requireNotNull(phone.status(preview.infoHashV1))
