@@ -208,4 +208,15 @@ class TransferMediaControllerTest {
         c.useCategoryArt(phone, MediaKind.TV_SERIES)
         assertTrue(!ArtworkDiskCache(File(dir, "art")).isPinned(k))
     }
+
+    @Test fun posterRoleLoadsOnRequestWithOriginalAspect() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val c = controller(); val flow = c.observe(phone, name)
+        c.lookup(phone)
+        assertNull(flow.value.poster) // never loaded for list rows
+        c.requestPoster(phone)
+        val poster = flow.value.poster!!
+        assertTrue(poster.height > poster.width) // 680x1000 source keeps its portrait aspect
+        assertTrue(poster.height <= 720)
+    }
 }

@@ -86,7 +86,9 @@ class ChunksMedia private constructor(context: Context) {
     /** Off main thread: a short, title-free summary for settings. */
     fun cacheSummary(): String {
         val mb = artworkDisk.sizeBytes() / (1024.0 * 1024.0)
-        return "Cached: %.1f MB artwork · %d lookups".format(mb, queryCache.size)
+        val names = providers.associate { it.info.id to it.info.displayName }
+        val diag = MediaDiagnostics.of(FileTransferMediaAssignmentStore(File(app.filesDir, "media/assignments.json")).all())
+        return "Cached: %.1f MB artwork · %d lookups\n".format(mb, queryCache.size) + diag.summary { names[it] ?: it }
     }
 
     private fun networkState(): MediaNetworkState {

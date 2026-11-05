@@ -136,6 +136,9 @@ class MediaComponentsRenderTest {
         var changed = 0
         rule.setContent { ChunksTheme { Surface { Column(Modifier.background(ChunksColors.Background).padding(12.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             MediaMetadataSummary(matched(1, "Babylon.5.S02E07.Soul.Mates.1080p.WEB-DL.mkv", b5), onChange = { changed++ })
+            MediaMetadataSummary(matched(5, "Blade.Runner.1982.The.Final.Cut.REMASTERED.1080p.BluRay.mkv", MediaCandidate(
+                MediaMetadataCacheKey("tmdb", "movie", "78"), MediaKind.MOVIE, "Blade Runner", 1982, attribution = MediaAttribution("TMDB", "TMDB", null)))
+                .copy(poster = Bitmap.createScaledBitmap(fakePoster(), 260, 390, true)), onChange = {})
             MediaMetadataSummary(matched(2, "Radiohead - OK Computer (1997) [FLAC]", MediaCandidate(MediaMetadataCacheKey("musicbrainz", "release-group", "b1392450-e666-3926-a536-22c65f834433"),
                 MediaKind.MUSIC_ALBUM, "OK Computer", 1997, creators = listOf("Radiohead"), attribution = MediaAttribution("MusicBrainz", "CC0", null)),
                 MediaAssignmentState.CHOSEN_BY_USER), onChange = {})
@@ -144,7 +147,7 @@ class MediaComponentsRenderTest {
             MediaMetadataSummary(state(4, "random_stuff").copy(assignment = TransferMediaAssignment(key(4), MediaAssignmentState.COULDNT_IDENTIFY)), onChange = {})
         } } } }
         rule.onRoot().captureRoboImage("build/chunks-visual/media-detail-summary.png")
-        rule.onAllNodesWithText("Change match or artwork…").fetchSemanticsNodes().let { assertEquals(2, it.size) }
+        rule.onAllNodesWithText("Change match or artwork…").fetchSemanticsNodes().let { assertEquals(3, it.size) }
         rule.onNodeWithText("Couldn't identify").assertExists()
         rule.onNodeWithText("Chosen by you").assertExists()
         rule.onNodeWithText("Suggested").assertExists()

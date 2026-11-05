@@ -35,7 +35,9 @@ import kotlinx.coroutines.withContext
  */
 @Composable
 fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, files: List<MediaFileHint> = emptyList(),
-                               modifier: Modifier = Modifier) {
+                               modifier: Modifier = Modifier,
+                               /** Reads a completed *local* file from this transfer (bounded); null when unavailable (e.g. remote). */
+                               readLocalFile: ((MediaFileHint) -> ByteArray?)? = null) {
     val context = LocalContext.current
     val media = remember(context) { ChunksMedia.get(context) }
     val controller = LocalTransferMediaController.current ?: media.controller
@@ -43,6 +45,7 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
     var settings by remember { mutableStateOf(MediaPrivacySettings()) }
     var askConsent by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val localCover = remember(files) { io.github.gamesbyian.chunks.media.LocalCoverFinder.pick(files) }
     LaunchedEffect(media) { settings = withContext(Dispatchers.IO) { media.loadSettings() } }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -62,7 +65,14 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
         modifier = modifier,
         onPickImage = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onRemoveImage = { controller.removeUserImage(key) },
-        onImageUrl = { controller.importImageUrl(key, it) })
+        onImageUrl = { controller.importImageUrl(key, it) },
+        localCoverName = localCover?.path?.substringAfterLast('/')?.takeIf { readLocalFile != null },
+        onUseLocalCover = localCover?.takeIf { readLocalFile != null }?.let { cover -> {
+            scope.launch {
+                val bytes = withContext(Dispatchers.IO) { runCatching { readLocalFile!!(cover) }.getOrNull() }
+                if (bytes != null) controller.importUserImage(key, bytes)
+            }
+        } })
 
     if (askConsent) MediaLookupConsentDialog(
         providerNames = media.providers.map { it.info.displayName },
@@ -76,6 +86,16 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
             }
         },
         onDismiss = { askConsent = false })
+}
+
+/** Detail header block wired to [ChunksMedia]; loads the poster role for the header on demand. */
+@Composable
+fun TransferMediaSummaryRoute(key: MediaTransferKey, originalName: String, files: List<MediaFileHint> = emptyList(),
+                              onChange: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val controller = LocalTransferMediaController.current ?: remember(context) { ChunksMedia.get(context).controller }
+    val state by remember(controller, key, originalName, files) { controller.observe(key, originalName, files) }.collectAsState()
+    MediaMetadataSummary(state, onChange, modifier, onRequestPoster = { controller.requestPoster(key) })
 }
 
 /** Informed, revocable consent text shown before the first online lookup. */

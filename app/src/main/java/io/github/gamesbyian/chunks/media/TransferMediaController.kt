@@ -18,6 +18,8 @@ data class TransferMediaUiState(
     val assignment: TransferMediaAssignment? = null,
     val artwork: Bitmap? = null,
     val artworkSource: ArtworkCandidate? = null,
+    /** Aspect-preserving poster/cover for detail headers; loaded only on request. */
+    val poster: Bitmap? = null,
     val busy: Boolean = false,
     val searchResults: List<MediaCandidate>? = null,
     val message: String? = null
@@ -176,7 +178,7 @@ class TransferMediaController(
                 userArtwork = prev?.userArtwork,
                 lastStatus = prev?.lastStatus, lastMessage = "Chosen by you", attempts = prev?.attempts ?: emptyList(), updatedAtMs = clock())
             store.put(a)
-            f.update { it.copy(assignment = a, searchResults = null, artwork = null, artworkSource = null, message = null) }
+            f.update { it.copy(assignment = a, searchResults = null, artwork = null, artworkSource = null, poster = null, message = null) }
             loadArtwork(key, pin = true)
         }
     }
@@ -191,7 +193,7 @@ class TransferMediaController(
             val a = TransferMediaAssignment(key, MediaAssignmentState.CATEGORY_ART_BY_USER, prev?.match,
                 prev?.suggestions ?: emptyList(), categoryOverride = kind ?: f.value.recognition.kind, updatedAtMs = clock())
             store.put(a)
-            f.update { it.copy(assignment = a, artwork = null, artworkSource = null, searchResults = null) }
+            f.update { it.copy(assignment = a, artwork = null, artworkSource = null, poster = null, searchResults = null) }
         }
     }
 
@@ -203,7 +205,7 @@ class TransferMediaController(
             prev?.userArtwork?.let { releaseIfUnreferenced(it, except = key) }
             prev?.let { releaseChosenArt(it) }
             store.remove(key)
-            f.update { it.copy(assignment = null, artwork = null, artworkSource = null, searchResults = null, message = null) }
+            f.update { it.copy(assignment = null, artwork = null, artworkSource = null, poster = null, searchResults = null, message = null) }
         }
     }
 
@@ -234,7 +236,7 @@ class TransferMediaController(
                 match = prev?.match?.takeIf { prev.state == MediaAssignmentState.AUTOMATIC || prev.state == MediaAssignmentState.CHOSEN_BY_USER },
                 lastMessage = "Your image", updatedAtMs = clock())
             store.put(a)
-            f.update { it.copy(assignment = a, busy = false, artwork = null, artworkSource = null) }
+            f.update { it.copy(assignment = a, busy = false, artwork = null, artworkSource = null, poster = null) }
             loadArtwork(key)
         }
     }
@@ -261,7 +263,7 @@ class TransferMediaController(
                 match = prev.match.takeIf { restored == MediaAssignmentState.AUTOMATIC || restored == MediaAssignmentState.CHOSEN_BY_USER },
                 updatedAtMs = clock())
             if (a.match == null && a.categoryOverride == null) store.remove(key) else store.put(a)
-            f.update { it.copy(assignment = a.takeIf { it.match != null || it.categoryOverride != null }, artwork = null, artworkSource = null) }
+            f.update { it.copy(assignment = a.takeIf { it.match != null || it.categoryOverride != null }, artwork = null, artworkSource = null, poster = null) }
             if (a.displayMatch != null) loadArtwork(key)
         }
     }
@@ -286,9 +288,29 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) {
             store.clear(); clearQueryCache(); clearArtwork(); artwork.clearMemory()
             synchronized(this@TransferMediaController) { states.values.toList() }.forEach { f ->
-                f.update { it.copy(assignment = null, artwork = null, artworkSource = null, searchResults = null, message = null) }
+                f.update { it.copy(assignment = null, artwork = null, artworkSource = null, poster = null, searchResults = null, message = null) }
             }
         }
+
+    /**
+     * Detail header: load the poster/cover role (original aspect, ≤720 px) for a shown match. Never for
+     * user images (square only), adult or when artwork is off; cached and offline-capable like squares.
+     */
+    fun requestPoster(key: MediaTransferKey) {
+        val f = flow(key) ?: return
+        val cur = f.value
+        val match = cur.match ?: return
+        val s = settings()
+        if (cur.poster != null || cur.userArtwork != null || !s.showArtwork || cur.displayKind == MediaKind.ADULT) return
+        if (match.artwork.none { it.role == ArtworkRole.POSTER }) return
+        val net = network()
+        val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+        scope.launch(artworkDispatcher) {
+            val posters = match.artwork.filter { it.role == ArtworkRole.POSTER }
+            val r = artwork.load(posters, ArtworkRole.POSTER, allowNetwork, service.providerInfos().map { it.id })
+            if (r is ArtworkLoadResult.Loaded) f.update { now -> if (now.match?.ref == match.ref && now.userArtwork == null) now.copy(poster = r.bitmap) else now }
+        }
+    }
 
     private fun loadArtwork(key: MediaTransferKey, pin: Boolean = false) {
         val f = flow(key) ?: return

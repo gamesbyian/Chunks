@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -99,6 +100,19 @@ fun MediaStateChip(state: MediaAssignmentState, modifier: Modifier = Modifier) {
         color = ChunksColors.Text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
 }
 
+/** Facts read from the transfer name itself (edition, episode range), labelled as such. */
+internal fun recognizedFacts(state: TransferMediaUiState): String? {
+    val r = state.recognition
+    val parts = buildList {
+        addAll(r.editions)
+        if (r.season != null && r.episode != null && r.lastEpisode != null) add("S%02dE%02d–E%02d".format(r.season, r.episode, r.lastEpisode))
+        if (r.kind == MediaKind.TV_SEASON && r.season != null && r.episode == null) add("Season ${r.season} pack")
+        r.yearRange?.let { add("${it.first}–${it.last} collection") }
+        r.issue?.let { add("Issue #$it") }
+    }
+    return if (parts.isEmpty()) null else "From name: " + parts.joinToString(" · ")
+}
+
 internal fun candidateSubtitle(c: MediaCandidate): String = listOfNotNull(
     c.kind.label,
     c.year?.toString(),
@@ -113,10 +127,21 @@ internal fun candidateSubtitle(c: MediaCandidate): String = listOfNotNull(
  */
 @Composable
 fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modifier: Modifier = Modifier,
-                         showArtwork: Boolean = true) {
+                         showArtwork: Boolean = true, onRequestPoster: (() -> Unit)? = null) {
     val match = state.match
+    if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(match?.ref) { if (match != null) onRequestPoster() }
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
-        TransferMediaArtwork(state, 96.dp, showArtwork = showArtwork)
+        val poster = state.poster?.takeIf { showArtwork && state.mayShowRealArt && state.userArtwork == null }
+        if (poster != null) {
+            val image = remember(poster) { poster.asImageBitmap() }
+            val shape = RoundedCornerShape(12.dp)
+            // Original aspect, never stretched; width fixed so text layout is stable.
+            // Clamp extreme aspects to 1:2..2:1 so a tall strip never dominates the header.
+            val aspect = (poster.width.toFloat() / poster.height).coerceIn(0.5f, 2f)
+            Image(image, contentDescription = null, contentScale = ContentScale.Crop,
+                modifier = Modifier.width(96.dp).aspectRatio(aspect).clip(shape)
+                    .border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape).clearAndSetSemantics {})
+        } else TransferMediaArtwork(state, 96.dp, showArtwork = showArtwork)
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (match != null) {
                 Text(match.title, style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text, fontWeight = FontWeight.Bold,
@@ -131,6 +156,9 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                     style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
             }
             MediaStateChip(state.state)
+            recognizedFacts(state)?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary)
+            }
             match?.let {
                 val art = state.artworkSource?.provider?.takeIf { p -> p != it.ref.provider }
                 Text("Source: ${it.attribution.providerName}" + (art?.let { " · art: $it" } ?: ""),
@@ -160,7 +188,10 @@ fun MediaIdentifyPanel(
     onPickImage: (() -> Unit)? = null,
     onRemoveImage: (() -> Unit)? = null,
     /** Explicit image-link import; null hides the field. */
-    onImageUrl: ((String) -> Unit)? = null
+    onImageUrl: ((String) -> Unit)? = null,
+    /** Name of a cover file found in this transfer's own completed files; null hides the option. */
+    localCoverName: String? = null,
+    onUseLocalCover: (() -> Unit)? = null
 ) {
     var showWhy by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -198,6 +229,10 @@ fun MediaIdentifyPanel(
                 if (state.userArtwork != null && onRemoveImage != null)
                     TextButton(onClick = onRemoveImage, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove my image") }
             }
+            if (localCoverName != null && onUseLocalCover != null)
+                OutlinedButton(onClick = onUseLocalCover, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Use $localCoverName from this transfer", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             if (onImageUrl != null) ImageUrlField(state.busy, onImageUrl)
         }
 
