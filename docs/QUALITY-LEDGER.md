@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-05 UX #1299 and post-agent reconciliation (latest merged implementation)
+
+- **[#1299](https://github.com/gamesbyian/Chunks/pull/1299)** merged on main `55306cdf68d4d2e00214b8899cf75f26921bd484` from PR head `58c512b2`. It moves the existing clipboard prefill opt-out into the other phone Add settings; the retrieval/clipboard behaviour is unchanged. Passed exact PR-head CI: [foundation 41949499719](https://github.com/gamesbyian/Chunks/actions/runs/41949499719), [native Add 41949499722](https://github.com/gamesbyian/Chunks/actions/runs/41949499722), [Android 10 Downloads 41949500020](https://github.com/gamesbyian/Chunks/actions/runs/41949500020), [R8 41949499895](https://github.com/gamesbyian/Chunks/actions/runs/41949499895), [docs 41949499742](https://github.com/gamesbyian/Chunks/actions/runs/41949499742). PR reports 15/15 focused local Robolectric tests and offline docs validation. These receipts do not imply human or Pixel acceptance.
+- [#1298](https://github.com/gamesbyian/Chunks/pull/1298) installed `PhoneAddHiddenInCombinedInstrumentedTest` is executed/passed; [#1287](https://github.com/gamesbyian/Chunks/pull/1287) exact-case installed keyboard cases are executed/passed. See their full separate receipts below. Remaining user-flow evidence: **actual phone and rTorrent transfer Add + verified pieces from an HTTPS-fetched .torrent link**. Physical Pixel clipboard notice, vendor IME, TalkBack and aesthetic review remain unverified. Current status and safe next actions: [final UX reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md).
+
+
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
 ## 2026-11-05 non-P0 UX #1298: single-agent reconciliation, contrast sweeps, installed phone→Combined journey
