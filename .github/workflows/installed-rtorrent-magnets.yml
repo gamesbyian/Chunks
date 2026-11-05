@@ -117,7 +117,8 @@ jobs:
           pid $RUNNER_TEMP/chunks-disposable/nginx.pid;
           error_log $RUNNER_TEMP/chunks-disposable/nginx.error notice;
           events { worker_connections 64; }
-          http { server { listen 127.0.0.1:18080;
+          http { access_log $RUNNER_TEMP/chunks-disposable/nginx.access;
+            server { listen 127.0.0.1:18080;
             location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000; }
           } }
           EOF
@@ -216,3 +217,16 @@ jobs:
             ${{ runner.temp }}/chunks-https-phone-crash.txt
           if-no-files-found: warn
           retention-days: 14
+      # Disposable only (no credentials, no protected host): the proxy/rTorrent side of an
+      # RPC non-2xx during the installed journey (nginx status + upstream error, rTorrent output).
+      - name: Retain disposable rTorrent proxy logs on failure
+        if: failure() && env.CHUNKS_DISPOSABLE == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-disposable-rtorrent-proxy-logs
+          path: |
+            ${{ runner.temp }}/chunks-disposable/nginx.error
+            ${{ runner.temp }}/chunks-disposable/nginx.access
+            ${{ runner.temp }}/chunks-disposable/rtorrent.log
+          if-no-files-found: warn
+          retention-days: 7
