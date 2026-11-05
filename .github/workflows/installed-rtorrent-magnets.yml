@@ -210,5 +210,6 @@ jobs:
             ${{ runner.temp }}/chunks-https-phone.xml
             ${{ runner.temp }}/chunks-https-phone-digest.json
             ${{ runner.temp }}/chunks-https-phone-witness.txt
+            ${{ runner.temp }}/chunks-https-phone-crash.txt
           if-no-files-found: warn
           retention-days: 14

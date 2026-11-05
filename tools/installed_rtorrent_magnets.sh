@@ -58,11 +58,17 @@ rm "$RUNNER_TEMP/chunks-installed-base.apk"
 unset installed_apk
 if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   milestone 'running production phone HTTPS and one-time Place journey'
+  adb logcat -c
   adb shell am instrument -w -r \
     -e class io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest \
     -e chunks_https_add authorized \
     "${candidate_package}.test/androidx.test.runner.AndroidJUnitRunner" \
     > "$RUNNER_TEMP/chunks-https-phone.raw" 2>&1
+  # Capture the disposable public-fixture process crash before parsing can fail.
+  # No account has been entered at this point; never retain a protected host log.
+  if [[ "${CHUNKS_DISPOSABLE:-0}" = 1 ]]; then
+    adb logcat -d -b crash > "$RUNNER_TEMP/chunks-https-phone-crash.txt"
+  fi
   python3 tools/parse_instrumentation_stream.py --raw "$RUNNER_TEMP/chunks-https-phone.raw" \
     --junit "$RUNNER_TEMP/chunks-https-phone.xml"
   python3 tools/ci_failure_digest.py --suite https-phone --status success --require-executed \
