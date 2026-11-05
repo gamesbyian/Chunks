@@ -2,6 +2,8 @@
 
 **Status:** research and implementation selection guidance, not a blanket approval to call or redistribute provider data. Normative consumer architecture: [SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md); existing artwork and consent rules: [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md). Provider terms, quotas, uptime, coverage and field availability must be rechecked at integration time. Free API access, open data, open-source implementation, royalty-free images and permission for commercial redistribution are five different things.
 
+**Implemented adapters (2026-11-05):** TVmaze, MusicBrainz + Cover Art Archive, Open Library and TMDB (user-supplied key only), with recorded real responses and an opt-in live test; constraints and evidence in [MEDIA-ARTWORK-IMPLEMENTATION](MEDIA-ARTWORK-IMPLEMENTATION.md).
+
 ## Selection principles and decision matrix
 
 **Prefer robust, free, appropriately reusable structured *identities* and relationships to flashy cover images.** Run on-device normalization and graph queries; external APIs perform optional asynchronous enrichment. Prioritize primary provider, then category fallback, then a cross-domain linked-entity bridge such as Wikidata. Only look up entities represented in the user's authorized inventory or necessary connecting entities; no open-ended crawling. No requirement for the user to create an account to run the core torrent client; optional enrichment must degrade fully offline. Each provider adapter has its own auth/consent/legal/cost/terms/cache/breaker configuration. Credentials remain user-provided where necessary or securely delivered through a genuinely authorized mechanism; **never bake client-secret tokens into the APK** or promise an unbudgeted proxy.
