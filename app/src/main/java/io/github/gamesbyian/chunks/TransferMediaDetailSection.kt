@@ -1,0 +1,54 @@
+package io.github.gamesbyian.chunks
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import io.github.gamesbyian.chunks.media.MediaTransferKey
+import io.github.gamesbyian.chunks.media.ui.TransferMediaIdentifyRoute
+import io.github.gamesbyian.chunks.media.ui.TransferMediaSummaryRoute
+import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
+
+/**
+ * Read-only media decoration and a user-requested identification editor for Combined details.
+ * The caller must exclude privacy-locked observations. Never opens remote payloads, changes a
+ * torrent, or sends a provider request simply because this section appears.
+ */
+@Composable
+internal fun TransferMediaDetailSection(
+    transfer: UnifiedTransferObservation,
+    modifier: Modifier = Modifier
+) {
+    val key = MediaTransferKey.of(transfer.key)
+    var editing by rememberSaveable(key.value) { mutableStateOf(false) }
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Artwork & media information", style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.semantics { heading() })
+        TransferMediaSummaryRoute(
+            key = key,
+            originalName = transfer.originalName,
+            onChange = { editing = !editing }
+        )
+        if (editing) {
+            OutlinedButton(
+                onClick = { editing = false },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) { Text("Close media identification") }
+            // No file read callback: an rTorrent listing does not establish device-side
+            // permission to read a payload, and even phone observations here are metadata only.
+            TransferMediaIdentifyRoute(key = key, originalName = transfer.originalName)
+        }
+    }
+}
