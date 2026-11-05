@@ -29,7 +29,7 @@ class FakeMediaHttp : MediaHttp {
     override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
         val uri = URI(url)
         if (uri.scheme != "https") throw MediaHttpException(MediaHttpFailure.NOT_HTTPS, "Only HTTPS")
-        if (!hosts.allows(uri.host)) throw MediaHttpException(MediaHttpFailure.BLOCKED_HOST, "Blocked ${uri.host}")
+        if (!hosts.allows(uri.host)) throw MediaHttpException(MediaHttpFailure.BLOCKED_HOST, "Host not permitted for this provider")
         requests.add(url); requestHeaders.add(headers)
         if (offline) throw MediaHttpException(MediaHttpFailure.OFFLINE, "Network unavailable")
         val route = routes.firstOrNull { url.contains(it.contains) } ?: return MediaHttpResponse(404, emptyMap(), "{}".toByteArray(), url)
