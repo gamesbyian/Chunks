@@ -74,6 +74,7 @@ import io.github.gamesbyian.chunks.engine.LocalDeleteDataReceipt
 import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
+import io.github.gamesbyian.chunks.engine.LocalDiskIoMode
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
 import io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery
 import io.github.gamesbyian.chunks.engine.LocalTrackerRepairOutcome
@@ -144,7 +145,7 @@ internal object LocalEngineHolder {
     fun get(context: Context): LocalTorrentEngine {
         engine?.let { return it }
         val candidate = LocalTorrentEngine(
-            LocalEngineConfig(stateDirectory = stateDirectory(context))
+            LocalEngineConfig(stateDirectory = stateDirectory(context), diskIoMode = LocalDiskIoMode.POSIX)
         )
         val verified = LocalEngineStartupSettings.open(
             candidate = candidate,
