@@ -171,6 +171,13 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 stage("pieces-received")
                 click("Stop")
                 await("production Stop") { phone.status(preview.infoHashV1)?.stopped == true }
+                stage("stopped-observed")
+                // A paused flag precedes asynchronous disk-cache settlement. Use
+                // the production post-Stop FLUSH_DISK_CACHE checkpoint before an
+                // independent pathname read, as the existing intake journey does.
+                assertTrue("Post-Stop disk checkpoint was not confirmed",
+                    phone.saveResumeDataFor(preview.infoHashV1, 30_000))
+                stage("checkpoint-confirmed")
                 val target = File(destination, preview.name)
                 await("independent piece byte readback") {
                     target.isFile && target.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
