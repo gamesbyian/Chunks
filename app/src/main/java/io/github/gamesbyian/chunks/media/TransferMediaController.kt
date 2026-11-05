@@ -183,6 +183,56 @@ class TransferMediaController(
         }
     }
 
+    /** A transfer that could share the user's choice, shown in a preview before anything is applied. */
+    data class RelatedCandidate(val key: MediaTransferKey, val originalName: String, val season: Int?, val episode: Int?)
+
+    /**
+     * Preview for "Apply to related transfers": currently observed transfers whose *recognized* title
+     * (comparison form) and media family equal this one's, excluding ones the user already decided.
+     * A preview only; nothing changes until [applyChoiceTo] is called with the user's selection.
+     */
+    @Synchronized
+    fun relatedForChoice(key: MediaTransferKey): List<RelatedCandidate> {
+        val source = states[key]?.value ?: return emptyList()
+        val title = source.recognition.title?.let { MediaText.withoutArticle(MediaText.normalize(it)) } ?: return emptyList()
+        if (source.recognition.kind == MediaKind.ADULT) return emptyList()
+        return states.values.map { it.value }.filter { s ->
+            s.key != key && s.recognition.kind != MediaKind.ADULT &&
+                s.recognition.kind.compatibleWith(source.recognition.kind) && s.recognition.kind != MediaKind.UNKNOWN &&
+                s.recognition.title?.let { MediaText.withoutArticle(MediaText.normalize(it)) } == title &&
+                (source.recognition.year == null || s.recognition.year == null || s.recognition.year == source.recognition.year) &&
+                s.state != MediaAssignmentState.CHOSEN_BY_USER && s.state != MediaAssignmentState.CATEGORY_ART_BY_USER
+        }.map { RelatedCandidate(it.key, it.recognition.raw, it.recognition.season, it.recognition.episode) }
+            .sortedWith(compareBy({ it.season ?: -1 }, { it.episode ?: -1 }, { it.originalName }))
+    }
+
+    /**
+     * Apply the source transfer's chosen match to the user-confirmed [targets]. TV episodes get the
+     * series identity plus their own recognized season/episode (no per-episode network calls); the
+     * artwork is the shared series/album/work art. Presentation only, reversible per transfer.
+     */
+    fun applyChoiceTo(source: MediaTransferKey, targets: Collection<MediaTransferKey>) {
+        scope.launch(lookupDispatcher) {
+            val chosen = store.get(source)?.takeIf { it.state == MediaAssignmentState.CHOSEN_BY_USER }?.match ?: return@launch
+            val series = chosen.copy(episodeTitle = null, overview = if (chosen.kind == MediaKind.TV_EPISODE) null else chosen.overview,
+                artwork = chosen.artwork.filter { it.role != ArtworkRole.BANNER })
+            for (t in targets.distinct()) {
+                if (t == source) continue
+                val f = flow(t) ?: continue
+                val prev = store.get(t)
+                if (prev?.state == MediaAssignmentState.CHOSEN_BY_USER || prev?.state == MediaAssignmentState.CATEGORY_ART_BY_USER) continue
+                val r = f.value.recognition
+                val c = if (chosen.kind.isTv) series.copy(kind = if (r.episode != null) MediaKind.TV_EPISODE else if (r.season != null) MediaKind.TV_SEASON else MediaKind.TV_SERIES,
+                    season = r.season, episode = r.episode) else series
+                val a = TransferMediaAssignment(t, MediaAssignmentState.CHOSEN_BY_USER, c, lastMessage = "Applied from a related transfer",
+                    updatedAtMs = clock())
+                store.put(a)
+                f.update { it.copy(assignment = a, artwork = null, artworkSource = null, poster = null) }
+                loadArtwork(t, pin = true)
+            }
+        }
+    }
+
     /** User prefers the bundled category tile (optionally a corrected category). */
     fun useCategoryArt(key: MediaTransferKey, kind: MediaKind? = null) {
         val f = flow(key) ?: return

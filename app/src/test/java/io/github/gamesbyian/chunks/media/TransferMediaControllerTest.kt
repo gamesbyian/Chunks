@@ -219,4 +219,29 @@ class TransferMediaControllerTest {
         assertTrue(poster.height > poster.width) // 680x1000 source keeps its portrait aspect
         assertTrue(poster.height <= 720)
     }
+
+    @Test fun applyChoiceToRelatedTransfersIsPreviewedExplicitAndKeepsEpisodes() {
+        val c = controller()
+        val k = { n: Int -> MediaTransferKey("phone|" + "%040x".format(n)) }
+        c.observe(k(1), "Babylon.5.S02E07.Soul.Mates.mkv"); val e8 = c.observe(k(2), "Babylon 5 - S02E08 - Gropos.mkv")
+        val pack = c.observe(k(3), "Babylon.5.S03.1080p.WEB-DL"); val other = c.observe(k(4), "Babylon.Berlin.S01E01.mkv")
+        val excluded = c.observe(k(5), "babylon_5_S04E01.mkv"); val decided = c.observe(k(6), "Babylon.5.S01E01.mkv")
+        c.useCategoryArt(k(6), MediaKind.DOCUMENT)
+        val show = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_EPISODE,
+            "Babylon 5", 1993, season = 2, episode = 7, episodeTitle = "Soul Mates",
+            artwork = listOf(ArtworkCandidate("tvmaze", "https://static.tvmaze.com/p.jpg", ArtworkRole.POSTER)), attribution = MediaAttribution("TVmaze", "CC", null))
+        assertTrue(c.relatedForChoice(k(1)).isNotEmpty()) // preview is available before and after choosing
+        c.choose(k(1), show)
+        val preview = c.relatedForChoice(k(1)).map { it.key }
+        assertEquals(listOf(k(2), k(3), k(5)).toSet(), preview.toSet()) // not Babylon Berlin, not the decided one
+        assertTrue(http.requests.size <= 1) // only the shared artwork download, no per-episode lookups
+        c.applyChoiceTo(k(1), preview - k(5))
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, e8.value.state)
+        assertEquals(8, e8.value.match!!.episode); assertNull(e8.value.match!!.episodeTitle)
+        assertEquals(MediaKind.TV_SEASON, pack.value.match!!.kind); assertEquals(3, pack.value.match!!.season)
+        assertEquals(MediaAssignmentState.NOT_LOOKED_UP, excluded.value.state)
+        assertEquals(MediaAssignmentState.NOT_LOOKED_UP, other.value.state)
+        assertEquals(MediaKind.DOCUMENT, decided.value.displayKind)
+        assertNotNull(e8.value.artwork)
+    }
 }

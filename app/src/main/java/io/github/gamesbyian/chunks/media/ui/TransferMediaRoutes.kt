@@ -67,6 +67,8 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
         onRemoveImage = { controller.removeUserImage(key) },
         onImageUrl = { controller.importImageUrl(key, it) },
         localCoverName = localCover?.path?.substringAfterLast('/')?.takeIf { readLocalFile != null },
+        related = remember(state.assignment) { controller.relatedForChoice(key) },
+        onApplyToRelated = { targets -> controller.applyChoiceTo(key, targets) },
         onUseLocalCover = localCover?.takeIf { readLocalFile != null }?.let { cover -> {
             scope.launch {
                 val bytes = withContext(Dispatchers.IO) { runCatching { readLocalFile!!(cover) }.getOrNull() }

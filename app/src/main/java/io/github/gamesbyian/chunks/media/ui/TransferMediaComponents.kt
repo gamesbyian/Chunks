@@ -64,6 +64,7 @@ import io.github.gamesbyian.chunks.media.MediaPrivacySettings
 import io.github.gamesbyian.chunks.media.MediaProviderInfo
 import io.github.gamesbyian.chunks.media.ProviderAttempt
 import io.github.gamesbyian.chunks.media.TransferMediaUiState
+import io.github.gamesbyian.chunks.media.MediaTransferKey
 import io.github.gamesbyian.chunks.media.providerOn
 
 /**
@@ -192,7 +193,10 @@ fun MediaIdentifyPanel(
     onImageUrl: ((String) -> Unit)? = null,
     /** Name of a cover file found in this transfer's own completed files; null hides the option. */
     localCoverName: String? = null,
-    onUseLocalCover: (() -> Unit)? = null
+    onUseLocalCover: (() -> Unit)? = null,
+    /** Preview of other transfers that could share this choice; empty hides the section. */
+    related: List<io.github.gamesbyian.chunks.media.TransferMediaController.RelatedCandidate> = emptyList(),
+    onApplyToRelated: ((List<MediaTransferKey>) -> Unit)? = null
 ) {
     var showWhy by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -220,6 +224,9 @@ fun MediaIdentifyPanel(
                 color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
             CandidateList(suggestions, selected = state.assignment?.displayMatch, onChoose = onChoose)
         }
+
+        if (state.state == MediaAssignmentState.CHOSEN_BY_USER && state.match != null && related.isNotEmpty() && onApplyToRelated != null)
+            ApplyToRelated(related, onApplyToRelated)
 
         if (settings.onlineLookupConsent) ManualSearch(state, onSearch)
 
@@ -260,6 +267,35 @@ fun MediaIdentifyPanel(
             }
         }
         if (showWhy) AttemptList(state.assignment?.attempts ?: emptyList(), state.recognition.evidence)
+    }
+}
+
+@Composable
+private fun ApplyToRelated(related: List<io.github.gamesbyian.chunks.media.TransferMediaController.RelatedCandidate>,
+                           onApply: (List<MediaTransferKey>) -> Unit) {
+    // Default: every listed transfer selected; each can be excluded before applying.
+    var excluded by remember(related) { mutableStateOf(emptySet<MediaTransferKey>()) }
+    var done by remember(related) { mutableStateOf(false) }
+    Column(Modifier.fillMaxWidth().background(ChunksColors.Surface, RoundedCornerShape(12.dp)).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("Also use this for ${related.size} similar transfer" + (if (related.size == 1) "" else "s") + "?",
+            style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
+        Text("Matched by the same recognized name. Check each one; only how Chunks shows them changes.",
+            style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+        related.take(30).forEach { r ->
+            val on = r.key !in excluded
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(on, role = Role.Checkbox) {
+                excluded = if (it) excluded - r.key else excluded + r.key },
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                androidx.compose.material3.Checkbox(checked = on, onCheckedChange = null)
+                Text(r.originalName, style = MaterialTheme.typography.bodySmall, color = ChunksColors.Text, maxLines = 2,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            }
+        }
+        if (related.size > 30) Text("…and ${related.size - 30} more", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+        val chosen = related.map { it.key }.filter { it !in excluded }
+        Button(onClick = { onApply(chosen); done = true }, enabled = chosen.isNotEmpty() && !done,
+            modifier = Modifier.heightIn(min = 48.dp)) { Text(if (done) "Applied" else "Apply to ${chosen.size}") }
     }
 }
 
