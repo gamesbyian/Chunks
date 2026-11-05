@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **Current status (2026-11-05 UTC, owner report):** Claude and Codex have **both stopped**. There are no active UX file leases. Start from [final UX reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md) and one [WORK-QUEUE](WORK-QUEUE.md), then make a brief live PR check. The former one-agent and dual-agent rosters below are historical. When new agents start concurrently, establish fresh per-file ownership rather than inheriting a stale split.
+
+
 > **2026-11-05 status:** Codex is paused and Claude is the **sole active UX agent**, owning every shared Compose/presentation file, the UX trace, QUALITY-LEDGER and this queue's UX section. The two-lane file split in the [dual-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is **released** and kept only as history.
 >
 > **Historical 2026-11-04 UX parallel dispatch:** [UX-DUAL-AGENT-DISPATCH-2026-11-04](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) provides the current *task-bound* two-agent file ownership and a short no-reconciliation starting path. Codex owns Combined/remote presentation; Claude owns existing IME PR #1287 plus phone/Add/navigation presentation. Shared central code and the UX trace/quality ledger must be edited serially. This active dispatch supersedes the older P0 rosters and unpopulated-server remarks below; those paragraphs are historical evidence, **not live work assignments**. Automated P0 A–E already passed; physical Pixel/human gates remain open. Verify current PRs before following either agent lane.
