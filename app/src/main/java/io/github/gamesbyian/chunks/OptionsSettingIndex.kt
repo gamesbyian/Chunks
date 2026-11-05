@@ -26,16 +26,54 @@ internal enum class OptionsShortcut(val title: String, val where: String, privat
     PRIVACY("Privacy & authentication", "Lock and hide transfer names · shown at the end of this Options panel",
         "privacy private lock unlock pin password biometric fingerprint hide screenshot recents authentication secure");
 
-    fun matches(rawQuery: String): Boolean {
-        val needles = rawQuery.trim().lowercase(Locale.ROOT).split(Regex("\\s+")).filter { it.isNotEmpty() }
-        if (needles.isEmpty()) return false
-        val haystack = (title + " " + words).lowercase(Locale.ROOT).split(Regex("[^\\p{L}\\p{N}&]+"))
-        // Every typed word must start one of this setting's words ("spe" finds speed).
-        return needles.all { needle -> haystack.any { it.startsWith(needle) } }
-    }
+    fun matches(rawQuery: String): Boolean = optionsWordsMatch(title, words, rawQuery)
 
     companion object {
         /** Empty for an empty search: shortcuts only answer a typed question. */
         fun search(rawQuery: String): List<OptionsShortcut> = entries.filter { it.matches(rawQuery) }
+    }
+}
+
+/** Every typed word must start one of the entry's words ("spe" finds speed); empty finds nothing. */
+internal fun optionsWordsMatch(title: String, words: String, rawQuery: String): Boolean {
+    val needles = rawQuery.trim().lowercase(Locale.ROOT).split(Regex("\\s+")).filter { it.isNotEmpty() }
+    if (needles.isEmpty()) return false
+    val haystack = (title + " " + words).lowercase(Locale.ROOT).split(Regex("[^\\p{L}\\p{N}&]+"))
+    return needles.all { needle -> haystack.any { it.startsWith(needle) } }
+}
+
+/**
+ * The same index for Phone options: each entry names a panel or tool that already exists on the
+ * phone screen. A result opens that tool or scrolls to that panel; it never changes a value, starts
+ * an engine command or picks a Place.
+ */
+internal enum class PhoneOptionsShortcut(val title: String, val where: String, private val words: String) {
+    SPEED_LIMITS("Speed limits", "Download and upload limits for this phone · shown in Phone options",
+        "speed limit limits bandwidth throttle rate download upload kib mib unlimited"),
+    DHT("DHT peer discovery", "Find peers without trackers · in phone Add",
+        "dht peer peers discovery trackerless magnet distributed hash table"),
+    DOWNLOAD_LOCATION("Download location", "Where new phone downloads are saved · in phone Add",
+        "download location place folder storage save path directory downloads"),
+    SEEDING_RULES("Seeding rules", "Ratio and seeding-time rules · opens Seeding rules",
+        "seeding seed ratio share sharing time rule rules stop upload goal"),
+    MEDIA("Artwork & media info", "Online lookup consent, providers, artwork downloads and cache · opens Artwork & info",
+        "artwork art poster cover image picture media metadata info identify identification match provider providers tmdb key tvmaze musicbrainz lookup online cache consent similar"),
+    PRIVACY("Privacy & authentication", "Lock and hide transfer names · shown in Phone options",
+        "privacy private lock unlock pin password biometric fingerprint hide screenshot recents authentication secure"),
+    SNAPSHOT_RESTORE("Restore from a snapshot", "Compare a saved phone snapshot and review a stopped restore · shown in Phone options",
+        "snapshot restore backup import compare recover"),
+    CREATE_TORRENT("Create a torrent", "Make a .torrent from files on this phone · opens Create",
+        "create make new torrent metainfo share publish"),
+    ZIP_REVIEW("Review ZIP archives", "Inspect and extract downloaded ZIP files · opens ZIP review",
+        "zip archive archives extract unzip unpack compressed"),
+    EXPORTS("Snapshots and exports", "Inventory snapshot, health export and magnet links · under More phone tools",
+        "snapshot export backup inventory health report magnet magnets links copy list"),
+    COLLECTION_NAMES("Collection names", "Rename or remove collection names · shown in Phone options",
+        "collection collections group groups name names rename label");
+
+    fun matches(rawQuery: String): Boolean = optionsWordsMatch(title, words, rawQuery)
+
+    companion object {
+        fun search(rawQuery: String): List<PhoneOptionsShortcut> = entries.filter { it.matches(rawQuery) }
     }
 }

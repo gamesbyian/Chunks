@@ -730,6 +730,13 @@ internal fun LocalEngineScreen(
     }
     val transfersRequester = remember { BringIntoViewRequester() }
     val optionsRequester = remember { BringIntoViewRequester() }
+    // Phone options search targets: existing panels on this screen.
+    val speedRequester = remember { BringIntoViewRequester() }
+    val privacyRequester = remember { BringIntoViewRequester() }
+    val restoreRequester = remember { BringIntoViewRequester() }
+    val exportsRequester = remember { BringIntoViewRequester() }
+    val namesRequester = remember { BringIntoViewRequester() }
+    var phoneOptionsSearch by rememberSaveable { mutableStateOf("") }
     // Back from a phone tool returns keyboard focus to the button that opened it.
     val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val createFocus = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -1978,6 +1985,47 @@ internal fun LocalEngineScreen(
             modifier = Modifier.padding(top = 12.dp)
                 .bringIntoViewRequester(optionsRequester)
                 .semantics { heading() })
+        ClearableTransferSearchField(value = phoneOptionsSearch, onValueChange = { phoneOptionsSearch = it },
+            label = "Find a phone setting or tool")
+        val privacyControlsHosted = io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current != null
+        if (phoneOptionsSearch.isNotBlank()) {
+            // Only entries whose screen or panel exists here; a result never changes a value.
+            val results = PhoneOptionsShortcut.search(phoneOptionsSearch).filter {
+                when (it) {
+                    PhoneOptionsShortcut.SEEDING_RULES -> onSeedingRules != null
+                    PhoneOptionsShortcut.MEDIA -> onMediaSettings != null
+                    PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent != null
+                    PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview != null
+                    PhoneOptionsShortcut.PRIVACY -> privacyControlsHosted
+                    else -> true
+                }
+            }
+            if (results.isEmpty()) Text("No matching phone setting or tool. Clear search to see everything in Phone options.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
+            results.forEach { shortcut ->
+                OutlinedButton(onClick = {
+                    phoneOptionsSearch = ""
+                    when (shortcut) {
+                        PhoneOptionsShortcut.SEEDING_RULES -> onSeedingRules?.invoke()
+                        PhoneOptionsShortcut.MEDIA -> onMediaSettings?.invoke()
+                        PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent?.invoke()
+                        PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview?.invoke()
+                        PhoneOptionsShortcut.DHT, PhoneOptionsShortcut.DOWNLOAD_LOCATION -> { addExpanded = true; addNavigationRevision++ }
+                        PhoneOptionsShortcut.SPEED_LIMITS -> scope.launch { speedRequester.bringIntoView() }
+                        PhoneOptionsShortcut.PRIVACY -> scope.launch { privacyRequester.bringIntoView() }
+                        PhoneOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { restoreRequester.bringIntoView() }
+                        PhoneOptionsShortcut.EXPORTS -> { showPhoneTools = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; exportsRequester.bringIntoView() } }
+                        PhoneOptionsShortcut.COLLECTION_NAMES -> scope.launch { namesRequester.bringIntoView() }
+                    }
+                }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(shortcut.title, fontWeight = FontWeight.Bold)
+                        Text(shortcut.where, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(seedingFocus)) {
             Text("Seeding rules…")
@@ -1986,10 +2034,13 @@ internal fun LocalEngineScreen(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("Artwork & media info…")
         }
-        io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
+        io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.let { controls ->
+            Column(Modifier.fillMaxWidth().bringIntoViewRequester(privacyRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
+        }
         // Settings first, then occasional tools: the person looking for a
         // speed limit does not have to scroll past snapshot and export panels.
-        LocalSpeedLimits()
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(speedRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { LocalSpeedLimits() }
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(restoreRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LocalSnapshotRestorePreviewPanel(
             transfers = transfers,
             inventoryConfirmed = hasConfirmedLocalInventory,
@@ -2047,6 +2098,7 @@ internal fun LocalEngineScreen(
                 }
             }
         )
+        } // restore anchor
         if (onCreateTorrent != null) OutlinedButton(onClick = onCreateTorrent,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(createFocus)) {
             Text("Create a torrent…")
@@ -2061,6 +2113,7 @@ internal fun LocalEngineScreen(
                 .semantics { stateDescription = if (showPhoneTools) "Expanded" else "Collapsed" }
         ) { Text(if (showPhoneTools) "Hide phone tools" else "More phone tools") }
         if (showPhoneTools) {
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(exportsRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LocalInventorySnapshotPanel(
             transfers = transfers,
             stale = inventoryStale,
@@ -2078,13 +2131,16 @@ internal fun LocalEngineScreen(
             stale = inventoryStale || busy,
             sourceLabel = "phone"
         )
+        } // exports anchor
         }
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(namesRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         CollectionNameManager(
             scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
             registry = nameRegistry,
             registeredNames = registeredNames,
             onNamesChanged = { registeredNames = it }
         )
+        } // names anchor
         LocalZipInterruptedExtractions()
     }
     ReturnToTopControl(

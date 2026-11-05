@@ -14,6 +14,9 @@ test -s "$dir/chunks-test.apk"
 adb shell wm size 1080x2400
 adb shell wm density 420
 adb shell settings put system font_scale 1.0
+# Emulators may report a hardware keyboard and then hide the soft keyboard, which makes the
+# installed footer/IME journey skip (seen twice in a row on #1318). Always show the IME.
+adb shell settings put secure show_ime_with_hard_keyboard 1
 adb install -r -t "$dir/chunks-app.apk"
 adb install -r -t "$dir/chunks-test.apk"
 adb shell pm list instrumentation | grep -F \

@@ -221,7 +221,12 @@ fun MediaIdentifyPanel(
     /** Null until requested; empty when none could be shown. */
     alternatives: List<io.github.gamesbyian.chunks.media.TransferMediaController.ArtworkAlternative>? = null,
     alternativesLoading: Boolean = false,
-    onChooseAlternative: ((io.github.gamesbyian.chunks.media.ArtworkCandidate) -> Unit)? = null
+    onChooseAlternative: ((io.github.gamesbyian.chunks.media.ArtworkCandidate) -> Unit)? = null,
+    /** Loads the match's poster/cover images for the detail header on request; null hides that gallery. */
+    onLoadPosters: (() -> Unit)? = null,
+    posters: List<io.github.gamesbyian.chunks.media.TransferMediaController.ArtworkAlternative>? = null,
+    postersLoading: Boolean = false,
+    onChoosePoster: ((io.github.gamesbyian.chunks.media.ArtworkCandidate) -> Unit)? = null
 ) {
     var showWhy by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -288,6 +293,36 @@ fun MediaIdentifyPanel(
                                 .border(if (selected) 3.dp else 1.dp, if (selected) ChunksColors.Green else ChunksColors.Outline, RoundedCornerShape(12.dp))
                                 .selectable(selected, role = Role.RadioButton) { onChooseAlternative(alt.candidate) }
                                 .semantics { contentDescription = "Image ${i + 1} of ${alternatives.size} from ${match.attribution.providerName}$dims" })
+                    }
+                }
+            }
+        }
+
+        val posterMatch = state.assignment?.displayMatch
+        if (posterMatch != null && onLoadPosters != null && onChoosePoster != null && state.userArtwork == null &&
+            state.displayKind != MediaKind.ADULT &&
+            posterMatch.artwork.filter { it.role == io.github.gamesbyian.chunks.media.ArtworkRole.POSTER &&
+                (it.season == null || it.season == posterMatch.season) }.distinctBy { it.url }.size > 1) {
+            Text("Detail poster", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text,
+                modifier = Modifier.semantics { heading() })
+            Text("Shown at the top of details. List tiles keep their own image.",
+                style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+            when {
+                posters == null -> OutlinedButton(onClick = onLoadPosters, enabled = !postersLoading,
+                    modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(if (postersLoading) "Loading posters…" else "Show posters")
+                }
+                posters.isEmpty() -> Text("No posters can be shown right now (offline, downloads off or none cached).",
+                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+                else -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    posters.forEachIndexed { i, alt ->
+                        val selected = state.assignment?.userPosterUrl == alt.candidate.url
+                        val image = remember(alt.bitmap) { alt.bitmap.asImageBitmap() }
+                        Image(image, contentDescription = null, contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(width = 72.dp, height = 108.dp).clip(RoundedCornerShape(8.dp))
+                                .border(if (selected) 3.dp else 1.dp, if (selected) ChunksColors.Green else ChunksColors.Outline, RoundedCornerShape(8.dp))
+                                .selectable(selected, role = Role.RadioButton) { onChoosePoster(alt.candidate) }
+                                .semantics { contentDescription = "Poster ${i + 1} of ${posters.size} from ${posterMatch.attribution.providerName}" })
                     }
                 }
             }

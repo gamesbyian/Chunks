@@ -118,6 +118,24 @@ internal class MainActivityRealMagnetJourney(
         }
         fail("Required exact-server checkpoint missing: $what")
     }
+    /**
+     * The test's own READ-ONLY rTorrent checks. The emulator reaches the disposable proxy through
+     * `adb reverse`, which occasionally drops a connection before nginx sees it (run 42100816764:
+     * first frame RTorrentRemote.kt request write; every logged request was 200). Retry only reads,
+     * a bounded few times; mutations are never retried here.
+     */
+    private fun <T> readOnly(block: suspend () -> T): T {
+        var last: java.io.IOException? = null
+        repeat(4) { attempt ->
+            try { return runBlocking { block() } } catch (transient: java.io.IOException) {
+                if (transient is io.github.gamesbyian.chunks.rpc.RpcReplyTooLarge) throw transient
+                last = transient
+                android.util.Log.i("ChunksRealMagnet", "CHUNKS_READ_RETRY attempt=${attempt + 1} type=${transient.javaClass.simpleName}")
+                Thread.sleep(1_000)
+            }
+        }
+        throw last!!
+    }
     private fun controller(path: String, port: Long? = null): ByteArray {
         require(path.matches(Regex("/magnet[0234]?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
         val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
@@ -162,11 +180,11 @@ internal class MainActivityRealMagnetJourney(
         val user = if (disposable) "" else decoded("chunks_live_user_b64")
         val password = if (disposable) "" else decoded("chunks_live_pass_b64")
         val remote = RTorrentRemote(RemoteCredentials(url, user, password))
-        fun row(hash: String) = runBlocking { remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) } }
-        val beforeRows = runBlocking { remote.listTransfers("main") }
+        fun row(hash: String) = readOnly { remote.listTransfers("main").singleOrNull { it.hash.equals(hash, true) } }
+        val beforeRows = readOnly { remote.listTransfers("main") }
         val before = beforeRows.map { it.hash.lowercase() }.toSet()
         val skippedSessions = mutableMapOf<String, Pair<String, RemoteTransfer?>>()
-        val default = runBlocking { remote.defaultDirectory() }
+        val default = readOnly { remote.defaultDirectory() }
         val parent = default ?: requireNotNull(runBlocking { corroboratedParent(remote, beforeRows) }) {
             "No independently corroborated server Place; no Add allowed"
         }
@@ -216,7 +234,7 @@ internal class MainActivityRealMagnetJourney(
                 type("Magnet or torrent link", url)
                 click("Get torrent from link")
                 rule.waitUntil(45_000) { visible(fixtures.getValue(label).name) }
-                assertNull("Fetch/review must not register a job", runBlocking { remote.lookupName(hash) })
+                assertNull("Fetch/review must not register a job", readOnly { remote.lookupName(hash) })
             } else type("Magnet or torrent link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
@@ -256,15 +274,15 @@ internal class MainActivityRealMagnetJourney(
             exposeTransferActions()
             click(if (start) "Start transfer…" else "Stop transfer…")
             click(if (start) "Confirm start" else "Confirm stop")
-            await(what = "lifecycle state readback") { row(hash)?.started == start && runBlocking { remote.readActivity(hash).active } == start }
+            await(what = "lifecycle state readback") { row(hash)?.started == start && readOnly { remote.readActivity(hash).active } == start }
         }
         fun remove(hash: String) {
             if (row(hash)?.started == true) lifecycle(hash, false)
             refreshAndFind(hash)
             exposeTransferActions()
             click("Remove from rTorrent…"); click("Remove transfer, keep data")
-            await { runBlocking { remote.lookupName(hash) } == null }
-            assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
+            await { readOnly { remote.lookupName(hash) } == null }
+            assertEquals(before, readOnly { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
             // A follow-on Add must start from an unfiltered Transfers screen.
             // Clearing the prior exact-hash search is read-only, and prevents
             // the next fixture from inheriting an obsolete UI selection.
@@ -276,7 +294,7 @@ internal class MainActivityRealMagnetJourney(
           for (label in group) {
             val preview = fixtures.getValue(label)
             val hash = preview.infoHashV1
-            val existingName = runBlocking { remote.lookupName(hash) }
+            val existingName = readOnly { remote.lookupName(hash) }
             if (hash in before || existingName != null) {
                 // A pre-existing session is never ours to stop or erase.
                 skippedSessions[hash] = requireNotNull(existingName) to beforeRows.singleOrNull { it.hash.equals(hash, true) }
@@ -294,7 +312,7 @@ internal class MainActivityRealMagnetJourney(
                 stage(label, "ui-verified")
                 val placeholder = requireNotNull(row(hash))
                 assertTrue(placeholder.directory in setOf(parent, "$parent/${preview.name}"))
-                val initialMetaFlag = (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt()
+                val initialMetaFlag = (readOnly { remote.call("d.is_meta", listOf(hash)) } as Number).toInt()
                 require(initialMetaFlag == 0 || initialMetaFlag == 1) { "Invalid exact metadata state" }
                 if (!publicDiscovery) {
                     // Disposable peer-isolated Add must still exercise BEP9; the
@@ -308,9 +326,9 @@ internal class MainActivityRealMagnetJourney(
                     }
                 }
                 assertTrue(placeholder.started)
-                assertEquals(true, runBlocking { remote.readActivity(hash).active })
+                assertEquals(true, readOnly { remote.readActivity(hash).active })
                 stage(label, "registered")
-                val source = runBlocking { remote.peerSource(hash) }
+                val source = readOnly { remote.peerSource(hash) }
                 val host = if (disposable) "127.0.0.1" else "5.79.112.219"
                 require(source.boundAddress == host || (disposable && source.rpcHost == host))
                 if (!publicDiscovery && initialMetaFlag == 1)
@@ -318,7 +336,7 @@ internal class MainActivityRealMagnetJourney(
                 await(90, "metadata resolved on the exact row") {
                     val exact = row(hash)
                     exact?.name == preview.name && exact.sizeBytes == preview.sizeBytes &&
-                        (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt() == 0
+                        (readOnly { remote.call("d.is_meta", listOf(hash)) } as Number).toInt() == 0
                 }
                 stage(label, "metadata")
                 class PrecompletedFixture : RuntimeException()
@@ -330,9 +348,9 @@ internal class MainActivityRealMagnetJourney(
                     }
                 }
                 try {
-                    rejectPrecompleted(runBlocking { remote.readTrafficSample(hash) })
+                    rejectPrecompleted(readOnly { remote.readTrafficSample(hash) })
                     if (label == "magnet0") await(30) {
-                        rejectPrecompleted(runBlocking { remote.readTrafficSample(hash) })
+                        rejectPrecompleted(readOnly { remote.readTrafficSample(hash) })
                         false
                     }
                 } catch (_: PrecompletedFixture) {
@@ -348,7 +366,7 @@ internal class MainActivityRealMagnetJourney(
                 if (!publicDiscovery) controller("/$label/payload", source.listenPort)
                 try {
                     await(90, "rTorrent peer payload: active, peers, received and verified bytes") {
-                        val sample = runBlocking { remote.readTrafficSample(hash) }
+                        val sample = readOnly { remote.readTrafficSample(hash) }
                         rejectPrecompleted(sample)
                         sample.active == true && ((sample.peers ?: 0L) > 0L ||
                             (publicDiscovery && sample.verifiedBytes == sample.expectedBytes)) &&
@@ -368,12 +386,12 @@ internal class MainActivityRealMagnetJourney(
                     // Preserve only allowlisted exact-hash numbers/categories
                     // while the owned transfer still exists, before cleanup.
                     runCatching {
-                        traffic(label, "initial", runBlocking { remote.readTrafficSample(hash) })
+                        traffic(label, "initial", readOnly { remote.readTrafficSample(hash) })
                     }
                     reportReadOnlyStall(label, remote, hash)
                     throw timeout
                 }
-                traffic(label, "initial", runBlocking { remote.readTrafficSample(hash) })
+                traffic(label, "initial", readOnly { remote.readTrafficSample(hash) })
                 stage(label, "peer-progress"); stage(label, "bytes-verified")
                 rule.waitUntil(15_000) { runCatching { scroll("Operation outcome") }
                     visible("Payload:") && (visible("Downloading payload from peers.") ||
@@ -390,16 +408,16 @@ internal class MainActivityRealMagnetJourney(
                 assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
                 lifecycle(hash, false)
                 stage(label, "stopped")
-                val stopped = runBlocking { remote.readTrafficSample(hash) }
+                val stopped = readOnly { remote.readTrafficSample(hash) }
                 lifecycle(hash, true)
                 if (!publicDiscovery) controller("/$label/resume", source.listenPort)
                 val completeBeforeRestart = publicDiscovery && stopped.verifiedBytes == stopped.expectedBytes
                 if (!completeBeforeRestart) await(90, "progress before restart") {
-                    val sample = runBlocking { remote.readTrafficSample(hash) }
+                    val sample = readOnly { remote.readTrafficSample(hash) }
                     (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
                         (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
                 }
-                traffic(label, "resumed", runBlocking { remote.readTrafficSample(hash) })
+                traffic(label, "resumed", readOnly { remote.readTrafficSample(hash) })
                 stage(label, "restarted")
                 stage(label, if (completeBeforeRestart) "completed-at-stop" else "resumed-traffic")
                 cleanupAttempted = true
@@ -416,10 +434,10 @@ internal class MainActivityRealMagnetJourney(
                     val current = if (cleanupAttempted || !verifiedAdded) null else row(hash)
                     if (current != null && current.directory in setOf(parent, "$parent/${preview.name}")) {
                         if (current.started) runBlocking { remote.setStarted(hash, false) }
-                        await { row(hash)?.started == false && runBlocking { remote.readActivity(hash).active } == false }
+                        await { row(hash)?.started == false && readOnly { remote.readActivity(hash).active } == false }
                         val stopped = requireNotNull(row(hash))
                         check(runBlocking { remote.eraseFromSession(hash, stopped.name, stopped.directory) } is SessionEraseOutcome.VerifiedRemoved)
-                        assertEquals(before, runBlocking { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
+                        assertEquals(before, readOnly { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
                         stage(label, "removed")
                     }
                     stage(label, "uncertain")
@@ -435,7 +453,7 @@ internal class MainActivityRealMagnetJourney(
             .joinToString("") { "%02x".format(it.toInt() and 255) }
         report("chunks_real_add_hash_negative", negative)
         report("chunks_real_add_negative_stage", "preflight")
-        require(runBlocking { remote.lookupName(negative) } == null)
+        require(readOnly { remote.lookupName(negative) } == null)
         var inTransfers = false
         try {
             add(negative)
@@ -445,9 +463,9 @@ internal class MainActivityRealMagnetJourney(
             assertFalse(visible("Downloading payload from peers."))
             assertFalse(visible("Download complete."))
             report("chunks_real_add_negative_stage", "add-ui-truthful")
-            val sample = runBlocking { remote.readTrafficSample(negative) }
+            val sample = readOnly { remote.readTrafficSample(negative) }
             assertEquals(0L, sample.receivedBytes); assertEquals(0L, sample.verifiedBytes)
-            assertEquals(1, (runBlocking { remote.call("d.is_meta", listOf(negative)) } as Number).toInt())
+            assertEquals(1, (readOnly { remote.call("d.is_meta", listOf(negative)) } as Number).toInt())
             click("Back to transfers"); inTransfers = true
             refreshAndFind(negative)
             scroll("Fetching metadata")
@@ -459,13 +477,13 @@ internal class MainActivityRealMagnetJourney(
                 if (!inTransfers) click("Back to transfers")
                 remove(negative)
             }
-            assertNull(runBlocking { remote.lookupName(negative) })
+            assertNull(readOnly { remote.lookupName(negative) })
             report("chunks_real_add_negative_stage", "removed")
         }
         report("chunks_real_add_negative", "peerless-ui-and-cleanup-passed")
         for ((hash, snapshot) in skippedSessions) {
             assertEquals("Pre-existing session name changed", snapshot.first,
-                runBlocking { remote.lookupName(hash) })
+                readOnly { remote.lookupName(hash) })
             val previous = snapshot.second
             if (previous != null) {
                 val current = requireNotNull(row(hash))
