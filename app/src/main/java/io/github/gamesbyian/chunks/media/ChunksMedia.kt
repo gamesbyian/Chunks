@@ -52,7 +52,8 @@ class ChunksMedia private constructor(context: Context) {
             scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
             lookupDispatcher = Dispatchers.IO.limitedParallelism(1),
             artworkDispatcher = Dispatchers.IO.limitedParallelism(2),
-            backgroundDispatcher = Dispatchers.IO.limitedParallelism(1))
+            backgroundDispatcher = Dispatchers.IO.limitedParallelism(1),
+            ruleStoreFactory = { FileMediaRuleStore(File(app.filesDir, "media/rules.json")) })
     }
 
     /** Delegates resolve the lazily-created stores only when first used off the main thread. */

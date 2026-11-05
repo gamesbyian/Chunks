@@ -56,8 +56,11 @@ class TransferMediaController(
     private val artworkDispatcher: CoroutineDispatcher,
     private val clock: () -> Long = System::currentTimeMillis,
     /** Separate lane so automatic lookups never queue ahead of explicit user actions. */
-    private val backgroundDispatcher: CoroutineDispatcher = lookupDispatcher
+    private val backgroundDispatcher: CoroutineDispatcher = lookupDispatcher,
+    ruleStoreFactory: () -> MediaRuleStore = { InMemoryMediaRuleStore() }
 ) {
+    private val ruleStoreLazy = lazy(ruleStoreFactory)
+    private val ruleStore by ruleStoreLazy
     companion object {
         val AUDIO_TAG_EXTENSIONS = setOf("mp3", "flac", "m4a", "m4b", "mp4", "aac")
         const val MAX_STATES = 96
@@ -97,7 +100,7 @@ class TransferMediaController(
             .also { states[key] = it }
         if (existing != null) flow.update { it.copy(recognition = recognizeWithEvidence(key, input)) }
         scope.launch(lookupDispatcher) {
-            val a = store.get(key)
+            val a = store.get(key) ?: applyRuleIfAny(key, flow.value.recognition)
             flow.update { it.copy(assignment = a) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key) else if (a == null) maybeAutomatic(key)
         }
@@ -251,6 +254,41 @@ class TransferMediaController(
         }
     }
 
+    /** A saved rule fills only transfers without any assignment; no network, reversible per transfer. */
+    private fun applyRuleIfAny(key: MediaTransferKey, r: MediaRecognition): TransferMediaAssignment? {
+        val rule = ruleStore.all().lastOrNull { it.matches(r) } ?: return null
+        val base = rule.candidate
+        val c = if (base.kind.isTv) base.copy(kind = if (r.episode != null) MediaKind.TV_EPISODE else if (r.season != null) MediaKind.TV_SEASON else MediaKind.TV_SERIES,
+            season = r.season, episode = r.episode, episodeTitle = null,
+            artwork = base.artwork.filter { a -> a.season == null || a.season == r.season }) else base
+        val a = TransferMediaAssignment(key, MediaAssignmentState.CHOSEN_BY_USER, c, lastMessage = "Applied by your rule", updatedAtMs = clock())
+        store.put(a)
+        return a
+    }
+
+    /** Save "use this for future transfers with the same name" from a genuine user choice. */
+    fun saveRuleFrom(source: MediaTransferKey) {
+        val f = flow(source) ?: return
+        scope.launch(lookupDispatcher) {
+            val a = store.get(source)?.takeIf { it.state == MediaAssignmentState.CHOSEN_BY_USER && it.stateBeforeImage != MediaAssignmentState.AUTOMATIC } ?: return@launch
+            val m = a.match ?: return@launch
+            val r = f.value.recognition
+            val title = r.title?.let { MediaText.withoutArticle(MediaText.normalize(it)) }?.takeIf { it.isNotEmpty() } ?: return@launch
+            if (r.kind == MediaKind.ADULT || r.kind == MediaKind.UNKNOWN) return@launch
+            val family = MediaAssignmentRule.familyOf(r.kind)
+            val series = m.copy(episodeTitle = null, episode = null, artwork = m.artwork.filter { it.role != ArtworkRole.BANNER && it.season == null })
+            ruleStore.put(MediaAssignmentRule("$family|$title|${r.year ?: ""}", title, family, r.year, series, clock()))
+        }
+    }
+
+    fun rules(): List<MediaAssignmentRule> = ruleStore.all()
+    fun removeRule(id: String) { scope.launch(lookupDispatcher) { ruleStore.remove(id) } }
+    /** Composition-safe: answers only once the rule file was opened on the background dispatcher. */
+    fun ruleFor(key: MediaTransferKey): MediaAssignmentRule? {
+        if (!ruleStoreLazy.isInitialized()) return null
+        return flow(key)?.value?.recognition?.let { r -> ruleStore.all().lastOrNull { it.matches(r) } }
+    }
+
     /** Title-free counts from the live store; call off the main thread. */
     fun diagnostics(): MediaDiagnostics = MediaDiagnostics.of(store.all())
 
@@ -374,7 +412,7 @@ class TransferMediaController(
     /** Purge assignments, lookup history and downloaded artwork. Transfers are untouched. */
     fun clearAllMediaData(clearQueryCache: () -> Unit, clearArtwork: () -> Unit): kotlinx.coroutines.Job =
         scope.launch(lookupDispatcher) {
-            store.clear(); clearQueryCache(); clearArtwork(); artwork.clearMemory()
+            store.clear(); ruleStore.clear(); clearQueryCache(); clearArtwork(); artwork.clearMemory()
             synchronized(this@TransferMediaController) { states.values.toList() }.forEach { f ->
                 f.update { it.copy(assignment = null, artwork = null, artworkSource = null, poster = null, searchResults = null, message = null) }
             }

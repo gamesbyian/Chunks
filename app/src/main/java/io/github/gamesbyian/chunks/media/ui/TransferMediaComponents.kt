@@ -201,7 +201,12 @@ fun MediaIdentifyPanel(
     onUseEmbeddedArt: (() -> Unit)? = null,
     /** Preview of other transfers that could share this choice; empty hides the section. */
     related: List<io.github.gamesbyian.chunks.media.TransferMediaController.RelatedCandidate> = emptyList(),
-    onApplyToRelated: ((List<MediaTransferKey>) -> Unit)? = null
+    onApplyToRelated: ((List<MediaTransferKey>) -> Unit)? = null,
+    /** "Also use this for future transfers named …" (saves a removable rule). */
+    onSaveRule: (() -> Unit)? = null,
+    /** A saved rule that matches this transfer, with its removal action. */
+    ruleSummary: String? = null,
+    onRemoveRule: (() -> Unit)? = null
 ) {
     var showWhy by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -233,6 +238,18 @@ fun MediaIdentifyPanel(
         if (state.state == MediaAssignmentState.CHOSEN_BY_USER && state.assignment?.stateBeforeImage != MediaAssignmentState.AUTOMATIC &&
             state.match != null && related.isNotEmpty() && onApplyToRelated != null)
             ApplyToRelated(related, onApplyToRelated)
+
+        if (state.state == MediaAssignmentState.CHOSEN_BY_USER && state.assignment?.stateBeforeImage != MediaAssignmentState.AUTOMATIC &&
+            state.match != null && onSaveRule != null && ruleSummary == null)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("New transfers with this name can use your choice too.", style = MaterialTheme.typography.bodySmall,
+                    color = ChunksColors.TextSecondary, modifier = Modifier.weight(1f))
+                TextButton(onClick = onSaveRule, modifier = Modifier.heightIn(min = 48.dp)) { Text("Use for future ones") }
+            }
+        if (ruleSummary != null) Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(ruleSummary, style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary, modifier = Modifier.weight(1f))
+            if (onRemoveRule != null) TextButton(onClick = onRemoveRule, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove rule") }
+        }
 
         if (settings.onlineLookupConsent) ManualSearch(state, onSearch)
 
