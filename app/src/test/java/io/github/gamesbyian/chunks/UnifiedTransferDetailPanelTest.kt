@@ -74,6 +74,9 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: Server two / rutorrent2").assertExists()
         rule.onNodeWithText("Accessible selected transfer").assertExists()
+        rule.onNodeWithText("Artwork & media information").assertExists()
+        rule.onNodeWithText("Identify…").performScrollTo().performClick()
+        rule.onNodeWithText("Close media identification").performScrollTo().performClick()
         rule.onNodeWithText("Needs attention: an error was reported.").assertExists()
         rule.onNodeWithText("Start state set; peer activity has not been verified.").assertExists()
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
@@ -156,6 +159,7 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Open Locked server transfers").assertDoesNotExist()
         rule.onNodeWithText("Refresh Locked server").assertDoesNotExist()
         rule.onNodeWithText("Capabilities in this environment").assertDoesNotExist()
+        rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
         rule.onNodeWithText("Environment: Locked server").assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-locked-320x700.png")
     }
