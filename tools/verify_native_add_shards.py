@@ -6,6 +6,7 @@ produced by either shard. Nothing here treats absent stages or files as green.
 Never reads Android test logs or prints environment secrets.
 """
 import argparse
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -25,6 +26,12 @@ MAX_BASELINE_SKIPPED = 34  # 28 accepted skips + 1 opt-in native delete research
 #   + 1 PhoneIntakeJourney phaseDelete (runs only from tools/phone_intake_journey.sh)
 #   + 1 CombinedTwoRealServers process-death phase 2 (two-server workflow only)
 #   + 1 RemoteDeleteDataInstalledInstrumentedTest (disposable ruTorrent workflow only)
+# The new HTTPS phone case executes with its public-piece host in the installed
+# source campaign. Permit only that exact additional opt-in identity here;
+# preserve the existing ceiling for every other skipped case.
+HTTPS_PHONE_ID = hashlib.sha256((
+    "io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest" + "\\0" +
+    "fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault").encode()).hexdigest()
 
 
 def verify(root, count, sha, screenshot_manifest=None):
@@ -36,6 +43,7 @@ def verify(root, count, sha, screenshot_manifest=None):
     totals = {"tests": 0, "executed": 0, "failed": 0, "skipped": 0, "reports": 0}
     summaries = []
     known_test_ids = set()
+    https_phone_skipped = 0
     for index in range(count):
         path = root / f"chunks-native-add-receipt-shard-{index}" / "digest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -61,6 +69,8 @@ def verify(root, count, sha, screenshot_manifest=None):
             known_test_ids.add(ident)
             if case.get("outcome") not in ("passed", "skipped"):
                 raise ValueError("failed test in accepted shard")
+            if ident == HTTPS_PHONE_ID and case["outcome"] == "skipped":
+                https_phone_skipped += 1
         if int(j.get("tests", -1)) != int(j["executed"]) + int(j["skipped"]):
             raise ValueError("shard inconsistent JUnit skip/execute counts")
         if sum(case["outcome"] == "skipped" for case in cases) != int(j["skipped"]):
@@ -81,7 +91,7 @@ def verify(root, count, sha, screenshot_manifest=None):
         raise ValueError('missing test-case identities')
     if (totals['tests'] < BASELINE_JUNIT_TESTS or
             totals['executed'] < BASELINE_EXECUTED_TESTS or
-            totals['skipped'] > MAX_BASELINE_SKIPPED):
+            totals['skipped'] - https_phone_skipped > MAX_BASELINE_SKIPPED):
         raise ValueError('below accepted complete JUnit coverage or excessive skips')
     screenshots = {}
     for name in manifest:

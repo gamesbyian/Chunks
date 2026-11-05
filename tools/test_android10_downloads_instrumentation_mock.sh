@@ -43,7 +43,7 @@ case "$1" in
           *Android10StoragePermissionDialogInstrumentedTest*) printf 'OK (1 test)\n' ;;
           *LocalPublicDownloadsPlaceInstrumentedTest*)
             [[ "$MOCK_SKIP" != 1 ]] || echo 'INSTRUMENTATION_STATUS_CODE: -3'
-            printf 'OK (16 tests)\n'
+            printf 'OK (19 tests)\n'
             ;;
           *LocalEngineServiceInstrumentedTest*) printf 'OK (3 tests)\n' ;;
           *LocalResumeFileReaderInstrumentedTest*)
@@ -121,4 +121,4 @@ if bash "$root/android10_downloads_instrumentation.sh" > "$temp/skip-resume-even
   exit 1
 fi
 [[ "$(wc -l < "$MOCK_DIR/instruments")" -eq 6 ]]
-echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+16+3+2+2+10 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal/event cases refused'
+echo 'CHUNKS_ANDROID10_HARNESS_TEST: valid 1+19+3+2+2+11 cases passed; stale install, failed readbacks and skipped storage/resume/private-journal/event cases refused'

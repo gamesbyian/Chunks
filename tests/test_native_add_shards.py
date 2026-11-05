@@ -1,5 +1,6 @@
 """Offline fail-closed checks for full two-emulator native Add acceptance."""
 import json
+import hashlib
 import struct
 import sys
 import tempfile
@@ -159,6 +160,23 @@ class ShardedNativeAddTests(unittest.TestCase):
             d["junit"]["executed"] = 146
             d["junit"]["skipped"] = 35
         self.change(0, skip_thirty_five)
+        with self.assertRaisesRegex(ValueError, "excessive skips"):
+            self.check()
+
+    def test_only_exact_dedicated_https_case_has_an_extra_opt_in_skip(self):
+        # This case requires the real public-piece fixture host and executes in
+        # the installed HTTPS campaign. Ordinary native Add has no such host.
+        identity = ("io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest" +
+                    "\\0" + "fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault")
+        def skip_with_dedicated_case(d):
+            for case in d["test_cases"][:35]:
+                case["outcome"] = "skipped"
+            d["test_cases"][34]["id_sha256"] = hashlib.sha256(identity.encode()).hexdigest()
+            d["junit"]["executed"] = 146
+            d["junit"]["skipped"] = 35
+        self.change(0, skip_with_dedicated_case)
+        self.assertEqual(35, self.check()["junit"]["skipped"])
+        self.change(0, lambda d: d["test_cases"][34].update(id_sha256="f" * 64))
         with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
 
