@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-05 media/UX follow-up #1311 and installed HTTPS journey root cause
+
+- [#1311](https://github.com/gamesbyian/Chunks/pull/1311) squash-merged as `c796b3509d5e7dea19abcc91144e23080c6e3223` from exact head `e6e52bdd979d8ec116898c554fed86b9ff683409` (foundation, R8, API29, atlas, two-server Combined, remote delete-data, docs, native Add shards + verifier green): searchable confirmed media titles (phone, rTorrent, All environments), Similar Transfers in phone/rTorrent card details, consistent All-environments progress colours, plurals, stacked media summary and wrapping identify/batch controls at 320dp/200%, installed media journey extended (re-enable from local copy, clear all).
+- **Root cause of the intermittent post-Stop readback failure (also on main 42006539483, 42054562520):** `HttpsPhoneAddJourneyInstrumentedTest` waited for `doneBytes >= piece.size`, which any verified piece satisfies; the workflow's second real peer serves the whole file, so Stop could land with piece 0 partial. Diagnostic run 42056430995: `done=22282240`, `matchingPrefix=49152` of 262144. The test now waits for piece 0's own bytes on disk before Stop; the post-Stop readback assertion is unchanged. Next run: phone HTTPS part `verified=true` end to end.
+- **Still open, not explained:** occasional missing Android notification-permission prompt after Start (stage `added-stopped`). Diagnostics now report foreground package, granted state and engine state. Semantic click removed lost-tap explanations.
+- Infrastructure failures retained: two-server system-image "unknown archive" (42048838181), API29 adb install broken pipe (42051443187, green on rerun), magnet-workflow setup before tests (42057975285 attempt 2), and an rTorrent RPC non-2xx during a read-only `readActivity` (attempt 1).
+
 ## 2026-11-05 media production integration #1309
 
 - [#1309](https://github.com/gamesbyian/Chunks/pull/1309) squash-merged as `2b4fed63504ec650540c1bef7d00864e68e8e9a5` from exact head `86e91db638ae538060f9ef91251128907b1985b4`. Artwork in phone/rTorrent/Combined rows, Options → Artwork & info, phone/rTorrent detail Identify, Similar Transfers in Combined details, phone local completed-file covers/tags, and choosing another image from a match (plus an assignment-codec fix so a chosen provider image keeps its cache key across restarts).
