@@ -35,7 +35,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
     private fun stage(value: String) {
         require(value.matches(Regex("[a-z-]+")))
         lastStage = value
-        instrumentation.sendStatus(2, android.os.Bundle().apply { putString("chunks_https_phone_stage", value) })
+        android.util.Log.i("ChunksHttps", "CHUNKS_HTTPS_PHONE_STAGE $value")
     }
     private fun read(path: String, limit: Int): ByteArray {
         require(path in setOf("/ready", "/magnet3.torrent", "/magnet3.seed.torrent", "/magnet3.piece"))
@@ -236,9 +236,8 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         } catch (failure: Throwable) {
             val frame = failure.stackTrace.firstOrNull { it.fileName == "HttpsPhoneAddJourneyInstrumentedTest.kt" }
             val kind = failure.javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z]+")) } ?: "Failure"
-            instrumentation.sendStatus(2, android.os.Bundle().apply {
-                putString("chunks_https_phone_failure", "$lastStage-$kind-line" + (frame?.lineNumber ?: 0))
-            })
+            android.util.Log.i("ChunksHttps", "CHUNKS_HTTPS_PHONE_FAILURE $lastStage-$kind-line" +
+                (frame?.lineNumber ?: 0))
             throw failure
         } finally {
             stage("cleanup-entered")

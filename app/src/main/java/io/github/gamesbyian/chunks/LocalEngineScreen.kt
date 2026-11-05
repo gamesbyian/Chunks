@@ -144,6 +144,8 @@ internal object LocalEngineHolder {
     @Synchronized
     fun get(context: Context): LocalTorrentEngine {
         engine?.let { return it }
+        // The upstream portable backend avoids the reproduced Android 15 FUSE
+        // NodeTracker abort during memory-mapped writes. Paths and file policy stay unchanged.
         val candidate = LocalTorrentEngine(
             LocalEngineConfig(stateDirectory = stateDirectory(context), diskIoMode = LocalDiskIoMode.POSIX)
         )
