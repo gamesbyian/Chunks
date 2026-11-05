@@ -89,6 +89,18 @@ class AndroidCiTriggerContract(unittest.TestCase):
         # An app change alongside a test does not match the exclusion.
         self.assertIn("app/**", pull_request_paths(source))
 
+    def test_https_journey_covers_fetcher_and_phone_production_caller(self):
+        source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
+        paths = pull_request_paths(source)
+        for name in ("TorrentLinkImport.kt", "LocalEngineScreen.kt"):
+            self.assertIn("app/src/main/java/io/github/gamesbyian/chunks/" + name, paths)
+
+    def test_real_source_draft_skip_has_a_ready_transition(self):
+        source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
+        self.assertIn("github.event_name == 'pull_request' && !github.event.pull_request.draft", source)
+        self.assertIn("types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]", source)
+        self.assertIn("github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1", source)
+
     def test_unknown_app_changes_still_dispatch_foundation(self):
         source = WORKFLOW.read_text(encoding="utf-8")
         allowed = pull_request_paths(source)

@@ -5,6 +5,8 @@ on:
   # The real Seedhost test requires a manual dispatch with explicit Apply on main.
   pull_request:
     paths:
+      - "app/src/main/java/io/github/gamesbyian/chunks/TorrentLinkImport.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteAddProgress.kt"
@@ -19,6 +21,7 @@ on:
       - "tools/finish_installed_magnet_evidence.py"
       - "tools/parse_installed_magnet_add_receipt.py"
       - ".github/workflows/installed-rtorrent-magnets.yml"
+    types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
     inputs:
       source:
@@ -55,7 +58,7 @@ concurrency:
 jobs:
   installed-magnet-lifecycle:
     if: >-
-      ${{ github.event_name == 'pull_request' ||
+      ${{ (github.event_name == 'pull_request' && !github.event.pull_request.draft) ||
           (github.event_name == 'workflow_dispatch' &&
            (inputs.environment == 'disposable' ||
             (github.ref == 'refs/heads/main' && inputs.apply && github.run_attempt == 1))) }}
