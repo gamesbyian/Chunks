@@ -137,7 +137,16 @@ internal class MainActivityRealMagnetJourney(
         } finally { connection.disconnect() }
     }
 
-    fun run() {
+    private fun controllerReady(): ByteArray {
+        val connection = URL("http://127.0.0.1:18081/ready").openConnection() as HttpURLConnection
+        connection.connectTimeout = 5_000; connection.readTimeout = 5_000
+        try {
+            check(connection.responseCode == 200)
+            return connection.inputStream.use { it.readNBytes(65_537) }.also { require(it.size <= 65_536) }
+        } finally { connection.disconnect() }
+    }
+
+    fun run(torrentLinks: Boolean = false) {
         require(arg("chunks_real_add") == "authorized")
         report("chunks_real_add_app_stage", "runner-ready")
         val disposable = arg("chunks_disposable") == "authorized"
@@ -200,7 +209,15 @@ internal class MainActivityRealMagnetJourney(
                 else "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
             if (!disposable && label != null) require("&tr=" in link) { "Original source trackers missing" }
             require(StoppedRemoteAddPlan.fromMagnet(link, parent).expectedInfoHash == hash)
-            type("Magnet or torrent link", link)
+            if (torrentLinks && label != null && label != "magnet0") {
+                val url = org.json.JSONObject(String(controllerReady(), Charsets.UTF_8))
+                    .getJSONObject(label).getString("torrent_url")
+                require(url.startsWith("https://"))
+                type("Magnet or torrent link", url)
+                click("Get torrent from link")
+                rule.waitUntil(45_000) { visible(fixtures.getValue(label).name) }
+                assertNull("Fetch/review must not register a job", runBlocking { remote.lookupName(hash) })
+            } else type("Magnet or torrent link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
                 runCatching { scroll("Custom server folder (optional)") }
@@ -211,6 +228,10 @@ internal class MainActivityRealMagnetJourney(
             click("Review Add")
             scroll("Confirm one server operation")
             assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
+            if (torrentLinks && label != null && label != "magnet0") {
+                InstrumentationRegistry.getInstrumentation().sendStatus(2,
+                    Bundle().apply { putString("chunks_https_review", label) })
+            }
             if (label != null) stage(label, "review")
             report("chunks_real_add_app_stage", "add-review")
             onSubmit()
@@ -278,7 +299,7 @@ internal class MainActivityRealMagnetJourney(
                 if (!publicDiscovery) {
                     // Disposable peer-isolated Add must still exercise BEP9; the
                     // live published trackers may already have resolved metadata.
-                    if (disposable) assertEquals(1, initialMetaFlag)
+                    if (disposable) assertEquals(if (torrentLinks && label != "magnet0") 0 else 1, initialMetaFlag)
                     if (initialMetaFlag == 0) {
                         assertEquals("Immediately resolved metadata name", preview.name, placeholder.name)
                         assertEquals("Immediately resolved metadata size", preview.sizeBytes, placeholder.sizeBytes)

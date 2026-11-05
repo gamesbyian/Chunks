@@ -42,7 +42,8 @@ class MinifiedBuildSmokeInstrumentedTest {
     @After fun tearDown() { engines.forEach { it.close() }; work.deleteRecursively() }
 
     private fun engine() = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
-        allowMultipleConnectionsPerIp = true)).also { it.start(); engines += it }
+        allowMultipleConnectionsPerIp = true,
+        diskIoMode = io.github.gamesbyian.chunks.engine.LocalDiskIoMode.POSIX)).also { it.start(); engines += it }
 
     private fun waitFor(timeoutMs: Long, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + timeoutMs

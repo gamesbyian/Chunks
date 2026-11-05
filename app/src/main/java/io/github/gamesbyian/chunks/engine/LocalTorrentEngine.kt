@@ -72,7 +72,7 @@ data class LocalEngineConfig(
      * exempts them by default; tests use this to observe throttling over loopback.
      */
     val rateLimitLocalPeers: Boolean = false,
-    /** For controlled compatibility tests. The app continues using libtorrent's default backend. */
+    /** Phone production uses POSIX for Android FUSE compatibility; DEFAULT remains for comparison tests. */
     val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.DEFAULT
 )
 

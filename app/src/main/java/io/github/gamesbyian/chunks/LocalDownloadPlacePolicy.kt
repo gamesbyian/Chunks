@@ -66,7 +66,7 @@ internal data class LocalPlaceResolution(
     /** Read-only explanation of how this effective location was chosen. */
     val provenance: Provenance? = null
 ) {
-    enum class Provenance { AUTOMATIC, SAVED_CHOICE, FALLBACK }
+    enum class Provenance { AUTOMATIC, SAVED_CHOICE, FALLBACK, CURRENT_ADD }
 }
 
 /**
@@ -107,5 +107,19 @@ internal object LocalDownloadPlacePolicy {
                 remembered != null -> LocalPlaceResolution.Provenance.FALLBACK
                 else -> LocalPlaceResolution.Provenance.AUTOMATIC
             })
+    }
+}
+
+/** Exact, ephemeral destination for a single Add. Never writes the saved default or substitutes roots. */
+internal object LocalAddPlacePolicy {
+    fun identity(place: LocalDownloadPlace): String = place.kind.key + "|" + place.root.absolutePath
+
+    fun resolve(default: LocalPlaceResolution, currentIdentity: String?): LocalPlaceResolution {
+        if (currentIdentity == null) return default
+        val choice = default.choices.singleOrNull { identity(it.place) == currentIdentity }
+        return LocalPlaceResolution(choice?.takeIf { it.verified }?.place, default.choices,
+            if (choice?.verified == true) null else
+                "The location chosen for this Add is unavailable. Choose another location or use the phone default; nothing has been added.",
+            LocalPlaceResolution.Provenance.CURRENT_ADD)
     }
 }

@@ -173,12 +173,14 @@ def main():
     if not re.fullmatch("[a-f0-9]{40}", source):
         raise SystemExit("Invalid source provenance")
     apk = Path("app/build/outputs/apk/debug/app-debug.apk")
-    apk_name = "chunks-magnet-verified-preview-" + source[:12] + ".apk"
+    intake = "https" if env.get("CHUNKS_HTTPS_ADD") == "1" else "magnet"
+    apk_name = "chunks-" + intake + "-verified-preview-" + source[:12] + ".apk"
     shutil.copyfile(apk, a.output / apk_name)
     digest = hashlib.sha256(apk.read_bytes()).hexdigest()
     (a.output / "CHUNKS-BUILD-SHA256.txt").write_text(
         f"# source_sha={source}\n# run_id={env['GITHUB_RUN_ID']}\n# debug-signed preview; API35 emulator; physical/OEM not tested\n{digest}  {apk_name}\n")
-    print("CHUNKS_INSTALLED_MAGNET: two public magnets, UI controls, resumed verified pieces, peerless truth and cleanup passed")
+    print("CHUNKS_INSTALLED_SOURCE: two public " + intake +
+          " sources, UI controls, resumed verified pieces, peerless truth and cleanup passed")
 
 
 if __name__ == "__main__":

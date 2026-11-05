@@ -597,7 +597,9 @@ fun VerifiedAddScreen(
                                     uncertain = result !is RemoteAddAndStart.Started &&
                                         (result !is RemoteAddAndStart.AddedStopped ||
                                             result.result !is RemoteAddOutcome.VerifiedStopped)
-                                    if (bytes == null) submittedPlan = plan
+                                    // Both metainfo and magnets observe the same exact
+                                    // submitted hash and Place; this performs reads only.
+                                    submittedPlan = plan
                                     verifiedHash = verifiedAddNavigationHash(result)
                                     outcome = when (result) {
                                         is RemoteAddAndStart.Started ->

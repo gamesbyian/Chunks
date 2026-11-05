@@ -21,7 +21,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import libtorrent as lt
-from public_fixture_collector import bstr, debian_fixture
+from public_fixture_collector import bstr, debian_fixture, parse_bencode
 
 PREFIX_BUDGET = 32 * 1024 * 1024
 
@@ -95,6 +95,8 @@ def prepare(root):
         fixtures[label] = {
             "hash": str(ti.info_hashes().v1), "name": ti.name(), "size": total,
             "prefix_bytes": budget, "source": source, "license": license_text,
+            "torrent_url": (payload_source.replace("/iso-cd/", "/bt-cd/") + ".torrent"
+                            if label in ("magnet", "magnet3") else source),
             "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
             "peer_connections": 0, "peer_disconnects": 0,
             "peer_error_alerts": 0, "max_active_peers": 0, "payload_uploaded_bytes": 0,
@@ -252,6 +254,20 @@ def main():
             def do_GET(self):
                 if self.path == "/ready":
                     body = json.dumps(peer.fixtures).encode()
+                elif self.path == "/magnet3.seed.torrent":
+                    # The independent on-device seed must never fetch missing ISO
+                    # bytes. Keep the publisher's exact info dictionary and strip
+                    # only external discovery/webseed fields from this seed copy.
+                    _, info = parse_bencode((args.root / "magnet3.torrent").read_bytes())
+                    body = b"d4:info" + info + b"e"
+                elif self.path == "/magnet3.piece":
+                    ti = lt.torrent_info(str(args.root / "magnet3.torrent"))
+                    fs = ti.files()
+                    if fs.num_files() != 1 or fs.file_size(0) < ti.piece_size(0):
+                        self.send_error(400)
+                        return
+                    with (args.root / "magnet3" / fs.file_path(0)).open("rb") as inp:
+                        body = inp.read(ti.piece_size(0))
                 elif self.path in tuple("/" + label + extension for label in peer.fixtures
                                         for extension in (".torrent", ".magnet")):
                     body = (args.root / self.path[1:]).read_bytes()

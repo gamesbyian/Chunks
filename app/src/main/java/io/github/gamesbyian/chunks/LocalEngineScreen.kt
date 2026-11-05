@@ -74,6 +74,7 @@ import io.github.gamesbyian.chunks.engine.LocalDeleteDataReceipt
 import io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner
 import io.github.gamesbyian.chunks.engine.LocalFileBatchOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
+import io.github.gamesbyian.chunks.engine.LocalDiskIoMode
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
 import io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery
 import io.github.gamesbyian.chunks.engine.LocalTrackerRepairOutcome
@@ -143,8 +144,10 @@ internal object LocalEngineHolder {
     @Synchronized
     fun get(context: Context): LocalTorrentEngine {
         engine?.let { return it }
+        // The upstream portable backend avoids the reproduced Android 15 FUSE
+        // NodeTracker abort during memory-mapped writes. Paths and file policy stay unchanged.
         val candidate = LocalTorrentEngine(
-            LocalEngineConfig(stateDirectory = stateDirectory(context))
+            LocalEngineConfig(stateDirectory = stateDirectory(context), diskIoMode = LocalDiskIoMode.POSIX)
         )
         val verified = LocalEngineStartupSettings.open(
             candidate = candidate,
@@ -281,7 +284,11 @@ internal fun LocalEngineScreen(
      * environments or Seeding rules does not discard it. Never saved to
      * instance state: a magnet may carry a private tracker passkey.
      */
-    magnetDraftState: androidx.compose.runtime.MutableState<String>? = null
+    magnetDraftState: androidx.compose.runtime.MutableState<String>? = null,
+    /** Non-secret Add intent survives navigation independently of the saved default. */
+    addPlaceState: androidx.compose.runtime.MutableState<String?>? = null,
+    addFolderState: androidx.compose.runtime.MutableState<String>? = null,
+    addStartState: androidx.compose.runtime.MutableState<Boolean>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -473,8 +480,12 @@ internal fun LocalEngineScreen(
             clipboardFilled = filled
         }
     }
-    var startAfterAdd by remember { mutableStateOf(true) }
-    var addFolderDraft by remember { mutableStateOf("") }
+    val addStartHolder: androidx.compose.runtime.MutableState<Boolean> =
+        addStartState ?: rememberSaveable { mutableStateOf(true) }
+    var startAfterAdd by addStartHolder
+    val addFolderHolder: androidx.compose.runtime.MutableState<String> =
+        addFolderState ?: rememberSaveable { mutableStateOf("") }
+    var addFolderDraft by addFolderHolder
     var dht by remember { mutableStateOf(LocalEngineHolder.dhtPreferred(context)) }
     var dhtSaving by remember { mutableStateOf(false) }
     var dhtError by remember { mutableStateOf<String?>(null) }
@@ -500,11 +511,15 @@ internal fun LocalEngineScreen(
     // Choosing another Place is optional and only offered once verified.
     var placeResolution by remember { mutableStateOf<LocalPlaceResolution?>(null) }
     var placeCheck by remember { mutableIntStateOf(0) }
+    val addPlaceHolder = addPlaceState ?: rememberSaveable { mutableStateOf<String?>(null) }
+    var currentAddPlaceId by addPlaceHolder
+    var placeSaving by remember { mutableStateOf(false) }
     // Android 10: after the user answers, re-probe; a grant alone never selects
     // Downloads, the write probe and the remembered choice still decide.
     val storagePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()) { placeCheck++ }
-    LaunchedEffect(placeCheck) {
+    LaunchedEffect(placeCheck, resumeTick) {
+        placeResolution = null
         placeResolution = withContext(Dispatchers.IO) {
             try { LocalDownloadPlaces.resolve(context) } catch (_: Exception) {
                 LocalPlaceResolution(null, emptyList(),
@@ -512,7 +527,8 @@ internal fun LocalEngineScreen(
             }
         }
     }
-    val place = placeResolution?.selected
+    val addPlaceResolution = placeResolution?.let { LocalAddPlacePolicy.resolve(it, currentAddPlaceId) }
+    val place = addPlaceResolution?.selected
     val destination = place?.root
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
@@ -879,6 +895,7 @@ internal fun LocalEngineScreen(
                             }
                             magnet = ""
                             addFolderDraft = ""
+                            currentAddPlaceId = null
                             addExpanded = false
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -889,26 +906,39 @@ internal fun LocalEngineScreen(
                     }
                 }
             }, enabled = !busy && !inventoryStale && !dhtSaving &&
-                proposedAddDestination != null && magnetCheck is MagnetDraftCheck.Valid,
+                !placeSaving && proposedAddDestination != null && magnetCheck is MagnetDraftCheck.Valid,
                 modifier = Modifier.fillMaxWidth())
         }
         // Keep both intake methods discoverable before optional storage, seeding
         // and engine explanations. Existing Place and safety gates remain authoritative.
         PhoneEngineAbout()
         LocalDownloadPlacePicker(
-            resolution = placeResolution,
-            enabled = !busy && !inventoryStale,
-            onChoose = { choice ->
+            resolution = addPlaceResolution,
+            enabled = !busy && !inventoryStale && !placeSaving,
+            currentAdd = true,
+            defaultResolution = placeResolution,
+            onChoose = { choice -> currentAddPlaceId = LocalAddPlacePolicy.identity(choice.place) },
+            onUseDefault = { currentAddPlaceId = null },
+            onSaveDefault = { choice ->
+                placeSaving = true
                 scope.launch {
                     val saved = withContext(Dispatchers.IO) {
-                        try { LocalDownloadPlaces.remember(context, choice) } catch (_: Exception) { false }
+                        try {
+                            // Recheck the exact root, including removable-volume identity.
+                            LocalDownloadPlaces.choices(context).singleOrNull {
+                                LocalAddPlacePolicy.identity(it.place) == LocalAddPlacePolicy.identity(choice.place) && it.verified
+                            }?.let { LocalDownloadPlaces.remember(context, it) } == true
+                        } catch (_: Exception) { false }
                     }
-                    // Re-read the saved choice so the location and its provenance stay truthful.
-                    if (saved) placeCheck++
-                    else noteProblem("That download location could not be saved. The previous default is unchanged.")
+                    if (saved) {
+                        placeCheck++
+                        message = "Phone default saved for future Adds. Existing transfers keep their files where they are."
+                    } else noteProblem("That download location could not be saved. Check phone download locations before trying again.")
+                    placeSaving = false
                 }
             },
             onUseAutomatic = {
+                placeSaving = true
                 scope.launch {
                     val forgotten = withContext(Dispatchers.IO) {
                         try { LocalDownloadPlaces.forget(context) } catch (_: Exception) { false }
@@ -916,7 +946,8 @@ internal fun LocalEngineScreen(
                     if (forgotten) {
                         placeCheck++
                         message = "New phone downloads use the automatic location. Existing transfers keep their files where they are."
-                    } else noteProblem("The saved download location could not be cleared. It is unchanged.")
+                    } else noteProblem("The saved download location could not be cleared. Check phone download locations before trying again.")
+                    placeSaving = false
                 }
             },
             onRequestStoragePermission = {
@@ -1127,7 +1158,7 @@ internal fun LocalEngineScreen(
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
-            busy = busy || inventoryStale || proposedAddDestination == null,
+            busy = busy || inventoryStale || placeSaving || proposedAddDestination == null,
             startAfterAdd = startAfterAdd,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             seeding = seedingPreview,
@@ -1191,6 +1222,7 @@ internal fun LocalEngineScreen(
                         if (added !is LocalAddResult.Refused) {
                             pending = null
                             addFolderDraft = ""
+                            currentAddPlaceId = null
                             addExpanded = false
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -1201,7 +1233,7 @@ internal fun LocalEngineScreen(
                     }
                 }
             },
-            onCancel = { pending = null })
+            onCancel = { pending = null; currentAddPlaceId = null; addFolderDraft = "" })
 
         snapshotRestoreDraft?.let { draft ->
             val eligible = hasConfirmedLocalInventory && !inventoryStale && !busy &&

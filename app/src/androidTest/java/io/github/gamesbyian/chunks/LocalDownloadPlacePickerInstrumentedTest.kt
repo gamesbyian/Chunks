@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -85,4 +86,60 @@ class LocalDownloadPlacePickerInstrumentedTest {
         }
         rule.onNodeWithText("Allow storage access", substring = true).assertDoesNotExist()
     }
+    @Test fun oneTimeChoiceAndDefaultSaveAreSeparateAccessibleActions() {
+        val public = choice(LocalPlaceKind.PUBLIC_DOWNLOADS, "Downloads/Chunks Downloads")
+        val app = choice(LocalPlaceKind.APP_STORAGE, "Chunks app folder")
+        val defaults = LocalDownloadPlacePolicy.resolve(null, listOf(public, app))
+        var saved = 0
+        var resets = 0
+        rule.setContent {
+            val current = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(
+                LocalAddPlacePolicy.identity(app.place)) }
+            MaterialTheme {
+                LocalDownloadPlacePicker(LocalAddPlacePolicy.resolve(defaults, current.value), true,
+                    onChoose = { current.value = LocalAddPlacePolicy.identity(it.place) },
+                    currentAdd = true, defaultResolution = defaults,
+                    onUseDefault = { current.value = null; resets++ },
+                    onSaveDefault = { saved++ })
+            }
+        }
+        rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
+        assertEquals(0, saved)
+        rule.onNodeWithText("Save this location as phone default").performClick()
+        assertEquals(1, saved)
+        rule.onNodeWithText("Use phone default for this Add").performClick()
+        assertEquals(1, resets)
+        rule.onNodeWithText("Saves to: Downloads/Chunks Downloads").assertExists()
+    }
+
+    @Test fun realOneTimeSelectionNeverChangesPersistedDefaultOrMeasuredRoot() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val prefs = context.getSharedPreferences("local-download-place", android.content.Context.MODE_PRIVATE)
+        val oldKind = prefs.getString("default-kind", null)
+        val oldRoot = prefs.getString("resolved-root", null)
+        try {
+            val actual = LocalDownloadPlaces.choices(context).first { it.verified }
+            org.junit.Assert.assertTrue(LocalDownloadPlaces.remember(context, actual))
+            val other = LocalDownloadPlaces.choices(context).firstOrNull {
+                it.verified && it.place.kind != actual.place.kind
+            } ?: actual
+            val default = LocalDownloadPlaces.resolve(context)
+            val id = LocalAddPlacePolicy.identity(other.place)
+            assertEquals(other.place, LocalAddPlacePolicy.resolve(default, id).selected)
+            assertEquals(actual.place.kind.key, prefs.getString("default-kind", null))
+            assertEquals(actual.place.root.absolutePath, prefs.getString("resolved-root", null))
+            val unavailable = default.copy(choices = default.choices.map {
+                if (LocalAddPlacePolicy.identity(it.place) == id) it.copy(failure = "permission revoked") else it
+            })
+            org.junit.Assert.assertNull(LocalAddPlacePolicy.resolve(unavailable, id).selected)
+            assertEquals(actual.place.kind.key, prefs.getString("default-kind", null))
+            assertEquals(other.place, LocalAddPlacePolicy.resolve(LocalDownloadPlaces.resolve(context), id).selected)
+        } finally {
+            prefs.edit().apply {
+                if (oldKind == null) remove("default-kind") else putString("default-kind", oldKind)
+                if (oldRoot == null) remove("resolved-root") else putString("resolved-root", oldRoot)
+            }.commit()
+        }
+    }
+
 }
