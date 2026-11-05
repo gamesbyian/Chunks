@@ -70,7 +70,8 @@ class InstalledRealMediaInstrumentedTest {
     private fun visible(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun scroll(text: String) {
         if (runCatching { rule.onNodeWithText(text).assertIsDisplayed() }.isSuccess) return
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
+        if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
         rule.onNodeWithText(text).performScrollTo()
     }
     private fun click(text: String) {
@@ -181,8 +182,9 @@ class InstalledRealMediaInstrumentedTest {
                     click("Search")
                     rule.waitUntil(60_000) { !state(index).busy && state(index).searchResults?.isNotEmpty() == true }
                     val chosen = state(index).searchResults!!.first { it.title.contains(fixtures[index].second, true) }
-                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(chosen.title))
-                    rule.onNode(hasClickAction() and hasAnyDescendant(hasText(chosen.title))).performSemanticsAction(SemanticsActions.OnClick)
+                    val choice = rule.onNode(hasClickAction() and hasAnyDescendant(hasText(chosen.title)))
+                    choice.performScrollTo().assertIsDisplayed()
+                    choice.performSemanticsAction(SemanticsActions.OnClick)
                     rule.waitUntil(30_000) { state(index).state == MediaAssignmentState.CHOSEN_BY_USER && state(index).artwork != null }
                     closeRow()
                     verifyArtworkPixels(index)

@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path, PurePosixPath
 import signal
 import threading
@@ -238,11 +239,14 @@ class Peer:
                             events = self.events[label]
                             events["blocks_uploaded"] = events.get("blocks_uploaded", 0) + 1
                         elif isinstance(alert, lt.peer_log_alert):
-                            event = alert.event_type
-                            if event in ("INCOMING_REQUEST", "INCOMING_CANCEL", "CHOKE", "UNCHOKE",
-                                         "INTERESTED", "NOT_INTERESTED", "INCOMING_HAVE", "INCOMING_BITFIELD"):
+                            # Python does not bind C++'s event_type/direction fields.
+                            # Extract ONLY fixed protocol tokens from its formatted
+                            # message; never retain or print the message/address.
+                            event = re.search(r"\s(<==|==>|<<<|>>>) (REQUEST|CANCEL|CHOKE|UNCHOKE|INTERESTED|NOT_INTERESTED|HAVE|BITFIELD) \[", alert.message())
+                            if event:
+                                name = ("in_" if event[1] in ("<==", "<<<") else "out_") + event[2].lower()
                                 events = self.events[label]
-                                events[event] = events.get(event, 0) + 1
+                                events[name] = events.get(name, 0) + 1
                 if time.monotonic() - self.last_sample >= 1:
                     self.last_sample = time.monotonic()
                     for label, (session, handle) in self.active.items():
