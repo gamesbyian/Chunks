@@ -167,6 +167,23 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertFalse(destination.exists())
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
                 stage("fetched-review")
+                // Cancelling this source review ends its one-time destination,
+                // while leaving the saved default and native inventory alone.
+                click("Cancel")
+                rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
+                rule.onNodeWithText("Optional phone download subfolder").assert(
+                    SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.EditableText,
+                        androidx.compose.ui.text.AnnotatedString("")))
+                assertNull(LocalEngineHolder.current()?.status(preview.infoHashV1))
+                assertFalse(destination.exists())
+                assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
+                click("Change download location")
+                click("Chunks app folder")
+                type("Optional phone download subfolder", folder)
+                type("Or paste a magnet or torrent link", url)
+                click("Get torrent from link")
+                rule.waitUntil(45_000) { visible("Review download") }
+                stage("cancel-recovered")
                 click("Start downloading after Add (recommended)")
                 click("Add stopped")
                 await("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
