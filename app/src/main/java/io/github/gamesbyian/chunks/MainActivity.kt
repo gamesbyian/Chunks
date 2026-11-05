@@ -938,7 +938,7 @@ private fun ChunksApp(
                     LocalEngineScreen(
                         listScroll = phoneListScroll, searchState = phoneSearch,
                         magnetDraftState = phoneMagnetDraft,
-                    addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
+                        addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
                         onCreateTorrent = { openFromPhone(Section.CREATE) },

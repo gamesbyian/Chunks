@@ -31,6 +31,12 @@ class HttpsPhoneAddJourneyInstrumentedTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val context get() = instrumentation.targetContext
     private var activity: MainActivity? = null
+    private var lastStage = "initial"
+    private fun stage(value: String) {
+        require(value.matches(Regex("[a-z-]+")))
+        lastStage = value
+        android.util.Log.i("ChunksHttps", "CHUNKS_HTTPS_PHONE_STAGE $value")
+    }
     private fun read(path: String, limit: Int): ByteArray {
         require(path in setOf("/ready", "/magnet3.torrent", "/magnet3.seed.torrent", "/magnet3.piece"))
         val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
@@ -55,10 +61,15 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         rule.onNodeWithText(text).performScrollTo()
     }
     private fun click(text: String) {
+        if (text == "Stop") stage("stop-lookup")
         rule.waitUntil(30_000) { runCatching {
             scroll(text); rule.onNodeWithText(text).assertIsEnabled(); true
         }.getOrDefault(false) }
-        rule.onNodeWithText(text).performScrollTo().performClick()
+        if (text == "Stop") stage("stop-ready")
+        rule.onNodeWithText(text).performScrollTo()
+        if (text == "Stop") stage("stop-visible")
+        rule.onNodeWithText(text).performClick()
+        if (text == "Stop") stage("stop-clicked")
     }
     private fun type(label: String, value: String) {
         scroll(label)
@@ -78,6 +89,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         if (Build.VERSION.SDK_INT == 29) LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS.forEach {
             instrumentation.uiAutomation.grantRuntimePermission(context.packageName, it)
         }
+        stage("permissions")
         val prefs = context.getSharedPreferences("local-download-place", Context.MODE_PRIVATE)
         val old = prefs.getString("default-kind", null)
         val oldRoot = prefs.getString("resolved-root", null)
@@ -86,6 +98,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         val app = choices.single { it.place.kind == LocalPlaceKind.APP_STORAGE }
         assertTrue(public.verified); assertTrue(app.verified)
         assertTrue(LocalDownloadPlaces.remember(context, public))
+        stage("places-verified")
         val raw = read("/magnet3.torrent", 2 * 1024 * 1024)
         val preview = TorrentMetainfoReader.preview(raw)
         assertEquals(1, preview.fileCount)
@@ -110,9 +123,11 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             await("independent original publisher piece recheck") {
                 (seed.status(preview.infoHashV1)?.doneBytes ?: 0) >= piece.size
             }
+            stage("seed-verified")
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { visible("On this phone (experimental)") }
+                stage("phone-open")
                 click("Add torrent on this phone")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
                 click("Change download location")
@@ -121,24 +136,37 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 type("Or paste a magnet or torrent link", url)
                 // Leaving the phone screen must not turn an explicit one-time root
                 // into the saved default when the same draft returns.
+                stage("override-set")
                 click("All environments…")
                 rule.waitUntil(30_000) { visible("All environments") }
                 click("Back")
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
+                stage("before-recreate")
                 scenario.recreate()
+                stage("after-recreate")
                 scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
+                // Exercise a real refused retrieval and recover the same scoped draft.
+                type("Or paste a magnet or torrent link", "https://127.0.0.1/blocked.torrent")
+                click("Get torrent from link")
+                rule.waitUntil(30_000) { visible(TorrentLinkResult.LOCAL_NETWORK) }
+                assertNull(LocalEngineHolder.current()?.status(preview.infoHashV1))
+                rule.onNodeWithText("Saves to: Chunks app folder").assertExists()
+                assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
+                stage("refusal-recovered")
                 // Source URLs stay out of instance state by the existing privacy contract.
                 type("Or paste a magnet or torrent link", url)
+                stage("before-fetch")
                 click("Get torrent from link")
                 rule.waitUntil(45_000) { visible("Review download") }
                 assertNull(LocalEngineHolder.current()?.status(preview.infoHashV1))
                 assertFalse(destination.exists())
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
+                stage("fetched-review")
                 click("Start downloading after Add (recommended)")
                 click("Add stopped")
                 await("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
@@ -147,13 +175,39 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 phone.setRateLimits(LocalRateLimits(downloadBytesPerSecond = 128 * 1024))
                 assertEquals(destination.canonicalPath, phone.status(preview.infoHashV1)?.savePath)
                 assertEquals(0L, phone.status(preview.infoHashV1)?.doneBytes)
+                stage("added-stopped")
                 click("Start")
+                if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(
+                        android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    val device = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
+                    val allow = androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(
+                        ".*:id/permission_allow_button"))
+                    val button = device.wait(androidx.test.uiautomator.Until.findObject(allow), 20_000)
+                    assertNotNull("Expected Android's notification permission prompt", button)
+                    button.click()
+                    assertTrue("Notification prompt must dismiss before app controls are used",
+                        device.wait(androidx.test.uiautomator.Until.gone(allow), 10_000))
+                    assertEquals(android.content.pm.PackageManager.PERMISSION_GRANTED,
+                        context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS))
+                    stage("notification-allowed")
+                }
                 assertTrue(phone.connectPeer(preview.infoHashV1, InetSocketAddress("127.0.0.1", seed.listenPort())))
                 await("actual peer bytes and verified piece progression") {
                     phone.status(preview.infoHashV1)?.let { it.doneBytes >= piece.size && it.payloadDownloadedBytes > 0 } == true
                 }
+                stage("pieces-received")
+                assertFalse("An Android permission prompt cannot cover the Stop action",
+                    androidx.test.uiautomator.UiDevice.getInstance(instrumentation).hasObject(
+                        androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(".*:id/permission_allow_button"))))
                 click("Stop")
                 await("production Stop") { phone.status(preview.infoHashV1)?.stopped == true }
+                stage("stopped-observed")
+                // A paused flag precedes asynchronous disk-cache settlement. Use
+                // the production post-Stop FLUSH_DISK_CACHE checkpoint before an
+                // independent pathname read, as the existing intake journey does.
+                assertTrue("Post-Stop disk checkpoint was not confirmed",
+                    phone.saveResumeDataFor(preview.infoHashV1, 30_000))
+                stage("checkpoint-confirmed")
                 val target = File(destination, preview.name)
                 await("independent piece byte readback") {
                     target.isFile && target.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
@@ -161,21 +215,32 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 val status = requireNotNull(phone.status(preview.infoHashV1))
                 assertTrue(status.doneBytes in 1 until preview.sizeBytes)
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
+                stage("phone-open")
                 click("Add torrent on this phone")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
+                stage("before-recreate")
                 scenario.recreate()
+                stage("after-recreate")
                 scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
                 android.util.Log.i("ChunksHttps", "CHUNKS_HTTPS_PHONE verified=true received=${status.payloadDownloadedBytes} " +
                     "pieces_bytes=${status.doneBytes} complete=false default_preserved=true " +
                     "piece_sha256=" + MessageDigest.getInstance("SHA-256").digest(piece).joinToString("") { "%02x".format(it) })
                 click("Hide phone Add options")
+                stage("next-default-verified")
                 click("Remove…")
                 click("Remove transfer, keep data")
                 await("exact session removal") { phone.status(preview.infoHashV1) == null }
                 assertTrue(target.isFile)
             }
+        } catch (failure: Throwable) {
+            val frame = failure.stackTrace.firstOrNull { it.fileName == "HttpsPhoneAddJourneyInstrumentedTest.kt" }
+            val kind = failure.javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z]+")) } ?: "Failure"
+            android.util.Log.i("ChunksHttps", "CHUNKS_HTTPS_PHONE_FAILURE $lastStage-$kind-line" +
+                (frame?.lineNumber ?: 0))
+            throw failure
         } finally {
+            stage("cleanup-entered")
             seed.close()
             LocalEngineHolder.current()?.let { phone ->
                 previousLimits?.let { phone.setRateLimits(it) }
@@ -184,12 +249,14 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     phone.removeKeepingData(preview.infoHashV1)
                 }
             }
-            destination.deleteRecursively()
+            // Keep the external payload after session removal. The disposable
+            // emulator owns its lifetime; do not race FUSE/native descriptor teardown.
             seedRoot.deleteRecursively()
             prefs.edit().apply {
                 if (old == null) remove("default-kind") else putString("default-kind", old)
                 if (oldRoot == null) remove("resolved-root") else putString("resolved-root", oldRoot)
             }.commit()
+            stage("cleanup-complete")
         }
     }
 }

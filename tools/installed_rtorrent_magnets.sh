@@ -69,11 +69,11 @@ if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   if [[ "${CHUNKS_DISPOSABLE:-0}" = 1 ]]; then
     adb logcat -d -b crash > "$RUNNER_TEMP/chunks-https-phone-crash.txt"
   fi
+  adb logcat -d -v raw -s ChunksHttps:I > "$RUNNER_TEMP/chunks-https-phone-witness.txt"
   python3 tools/parse_instrumentation_stream.py --raw "$RUNNER_TEMP/chunks-https-phone.raw" \
     --junit "$RUNNER_TEMP/chunks-https-phone.xml"
   python3 tools/ci_failure_digest.py --suite https-phone --status success --require-executed \
     --glob "$RUNNER_TEMP/chunks-https-phone.xml" --output "$RUNNER_TEMP/chunks-https-phone-digest.json"
-  adb logcat -d -v raw -s ChunksHttps:I > "$RUNNER_TEMP/chunks-https-phone-witness.txt"
   grep -E '^CHUNKS_HTTPS_PHONE verified=true received=[1-9][0-9]* pieces_bytes=[1-9][0-9]* complete=false default_preserved=true piece_sha256=[0-9a-f]{64}$' \
     "$RUNNER_TEMP/chunks-https-phone-witness.txt"
   adb shell am force-stop "$candidate_package"
