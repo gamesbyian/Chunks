@@ -33,7 +33,7 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneAddLargeTextAuditTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val field get() = rule.onNode(hasSetTextAction() and hasText("Or paste a magnet link"))
+    private val field get() = rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
 
     private fun assertFitsAndTargets(where: String) {
         val density = rule.activity.resources.displayMetrics.density
@@ -50,7 +50,7 @@ class PhoneAddLargeTextAuditTest {
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Paste magnet link").performScrollTo()
+        rule.onNodeWithText("Paste link").performScrollTo()
         assertFitsAndTargets("empty draft")
         rule.onRoot().captureRoboImage("build/chunks-visual/phone-add-320-200-empty.png")
 

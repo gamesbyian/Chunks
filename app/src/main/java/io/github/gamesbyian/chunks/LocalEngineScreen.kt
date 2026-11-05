@@ -445,6 +445,7 @@ internal fun LocalEngineScreen(
     // Foreground clipboard prefill: read once each time the Add form opens.
     var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
     var clipboardFilled by remember { mutableStateOf<String?>(null) }
+    var linkFetching by remember { mutableStateOf(false) }
     val offeredClips = remember { HashSet<String>() }
     LaunchedEffect(Unit) {
         clipboardPrefillOn = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
@@ -771,9 +772,12 @@ internal fun LocalEngineScreen(
             enabled = !busy && !inventoryStale && destination != null,
             modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
         val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
+        // A web link is a different source: fetched only on request, then reviewed as a .torrent.
+        val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
+        val isLink = linkCheck !is TorrentLinkCheck.NotALink
         OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
-            label = { Text("Or paste a magnet link") }, singleLine = true,
-            isError = magnetCheck is MagnetDraftCheck.Problem,
+            label = { Text("Or paste a magnet or torrent link") }, singleLine = true,
+            isError = if (isLink) linkCheck is TorrentLinkCheck.Problem else magnetCheck is MagnetDraftCheck.Problem,
             // Autocorrect must never rewrite a magnet's hash or trackers.
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
@@ -783,7 +787,7 @@ internal fun LocalEngineScreen(
         if (magnet.isEmpty()) PasteMagnetButton(
             enabled = !busy && !inventoryStale,
             onPaste = { magnet = it },
-            onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet link first." })
+            onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
         clipboardPrefillOn?.let { on ->
             ClipboardPrefillToggle(checked = on, enabled = true, onChange = { next ->
                 scope.launch {
@@ -795,7 +799,29 @@ internal fun LocalEngineScreen(
         }
         if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
             onClear = { magnet = ""; clipboardFilled = null }, enabled = !busy)
-        MagnetDraftSummary(magnetCheck)
+        if (isLink) TorrentLinkPanel(linkCheck, fetching = linkFetching,
+            // Like Choose .torrent file: no review can appear without a verified phone location.
+            enabled = !busy && !inventoryStale && pending == null && destination != null, onFetch = { link ->
+                linkFetching = true
+                scope.launch {
+                    try {
+                        when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
+                            is TorrentLinkResult.Fetched -> {
+                                // The same reviewed .torrent Add as the picker and Android share.
+                                pending = PendingLocalAdd(result.preview, result.bytes)
+                                magnet = ""
+                                clipboardFilled = null
+                                message = "Torrent from " + result.display +
+                                    " is ready to review below. Nothing has been added."
+                            }
+                            is TorrentLinkResult.Refused -> noteProblem(result.message)
+                        }
+                    } finally {
+                        linkFetching = false
+                    }
+                }
+            })
+        else MagnetDraftSummary(magnetCheck)
         if (magnetCheck is MagnetDraftCheck.Valid) Text(
             "Seeding: your phone Seeding rules choose a policy when this magnet's metadata " +
                 "arrives (its trackers and private flag are known then); otherwise the phone default applies.",
@@ -807,7 +833,7 @@ internal fun LocalEngineScreen(
             Checkbox(checked = startAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
             Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
         }
-        if (magnet.isNotEmpty()) {
+        if (magnet.isNotEmpty() && !isLink) {
         Text("On this phone · Place: " + (proposedAddDestination?.absolutePath ?: "Choose a download location below"),
             style = MaterialTheme.typography.bodySmall)
             LocalMagnetDiscoveryPrompt(

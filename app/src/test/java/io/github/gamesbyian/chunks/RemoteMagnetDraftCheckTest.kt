@@ -71,4 +71,25 @@ class RemoteMagnetDraftCheckTest {
         reveal("Magnet for: Copied")
         rule.onNodeWithText("Filled from your clipboard. Nothing is added until you confirm.").assertExists()
     }
+
+    @Test fun aTorrentLinkReplacesTheMagnetCheckWithAnExplicitFetch() {
+        show("https://archive.org/download/x/x_archive.torrent")
+        reveal("Torrent link: archive.org · x_archive.torrent")
+        rule.onNodeWithText("Get torrent from link").assertExists()
+        rule.onNodeWithText(MagnetDraftCheck.NOT_A_MAGNET).assertDoesNotExist()
+        rule.onNodeWithText("Review Add").assertDoesNotExist()
+    }
+
+    /** Opt-in real public HTTPS fetch with a redirect: the fetched .torrent is reviewed by its verified hash. */
+    @Test fun realRedirectedLinkIsReviewedByItsVerifiedHash() {
+        org.junit.Assume.assumeTrue(System.getenv("CHUNKS_REAL_LINK_FETCH") == "1")
+        show("https://archive.org/download/FREE_background_music_dhalius/FREE_background_music_dhalius_archive.torrent")
+        reveal("Get torrent from link")
+        rule.onNodeWithText("Get torrent from link").performClick()
+        rule.waitUntil(30_000) { runCatching { reveal("Review Add") }.isSuccess }
+        rule.onNodeWithText("Review Add").performClick()
+        reveal("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed")
+        rule.onNodeWithText("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed").assertExists()
+        reveal("Source: Selected .torrent file")
+    }
 }

@@ -26,11 +26,10 @@ import androidx.compose.ui.unit.dp
  * Foreground clipboard prefill for an empty Add source ([ADD-SOURCE-INTAKE]).
  *
  * Read once when Add opens, never polled or read in the background. Only a
- * valid magnet is placed in the field: it is a draft that still needs the
- * normal Add confirmation, and nothing is fetched, started or added. A
- * typed draft, a restored draft, a pending .torrent or an Android Share/Open
- * With item always wins. HTTP(S) torrent links are left for URL import,
- * which this field cannot add yet.
+ * valid magnet or a torrent-shaped HTTPS link is placed in the field: it is a
+ * draft that still needs the normal Add confirmation, and nothing is fetched,
+ * started or added. A typed draft, a restored draft, a pending .torrent or an
+ * Android Share/Open With item always wins.
  */
 internal object ClipboardMagnetPrefill {
     private const val PREFS = "add-clipboard-prefill"
@@ -51,11 +50,16 @@ internal object ClipboardMagnetPrefill {
         false
     }
 
-    /** The normalized magnet to prefill, or null when nothing should change. */
+    /**
+     * The normalized magnet, or a plausible HTTPS torrent link, to prefill; null
+     * when nothing should change. A link is only text: it is fetched solely
+     * when the person taps Get torrent from link.
+     */
     fun decide(enabled: Boolean, currentDraft: String, otherSourcePresent: Boolean, clipText: String?): String? {
         if (!enabled || currentDraft.isNotBlank() || otherSourcePresent || clipText.isNullOrBlank()) return null
-        return (MagnetDraftCheck.inspect(clipText.take(MagnetDraftCheck.MAX_LENGTH + 1))
-            as? MagnetDraftCheck.Valid)?.normalized
+        val text = clipText.trim().take(MagnetDraftCheck.MAX_LENGTH + 1)
+        (MagnetDraftCheck.inspect(text) as? MagnetDraftCheck.Valid)?.let { return it.normalized }
+        return text.takeIf { TorrentLinkCheck.plausibleTorrentLink(it) }
     }
 
     /**
@@ -96,6 +100,6 @@ internal fun ClipboardPrefillToggle(checked: Boolean, enabled: Boolean, onChange
         .toggleable(value = checked, enabled = enabled, role = Role.Checkbox, onValueChange = onChange),
         verticalAlignment = Alignment.CenterVertically) {
         Checkbox(checked = checked, enabled = enabled, onCheckedChange = null)
-        Text("Fill in a copied magnet link when Add opens", modifier = Modifier.padding(start = 8.dp))
+        Text("Fill in a copied magnet or torrent link when Add opens", modifier = Modifier.padding(start = 8.dp))
     }
 }

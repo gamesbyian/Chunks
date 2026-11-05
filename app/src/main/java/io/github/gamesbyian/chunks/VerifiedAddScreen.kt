@@ -201,6 +201,8 @@ fun VerifiedAddScreen(
     }
 
     val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
+    val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
+    var linkFetching by remember { mutableStateOf(false) }
     // Foreground clipboard prefill, once when this Add screen opens.
     var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
     var clipboardFilled by remember { mutableStateOf<String?>(null) }
@@ -277,8 +279,9 @@ fun VerifiedAddScreen(
                         awaitingConfirmation = false
                     }
                 },
-                label = { Text("Magnet link") },
-                isError = !useFile && magnetCheck is MagnetDraftCheck.Problem,
+                label = { Text("Magnet or torrent link") },
+                isError = !useFile && (if (linkCheck is TorrentLinkCheck.NotALink)
+                    magnetCheck is MagnetDraftCheck.Problem else linkCheck is TorrentLinkCheck.Problem),
                 // Autocorrect must never rewrite a magnet's hash or trackers.
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
@@ -296,10 +299,36 @@ fun VerifiedAddScreen(
                     useFile = false
                     awaitingConfirmation = false
                 },
-                onNothingToPaste = { fileError = "The clipboard has no text to paste. Copy a magnet link first." })
+                onNothingToPaste = { fileError = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
             if (clipboardFilled != null && magnet == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
                 onClear = { onMagnet(""); clipboardFilled = null }, enabled = !submitting)
-            if (!useFile) MagnetDraftSummary(magnetCheck)
+            if (!useFile && linkCheck !is TorrentLinkCheck.NotALink) TorrentLinkPanel(linkCheck,
+                fetching = linkFetching, enabled = !submitting && !choosing && !alreadyAttempted,
+                onFetch = { link ->
+                    linkFetching = true
+                    scope.launch {
+                        try {
+                            when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
+                                is TorrentLinkResult.Fetched -> {
+                                    // Downloaded and validated on this phone; the server never
+                                    // fetches the link, so a private token stays on the phone.
+                                    selectedTorrent = result.preview
+                                    selectedBytes = result.bytes
+                                    fromPhone = false
+                                    useFile = true
+                                    fileError = null
+                                    awaitingConfirmation = false
+                                    clipboardFilled = null
+                                    onMagnet("")
+                                }
+                                is TorrentLinkResult.Refused -> fileError = result.message
+                            }
+                        } finally {
+                            linkFetching = false
+                        }
+                    }
+                })
+            else if (!useFile) MagnetDraftSummary(magnetCheck)
             clipboardPrefillOn?.let { on ->
                 ClipboardPrefillToggle(checked = on, enabled = !submitting, onChange = { next ->
                     scope.launch {

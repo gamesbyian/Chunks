@@ -49,7 +49,7 @@ internal sealed class MagnetDraftCheck {
         private val BASE32 = Regex("^[A-Za-z2-7]{32}$")
 
         const val NOT_A_MAGNET =
-            "This is not a magnet link. A magnet link starts with magnet:?xt=urn:btih:"
+            "Paste a magnet link (magnet:?xt=urn:btih:…) or an https:// link to a .torrent file."
         const val NO_HASH =
             "This magnet link has no BitTorrent v1 hash (xt=urn:btih:…), so it cannot be added."
         const val SEVERAL_HASHES =
@@ -216,5 +216,5 @@ internal fun PasteMagnetButton(
         },
         enabled = enabled,
         modifier = modifier.heightIn(min = 48.dp)
-    ) { Text("Paste magnet link") }
+    ) { Text("Paste link") }
 }

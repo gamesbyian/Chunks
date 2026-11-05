@@ -32,7 +32,7 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneMagnetDraftCheckTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val field get() = rule.onNode(hasSetTextAction() and hasText("Or paste a magnet link"))
+    private val field get() = rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
 
     private fun openAdd() {
         rule.waitForIdle()
@@ -54,7 +54,7 @@ class PhoneMagnetDraftCheckTest {
 
     @Test fun notAMagnetIsExplained() {
         openAdd()
-        field.performScrollTo().performTextInput("https://example.invalid/file.torrent")
+        field.performScrollTo().performTextInput("ftp://example.invalid/file.torrent")
         rule.waitForIdle()
         rule.onNodeWithText(MagnetDraftCheck.NOT_A_MAGNET).assertExists()
         addTile().assertIsNotEnabled()
@@ -102,7 +102,7 @@ class PhoneMagnetDraftCheckTest {
     @Test fun withPrefillOffPasteFillsOnlyWhenTapped() {
         val link = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=pasted"
         openAdd()
-        rule.onNodeWithText("Fill in a copied magnet link when Add opens").performScrollTo().performClick()
+        rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens").performScrollTo().performClick()
         rule.waitUntil(5_000) {
             rule.activity.getSharedPreferences("add-clipboard-prefill", Context.MODE_PRIVATE)
                 .getBoolean("enabled", true).not()
@@ -112,7 +112,7 @@ class PhoneMagnetDraftCheckTest {
         rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
-        rule.onNodeWithText("Paste magnet link").performScrollTo().performClick()
+        rule.onNodeWithText("Paste link").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
     }
@@ -146,5 +146,26 @@ class PhoneMagnetDraftCheckTest {
         rule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
+    }
+
+    @Test fun aTorrentLinkIsShownRedactedAndFetchedOnlyOnRequest() {
+        openAdd()
+        field.performScrollTo().performTextInput("https://t.example/dl.php?id=7&passkey=SECRET123")
+        rule.waitForIdle()
+        rule.onNodeWithText("Torrent link: t.example · dl.php").assertExists()
+        // Only the editable field itself holds the token; no summary repeats it.
+        org.junit.Assert.assertEquals(1, rule.onAllNodes(hasText("SECRET123", substring = true)).fetchSemanticsNodes().size)
+        rule.onNode(hasText("Get torrent from link") and hasClickAction()).assertExists()
+        // A link is not a magnet: no magnet Add tile and no magnet problem.
+        addTile().assertDoesNotExist()
+        rule.onNodeWithText(MagnetDraftCheck.NOT_A_MAGNET).assertDoesNotExist()
+    }
+
+    @Test fun aPlainHttpLinkExplainsTheBrowserRoute() {
+        openAdd()
+        field.performScrollTo().performTextInput("http://t.example/a.torrent")
+        rule.waitForIdle()
+        rule.onNodeWithText(io.github.gamesbyian.chunks.TorrentLinkCheck.PLAIN_HTTP).assertExists()
+        rule.onNode(hasText("Get torrent from link") and hasClickAction()).assertDoesNotExist()
     }
 }

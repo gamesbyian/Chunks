@@ -200,7 +200,7 @@ internal class MainActivityRealMagnetJourney(
                 else "magnet:?xt=urn:btih:$hash&tr=http%3A%2F%2F127.0.0.1%3A1%2Fannounce"
             if (!disposable && label != null) require("&tr=" in link) { "Original source trackers missing" }
             require(StoppedRemoteAddPlan.fromMagnet(link, parent).expectedInfoHash == hash)
-            type("Magnet link", link)
+            type("Magnet or torrent link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
                 runCatching { scroll("Custom server folder (optional)") }
