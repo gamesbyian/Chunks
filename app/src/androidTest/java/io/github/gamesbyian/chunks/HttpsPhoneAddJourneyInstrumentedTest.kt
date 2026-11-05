@@ -220,6 +220,13 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 await("actual peer bytes and verified piece progression") {
                     phone.status(preview.infoHashV1)?.let { it.doneBytes >= piece.size && it.payloadDownloadedBytes > 0 } == true
                 }
+                // doneBytes counts *any* verified piece: the workflow's second real peer serves the
+                // whole file, so other pieces can finish while piece 0 is still partial (observed:
+                // done=22 MB, only 48 KiB of piece 0 on disk). Wait for piece 0 itself before Stop.
+                val firstPieceFile = File(destination, preview.name)
+                await("piece 0 itself on disk before Stop") {
+                    firstPieceFile.isFile && firstPieceFile.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
+                }
                 stage("pieces-received")
                 assertFalse("An Android permission prompt cannot cover the Stop action",
                     androidx.test.uiautomator.UiDevice.getInstance(instrumentation).hasObject(
