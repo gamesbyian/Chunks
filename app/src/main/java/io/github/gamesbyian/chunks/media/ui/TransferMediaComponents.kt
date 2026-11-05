@@ -197,6 +197,8 @@ fun MediaIdentifyPanel(
     /** Name of a cover file found in this transfer's own completed files; null hides the option. */
     localCoverName: String? = null,
     onUseLocalCover: (() -> Unit)? = null,
+    /** Shown when [TransferMediaUiState.embeddedTags] carries a picture. */
+    onUseEmbeddedArt: (() -> Unit)? = null,
     /** Preview of other transfers that could share this choice; empty hides the section. */
     related: List<io.github.gamesbyian.chunks.media.TransferMediaController.RelatedCandidate> = emptyList(),
     onApplyToRelated: ((List<MediaTransferKey>) -> Unit)? = null
@@ -241,6 +243,10 @@ fun MediaIdentifyPanel(
                 if (state.userArtwork != null && onRemoveImage != null)
                     TextButton(onClick = onRemoveImage, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove my image") }
             }
+            if (state.embeddedTags?.picture != null && onUseEmbeddedArt != null)
+                OutlinedButton(onClick = onUseEmbeddedArt, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text("Use album art from the files")
+                }
             if (localCoverName != null && onUseLocalCover != null)
                 OutlinedButton(onClick = onUseLocalCover, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("Use $localCoverName from this transfer", maxLines = 1, overflow = TextOverflow.Ellipsis)

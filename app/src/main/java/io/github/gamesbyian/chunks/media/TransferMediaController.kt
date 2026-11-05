@@ -20,6 +20,8 @@ data class TransferMediaUiState(
     val artworkSource: ArtworkCandidate? = null,
     /** Aspect-preserving poster/cover for detail headers; loaded only on request. */
     val poster: Bitmap? = null,
+    /** Tags read from this transfer's own completed local audio file, if inspected. */
+    val embeddedTags: io.github.gamesbyian.chunks.media.inspection.EmbeddedMediaTags? = null,
     val busy: Boolean = false,
     val searchResults: List<MediaCandidate>? = null,
     val message: String? = null
@@ -57,6 +59,7 @@ class TransferMediaController(
     private val backgroundDispatcher: CoroutineDispatcher = lookupDispatcher
 ) {
     companion object {
+        val AUDIO_TAG_EXTENSIONS = setOf("mp3", "flac", "m4a", "m4b", "mp4", "aac")
         const val MAX_STATES = 96
         const val MAX_PENDING_AUTOMATIC = 6
     }
@@ -72,6 +75,12 @@ class TransferMediaController(
         }
     }
     private val inputs = HashMap<MediaTransferKey, MediaRecognitionInput>()
+    private val embedded = HashMap<MediaTransferKey, io.github.gamesbyian.chunks.media.inspection.EmbeddedMediaTags>()
+
+    private fun recognizeWithEvidence(key: MediaTransferKey, input: MediaRecognitionInput): MediaRecognition {
+        val base = MediaRecognizer.recognize(input)
+        return embedded[key]?.let { MediaRecognizer.withEmbeddedTags(base, it) } ?: base
+    }
 
     fun providerInfos() = service.providerInfos()
 
@@ -84,8 +93,9 @@ class TransferMediaController(
         val existing = states[key]
         if (existing != null && inputs[key] == input) return existing
         inputs[key] = input
-        val flow = existing ?: MutableStateFlow(TransferMediaUiState(key, MediaRecognizer.recognize(input))).also { states[key] = it }
-        if (existing != null) flow.update { it.copy(recognition = MediaRecognizer.recognize(input)) }
+        val flow = existing ?: MutableStateFlow(TransferMediaUiState(key, recognizeWithEvidence(key, input), embeddedTags = embedded[key]))
+            .also { states[key] = it }
+        if (existing != null) flow.update { it.copy(recognition = recognizeWithEvidence(key, input)) }
         scope.launch(lookupDispatcher) {
             val a = store.get(key)
             flow.update { it.copy(assignment = a) }
@@ -299,6 +309,23 @@ class TransferMediaController(
             store.put(a)
             f.update { it.copy(assignment = a, busy = false, artwork = null, artworkSource = null, poster = null) }
             loadArtwork(key)
+        }
+    }
+
+    /**
+     * Read embedded tags/cover from the first audio file of a *completed local* transfer (host opens
+     * the bounded byte source). Refines recognition for later lookups; never changes files.
+     */
+    fun inspectLocalAudio(key: MediaTransferKey, files: List<MediaFileHint>, open: (MediaFileHint) -> io.github.gamesbyian.chunks.media.inspection.MediaByteSource?) {
+        val f = flow(key) ?: return
+        val candidate = files.filter { it.path.substringAfterLast('.').lowercase() in AUDIO_TAG_EXTENSIONS }
+            .minWithOrNull(compareBy<MediaFileHint> { it.path.count { c -> c == '/' } }.thenBy { it.path }) ?: return
+        scope.launch(lookupDispatcher) {
+            val tags = runCatching { open(candidate)?.let { io.github.gamesbyian.chunks.media.inspection.EmbeddedTagReader.read(it) } }.getOrNull()
+                ?: return@launch
+            synchronized(this@TransferMediaController) { embedded[key] = tags }
+            val input = synchronized(this@TransferMediaController) { inputs[key] } ?: return@launch
+            f.update { it.copy(recognition = recognizeWithEvidence(key, input), embeddedTags = tags) }
         }
     }
 

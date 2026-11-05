@@ -264,4 +264,24 @@ class TransferMediaControllerTest {
         c.applyChoiceTo(phone, listOf(target.value.key))
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, target.value.state)
     }
+
+    @Test fun localEmbeddedTagsDriveTheLookupAndOfferTheirCover() {
+        val tagged = javaClass.classLoader!!.getResource("media-fixtures/embedded/tagged.flac")!!.readBytes()
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val mbHttp = FakeMediaHttp().on("musicbrainz.org", body = fixture("mb-releasegroup-search-ok-computer.json"))
+        val service = MediaEnrichmentService(listOf(io.github.gamesbyian.chunks.media.providers.MusicBrainzProvider()), mbHttp,
+            InMemoryMediaQueryCache(), { clock.now }, clock::sleep)
+        val c = TransferMediaController(service, ArtworkRepository(mbHttp, ArtworkDiskCache(File(dir, "art2")), hostPolicyFor = { null }, memoryBytes = 1_000_000),
+            { InMemoryTransferMediaAssignmentStore() }, { settings }, { MediaNetworkState(true, false) },
+            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined, { clock.now })
+        val files = listOf(MediaFileHint("rip/01.flac", 30_000_000), MediaFileHint("rip/02.flac", 30_000_000))
+        val flow = c.observe(phone, "rip", files)
+        c.inspectLocalAudio(phone, files) { io.github.gamesbyian.chunks.media.inspection.ByteArrayMediaByteSource(tagged) }
+        assertEquals("OK Computer", flow.value.recognition.title); assertTrue(flow.value.embeddedTags!!.picture != null)
+        c.lookup(phone)
+        assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
+        assertTrue(mbHttp.requests.single().contains("artist%3A%22Radiohead%22"))
+        c.importUserImage(phone, flow.value.embeddedTags!!.picture!!) // "Use album art from the files"
+        assertEquals(LOCAL_PROVIDER, flow.value.artworkSource!!.provider)
+    }
 }

@@ -37,7 +37,9 @@ import kotlinx.coroutines.withContext
 fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, files: List<MediaFileHint> = emptyList(),
                                modifier: Modifier = Modifier,
                                /** Reads a completed *local* file from this transfer (bounded); null when unavailable (e.g. remote). */
-                               readLocalFile: ((MediaFileHint) -> ByteArray?)? = null) {
+                               readLocalFile: ((MediaFileHint) -> ByteArray?)? = null,
+                               /** Opens a completed *local* file for bounded random-access tag reads; null when unavailable. */
+                               openLocalFile: ((MediaFileHint) -> io.github.gamesbyian.chunks.media.inspection.MediaByteSource?)? = null) {
     val context = LocalContext.current
     val media = remember(context) { ChunksMedia.get(context) }
     val controller = LocalTransferMediaController.current ?: media.controller
@@ -47,6 +49,7 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
     val scope = rememberCoroutineScope()
     val localCover = remember(files) { io.github.gamesbyian.chunks.media.LocalCoverFinder.pick(files) }
     LaunchedEffect(media) { settings = withContext(Dispatchers.IO) { media.loadSettings() } }
+    LaunchedEffect(key, files, openLocalFile != null) { if (openLocalFile != null) controller.inspectLocalAudio(key, files, openLocalFile) }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) scope.launch {
@@ -68,6 +71,7 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
         onImageUrl = { controller.importImageUrl(key, it) },
         localCoverName = localCover?.path?.substringAfterLast('/')?.takeIf { readLocalFile != null },
         related = remember(state.assignment) { controller.relatedForChoice(key) },
+        onUseEmbeddedArt = state.embeddedTags?.picture?.let { pic -> { controller.importUserImage(key, pic) } },
         onApplyToRelated = { targets -> controller.applyChoiceTo(key, targets) },
         onUseLocalCover = localCover?.takeIf { readLocalFile != null }?.let { cover -> {
             scope.launch {
