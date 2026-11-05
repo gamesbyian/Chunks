@@ -65,8 +65,8 @@ class PhoneOptionsSearchTest {
     @Test fun mediaResultOpensArtworkAndInfo() {
         search("artwork")
         rule.onNodeWithText("Artwork & media info").performScrollTo().performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("Show artwork", substring = true).assertExists()
+        // Artwork & info reads its saved settings off the main thread before drawing its switches.
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Show artwork", substring = true).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test fun noMatchExplainsHowToSeeEverything() {
