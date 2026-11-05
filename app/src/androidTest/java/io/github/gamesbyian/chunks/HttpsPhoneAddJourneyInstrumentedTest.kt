@@ -212,7 +212,10 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     assertNotNull("Expected Android's notification permission prompt (foreground=" +
                         device.currentPackageName + " granted=" + (context.checkSelfPermission(
                         android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) +
-                        " engineStopped=" + LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped + ")", button)
+                        " engineStopped=" + LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped +
+                        // A system ("android") window covering the prompt: name it (e.g. which app ANR'd).
+                        " systemText=" + runCatching { device.findObjects(androidx.test.uiautomator.By.pkg("android"))
+                            .mapNotNull { it.text?.take(80) }.filter { it.isNotBlank() }.distinct().take(6) }.getOrNull() + ")", button)
                     button.click()
                     assertTrue("Notification prompt must dismiss before app controls are used",
                         device.wait(androidx.test.uiautomator.Until.gone(allow), 10_000))
