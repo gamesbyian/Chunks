@@ -788,15 +788,6 @@ internal fun LocalEngineScreen(
             enabled = !busy && !inventoryStale,
             onPaste = { magnet = it },
             onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
-        clipboardPrefillOn?.let { on ->
-            ClipboardPrefillToggle(checked = on, enabled = true, onChange = { next ->
-                scope.launch {
-                    val saved = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.setEnabled(context, next) }
-                    if (saved) clipboardPrefillOn = next
-                    else noteProblem("That clipboard choice could not be saved. It is unchanged.")
-                }
-            })
-        }
         if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
             onClear = { magnet = ""; clipboardFilled = null }, enabled = !busy)
         if (isLink) TorrentLinkPanel(linkCheck, fetching = linkFetching,
@@ -959,6 +950,17 @@ internal fun LocalEngineScreen(
         else if (proposedAddDestination != null)
             Text("Planned local Place: " + proposedAddDestination.absolutePath,
                 style = MaterialTheme.typography.bodySmall)
+        // An Add preference, kept with the other Add settings rather than
+        // between the source field and the Start choice.
+        clipboardPrefillOn?.let { on ->
+            ClipboardPrefillToggle(checked = on, enabled = true, onChange = { next ->
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.setEnabled(context, next) }
+                    if (saved) clipboardPrefillOn = next
+                    else noteProblem("That clipboard choice could not be saved. It is unchanged.")
+                }
+            })
+        }
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
                 onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
