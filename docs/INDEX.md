@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+- [Future artwork sharing dependency](TRANSFER-SHARING.md#deferred-chunks-to-chunks-artwork-and-metadata-accompaniment-owner-direction-2026-11-04): portable custom artwork with Chunks transfers, explicitly gated on prior artwork/metadata decisions and acceptance.
+
+
 **Current UX entry point (2026-11-05 UTC):** [Post-Claude/Codex final reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md) records merged #1290–#1299, accepted UI proof, remaining fetched-link/Add and single-Add Place work, and the physical-only boundary. Both agents have stopped; the [dual-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is historical. [WORK-QUEUE](WORK-QUEUE.md) remains the sole executable priority authority. Older roster statements below are snapshots.
 
 
