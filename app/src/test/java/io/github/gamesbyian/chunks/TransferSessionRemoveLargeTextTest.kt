@@ -27,6 +27,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import io.github.gamesbyian.chunks.rpc.SessionEraseRecheck
 import kotlinx.coroutines.CompletableDeferred
+import io.github.gamesbyian.chunks.visual.renderedContrast
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -108,6 +109,10 @@ class TransferSessionRemoveLargeTextTest {
         assertEquals(1, dataCalls)
         assertEquals(0, keepCalls)
         rule.onNodeWithText("physical data deletion is NOT yet verified", substring = true).assertExists()
+        // The result card's read-only re-check measured 1.8:1 (lavender on a light card) before AccentCardOutlinedButton.
+        val recheck = rule.onNodeWithText("Check current session (read-only)", useUnmergedTree = true)
+            .performScrollTo().renderedContrast()
+        assertTrue("Re-check contrast $recheck is below 4.5:1", recheck >= 4.5)
     }
 
     @Test fun confirmAndCancelGrowWith200PercentTextAt320DpWithoutMutation() {
@@ -121,6 +126,11 @@ class TransferSessionRemoveLargeTextTest {
         val cancel = rule.onNodeWithText("Cancel").performScrollTo().getUnclippedBoundsInRoot()
         assertTrue("Confirm needs a minimum 52dp touch target", confirm.bottom - confirm.top >= 52.dp)
         assertTrue("Cancel needs a minimum 48dp touch target", cancel.bottom - cancel.top >= 48.dp)
+        // The confirmation is a red card: both outlined choices must read at AA.
+        for (label in listOf("Cancel", "Remove transfer, keep data")) {
+            val contrast = rule.onNodeWithText(label, useUnmergedTree = true).renderedContrast()
+            assertTrue("$label contrast $contrast is below 4.5:1", contrast >= 4.5)
+        }
         rule.onNodeWithText("Cancel").performScrollTo().performClick()
         rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
         assertEquals("Cancel must not request a remote mutation", 0, mutations)

@@ -139,7 +139,7 @@ fun TransferSessionRemoveControl(
                         style = MaterialTheme.typography.bodySmall)
                     Text("Choose what to remove. Removing the transfer keeps downloaded files on the server. Custom server hooks could still have additional effects.",
                         style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(
+                    AccentCardOutlinedButton(
                         onClick = {
                             if (canRequestDataDeletion && environmentLabel != null &&
                                 mainView && !snapshotStale && !pending && !checking &&
@@ -224,7 +224,7 @@ fun TransferSessionRemoveControl(
                                 containerColor = MaterialTheme.colorScheme.error),
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         ) { Text("Remove transfer, keep data") }
-                        OutlinedButton(
+                        AccentCardOutlinedButton(
                             onClick = { confirming = false },
                             enabled = !pending,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -247,7 +247,7 @@ fun TransferSessionRemoveControl(
                     // account with the same name/path. Remembered UI state is
                     // never proof that the NEW session is still absent.
                     if (!pending) {
-                        OutlinedButton(
+                        AccentCardOutlinedButton(
                             onClick = {
                                 checking = true
                                 scope.launch {

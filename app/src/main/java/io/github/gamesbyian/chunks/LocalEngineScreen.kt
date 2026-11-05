@@ -1525,7 +1525,7 @@ internal fun LocalEngineScreen(
                         }
                     }
                 }
-            LocalTransferCard(transfer, busy || inventoryStale,
+            LocalTransferCard(transfer, busy || inventoryStale, dhtEnabled = dht,
                 stale = inventoryStale,
                 onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
                     transfer.trackers?.total == 0) ({
@@ -2220,7 +2220,9 @@ internal fun LocalTransferCard(
     /** The Smart Seeding snapshot the phone controller stored; null before it has seen this transfer. */
     seeding: io.github.gamesbyian.chunks.seeding.SeedingController.Assignment? = null,
     /** The engine status read failed; rates are from the last confirmed read. */
-    stale: Boolean = false
+    stale: Boolean = false,
+    /** The screen's DHT setting; never read from preferences during composition. */
+    dhtEnabled: Boolean = false
 ) {
     // An open confirmation belongs to the identity the user reviewed, not
     // just a hash that may now describe a moved or changed transfer. A stale
@@ -2286,8 +2288,7 @@ internal fun LocalTransferCard(
                     style = MaterialTheme.typography.bodySmall)
             }
             if (diagnosticsOpen) {
-                LocalTrackerSummaryText.describe(transfer.trackers, transfer.stopped,
-                    LocalEngineHolder.dhtPreferred(LocalContext.current))?.let {
+                LocalTrackerSummaryText.describe(transfer.trackers, transfer.stopped, dhtEnabled)?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall)
                 }
                 seeding?.let { SeedingSnapshotSummary(transfer.infoHash, it) }

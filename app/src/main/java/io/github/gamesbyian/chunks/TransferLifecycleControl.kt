@@ -212,7 +212,7 @@ fun TransferLifecycleControl(
                             enabled = !pending && !snapshotStale,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                         ) { Text("Confirm " + verb.lowercase()) }
-                        OutlinedButton(
+                        AccentCardOutlinedButton(
                             onClick = { confirming = false },
                             enabled = !pending,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)

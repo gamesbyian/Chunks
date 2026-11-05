@@ -17,6 +17,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import io.github.gamesbyian.chunks.visual.renderedContrast
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
@@ -81,6 +82,9 @@ class TransferLifecycleControlLargeTextTest {
         assertEquals("Both actions should be full-width", confirm.right, cancel.right)
 
         rule.onRoot().captureRoboImage("build/chunks-visual/remote-lifecycle-confirm-320x700-200pct.png")
+        // Cancel sits on the green confirmation card: its words must read at AA.
+        val cancelContrast = rule.onNodeWithText("Cancel", useUnmergedTree = true).renderedContrast()
+        assertTrue("Cancel contrast $cancelContrast is below 4.5:1", cancelContrast >= 4.5)
         rule.onNodeWithText("Cancel").performClick()
         assertTrue("Review and Cancel are never remote commands", attempts.isEmpty())
     }
