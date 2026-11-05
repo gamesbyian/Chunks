@@ -184,12 +184,17 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                         ".*:id/permission_allow_button"))
                     val button = device.wait(androidx.test.uiautomator.Until.findObject(allow), 20_000)
                     assertNotNull("Expected Android's notification permission prompt", button)
+                    assertTrue("Start must wait until Android's notification choice is resolved",
+                        phone.status(preview.infoHashV1)?.stopped == true)
                     button.click()
                     assertTrue("Notification prompt must dismiss before app controls are used",
                         device.wait(androidx.test.uiautomator.Until.gone(allow), 10_000))
                     assertEquals(android.content.pm.PackageManager.PERMISSION_GRANTED,
                         context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS))
                     stage("notification-allowed")
+                }
+                await("production Start after notification choice") {
+                    phone.status(preview.infoHashV1)?.let { !it.stopped && it.state != LocalTransferState.CHECKING } == true
                 }
                 assertTrue(phone.connectPeer(preview.infoHashV1, InetSocketAddress("127.0.0.1", seed.listenPort())))
                 await("actual peer bytes and verified piece progression") {

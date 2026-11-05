@@ -238,6 +238,12 @@ private object LocalScreenReader {
 
 private class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: ByteArray)
 
+private data class PendingNotificationStart(
+    val transfer: LocalTransferStatus,
+    val generation: Long,
+    val perform: () -> Unit
+)
+
 @Composable
 internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
@@ -558,7 +564,20 @@ internal fun LocalEngineScreen(
         }
     }
     // The ongoing notification is how Android lets downloads continue in the background.
-    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    // Do not open native payloads while Android is changing this app's permission
+    // state. A permission result continues exactly one still-current Start intent;
+    // denial still permits a foreground download under Android's FGS rules.
+    var pendingNotificationStart by remember { mutableStateOf<PendingNotificationStart?>(null) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        val pendingStart = pendingNotificationStart
+        pendingNotificationStart = null
+        if (pendingStart != null) {
+            val current = transfers.singleOrNull { it.infoHash == pendingStart.transfer.infoHash }
+            if (!inventoryStale && LocalNotificationStartGuard.matches(pendingStart.transfer, current,
+                    pendingStart.generation, LocalScreenReader.revision.snapshot())) pendingStart.perform()
+            else noteProblem("The phone transfer changed while Android asked about notifications. Review its current details before pressing Start again.")
+        }
+    }
 
     var restoreNotice by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
@@ -1605,54 +1624,65 @@ internal fun LocalEngineScreen(
                     saved
                 },
                 onToggle = {
+                    val perform: () -> Unit = {
+                        performLocalMutation {
+                            try {
+                                val (outcome, stoppedCheckpoint) = withContext(Dispatchers.IO) {
+                                    val engine = LocalEngineHolder.get(context)
+                                    if (transfer.stopped) {
+                                        engine.resume(transfer.infoHash) to null
+                                    } else {
+                                        val stopped = engine.pause(transfer.infoHash)
+                                        val saved = if (stopped.outcome == LocalCommandOutcome.VERIFIED)
+                                            engine.saveResumeDataFor(transfer.infoHash) else null
+                                        stopped to saved
+                                    }
+                                }
+                                var serviceProblem: String? = null
+                                if (transfer.stopped && outcome.outcome in setOf(
+                                        LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN)) {
+                                    try { LocalEngineService.start(context) } catch (_: Exception) {
+                                        serviceProblem = "Android did not allow background running; keep Chunks open."
+                                    }
+                                }
+                                message = when (outcome.outcome) {
+                                    LocalCommandOutcome.VERIFIED ->
+                                        if (stoppedCheckpoint == false)
+                                            "Stopped on this phone, but its recovery checkpoint could not be confirmed. " +
+                                                "Keep Chunks open for the next save; downloaded files remain untouched."
+                                        else serviceProblem
+                                    LocalCommandOutcome.REFUSED ->
+                                        "Start was refused: unreviewed destination files may be overwritten. Inspect the transfer's storage warning; no Start was issued."
+                                    LocalCommandOutcome.UNCERTAIN -> {
+                                        inventoryFrame = inventoryFrame.copy(stale = true)
+                                        "The engine has not confirmed the change yet. Wait for fresh status before trying again."
+                                    }
+                                    LocalCommandOutcome.NOT_FOUND -> "This transfer is no longer in the phone engine."
+                                }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) {
+                                // The command may have reached libtorrent before the read or JNI call failed.
+                                // Do not invite another write until a successful inventory read.
+                                inventoryFrame = inventoryFrame.copy(stale = true)
+                                noteProblem("Start/Stop was not confirmed. Wait for fresh phone torrent status before trying again.")
+                            }
+                        }
+                    }
                     if (transfer.stopped && Build.VERSION.SDK_INT >= 33 &&
                         context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
                         PackageManager.PERMISSION_GRANTED) {
-                        notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
-                    }
-                    performLocalMutation {
-                        try {
-                            val (outcome, stoppedCheckpoint) = withContext(Dispatchers.IO) {
-                                val engine = LocalEngineHolder.get(context)
-                                if (transfer.stopped) {
-                                    engine.resume(transfer.infoHash) to null
-                                } else {
-                                    val stopped = engine.pause(transfer.infoHash)
-                                    val saved = if (stopped.outcome == LocalCommandOutcome.VERIFIED)
-                                        engine.saveResumeDataFor(transfer.infoHash) else null
-                                    stopped to saved
-                                }
+                        if (pendingNotificationStart == null) {
+                            pendingNotificationStart = PendingNotificationStart(
+                                transfer, LocalScreenReader.revision.snapshot(), perform)
+                            message = "Waiting for Android's notification choice before starting this transfer."
+                            try { notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS) }
+                            catch (_: Exception) {
+                                pendingNotificationStart = null
+                                noteProblem("Android could not ask about notifications. This Start was not sent; check app permissions before trying again.")
                             }
-                            var serviceProblem: String? = null
-                            if (transfer.stopped && outcome.outcome in setOf(
-                                    LocalCommandOutcome.VERIFIED, LocalCommandOutcome.UNCERTAIN)) {
-                                try { LocalEngineService.start(context) } catch (_: Exception) {
-                                    serviceProblem = "Android did not allow background running; keep Chunks open."
-                                }
-                            }
-                            message = when (outcome.outcome) {
-                                LocalCommandOutcome.VERIFIED ->
-                                    if (stoppedCheckpoint == false)
-                                        "Stopped on this phone, but its recovery checkpoint could not be confirmed. " +
-                                            "Keep Chunks open for the next save; downloaded files remain untouched."
-                                    else serviceProblem
-                                LocalCommandOutcome.REFUSED ->
-                                    "Start was refused: unreviewed destination files may be overwritten. Inspect the transfer's storage warning; no Start was issued."
-                                LocalCommandOutcome.UNCERTAIN -> {
-                                    inventoryFrame = inventoryFrame.copy(stale = true)
-                                    "The engine has not confirmed the change yet. Wait for fresh status before trying again."
-                                }
-                                LocalCommandOutcome.NOT_FOUND -> "This transfer is no longer in the phone engine."
-                            }
-                        } catch (cancel: kotlinx.coroutines.CancellationException) {
-                            throw cancel
-                        } catch (_: Exception) {
-                            // The command may have reached libtorrent before the read or JNI call failed.
-                            // Do not invite another write until a successful inventory read.
-                            inventoryFrame = inventoryFrame.copy(stale = true)
-                            noteProblem("Start/Stop was not confirmed. Wait for fresh phone torrent status before trying again.")
                         }
-                    }
+                    } else perform()
                 },
                 files = files.takeIf { filesFor == transfer.infoHash },
                 filesShown = filesFor == transfer.infoHash,
