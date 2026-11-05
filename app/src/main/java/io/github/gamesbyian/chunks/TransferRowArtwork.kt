@@ -43,10 +43,14 @@ internal fun TransferRowArtwork(
     TransferMediaArtwork(state, TransferRowArtworkSize, modifier = modifier, description = description)
 }
 
-/** TalkBack text: provenance first (never a provider title for adult content), then the format hint. */
+/** TalkBack text: what is drawn and its provenance first (never a provider title for adult content), then the format hint. */
 internal fun transferRowArtworkDescription(state: TransferMediaUiState, format: TransferNameFormatHint): String {
+    // Describe what is actually drawn: until an image is loaded (or when artwork is off) that is category art.
+    val showingImage = state.mayShowRealArt && state.artwork != null
     val art = when {
         state.displayKind == MediaKind.ADULT -> "Generic artwork"
+        !showingImage && state.displayKind == MediaKind.UNKNOWN -> "Generic artwork"
+        !showingImage -> state.displayKind.label + " category artwork"
         state.userArtwork != null -> "Your artwork"
         state.match != null -> "Artwork: " + state.match!!.title + " (" + state.state.label.lowercase() + ")"
         state.displayKind == MediaKind.UNKNOWN -> "Generic artwork"
