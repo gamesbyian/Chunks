@@ -514,6 +514,11 @@ fun MediaPrivacySettingsPanel(
             enabled = settings.downloadArtwork) { onChange(settings.copy(artworkOnMeteredNetwork = it)) }
         SettingSwitch("Larger artwork in lists", "64dp images in transfer lists instead of compact 40dp rows.",
             settings.largeListArtwork) { onChange(settings.copy(largeListArtwork = it)) }
+        SettingSwitch("Similar transfers in details", "Related transfers by confirmed identity; never from names alone.",
+            settings.showSimilarTransfers) { onChange(settings.copy(showSimilarTransfers = it)) }
+        SettingSwitch("Similar transfers: this environment only", "Off searches every environment you have set up.",
+            settings.similarSameEnvironmentOnly, enabled = settings.showSimilarTransfers) {
+            onChange(settings.copy(similarSameEnvironmentOnly = it)) }
         Text("Adult content is never looked up and always uses neutral art.", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
 
         Text("Providers", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })

@@ -124,7 +124,7 @@ class TransferMediaController(
             .also { states[key] = it }
         if (existing != null) flow.update { it.copy(recognition = recognizeWithEvidence(key, input)) }
         scope.launch(lookupDispatcher) {
-            largeListArtworkFlow.value = settings().largeListArtwork
+            settings().let { largeListArtworkFlow.value = it.largeListArtwork; presentationFlow.value = it }
             val a = store.get(key) ?: applyRuleIfAny(key, flow.value.recognition)
             flow.update { it.copy(assignment = a) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key) else if (a == null) maybeAutomatic(key)
@@ -471,12 +471,12 @@ class TransferMediaController(
      */
     suspend fun similarFor(source: io.github.gamesbyian.chunks.model.UnifiedTransferKey,
                            visible: Collection<io.github.gamesbyian.chunks.model.UnifiedTransferKey>,
-                           limit: Int = 20): List<io.github.gamesbyian.chunks.model.RelatedTransferCandidate> =
+                           limit: Int = 20, sameEnvironmentOnly: Boolean = false): List<io.github.gamesbyian.chunks.model.RelatedTransferCandidate> =
         kotlinx.coroutines.withContext(lookupDispatcher) {
             val keys = (listOf(source) + visible).distinct().take(MAX_SIMILAR_INVENTORY)
             val index = io.github.gamesbyian.chunks.model.MediaRelationIndex.build(
                 MediaRelationBridge.members(keys.map { it to store.get(MediaTransferKey.of(it)) }))
-            index.similar(source, keys.toSet(), limit = limit.coerceIn(1, 100))
+            index.similar(source, keys.toSet(), sameEnvironmentOnly = sameEnvironmentOnly, limit = limit.coerceIn(1, 100))
         }
 
     /**
@@ -487,12 +487,16 @@ class TransferMediaController(
     private val largeListArtworkFlow = MutableStateFlow(false)
     /** Presentation preference for list rows; refreshed from settings on first observe and on change. */
     val largeListArtwork: StateFlow<Boolean> get() = largeListArtworkFlow
+    private val presentationFlow = MutableStateFlow(MediaPrivacySettings())
+    /** The latest loaded media settings, for presentation-only host decisions (e.g. Similar transfers). */
+    val presentation: StateFlow<MediaPrivacySettings> get() = presentationFlow
 
     fun onSettingsChanged() {
         val snapshot = synchronized(this) { states.entries.map { it.key to it.value } }
         scope.launch(artworkDispatcher) {
             val s = settings()
             largeListArtworkFlow.value = s.largeListArtwork
+            presentationFlow.value = s
             snapshot.forEach { (key, f) ->
                 if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)

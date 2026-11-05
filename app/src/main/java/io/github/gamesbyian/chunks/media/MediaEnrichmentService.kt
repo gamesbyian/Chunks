@@ -18,7 +18,11 @@ data class MediaPrivacySettings(
     val downloadArtwork: Boolean = true,
     val artworkOnMeteredNetwork: Boolean = false,
     /** Presentation only: 64dp list artwork instead of the compact 40dp default. */
-    val largeListArtwork: Boolean = false
+    val largeListArtwork: Boolean = false,
+    /** Presentation only: show "Similar transfers" in expanded details (SHARED-MEDIA-IDENTITY default on). */
+    val showSimilarTransfers: Boolean = true,
+    /** Similar transfers from the viewed transfer's own environment only (default: all configured). */
+    val similarSameEnvironmentOnly: Boolean = false
 )
 
 fun MediaPrivacySettings.providerOn(info: MediaProviderInfo): Boolean =

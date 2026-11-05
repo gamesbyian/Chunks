@@ -222,6 +222,12 @@ class TransferRowArtworkTest {
         assertEquals("Title-only and locked rows never appear", 1,
             rule.onAllNodesWithText("Seedbox 2", substring = true).fetchSemanticsNodes().size)
         assertEquals("Similar Transfers issues no lookup", before, http.requests.size)
+        // Settings: this-environment-only drops the server match; off hides the section.
+        settings = settings.copy(similarSameEnvironmentOnly = true); c.onSettingsChanged()
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("B5 copy on server").fetchSemanticsNodes().isEmpty() }
+        settings = settings.copy(similarSameEnvironmentOnly = false, showSimilarTransfers = false); c.onSettingsChanged()
+        rule.waitForIdle()
+        assertEquals(0, rule.onAllNodesWithText("Similar transfers").fetchSemanticsNodes().size)
     }
 
     @Test fun phoneDetailsUseTheTransfersOwnCompletedCoverWithoutAnyNetwork() {
