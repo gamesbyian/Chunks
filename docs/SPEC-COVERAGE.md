@@ -1,5 +1,8 @@
 # Chunks specification coverage and acceptance map
 
+> **2026-11-05 implementation correction:** The older “Add intake planned” statement below describes the initial 2026-11-04 design state. [#1292](https://github.com/gamesbyian/Chunks/pull/1292), [#1295](https://github.com/gamesbyian/Chunks/pull/1295), [#1296](https://github.com/gamesbyian/Chunks/pull/1296), [#1297](https://github.com/gamesbyian/Chunks/pull/1297) and [#1299](https://github.com/gamesbyian/Chunks/pull/1299) subsequently implemented/qualified magnet handling, foreground clipboard prefill/recheck/opt-out and HTTPS .torrent-link retrieval into existing reviewed Add, at their documented JVM/emulator/real-fetch tiers. **Still unproven:** a complete positive peer/piece transfer from fetched URL on both phone/rTorrent and physical Pixel clipboard/intent acceptance. See [final UI/UX reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md).
+
+
 ## 2026-11-04 new Add intake requirement (planned; not accepted)
 
 [ADD-SOURCE-INTAKE](ADD-SOURCE-INTAKE.md) now requires HTTP(S) remote `.torrent` URL importing (including extensionless/private tracker-token links), one-time foreground clipboard prefill for eligible links when Add source is empty, configurable default-on behavior, manual Paste, Android Share/Open With parity, no implicit fetch/Add, safe URL retrieval and phone/rTorrent equivalence. **No newly completed implementation/CI/Pixel evidence is claimed.** Track via existing Add/UX work (#8 and adapter #1/#5), not an additional P0 release gate; keep earlier Add proof valid where unaffected.
