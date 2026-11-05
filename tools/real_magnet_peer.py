@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path, PurePosixPath
 import signal
 import threading
@@ -139,6 +140,12 @@ class Peer:
         self.lock = threading.Lock()
         self.stopping = threading.Event()
         self.started = time.monotonic()
+        # Fixed public fixtures only. No addresses, torrent names, tracker URLs or
+        # native alert messages enter this bounded, timestamp-aligned diagnostic.
+        self.timeline = {label: [] for label in fixtures}
+        self.events = {label: {} for label in fixtures}
+        self.requests = {label: [] for label in fixtures}
+        self.last_sample = 0.0
 
     def save(self):
         data = {"source_sha": os.getenv("GITHUB_SHA"), "run_id": os.getenv("GITHUB_RUN_ID"),
@@ -146,6 +153,7 @@ class Peer:
                 "topology": "real libtorrent TCP peer to " + ("disposable rTorrent" if self.target_host == "127.0.0.1" else "approved development rTorrent"),
                 "fixtures": self.fixtures}
         (self.root / "PEER-RECEIPT.json").write_text(json.dumps(data, indent=2) + "\n")
+        (self.root / "PEER-TIMELINE.json").write_text(json.dumps(self.timeline, indent=2) + "\n")
 
     def new_seed(self, label, stage, port=None):
         # The controller is not an arbitrary network probe or filesystem API.
@@ -189,20 +197,25 @@ class Peer:
                 handle.remove_url_seed(webseed)
             handle.resume()
             if not metadata_only:
+                prefix_pieces = (item["prefix_bytes"] + ti.piece_length() - 1) // ti.piece_length()
+                def prefix_verified(status):
+                    return len(status.pieces) >= prefix_pieces and all(status.pieces[:prefix_pieces])
                 deadline = time.monotonic() + 45
                 while time.monotonic() < deadline:
                     status = handle.status(lt.status_flags_t.query_pieces)
-                    verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
                     if status.error:
                         raise ValueError("Native source recheck failed")
-                    if verified >= item["prefix_bytes"]:
+                    if prefix_verified(status):
+                        break
+                    if status.state not in (lt.torrent_status.checking_files, lt.torrent_status.checking_resume_data):
                         break
                     time.sleep(.1)
                 status = handle.status(lt.status_flags_t.query_pieces)
-                verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
-                if verified < item["prefix_bytes"]:
+                # Sparse zeros elsewhere in an ISO can themselves be valid pieces.
+                # Their aggregate size must never stand in for the fetched prefix.
+                if not prefix_verified(status):
                     raise ValueError("Original source pieces are unavailable")
-                item["native_verified_bytes"] = verified
+                item["native_verified_bytes"] = sum(ti.piece_size(i) for i in range(prefix_pieces))
             self.active[label] = session, handle
             item["stages"].append(stage)
             if stage != "preflight":
@@ -223,6 +236,49 @@ class Peer:
                             self.fixtures[label]["peer_disconnects"] += 1
                         elif isinstance(alert, lt.peer_error_alert):
                             self.fixtures[label]["peer_error_alerts"] += 1
+                        elif isinstance(alert, lt.block_uploaded_alert):
+                            events = self.events[label]
+                            events["blocks_uploaded"] = events.get("blocks_uploaded", 0) + 1
+                        elif isinstance(alert, lt.invalid_request_alert):
+                            events = self.events[label]
+                            events["invalid_requests"] = events.get("invalid_requests", 0) + 1
+                        elif isinstance(alert, lt.peer_log_alert):
+                            # Python does not bind C++'s event_type/direction fields.
+                            # Extract ONLY fixed protocol tokens from its formatted
+                            # message; never retain or print the message/address.
+                            message = alert.message()
+                            event = re.search(r"\s(<==|==>|<<<|>>>) (REQUEST|CANCEL|CHOKE|UNCHOKE|INTERESTED|NOT_INTERESTED|HAVE|BITFIELD) \[", message)
+                            if event:
+                                name = ("in_" if event[1] in ("<==", "<<<") else "out_") + event[2].lower()
+                                events = self.events[label]
+                                events[name] = events.get(name, 0) + 1
+                                if name == "in_request":
+                                    request = re.search(r"piece: (\d+) s: (\d+) l: (\d+)", message)
+                                    if request:
+                                        self.requests[label].append({"epoch_ms": time.time_ns() // 1_000_000,
+                                            "piece": int(request[1]), "offset": int(request[2]), "length": int(request[3])})
+                                        del self.requests[label][:-8]
+                if time.monotonic() - self.last_sample >= 1:
+                    self.last_sample = time.monotonic()
+                    for label, (session, handle) in self.active.items():
+                        status = handle.status(lt.status_flags_t.query_pieces)
+                        peers = handle.get_peer_info()
+                        self.timeline[label].append({
+                            "epoch_ms": time.time_ns() // 1_000_000,
+                            "phase": self.fixtures[label]["stages"][-1],
+                            "verified_bytes": status.total_done,
+                            "available_pieces": sum(status.pieces),
+                            "uploaded_bytes": status.total_payload_upload,
+                            "upload_rate": status.upload_payload_rate,
+                            "peer_count": status.num_peers,
+                            "events": dict(self.events[label]),
+                            "recent_requests": list(self.requests[label]),
+                            "peers": [{"flags": int(p.flags), "pieces": p.num_pieces,
+                                       "upload_queue": p.upload_queue_length,
+                                       "download_queue": p.download_queue_length,
+                                       "uploaded_bytes": p.total_upload} for p in peers[:8]],
+                        })
+                        del self.timeline[label][:-300]
 
     def close(self):
         self.stopping.set()
@@ -254,6 +310,10 @@ def main():
             def do_GET(self):
                 if self.path == "/ready":
                     body = json.dumps(peer.fixtures).encode()
+                elif self.path == "/diagnostics":
+                    with peer.lock:
+                        body = json.dumps({"source_sha": os.getenv("GITHUB_SHA"), "run_id": os.getenv("GITHUB_RUN_ID"),
+                                           "libtorrent_version": lt.version, "timeline": peer.timeline}).encode()
                 elif self.path == "/magnet3.seed.torrent":
                     # The independent on-device seed must never fetch missing ISO
                     # bytes. Keep the publisher's exact info dictionary and strip
