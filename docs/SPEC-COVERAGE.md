@@ -1,5 +1,10 @@
 # Chunks specification coverage and acceptance map
 
+## Chunks-to-Chunks artwork transfer portability (planned, gated 2026-11-04)
+
+**NOT IMPLEMENTED; NOT ACCEPTED; NOT READY FOR DISPATCH.** Desired future capability: preserve user-selected posters/thumbnail bytes, alternate images and compatible metadata overrides with a portable transfer share, including artwork-only exchange without changing torrent payload or infohash. Gated first on all relevant canonical metadata/artwork decisions and their accepted implementation, then standard transfer sharing. Receipt requirements after design approval: same-hash import into second Chunks install, preexisting override preservation/explicit replacement, offline custom-image bytes, different environments, no credential/path exposure, malformed/oversize bundle rejection and non-Chunks magnet/.torrent interoperability. Authority: [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [TRANSFER-SHARING](TRANSFER-SHARING.md). Do not represent this as a current release blocker.
+
+
 > **2026-11-05 implementation correction:** The older “Add intake planned” statement below describes the initial 2026-11-04 design state. [#1292](https://github.com/gamesbyian/Chunks/pull/1292), [#1295](https://github.com/gamesbyian/Chunks/pull/1295), [#1296](https://github.com/gamesbyian/Chunks/pull/1296), [#1297](https://github.com/gamesbyian/Chunks/pull/1297) and [#1299](https://github.com/gamesbyian/Chunks/pull/1299) subsequently implemented/qualified magnet handling, foreground clipboard prefill/recheck/opt-out and HTTPS .torrent-link retrieval into existing reviewed Add, at their documented JVM/emulator/real-fetch tiers. **Still unproven:** a complete positive peer/piece transfer from fetched URL on both phone/rTorrent and physical Pixel clipboard/intent acceptance. See [final UI/UX reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md).
 
 

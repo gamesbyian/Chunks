@@ -1,5 +1,10 @@
 # Chunks canonical product contract
 
+## Deferred Chunks-to-Chunks artwork sharing (dependent feature)
+
+Once the metadata/artwork system and every relevant selection and use decision are settled and accepted, Chunks shall support a portable Chunks-specific share package carrying deliberately selected custom artwork (including tiny poster/thumbnail image bytes), alternate images and compatible descriptive overrides with a standard magnet or .torrent. Non-Chunks clients still receive an ordinary torrent share. Existing recipient manual choices are preserved unless the recipient elects otherwise. No new user-facing license-check or attribution-approval bureaucracy for person-to-person tiny artwork. **No bundle implementation or final default/merge policy until the upstream artwork decisions are resolved.** [TRANSFER-SHARING](TRANSFER-SHARING.md) and [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md).
+
+
 ## Add source URLs and clipboard prefill (owner approved, 2026-11-04)
 
 The single Add screen SHALL accept valid magnets, authorized local `.torrent` content URIs, and HTTP(S) URLs returning valid `.torrent` metainfo, including extensionless tracker download links. On foreground Add entry, eligible copied magnet/torrent URLs SHALL populate an otherwise empty source field by default, with an opt-out and manual Paste; never overwrite an existing draft or perform a network fetch/Add from clipboard alone. Android Share/Open With SHALL enter the same Add screen. Exact behavior, source precedence, security and acceptance: [ADD-SOURCE-INTAKE](ADD-SOURCE-INTAKE.md). This is an expansion of the existing Add work, not a reopened P0 A–E gate.
