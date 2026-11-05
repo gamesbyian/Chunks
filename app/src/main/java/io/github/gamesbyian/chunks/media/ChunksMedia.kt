@@ -42,7 +42,7 @@ class ChunksMedia private constructor(context: Context) {
     private val service by lazy { MediaEnrichmentService(providers, http, lazyCache()) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val controller: TransferMediaController by lazy {
+    private val controllerLazy = lazy {
         val byId = providers.associateBy { it.info.id }
         TransferMediaController(
             service = service,
@@ -56,6 +56,7 @@ class ChunksMedia private constructor(context: Context) {
             backgroundDispatcher = Dispatchers.IO.limitedParallelism(1),
             ruleStoreFactory = { FileMediaRuleStore(File(app.filesDir, "media/rules.json")) })
     }
+    val controller: TransferMediaController by controllerLazy
 
     /** Delegates resolve the lazily-created stores only when first used off the main thread. */
     private fun lazyCache(): MediaQueryCache = object : MediaQueryCache {
@@ -78,6 +79,7 @@ class ChunksMedia private constructor(context: Context) {
         val withdrawn = settings.onlineLookupConsent && !s.onlineLookupConsent
         settings = s; settingsLoaded = true; settingsStore.save(s)
         if (withdrawn) providers.forEach { service.resetProviderPause(it.info.id) }
+        if (controllerLazy.isInitialized()) controller.onSettingsChanged()
     }
 
     fun setProviderKey(provider: String, value: String?) {

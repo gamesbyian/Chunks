@@ -1340,7 +1340,8 @@ private fun CombinedTransferRow(
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransferFileTypeBadge(row.originalName)
+                TransferRowArtwork(row.key, row.originalName,
+                    hidden = source?.availability == EnvironmentAvailability.LOCKED)
                 Text(row.displayName, style = MaterialTheme.typography.titleSmall,
                     maxLines = if (expanded) Int.MAX_VALUE else 2,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

@@ -5,7 +5,7 @@ import org.junit.Test
 
 class NavigationRestorePolicyTest {
     @Test fun onlyPrivacyGatedPhoneAndReadOnlyCombinedCanReopenAfterProcessDeath() {
-        for (safe in listOf("LOCAL", "COMBINED")) {
+        for (safe in listOf("LOCAL", "COMBINED", "MEDIA")) {
             assertEquals(safe, NavigationRestorePolicy.restorableSection(safe))
         }
     }

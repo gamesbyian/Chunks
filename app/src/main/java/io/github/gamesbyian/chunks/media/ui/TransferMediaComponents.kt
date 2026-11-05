@@ -255,7 +255,8 @@ fun MediaIdentifyPanel(
 
         if (onPickImage != null) {
             Text("Your own image", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Wraps, so both actions stay whole at 320dp and 200% text.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 OutlinedButton(onClick = onPickImage, enabled = !state.busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Choose image from device…") }
                 if (state.userArtwork != null && onRemoveImage != null)
                     TextButton(onClick = onRemoveImage, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove my image") }
@@ -272,22 +273,24 @@ fun MediaIdentifyPanel(
         }
 
         Text("Or use built-in art", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
+        // Choices widen with the text size and labels may wrap, so "Movie" or "TV series" stays readable at 200%.
+        val choiceWidth = (72f * androidx.compose.ui.platform.LocalDensity.current.fontScale.coerceIn(1f, 1.85f)).dp
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             categoryChoices.forEach { kind ->
                 val selected = state.assignment?.categoryOverride == kind && state.state == MediaAssignmentState.CATEGORY_ART_BY_USER
-                Column(Modifier.width(72.dp).clip(RoundedCornerShape(12.dp))
+                Column(Modifier.width(choiceWidth).clip(RoundedCornerShape(12.dp))
                     .selectable(selected, role = Role.RadioButton) { onUseCategoryArt(kind) }
                     .border(if (selected) 2.dp else 0.dp, if (selected) ChunksColors.Green else ChunksColors.Background, RoundedCornerShape(12.dp))
                     .padding(4.dp).semantics { contentDescription = "Use ${kind.label} art" },
                     horizontalAlignment = Alignment.CenterHorizontally) {
                     MediaCategoryTile(kind, 56.dp, showLabel = false)
-                    Text(kind.label, style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary, maxLines = 1,
-                        overflow = TextOverflow.Ellipsis)
+                    Text(kind.label, style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             OutlinedButton(onClick = onReset, enabled = state.assignment != null, modifier = Modifier.heightIn(min = 48.dp)) { Text("Reset to automatic") }
             if (state.assignment?.attempts?.isNotEmpty() == true) TextButton(onClick = { showWhy = !showWhy }, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text(if (showWhy) "Hide details" else "Why this result?")

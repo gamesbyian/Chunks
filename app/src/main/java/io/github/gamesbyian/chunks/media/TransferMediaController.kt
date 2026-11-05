@@ -407,6 +407,22 @@ class TransferMediaController(
         if (store.all().none { it.key != except && it.userArtwork == image }) artwork.removeLocal(image)
     }
 
+    /**
+     * Apply changed presentation settings to rows already on screen: turning artwork off drops
+     * loaded images immediately (category art shows instead); turning it on reloads only from
+     * existing assignments. Never starts an identification lookup.
+     */
+    fun onSettingsChanged() {
+        val snapshot = synchronized(this) { states.entries.map { it.key to it.value } }
+        scope.launch(artworkDispatcher) {
+            val s = settings()
+            snapshot.forEach { (key, f) ->
+                if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
+                else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
+            }
+        }
+    }
+
     fun dismissSearch(key: MediaTransferKey) { flow(key)?.update { it.copy(searchResults = null, message = null) } }
 
     /** Purge assignments, lookup history and downloaded artwork. Transfers are untouched. */

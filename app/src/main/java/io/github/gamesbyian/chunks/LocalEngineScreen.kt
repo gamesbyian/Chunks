@@ -246,6 +246,8 @@ internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
     /** Opens Smart Seeding Rules; null hides the entry. */
     onSeedingRules: (() -> Unit)? = null,
+    /** Options → Artwork & media info (app-wide presentation preferences). */
+    onMediaSettings: (() -> Unit)? = null,
     /** App-wide phone tools, reachable from Phone options without leaving via the server entry. */
     onCreateTorrent: (() -> Unit)? = null,
     onZipReview: (() -> Unit)? = null,
@@ -1964,6 +1966,10 @@ internal fun LocalEngineScreen(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(seedingFocus)) {
             Text("Seeding rules…")
         }
+        if (onMediaSettings != null) OutlinedButton(onClick = onMediaSettings,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Artwork & media info…")
+        }
         io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.invoke()
         // Settings first, then occasional tools: the person looking for a
         // speed limit does not have to scroll past snapshot and export panels.
@@ -2299,7 +2305,7 @@ internal fun LocalTransferCard(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransferFileTypeBadge(transfer.name)
+                TransferRowArtwork(rememberPhoneTransferKey(transfer.infoHash), transfer.name)
                 Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     // Keep phone cards as scannable as the already bounded remote
@@ -2391,6 +2397,10 @@ internal fun LocalTransferCard(
                 ) { Text(diagnosticsLabel) }
             }
             if (diagnosticsOpen) {
+            // Presentation only, keyed by the exact phone job; never reads or changes payload files.
+            rememberPhoneTransferKey(transfer.infoHash)?.let { key ->
+                TransferMediaDetailSection(key, transfer.name)
+            }
             if (transfer.payloadDownloadedBytes > 0L) {
                 Text("Network payload counter " + Units.bytes(transfer.payloadDownloadedBytes),
                     style = MaterialTheme.typography.bodySmall)

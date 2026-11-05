@@ -17,6 +17,9 @@ class OptionsSettingIndexTest {
         assertEquals(listOf(OptionsShortcut.ENVIRONMENT_COLOURS), OptionsShortcut.search("color"))
         assertEquals(listOf(OptionsShortcut.NAMES), OptionsShortcut.search("rename"))
         assertEquals(listOf(OptionsShortcut.PRIVACY), OptionsShortcut.search("biometric"))
+        assertEquals(listOf(OptionsShortcut.MEDIA), OptionsShortcut.search("artwork"))
+        assertEquals(listOf(OptionsShortcut.MEDIA), OptionsShortcut.search("tmdb key"))
+        assertTrue(OptionsShortcut.MEDIA in OptionsShortcut.search("poster"))
         assertTrue(OptionsShortcut.BACKUP in OptionsShortcut.search("export"))
         assertTrue(OptionsShortcut.INSPECT_BACKUP in OptionsShortcut.search("restore backup"))
     }
