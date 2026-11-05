@@ -3,11 +3,7 @@
 - [Future artwork sharing dependency](TRANSFER-SHARING.md#deferred-chunks-to-chunks-artwork-and-metadata-accompaniment-owner-direction-2026-11-04): portable custom artwork with Chunks transfers, explicitly gated on prior artwork/metadata decisions and acceptance.
 
 
-**Current UX entry point (2026-11-05 UTC):** [Post-Claude/Codex final reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md) records merged #1290–#1299, accepted UI proof, remaining fetched-link/Add and single-Add Place work, and the physical-only boundary. Both agents have stopped; the [dual-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is historical. [WORK-QUEUE](WORK-QUEUE.md) remains the sole executable priority authority. Older roster statements below are snapshots.
-
-
-**Start here (2026-11-05):** one agent now owns all UX work; remaining items are in [WORK-QUEUE](WORK-QUEUE.md). The [UX dual-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is historical for ownership. [P0/UX reconciliation](P0-UX-RECONCILIATION-2026-11-04.md) is the accepted P0 baseline; [WORK-QUEUE](WORK-QUEUE.md) is the only priority authority; [UX-73-CANDIDATE-TRACE](UX-73-CANDIDATE-TRACE-2026-11-03.md) is evidence-indexed coverage, not independent jobs. Historical live-status notes below may predate this dispatch.
-
+**Current UX entry point:** [Reconciled UX handoff](UX-FINAL-RECONCILIATION-2026-11-05.md) records completed HTTPS-link transfers and scoped phone destinations in merged #1301, the immutable qualified source/APK, and the remaining physical/human/provider gates. [WORK-QUEUE](WORK-QUEUE.md) is the sole executable queue; the [73-candidate trace](UX-73-CANDIDATE-TRACE-2026-11-03.md) is coverage, not a list of missing implementations. No old file leases or dated agent rosters survive.
 
 - [Recency-preserving transfer progress chunks](TRANSFER-PROGRESS-CHUNKS.md): owner-approved proportional, bounded, chronological progress segments, oldest-first coalescing, smaller rounded-rectangle corners, visual/accessibility behaviour and acceptance; source merged in #1251; installed dynamic pixel geometry verified in #1252, while owner-phone/TalkBack review remains.
 
@@ -27,7 +23,7 @@ The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.m
 
 **Start UX work with [the canonical interaction contract](UX.md)**: shared philosophy and state grammar → navigation/Add/transfers/files/privacy/accessibility journeys → focused feature contracts. The [2026-10-30 UX integration audit](UX-INTEGRATION-AUDIT-2026-10-30.md) records contradictions, migration coverage and overlapping PR reconciliation; it is an audit receipt, not a second UX authority.
 
-- [Add source intake: URL, clipboard, Android handoff](ADD-SOURCE-INTAKE.md): owner-approved single Add flow for magnet/local/remote `.torrent` sources, safe HTTP(S) fetch and clipboard prefill; specification only, not yet accepted.
+- [Add source intake: URL, clipboard, Android handoff](ADD-SOURCE-INTAKE.md): owner-approved single Add flow for magnet/local/remote `.torrent` sources, safe HTTPS fetch and clipboard prefill; installed phone/real-rTorrent Add and piece progression qualified in #1301, with physical/provider boundaries explicit.
 
 ## Agent entry points
 

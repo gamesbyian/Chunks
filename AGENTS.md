@@ -1,10 +1,6 @@
 # Chunks: permanent agent operating contract
 
-> **Current UX handoff (2026-11-05 UTC):** Both Claude and Codex have stopped (owner report); no active UX file ownership lease remains. Their work through merged #1299 and the next executable tasks are summarized in [UX final reconciliation](docs/UX-FINAL-RECONCILIATION-2026-11-05.md). The old dual-agent dispatch and older “Claude active” note below are chronological history, not current instructions. Read current main/PRs once before proceeding.
-
-
-> **Dated coordination pointer (2026-11-05):** Codex is paused; one agent (Claude) owns all UX/UI source and tracking documents. The 2026-11-04 [dual-agent dispatch](docs/UX-DUAL-AGENT-DISPATCH-2026-11-04.md) is superseded for ownership; take remaining UX work from [WORK-QUEUE](docs/WORK-QUEUE.md). It does not supersede the permanent safety/product/evidence contract below. Check live PRs before starting. The older P0 A–E execution campaign has passed automated evidence; owner Pixel/human acceptance is still open.
-
+> **Current UX handoff (2026-11-05 UTC):** The sole-agent integrated campaign [#1301](https://github.com/gamesbyian/Chunks/pull/1301) is merged and qualified on immutable source `f07a8331f81f`: real HTTPS-link phone/rTorrent transfers and one-time phone Place versus saved default. Read [the reconciled handoff](docs/UX-FINAL-RECONCILIATION-2026-11-05.md), [WORK-QUEUE](docs/WORK-QUEUE.md) and [QUALITY-LEDGER](docs/QUALITY-LEDGER.md), then make a brief live-state check. No inherited file leases remain; dated agent rosters below are historical. Physical/human/provider/signing boundaries remain open.
 
 **Mission:** deliver a safe, delightful Android BitTorrent client and first-class rTorrent remote as **one consistent user experience**, without losing downloaded data or overstating verified functionality. This file governs *agent behavior*. Normative product, UX and technical requirements live in their canonical documents, not in accumulating session narratives.
 

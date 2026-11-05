@@ -1,9 +1,13 @@
 # Add source intake: URLs, clipboard and Android handoff
 
-> **Implementation status correction (2026-11-05 UTC):** The contract below was drafted before implementation. Merged [#1295](https://github.com/gamesbyian/Chunks/pull/1295), [#1296](https://github.com/gamesbyian/Chunks/pull/1296), [#1297](https://github.com/gamesbyian/Chunks/pull/1297) and [#1299](https://github.com/gamesbyian/Chunks/pull/1299) deliver foreground magnet/HTTPS clipboard suggestion, opt-out and explicit Paste, and bounded HTTPS torrent-metainfo retrieval with token redaction and existing reviewed Add integration. Real public HTTPS source retrieval and installed clipboard UI evidence are in [QUALITY-LEDGER](QUALITY-LEDGER.md). Full installed **fetch → phone/rTorrent Add → real piece progress** and physical Pixel clipboard/Share behaviour still lack proof. This correction supersedes the historical “implementation not established” wording below; it does not relax this normative contract or falsely claim every Android intent/provider case is accepted.
+> **Implementation and acceptance (2026-11-05 UTC):** #1295–#1299 delivered foreground clipboard suggestion/opt-out/Paste and bounded, token-redacted HTTPS metainfo retrieval. Merged [#1301](https://github.com/gamesbyian/Chunks/pull/1301) qualifies the installed production **fetch → phone and real-rTorrent Add → Start → actual received/verified pieces** journey on immutable `f07a8331f81f`, including exact destination, private-address refusal, cancel/recreation recovery and unchanged saved default. [QUALITY-LEDGER](QUALITY-LEDGER.md) records exact-source receipts and limits: bounded piece outcomes, not full publisher payload completion. Physical Pixel clipboard/Share, third-party IME and external authenticated/provider cases remain unverified. This status does not relax the normative contract below.
 
 
-**Status:** Owner-approved product/UX requirement, 2026-11-04; implementation and acceptance not established by this document. **Scope:** phone-only, remote-only and Combined Add. This is the single detailed contract for source recognition; [PRODUCT](PRODUCT.md), [UX](UX.md), [SECURITY](SECURITY.md) and [WORK-QUEUE](WORK-QUEUE.md) cross-reference it. Do not create another P0 campaign or reopen accepted A–E evidence merely to implement this addition.
+
+
+**Status:** Owner-approved contract; implementation and automated acceptance are recorded above and in [QUALITY-LEDGER](QUALITY-LEDGER.md). **Scope:** phone-only, remote-only and Combined Add. This is the single detailed source-recognition contract; [PRODUCT](PRODUCT.md), [UX](UX.md), [SECURITY](SECURITY.md) and [WORK-QUEUE](WORK-QUEUE.md) cross-reference it. Preserve accepted A–E evidence; do not start another P0 campaign for unchanged behaviour.
+
+
 
 ## Ordinary journey and priority
 
