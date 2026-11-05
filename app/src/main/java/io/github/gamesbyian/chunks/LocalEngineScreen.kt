@@ -2399,7 +2399,11 @@ internal fun LocalTransferCard(
             if (diagnosticsOpen) {
             // Presentation only, keyed by the exact phone job; never reads or changes payload files.
             rememberPhoneTransferKey(transfer.infoHash)?.let { key ->
-                TransferMediaDetailSection(key, transfer.name)
+                // Files are listed only after the person opens them; until then no local evidence.
+                val localMedia = remember(transfer.savePath, files) {
+                    files?.let { LocalCompletedMediaFiles(transfer.savePath, it) }
+                }
+                TransferMediaDetailSection(key, transfer.name, localFiles = localMedia)
             }
             if (transfer.payloadDownloadedBytes > 0L) {
                 Text("Network payload counter " + Units.bytes(transfer.payloadDownloadedBytes),

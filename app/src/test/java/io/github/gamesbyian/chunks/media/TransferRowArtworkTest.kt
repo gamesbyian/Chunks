@@ -219,4 +219,38 @@ class TransferRowArtworkTest {
             rule.onAllNodesWithText("Seedbox 2", substring = true).fetchSemanticsNodes().size)
         assertEquals("Similar Transfers issues no lookup", before, http.requests.size)
     }
+
+    @Test fun phoneDetailsUseTheTransfersOwnCompletedCoverWithoutAnyNetwork() {
+        val c = controller()
+        val folder = Files.createTempDirectory("phone-save").toFile()
+        val album = "Artist - Album (2020) [FLAC]"
+        val cover = jpeg()
+        File(folder, "$album/cover.jpg").apply { parentFile.mkdirs(); writeBytes(cover) }
+        val files = listOf(io.github.gamesbyian.chunks.engine.LocalTransferFile(0, "$album/cover.jpg", cover.size.toLong(), cover.size.toLong(), true),
+            io.github.gamesbyian.chunks.engine.LocalTransferFile(1, "$album/01.flac", 30_000_000, 30_000_000, true))
+        val transfer = LocalTransferStatus(infoHash = hash, name = album, state = LocalTransferState.SEEDING,
+            stopped = false, progressPpm = 1_000_000, wantedBytes = 30_000_000, doneBytes = 30_000_000,
+            payloadDownloadedBytes = 0, payloadUploadedBytes = 0, peers = 0, savePath = folder.absolutePath, error = null)
+        val before = http.requests.size
+        rule.setContent {
+            CompositionLocalProvider(LocalTransferMediaController provides c) {
+                ChunksTheme { Surface {
+                    androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState())) {
+                        LocalTransferCard(transfer = transfer, busy = false, onToggle = {}, onRemove = {},
+                            files = files, filesShown = true)
+                    }
+                } }
+            }
+        }
+        rule.onNodeWithContentDescription("More details for $album on this phone").performScrollTo().performClick()
+        rule.onNodeWithText("Identify…").performScrollTo().performClick()
+        rule.onNodeWithText("Use cover.jpg from this transfer").performScrollTo().performClick()
+        rule.waitUntil(5_000) {
+            rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Your artwork", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, c.observe(MediaTransferKey.of(phone), album).value.state)
+        assertEquals("A local cover never touches the network", before, http.requests.size)
+        assertTrue("The payload file is unchanged", File(folder, "$album/cover.jpg").readBytes().contentEquals(cover))
+    }
 }
