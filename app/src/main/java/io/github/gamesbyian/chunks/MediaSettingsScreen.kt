@@ -34,12 +34,12 @@ internal fun MediaSettingsScreen(onBack: () -> Unit) {
     ) {
         Text("Artwork & media info", style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
-        Text("Applies on this phone to every environment's lists and details. Artwork and matches are " +
-            "only labels: they never rename, move or change any download, file or server.",
+        Text("For every environment's lists and details. Artwork and matches are labels only: " +
+            "no download, file or server is ever changed.",
             style = MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("Back")
         }
-        MediaSettingsRoute()
+        MediaSettingsRoute(showHeading = false)
     }
 }

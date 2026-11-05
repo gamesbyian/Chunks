@@ -451,12 +451,14 @@ fun MediaPrivacySettingsPanel(
     onSetProviderKey: ((String, String?) -> Unit)?,
     cacheSummary: String,
     onClearData: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** False when the host screen already shows its own title. */
+    showHeading: Boolean = true
 ) {
     var keyEditor by remember { mutableStateOf<String?>(null) }
     var keyText by remember { mutableStateOf("") }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("Media artwork & info", style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
+        if (showHeading) Text("Media artwork & info", style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
         SettingSwitch("Online lookup", "Send cleaned-up titles to the providers below. Off by default.", settings.onlineLookupConsent) {
             onChange(settings.copy(onlineLookupConsent = it, automaticLookup = settings.automaticLookup && it))
         }

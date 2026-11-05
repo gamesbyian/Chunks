@@ -123,7 +123,7 @@ fun MediaLookupConsentDialog(providerNames: List<String>, onConfirm: () -> Unit,
 
 /** Options → Media artwork & info, wired to [ChunksMedia]. */
 @Composable
-fun MediaSettingsRoute(modifier: Modifier = Modifier) {
+fun MediaSettingsRoute(modifier: Modifier = Modifier, showHeading: Boolean = true) {
     val context = LocalContext.current
     val media = remember(context) { ChunksMedia.get(context) }
     var loaded by remember { mutableStateOf<MediaPrivacySettings?>(null) }
@@ -150,7 +150,7 @@ fun MediaSettingsRoute(modifier: Modifier = Modifier) {
         onSetProviderKey = { id, value -> scope.launch(Dispatchers.IO) { media.setProviderKey(id, value); generation++ } },
         cacheSummary = summary,
         onClearData = { scope.launch { media.clearAllMediaData().join(); generation++ } },
-        modifier = modifier)
+        modifier = modifier, showHeading = showHeading)
     askConsent?.let { pending ->
         MediaLookupConsentDialog(media.providers.map { it.info.displayName },
             onConfirm = { askConsent = null; loaded = pending; scope.launch(Dispatchers.IO) { media.updateSettings(pending) } },
