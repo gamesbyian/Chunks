@@ -208,7 +208,26 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     val device = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
                     val allow = androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(
                         ".*:id/permission_allow_button"))
-                    val button = device.wait(androidx.test.uiautomator.Until.findObject(allow), 20_000)
+                    // Observed (run 42098623009): an emulator "Pixel Launcher isn't responding" dialog
+                    // covered the prompt. Another app's ANR is environment noise: choose Wait (never
+                    // Close) and keep waiting. An ANR naming Chunks itself still fails.
+                    var button: androidx.test.uiautomator.UiObject2? = null
+                    val promptDeadline = System.currentTimeMillis() + 40_000
+                    while (button == null && System.currentTimeMillis() < promptDeadline) {
+                        button = device.wait(androidx.test.uiautomator.Until.findObject(allow), 5_000)
+                        if (button != null) break
+                        val anr = runCatching { device.findObjects(androidx.test.uiautomator.By.pkg("android"))
+                            .mapNotNull { it.text }.firstOrNull { it.contains("isn't responding") } }.getOrNull()
+                        if (anr != null) {
+                            assertFalse("Chunks itself stopped responding: $anr", anr.contains("Chunks", ignoreCase = true))
+                            val wait = device.findObject(androidx.test.uiautomator.By.res("android", "aerr_wait"))
+                                ?: device.findObject(androidx.test.uiautomator.By.pkg("android").text("Wait"))
+                            if (wait != null) {
+                                wait.click(); stage("foreign-anr-waited")
+                                android.util.Log.i("ChunksHttps", "CHUNKS_HTTPS_PHONE_FOREIGN_ANR " + anr.substringBefore(" isn't").take(40))
+                            }
+                        }
+                    }
                     assertNotNull("Expected Android's notification permission prompt (foreground=" +
                         device.currentPackageName + " granted=" + (context.checkSelfPermission(
                         android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) +
@@ -216,7 +235,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                         // A system ("android") window covering the prompt: name it (e.g. which app ANR'd).
                         " systemText=" + runCatching { device.findObjects(androidx.test.uiautomator.By.pkg("android"))
                             .mapNotNull { it.text?.take(80) }.filter { it.isNotBlank() }.distinct().take(6) }.getOrNull() + ")", button)
-                    button.click()
+                    button!!.click()
                     assertTrue("Notification prompt must dismiss before app controls are used",
                         device.wait(androidx.test.uiautomator.Until.gone(allow), 10_000))
                     assertEquals(android.content.pm.PackageManager.PERMISSION_GRANTED,
