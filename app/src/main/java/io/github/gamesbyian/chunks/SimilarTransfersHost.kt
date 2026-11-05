@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,8 @@ internal fun SimilarTransfersHost(
     modifier: Modifier = Modifier
 ) {
     val controller = LocalTransferMediaController.current ?: return
+    val prefs by controller.presentation.collectAsState()
+    if (!prefs.showSimilarTransfers) return
     val authorized = remember(sources) {
         sources.filter { it.availability != EnvironmentAvailability.LOCKED }
             .flatMap { source -> source.transfers.map { it to source } }
@@ -44,9 +47,9 @@ internal fun SimilarTransfersHost(
     // Recompute when this transfer's own confirmed identity changes (e.g. after Identify).
     val sourceState by rememberTransferMedia(MediaTransferKey.of(transfer.key), transfer.originalName)
     var candidates by remember(transfer.key) { mutableStateOf<List<RelatedTransferCandidate>>(emptyList()) }
-    LaunchedEffect(transfer.key, authorized.keys, sourceState.assignment?.displayMatch?.ref) {
+    LaunchedEffect(transfer.key, authorized.keys, sourceState.assignment?.displayMatch?.ref, prefs.similarSameEnvironmentOnly) {
         candidates = if (sourceState.assignment?.displayMatch == null) emptyList()
-            else controller.similarFor(transfer.key, authorized.keys)
+            else controller.similarFor(transfer.key, authorized.keys, sameEnvironmentOnly = prefs.similarSameEnvironmentOnly)
     }
     SimilarTransfersSection(
         candidates = candidates,
