@@ -61,10 +61,15 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         rule.onNodeWithText(text).performScrollTo()
     }
     private fun click(text: String) {
+        if (text == "Stop") stage("stop-lookup")
         rule.waitUntil(30_000) { runCatching {
             scroll(text); rule.onNodeWithText(text).assertIsEnabled(); true
         }.getOrDefault(false) }
-        rule.onNodeWithText(text).performScrollTo().performClick()
+        if (text == "Stop") stage("stop-ready")
+        rule.onNodeWithText(text).performScrollTo()
+        if (text == "Stop") stage("stop-visible")
+        rule.onNodeWithText(text).performClick()
+        if (text == "Stop") stage("stop-clicked")
     }
     private fun type(label: String, value: String) {
         scroll(label)
@@ -145,6 +150,14 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
+                // Exercise a real refused retrieval and recover the same scoped draft.
+                type("Or paste a magnet or torrent link", "https://127.0.0.1/blocked.torrent")
+                click("Get torrent from link")
+                rule.waitUntil(30_000) { visible(TorrentLinkResult.LOCAL_NETWORK) }
+                assertNull(LocalEngineHolder.current()?.status(preview.infoHashV1))
+                rule.onNodeWithText("Saves to: Chunks app folder").assertExists()
+                assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
+                stage("refusal-recovered")
                 // Source URLs stay out of instance state by the existing privacy contract.
                 type("Or paste a magnet or torrent link", url)
                 stage("before-fetch")
@@ -164,11 +177,28 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertEquals(0L, phone.status(preview.infoHashV1)?.doneBytes)
                 stage("added-stopped")
                 click("Start")
+                if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(
+                        android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    val device = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
+                    val allow = androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(
+                        ".*:id/permission_allow_button"))
+                    val button = device.wait(androidx.test.uiautomator.Until.findObject(allow), 20_000)
+                    assertNotNull("Expected Android's notification permission prompt", button)
+                    button.click()
+                    assertTrue("Notification prompt must dismiss before app controls are used",
+                        device.wait(androidx.test.uiautomator.Until.gone(allow), 10_000))
+                    assertEquals(android.content.pm.PackageManager.PERMISSION_GRANTED,
+                        context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS))
+                    stage("notification-allowed")
+                }
                 assertTrue(phone.connectPeer(preview.infoHashV1, InetSocketAddress("127.0.0.1", seed.listenPort())))
                 await("actual peer bytes and verified piece progression") {
                     phone.status(preview.infoHashV1)?.let { it.doneBytes >= piece.size && it.payloadDownloadedBytes > 0 } == true
                 }
                 stage("pieces-received")
+                assertFalse("An Android permission prompt cannot cover the Stop action",
+                    androidx.test.uiautomator.UiDevice.getInstance(instrumentation).hasObject(
+                        androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(".*:id/permission_allow_button"))))
                 click("Stop")
                 await("production Stop") { phone.status(preview.infoHashV1)?.stopped == true }
                 stage("stopped-observed")
