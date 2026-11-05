@@ -92,4 +92,37 @@ class RemoteMagnetDraftCheckTest {
         rule.onNodeWithText("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed").assertExists()
         reveal("Source: Selected .torrent file")
     }
+
+    /** Android 10+ denies clipboard reads without window focus (ON_RESUME precedes focus): wait for it. */
+    @Test fun clipboardIsReadOnlyOnceTheWindowHasFocus() {
+        val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
+        (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
+            .setPrimaryClip(android.content.ClipData.newPlainText("copied",
+                "magnet:?xt=urn:btih:" + "c".repeat(40) + "&dn=Focused"))
+        val focused = mutableStateOf(false)
+        val window = object : androidx.compose.ui.platform.WindowInfo {
+            override val isWindowFocused: Boolean get() = focused.value
+        }
+        val magnet = mutableStateOf("")
+        val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:9/RPC2", "", ""))
+        rule.setContent {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalWindowInfo provides window) {
+                ChunksTheme { Surface {
+                    androidx.compose.foundation.layout.Column {
+                        VerifiedAddScreen(remote, magnet = magnet.value, destination = "/srv/one-off",
+                            onMagnet = { magnet.value = it }, onDestination = {},
+                            onBack = {}, onComplete = {},
+                            onMutationStarted = { error("Review must never mutate a server") },
+                            onMutationSettled = {})
+                    }
+                } }
+            }
+        }
+        rule.waitForIdle()
+        org.junit.Assert.assertEquals("No read while unfocused", "", magnet.value)
+        focused.value = true
+        rule.waitForIdle()
+        rule.waitUntil(5_000) { magnet.value.contains("c".repeat(40)) }
+        reveal("Magnet for: Focused")
+    }
 }

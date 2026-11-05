@@ -206,7 +206,12 @@ fun VerifiedAddScreen(
     // Foreground clipboard prefill, once when this Add screen opens.
     var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
     var clipboardFilled by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(Unit) {
+    // Android 10+ denies clipboard reads until the window has input focus; read once focused.
+    val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
+    var clipboardChecked by remember { mutableStateOf(false) }
+    LaunchedEffect(windowFocused) {
+        if (!windowFocused || clipboardChecked) return@LaunchedEffect
+        clipboardChecked = true
         val on = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
         clipboardPrefillOn = on
         if (!on) return@LaunchedEffect
