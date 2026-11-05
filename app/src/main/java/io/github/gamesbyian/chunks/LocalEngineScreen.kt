@@ -515,7 +515,7 @@ internal fun LocalEngineScreen(
     // Downloads, the write probe and the remembered choice still decide.
     val storagePermission = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()) { placeCheck++ }
-    LaunchedEffect(placeCheck, resumeTick) {
+    LaunchedEffect(placeCheck) {
         placeResolution = null
         placeResolution = withContext(Dispatchers.IO) {
             try { LocalDownloadPlaces.resolve(context) } catch (_: Exception) {
