@@ -1,5 +1,8 @@
 # Chunks active engineering work queue
 
+> **2026-11-05 media follow-through:** Media foundation [#1302](https://github.com/gamesbyian/Chunks/pull/1302), local evidence/track inspection [#1305](https://github.com/gamesbyian/Chunks/pull/1305), and unlocked Combined detail media summary/Identify host [#1306](https://github.com/gamesbyian/Chunks/pull/1306) are merged. **Next executable media UX:** (1) scoped, privacy-safe artwork tiles in actual phone/rTorrent/Combined rows, (2) visible **Options → Media artwork & info** settings route, (3) installed real media UI acceptance and provider/Pixel review as permitted. Do not confuse a read-only Combined details host with full phone/remote row integration; no provider lookup is triggered simply by opening details unless separately opted into automatic lookup. [Implementation status](MEDIA-ARTWORK-IMPLEMENTATION.md) governs these gaps; media feature issue #403 remains open.
+
+
 ## Deferred dependency: Chunks-to-Chunks artwork with transfer shares (2026-11-04)
 
 **DO NOT DISPATCH YET.** First resolve and accept the relevant media identification, artwork selection/override, persistence, precedence, source/provenance and caching decisions under [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) and [SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md). Then implement standard transfer magnet/.torrent sharing from [TRANSFER-SHARING](TRANSFER-SHARING.md). Only after those dependencies are resolved, design/implement optional portable Chunks presentation bundles containing chosen artwork image bytes and display metadata, including metadata-only handoff. No independent P0 gate, no premature UX defaults/schema or extra image licensing workflow.

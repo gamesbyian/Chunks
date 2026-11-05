@@ -1,5 +1,12 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-05 media feature merges #1305 and #1306
+
+- [#1305](https://github.com/gamesbyian/Chunks/pull/1305) merged into main as `8399441e097fd52badcc1352406e203b1427f629` from head `04e03a7cfd25d899dfad84d99597d0e68c3346dc`. Seven exact-head checks green: foundation [41977325900](https://github.com/gamesbyian/Chunks/actions/runs/41977325900), docs [41977325809](https://github.com/gamesbyian/Chunks/actions/runs/41977325809), R8 [41977325761](https://github.com/gamesbyian/Chunks/actions/runs/41977325761), native Add [41977325731](https://github.com/gamesbyian/Chunks/actions/runs/41977325731) including both shards and verifier. PR reports 126 focused local media tests with zero failures and five explicitly live-only skips; ffmpeg/ffprobe media fixtures plus truncation/mutation sweeps establish bounded *component-level* evidence, not installed media-UI acceptance.
+- [#1306](https://github.com/gamesbyian/Chunks/pull/1306) merged as `72714a010ff736f6ee8f2f21acedfeb6c26057ef` from exact head `3beb51cc086acfd9884b7a01a9562c3dca5211b4`: [foundation 41982592731](https://github.com/gamesbyian/Chunks/actions/runs/41982592731), [R8 41982592669](https://github.com/gamesbyian/Chunks/actions/runs/41982592669), [native Add 41982592712](https://github.com/gamesbyian/Chunks/actions/runs/41982592712) including build-once, both installed shards and verifier **all green**. Adds unlocked Combined details read-only artwork summary and user-initiated Identify route with exact environment+hash, original name and lock gate. Robolectric `UnifiedTransferDetailPanelTest` adds a direct identification open/close interaction and locked-source absence assertion. Native Add passing does **not** establish an installed media-specific interaction, physical Pixel approval or a complete media gallery.
+- Remaining host acceptance and screen coverage are tracked by [MEDIA-ARTWORK-IMPLEMENTATION](MEDIA-ARTWORK-IMPLEMENTATION.md), without adding new P0 gates. No engine, remote protocol, storage mutation or destructive path was changed in either PR.
+
+
 ## Integrated HTTPS Add and one-time phone destinations (#1301)
 
 **Source:** immutable qualification tag `ux-qualification-f07a8331f81f`, checkout `f07a8331f81f204d4c44abb8339a3185f314051a`, PR head `d54201beb7d362ff14138c730834489290be5748`. Merge: `19ff314521bac6d06e45e9a3a3267a30e02c5383`. This includes the already merged media package #1302; no media feature or font work was added by this campaign.
