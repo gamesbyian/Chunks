@@ -73,6 +73,21 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", parse(data.replace("SeedhostAndroidAddUiInstrumentedTest", "UnexpectedClass"), 0, env)["result"])
         self.assertNotEqual("passed", parse(data.replace("chunks_real_add_stage=magnet0-removed", "ignored=missing"), 0, env)["result"])
 
+    def test_https_gate_requires_actual_fetch_review_witnesses_for_each_passing_source(self):
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1", CHUNKS_HTTPS_ADD="1")
+        raw = self.controlled_log()
+        self.assertNotEqual("passed", parse(raw, 0, env)["result"])
+        witnessed = raw + "\n" + "\n".join(
+            "INSTRUMENTATION_STATUS: chunks_https_review=" + label for label in SOURCES)
+        result = parse(witnessed, 0, env)
+        self.assertEqual("passed", result["result"])
+        self.assertEqual("https-fetch-review", result["source_intake"])
+        for label in SOURCES:
+            self.assertNotEqual("passed", parse(witnessed.replace(
+                "chunks_https_review=" + label, "ignored=missing"), 0, env)["result"])
+        self.assertNotEqual("passed", parse(witnessed +
+            "\nINSTRUMENTATION_STATUS: chunks_https_review=magnet", 0, env)["result"])
+
     def test_precompleted_candidate_rotates_only_after_exact_cleanup(self):
         env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1")
         data = self.controlled_log()

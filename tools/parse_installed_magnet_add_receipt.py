@@ -201,8 +201,20 @@ def parse(raw, exit_code, env=None):
                     0 < initial["verified"] <= initial["expected"] == resumed["expected"] == resumed["verified"] and
                     0 < initial["received"] <= resumed["received"])
                 complete = complete and (grew or finished)
+    https = env.get("CHUNKS_HTTPS_ADD") == "1"
+    https_reviews = {source: len(re.findall(
+        r"^INSTRUMENTATION_STATUS: chunks_https_review=" + source + r"$", raw, re.MULTILINE))
+        for source in CANDIDATES}
+    if https:
+        complete = complete and controlled and all(
+            https_reviews[source] == 1 for source in CANDIDATES if per_source[source]["passed"])
+        complete = complete and all(count <= 1 for count in https_reviews.values())
+    elif any(https_reviews.values()):
+        complete = False
     return {
         "schema_version": 1, "source_sha": env.get("GITHUB_SHA"),
+        "source_intake": "https-fetch-review" if https else "magnet",
+        "https_review_counts": https_reviews,
         "entry_path": "actual MainActivity Connect, Add, Transfers lifecycle and Remove" if controlled else "production Add composable",
         "controlled_real_peer": controlled and not public, "public_peer_discovery": controlled and public,
         "peerless_negative_passed": peerless == 1,

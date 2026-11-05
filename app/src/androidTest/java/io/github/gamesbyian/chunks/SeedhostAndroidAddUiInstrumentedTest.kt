@@ -141,7 +141,8 @@ class SeedhostAndroidAddUiInstrumentedTest {
 
     @Test fun installedAppAddsOneSyntheticMagnetAtAVerifiedServerPlace() {
         if (arg("chunks_controlled_peer") == "authorized") {
-            MainActivityRealMagnetJourney(rule, ::corroboratedParent).run()
+            MainActivityRealMagnetJourney(rule, ::corroboratedParent).run(
+                torrentLinks = arg("chunks_https_add") == "authorized")
             return
         }
         assumeTrue("Protected explicit trusted-main Add UI journey only",
