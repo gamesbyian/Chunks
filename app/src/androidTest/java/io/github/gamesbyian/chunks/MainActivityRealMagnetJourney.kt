@@ -108,7 +108,7 @@ internal class MainActivityRealMagnetJourney(
         report("chunks_real_add_diagnostic_$label", value)
     }
 
-    private fun await(seconds: Int = 45, condition: () -> Boolean) {
+    private fun await(seconds: Int = 45, what: String = "exact-server checkpoint", condition: () -> Boolean) {
         val end = SystemClock.elapsedRealtime() + seconds * 1_000L
         while (SystemClock.elapsedRealtime() < end) {
             try { if (condition()) return } catch (fault: RpcFault) {
@@ -116,7 +116,7 @@ internal class MainActivityRealMagnetJourney(
             }
             Thread.sleep(300)
         }
-        fail("Required exact-server checkpoint missing")
+        fail("Required exact-server checkpoint missing: $what")
     }
     private fun controller(path: String, port: Long? = null): ByteArray {
         require(path.matches(Regex("/magnet[0234]?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
@@ -256,7 +256,7 @@ internal class MainActivityRealMagnetJourney(
             exposeTransferActions()
             click(if (start) "Start transfer…" else "Stop transfer…")
             click(if (start) "Confirm start" else "Confirm stop")
-            await { row(hash)?.started == start && runBlocking { remote.readActivity(hash).active } == start }
+            await(what = "lifecycle state readback") { row(hash)?.started == start && runBlocking { remote.readActivity(hash).active } == start }
         }
         fun remove(hash: String) {
             if (row(hash)?.started == true) lifecycle(hash, false)
@@ -315,7 +315,7 @@ internal class MainActivityRealMagnetJourney(
                 require(source.boundAddress == host || (disposable && source.rpcHost == host))
                 if (!publicDiscovery && initialMetaFlag == 1)
                     controller("/$label/metadata", source.listenPort)
-                await(90) {
+                await(90, "metadata resolved on the exact row") {
                     val exact = row(hash)
                     exact?.name == preview.name && exact.sizeBytes == preview.sizeBytes &&
                         (runBlocking { remote.call("d.is_meta", listOf(hash)) } as Number).toInt() == 0
@@ -347,7 +347,7 @@ internal class MainActivityRealMagnetJourney(
                 }
                 if (!publicDiscovery) controller("/$label/payload", source.listenPort)
                 try {
-                    await(90) {
+                    await(90, "rTorrent peer payload: active, peers, received and verified bytes") {
                         val sample = runBlocking { remote.readTrafficSample(hash) }
                         rejectPrecompleted(sample)
                         sample.active == true && ((sample.peers ?: 0L) > 0L ||
@@ -394,7 +394,7 @@ internal class MainActivityRealMagnetJourney(
                 lifecycle(hash, true)
                 if (!publicDiscovery) controller("/$label/resume", source.listenPort)
                 val completeBeforeRestart = publicDiscovery && stopped.verifiedBytes == stopped.expectedBytes
-                if (!completeBeforeRestart) await(90) {
+                if (!completeBeforeRestart) await(90, "progress before restart") {
                     val sample = runBlocking { remote.readTrafficSample(hash) }
                     (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
                         (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
