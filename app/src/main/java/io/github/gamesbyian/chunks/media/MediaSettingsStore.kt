@@ -26,14 +26,15 @@ class MediaSettingsStore(context: Context) {
         enabledProviders = prefs.getStringSet(K_ENABLED, emptySet())?.toSet() ?: emptySet(),
         showArtwork = prefs.getBoolean(K_SHOW, true),
         downloadArtwork = prefs.getBoolean(K_DOWNLOAD, true),
-        artworkOnMeteredNetwork = prefs.getBoolean(K_METERED, false))
+        artworkOnMeteredNetwork = prefs.getBoolean(K_METERED, false),
+        largeListArtwork = prefs.getBoolean(K_LARGE_LIST, false))
 
     fun save(s: MediaPrivacySettings) {
         prefs.edit().putBoolean(K_CONSENT, s.onlineLookupConsent)
             .putBoolean(K_AUTO, s.automaticLookup && s.onlineLookupConsent)
             .putStringSet(K_DISABLED, s.disabledProviders).putStringSet(K_ENABLED, s.enabledProviders)
             .putBoolean(K_SHOW, s.showArtwork).putBoolean(K_DOWNLOAD, s.downloadArtwork)
-            .putBoolean(K_METERED, s.artworkOnMeteredNetwork).apply()
+            .putBoolean(K_METERED, s.artworkOnMeteredNetwork).putBoolean(K_LARGE_LIST, s.largeListArtwork).apply()
     }
 
     fun tmdbCredential(): String? {
@@ -80,6 +81,7 @@ class MediaSettingsStore(context: Context) {
         const val K_SHOW = "show_artwork"
         const val K_DOWNLOAD = "download_artwork"
         const val K_METERED = "artwork_on_metered"
+        const val K_LARGE_LIST = "large_list_artwork"
         const val K_TMDB = "tmdb_credential_v1"
     }
 }

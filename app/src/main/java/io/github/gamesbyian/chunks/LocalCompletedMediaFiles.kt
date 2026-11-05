@@ -44,4 +44,16 @@ internal class LocalCompletedMediaFiles(private val savePath: String, files: Lis
     }
 
     fun open(hint: MediaFileHint): MediaByteSource? = resolve(hint)?.let { FileMediaByteSource(it) }
+
+    /**
+     * The transfer's main inspectable media file: the largest *completed* Matroska/MP4-family file
+     * (the container formats the header inspector understands). Null when none qualifies.
+     */
+    val primaryInspectable: MediaFileHint? = byPath.values
+        .filter { it.path.substringAfterLast('.', "").lowercase() in INSPECTABLE }
+        .maxByOrNull { it.sizeBytes }?.let { MediaFileHint(it.path, it.sizeBytes) }
+
+    companion object {
+        val INSPECTABLE = setOf("mkv", "mka", "webm", "mp4", "m4v", "m4a", "m4b", "mov")
+    }
 }

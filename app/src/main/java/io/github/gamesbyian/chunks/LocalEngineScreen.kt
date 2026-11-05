@@ -2529,6 +2529,15 @@ internal fun LocalTransferCard(
                 finishInOrder = finishInOrder
             )
             if (filesShown && files != null) LocalFilesOnDiskCheck(transfer.infoHash, transfer.savePath, files)
+            // On-demand container/track facts for the main completed media file; nothing is read
+            // until "Inspect media" is tapped, and only through the verified completed-file gate.
+            if (filesShown && files != null) {
+                val inspectable = remember(transfer.savePath, files) { LocalCompletedMediaFiles(transfer.savePath, files) }
+                inspectable.primaryInspectable?.let { hint ->
+                    io.github.gamesbyian.chunks.media.ui.MediaTechnicalDetails(
+                        fileName = hint.path.substringAfterLast('/'), open = { inspectable.open(hint) })
+                }
+            }
             if (confirmRemove) {
                 Text("Remove from this phone: " + transfer.name,
                     style = MaterialTheme.typography.titleSmall)

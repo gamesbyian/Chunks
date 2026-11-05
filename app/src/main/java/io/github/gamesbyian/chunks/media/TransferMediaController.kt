@@ -124,6 +124,7 @@ class TransferMediaController(
             .also { states[key] = it }
         if (existing != null) flow.update { it.copy(recognition = recognizeWithEvidence(key, input)) }
         scope.launch(lookupDispatcher) {
+            largeListArtworkFlow.value = settings().largeListArtwork
             val a = store.get(key) ?: applyRuleIfAny(key, flow.value.recognition)
             flow.update { it.copy(assignment = a) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key) else if (a == null) maybeAutomatic(key)
@@ -483,10 +484,15 @@ class TransferMediaController(
      * loaded images immediately (category art shows instead); turning it on reloads only from
      * existing assignments. Never starts an identification lookup.
      */
+    private val largeListArtworkFlow = MutableStateFlow(false)
+    /** Presentation preference for list rows; refreshed from settings on first observe and on change. */
+    val largeListArtwork: StateFlow<Boolean> get() = largeListArtworkFlow
+
     fun onSettingsChanged() {
         val snapshot = synchronized(this) { states.entries.map { it.key to it.value } }
         scope.launch(artworkDispatcher) {
             val s = settings()
+            largeListArtworkFlow.value = s.largeListArtwork
             snapshot.forEach { (key, f) ->
                 if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)

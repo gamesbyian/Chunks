@@ -16,7 +16,9 @@ data class MediaPrivacySettings(
     val enabledProviders: Set<String> = emptySet(),
     val showArtwork: Boolean = true,
     val downloadArtwork: Boolean = true,
-    val artworkOnMeteredNetwork: Boolean = false
+    val artworkOnMeteredNetwork: Boolean = false,
+    /** Presentation only: 64dp list artwork instead of the compact 40dp default. */
+    val largeListArtwork: Boolean = false
 )
 
 fun MediaPrivacySettings.providerOn(info: MediaProviderInfo): Boolean =

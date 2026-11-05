@@ -7,6 +7,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertHeightIsEqualTo
@@ -324,5 +326,49 @@ class TransferRowArtworkTest {
         rule.onAllNodesWithText("Book")[0].performScrollTo().assertIsDisplayed()
         val density = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().resources.displayMetrics.density
         assertEquals(emptyList<String>(), rule.smallTouchTargets(density))
+    }
+
+    @Test fun phoneCardInspectsOnlyTheCompletedMediaFileOnRequest() {
+        val folder = Files.createTempDirectory("phone-inspect").toFile()
+        val mkv = javaClass.classLoader!!.getResource("media-fixtures/embedded/tracks.mkv")!!.readBytes()
+        val movie = "Example.Movie.2020.mkv"
+        File(folder, movie).writeBytes(mkv)
+        fun card(done: Long) = LocalTransferStatus(infoHash = hash, name = movie, state = LocalTransferState.SEEDING,
+            stopped = false, progressPpm = 1_000_000, wantedBytes = mkv.size.toLong(), doneBytes = done,
+            payloadDownloadedBytes = 0, payloadUploadedBytes = 0, peers = 0, savePath = folder.absolutePath, error = null)
+        var doneBytes by androidx.compose.runtime.mutableStateOf(mkv.size.toLong())
+        rule.setContent {
+            ChunksTheme { Surface {
+                androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState())) {
+                    LocalTransferCard(transfer = card(doneBytes), busy = false, onToggle = {}, onRemove = {},
+                        files = listOf(io.github.gamesbyian.chunks.engine.LocalTransferFile(0, movie, mkv.size.toLong(), doneBytes, true)),
+                        filesShown = true)
+                }
+            } }
+        }
+        rule.onNodeWithText("Reads only this file's container headers, on this phone.").performScrollTo().assertExists()
+        rule.onNodeWithText("Inspect media").performScrollTo().performClick()
+        rule.waitUntil(5_000) { rule.onAllNodesWithText("Matroska", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        assertTrue("The payload is only read", File(folder, movie).readBytes().contentEquals(mkv))
+        // A partially downloaded file is never offered for inspection.
+        doneBytes = 10
+        rule.waitForIdle()
+        assertEquals(0, rule.onAllNodesWithText("Inspect media").fetchSemanticsNodes().size)
+    }
+
+    @Test fun largerListArtworkSettingResizesVisibleRowsWithoutChangingIdentity() {
+        val c = controller()
+        c.observe(MediaTransferKey.of(phone), name); c.lookup(MediaTransferKey.of(phone))
+        rule.setContent {
+            CompositionLocalProvider(LocalTransferMediaController provides c) {
+                ChunksTheme { Surface { TransferRowArtwork(phone, name) } }
+            }
+        }
+        val node = rule.onNodeWithContentDescription("Artwork: Babylon 5 (automatic). $format")
+        node.assertWidthIsEqualTo(TransferRowArtworkSize)
+        settings = settings.copy(largeListArtwork = true); c.onSettingsChanged()
+        rule.waitForIdle()
+        node.assertWidthIsEqualTo(io.github.gamesbyian.chunks.TransferRowArtworkLargeSize)
+            .assertHeightIsEqualTo(io.github.gamesbyian.chunks.TransferRowArtworkLargeSize)
     }
 }
