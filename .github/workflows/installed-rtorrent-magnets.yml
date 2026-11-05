@@ -94,6 +94,7 @@ jobs:
         run: |
           sudo timeout 180s apt-get update -qq
           sudo timeout 180s env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq python3-libtorrent
+          /usr/bin/python3 -m unittest discover -s tests -p test_real_peer_prefix.py
           peer_host=127.0.0.1
           if [ "$CHUNKS_DISPOSABLE" = 0 ]; then peer_host=5.79.112.219; fi
           nohup /usr/bin/python3 -u tools/real_magnet_peer.py \

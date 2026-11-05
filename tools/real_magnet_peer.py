@@ -195,20 +195,25 @@ class Peer:
                 handle.remove_url_seed(webseed)
             handle.resume()
             if not metadata_only:
+                prefix_pieces = (item["prefix_bytes"] + ti.piece_length() - 1) // ti.piece_length()
+                def prefix_verified(status):
+                    return len(status.pieces) >= prefix_pieces and all(status.pieces[:prefix_pieces])
                 deadline = time.monotonic() + 45
                 while time.monotonic() < deadline:
                     status = handle.status(lt.status_flags_t.query_pieces)
-                    verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
                     if status.error:
                         raise ValueError("Native source recheck failed")
-                    if verified >= item["prefix_bytes"]:
+                    if prefix_verified(status):
+                        break
+                    if status.state not in (lt.torrent_status.checking_files, lt.torrent_status.checking_resume_data):
                         break
                     time.sleep(.1)
                 status = handle.status(lt.status_flags_t.query_pieces)
-                verified = sum(ti.piece_size(i) for i, complete in enumerate(status.pieces) if complete)
-                if verified < item["prefix_bytes"]:
+                # Sparse zeros elsewhere in an ISO can themselves be valid pieces.
+                # Their aggregate size must never stand in for the fetched prefix.
+                if not prefix_verified(status):
                     raise ValueError("Original source pieces are unavailable")
-                item["native_verified_bytes"] = verified
+                item["native_verified_bytes"] = sum(ti.piece_size(i) for i in range(prefix_pieces))
             self.active[label] = session, handle
             item["stages"].append(stage)
             if stage != "preflight":
