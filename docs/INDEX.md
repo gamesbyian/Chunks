@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+**Start the next integrated UI/media campaign here (2026-11-05):** [Claude UI and media execution handoff](CLAUDE-UI-MEDIA-EXECUTION-2026-11-05.md). Last checked main `7625c634`, zero open PRs; earlier Add/Place #1301 and media core #1302/#1305 plus Combined detail #1306 are integrated. Next: actual artwork in all transfer rows, Options media settings, detail identification and installed media-specific acceptance. [WORK-QUEUE](WORK-QUEUE.md) remains the single active priority authority; [MEDIA-ARTWORK-IMPLEMENTATION](MEDIA-ARTWORK-IMPLEMENTATION.md) has exact code integration points. This banner supersedes the older pre-media “current entry point” below, which is historical.
+
+
 - [Future artwork sharing dependency](TRANSFER-SHARING.md#deferred-chunks-to-chunks-artwork-and-metadata-accompaniment-owner-direction-2026-11-04): portable custom artwork with Chunks transfers, explicitly gated on prior artwork/metadata decisions and acceptance.
 
 
