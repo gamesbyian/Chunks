@@ -70,6 +70,17 @@ open class LocalAddPlacePickerTest {
         prefs.edit().clear().commit()
     }
 
+    @Test fun oneTimeChoiceStillExplainsFallbackForFutureAdds() {
+        val saved = LocalDownloadPlacePolicy.resolve(LocalPlaceKind.PUBLIC_DOWNLOADS,
+            listOf(public.copy(failure = "permission denied"), app))
+        rule.setContent { ChunksTheme { Surface { Column(Modifier.verticalScroll(rememberScrollState())) {
+            LocalDownloadPlacePicker(LocalAddPlacePolicy.resolve(saved, LocalAddPlacePolicy.identity(app.place)),
+                true, onChoose = {}, currentAdd = true, defaultResolution = saved)
+        } } } }
+        rule.onNodeWithText("The phone default is using a temporary fallback. Your saved default is preserved.")
+            .performScrollTo().assertIsDisplayed()
+    }
+
     @Test fun lostOneTimePlaceOffersRecoveryAndNeverEnablesSavingAFallback() {
         val saved = LocalDownloadPlacePolicy.resolve(null, listOf(public, app.copy(failure = "unmounted")))
         rule.setContent { ChunksTheme { Surface { Column(Modifier.verticalScroll(rememberScrollState())) {

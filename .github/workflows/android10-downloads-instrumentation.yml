@@ -10,6 +10,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalPlaceWriteProbe.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalPublicDownloadsPlaceInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalDownloadPlacePickerInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/PhoneAddDestinationContinuityInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
       - "tools/android10_downloads_revocation.sh"

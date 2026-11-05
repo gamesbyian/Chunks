@@ -80,6 +80,9 @@ internal fun LocalDownloadPlacePicker(
             },
                 style = MaterialTheme.typography.bodySmall)
             if (resolution?.provenance == LocalPlaceResolution.Provenance.CURRENT_ADD) {
+                if (defaultResolution?.provenance == LocalPlaceResolution.Provenance.FALLBACK)
+                    Text("The phone default is using a temporary fallback. Your saved default is preserved.",
+                        style = MaterialTheme.typography.bodySmall)
                 if (onUseDefault != null) TextButton(onClick = onUseDefault, enabled = enabled,
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("Use phone default for this Add") }
                 val chosen = resolution.choices.singleOrNull {
