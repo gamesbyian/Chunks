@@ -2,6 +2,13 @@
 
 > **Campaign-wide evidence index:** [P0-DAILY-USE-EVIDENCE.tsv](P0-DAILY-USE-EVIDENCE.tsv) links individual real phone/rTorrent transfers and exact-source outcomes across A–E in one journey. Historical passing source-specific receipts below remain authoritative; they must be mapped without recertifying unaffected behavior. The blank cohort [manifest](P0-DAILY-USE-FIXTURES.tsv) is a test preparation requirement, **not** evidence that the authorized server instances are already populated. [Execution plan](P0-DAILY-USE-JOURNEYS.md).
 
+## 2026-11-05 non-P0 UX #1298: single-agent reconciliation, contrast sweeps, installed phone→Combined journey
+
+- **[#1298](https://github.com/gamesbyian/Chunks/pull/1298)** squash-merged as `c40a654329ab40e59527b76e539f03b2bb27514c` from exact head `1c9f8ed4455d174b832ef711b685a96f90b198e5`.
+  - Passed: foundation [41947971352](https://github.com/gamesbyian/Chunks/actions/runs/41947971352), with 1683 JUnit cases, 1641 executed, 0 failed and 42 skipped. That run includes `PhoneContrastSweepTest` and `serverListTextMeetsContrast` in three configurations.
+  - Passed: native Add [41947971316](https://github.com/gamesbyian/Chunks/actions/runs/41947971316), where installed `PhoneAddHiddenInCombinedInstrumentedTest` executed and passed.
+- Rendered contrast now covers Combined, Transfer details, the phone inventory, Add and Options, and the connected rTorrent list, cards and Options, with disabled controls exempt. Owner visual review remains open.
+
 ## 2026-11-05 non-P0 UX #1297: HTTPS torrent link import, accent-card contrast, contrast sweep
 
 - **[#1297](https://github.com/gamesbyian/Chunks/pull/1297)** squash-merged as `a841c266bc134d7857b7d094437d0dfb274d2427` from exact head `85faac4af3880bea478acef3daa8a6ede659c513`. Passed foundation [41944975265](https://github.com/gamesbyian/Chunks/actions/runs/41944975265) and native Add [41944975469](https://github.com/gamesbyian/Chunks/actions/runs/41944975469), including installed `ClipboardPrefillInstrumentedTest`.
