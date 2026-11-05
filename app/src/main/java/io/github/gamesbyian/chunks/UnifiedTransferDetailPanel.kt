@@ -88,6 +88,9 @@ internal fun UnifiedTransferDetailPanel(
                 modifier = Modifier.weight(1f))
         }
         if (!hidden) detail.observation?.let { TransferDetailFacts(it) }
+        if (!hidden) detail.observation?.let { transfer ->
+            TransferMediaDetailSection(transfer)
+        }
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
         if (!hidden && onOpenOwningList != null) {
