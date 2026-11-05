@@ -219,6 +219,15 @@ jobs:
           retention-days: 14
       # Disposable only (no credentials, no protected host): the proxy/rTorrent side of an
       # RPC non-2xx during the installed journey (nginx status + upstream error, rTorrent output).
+      - name: Extract the disposable journey's exception stack (URLs redacted)
+        if: failure() && env.CHUNKS_DISPOSABLE == '1'
+        run: |
+          raw="$RUNNER_TEMP/chunks-installed-magnets.raw"
+          out="$RUNNER_TEMP/chunks-disposable/instrumentation-stack.txt"
+          if [ -f "$raw" ]; then
+            grep -A40 'INSTRUMENTATION_STATUS: stack=' "$raw" | head -80 \
+              | sed -E 's#[a-zA-Z][a-zA-Z0-9+.-]*://[^ "]*#<url>#g' > "$out" || true
+          fi
       - name: Retain disposable rTorrent proxy logs on failure
         if: failure() && env.CHUNKS_DISPOSABLE == '1'
         uses: actions/upload-artifact@v4
@@ -228,5 +237,6 @@ jobs:
             ${{ runner.temp }}/chunks-disposable/nginx.error
             ${{ runner.temp }}/chunks-disposable/nginx.access
             ${{ runner.temp }}/chunks-disposable/rtorrent.log
+            ${{ runner.temp }}/chunks-disposable/instrumentation-stack.txt
           if-no-files-found: warn
           retention-days: 7
