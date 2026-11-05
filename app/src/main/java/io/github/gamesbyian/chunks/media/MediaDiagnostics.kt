@@ -13,17 +13,17 @@ data class MediaDiagnostics(
     val corrections: Int
 ) {
     fun summary(providerName: (String) -> String = { it }): String {
-        if (byState.isEmpty()) return "No transfers identified yet"
         val states = listOf(MediaAssignmentState.AUTOMATIC, MediaAssignmentState.CHOSEN_BY_USER, MediaAssignmentState.SUGGESTED,
             MediaAssignmentState.COULDNT_IDENTIFY, MediaAssignmentState.CATEGORY_ART_BY_USER)
             .mapNotNull { s -> byState[s]?.takeIf { it > 0 }?.let { "${s.label.lowercase(Locale.ROOT)} $it" } }
         val providers = byProvider.entries.sortedByDescending { it.value }.joinToString(", ") { "${providerName(it.key)} ${it.value}" }
-        return buildString {
-            append(states.joinToString(" · ").replaceFirstChar { it.titlecase(Locale.ROOT) })
-            if (providers.isNotEmpty()) append("\nMatches by source: ").append(providers)
-            if (userImages > 0) append("\nYour images: ").append(userImages)
-            if (corrections > 0) append(" · corrections: ").append(corrections)
-        }
+        if (states.isEmpty() && userImages == 0) return "No transfers identified yet"
+        return listOfNotNull(
+            states.joinToString(" · ").replaceFirstChar { it.titlecase(Locale.ROOT) }.ifEmpty { null },
+            providers.takeIf { it.isNotEmpty() }?.let { "Matches by source: $it" },
+            listOfNotNull(userImages.takeIf { it > 0 }?.let { "Your images: $it" },
+                corrections.takeIf { it > 0 }?.let { "Corrections: $it" }).joinToString(" · ").ifEmpty { null }
+        ).joinToString("\n")
     }
 
     companion object {

@@ -23,6 +23,9 @@ class MediaDiagnosticsTest {
         assertTrue(text, text.contains("Automatic 1") && text.contains("TVmaze 2"))
         assertFalse(text.contains("Secret") || text.contains("Office") || text.contains("475"))
         assertEquals("No transfers identified yet", MediaDiagnostics.of(emptyList()).summary())
+        assertTrue(text, text.lines().last() == "Corrections: 1") // never appended to the provider line
+        assertEquals("No transfers identified yet", MediaDiagnostics.of(listOf(TransferMediaAssignment(MediaTransferKey("a|9"),
+            MediaAssignmentState.NOT_LOOKED_UP))).summary())
     }
 
     @Test fun localCoverFinderPrefersConventionalShallowCovers() {

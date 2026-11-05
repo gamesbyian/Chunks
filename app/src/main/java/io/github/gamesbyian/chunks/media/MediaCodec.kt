@@ -18,7 +18,7 @@ object MediaCodec {
         "season" to Json.num(c.season), "episode" to Json.num(c.episode), "epTitle" to Json.str(c.episodeTitle),
         "overview" to Json.str(c.overview), "genres" to Json.arr(c.genres.map { Json.Str(it) }),
         "art" to Json.arr(c.artwork.map { a -> Json.obj("p" to Json.Str(a.provider), "u" to Json.Str(a.url),
-            "r" to Json.Str(a.role.name), "w" to Json.num(a.width), "h" to Json.num(a.height), "l" to Json.str(a.language)) }),
+            "r" to Json.Str(a.role.name), "w" to Json.num(a.width), "h" to Json.num(a.height), "l" to Json.str(a.language), "s" to Json.num(a.season)) }),
         "attr" to Json.obj("n" to Json.Str(c.attribution.providerName), "l" to Json.Str(c.attribution.license),
             "u" to Json.str(c.attribution.pageUrl)),
         "score" to Json.num(c.providerScore),
@@ -36,7 +36,7 @@ object MediaCodec {
             overview = j["overview"]?.string, genres = j["genres"]?.array?.mapNotNull { it.string } ?: emptyList(),
             artwork = j["art"]?.array?.mapNotNull { a -> runCatching {
                 ArtworkCandidate(a["p"]!!.string!!, a["u"]!!.string!!, ArtworkRole.valueOf(a["r"]!!.string!!),
-                    a["w"]?.int, a["h"]?.int, a["l"]?.string)
+                    a["w"]?.int, a["h"]?.int, a["l"]?.string, a["s"]?.int)
             }.getOrNull() } ?: emptyList(),
             attribution = MediaAttribution(attr["n"]!!.string!!, attr["l"]!!.string!!, attr["u"]?.string),
             providerScore = j["score"]?.double,

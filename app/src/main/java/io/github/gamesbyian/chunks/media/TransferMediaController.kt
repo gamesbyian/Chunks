@@ -213,9 +213,12 @@ class TransferMediaController(
      */
     fun applyChoiceTo(source: MediaTransferKey, targets: Collection<MediaTransferKey>) {
         scope.launch(lookupDispatcher) {
-            val chosen = store.get(source)?.takeIf { it.state == MediaAssignmentState.CHOSEN_BY_USER }?.match ?: return@launch
+            // Only a match the user actually chose spreads; an automatic match under a user image does not.
+            val chosen = store.get(source)?.takeIf { it.state == MediaAssignmentState.CHOSEN_BY_USER &&
+                it.stateBeforeImage != MediaAssignmentState.AUTOMATIC }?.match ?: return@launch
             val series = chosen.copy(episodeTitle = null, overview = if (chosen.kind == MediaKind.TV_EPISODE) null else chosen.overview,
                 artwork = chosen.artwork.filter { it.role != ArtworkRole.BANNER })
+            val batch = mutableListOf<Pair<MutableStateFlow<TransferMediaUiState>, TransferMediaAssignment>>()
             for (t in targets.distinct()) {
                 if (t == source) continue
                 val f = flow(t) ?: continue
@@ -223,15 +226,23 @@ class TransferMediaController(
                 if (prev?.state == MediaAssignmentState.CHOSEN_BY_USER || prev?.state == MediaAssignmentState.CATEGORY_ART_BY_USER) continue
                 val r = f.value.recognition
                 val c = if (chosen.kind.isTv) series.copy(kind = if (r.episode != null) MediaKind.TV_EPISODE else if (r.season != null) MediaKind.TV_SEASON else MediaKind.TV_SERIES,
-                    season = r.season, episode = r.episode) else series
+                    season = r.season, episode = r.episode,
+                    // Season-specific posters only ever go to transfers of that same season.
+                    artwork = series.artwork.filter { a -> a.season == null || a.season == r.season }) else series
                 val a = TransferMediaAssignment(t, MediaAssignmentState.CHOSEN_BY_USER, c, lastMessage = "Applied from a related transfer",
                     updatedAtMs = clock())
-                store.put(a)
+                batch.add(f to a)
+            }
+            store.putAll(batch.map { it.second })
+            for ((f, a) in batch) {
                 f.update { it.copy(assignment = a, artwork = null, artworkSource = null, poster = null) }
-                loadArtwork(t, pin = true)
+                loadArtwork(a.key, pin = true)
             }
         }
     }
+
+    /** Title-free counts from the live store; call off the main thread. */
+    fun diagnostics(): MediaDiagnostics = MediaDiagnostics.of(store.all())
 
     /** User prefers the bundled category tile (optionally a corrected category). */
     fun useCategoryArt(key: MediaTransferKey, kind: MediaKind? = null) {
@@ -350,13 +361,15 @@ class TransferMediaController(
         val f = flow(key) ?: return
         val cur = f.value
         val match = cur.match ?: return
-        val s = settings()
-        if (cur.poster != null || cur.userArtwork != null || !s.showArtwork || cur.displayKind == MediaKind.ADULT) return
+        if (cur.poster != null || cur.userArtwork != null || cur.displayKind == MediaKind.ADULT) return
         if (match.artwork.none { it.role == ArtworkRole.POSTER }) return
-        val net = network()
-        val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+        // Settings/network reads may touch disk: never on the caller's (main) thread.
         scope.launch(artworkDispatcher) {
-            val posters = match.artwork.filter { it.role == ArtworkRole.POSTER }
+            val s = settings()
+            if (!s.showArtwork) return@launch
+            val net = network()
+            val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            val posters = match.artwork.filter { it.role == ArtworkRole.POSTER && (it.season == null || it.season == match.season) }
             val r = artwork.load(posters, ArtworkRole.POSTER, allowNetwork, service.providerInfos().map { it.id })
             if (r is ArtworkLoadResult.Loaded) f.update { now -> if (now.match?.ref == match.ref && now.userArtwork == null) now.copy(poster = r.bitmap) else now }
         }

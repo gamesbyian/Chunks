@@ -54,12 +54,17 @@ object UserImageUrlPolicy {
 
     /**
      * Host policy for the request and every redirect: public name and *all* resolved addresses public.
-     * [resolve] is injectable for tests. (A resolver that changes answers between this check and the
-     * connection could still race; payloads are bounded images only and never shown unless decoded.)
+     * [resolve] is injectable for tests. On direct connections the connected peer is re-checked too, so
+     * a rebinding resolver cannot swap in a LAN address between this check and the connection.
      */
     fun hostPolicy(resolve: (String) -> List<InetAddress> = { InetAddress.getAllByName(it).toList() }): MediaHostPolicy =
-        MediaHostPolicy { raw ->
-            val host = raw.lowercase(Locale.ROOT).trimEnd('.')
-            isPublicHostName(host) && runCatching { resolve(host) }.getOrNull()?.let { list -> list.isNotEmpty() && list.all(::isPublicAddress) } == true
+        object : MediaHostPolicy {
+            override fun allows(host: String): Boolean {
+                val h = host.lowercase(Locale.ROOT).trimEnd('.')
+                return isPublicHostName(h) && runCatching { resolve(h) }.getOrNull()?.let { list -> list.isNotEmpty() && list.all(::isPublicAddress) } == true
+            }
+            /** The actually connected peer is checked too, closing the re-resolution (rebinding) window. */
+            override fun allowsPeer(address: InetAddress): Boolean = isPublicAddress(address)
+            override val restrictsPeers: Boolean get() = true
         }
 }

@@ -88,7 +88,7 @@ class ChunksMedia private constructor(context: Context) {
     fun cacheSummary(): String {
         val mb = artworkDisk.sizeBytes() / (1024.0 * 1024.0)
         val names = providers.associate { it.info.id to it.info.displayName }
-        val diag = MediaDiagnostics.of(FileTransferMediaAssignmentStore(File(app.filesDir, "media/assignments.json")).all())
+        val diag = controller.diagnostics()
         return "Cached: %.1f MB artwork · %d lookups\n".format(mb, queryCache.size) + diag.summary { names[it] ?: it }
     }
 

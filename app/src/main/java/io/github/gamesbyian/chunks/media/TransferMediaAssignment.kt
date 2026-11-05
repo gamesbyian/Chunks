@@ -44,6 +44,7 @@ data class TransferMediaAssignment(
 interface TransferMediaAssignmentStore {
     fun get(key: MediaTransferKey): TransferMediaAssignment?
     fun put(a: TransferMediaAssignment)
+    fun putAll(list: Collection<TransferMediaAssignment>) = list.forEach(::put)
     fun remove(key: MediaTransferKey)
     fun clear()
     fun all(): List<TransferMediaAssignment>
@@ -64,6 +65,13 @@ class FileTransferMediaAssignmentStore(private val file: File, private val maxEn
     @Synchronized override fun get(key: MediaTransferKey) = map[key]
     @Synchronized override fun put(a: TransferMediaAssignment) {
         map.remove(a.key); map[a.key] = a
+        while (map.size > maxEntries) map.remove(map.keys.first())
+        save()
+    }
+    /** One atomic file rewrite for a batch (e.g. apply-to-related), not one per transfer. */
+    @Synchronized override fun putAll(list: Collection<TransferMediaAssignment>) {
+        if (list.isEmpty()) return
+        list.forEach { map.remove(it.key); map[it.key] = it }
         while (map.size > maxEntries) map.remove(map.keys.first())
         save()
     }

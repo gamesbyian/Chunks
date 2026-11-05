@@ -19,7 +19,12 @@ enum class MediaHttpFailure { OFFLINE, TIMEOUT, TOO_LARGE, BLOCKED_HOST, NOT_HTT
 class MediaHttpException(val failure: MediaHttpFailure, message: String) : IOException(message)
 
 /** Host policy for one request: every hop (including redirects) must be HTTPS and allowed. */
-fun interface MediaHostPolicy { fun allows(host: String): Boolean }
+fun interface MediaHostPolicy {
+    fun allows(host: String): Boolean
+    /** Checked against the actually connected peer address; restrictive policies override it. */
+    fun allowsPeer(address: java.net.InetAddress): Boolean = true
+    val restrictsPeers: Boolean get() = false
+}
 
 /** Hosts listed as ".example.org" also allow subdomains; others are exact. */
 fun mediaHostPolicy(hosts: Collection<String>): MediaHostPolicy = MediaHostPolicy { raw ->
@@ -67,6 +72,13 @@ class UrlConnectionMediaHttp(
             if (!hosts.allows(host)) throw MediaHttpException(MediaHttpFailure.BLOCKED_HOST, "Host not permitted for this provider")
             if (uri.userInfo != null || (uri.port != -1 && uri.port != 443)) throw MediaHttpException(MediaHttpFailure.BLOCKED_HOST, "Unexpected port or credentials")
             val conn = (URL(current).openConnection() as HttpURLConnection).apply {
+                // Through an HTTP proxy the TCP peer is the proxy, which resolves the name itself; then only
+                // the name-level resolution check applies. Direct connections also check the real peer.
+                val direct = runCatching { java.net.ProxySelector.getDefault()?.select(uri)?.all { it.type() == java.net.Proxy.Type.DIRECT } }
+                    .getOrNull() != false
+                if (hosts.restrictsPeers && direct && this is javax.net.ssl.HttpsURLConnection) {
+                    sslSocketFactory = PeerCheckingSocketFactory(sslSocketFactory, hosts)
+                }
                 instanceFollowRedirects = false
                 connectTimeout = connectTimeoutMs; readTimeout = readTimeoutMs
                 useCaches = false
@@ -79,15 +91,12 @@ class UrlConnectionMediaHttp(
                     setFixedLengthStreamingMode(post.size)
                 }
             }
-            if (post != null) try { conn.outputStream.use { it.write(post) } } catch (e: UnknownHostException) {
-                throw MediaHttpException(MediaHttpFailure.OFFLINE, "Network unavailable")
-            } catch (e: SocketTimeoutException) { throw MediaHttpException(MediaHttpFailure.TIMEOUT, "Timed out")
-            } catch (e: IOException) { throw MediaHttpException(MediaHttpFailure.IO, "Network error") }
             try {
+                if (post != null) conn.outputStream.use { it.write(post) }
                 val status = try { conn.responseCode } catch (e: UnknownHostException) {
                     throw MediaHttpException(MediaHttpFailure.OFFLINE, "Network unavailable")
                 } catch (e: SocketTimeoutException) { throw MediaHttpException(MediaHttpFailure.TIMEOUT, "Timed out") }
-                if (status in 300..399 && post != null) throw MediaHttpException(MediaHttpFailure.TOO_MANY_REDIRECTS, "Unexpected redirect")
+                if (status in 300..399 && post != null) throw MediaHttpException(MediaHttpFailure.IO, "Unexpected redirect")
                 if (status in 300..399) {
                     val location = conn.getHeaderField("Location") ?: throw MediaHttpException(MediaHttpFailure.IO, "Redirect without location")
                     current = uri.resolve(location).toString()
@@ -120,4 +129,84 @@ class UrlConnectionMediaHttp(
         }
         throw MediaHttpException(MediaHttpFailure.TOO_MANY_REDIRECTS, "Too many redirects")
     }
+}
+
+/**
+ * Verifies the TCP peer the TLS layer is about to run over. HttpsURLConnection resolves the name
+ * itself after the host policy did, so a rebinding resolver could otherwise swap in a LAN address.
+ */
+internal class PeerCheckingSocketFactory(private val delegate: javax.net.ssl.SSLSocketFactory,
+                                         private val policy: MediaHostPolicy) : javax.net.ssl.SSLSocketFactory() {
+    private fun <T : java.net.Socket> checked(s: T): T {
+        val peer = s.inetAddress
+        if (peer != null && !policy.allowsPeer(peer)) { runCatching { s.close() }; throw MediaHttpException(MediaHttpFailure.BLOCKED_HOST, "Host not permitted for this provider") }
+        return s
+    }
+    private fun checkLayered(plain: java.net.Socket) {
+        val peer = plain.inetAddress
+        if (peer != null && !policy.allowsPeer(peer)) { runCatching { plain.close() }; throw MediaHttpException(MediaHttpFailure.BLOCKED_HOST, "Host not permitted for this provider") }
+    }
+    override fun getDefaultCipherSuites(): Array<String> = delegate.defaultCipherSuites
+    override fun getSupportedCipherSuites(): Array<String> = delegate.supportedCipherSuites
+    override fun createSocket(s: java.net.Socket, host: String?, port: Int, autoClose: Boolean): java.net.Socket {
+        checkLayered(s); return delegate.createSocket(s, host, port, autoClose)
+    }
+    override fun createSocket(): java.net.Socket = PeerCheckingSocket(delegate.createSocket() as javax.net.ssl.SSLSocket, policy)
+    override fun createSocket(host: String?, port: Int): java.net.Socket = checked(delegate.createSocket(host, port))
+    override fun createSocket(host: String?, port: Int, local: java.net.InetAddress?, localPort: Int): java.net.Socket =
+        checked(delegate.createSocket(host, port, local, localPort))
+    override fun createSocket(host: java.net.InetAddress?, port: Int): java.net.Socket = checked(delegate.createSocket(host, port))
+    override fun createSocket(address: java.net.InetAddress?, port: Int, local: java.net.InetAddress?, localPort: Int): java.net.Socket =
+        checked(delegate.createSocket(address, port, local, localPort))
+}
+
+/** Unconnected-socket path: verify the endpoint at connect time, before any TLS bytes are sent. */
+internal class PeerCheckingSocket(private val inner: javax.net.ssl.SSLSocket, private val policy: MediaHostPolicy) : javax.net.ssl.SSLSocket() {
+    override fun connect(endpoint: java.net.SocketAddress?, timeout: Int) {
+        val a = (endpoint as? java.net.InetSocketAddress)?.address
+        if (a == null || !policy.allowsPeer(a)) throw MediaHttpException(MediaHttpFailure.BLOCKED_HOST, "Host not permitted for this provider")
+        inner.connect(endpoint, timeout)
+    }
+    override fun connect(endpoint: java.net.SocketAddress?) = connect(endpoint, 0)
+    override fun getSupportedCipherSuites(): Array<String> = inner.supportedCipherSuites
+    override fun getEnabledCipherSuites(): Array<String> = inner.enabledCipherSuites
+    override fun setEnabledCipherSuites(suites: Array<String>?) { inner.enabledCipherSuites = suites }
+    override fun getSupportedProtocols(): Array<String> = inner.supportedProtocols
+    override fun getEnabledProtocols(): Array<String> = inner.enabledProtocols
+    override fun setEnabledProtocols(protocols: Array<String>?) { inner.enabledProtocols = protocols }
+    override fun getSession(): javax.net.ssl.SSLSession = inner.session
+    override fun addHandshakeCompletedListener(l: javax.net.ssl.HandshakeCompletedListener?) = inner.addHandshakeCompletedListener(l)
+    override fun removeHandshakeCompletedListener(l: javax.net.ssl.HandshakeCompletedListener?) = inner.removeHandshakeCompletedListener(l)
+    override fun startHandshake() = inner.startHandshake()
+    override fun setUseClientMode(mode: Boolean) { inner.useClientMode = mode }
+    override fun getUseClientMode(): Boolean = inner.useClientMode
+    override fun setNeedClientAuth(need: Boolean) { inner.needClientAuth = need }
+    override fun getNeedClientAuth(): Boolean = inner.needClientAuth
+    override fun setWantClientAuth(want: Boolean) { inner.wantClientAuth = want }
+    override fun getWantClientAuth(): Boolean = inner.wantClientAuth
+    override fun setEnableSessionCreation(flag: Boolean) { inner.enableSessionCreation = flag }
+    override fun getEnableSessionCreation(): Boolean = inner.enableSessionCreation
+    override fun getSSLParameters(): javax.net.ssl.SSLParameters = inner.sslParameters
+    override fun setSSLParameters(p: javax.net.ssl.SSLParameters?) { inner.sslParameters = p }
+    override fun getInputStream(): java.io.InputStream = inner.inputStream
+    override fun getOutputStream(): java.io.OutputStream = inner.outputStream
+    override fun close() = inner.close()
+    override fun isConnected(): Boolean = inner.isConnected
+    override fun isClosed(): Boolean = inner.isClosed
+    override fun getInetAddress(): java.net.InetAddress? = inner.inetAddress
+    override fun getPort(): Int = inner.port
+    override fun setSoTimeout(timeout: Int) { inner.soTimeout = timeout }
+    override fun getSoTimeout(): Int = inner.soTimeout
+    override fun setTcpNoDelay(on: Boolean) { inner.tcpNoDelay = on }
+    override fun getTcpNoDelay(): Boolean = inner.tcpNoDelay
+    override fun setKeepAlive(on: Boolean) { inner.keepAlive = on }
+    override fun getKeepAlive(): Boolean = inner.keepAlive
+    override fun shutdownInput() = inner.shutdownInput()
+    override fun shutdownOutput() = inner.shutdownOutput()
+    override fun isInputShutdown(): Boolean = inner.isInputShutdown
+    override fun isOutputShutdown(): Boolean = inner.isOutputShutdown
+    override fun getLocalAddress(): java.net.InetAddress? = inner.localAddress
+    override fun getLocalPort(): Int = inner.localPort
+    override fun getRemoteSocketAddress(): java.net.SocketAddress? = inner.remoteSocketAddress
+    override fun getLocalSocketAddress(): java.net.SocketAddress? = inner.localSocketAddress
 }

@@ -131,7 +131,10 @@ internal fun candidateSubtitle(c: MediaCandidate): String = listOfNotNull(
 fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modifier: Modifier = Modifier,
                          showArtwork: Boolean = true, onRequestPoster: (() -> Unit)? = null) {
     val match = state.match
-    if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(match?.ref) { if (match != null) onRequestPoster() }
+    // Re-request whenever the poster could be needed again (match change, user image removed, poster cleared).
+    if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(match?.ref, state.userArtwork, state.poster == null) {
+        if (match != null && state.userArtwork == null && state.poster == null) onRequestPoster()
+    }
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
         val poster = state.poster?.takeIf { showArtwork && state.mayShowRealArt && state.userArtwork == null }
         if (poster != null) {
@@ -225,7 +228,8 @@ fun MediaIdentifyPanel(
             CandidateList(suggestions, selected = state.assignment?.displayMatch, onChoose = onChoose)
         }
 
-        if (state.state == MediaAssignmentState.CHOSEN_BY_USER && state.match != null && related.isNotEmpty() && onApplyToRelated != null)
+        if (state.state == MediaAssignmentState.CHOSEN_BY_USER && state.assignment?.stateBeforeImage != MediaAssignmentState.AUTOMATIC &&
+            state.match != null && related.isNotEmpty() && onApplyToRelated != null)
             ApplyToRelated(related, onApplyToRelated)
 
         if (settings.onlineLookupConsent) ManualSearch(state, onSearch)
@@ -278,11 +282,13 @@ private fun ApplyToRelated(related: List<io.github.gamesbyian.chunks.media.Trans
     var done by remember(related) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().background(ChunksColors.Surface, RoundedCornerShape(12.dp)).padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Also use this for ${related.size} similar transfer" + (if (related.size == 1) "" else "s") + "?",
+        // Only transfers actually shown here can be applied: nothing unseen is ever changed.
+        val shown = related.take(MAX_RELATED_SHOWN)
+        Text("Also use this for ${shown.size} similar transfer" + (if (shown.size == 1) "" else "s") + "?",
             style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
         Text("Matched by the same recognized name. Check each one; only how Chunks shows them changes.",
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
-        related.take(30).forEach { r ->
+        shown.forEach { r ->
             val on = r.key !in excluded
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(on, role = Role.Checkbox) {
                 excluded = if (it) excluded - r.key else excluded + r.key },
@@ -292,8 +298,9 @@ private fun ApplyToRelated(related: List<io.github.gamesbyian.chunks.media.Trans
                     overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
             }
         }
-        if (related.size > 30) Text("…and ${related.size - 30} more", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
-        val chosen = related.map { it.key }.filter { it !in excluded }
+        if (related.size > shown.size) Text("${related.size - shown.size} more are not included; apply again after these to review them.",
+            style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+        val chosen = shown.map { it.key }.filter { it !in excluded }
         Button(onClick = { onApply(chosen); done = true }, enabled = chosen.isNotEmpty() && !done,
             modifier = Modifier.heightIn(min = 48.dp)) { Text(if (done) "Applied" else "Apply to ${chosen.size}") }
     }
@@ -311,6 +318,8 @@ private fun ImageUrlField(busy: Boolean, onSubmit: (String) -> Unit) {
     Text("Downloads only this image, only when you tap Use. Make sure you may use it.", style = MaterialTheme.typography.bodySmall,
         color = ChunksColors.TextSecondary)
 }
+
+private const val MAX_RELATED_SHOWN = 60
 
 private val categoryChoices = listOf(MediaKind.MOVIE, MediaKind.TV_SERIES, MediaKind.MUSIC_ALBUM, MediaKind.BOOK, MediaKind.AUDIOBOOK,
     MediaKind.COMIC, MediaKind.GAME, MediaKind.SOFTWARE, MediaKind.DOCUMENT, MediaKind.ARCHIVE, MediaKind.IMAGE, MediaKind.UNKNOWN)

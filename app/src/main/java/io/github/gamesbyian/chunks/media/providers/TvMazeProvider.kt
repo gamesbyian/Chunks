@@ -56,7 +56,7 @@ class TvMazeProvider : MediaMetadataProvider {
         if (failure != null || json == null) return candidate
         val s = json.array.firstOrNull { it["number"]?.int == season } ?: return candidate
         // Season-specific art is preferred only once that exact season is established.
-        val poster = image(s["image"], ArtworkRole.POSTER)
+        val poster = image(s["image"], ArtworkRole.POSTER)?.copy(season = season)
         return candidate.copy(kind = MediaKind.TV_SEASON, season = season,
             artwork = listOfNotNull(poster) + candidate.artwork)
     }

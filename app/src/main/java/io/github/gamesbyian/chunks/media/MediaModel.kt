@@ -33,7 +33,9 @@ data class ArtworkCandidate(
     val role: ArtworkRole,
     val width: Int? = null,
     val height: Int? = null,
-    val language: String? = null
+    val language: String? = null,
+    /** Set when the image depicts one specific season; never reused for another season. */
+    val season: Int? = null
 ) {
     init {
         // Remote art is HTTPS only; "local:<digest>" names a user-imported derivative in app storage.

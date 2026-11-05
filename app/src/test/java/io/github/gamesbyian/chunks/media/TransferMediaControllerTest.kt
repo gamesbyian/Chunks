@@ -244,4 +244,24 @@ class TransferMediaControllerTest {
         assertEquals(MediaKind.DOCUMENT, decided.value.displayKind)
         assertNotNull(e8.value.artwork)
     }
+
+    @Test fun seasonPostersAndAutomaticMatchesNeverSpreadToOtherTransfers() {
+        val c = controller()
+        val k = { n: Int -> MediaTransferKey("phone|" + "%040x".format(n)) }
+        c.observe(k(1), "Babylon.5.S01.1080p.WEB-DL"); val s3 = c.observe(k(2), "Babylon.5.S03.1080p.WEB-DL")
+        val season1 = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_SEASON,
+            "Babylon 5", 1993, season = 1, attribution = MediaAttribution("TVmaze", "CC", null), artwork = listOf(
+                ArtworkCandidate("tvmaze", "https://static.tvmaze.com/s1.jpg", ArtworkRole.POSTER, season = 1),
+                ArtworkCandidate("tvmaze", "https://static.tvmaze.com/show.jpg", ArtworkRole.POSTER)))
+        c.choose(k(1), season1)
+        c.applyChoiceTo(k(1), listOf(k(2)))
+        assertEquals(listOf("https://static.tvmaze.com/show.jpg"), s3.value.match!!.artwork.map { it.url })
+        // An automatic match under a user image is not a user choice and does not spread.
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val src = c.observe(phone, name); val target = c.observe(MediaTransferKey("phone|" + "c".repeat(40)), "Babylon.5.S02E09.mkv")
+        c.lookup(phone); c.importUserImage(phone, png(Color.BLUE))
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, src.value.state)
+        c.applyChoiceTo(phone, listOf(target.value.key))
+        assertEquals(MediaAssignmentState.NOT_LOOKED_UP, target.value.state)
+    }
 }
