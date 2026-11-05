@@ -473,8 +473,11 @@ internal fun LocalEngineScreen(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    LaunchedEffect(addExpanded, clipboardPrefillOn, resumeTick) {
-        if (!addExpanded || clipboardPrefillOn != true) return@LaunchedEffect
+    // Android 10+ lets an app read the clipboard only while its window has input focus, and
+    // ON_RESUME arrives before focus returns: reading then is silently denied. Read once focused.
+    val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
+    LaunchedEffect(addExpanded, clipboardPrefillOn, resumeTick, windowFocused) {
+        if (!addExpanded || clipboardPrefillOn != true || !windowFocused) return@LaunchedEffect
         val filled = ClipboardMagnetPrefill.decide(
             enabled = true, currentDraft = magnet,
             otherSourcePresent = pending != null || initialMagnet != null || initialTorrentUri != null,

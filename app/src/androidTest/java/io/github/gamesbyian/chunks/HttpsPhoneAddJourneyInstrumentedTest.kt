@@ -197,6 +197,10 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 phone.setRateLimits(LocalRateLimits(downloadBytesPerSecond = 128 * 1024))
                 assertEquals(destination.canonicalPath, phone.status(preview.infoHashV1)?.savePath)
                 assertEquals(0L, phone.status(preview.infoHashV1)?.doneBytes)
+                // The in-test seed holds only piece 0 while the workflow's second real peer holds every
+                // piece, so rarest-first fetches piece 0 *last*; at the 128 KiB/s cap it may not arrive
+                // within the wait. Use the production "download in order" setting so it comes first.
+                assertTrue("Sequential download readback", phone.setSequentialDownload(preview.infoHashV1, true))
                 stage("added-stopped")
                 click("Start")
                 if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(
