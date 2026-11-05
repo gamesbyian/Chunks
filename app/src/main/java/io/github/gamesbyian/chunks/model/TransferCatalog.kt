@@ -27,6 +27,9 @@ object TransferCatalog {
         filter: TransferFilter,
         order: TransferOrder,
         direction: UnifiedSortDirection = order.naturalDirection,
+        /** Confirmed media match title (local presentation data), searchable like a name. */
+        mediaTitle: (RemoteTransfer) -> String? = { null },
+        // Keep last: callers pass the display-name lambda as a trailing lambda.
         displayName: (RemoteTransfer) -> String = { it.name }
     ): List<RemoteTransfer> {
         val needle = query.trim()
@@ -56,6 +59,7 @@ object TransferCatalog {
                 label.contains(needle, ignoreCase = true) ||
                 item.name.contains(needle, ignoreCase = true) ||
                 item.directory.contains(needle, ignoreCase = true) ||
+                mediaTitle(item)?.contains(needle, ignoreCase = true) == true ||
                 // Exact identity search, used by "Open in its list" from All environments.
                 item.hash.contains(needle, ignoreCase = true)
         }.toList()

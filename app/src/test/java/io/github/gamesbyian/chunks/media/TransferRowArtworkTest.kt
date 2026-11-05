@@ -291,4 +291,16 @@ class TransferRowArtworkTest {
         settings = settings.copy(showArtwork = false)
         assertTrue(kotlinx.coroutines.runBlocking { c.alternatives(k) }.isEmpty())
     }
+
+    @Test fun searchableTitlesHoldOnlyConfirmedMatchesAndBumpTheRevision() {
+        val c = controller()
+        val k = MediaTransferKey.of(phone)
+        c.observe(k, name)
+        val before = c.assignmentRevision.value
+        c.lookup(k)
+        assertTrue(c.assignmentRevision.value > before)
+        assertEquals("Babylon 5 Soul Mates", c.searchableTitles()[k])
+        c.useCategoryArt(k, MediaKind.MOVIE)
+        assertNull("Category-only choices are not searchable titles", c.searchableTitles()[k])
+    }
 }

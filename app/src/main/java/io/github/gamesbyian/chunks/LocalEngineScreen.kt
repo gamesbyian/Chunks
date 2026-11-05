@@ -361,13 +361,16 @@ internal fun LocalEngineScreen(
         transferDirection = direction
         sortStore.set(TransferListSortStore.PHONE, order, direction)
     }
+    // Confirmed media titles are searchable too, keyed by the exact phone job.
+    val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
     val displayedTransfers = remember(transfers, transferSearch, transferFilter,
-        transferOrder, transferDirection, aliasRevision) {
+        transferOrder, transferDirection, aliasRevision, mediaTitles) {
         LocalQueueCatalog.visible(transfers, transferSearch, transferFilter, transferOrder,
-            transferDirection) {
-            transfer -> aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                transfer.infoHash) ?: transfer.name
-        }
+            transferDirection,
+            displayName = { transfer -> aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                transfer.infoHash) ?: transfer.name },
+            mediaTitle = { transfer -> phoneTransferKey(transfer.infoHash)
+                ?.let { mediaTitles[io.github.gamesbyian.chunks.media.MediaTransferKey.of(it)] } })
     }
     // Changing the result set or its order always returns to page one. A new
     // engine observation does not change filter/search or silently select items.

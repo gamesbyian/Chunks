@@ -133,3 +133,17 @@ fun rememberTransferMedia(key: MediaTransferKey, name: String, files: List<Media
     val flow = remember(controller, key, name, files) { controller.observe(key, name, files) }
     return flow.collectAsState()
 }
+
+/**
+ * Confirmed match titles for list search, refreshed off the main thread whenever an assignment
+ * changes. Empty without a controller (tests, previews) — search then matches names only.
+ */
+@Composable
+fun rememberMediaSearchTitles(): State<Map<MediaTransferKey, String>> {
+    val controller = LocalTransferMediaController.current
+        ?: return remember { kotlinx.coroutines.flow.MutableStateFlow(emptyMap<MediaTransferKey, String>()) }.collectAsState()
+    val revision = controller.assignmentRevision.collectAsState().value
+    return androidx.compose.runtime.produceState(emptyMap(), controller, revision) {
+        value = kotlinx.coroutines.withContext(Dispatchers.IO) { runCatching { controller.searchableTitles() }.getOrDefault(emptyMap()) }
+    }
+}

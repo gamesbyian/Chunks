@@ -669,7 +669,12 @@ internal fun CombinedTransfersScreen(
     val sources = remember(rawSources, aliasScopes, currentAliases) {
         CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
-    val result = remember(sources, query) { UnifiedTransferCatalog.query(sources, query) }
+    val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
+    val result = remember(sources, query, mediaTitles) {
+        UnifiedTransferCatalog.query(sources, query) { key ->
+            mediaTitles[io.github.gamesbyian.chunks.media.MediaTransferKey.of(key)]
+        }
+    }
     val addedHidden = combinedAddedTransferHidden(recentlyAddedTransfer, sources,
         result.transfers.map { it.key })
     val sourcesByEnvironment = result.sources.associateBy { it.environment }

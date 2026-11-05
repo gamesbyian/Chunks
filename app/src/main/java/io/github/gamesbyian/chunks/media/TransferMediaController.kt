@@ -70,7 +70,29 @@ class TransferMediaController(
     }
     private val pendingAutomatic = java.util.concurrent.atomic.AtomicInteger(0)
 
-    private val store by lazy(storeFactory)
+    private val assignmentRevisionFlow = MutableStateFlow(0L)
+    /** Increments after every stored assignment change; hosts use it to refresh derived views (search). */
+    val assignmentRevision: StateFlow<Long> get() = assignmentRevisionFlow
+    private val store by lazy {
+        val inner = storeFactory()
+        object : TransferMediaAssignmentStore by inner {
+            override fun put(a: TransferMediaAssignment) { inner.put(a); assignmentRevisionFlow.update { it + 1 } }
+            override fun putAll(list: Collection<TransferMediaAssignment>) { inner.putAll(list); assignmentRevisionFlow.update { it + 1 } }
+            override fun remove(key: MediaTransferKey) { inner.remove(key); assignmentRevisionFlow.update { it + 1 } }
+            override fun clear() { inner.clear(); assignmentRevisionFlow.update { it + 1 } }
+        }
+    }
+
+    /**
+     * Confirmed (automatic or user-chosen) match titles for list search, keyed by exact transfer.
+     * Local only; suggestions, category choices and adult content never become searchable text.
+     * Call off the main thread.
+     */
+    fun searchableTitles(): Map<MediaTransferKey, String> = store.all().mapNotNull { a ->
+        val m = a.displayMatch ?: return@mapNotNull null
+        if (m.kind == MediaKind.ADULT) return@mapNotNull null
+        a.key to listOfNotNull(m.title, m.episodeTitle).joinToString(" ")
+    }.toMap()
     private val states = object : LinkedHashMap<MediaTransferKey, MutableStateFlow<TransferMediaUiState>>(64, 0.75f, true) {
         // Each state may reference a ~0.6 MB bitmap: keep only recently observed rows (visible + margin).
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MediaTransferKey, MutableStateFlow<TransferMediaUiState>>): Boolean {

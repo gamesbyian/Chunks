@@ -1782,10 +1782,16 @@ private fun TransfersScreen(
     val knownDownloadingHashes = remember(list) {
         RemoteQueueActivityContext.hashesReportingDownloadTraffic(list)
     }
-    val visible = remember(list, query, filter, order, direction, aliasRevision, aliasScope) {
-        TransferCatalog.visible(list, query, filter, order, direction) { transfer ->
-            aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
-        }
+    // Confirmed media titles are searchable too ("Babylon 5" finds B5.S02E07…), per exact account.
+    val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
+    val serverEnvironment = remember(aliasScope) {
+        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+    }
+    val visible = remember(list, query, filter, order, direction, aliasRevision, aliasScope, mediaTitles) {
+        TransferCatalog.visible(list, query, filter, order, direction,
+            displayName = { transfer -> aliasStore.get(aliasScope, transfer.hash) ?: transfer.name },
+            mediaTitle = { transfer -> remoteTransferKey(serverEnvironment, transfer.hash)
+                ?.let { mediaTitles[io.github.gamesbyian.chunks.media.MediaTransferKey.of(it)] } })
     }
     val addedHidden = remember(addedRecord, aliasScope, query, filter, list, visible) {
         addedRecord?.hiddenIn(aliasScope, RemoteAddedRecord.viewKey(query, filter.name),
