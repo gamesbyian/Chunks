@@ -16,6 +16,7 @@ import io.github.gamesbyian.chunks.media.providers.MusicBrainzProvider
 import io.github.gamesbyian.chunks.media.providers.OpenLibraryProvider
 import io.github.gamesbyian.chunks.media.providers.TmdbProvider
 import io.github.gamesbyian.chunks.media.providers.TvMazeProvider
+import io.github.gamesbyian.chunks.media.providers.WikidataProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -37,7 +38,7 @@ class ChunksMedia private constructor(context: Context) {
     private val queryCache by lazy { FileMediaQueryCache(File(app.filesDir, "media/queries.json")) }
     private val artworkDisk by lazy { ArtworkDiskCache(File(app.cacheDir, "media-art")) }
     val providers: List<MediaMetadataProvider> = listOf(TvMazeProvider(), TmdbProvider { settingsStore.tmdbCredential() },
-        MusicBrainzProvider(), OpenLibraryProvider(), AniListProvider())
+        WikidataProvider(), MusicBrainzProvider(), OpenLibraryProvider(), AniListProvider())
     private val service by lazy { MediaEnrichmentService(providers, http, lazyCache()) }
 
     @OptIn(ExperimentalCoroutinesApi::class)
