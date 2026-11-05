@@ -217,6 +217,13 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) {
             val (candidate, error) = runCatching { artwork.importLocal(bytes) }.getOrElse { null to "Image could not be used" }
             if (candidate == null) { f.update { it.copy(busy = false, message = error) }; return@launch }
+            applyImported(key, candidate)
+        }
+    }
+
+    private fun applyImported(key: MediaTransferKey, candidate: ArtworkCandidate) {
+        val f = flow(key) ?: return
+        run {
             val prev = store.get(key)
             prev?.userArtwork?.takeIf { it != candidate }?.let { releaseIfUnreferenced(it, except = key) }
             val keptMatch = prev?.state == MediaAssignmentState.AUTOMATIC || prev?.state == MediaAssignmentState.CHOSEN_BY_USER
@@ -229,6 +236,17 @@ class TransferMediaController(
             store.put(a)
             f.update { it.copy(assignment = a, busy = false, artwork = null, artworkSource = null) }
             loadArtwork(key)
+        }
+    }
+
+    /** Explicit "Use image URL". Never automatic; the URL itself is not stored. */
+    fun importImageUrl(key: MediaTransferKey, url: String) {
+        val f = flow(key) ?: return
+        f.update { it.copy(busy = true, message = null) }
+        scope.launch(lookupDispatcher) {
+            val (candidate, error) = runCatching { artwork.importFromUrl(url) }.getOrElse { null to "Image could not be used" }
+            if (candidate == null) { f.update { it.copy(busy = false, message = error) }; return@launch }
+            applyImported(key, candidate)
         }
     }
 

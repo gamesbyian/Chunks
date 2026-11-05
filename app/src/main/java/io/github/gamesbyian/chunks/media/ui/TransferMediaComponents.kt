@@ -158,7 +158,9 @@ fun MediaIdentifyPanel(
     modifier: Modifier = Modifier,
     /** Opens the system Photo Picker; null hides the option. Works with online lookup off. */
     onPickImage: (() -> Unit)? = null,
-    onRemoveImage: (() -> Unit)? = null
+    onRemoveImage: (() -> Unit)? = null,
+    /** Explicit image-link import; null hides the field. */
+    onImageUrl: ((String) -> Unit)? = null
 ) {
     var showWhy by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -196,6 +198,7 @@ fun MediaIdentifyPanel(
                 if (state.userArtwork != null && onRemoveImage != null)
                     TextButton(onClick = onRemoveImage, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove my image") }
             }
+            if (onImageUrl != null) ImageUrlField(state.busy, onImageUrl)
         }
 
         Text("Or use built-in art", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
@@ -222,6 +225,19 @@ fun MediaIdentifyPanel(
         }
         if (showWhy) AttemptList(state.assignment?.attempts ?: emptyList(), state.recognition.evidence)
     }
+}
+
+@Composable
+private fun ImageUrlField(busy: Boolean, onSubmit: (String) -> Unit) {
+    var url by rememberSaveable { mutableStateOf("") }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(url, { url = it.take(2_000) }, label = { Text("Image link (https://)") }, singleLine = true,
+            modifier = Modifier.weight(1f), keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (url.isNotBlank()) onSubmit(url) }))
+        Button(onClick = { onSubmit(url) }, enabled = url.isNotBlank() && !busy, modifier = Modifier.heightIn(min = 48.dp)) { Text("Use") }
+    }
+    Text("Downloads only this image, only when you tap Use. Make sure you may use it.", style = MaterialTheme.typography.bodySmall,
+        color = ChunksColors.TextSecondary)
 }
 
 private val categoryChoices = listOf(MediaKind.MOVIE, MediaKind.TV_SERIES, MediaKind.MUSIC_ALBUM, MediaKind.BOOK, MediaKind.AUDIOBOOK,

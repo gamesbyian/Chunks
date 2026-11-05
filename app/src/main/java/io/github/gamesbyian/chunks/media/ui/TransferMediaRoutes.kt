@@ -61,7 +61,8 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
         onReset = { controller.reset(key) },
         modifier = modifier,
         onPickImage = { picker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
-        onRemoveImage = { controller.removeUserImage(key) })
+        onRemoveImage = { controller.removeUserImage(key) },
+        onImageUrl = { controller.importImageUrl(key, it) })
 
     if (askConsent) MediaLookupConsentDialog(
         providerNames = media.providers.map { it.info.displayName },

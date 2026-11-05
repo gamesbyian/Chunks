@@ -138,6 +138,32 @@ class ArtworkRepository(
         return candidate to null
     }
 
+    /**
+     * Explicit user "Use image URL": bounded download under [UserImageUrlPolicy] (public HTTPS hosts
+     * only, every redirect hop rechecked), then the same validation as a device import.
+     */
+    fun importFromUrl(url: String, hostPolicy: MediaHostPolicy = UserImageUrlPolicy.hostPolicy()): Pair<ArtworkCandidate?, String?> {
+        val checked = when (val c = UserImageUrlPolicy.check(url)) {
+            is UserImageUrlPolicy.Check.Refused -> return null to c.reason
+            is UserImageUrlPolicy.Check.Ok -> c.url
+        }
+        val resp = try {
+            http.get(checked, hostPolicy, mapOf("Accept" to "image/jpeg,image/png,image/webp"), ArtworkBytesPolicy.MAX_BYTES)
+        } catch (e: MediaHttpException) {
+            return null to when (e.failure) {
+                MediaHttpFailure.BLOCKED_HOST -> "Local or private addresses are not allowed"
+                MediaHttpFailure.TOO_LARGE -> "Image too large"
+                MediaHttpFailure.OFFLINE -> "Offline"
+                MediaHttpFailure.TIMEOUT -> "Timed out"
+                else -> "Download failed"
+            }
+        }
+        if (resp.status != 200) return null to "Image link returned ${resp.status}"
+        val check = ArtworkBytesPolicy.check(resp.body, resp.header("Content-Type"))
+        if (check is ArtworkBytesCheck.Rejected) return null to check.reason
+        return importLocal(resp.body)
+    }
+
     /** Forget a user import (caller has verified no other assignment references it). */
     fun removeLocal(c: ArtworkCandidate) {
         if (c.provider != io.github.gamesbyian.chunks.media.LOCAL_PROVIDER) return

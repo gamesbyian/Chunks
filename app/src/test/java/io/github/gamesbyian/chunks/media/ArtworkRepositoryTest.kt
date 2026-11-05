@@ -97,4 +97,19 @@ class ArtworkRepositoryTest {
         val off = repo(FakeMediaHttp()).load(listOf(poster), ArtworkRole.SQUARE, allowNetwork = false) as ArtworkLoadResult.Unavailable
         assertEquals(listOf("Not cached; network not allowed"), off.reasons)
     }
+
+    @Test fun userImageUrlImportIsBoundedAndPolicyChecked() {
+        val http = FakeMediaHttp().onBytes("images.example.com/poster.png", image(600, 900, Bitmap.CompressFormat.PNG))
+            .on("images.example.com/page", body = "<html>".padEnd(300), headers = mapOf("Content-Type" to "text/html"))
+        val repo = repo(http)
+        val public = mediaHostPolicy(listOf("images.example.com"))
+        val (ok, _) = repo.importFromUrl("https://images.example.com/poster.png", public)
+        assertEquals(LOCAL_PROVIDER, ok!!.provider)
+        assertTrue(repo.loadOne(ok, ArtworkRole.SQUARE, allowNetwork = false) is ArtworkLoadResult.Loaded)
+        assertEquals("Not a raster image", repo.importFromUrl("https://images.example.com/page", public).second)
+        assertEquals("Local or private addresses are not allowed", repo.importFromUrl("https://192.168.1.1/x.png", public).second)
+        // A redirect to a host the policy rejects never gets fetched.
+        assertEquals("Local or private addresses are not allowed", repo.importFromUrl("https://cdn.example.org/x.png", public).second)
+        assertEquals(2, http.requests.size)
+    }
 }
