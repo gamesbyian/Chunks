@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-05 media settings, poster choice and Phone options search #1317–#1318
+
+- [#1317](https://github.com/gamesbyian/Chunks/pull/1317) merged `f8948793` (head `665a3c9`, all seven checks green including both API35 native-Add shards and R8 minified smoke): Artwork & info can hide Similar transfers or limit them to the same environment; the hosts read the controller's `presentation` flow. JVM `TransferRowArtworkTest`.
+- [#1318](https://github.com/gamesbyian/Chunks/pull/1318) (open at writing): per-transfer detail poster choice (`userPosterUrl`, pinned, offline-restored, dropped on a match change/category art/reset) and Phone options search (`PhoneOptionsShortcut`; the far-scroll case is red without the fix). JVM: media 141/141, visual+phone+options 149 (2 pre-existing skips). Installed/physical unverified.
+- Run 42080666983 (head `18d6085`) failed at `added-stopped` with the known missing notification prompt (`foreground=android`), before the system-window text diagnostic landed; nothing new.
+
 ## 2026-11-05 reliability and media follow-ups #1313–#1315
 
 - [#1313](https://github.com/gamesbyian/Chunks/pull/1313) merged `8d4aa25e` (head `5fb1aa3`; foundation, R8, API29, atlas, native Add shards + verifier green). **Product fix:** clipboard prefill now waits for window focus — Android 10+ denies clipboard reads without input focus and ON_RESUME precedes focus, so phone/server Add could silently miss a copied magnet; the installed `ClipboardPrefillInstrumentedTest` diagnostic screenshot (native Add 42068422841) showed an open, empty Add. JVM test drives `LocalWindowInfo`. **Test fix:** the HTTPS phone journey uses the production download-in-order setting so piece 0 arrives first (rarest-first fetched it last while the in-test seed held only piece 0; run 42063203634).
