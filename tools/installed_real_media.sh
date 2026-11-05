@@ -11,8 +11,13 @@ cls=io.github.gamesbyian.chunks.InstalledRealMediaInstrumentedTest
 out="$RUNNER_TEMP/chunks-real-media"
 mkdir -p "$out"
 adb logcat -c
-restore_network() { adb shell svc wifi enable; adb shell svc data enable; }
-trap restore_network EXIT
+collect_and_restore() {
+  adb logcat -d -v raw -s ChunksRealMedia:I > "$out/WITNESS.txt" || true
+  adb pull "/sdcard/Android/data/$pkg/files/real-media-evidence/." "$out/" >/dev/null 2>&1 || true
+  adb shell svc wifi enable
+  adb shell svc data enable
+}
+trap collect_and_restore EXIT
 for phase in phaseA_realLookupsConsentSelectionAndTransferArtwork phaseB_newOfflineProcessRestoresMatchesAndDrawnArtworkWithoutRequests; do
   if [[ "$phase" == phaseB_* ]]; then
     adb shell am force-stop "$pkg"

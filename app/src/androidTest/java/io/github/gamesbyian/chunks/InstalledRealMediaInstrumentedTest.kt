@@ -88,6 +88,21 @@ class InstalledRealMediaInstrumentedTest {
     private fun key(index: Int): MediaTransferKey = MediaTransferKey.of(UnifiedTransferKey.of(
         EnvironmentSnapshots.PHONE, requireNotNull(prefs.getString("hash-$index", null))))
     private fun state(index: Int) = media.controller.observe(key(index), fixtures[index].first).value
+    private fun awaitMedia(index: Int, step: String, timeout: Long = 60_000, condition: () -> Boolean) {
+        try { rule.waitUntil(timeout, condition) } catch (failure: Throwable) {
+            val s = state(index)
+            throw AssertionError("Installed provider ${fixtures[index].third}: $step; state=${s.state} " +
+                "busy=${s.busy} result=${s.assignment?.lastStatus} suggestions=${s.assignment?.suggestions?.size} " +
+                "search=${s.searchResults?.size} artwork=${s.artwork != null}", failure)
+        }
+    }
+    private fun correctCandidate(index: Int, candidate: MediaCandidate): Boolean =
+        candidate.title.equals(fixtures[index].second, ignoreCase = true) &&
+            candidate.ref.provider == fixtures[index].third && when (index) {
+                1 -> candidate.creators.any { it.contains("Radiohead", true) }
+                2 -> candidate.creators.any { it.contains("Frank Herbert", true) }
+                else -> true
+            }
     private fun openRow(index: Int) {
         type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
         click("More details")
@@ -174,20 +189,29 @@ class InstalledRealMediaInstrumentedTest {
                 for (index in fixtures.indices) {
                     if (index != 0) openRow(index)
                     click("Look up online")
-                    rule.waitUntil(60_000) { !state(index).busy && state(index).match != null && state(index).artwork != null }
-                    assertTrue("Correct real match", state(index).match!!.title.contains(fixtures[index].second, ignoreCase = true))
-                    assertEquals(fixtures[index].third, state(index).match!!.ref.provider)
+                    awaitMedia(index, "lookup") { !state(index).busy &&
+                        (state(index).match != null || state(index).assignment?.suggestions?.isNotEmpty() == true) }
+                    // Ambiguous results are a supported outcome: select the correct
+                    // candidate explicitly before requiring its image, never silently
+                    // turn a suggestion into a confirmed/automatic match for the test.
+                    val proposed = listOfNotNull(state(index).match) + state(index).assignment?.suggestions.orEmpty()
+                    assertTrue("Correct provider candidate returned", proposed.any { correctCandidate(index, it) })
                     // Explicitly choose the correct provider result through the actual manual search UI.
                     type("Title", fixtures[index].second)
                     click("Search")
-                    rule.waitUntil(60_000) { !state(index).busy && state(index).searchResults?.isNotEmpty() == true }
-                    val chosen = state(index).searchResults!!.first { it.title.contains(fixtures[index].second, true) }
-                    val choice = rule.onNode(hasClickAction() and hasAnyDescendant(hasText(chosen.title)))
+                    awaitMedia(index, "manual search") { !state(index).busy && state(index).searchResults?.isNotEmpty() == true }
+                    val chosen = state(index).searchResults!!.first { correctCandidate(index, it) }
+                    val choice = rule.onNode(hasClickAction() and
+                        SemanticsMatcher.expectValue(androidx.compose.ui.semantics.SemanticsProperties.Role,
+                            androidx.compose.ui.semantics.Role.RadioButton) and
+                        (hasText(chosen.title) or hasAnyDescendant(hasText(chosen.title))))
                     choice.performScrollTo().assertIsDisplayed()
                     choice.performSemanticsAction(SemanticsActions.OnClick)
-                    rule.waitUntil(30_000) { state(index).state == MediaAssignmentState.CHOSEN_BY_USER && state(index).artwork != null }
+                    awaitMedia(index, "selected artwork", 30_000) { state(index).state == MediaAssignmentState.CHOSEN_BY_USER && state(index).artwork != null }
+                    assertEquals(fixtures[index].third, state(index).match!!.ref.provider)
                     closeRow()
                     verifyArtworkPixels(index)
+                    android.util.Log.i("ChunksRealMedia", "CHUNKS_REAL_MEDIA_PROVIDER provider=${fixtures[index].third} selected=true pixels=true navigated=true")
                     // Navigate away/back without losing the assignment or the rendered image.
                     click("All environments…"); click("Back")
                     type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))

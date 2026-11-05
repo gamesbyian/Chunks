@@ -2,6 +2,8 @@
 
 **Checkpoint:** 2026-11-05 UTC, `main` `f7364e5cd8508e600cee2b0323dfd6f18eede40d`; **zero open PRs** at this check. Claude is paused and Codex is the next sole integration agent by owner direction. This is one execution handoff, **not a new parallel work queue or a replacement specification**. One brief live state check is required on restart. See [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md), [CI-POLICY](CI-POLICY.md), [REAL-TRANSFER-ACCEPTANCE](REAL-TRANSFER-ACCEPTANCE.md), [MEDIA-ARTWORK-IMPLEMENTATION](MEDIA-ARTWORK-IMPLEMENTATION.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [UX](UX.md) and [BUILD](BUILD.md).
 
+**Investigation update:** [#1321](https://github.com/gamesbyian/Chunks/pull/1321) and the [current ledger](QUALITY-LEDGER.md#2026-11-05-controlled-peer-and-installed-provider-campaign-1321-in-progress) correct section A's original attribution: the ~576 KB failure was remote Sintel after a passing phone HTTPS journey. A separate new phone piece-0 wait is under investigation. Aggregate end counters did not establish a causal peer stall. No replacement APK or installed real-provider acceptance yet.
+
 ## Do not redispatch completed work
 
 - **#1301** completed actual HTTPS-link phone and real-rTorrent Add/Start/piece proof and one-time phone Place versus saved default with one assembled source; previous P0 A–E acceptance remains preserved.

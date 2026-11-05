@@ -2,6 +2,8 @@
 
 ## Magnet-qualified Preview identity
 
+**Current-source warning:** the downloadable `f07a8331f81f` Preview below predates the media/UI merges #1309–#1318 and does not represent current main. The [#1321 campaign](https://github.com/gamesbyian/Chunks/pull/1321) has not yet qualified a replacement.
+
 **Current qualified Preview:** [download APK + SHA-256 and acceptance receipts](https://github.com/gamesbyian/Chunks/actions/runs/41974228875/artifacts/13390879645) from magnet gate [41974228875](https://github.com/gamesbyian/Chunks/actions/runs/41974228875), immutable source `f07a8331f81f204d4c44abb8339a3185f314051a` (merged production code #1301). File `chunks-magnet-verified-preview-f07a8331f81f.apk`; SHA-256 `0606a26d221b039ea0b5ed706c4451f02d319cbdcf76337caaed9858dbf0b414`. These are the installed, byte-compared passing bytes, not a rebuild. The Actions archive expires after 14 days; keep the APK and paired receipt together. Debug-signed side-by-side Preview; physical acceptance and publisher signing remain open. The old `39cc220` debug release predates this UX campaign.
 
 The [installed rTorrent magnet workflow](../.github/workflows/installed-rtorrent-magnets.yml) builds one **Chunks Magnet Preview** with application ID `io.github.gamesbyian.chunks.magnet<SHA12>`. Its separate ID and provider authorities preserve both ordinary Chunks and any earlier Preview installation even when CI debug signing keys differ. No existing app needs to be uninstalled. Profiles belong to this new app instance; connect the desired server there. The workflow checks its installed version and pulls the installed base APK back for byte-for-byte comparison with the offered binary.
