@@ -88,6 +88,7 @@ adb shell am instrument -w -r \
   > "$RUNNER_TEMP/chunks-installed-magnets.raw" 2>&1
 acceptance_status=$?
 set -e
+adb logcat -d -v raw -s ChunksPeer:I > "$RUNNER_TEMP/chunks-peer-ui-witness.txt"
 printf '%s\n' "$acceptance_status" > "$RUNNER_TEMP/chunks-installed-magnets.exit"
 printf '%s\n' "$(( $(date +%s) - acceptance_started ))" > "$RUNNER_TEMP/chunks-installed-magnets.runtime"
 unset url64 user64 pass64 args

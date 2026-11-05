@@ -139,6 +139,11 @@ class Peer:
         self.lock = threading.Lock()
         self.stopping = threading.Event()
         self.started = time.monotonic()
+        # Fixed public fixtures only. No addresses, torrent names, tracker URLs or
+        # native alert messages enter this bounded, timestamp-aligned diagnostic.
+        self.timeline = {label: [] for label in fixtures}
+        self.events = {label: {} for label in fixtures}
+        self.last_sample = 0.0
 
     def save(self):
         data = {"source_sha": os.getenv("GITHUB_SHA"), "run_id": os.getenv("GITHUB_RUN_ID"),
@@ -146,6 +151,7 @@ class Peer:
                 "topology": "real libtorrent TCP peer to " + ("disposable rTorrent" if self.target_host == "127.0.0.1" else "approved development rTorrent"),
                 "fixtures": self.fixtures}
         (self.root / "PEER-RECEIPT.json").write_text(json.dumps(data, indent=2) + "\n")
+        (self.root / "PEER-TIMELINE.json").write_text(json.dumps(self.timeline, indent=2) + "\n")
 
     def new_seed(self, label, stage, port=None):
         # The controller is not an arbitrary network probe or filesystem API.
@@ -223,6 +229,35 @@ class Peer:
                             self.fixtures[label]["peer_disconnects"] += 1
                         elif isinstance(alert, lt.peer_error_alert):
                             self.fixtures[label]["peer_error_alerts"] += 1
+                        elif isinstance(alert, lt.block_uploaded_alert):
+                            events = self.events[label]
+                            events["blocks_uploaded"] = events.get("blocks_uploaded", 0) + 1
+                        elif isinstance(alert, lt.peer_log_alert):
+                            event = alert.event_type
+                            if event in ("INCOMING_REQUEST", "INCOMING_CANCEL", "CHOKE", "UNCHOKE",
+                                         "INTERESTED", "NOT_INTERESTED", "INCOMING_HAVE", "INCOMING_BITFIELD"):
+                                events = self.events[label]
+                                events[event] = events.get(event, 0) + 1
+                if time.monotonic() - self.last_sample >= 1:
+                    self.last_sample = time.monotonic()
+                    for label, (session, handle) in self.active.items():
+                        status = handle.status(lt.status_flags_t.query_pieces)
+                        peers = handle.get_peer_info()
+                        self.timeline[label].append({
+                            "epoch_ms": time.time_ns() // 1_000_000,
+                            "phase": self.fixtures[label]["stages"][-1],
+                            "verified_bytes": status.total_done,
+                            "available_pieces": sum(status.pieces),
+                            "uploaded_bytes": status.total_payload_upload,
+                            "upload_rate": status.upload_payload_rate,
+                            "peer_count": status.num_peers,
+                            "events": dict(self.events[label]),
+                            "peers": [{"flags": int(p.flags), "pieces": p.num_pieces,
+                                       "upload_queue": p.upload_queue_length,
+                                       "download_queue": p.download_queue_length,
+                                       "uploaded_bytes": p.total_upload} for p in peers[:8]],
+                        })
+                        del self.timeline[label][:-300]
 
     def close(self):
         self.stopping.set()

@@ -393,9 +393,21 @@ internal class MainActivityRealMagnetJourney(
                 }
                 traffic(label, "initial", readOnly { remote.readTrafficSample(hash) })
                 stage(label, "peer-progress"); stage(label, "bytes-verified")
-                rule.waitUntil(15_000) { runCatching { scroll("Operation outcome") }
-                    visible("Payload:") && (visible("Downloading payload from peers.") ||
-                        (publicDiscovery && visible("Download complete. All payload pieces verified by rTorrent."))) }
+                var lastSample = 0L
+                rule.waitUntil(15_000) {
+                    runCatching { scroll("Operation outcome") }
+                    val downloading = visible("Downloading payload from peers.")
+                    if (SystemClock.elapsedRealtime() - lastSample >= 1_000) {
+                        lastSample = SystemClock.elapsedRealtime()
+                        val sample = readOnly { remote.readTrafficSample(hash) }
+                        android.util.Log.i("ChunksPeer", "CHUNKS_PEER_SAMPLE epoch_ms=${System.currentTimeMillis()} " +
+                            "label=$label received=${sample.receivedBytes} verified=${sample.verifiedBytes} " +
+                            "rate=${sample.rateBytesPerSecond} peers=${sample.peers} " +
+                            "ui_downloading=$downloading ui_read_failed=${visible("Transfer status could not be refreshed.")}")
+                    }
+                    visible("Payload:") && (downloading ||
+                        (publicDiscovery && visible("Download complete. All payload pieces verified by rTorrent.")))
+                }
                 stage(label, "ui-progress")
                 val payload = requireNotNull(row(hash))
                 assertEquals(if (preview.fileCount > 1) "$parent/${preview.name}" else parent, payload.directory)
