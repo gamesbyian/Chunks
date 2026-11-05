@@ -27,6 +27,9 @@ internal object LocalQueueCatalog {
         filter: LocalQueueFilter,
         order: LocalQueueOrder,
         direction: UnifiedSortDirection = order.naturalDirection,
+        /** Confirmed media match title (local presentation data), searchable like a name. */
+        mediaTitle: (LocalTransferStatus) -> String? = { null },
+        // Keep last: callers pass the display-name lambda as a trailing lambda.
         displayName: (LocalTransferStatus) -> String = { it.name }
     ): List<LocalTransferStatus> {
         val needle = search.trim()
@@ -49,7 +52,8 @@ internal object LocalQueueCatalog {
             needle.isBlank() || label.contains(needle, ignoreCase = true) ||
                 item.name.contains(needle, ignoreCase = true) ||
                 item.infoHash.contains(needle, ignoreCase = true) ||
-                item.savePath.contains(needle, ignoreCase = true)
+                item.savePath.contains(needle, ignoreCase = true) ||
+                mediaTitle(item)?.contains(needle, ignoreCase = true) == true
         }.toList()
 
         // Cached display labels are resolved once per candidate, never in a

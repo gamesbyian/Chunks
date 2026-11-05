@@ -953,7 +953,7 @@ private fun ChunksApp(
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
-                    onMediaSettings = { openFromPhone(Section.MEDIA) },
+                        onMediaSettings = { openFromPhone(Section.MEDIA) },
                         onCreateTorrent = { openFromPhone(Section.CREATE) },
                         onZipReview = { openFromPhone(Section.ARCHIVES) },
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
@@ -1782,10 +1782,16 @@ private fun TransfersScreen(
     val knownDownloadingHashes = remember(list) {
         RemoteQueueActivityContext.hashesReportingDownloadTraffic(list)
     }
-    val visible = remember(list, query, filter, order, direction, aliasRevision, aliasScope) {
-        TransferCatalog.visible(list, query, filter, order, direction) { transfer ->
-            aliasStore.get(aliasScope, transfer.hash) ?: transfer.name
-        }
+    // Confirmed media titles are searchable too ("Babylon 5" finds B5.S02E07…), per exact account.
+    val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
+    val serverEnvironment = remember(aliasScope) {
+        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+    }
+    val visible = remember(list, query, filter, order, direction, aliasRevision, aliasScope, mediaTitles) {
+        TransferCatalog.visible(list, query, filter, order, direction,
+            displayName = { transfer -> aliasStore.get(aliasScope, transfer.hash) ?: transfer.name },
+            mediaTitle = { transfer -> remoteTransferKey(serverEnvironment, transfer.hash)
+                ?.let { mediaTitles[io.github.gamesbyian.chunks.media.MediaTransferKey.of(it)] } })
     }
     val addedHidden = remember(addedRecord, aliasScope, query, filter, list, visible) {
         addedRecord?.hiddenIn(aliasScope, RemoteAddedRecord.viewKey(query, filter.name),
@@ -1980,7 +1986,9 @@ private fun TransfersScreen(
                     Text("${batchHashes.size} selected from the loaded '$view' view. " +
                         "Select shown means only the ${visible.size} filtered matches " +
                         "currently loaded by Chunks, not hidden views or unloaded transfers.")
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    // Wraps instead of splitting "Select shown" letter by letter at 320dp/200%.
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.fillMaxWidth()) {
                         OutlinedButton(onClick = {
                             val next = batchHashes + visible.map { it.hash }
@@ -1992,14 +2000,14 @@ private fun TransfersScreen(
                                 batchMessage = null
                             }
                         }, enabled = !stale && !loading && !batchBusy && visible.isNotEmpty(),
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Select shown")
                         }
                         OutlinedButton(onClick = {
                             batchHashes = emptySet()
                             batchConfirm = false
                         }, enabled = !batchBusy && batchHashes.isNotEmpty(),
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            modifier = Modifier.heightIn(min = 48.dp)) {
                             Text("Clear")
                         }
                     }
@@ -2187,7 +2195,19 @@ private fun TransfersScreen(
                 onCopyToPhone = onCopyToPhone,
                 removalEnvironmentLabel = RemoteVerifiedUiIdentity.removalScopeLabel(aliasScope),
                 moveScope = aliasScope,
-                finishInOrderScope = aliasScope
+                finishInOrderScope = aliasScope,
+                // Same-account relations; opening one filters this list to that exact transfer.
+                similar = serverEnvironment?.let { envId -> {
+                    val source = remember(list, stale, loading) {
+                        remoteSimilarSource(io.github.gamesbyian.chunks.model.EnvironmentId(envId), list, stale || loading)
+                    }
+                    source.transfers.firstOrNull { it.key.infoHash == transfer.hash.lowercase() }?.let { self ->
+                        SimilarTransfersHost(self, listOf(source),
+                            environmentLabel = { environmentLabel },
+                            environmentColor = { ChunksColors.Blue },
+                            onOpen = { key -> onQuery(key.infoHash) })
+                    }
+                } }
             )
             }
             }
@@ -2242,7 +2262,9 @@ private fun TransferCard(
     /** Authenticated endpoint + account scope, or null when ambiguous. */
     moveScope: String? = null,
     /** Authenticated endpoint + account scope for Finish in Order; null when ambiguous. */
-    finishInOrderScope: String? = null
+    finishInOrderScope: String? = null,
+    /** Similar Transfers in this card's details; null hides it. */
+    similar: (@Composable () -> Unit)? = null
 ) {
     var confirmPhoneHandoff by remember(transfer.hash) { mutableStateOf(false) }
     // Exact profile/hash identity prevents a recycled row inheriting another
@@ -2376,6 +2398,7 @@ private fun TransferCard(
             rememberRemoteTransferKey(progressEnvironmentId, transfer.hash)?.let { key ->
                 TransferMediaDetailSection(key, transfer.name)
             }
+            similar?.invoke()
             ActionTile(if (expanded) "Hide files" else "Inspect files", ChunksColors.Cyan,
                 onClick = onInspect, modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_folder, stacked = false)
             if (TorrentIdentityHandoff.prepare(transfer.hash, transfer.name) != null) {

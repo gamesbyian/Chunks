@@ -211,7 +211,8 @@ open class ChunksServerRenderTest {
         rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
         rule.onNodeWithContentDescription("Options").assertIsDisplayed()
         for (tab in listOf("Places", "Organize", "Server")) {
-            rule.onNodeWithText(tab).performClick()
+            // Off Transfers the destinations are a short scrollable strip: bring each into view first.
+            rule.onNodeWithText(tab).performScrollTo().performClick()
             rule.waitForIdle()
             rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-${tab.lowercase()}.png")
         }

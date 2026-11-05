@@ -669,7 +669,12 @@ internal fun CombinedTransfersScreen(
     val sources = remember(rawSources, aliasScopes, currentAliases) {
         CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
-    val result = remember(sources, query) { UnifiedTransferCatalog.query(sources, query) }
+    val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
+    val result = remember(sources, query, mediaTitles) {
+        UnifiedTransferCatalog.query(sources, query) { key ->
+            mediaTitles[io.github.gamesbyian.chunks.media.MediaTransferKey.of(key)]
+        }
+    }
     val addedHidden = combinedAddedTransferHidden(recentlyAddedTransfer, sources,
         result.transfers.map { it.key })
     val sourcesByEnvironment = result.sources.associateBy { it.environment }
@@ -1105,7 +1110,7 @@ internal fun CombinedTransfersScreen(
                     Text(if (listings.isEmpty()) "Load other saved servers (read-only)" else "Refresh other saved servers")
                 }
                 if (result.missingSelectedEnvironments.isNotEmpty()) Text(
-                    "${result.missingSelectedEnvironments.size} selected environment(s) are no longer set up. " +
+                    (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected environment is" else "$n selected environments are" }) + " no longer set up. " +
                         "Choose All or reselect environments.", style = MaterialTheme.typography.bodySmall,
                     color = ChunksColors.Yellow)
                 Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
@@ -1365,7 +1370,9 @@ private fun CombinedTransferRow(
                     historyKey = ProgressChunkStore.identity(
                         row.key.environment.value, row.key.infoHash),
                     observeFresh = source?.canClaimCompleteLiveInventory == true,
-                    observationEpochMillis = source?.observedAtEpochMillis
+                    observationEpochMillis = source?.observedAtEpochMillis,
+                    // Same colour meaning as the phone and rTorrent cards: green complete, paused stopped.
+                    tone = combinedProgressTone(row)
                 )
             }
             combinedRowFreshnessLabel(source)?.let { warning ->
@@ -1647,4 +1654,13 @@ internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTran
                     else Units.bytes(t.uploadBytesPerSecond) + "/s") +
         " across ${t.liveRows} transfers" +
         (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
-        (if (t.excludedEnvironments > 0) " · ${t.excludedEnvironments} environment(s) excluded (not fully observed)" else "")
+        (if (t.excludedEnvironments > 0) " · " + (if (t.excludedEnvironments == 1) "1 environment" else "${t.excludedEnvironments} environments") + " excluded (not fully observed)" else "")
+
+
+/** Progress colour shared with the phone and rTorrent cards; colour is never the only signal. */
+internal fun combinedProgressTone(row: UnifiedTransferObservation): ChunksTone = when {
+    row.hasError -> ChunksTone.ERROR
+    (row.progressPpm ?: 0) >= 1_000_000 -> ChunksTone.COMPLETE
+    row.started == false -> ChunksTone.PAUSED
+    else -> ChunksTone.ACTIVE
+}

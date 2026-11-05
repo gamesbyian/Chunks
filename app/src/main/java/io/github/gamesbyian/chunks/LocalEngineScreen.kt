@@ -361,13 +361,16 @@ internal fun LocalEngineScreen(
         transferDirection = direction
         sortStore.set(TransferListSortStore.PHONE, order, direction)
     }
+    // Confirmed media titles are searchable too, keyed by the exact phone job.
+    val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
     val displayedTransfers = remember(transfers, transferSearch, transferFilter,
-        transferOrder, transferDirection, aliasRevision) {
+        transferOrder, transferDirection, aliasRevision, mediaTitles) {
         LocalQueueCatalog.visible(transfers, transferSearch, transferFilter, transferOrder,
-            transferDirection) {
-            transfer -> aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                transfer.infoHash) ?: transfer.name
-        }
+            transferDirection,
+            displayName = { transfer -> aliasStore.get(TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                transfer.infoHash) ?: transfer.name },
+            mediaTitle = { transfer -> phoneTransferKey(transfer.infoHash)
+                ?.let { mediaTitles[io.github.gamesbyian.chunks.media.MediaTransferKey.of(it)] } })
     }
     // Changing the result set or its order always returns to page one. A new
     // engine observation does not change filter/search or silently select items.
@@ -1589,6 +1592,16 @@ internal fun LocalEngineScreen(
                 }
             LocalTransferCard(transfer, busy || inventoryStale, dhtEnabled = dht,
                 stale = inventoryStale,
+                // Same-list relations; opening one filters this list to that exact phone job.
+                similar = {
+                    val source = remember(transfers, inventoryStale) { phoneSimilarSource(transfers, inventoryStale) }
+                    source.transfers.firstOrNull { it.key.infoHash == transfer.infoHash.lowercase() }?.let { self ->
+                        SimilarTransfersHost(self, listOf(source),
+                            environmentLabel = { "This phone" },
+                            environmentColor = { ChunksColors.Cyan },
+                            onOpen = { key -> transferSearch = key.infoHash })
+                    }
+                },
                 onRepairTrackers = if (transfer.stopped && transfer.metadataKnown &&
                     transfer.trackers?.total == 0) ({
                     repairReview = null
@@ -2288,7 +2301,9 @@ internal fun LocalTransferCard(
     /** The engine status read failed; rates are from the last confirmed read. */
     stale: Boolean = false,
     /** The screen's DHT setting; never read from preferences during composition. */
-    dhtEnabled: Boolean = false
+    dhtEnabled: Boolean = false,
+    /** Similar Transfers in this card's details; null hides it. */
+    similar: (@Composable () -> Unit)? = null
 ) {
     // An open confirmation belongs to the identity the user reviewed, not
     // just a hash that may now describe a moved or changed transfer. A stale
@@ -2405,6 +2420,7 @@ internal fun LocalTransferCard(
                 }
                 TransferMediaDetailSection(key, transfer.name, localFiles = localMedia)
             }
+            similar?.invoke()
             if (transfer.payloadDownloadedBytes > 0L) {
                 Text("Network payload counter " + Units.bytes(transfer.payloadDownloadedBytes),
                     style = MaterialTheme.typography.bodySmall)

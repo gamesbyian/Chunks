@@ -16,6 +16,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.assertIsDisplayed
+import io.github.gamesbyian.chunks.visual.smallTouchTargets
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
@@ -290,5 +292,37 @@ class TransferRowArtworkTest {
         assertTrue("Without downloads only already cached images appear", cachedOnly.size <= 1)
         settings = settings.copy(showArtwork = false)
         assertTrue(kotlinx.coroutines.runBlocking { c.alternatives(k) }.isEmpty())
+    }
+
+    @Test fun searchableTitlesHoldOnlyConfirmedMatchesAndBumpTheRevision() {
+        val c = controller()
+        val k = MediaTransferKey.of(phone)
+        c.observe(k, name)
+        val before = c.assignmentRevision.value
+        c.lookup(k)
+        assertTrue(c.assignmentRevision.value > before)
+        assertEquals("Babylon 5 Soul Mates", c.searchableTitles()[k])
+        c.useCategoryArt(k, MediaKind.MOVIE)
+        assertNull("Category-only choices are not searchable titles", c.searchableTitles()[k])
+    }
+
+    @Test fun identifyPanelKindChoicesStayReachableAndTappableAt200Percent() {
+        val st = TransferMediaUiState(MediaTransferKey.of(phone), MediaRecognizer.recognize(name))
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
+                ChunksTheme { Surface {
+                    androidx.compose.foundation.layout.Column(Modifier.verticalScroll(rememberScrollState())) {
+                        io.github.gamesbyian.chunks.media.ui.MediaIdentifyPanel(st, MediaPrivacySettings(onlineLookupConsent = true),
+                            onEnableLookup = {}, onLookup = {}, onSearch = { _, _, _ -> }, onChoose = {},
+                            onUseCategoryArt = {}, onReset = {}, onPickImage = {})
+                    }
+                } }
+            }
+        }
+        for (label in listOf("Movie", "TV series", "Album", "Book"))
+            rule.onAllNodesWithText(label).fetchSemanticsNodes().let { assertTrue("$label present", it.isNotEmpty()) }
+        rule.onAllNodesWithText("Book")[0].performScrollTo().assertIsDisplayed()
+        val density = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>().resources.displayMetrics.density
+        assertEquals(emptyList<String>(), rule.smallTouchTargets(density))
     }
 }

@@ -168,7 +168,9 @@ object UnifiedTransferObservations {
  * environment/hash identity, not list position or a mutable display label.
  */
 object UnifiedTransferCatalog {
-    fun query(snapshots: List<EnvironmentTransferSnapshot>, query: UnifiedTransferQuery):
+    fun query(snapshots: List<EnvironmentTransferSnapshot>, query: UnifiedTransferQuery,
+              /** Confirmed media match title for an exact transfer, searchable like a name. */
+              mediaTitle: (UnifiedTransferKey) -> String? = { null }):
         UnifiedTransferQueryResult {
         require(snapshots.map { it.environment }.toSet().size == snapshots.size) {
             "Duplicate environment snapshots cannot be merged by guessing"
@@ -185,7 +187,8 @@ object UnifiedTransferCatalog {
         val filtered = selected.flatMap { it.transfers }.filter { item ->
             (needle.isEmpty() || item.displayName.contains(needle, ignoreCase = true) ||
                 item.originalName.contains(needle, ignoreCase = true) ||
-                item.key.infoHash.contains(needle, ignoreCase = true)) &&
+                item.key.infoHash.contains(needle, ignoreCase = true) ||
+                mediaTitle(item.key)?.contains(needle, ignoreCase = true) == true) &&
                 when (query.filter) {
                     UnifiedTransferFilter.ALL -> true
                     UnifiedTransferFilter.STARTED -> item.started == true

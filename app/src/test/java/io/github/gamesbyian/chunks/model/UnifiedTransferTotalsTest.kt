@@ -26,7 +26,7 @@ class UnifiedTransferTotalsTest {
         assertEquals(1, totals.rowsWithUnknownRate)
         assertEquals(1, totals.excludedEnvironments)
         assertEquals("Live total: ↓ 1.0 KiB/s · ↑ 10 B/s across 3 transfers · 1 with rates not reported · " +
-            "1 environment(s) excluded (not fully observed)", combinedTotalsText(totals))
+            "1 environment excluded (not fully observed)", combinedTotalsText(totals))
     }
 
     @Test fun incompleteOrUnobservedLiveInventoriesCannotInflateAggregateRates() {
@@ -52,7 +52,7 @@ class UnifiedTransferTotalsTest {
         assertEquals(8, totals.uploadBytesPerSecond)
         assertEquals(3, totals.excludedEnvironments)
         assertEquals(0, totals.rowsWithUnknownRate)
-        assertTrue(combinedTotalsText(totals).contains("3 environment(s) excluded (not fully observed)"))
+        assertTrue(combinedTotalsText(totals).contains("3 environments excluded (not fully observed)"))
         assertEquals("Live, list may be incomplete",
             io.github.gamesbyian.chunks.availabilityText(sources[2]))
     }

@@ -46,10 +46,10 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             return connection.inputStream.use { it.readNBytes(limit + 1) }.also { require(it.size <= limit) }
         } finally { connection.disconnect() }
     }
-    private fun await(what: String, condition: () -> Boolean) {
+    private fun await(what: String, detail: () -> String = { "" }, condition: () -> Boolean) {
         val end = System.nanoTime() + 90_000_000_000
         while (!condition()) {
-            if (System.nanoTime() > end) fail("HTTPS phone journey: $what")
+            if (System.nanoTime() > end) fail("HTTPS phone journey: $what" + runCatching { detail() }.getOrDefault("").let { if (it.isEmpty()) "" else " ($it)" })
             Thread.sleep(150)
         }
     }
@@ -68,7 +68,12 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         if (text == "Stop") stage("stop-ready")
         rule.onNodeWithText(text).performScrollTo()
         if (text == "Stop") stage("stop-visible")
-        rule.onNodeWithText(text).performClick()
+        // A semantic click cannot miss when the list re-lays out between lookup and touch
+        // injection (a lost Start tap left no permission prompt). Touch only if not clickable.
+        val node = rule.onNodeWithText(text)
+        if (androidx.compose.ui.semantics.SemanticsActions.OnClick in node.fetchSemanticsNode().config)
+            node.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        else node.performClick()
         if (text == "Stop") stage("stop-clicked")
     }
     private fun type(label: String, value: String) {
@@ -200,7 +205,10 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     val allow = androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(
                         ".*:id/permission_allow_button"))
                     val button = device.wait(androidx.test.uiautomator.Until.findObject(allow), 20_000)
-                    assertNotNull("Expected Android's notification permission prompt", button)
+                    assertNotNull("Expected Android's notification permission prompt (foreground=" +
+                        device.currentPackageName + " granted=" + (context.checkSelfPermission(
+                        android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED) +
+                        " engineStopped=" + LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped + ")", button)
                     button.click()
                     assertTrue("Notification prompt must dismiss before app controls are used",
                         device.wait(androidx.test.uiautomator.Until.gone(allow), 10_000))
@@ -211,6 +219,13 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertTrue(phone.connectPeer(preview.infoHashV1, InetSocketAddress("127.0.0.1", seed.listenPort())))
                 await("actual peer bytes and verified piece progression") {
                     phone.status(preview.infoHashV1)?.let { it.doneBytes >= piece.size && it.payloadDownloadedBytes > 0 } == true
+                }
+                // doneBytes counts *any* verified piece: the workflow's second real peer serves the
+                // whole file, so other pieces can finish while piece 0 is still partial (observed:
+                // done=22 MB, only 48 KiB of piece 0 on disk). Wait for piece 0 itself before Stop.
+                val firstPieceFile = File(destination, preview.name)
+                await("piece 0 itself on disk before Stop") {
+                    firstPieceFile.isFile && firstPieceFile.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
                 }
                 stage("pieces-received")
                 assertFalse("An Android permission prompt cannot cover the Stop action",
@@ -226,7 +241,15 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     phone.saveResumeDataFor(preview.infoHashV1, 30_000))
                 stage("checkpoint-confirmed")
                 val target = File(destination, preview.name)
-                await("independent piece byte readback") {
+                // On timeout, say what was actually on disk: absent, short, zeros or different bytes.
+                await("independent piece byte readback", detail = {
+                    val head = if (target.isFile) target.inputStream().use { it.readNBytes(piece.size) } else ByteArray(0)
+                    val matching = head.indices.firstOrNull { i -> i >= piece.size || head[i] != piece[i] } ?: head.size
+                    val st = phone.status(preview.infoHashV1)
+                    "exists=${target.exists()} file=${target.isFile} length=${target.length()} read=${head.size} " +
+                        "matchingPrefix=$matching zeroHead=${head.isNotEmpty() && head.all { it == 0.toByte() }} " +
+                        "done=${st?.doneBytes} progressPpm=${st?.progressPpm} stopped=${st?.stopped} piece=${piece.size}"
+                }) {
                     target.isFile && target.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
                 }
                 val status = requireNotNull(phone.status(preview.infoHashV1))

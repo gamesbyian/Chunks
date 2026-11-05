@@ -135,7 +135,10 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
     if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(match?.ref, state.userArtwork, state.poster == null) {
         if (match != null && state.userArtwork == null && state.poster == null) onRequestPoster()
     }
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) {
+    // Narrow screen with large text: art above the words, so the title is not squeezed beside it.
+    androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
+    val stacked = maxWidth < 360.dp && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.3f
+    val content: @Composable () -> Unit = {
         val poster = state.poster?.takeIf { showArtwork && state.mayShowRealArt && state.userArtwork == null }
         if (poster != null) {
             val image = remember(poster) { poster.asImageBitmap() }
@@ -147,7 +150,7 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                 modifier = Modifier.width(96.dp).aspectRatio(aspect).clip(shape)
                     .border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape).clearAndSetSemantics {})
         } else TransferMediaArtwork(state, 96.dp, showArtwork = showArtwork)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (match != null) {
                 Text(match.title, style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text, fontWeight = FontWeight.Bold,
                     maxLines = 3, overflow = TextOverflow.Ellipsis)
@@ -156,9 +159,12 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                 val r = state.recognition
                 Text(r.title?.let { "Looks like: $it" } ?: "Not identified", style = MaterialTheme.typography.titleSmall,
                     color = ChunksColors.Text, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                Text(state.displayKind.label + (r.year?.let { " · $it" } ?: "") +
-                    (if (r.season != null && r.episode != null) " · S%02dE%02d".format(r.season, r.episode) else ""),
-                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+                // "Transfer" (unknown kind) says nothing; show only facts that were recognized.
+                listOfNotNull(state.displayKind.takeIf { it != MediaKind.UNKNOWN }?.label, r.year?.toString(),
+                    if (r.season != null && r.episode != null) "S%02dE%02d".format(r.season, r.episode) else null)
+                    .joinToString(" · ").takeIf { it.isNotEmpty() }?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+                    }
             }
             MediaStateChip(state.state)
             recognizedFacts(state)?.let {
@@ -173,6 +179,9 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                 Text(if (match == null) "Identify…" else "Change match or artwork…")
             }
         }
+    }
+    if (stacked) Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) { content() }
+    else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.Top) { content() }
     }
 }
 
@@ -430,16 +439,18 @@ private fun CandidateList(items: List<MediaCandidate>, selected: MediaCandidate?
 }
 
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 private fun ManualSearch(state: TransferMediaUiState, onSearch: (MediaKind, String, Int?) -> Unit) {
     var text by rememberSaveable(state.key.value) { mutableStateOf(state.recognition.title ?: "") }
     var year by rememberSaveable(state.key.value) { mutableStateOf(state.recognition.year?.toString() ?: "") }
     var kind by rememberSaveable(state.key.value) { mutableStateOf(searchKindFor(state.recognition.kind)) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Search by title", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Wraps so every kind stays reachable at 320dp/200%; 48dp targets.
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(MediaKind.MOVIE, MediaKind.TV_SERIES, MediaKind.MUSIC_ALBUM, MediaKind.BOOK).forEach { k ->
                 val sel = kind == k
-                Text(k.label, Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(10.dp))
+                Text(k.label, Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(10.dp))
                     .border(BorderStroke(1.dp, if (sel) ChunksColors.Cyan else ChunksColors.Outline), RoundedCornerShape(10.dp))
                     .background(if (sel) ChunksColors.Muted else ChunksColors.Background)
                     .selectable(sel, role = Role.RadioButton) { kind = k }.padding(horizontal = 10.dp, vertical = 10.dp),
