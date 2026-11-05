@@ -129,4 +129,22 @@ class PhoneMagnetDraftCheckTest {
         rule.onNode(hasSetTextAction() and hasText(typed)).assertExists()
         rule.onNodeWithText("Magnet for: copied").assertDoesNotExist()
     }
+
+    @Test fun returningToChunksFillsAMagnetCopiedElsewhere() {
+        openAdd()
+        rule.waitForIdle()
+        val link = "magnet:?xt=urn:btih:" + "9".repeat(40) + "&dn=from-browser"
+        rule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.STARTED)
+        copy(link)
+        rule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        rule.waitForIdle()
+        rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
+        rule.onNodeWithText("Filled from your clipboard. Nothing is added until you confirm.").assertExists()
+        // Cleared once, the same copied magnet is not offered again on the next return.
+        rule.onNode(hasText("Clear") and hasClickAction()).performScrollTo().performClick()
+        rule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.STARTED)
+        rule.activityRule.scenario.moveToState(androidx.lifecycle.Lifecycle.State.RESUMED)
+        rule.waitForIdle()
+        rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
+    }
 }
