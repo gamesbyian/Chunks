@@ -40,14 +40,26 @@ class CombinedFooterNavigationTest {
             900, if (i % 2 == 0) 900 else 100, i % 3 == 0, "/d", 0, 10)
     }
 
-    private fun show() = rule.setContent {
+    private fun show(pendingSharedMagnet: androidx.compose.runtime.State<Boolean> =
+        androidx.compose.runtime.mutableStateOf(false)) = rule.setContent {
         ChunksTheme { Surface(color = ChunksColors.Background) {
             CombinedTransfersScreen(
                 server = CombinedServerSource(scope, rows, stale = false, fullView = true,
                     observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gate),
                 savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                pendingSharedMagnet = pendingSharedMagnet.value,
                 onConnections = { connections++ })
         } }
+    }
+
+    @Test fun sharedMagnetRevealsDestinationAfterPriorDeepScrollWithoutAddMutation() {
+        val shared = androidx.compose.runtime.mutableStateOf(false)
+        show(shared)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
+        rule.runOnIdle { shared.value = true }
+        rule.waitForIdle()
+        rule.onNodeWithText("Choose a destination for the shared magnet").assertIsDisplayed()
+        assertTrue("scrolling to the Add choice must not run a transfer command", commands.isEmpty())
     }
 
     @Test fun footerAddReturnsToExplicitDestinationsFromDeepInTheList() {

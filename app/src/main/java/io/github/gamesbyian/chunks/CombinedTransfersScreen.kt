@@ -709,6 +709,12 @@ internal fun CombinedTransfersScreen(
     }
 
     val listState = listState ?: rememberLazyListState()
+    // A shared Android magnet must expose its exact destination choices even
+    // when the Combined list was last visited far below its Add card. This
+    // changes only the view position, never authorizes an Add or remote call.
+    LaunchedEffect(pendingSharedMagnet) {
+        if (pendingSharedMagnet) listState.scrollToItem(COMBINED_ADD_ITEM_INDEX)
+    }
     // Reading LazyListState.layoutInfo during composition creates a feedback
     // loop: layout publishes info, composition reads it, then remeasures.
     // Capture only actual size changes and use stable scroll state for visibility.
