@@ -934,11 +934,11 @@ internal fun CombinedTransfersScreen(
                 UnifiedTransferFilter.ATTENTION -> "Needs attention"
             }
             OutlinedButton(
-                onClick = { showingViewOptions = !showingViewOptions },
+                onClick = { showingViewOptions = !showingViewOptions; if (!showingViewOptions) showingSortOptions = false },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) {
-                Text((if (showingViewOptions) "Hide" else "Choose") +
-                    " environments & filters · $scopeName · $filterName")
+                Text((if (showingViewOptions) "Hide" else "Refine") +
+                    " transfers · $scopeName · $filterName")
             }
             // Search has its own clear affordance; do not insert a second button
             // above the text field as the user types and shift its focus/position.
@@ -978,7 +978,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
         }
-        item {
+        if (showingViewOptions || query.search.isNotBlank()) item {
             ClearableTransferSearchField(
                 value = query.search,
                 onValueChange = {
@@ -1016,7 +1016,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
         }
-        item {
+        if (showingViewOptions) item {
             OutlinedButton(
                 onClick = { showingSortOptions = !showingSortOptions },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -1027,7 +1027,7 @@ internal fun CombinedTransfersScreen(
                     (if (query.groupByEnvironment) " · By environment" else " · Together"))
             }
         }
-        if (showingSortOptions) item {
+        if (showingViewOptions && showingSortOptions) item {
             Text("Sort by", style = MaterialTheme.typography.labelLarge)
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
