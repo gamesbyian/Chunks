@@ -61,8 +61,8 @@ class CombinedTransfersLargeTextTest {
         show(opened, backed)
         rule.onNodeWithText("All environments").assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Choose environments & filters", substring = true))
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+            hasText("Refine transfers", substring = true))
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
         // This label lives inside a lazy list item, not a nested ScrollState.
@@ -96,6 +96,8 @@ class CombinedTransfersLargeTextTest {
         val opened = intArrayOf(0)
         val backed = intArrayOf(0)
         show(opened, backed)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Refine transfers", substring = true))
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change sort & grouping", substring = true))
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Group by environment"))
@@ -121,8 +123,8 @@ class CombinedTransfersLargeTextTest {
         val list = rule.onNode(hasScrollToIndexAction())
         // The current-value summary opens all chips on demand, without
         // horizontal scrolling or losing the saved environment selection.
-        list.performScrollToNode(hasText("Choose environments & filters", substring = true))
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        list.performScrollToNode(hasText("Refine transfers", substring = true))
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         list.performScrollToNode(hasText("Attention"))
         rule.onNodeWithText("Attention").performClick()
         assertEquals(UnifiedTransferFilter.ATTENTION,

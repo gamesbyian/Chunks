@@ -55,13 +55,15 @@ class CombinedDetailIdentityTest {
                 } }
             }
         }
-        val target = "Details for ${row.name} on ${serverEnvironmentLabel(scope)}"
+        val expand = "Expand ${row.name} on ${serverEnvironmentLabel(scope)}"
         rule.waitUntil(10_000) {
             runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(target))
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(expand))
             }.isSuccess
         }
-        rule.onNodeWithContentDescription(target).performClick()
+        rule.onNodeWithContentDescription(expand).performClick()
+        val target = "All details for ${row.name} on ${serverEnvironmentLabel(scope)}"
+        rule.onNodeWithContentDescription(target).performScrollTo().performClick()
         rule.onNodeWithText("Environment: ${serverEnvironmentLabel(scope)}").performScrollTo().assertExists()
         // Palette preferences are read off-main; require the actual rendered result.
         fun colourPixels(): Int {

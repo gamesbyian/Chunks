@@ -70,12 +70,12 @@ class CombinedCompactLabelTest {
                 savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
         } } }
         val exact = serverEnvironmentLabel(scope)
-        val details = "Details for Big Archive on $exact"
+        val details = "Expand Big Archive on $exact"
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(details))
         rule.onNodeWithContentDescription(details).assertExists()
         assertTrue("row shows the compact origin",
-            rule.onAllNodesWithText("Server · ian @ box.example").fetchSemanticsNodes().isNotEmpty())
+            rule.onAllNodesWithText("Server · ian @ box.example", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
         assertTrue("the RPC path is not repeated in the row",
-            rule.onAllNodesWithText(exact).fetchSemanticsNodes().isEmpty())
+            rule.onAllNodesWithText(exact, useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
     }
 }

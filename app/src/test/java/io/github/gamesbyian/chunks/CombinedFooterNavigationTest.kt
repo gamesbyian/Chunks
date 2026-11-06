@@ -64,11 +64,11 @@ class CombinedFooterNavigationTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
         rule.onNodeWithContentDescription("Options").assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Hide environments & filters", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("Hide transfers", substring = true).assertIsDisplayed()
         rule.onNodeWithText("Show").assertIsDisplayed()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Choose environments & filters", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("Refine transfers", substring = true).assertIsDisplayed()
         assertTrue(commands.isEmpty())
     }
 

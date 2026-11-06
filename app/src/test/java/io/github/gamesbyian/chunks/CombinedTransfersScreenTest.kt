@@ -74,11 +74,24 @@ class CombinedTransfersScreenTest {
         } }
     }
 
+    @Test fun defaultCombinedTransfersDefersSearchAndSortUntilRequested() {
+        show()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
+        rule.onNodeWithText("Change sort & grouping", substring = true).assertDoesNotExist()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Search names or hashes")
+        rule.onNodeWithText("Change sort & grouping", substring = true).assertExists()
+        assertTrue(commands.isEmpty())
+    }
+
     @Test fun detailFocusResolvesExactServerAndHashWithoutLifecycleCommands() {
         show()
-        val target = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
-        revealDescription(target)
-        rule.onNodeWithContentDescription(target).performClick()
+        val origin = serverEnvironmentLabel(aliasScope)
+        val expand = "Expand Big Archive on " + origin
+        revealDescription(expand)
+        rule.onNodeWithContentDescription(expand).performClick()
+        rule.onNodeWithContentDescription("All details for Big Archive on " + origin).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: " + serverEnvironmentLabel(aliasScope)).assertExists()
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
@@ -90,17 +103,19 @@ class CombinedTransfersScreenTest {
     @Test fun compactRowsKeepExactScopedDetailsWhileExtraActionsNeedDisclosure() {
         show()
         val label = serverEnvironmentLabel(aliasScope)
-        val more = "More actions for Big Archive on " + label
-        revealDescription(more)
-        rule.onNodeWithContentDescription(more).assertExists()
+        val expand = "Expand Big Archive on " + label
+        revealDescription(expand)
+        rule.onNodeWithContentDescription(expand).assertExists()
+        rule.onNodeWithText("All details").assertDoesNotExist()
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
-        // Disclosure changes only this exact source/hash row. No Start/Stop RPC.
-        rule.onNodeWithContentDescription(more).performClick()
+        // The entire transfer body expands without a Start/Stop RPC.
+        rule.onNodeWithContentDescription(expand).performClick()
+        rule.onNodeWithContentDescription("All details for Big Archive on " + label).assertExists()
+        rule.onNodeWithText("Size 900 B", substring = true).assertExists()
         rule.onNodeWithText("Open in its list").assertExists()
-        rule.onNodeWithContentDescription(
-            "Hide extra actions for Big Archive on " + label).performClick()
+        rule.onNodeWithContentDescription("Collapse Big Archive on " + label).performClick()
+        rule.onNodeWithText("All details").assertDoesNotExist()
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
-        rule.onNodeWithContentDescription("Details for Big Archive on " + label).assertExists()
         assertTrue("Read-only disclosure may never issue lifecycle commands", commands.isEmpty())
     }
 
@@ -134,9 +149,9 @@ class CombinedTransfersScreenTest {
         seen(serverEnvironmentLabel(aliasScope) + ": Live · 2 transfers")
         seen("Showing 2 · some environments are missing or out of date")
         seen("Big Archive")
-        seen("Sharing · 100% · 900 B · ↓ 0 B/s · ↑ 10 B/s")
+        seen("Sharing · 100% · ↓ 0 B/s · ↑ 10 B/s · Ratio not reported")
         seen("Small Episode")
-        seen("Stopped · 50% · 10 B · ↓ not reported · ↑ not reported")
+        seen("Stopped · 50% · ↓ not reported · ↑ not reported · Ratio not reported")
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-all.png")
         // A read-only view must not bring up the phone engine for a remote-only user.
         assertNull(LocalEngineHolder.current())
@@ -144,6 +159,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun sortDirectionScopeAndGroupingPersistAcrossReopen() {
         show()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         revealText("Change sort & grouping")
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         revealText("Size")
@@ -176,9 +193,7 @@ class CombinedTransfersScreenTest {
         val directionSummary = "Hide sort & grouping · Size · Smallest first · Together"
         revealText(directionSummary)
         rule.onNodeWithText(directionSummary).assertExists()
-        // Disclose the single selected server; the compact summary always identifies active scope.
-        revealText("Choose environments & filters")
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        // Refinement is already disclosed; use the existing exact-source scope controls.
         // The view chip shows the compact unique origin; the group heading below
         // retains the exact address-bearing label.
         revealText(compactServerLabel(aliasScope))
@@ -201,8 +216,12 @@ class CombinedTransfersScreenTest {
 
     @Test fun clearSearchRestoresAllMatchesWithoutChangingSelectedEnvironments() {
         show()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
+        revealText("Showing 1 of 2")
         rule.onNodeWithText("Showing 1 of 2", substring = true).assertExists()
         rule.onNodeWithText("New downloads may not match this search.", substring = true)
             .assertExists()
@@ -225,13 +244,18 @@ class CombinedTransfersScreenTest {
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
         show()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("not-in-any-transfer")
+        revealText("Showing 0")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
         revealText("New downloads may not match this search.")
         rule.onNodeWithText("New downloads may not match this search.", substring = true)
             .assertExists()
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").performClick()
+        revealText("Showing 2")
         rule.onNodeWithText("Showing 2", substring = true).assertExists()
         // Rows below the recovery button are lazy and may not be composed yet.
         val viewport = rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
@@ -251,8 +275,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun entirelyHiddenFilteredSearchExplainsWhyAddMayNotAppear() {
         show()
-        revealText("Choose environments & filters")
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         revealText("Stopped")
         rule.onNodeWithText("Stopped").performClick()
         revealText("Search names or hashes")
@@ -271,8 +295,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {
         show()
-        revealText("Choose environments & filters")
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         rule.onNodeWithText("Filter transfers").assertExists()
         rule.onNodeWithText("Stopped").performClick()
         revealText("Small Episode")
