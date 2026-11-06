@@ -308,8 +308,11 @@ private fun ChunksApp(
     // no selection, confirmation or command state.
     val phoneListScroll = rememberScrollState()
     val phoneSearch = rememberSaveable { mutableStateOf("") }
-    // Process memory only (never instance state): a magnet may hold a passkey.
-    val phoneMagnetDraft = remember { mutableStateOf("") }
+    // The single Add source draft belongs to the app, never to the currently
+    // displayed phone/server Add form. Both adapters edit the same source;
+    // neither browsing filters nor opening a screen silently authorizes Add.
+    // Process memory only, never SavedState/preferences: links can hold passkeys.
+    val addSourceDraft = remember { mutableStateOf("") }
     val phoneAddPlace = rememberSaveable { mutableStateOf<String?>(null) }
     val phoneAddFolder = rememberSaveable { mutableStateOf("") }
     val phoneAddStart = rememberSaveable { mutableStateOf(true) }
@@ -329,7 +332,10 @@ private fun ChunksApp(
     var files by remember { mutableStateOf<List<RemoteFile>?>(null) }
     var filesError by remember { mutableStateOf<String?>(null) }
     var filesLoading by remember { mutableStateOf(false) }
-    var magnet by remember { mutableStateOf("") }
+    // Remote Add and phone Add share the same editable source, but retain
+    // independent capability/Place/Start checks until their submit coordinator
+    // is consolidated. No second magnet string is allowed to diverge here.
+    var magnet by addSourceDraft
     // Process-memory-only Android Share source awaiting an explicit exact destination.
     // A magnet can contain tracker passkeys: never save/log/render its raw value.
     var pendingSharedMagnet by remember { mutableStateOf<String?>(null) }
@@ -651,7 +657,7 @@ private fun ChunksApp(
             ) {
                 LocalEngineScreen(
                     listScroll = phoneListScroll, searchState = phoneSearch,
-                    magnetDraftState = phoneMagnetDraft,
+                    magnetDraftState = addSourceDraft,
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     onBack = { leavePhone() },
                     onSeedingRules = { openFromPhone(Section.SEEDING) },
@@ -972,7 +978,7 @@ private fun ChunksApp(
                 ) {
                     LocalEngineScreen(
                         listScroll = phoneListScroll, searchState = phoneSearch,
-                        magnetDraftState = phoneMagnetDraft,
+                        magnetDraftState = addSourceDraft,
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
@@ -1427,6 +1433,7 @@ private fun ChunksApp(
                         finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
                         environmentLabel = serverEnvironmentLabel(aliasScope),
                         onMagnet = { magnet = it }, onDestination = { draftPath = it },
+                        addStartState = phoneAddStart,
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->

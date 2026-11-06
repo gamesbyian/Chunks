@@ -85,7 +85,9 @@ fun VerifiedAddScreen(
     /** View only a positively verified hash in this authenticated server inventory. */
     onViewVerifiedTransfer: (String) -> Unit = {},
     /** Reports each positively verified Add hash once, so the list can explain a hidden result. */
-    onVerifiedAdd: (String) -> Unit = {}
+    onVerifiedAdd: (String) -> Unit = {},
+    /** Parent-owned choice shared with phone Add; no extra Save/Apply interaction. */
+    addStartState: androidx.compose.runtime.MutableState<Boolean>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -125,7 +127,9 @@ fun VerifiedAddScreen(
             kotlinx.coroutines.delay(2_000L)
         }
     }
-    var startAfterAdd by remember { mutableStateOf(true) }
+    val defaultStartHolder = remember { mutableStateOf(true) }
+    val startHolder = addStartState ?: defaultStartHolder
+    var startAfterAdd by startHolder
     // Optional read-only shortcuts, keyed to the authenticated Add destination.
     // Never open another account's saved folder suggestions on a scope change.
     var showFolderShortcuts by rememberSaveable(finishInOrderScope, environmentLabel) {
@@ -573,7 +577,10 @@ fun VerifiedAddScreen(
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val orderScope = finishInOrderScope?.takeIf {
                                 bytes != null && finishInOrderAfterAdd && (selectedTorrent?.fileCount ?: 0) >= 2 }
-                            nativeStartedAttempt = startAfterAdd && orderScope == null
+                            // The shared Add draft may change after navigating away;
+                            // only this reviewed click may determine Start for this RPC.
+                            val requestedStart = startAfterAdd
+                            nativeStartedAttempt = requestedStart && orderScope == null
                             var orderNote: String? = null
                             scope.launch {
                                 try {
@@ -581,12 +588,12 @@ fun VerifiedAddScreen(
                                     // load.raw_start. Use this native path for default
                                     // Start-after-Add, retaining stopped-first for
                                     // reviewed Finish in Order priorities.
-                                    val result = if (startAfterAdd && orderScope == null) {
+                                    val result = if (requestedStart && orderScope == null) {
                                         if (bytes != null) remote.loadStartedTorrentBytes(
                                             bytes, plan.destination, plan.useServerDefault)
                                         else remote.loadStarted(plan)
                                     } else RemoteAddStarter.run(
-                                        startAfterVerifiedAdd = startAfterAdd,
+                                        startAfterVerifiedAdd = requestedStart,
                                         add = {
                                             val added = if (bytes != null) remote.loadStoppedTorrentBytes(
                                                 bytes, plan.destination, plan.useServerDefault)

@@ -45,6 +45,43 @@ class RemoteMagnetDraftCheckTest {
     private fun reveal(text: String) =
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
 
+    @Test fun processOwnedSourceSurvivesSwitchingBetweenAddPresentationRoutes() {
+        // The phone and server forms receive the *same* owner-provided state.
+        // This test uses a deliberately disconnected server: source continuity
+        // alone must never attempt an RPC or authorize a torrent Add.
+        val source = mutableStateOf("magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=PhoneDraft")
+        val onServer = mutableStateOf(false)
+        val startChoice = mutableStateOf(true)
+        val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:9/RPC2", "", ""))
+        rule.setContent {
+            ChunksTheme { Surface {
+                if (onServer.value) {
+                    VerifiedAddScreen(remote, magnet = source.value, destination = "/srv/one-off",
+                        onMagnet = { source.value = it }, onDestination = {},
+                        onBack = {}, onComplete = {},
+                        onMutationStarted = { error("Viewing a shared source cannot mutate a server") },
+                        onMutationSettled = {}, addStartState = startChoice)
+                } else {
+                    androidx.compose.material3.Text("Phone Add source is held by the app")
+                }
+            } }
+        }
+        rule.runOnIdle { onServer.value = true }
+        reveal("Magnet for: PhoneDraft")
+        rule.onNodeWithText("Magnet for: PhoneDraft").assertExists()
+        reveal("Start downloading after verified Add (recommended)")
+        rule.onNodeWithText("Start downloading after verified Add (recommended)").performClick()
+        rule.runOnIdle { org.junit.Assert.assertFalse("Start selection is shared with phone", startChoice.value) }
+        rule.runOnIdle {
+            onServer.value = false
+            source.value = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=EditedOnPhone"
+        }
+        rule.runOnIdle { onServer.value = true }
+        reveal("Magnet for: EditedOnPhone")
+        rule.onNodeWithText("Magnet for: EditedOnPhone").assertExists()
+        rule.runOnIdle { org.junit.Assert.assertFalse("Unmount must not reset Start intent", startChoice.value) }
+    }
+
     @Test fun base32MagnetIsReviewedAsItsStandardHashAtLargeText() {
         show("magnet:?xt=urn:btih:3WBFL3G4PSSV7MF37AJSHWDQMLNR63I4&dn=Sintel")
         reveal("Magnet for: Sintel")
