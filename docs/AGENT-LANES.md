@@ -1,6 +1,8 @@
 # Chunks: agent concurrency and ownership
 
-> **Next sole-agent delegation (2026-11-05 UTC):** Codex may own the next installed test-reliability and media-provider UI acceptance campaign, including relevant Android, workflow, fixture and canonical tracking files. Claude is paused and no source-file leases remain, per owner report; main `f7364e5` had zero open PRs at reconciliation. Read [Codex handoff](CODEX-RELIABILITY-MEDIA-HANDOFF-2026-11-05.md) before claiming work. Recheck live state before writing. The earlier Claude and P0 rosters below are dated history, not active locks.
+> **Current ownership checkpoint 2026-11-06:** No agents are working per owner report and no PRs are open at live check (main `1aea0c2e`). There are **no active source-file leases**. Any new agent should read [AGENTS](../AGENTS.md), the single [WORK-QUEUE](WORK-QUEUE.md), live PRs and branch state, then claim or coordinate only the new slice. All named Codex/Claude assignments, file exclusions and rosters below are dated *historical* directions, not current work allocations. UX #1333, Options-spec #1334, first-run #1335 and media harness #1336 are merged.
+
+
 
 
 > **Current status (2026-11-05 UTC):** The owner-directed sole-agent campaign [#1301](https://github.com/gamesbyian/Chunks/pull/1301) is merged after one assembled qualification. There are no inherited UX file leases. [Final UX reconciliation](UX-FINAL-RECONCILIATION-2026-11-05.md) and [WORK-QUEUE](WORK-QUEUE.md) replace the old Claude/Codex rosters and dual-agent dispatch. New concurrent work needs fresh ownership; historical P0 workstream descriptions below do not assign live agents.
