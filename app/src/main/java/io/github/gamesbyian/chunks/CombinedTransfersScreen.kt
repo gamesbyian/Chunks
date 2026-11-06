@@ -312,7 +312,9 @@ internal fun CombinedTransfersScreen(
      */
     searchState: androidx.compose.runtime.MutableState<String>? = null,
     /** Caller-supplied verified Add identity, never inferred from a title or an inventory delta. */
-    recentlyAddedTransfer: UnifiedTransferKey? = null
+    recentlyAddedTransfer: UnifiedTransferKey? = null,
+    /** The same app-wide Connections destination as phone and signed-in-server lists. */
+    onConnections: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -669,6 +671,20 @@ internal fun CombinedTransfersScreen(
     val sources = remember(rawSources, aliasScopes, currentAliases) {
         CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
+    // Full authorized inventory, not just composed LazyColumn rows. This catches external
+    // additions and reconnects to any accessible saved rTorrent environment.
+    // Locked/stale/offline sources are never used for third-party identification.
+    val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
+    val mediaInventory = remember(sources) {
+        sources.filter { it.availability == EnvironmentAvailability.LIVE &&
+            it.observedAtEpochMillis != null }
+            .flatMap { source -> source.transfers.map { row ->
+                io.github.gamesbyian.chunks.media.MediaTransferKey.of(row.key) to row.originalName
+            } }
+    }
+    LaunchedEffect(mediaController, mediaInventory) {
+        mediaController?.enrichInventory(mediaInventory)
+    }
     val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
     val result = remember(sources, query, mediaTitles) {
         UnifiedTransferCatalog.query(sources, query) { key ->
@@ -934,11 +950,11 @@ internal fun CombinedTransfersScreen(
                 UnifiedTransferFilter.ATTENTION -> "Needs attention"
             }
             OutlinedButton(
-                onClick = { showingViewOptions = !showingViewOptions },
+                onClick = { showingViewOptions = !showingViewOptions; if (!showingViewOptions) showingSortOptions = false },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) {
-                Text((if (showingViewOptions) "Hide" else "Choose") +
-                    " environments & filters · $scopeName · $filterName")
+                Text((if (showingViewOptions) "Hide" else "Refine") +
+                    " transfers · $scopeName · $filterName")
             }
             // Search has its own clear affordance; do not insert a second button
             // above the text field as the user types and shift its focus/position.
@@ -978,7 +994,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
         }
-        item {
+        if (showingViewOptions || query.search.isNotBlank()) item {
             ClearableTransferSearchField(
                 value = query.search,
                 onValueChange = {
@@ -1016,7 +1032,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
         }
-        item {
+        if (showingViewOptions) item {
             OutlinedButton(
                 onClick = { showingSortOptions = !showingSortOptions },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -1027,7 +1043,7 @@ internal fun CombinedTransfersScreen(
                     (if (query.groupByEnvironment) " · By environment" else " · Together"))
             }
         }
-        if (showingSortOptions) item {
+        if (showingViewOptions && showingSortOptions) item {
             Text("Sort by", style = MaterialTheme.typography.labelLarge)
             FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1228,6 +1244,7 @@ internal fun CombinedTransfersScreen(
             showingViewOptions = !showingViewOptions
             batchScope.launch { listState.scrollToItem(COMBINED_VIEW_ITEM_INDEX) }
         },
+        onConnections = onConnections,
         addDescription = "Choose where to add a torrent"
     )
     } // measured footer + viewport
@@ -1287,6 +1304,29 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation, fresh: Boolean = 
         it.toDouble() / 1_000.0))
 } ?: emptyList()).joinToString(" · ")
 
+/**
+ * The permanently visible row states only the facts useful while scanning.
+ * Size/ETA and other details are disclosed by tapping the row. Unknown
+ * values remain explicitly unknown; the progress bar supplies the visual.
+ */
+internal fun combinedCompactRowFacts(row: UnifiedTransferObservation, fresh: Boolean = false): String = listOf(
+    if (row.metadataPending == true) "Fetching metadata" else when (row.started) {
+        true -> when {
+            row.progressPpm == 1_000_000 -> "Sharing"
+            fresh && (row.downloadBytesPerSecond ?: 0L) > 0L -> "Downloading"
+            else -> "Started"
+        }
+        false -> "Stopped"
+        null -> "State unknown"
+    },
+    row.progressPpm?.let { "${it / 10_000}%" } ?: "Progress unknown",
+    "↓ " + (row.downloadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),
+    "↑ " + (row.uploadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),
+    row.ratioThousandths?.let {
+        "Ratio " + String.format(java.util.Locale.US, "%.2f", it.toDouble() / 1_000.0)
+    } ?: "Ratio not reported"
+).joinToString(" · ")
+
 @Composable
 private fun CombinedTransferRow(
     row: UnifiedTransferObservation,
@@ -1319,35 +1359,23 @@ private fun CombinedTransferRow(
             modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically).semantics {
                 contentDescription = "Select ${row.displayName} on $environmentLabel"
             })
-        Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp),
+        Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp)
+            .clickable(role = Role.Button,
+                onClickLabel = if (expanded) "Collapse transfer" else "Expand transfer",
+                onClick = { expanded = !expanded })
+            .semantics {
+                contentDescription = (if (expanded) "Collapse " else "Expand ") +
+                    "${row.displayName} on $environmentLabel"
+                stateDescription = if (expanded) "Expanded" else "Collapsed"
+            },
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            // Thin collapsed rows: at ordinary text sizes Details/More share the
-            // origin line instead of adding a 48dp button row to every transfer.
-            // Enlarged text keeps them on their own row so the label is never squeezed.
-            val inlineActions = androidx.compose.ui.platform.LocalDensity.current.fontScale < 1.5f
-            val details: @Composable (Modifier) -> Unit = { m ->
-                val d = "Details for ${row.displayName} on $environmentLabel"
-                if (inlineActions) androidx.compose.material3.TextButton(onClick = onDetails,
-                    modifier = m.heightIn(min = 48.dp).semantics { contentDescription = d }) { Text("Details") }
-                else OutlinedButton(onClick = onDetails,
-                    modifier = m.heightIn(min = 48.dp).semantics { contentDescription = d }) { Text("Details") }
-            }
-            val more: @Composable (Modifier) -> Unit = { m ->
-                val d = if (expanded) "Hide extra actions for ${row.displayName} on $environmentLabel"
-                    else "More actions for ${row.displayName} on $environmentLabel"
-                val sm = m.heightIn(min = 48.dp).semantics {
-                    contentDescription = d
-                    stateDescription = if (expanded) "Expanded" else "Collapsed"
-                }
-                val label = if (expanded) "Less" else "More"
-                if (inlineActions) androidx.compose.material3.TextButton(
-                    onClick = { expanded = !expanded }, modifier = sm) { Text(label) }
-                else OutlinedButton(onClick = { expanded = !expanded }, modifier = sm) { Text(label) }
-            }
+            // The body of the transfer is its single expansion target. No permanent
+            // Details/More button bank takes space away from actual progress.
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelMedium,
                     color = labelColour, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                if (inlineActions) { details(Modifier); more(Modifier) }
+                Text(if (expanded) "Less" else "More", style = MaterialTheme.typography.labelSmall,
+                    color = ChunksColors.TextSecondary)
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1361,7 +1389,7 @@ private fun CombinedTransferRow(
                     })
             }
             // A time estimate needs a live, complete source; last-known facts never get one.
-            Text(combinedRowFacts(row, fresh = source?.canClaimCompleteLiveInventory == true),
+            Text(combinedCompactRowFacts(row, fresh = source?.canClaimCompleteLiveInventory == true),
                 style = MaterialTheme.typography.bodySmall)
             row.progressPpm?.let { ppm ->
                 ChunkedProgressBar(
@@ -1381,11 +1409,18 @@ private fun CombinedTransferRow(
             }
             if (row.hasError) Text("Needs attention in its own list",
                 color = ChunksColors.Red, style = MaterialTheme.typography.bodySmall)
-            if (!inlineActions) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                details(Modifier.weight(1f))
-                more(Modifier.weight(1f))
-            }
             if (expanded) {
+                Text(
+                    listOfNotNull(
+                        row.sizeBytes?.let { "Size " + Units.bytes(it) } ?: "Size not reported",
+                        combinedTimeLeft(row).takeIf { source?.canClaimCompleteLiveInventory == true },
+                        row.peers?.let { "$it peers" }
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(onClick = onDetails,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                        contentDescription = "All details for ${row.displayName} on $environmentLabel"
+                    }) { Text("All details") }
                 if (row.displayName != row.originalName) Text(
                     "Torrent name: " + row.originalName,
                     style = MaterialTheme.typography.bodySmall)

@@ -575,6 +575,7 @@ private fun ChunksApp(
                         shortLabel = profile.label)
                 },
                 onOpenPhone = { localFromCombined = true; section = Section.LOCAL },
+                onConnections = { section = Section.SERVER },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onAddToServer = if (server != null) ({ section = Section.ADD }) else null,
                 onOpenTransfer = { key ->
@@ -638,6 +639,8 @@ private fun ChunksApp(
                     onCreateTorrent = { openFromPhone(Section.CREATE) },
                     onZipReview = { openFromPhone(Section.ARCHIVES) },
                     onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
+                    showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
+                    onConnections = { section = Section.SERVER },
                     initialMagnet = phoneHandoffMagnet,
                     initialSearch = phoneSearchPrefill,
                     onSearchConsumed = { phoneSearchPrefill = null },
@@ -957,6 +960,7 @@ private fun ChunksApp(
                         onCreateTorrent = { openFromPhone(Section.CREATE) },
                         onZipReview = { openFromPhone(Section.ARCHIVES) },
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
+                        onConnections = { section = Section.SERVER },
                         initialMagnet = phoneHandoffMagnet,
                         initialSearch = phoneSearchPrefill,
                         onSearchConsumed = { phoneSearchPrefill = null },
@@ -1177,6 +1181,7 @@ private fun ChunksApp(
                     },
                     onCombined = { combinedFromPhone = false; section = Section.COMBINED },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
+                    onConnections = { section = Section.SERVER },
                     optionsOpen = optionsOpen,
                     onOptions = { optionsOpen = !optionsOpen; if (!optionsOpen) optionsSearch = "" },
                     onReviewNames = { section = Section.NAMES },
@@ -1769,6 +1774,7 @@ private fun TransfersScreen(
     onFilter: (TransferFilter) -> Unit, onClearView: () -> Unit, order: TransferOrder,
     direction: UnifiedSortDirection,
     onSort: (TransferOrder, UnifiedSortDirection) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
+    onConnections: () -> Unit,
     optionsOpen: Boolean, onOptions: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
     onInspectSnapshot: () -> Unit,
@@ -2236,6 +2242,7 @@ private fun TransfersScreen(
             onTransfers = { topControlScope.launch { listState.scrollToItem(0) } },
             onAdd = onAdd,
             onOptions = onOptions,
+            onConnections = onConnections,
             // Speak the exact Add target; the visible "+ Add" stays compact.
             addDescription = "Add torrent on " + serverEnvironmentLabel(aliasScope)
         )

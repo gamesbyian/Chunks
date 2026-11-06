@@ -83,7 +83,9 @@ class CombinedDetailSessionCapabilityTest {
         val label = serverEnvironmentLabel(aliasScope)
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("A single download"))
-        rule.onNodeWithContentDescription("Details for A single download on $label")
+        rule.onNodeWithContentDescription("Expand A single download on $label")
+            .performScrollTo().performClick()
+        rule.onNodeWithContentDescription("All details for A single download on $label")
             .performScrollTo().performClick()
         // Explicit disclosure is presentation-only: it must never probe a session.
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
@@ -140,7 +142,9 @@ class CombinedDetailSessionCapabilityTest {
         }
         val label = serverEnvironmentLabel(aliasScope)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("A single download"))
-        rule.onNodeWithContentDescription("Details for A single download on $label")
+        rule.onNodeWithContentDescription("Expand A single download on $label")
+            .performScrollTo().performClick()
+        rule.onNodeWithContentDescription("All details for A single download on $label")
             .performScrollTo().performClick()
         rule.onNodeWithText("Check server capabilities").assertDoesNotExist()
     }

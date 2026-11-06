@@ -40,7 +40,15 @@ class ClipboardPrefillInstrumentedTest {
                 .fetchSemanticsNodes().mapNotNull { it.config.getOrNull(SemanticsProperties.Text)?.joinToString() }
                 .take(40)
             // The CI receipt omits exception text; a screenshot in the uploaded atlas folder shows the state.
-            runCatching { saveDiagnostic("clipboard-diagnostic-" + what.replace(Regex("[^a-z]+"), "-")) }
+            // Retain only booleans in the screenshot name; never export clipboard contents.
+            var diagnosis = ""
+            rule.runOnUiThread {
+                diagnosis = "-enabled-${ClipboardMagnetPrefill.enabled(rule.activity)}" +
+                    "-focus-${rule.activity.hasWindowFocus()}" +
+                    "-usable-${ClipboardMagnetPrefill.decide(true, "", false, ClipboardMagnetPrefill.readText(rule.activity)) != null}" +
+                    "-intent-source-${rule.activity.intent?.let { it.data != null || it.hasExtra(android.content.Intent.EXTRA_STREAM) || it.hasExtra(android.content.Intent.EXTRA_TEXT) } == true}"
+            }
+            runCatching { saveDiagnostic("clipboard-diagnostic-" + what.replace(Regex("[^a-z]+"), "-") + diagnosis) }
             throw AssertionError("Waited for $what; screen showed: $shown", timeout)
         }
     }
@@ -81,7 +89,9 @@ class ClipboardPrefillInstrumentedTest {
             rule.onNode(hideAdd).performScrollTo().performClick()
             rule.waitForIdle()
         }
+        waitOrExplain("foreground window focus", 15_000) { rule.activity.hasWindowFocus() }
         rule.runOnUiThread {
+            org.junit.Assert.assertTrue("Clipboard prefill must be enabled for this journey", ClipboardMagnetPrefill.enabled(rule.activity))
             (rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                 .setPrimaryClip(ClipData.newPlainText("magnet", link))
         }

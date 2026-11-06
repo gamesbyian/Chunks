@@ -539,9 +539,9 @@ fun MediaPrivacySettingsPanel(
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (showHeading) Text("Media artwork & info", style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
         SettingSwitch("Online lookup", "Send cleaned-up titles to the providers below. Off by default.", settings.onlineLookupConsent) {
-            onChange(settings.copy(onlineLookupConsent = it, automaticLookup = settings.automaticLookup && it))
+            onChange(settings.copy(onlineLookupConsent = it, automaticLookup = it))
         }
-        SettingSwitch("Identify automatically", "Look up transfers as they appear, on unmetered networks only.",
+        SettingSwitch("Identify automatically", "Automatically identify eligible transfers after consent; you can turn this off.",
             settings.automaticLookup, enabled = settings.onlineLookupConsent) { onChange(settings.copy(automaticLookup = it)) }
         SettingSwitch("Show artwork", "Off shows built-in category art everywhere.", settings.showArtwork) { onChange(settings.copy(showArtwork = it)) }
         SettingSwitch("Download artwork", "Metadata can be used without downloading images.", settings.downloadArtwork) { onChange(settings.copy(downloadArtwork = it)) }

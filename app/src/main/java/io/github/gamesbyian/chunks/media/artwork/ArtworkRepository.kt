@@ -13,6 +13,7 @@ import io.github.gamesbyian.chunks.media.MediaHostPolicy
 import io.github.gamesbyian.chunks.media.MediaHttp
 import io.github.gamesbyian.chunks.media.MediaHttpException
 import io.github.gamesbyian.chunks.media.MediaHttpFailure
+import io.github.gamesbyian.chunks.media.whileAllowed
 import java.io.ByteArrayOutputStream
 
 sealed class ArtworkLoadResult {
@@ -106,10 +107,10 @@ class ArtworkRepository(
     fun unpin(source: ArtworkCandidate, role: ArtworkRole) = disk.unpin(key(source, role))
 
     /** Try candidates in deterministic order; the first usable one wins. */
-    fun load(candidates: List<ArtworkCandidate>, role: ArtworkRole, allowNetwork: Boolean, providerOrder: List<String> = emptyList()): ArtworkLoadResult {
+    fun load(candidates: List<ArtworkCandidate>, role: ArtworkRole, allowNetwork: Boolean, providerOrder: List<String> = emptyList(), requestAllowed: () -> Boolean = { true }): ArtworkLoadResult {
         val reasons = mutableListOf<String>()
         for (c in ArtworkSelector.order(candidates, role, providerOrder)) {
-            when (val r = loadOne(c, role, allowNetwork)) {
+            when (val r = loadOne(c, role, allowNetwork, requestAllowed)) {
                 is ArtworkLoadResult.Loaded -> return r
                 is ArtworkLoadResult.Unavailable -> reasons.addAll(r.reasons)
             }
@@ -170,7 +171,7 @@ class ArtworkRepository(
         val k = key(c, ArtworkRole.SQUARE); memory.remove(k); disk.remove(k)
     }
 
-    fun loadOne(c: ArtworkCandidate, role: ArtworkRole, allowNetwork: Boolean): ArtworkLoadResult {
+    fun loadOne(c: ArtworkCandidate, role: ArtworkRole, allowNetwork: Boolean, requestAllowed: () -> Boolean = { true }): ArtworkLoadResult {
         val local = c.provider == io.github.gamesbyian.chunks.media.LOCAL_PROVIDER
         val k = key(c, if (local) ArtworkRole.SQUARE else role)
         memory.get(k)?.let { return ArtworkLoadResult.Loaded(it, c, true) }
@@ -180,14 +181,17 @@ class ArtworkRepository(
         }
         if (local) return ArtworkLoadResult.Unavailable(listOf("Your image is no longer stored"))
         if (disk.isNegative(k)) return ArtworkLoadResult.Unavailable(listOf("Recently failed; will retry later"))
-        if (!allowNetwork) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
+        if (!allowNetwork || !requestAllowed()) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
         val policy = hostPolicyFor(c.provider) ?: return ArtworkLoadResult.Unavailable(listOf("Unknown artwork source"))
         val resp = try {
-            http.get(c.url, policy, mapOf("Accept" to "image/jpeg,image/png,image/webp"), ArtworkBytesPolicy.MAX_BYTES)
+            http.get(c.url, policy.whileAllowed(requestAllowed), mapOf("Accept" to "image/jpeg,image/png,image/webp"), ArtworkBytesPolicy.MAX_BYTES)
         } catch (e: MediaHttpException) {
+            // Revocation is not a provider/image failure and must not poison the shared cache.
+            if (!requestAllowed()) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
             if (e.failure != MediaHttpFailure.OFFLINE) disk.markFailed(k, NEGATIVE_TTL_MS)
             return ArtworkLoadResult.Unavailable(listOf(e.message ?: "Download failed"))
         }
+        if (!requestAllowed()) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
         if (resp.status == 404) { disk.markFailed(k, NOT_FOUND_TTL_MS); return ArtworkLoadResult.Unavailable(listOf("No image at source")) }
         if (resp.status != 200) { disk.markFailed(k, NEGATIVE_TTL_MS); return ArtworkLoadResult.Unavailable(listOf("Image source error ${resp.status}")) }
         val check = ArtworkBytesPolicy.check(resp.body, resp.header("Content-Type"))

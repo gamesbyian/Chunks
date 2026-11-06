@@ -36,6 +36,39 @@ import org.robolectric.annotation.GraphicsMode
 class AuthenticatedTransfersFooterTest {
     @get:Rule val rule = createComposeRule()
 
+    @Test fun fourDestinationFooterPutsConnectionsBesideOptionsWithoutIssuingAdd() {
+        var adds = 0
+        var connections = 0
+        var options = 0
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                ChunksTheme {
+                    Box(Modifier.width(412.dp)) {
+                        AuthenticatedTransfersFooter(
+                            optionsOpen = false,
+                            onTransfers = {},
+                            onAdd = { adds++ },
+                            onOptions = { options++ },
+                            onConnections = { connections++ },
+                            imeVisible = false
+                        )
+                    }
+                }
+            }
+        }
+        val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val conn = rule.onNodeWithContentDescription("Connections").getUnclippedBoundsInRoot()
+        val opts = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
+        assertTrue("Connections is secondary navigation, below Add", conn.top >= add.bottom)
+        assertTrue("Options shares a secondary row", conn.right <= opts.left)
+        assertTrue(conn.bottom - conn.top >= 48.dp)
+        assertTrue(opts.bottom - opts.top >= 48.dp)
+        rule.onNodeWithContentDescription("Connections").performClick()
+        assertEquals(1, connections)
+        assertEquals(0, adds)
+        assertEquals(0, options)
+    }
+
     @Test fun bottomControlsPreserveExactExistingCallbacksAndTouchTargets() {
         var transfers = 0
         var adds = 0
