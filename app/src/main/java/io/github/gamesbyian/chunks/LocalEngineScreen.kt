@@ -253,6 +253,10 @@ internal fun LocalEngineScreen(
     onZipReview: (() -> Unit)? = null,
     /** Opens the read-only All environments view; null hides the entry. */
     onCombined: (() -> Unit)? = null,
+    /** Only true when no remote connection OR saved remote profile exists. */
+    showFirstRunWelcome: Boolean = false,
+    /** The central Connections route; no connection is attempted by navigating. */
+    onConnections: (() -> Unit)? = null,
     initialMagnet: String? = null,
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
@@ -1553,7 +1557,17 @@ internal fun LocalEngineScreen(
             Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
-            Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+            if (showFirstRunWelcome && onConnections != null) {
+                NoTransfersWelcome(
+                    onAdd = {
+                        addExpanded = true
+                        addNavigationRevision++
+                    },
+                    onConnections = onConnections
+                )
+            } else {
+                Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+            }
         } else if (displayedTransfers.isEmpty()) {
             Text("No transfers match this search or filter.",
                 style = MaterialTheme.typography.bodySmall)
