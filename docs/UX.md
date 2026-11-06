@@ -1,5 +1,8 @@
 # Chunks interaction and accessibility contract
 
+> **Owner UX reset (2026-11-05):** [Cohesive UX and automatic artwork campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) governs screen-level hierarchy, reduction of redundant controls, feature placement and per-transfer correction. The six references and existing approved-for-development SVG library are the visual starting point. Where earlier text asks for always-visible toolbars, fields or expanded per-row controls beyond the minimum action/entry point, progressively disclose them in details/contextual menus without breaking the ability to reach functions. No changes to exact-environment identity, authorization or accessibility gates.
+
+
 ## Future Chunks-to-Chunks artwork handoff (deferred pending artwork decisions)
 
 A later Transfer Details > Share extension may include the sender's selected thumbnail/poster and alternate custom art in a portable Chunks bundle, with independently standard magnet/.torrent sharing. Receiver preview/import must preserve existing explicit local artwork choices unless separately authorized to replace them. Do not finalize radio choices, include-by-default behavior, automatic apply semantics or conflict screens until metadata identity, artwork selection, provenance, persistence and override policies are finalized and accepted in [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md). No image-rights interrogation or mandatory attribution prompts for small user-shared thumbnails. See [TRANSFER-SHARING](TRANSFER-SHARING.md). This is planned downstream UX, not current UI.
