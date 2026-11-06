@@ -1,5 +1,8 @@
 # Chunks vector asset library
 
+> **Owner development approval (2026-11-05):** The existing Chunks SVG asset collection is approved for use in app development and UX implementation without further per-asset owner sign-off. Agents should prefer these assets over inventing replacement visuals, choosing appropriate variants for each context. Owner-requested changes may be made iteratively after implementation. This approval does **not** certify pixel-exact fidelity, waive technical validation, or override native Android accessibility, contrast, responsive-layout and interaction requirements. Preserve the canonical launcher unless the owner explicitly changes it.
+
+
 [Reference PNGs](../reference-images/README.md) · [Production plan and per-category policy](../reference-images/SVG-ASSET-PRODUCTION-PLAN.md) · [Master inventory](master-inventory.json) · [Visual gallery](gallery.html)
 
 This is an original, **all-variants-preserved** SVG collection. No source PNG is modified or raster-embedded. All currently committed files are **vector drafts** awaiting reference-fidelity review. Their inclusion is not an endorsement over one another.
