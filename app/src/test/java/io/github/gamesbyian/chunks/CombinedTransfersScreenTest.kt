@@ -144,6 +144,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun sortDirectionScopeAndGroupingPersistAcrossReopen() {
         show()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         revealText("Change sort & grouping")
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         revealText("Size")
@@ -176,9 +178,7 @@ class CombinedTransfersScreenTest {
         val directionSummary = "Hide sort & grouping · Size · Smallest first · Together"
         revealText(directionSummary)
         rule.onNodeWithText(directionSummary).assertExists()
-        // Disclose the single selected server; the compact summary always identifies active scope.
-        revealText("Choose environments & filters")
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        // Refinement is already disclosed; use the existing exact-source scope controls.
         // The view chip shows the compact unique origin; the group heading below
         // retains the exact address-bearing label.
         revealText(compactServerLabel(aliasScope))
@@ -201,6 +201,9 @@ class CombinedTransfersScreenTest {
 
     @Test fun clearSearchRestoresAllMatchesWithoutChangingSelectedEnvironments() {
         show()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
         rule.onNodeWithText("Showing 1 of 2", substring = true).assertExists()
@@ -251,8 +254,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun entirelyHiddenFilteredSearchExplainsWhyAddMayNotAppear() {
         show()
-        revealText("Choose environments & filters")
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         revealText("Stopped")
         rule.onNodeWithText("Stopped").performClick()
         revealText("Search names or hashes")
@@ -271,8 +274,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {
         show()
-        revealText("Choose environments & filters")
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         rule.onNodeWithText("Filter transfers").assertExists()
         rule.onNodeWithText("Stopped").performClick()
         revealText("Small Episode")
