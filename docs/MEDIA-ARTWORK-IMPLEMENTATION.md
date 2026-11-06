@@ -1,5 +1,8 @@
 # Media artwork and metadata: implementation status and integration interface
 
+> **New implementation priority (2026-11-05):** Existing list tiles, Details Identify, Options and poster choice are already present. Next verify and build **automatic background identification/enrichment across phone and all connected rTorrent profiles** following established one-time third-party consent, at launch/reconnect/new transfer; persist overrides, reuse cache, and keep failures quiet. Integrate with the broader [cohesive UX/interaction redesign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md); do not add another global artwork-management panel or rebuild implemented controls. Installed provider proof remains independently outstanding.
+
+
 > **Current implementation/acceptance status (2026-11-05 UTC):** Merged #1309/#1311/#1314/#1317/#1318 provide actual row art across all environments, Options settings, local complete-file inspection, Similar Transfers with scope controls, confirmed title search, per-transfer poster choice and large-text improvements. #1318 opt-in **JVM** real provider lookup (TVmaze, MusicBrainz and Open Library), real images and offline restart passed; **installed UI live-provider lookup is still unverified**. Installed artwork/settings tests exist. Next [Codex reliability/media handoff](CODEX-RELIABILITY-MEDIA-HANDOFF-2026-11-05.md) prioritizes this precise proof gap after controlled-peer fixture stabilization. Earlier 'next integrate list rows/settings' lines below are superseded; normative code interfaces and historical evidence remain useful.
 
 
