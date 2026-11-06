@@ -176,6 +176,14 @@ class UniversalAddCoordinatorTest {
                 true, true, false))
     }
 
+    @Test fun frozenMagnetCannotClaimADifferentHash() {
+        val failure = runCatching {
+            UniversalAddSource.magnet("magnet:?xt=urn:btih:$hash", otherHash)
+        }.exceptionOrNull()
+        assertNotNull(failure)
+        assertTrue(failure is IllegalArgumentException)
+    }
+
     @Test fun sourceCopiesBytesAndRedactsPrivateValuesFromDiagnostics() {
         val bytes = byteArrayOf(1, 2, 3)
         val source = UniversalAddSource.metainfo(bytes, hash, "https://private.invalid/SECRET")
