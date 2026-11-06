@@ -432,3 +432,6 @@ Previous work-queue text is preserved **verbatim** in [the 2026-10-31 superseded
 ## Deferred P1 cross-app and sharing contracts (not P0 work)
 
 After the active Pixel 6 Pro daily-use local, remote and combined acceptance: [TRANSFER-SHARING](TRANSFER-SHARING.md) specifies magnet sharing and conditional `.torrent` export from existing local/rTorrent transfers; [EXPOSITORY-FILE-ASSOCIATIONS](EXPOSITORY-FILE-ASSOCIATIONS.md) specifies an optional read-only, permissioned per-profile membership snapshot for Expository Transfer. Both are **planned only**, have no accepted installed implementation, and may not displace active P0 removal recovery, reconnect, first-viewport transfers or real-engine QA.
+
+
+**Options organization (2026-11-05, non-queue scope):** [OPTIONS-INFORMATION-ARCHITECTURE](OPTIONS-INFORMATION-ARCHITECTURE.md) governs consolidation of already specified settings into eight searchable destinations. Do not promote this documentation organization into an independent P0/release gate; integrate during existing UX work after current rTorrent reliability/acceptance priorities, with future adapters deferred.
