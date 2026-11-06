@@ -14,7 +14,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -29,6 +29,8 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class ClipboardPrefillInstrumentedTest {
+    // Queue frame continuations on the Compose test scheduler. The legacy eager
+    // scheduler can resume Android ripple work on an IO completion thread.
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     /** On timeout, name what was expected and what the screen showed instead. */
