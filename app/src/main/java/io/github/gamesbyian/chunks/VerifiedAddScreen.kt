@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -110,6 +111,7 @@ fun VerifiedAddScreen(
     var verifiedHash by draft::verifiedHash
     // A newer Android share/phone edit cannot change the displayed recovery identity.
     val sourceText = draft.attemptSource ?: magnet
+    val currentSource = rememberUpdatedState(magnet)
     DisposableEffect(draft) {
         onDispose {
             if (draft.alreadyAttempted && draft.reportedVerifiedHash == null)
@@ -359,16 +361,21 @@ fun VerifiedAddScreen(
             if (!useFile && linkCheck !is TorrentLinkCheck.NotALink) TorrentLinkPanel(linkCheck,
                 fetching = linkFetching, enabled = !submitting && !choosing && !alreadyAttempted,
                 onFetch = { link ->
+                    val requestedSource = magnet
                     linkFetching = true
                     scope.launch {
                         try {
                             when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
                                 is TorrentLinkResult.Fetched -> {
+                                    if (alreadyAttempted || submitting || currentSource.value != requestedSource) {
+                                        fileError = "The draft changed while fetching. The current source was kept."
+                                        return@launch
+                                    }
                                     // Downloaded and validated on this phone; the server never
                                     // fetches the link, so a private token stays on the phone.
                                     selectedTorrent = result.preview
                                     selectedBytes = result.bytes
-                                    draft.textAtFileSelection = magnet
+                                    draft.textAtFileSelection = ""
                                     fromPhone = false
                                     useFile = true
                                     fileError = null

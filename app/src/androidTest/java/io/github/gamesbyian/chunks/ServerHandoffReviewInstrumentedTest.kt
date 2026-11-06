@@ -28,10 +28,14 @@ class ServerHandoffReviewInstrumentedTest {
         var pending by mutableStateOf<ByteArray?>(torrent)
         var consumed = 0
         var mutations = 0
+        // This fixture models one connected client. Recreating it during the
+        // consumed-source recomposition represents a different unscoped client
+        // and deliberately resets the fallback review's authority.
+        val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:1/RPC2", "", ""))
         rule.setContent {
             MaterialTheme {
                 VerifiedAddScreen(
-                    RTorrentRemote(RemoteCredentials("http://127.0.0.1:1/RPC2", "", "")),
+                    remote,
                     magnet = "", destination = "/home/dev/chunks-public-test",
                     onMagnet = {}, onDestination = {}, onBack = {}, onComplete = {},
                     onMutationStarted = { mutations++; true }, onMutationSettled = {},

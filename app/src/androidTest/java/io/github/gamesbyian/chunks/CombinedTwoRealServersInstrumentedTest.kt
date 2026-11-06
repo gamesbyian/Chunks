@@ -2,6 +2,10 @@ package io.github.gamesbyian.chunks
 
 import android.os.Bundle
 import android.util.Base64
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -97,15 +101,22 @@ class CombinedTwoRealServersInstrumentedTest {
         typeInto("Username, if required", user)
         typeInto("Password", password)
         scrollTo("Remember this server and login on this device")
-        // The keyboard and profile reads may recompose after scrolling.
-        // Stabilize the form before ONE click; never retry uncertain RPC.
+        // The IME can recycle this lazy item between readiness and touch
+        // injection (42238837684 failed before dispatching any input).
+        // Exercise the displayed/enabled production accessibility action ONCE;
+        // all authentication and independent server postconditions are unchanged.
         if (!connectedQueue()) {
-            scrollTo("Connect to rTorrent")
-            rule.waitForIdle()
-            waitFor("stable Connect action after form edit", 15_000) {
-                connectedQueue() || visible("Connect to rTorrent")
+            rule.waitUntil(15_000) {
+                connectedQueue() || runCatching {
+                    scrollTo("Connect to rTorrent")
+                    rule.onNodeWithText("Connect to rTorrent").assertIsDisplayed().assertIsEnabled()
+                }.isSuccess
             }
-            if (!connectedQueue()) rule.onNodeWithText("Connect to rTorrent").performClick()
+            if (!connectedQueue()) {
+                rule.onNodeWithText("Connect to rTorrent").performSemanticsAction(SemanticsActions.OnClick) {
+                    assertTrue("The production Connect action must be accepted", it())
+                }
+            }
         }
         waitFor("server queue for the requested endpoint", 90_000) { connectedQueue() }
     }
