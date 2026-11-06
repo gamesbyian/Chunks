@@ -141,6 +141,34 @@ class TransferMediaControllerTest {
         assertTrue(http.requests.isEmpty())
     }
 
+    @Test fun inventoryEnrichesUnrenderedPhoneAndServerAndRestoresFromDisk() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val c = controller()
+            c.enrichInventory(listOf(phone to name, server to name))
+            val records = FileTransferMediaAssignmentStore(File(dir, "assign.json"))
+            assertEquals(MediaAssignmentState.AUTOMATIC, records.get(phone)?.state)
+            assertEquals(MediaAssignmentState.AUTOMATIC, records.get(server)?.state)
+            val requests = http.requests.size
+            controller().enrichInventory(listOf(phone to name, server to name))
+            assertEquals(requests, http.requests.size)
+        }
+
+    @Test fun inventoryWithoutConsentSendsNoProviderRequestsAndPreservesUserChoice() =
+        kotlinx.coroutines.runBlocking {
+            val c = controller()
+            c.enrichInventory(listOf(phone to name, server to name))
+            assertTrue(http.requests.isEmpty())
+            c.observe(phone, name)
+            c.useCategoryArt(phone, MediaKind.DOCUMENT)
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            c.enrichInventory(listOf(phone to name, server to name))
+            assertEquals(MediaAssignmentState.CATEGORY_ART_BY_USER,
+                FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone)?.state)
+            assertEquals(MediaAssignmentState.AUTOMATIC,
+                FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(server)?.state)
+        }
+
     @Test fun manualSearchOffersButNeverAutoApplies() {
         settings = MediaPrivacySettings(onlineLookupConsent = true)
         val c = controller(); val flow = c.observe(phone, "unknown_file")
