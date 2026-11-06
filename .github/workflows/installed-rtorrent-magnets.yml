@@ -91,6 +91,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_preload_disposable_magnet.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_real_media.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_journey_gate.py
           bash -n tools/installed_real_media.sh
           python3 -m py_compile tools/real_magnet_peer.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
