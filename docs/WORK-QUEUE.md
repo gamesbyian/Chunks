@@ -435,3 +435,5 @@ After the active Pixel 6 Pro daily-use local, remote and combined acceptance: [T
 
 
 **Options organization (2026-11-05, non-queue scope):** [OPTIONS-INFORMATION-ARCHITECTURE](OPTIONS-INFORMATION-ARCHITECTURE.md) governs consolidation of already specified settings into eight searchable destinations. Do not promote this documentation organization into an independent P0/release gate; integrate during existing UX work after current rTorrent reliability/acceptance priorities, with future adapters deferred.
+
+**Immediate-apply UX directive (2026-11-05):** During existing UX/settings consolidation, remove routine Save/Apply/Done confirmation steps for independently valid preferences across Options, Add contextual choices, Details and environment settings. Make selection the durable commit; preserve truthful remote pending/failure states, composite configuration exceptions and consequential-action consent. See [OPTIONS-INFORMATION-ARCHITECTURE](OPTIONS-INFORMATION-ARCHITECTURE.md). This does not create a separate workstream, new feature, or additional P0 gate.
