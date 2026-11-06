@@ -44,6 +44,8 @@ internal fun AuthenticatedTransfersFooter(
     onTransfers: () -> Unit,
     onAdd: () -> Unit,
     onOptions: () -> Unit,
+    /** A shared Connections destination, independent of current transfer environment. */
+    onConnections: (() -> Unit)? = null,
     /** Supplied by the phone route; a null scope preserves existing remote labels. */
     environmentLabel: String? = null,
     /** Spoken name for Add where no single environment owns it (Combined). */
@@ -57,7 +59,7 @@ internal fun AuthenticatedTransfersFooter(
             // At 412dp, 140% fonts already make "Transfers" wrap awkwardly
             // in a three-column row. Give Options its own row before that
             // threshold, without penalizing normal-scale everyday layouts.
-            val stacked = maxWidth < 380.dp ||
+            val stacked = onConnections != null || maxWidth < 380.dp ||
                 LocalDensity.current.fontScale >= 1.3f
             if (stacked) {
                 Column(
@@ -74,7 +76,12 @@ internal fun AuthenticatedTransfersFooter(
                         FooterTransfers(onTransfers, Modifier, environmentLabel, CompactFooterPadding)
                         FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription, CompactFooterPadding)
                     }
-                    FooterOptions(optionsOpen, onOptions, Modifier.fillMaxWidth(), environmentLabel)
+                    if (onConnections != null) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            FooterConnections(onConnections, Modifier.weight(1f))
+                            FooterOptions(optionsOpen, onOptions, Modifier.weight(1f), environmentLabel)
+                        }
+                    } else FooterOptions(optionsOpen, onOptions, Modifier.fillMaxWidth(), environmentLabel)
                 }
             } else {
                 Row(
@@ -116,6 +123,14 @@ private fun FooterAdd(
             contentDescription = spoken
         })) {
         Text("+ Add", maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun FooterConnections(onClick: () -> Unit, modifier: Modifier) {
+    OutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)
+        .semantics { contentDescription = "Connections" }) {
+        Text("Connections", maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
