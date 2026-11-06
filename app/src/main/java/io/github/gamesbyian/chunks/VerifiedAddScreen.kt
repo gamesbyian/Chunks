@@ -127,7 +127,8 @@ fun VerifiedAddScreen(
             kotlinx.coroutines.delay(2_000L)
         }
     }
-    val startHolder = addStartState ?: remember { mutableStateOf(true) }
+    val defaultStartHolder = remember { mutableStateOf(true) }
+    val startHolder = addStartState ?: defaultStartHolder
     var startAfterAdd by startHolder
     // Optional read-only shortcuts, keyed to the authenticated Add destination.
     // Never open another account's saved folder suggestions on a scope change.
