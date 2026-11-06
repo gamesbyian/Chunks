@@ -87,7 +87,8 @@ fun VerifiedAddScreen(
     /** Reports each positively verified Add hash once, so the list can explain a hidden result. */
     onVerifiedAdd: (String) -> Unit = {},
     /** Parent-owned choice shared with phone Add; no extra Save/Apply interaction. */
-    addStartState: androidx.compose.runtime.MutableState<Boolean>? = null
+    addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -103,7 +104,6 @@ fun VerifiedAddScreen(
     var verifiedHash by remember(remote) { mutableStateOf<String?>(null) }
     val reviewKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val reviewFocus = androidx.compose.ui.platform.LocalFocusManager.current
-    LaunchedEffect(verifiedHash) { verifiedHash?.let(onVerifiedAdd) }
     // Freeze the command actually submitted: mutable checkbox values do not
     // authorize treating an already-started Add as a stopped Add on recheck.
     var nativeStartedAttempt by remember { mutableStateOf(false) }
@@ -130,6 +130,16 @@ fun VerifiedAddScreen(
     val defaultStartHolder = remember { mutableStateOf(true) }
     val startHolder = addStartState ?: defaultStartHolder
     var startAfterAdd by startHolder
+    val artworkHolder = addArtworkState ?: rememberSaveable { mutableStateOf(true) }
+    var automaticArtwork by artworkHolder
+    val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
+    LaunchedEffect(verifiedHash) {
+        verifiedHash?.let {
+            onVerifiedAdd(it)
+            // Includes a later read-only reconciliation of an uncertain Add.
+            automaticArtwork = true
+        }
+    }
     // Optional read-only shortcuts, keyed to the authenticated Add destination.
     // Never open another account's saved folder suggestions on a scope change.
     var showFolderShortcuts by rememberSaveable(finishInOrderScope, environmentLabel) {
@@ -490,6 +500,12 @@ fun VerifiedAddScreen(
                 }
             }
         }
+        if (!alreadyAttempted) item {
+            AddArtworkChoice(automaticArtwork, enabled = !submitting && !choosing) {
+                automaticArtwork = it
+                awaitingConfirmation = false
+            }
+        }
         if (!alreadyAttempted && plan == null) {
             item {
                 Text(addGuidance,
@@ -580,10 +596,27 @@ fun VerifiedAddScreen(
                             // The shared Add draft may change after navigating away;
                             // only this reviewed click may determine Start for this RPC.
                             val requestedStart = startAfterAdd
+                            val allowArtwork = automaticArtwork
+                            val artworkEnvironment = finishInOrderScope?.let {
+                                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
+                            }
                             nativeStartedAttempt = requestedStart && orderScope == null
                             var orderNote: String? = null
                             scope.launch {
                                 try {
+                                    if (!allowArtwork && withContext(Dispatchers.IO) {
+                                        artworkEnvironment == null || mediaController?.prepareForAdd(
+                                            io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+                                                artworkEnvironment, plan.expectedInfoHash), false) != true
+                                    }) {
+                                        // No RPC was sent. This known refusal can be corrected
+                                        // without weakening the uncertain-command retry latch.
+                                        alreadyAttempted = false
+                                        reviewedAttempt = null
+                                        uncertain = false
+                                        outcome = "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata."
+                                        return@launch
+                                    }
                                     // ruTorrent's ordinary Add starts inside load.start or
                                     // load.raw_start. Use this native path for default
                                     // Start-after-Add, retaining stopped-first for

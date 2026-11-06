@@ -167,6 +167,14 @@ class TransferMediaController(
     }
 
     /** Call off main; persistence is separate from assignment/cache cleanup and manual corrections. */
+    fun prepareForAdd(key: io.github.gamesbyian.chunks.model.UnifiedTransferKey,
+                      allowAutomaticLookup: Boolean): Boolean =
+        // The default permits eligibility; it never withdraws an existing
+        // explicit exclusion or grants global provider consent. Persist an
+        // opt-out before any engine admission can expose the job to discovery.
+        allowAutomaticLookup || setAutomaticLookupEnabled(MediaTransferKey.of(key), false)
+
+    /** Call off main; persistence is separate from assignment/cache cleanup and manual corrections. */
     fun setAutomaticLookupEnabled(key: MediaTransferKey, enabled: Boolean): Boolean = try {
         synchronized(assignmentLock) { automationStore.setExcluded(key, !enabled) }
         flow(key)?.update { it.copy(automaticLookupEnabled = enabled) }

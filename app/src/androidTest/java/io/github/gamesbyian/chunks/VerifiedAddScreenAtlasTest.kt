@@ -32,6 +32,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.assertIsOff
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
@@ -100,6 +101,15 @@ class VerifiedAddScreenAtlasTest {
         val chooser = rule.onNodeWithText("Choose a .torrent from Android Files")
         assertTrue("Open-document control must retain at least 54dp", 
             (chooser.getUnclippedBoundsInRoot().bottom - chooser.getUnclippedBoundsInRoot().top) >= 54.dp)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Artwork & metadata"))
+        rule.onNodeWithText("Artwork & metadata").performClick()
+        val artworkChoice = "Automatically identify and fetch artwork & metadata"
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(artworkChoice))
+        val artworkToggle = rule.onNodeWithText(artworkChoice)
+        artworkToggle.performClick().assertIsOff()
+        assertTrue("The artwork choice must retain a 48dp touch target",
+            (artworkToggle.getUnclippedBoundsInRoot().bottom - artworkToggle.getUnclippedBoundsInRoot().top) >= 48.dp)
+        save("add-artwork-exclusion-320dp-200pct-real-compose")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Review Add"))
         rule.onNodeWithText("Review Add").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(

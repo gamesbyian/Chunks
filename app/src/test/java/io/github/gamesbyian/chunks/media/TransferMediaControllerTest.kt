@@ -397,6 +397,33 @@ class TransferMediaControllerTest {
         assertTrue(http.requests.isNotEmpty()) // same hash, independent environment
     }
 
+    @Test fun addAdmissionExcludesBeforeTheFirstObservationAndSurvivesRestart() {
+        val key = UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40))
+        assertTrue(controller().prepareForAdd(key, allowAutomaticLookup = false))
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        controller().observe(phone, name)
+        assertTrue(http.requests.isEmpty())
+        controller().observe(server, name)
+        assertTrue(http.requests.isNotEmpty())
+    }
+
+    @Test fun defaultAddAdmissionNeverReenablesAnExistingExclusion() {
+        val key = UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40))
+        val c = controller()
+        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        assertTrue(c.prepareForAdd(key, allowAutomaticLookup = true))
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        controller().observe(phone, name)
+        assertTrue(http.requests.isEmpty())
+    }
+
+    @Test fun failedOptOutPersistenceRefusesAddAdmissionWithoutProviderRequests() {
+        File(dir, "automation.json").writeText("unreadable preferences")
+        val key = UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40))
+        assertFalse(controller().prepareForAdd(key, allowAutomaticLookup = false))
+        assertTrue(http.requests.isEmpty())
+    }
+
     @Test fun togglingAutomaticLookupPreservesManualIdentification() {
         val c = controller()
         val flow = c.observe(phone, name)

@@ -294,7 +294,8 @@ internal fun LocalEngineScreen(
     /** Non-secret Add intent survives navigation independently of the saved default. */
     addPlaceState: androidx.compose.runtime.MutableState<String?>? = null,
     addFolderState: androidx.compose.runtime.MutableState<String>? = null,
-    addStartState: androidx.compose.runtime.MutableState<Boolean>? = null
+    addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -495,6 +496,9 @@ internal fun LocalEngineScreen(
     val addStartHolder: androidx.compose.runtime.MutableState<Boolean> =
         addStartState ?: rememberSaveable { mutableStateOf(true) }
     var startAfterAdd by addStartHolder
+    val artworkHolder = addArtworkState ?: rememberSaveable { mutableStateOf(true) }
+    var automaticArtwork by artworkHolder
+    val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
     val addFolderHolder: androidx.compose.runtime.MutableState<String> =
         addFolderState ?: rememberSaveable { mutableStateOf("") }
     var addFolderDraft by addFolderHolder
@@ -868,6 +872,7 @@ internal fun LocalEngineScreen(
             Checkbox(checked = startAfterAdd, enabled = !busy && !inventoryStale, onCheckedChange = null)
             Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
         }
+        AddArtworkChoice(automaticArtwork, enabled = !busy) { automaticArtwork = it }
         if (magnet.isNotEmpty() && !isLink) {
         Text("On this phone · Place: " + (proposedAddDestination?.absolutePath ?: "Choose a download location below"),
             style = MaterialTheme.typography.bodySmall)
@@ -888,10 +893,17 @@ internal fun LocalEngineScreen(
                 val selectedPlace = place
                 val selectedMagnet = (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: magnet
                 val autoStart = startAfterAdd
+                val allowArtwork = automaticArtwork
                 val orderLater = magnetFinishInOrder
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
+                            val key = phoneAddedKey((magnetCheck as? MagnetDraftCheck.Valid)?.infoHash.orEmpty())
+                            if (!allowArtwork && (key == null ||
+                                mediaController?.prepareForAdd(key, false) != true)) {
+                                return@withContext LocalAddResult.Refused(
+                                    "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.")
+                            }
                             val chosen = LocalOwnedAddFolder.prepare(
                                 selectedPlace?.let(LocalDownloadPlaces::materialize), selectedDraft)
                             if (chosen == null) LocalAddResult.Refused(
@@ -916,6 +928,7 @@ internal fun LocalEngineScreen(
                             is LocalAddResult.Refused -> Unit
                         }
                         if (result !is LocalAddResult.Refused) {
+                            automaticArtwork = true
                             if (startAfterAdd) {
                                 try { LocalEngineService.start(context) } catch (_: Exception) {
                                     noteProblem("Magnet added, but Android did not start the background service. Keep Chunks open.")
@@ -1194,11 +1207,18 @@ internal fun LocalEngineScreen(
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
                 val autoStart = startAfterAdd
+                val allowArtwork = automaticArtwork
                 val orderAfterAdd = finishInOrderAfterAdd
                 var orderNote: String? = null
                 performLocalMutation {
                     try {
                         val result = withContext(Dispatchers.IO) {
+                            val key = phoneAddedKey(add.preview.infoHashV1)
+                            if (!allowArtwork && (key == null ||
+                                mediaController?.prepareForAdd(key, false) != true)) {
+                                return@withContext LocalAddResult.Refused(
+                                    "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.") to null
+                            }
                             val chosen = LocalOwnedAddFolder.prepare(
                                 selectedPlace?.let(LocalDownloadPlaces::materialize), selectedDraft)
                             if (chosen == null)
@@ -1248,6 +1268,7 @@ internal fun LocalEngineScreen(
                             problemOutcome = message
                         if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash, message)
                         if (added !is LocalAddResult.Refused) {
+                            automaticArtwork = true
                             pending = null
                             addFolderDraft = ""
                             currentAddPlaceId = null
