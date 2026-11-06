@@ -20,8 +20,22 @@ internal class UniversalAddSource private constructor(
     companion object {
         fun magnet(validatedMagnet: String, expectedInfoHash: String): UniversalAddSource {
             require(validatedMagnet.startsWith("magnet:?", ignoreCase = true))
-            return UniversalAddSource(Kind.MAGNET, normalHash(expectedInfoHash),
-                validatedMagnet, null, null)
+            val identity = normalHash(expectedInfoHash)
+            // The existing MagnetDraftCheck must normalize base32/encoded xt
+            // first. Still bind this exact frozen source to the reviewed hash;
+            // a mislabeled source could otherwise reconcile the wrong job.
+            val btih = validatedMagnet.substringAfter("?").split('&')
+                .mapNotNull { part ->
+                    val parameter = part.split('=', limit = 2)
+                    if (parameter.size == 2 && parameter[0].equals("xt", ignoreCase = true) &&
+                        parameter[1].startsWith("urn:btih:", ignoreCase = true))
+                        parameter[1].substring("urn:btih:".length).lowercase(Locale.ROOT)
+                    else null
+                }
+            require(btih.size == 1 && btih.single() == identity) {
+                "The reviewed magnet and its expected hash disagree"
+            }
+            return UniversalAddSource(Kind.MAGNET, identity, validatedMagnet, null, null)
         }
 
         fun metainfo(verifiedBytes: ByteArray, expectedInfoHash: String,
