@@ -554,7 +554,7 @@ class TransferMediaController(
             presentationFlow.value = s
             snapshot.forEach { (key, f) ->
                 if (s.onlineLookupConsent && s.automaticLookup && f.value.assignment == null) maybeAutomatic(key)
-                if (!s.showArtwork f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
+                if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
             }
         }
