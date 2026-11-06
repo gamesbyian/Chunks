@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **Live Codex handoff, 2026-11-06:** One primary integration owner may take #1341 forward (open, installed CI red); avoid concurrent edits to MainActivity/Combined Add/transfer model. Main `58a62bee29c2`; prior #1338/#1339/#1340 merged. Follow [active handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md) and [one work queue](WORK-QUEUE.md). No prior-agent leases inferred from historical prose. Supporting evidence/fixture work must be separate, source-bound and must not silently waive failed installed tests. After #1341, continue the shared Add draft/submission architecture rather than a separate UI campaign.
+
+
 > **ACTIVE 2026-11-06 lane contract:** One **primary product integration owner** controls shared Add/navigation/transfer identity/engine-facing changes in a coherent branch; coordinate changes to `MainActivity.kt`, `LocalEngineScreen.kt`, `VerifiedAddScreen.kt`, shared model, stores and Android build files. One optional **supporting evidence/CI lane** may inspect immutable heads, publish source-pinned previews and adjust narrow acceptance fixtures; it does not concurrently rewrite the integration owner's central files. No fixed agent roster or inherited leases; discover live PRs/branches each turn. The job-only Move/Smart Routing track is distinct from deferred physical relocation issue #2. Start with [WORK-QUEUE](WORK-QUEUE.md) and [short integration handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md). Avoid more agents just because tasks exist, don't re-run unchanged acceptance, and serialize releases after exact-head qualification.
 
 
