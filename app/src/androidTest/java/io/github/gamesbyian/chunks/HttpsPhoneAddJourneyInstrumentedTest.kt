@@ -133,7 +133,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { visible("On this phone (experimental)") }
                 stage("phone-open")
-                click("Add torrent on this phone")
+                // Genuine first-run sessions use the direct Add link; populated ones retain the inline action.
+                if (visible("Add a torrent")) click("Add a torrent")
+                else click("Add torrent on this phone")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
                 click("Change download location")
                 click("Chunks app folder")
@@ -282,7 +284,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertTrue(status.doneBytes in 1 until preview.sizeBytes)
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
                 stage("phone-open")
-                click("Add torrent on this phone")
+                // Genuine first-run sessions use the direct Add link; populated ones retain the inline action.
+                if (visible("Add a torrent")) click("Add a torrent")
+                else click("Add torrent on this phone")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
                 stage("before-recreate")
                 scenario.recreate()
