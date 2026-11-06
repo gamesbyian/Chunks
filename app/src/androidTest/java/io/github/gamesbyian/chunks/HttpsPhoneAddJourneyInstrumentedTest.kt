@@ -86,6 +86,38 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         rule.onNodeWithText(label).performImeAction()
     }
 
+    private fun awaitSourceReview() {
+        try {
+            rule.waitUntil(45_000) { visible("Review download") }
+        } catch (failure: Throwable) {
+            // Fixed labels only: source text, tracker tokens and provider errors
+            // must never enter the public acceptance artifact.
+            val refusals = listOf(
+                "local-network" to TorrentLinkResult.LOCAL_NETWORK,
+                "dns" to TorrentLinkResult.NO_HOST,
+                "timeout" to TorrentLinkResult.TIMEOUT,
+                "offline" to TorrentLinkResult.OFFLINE,
+                "downgrade" to TorrentLinkResult.DOWNGRADE,
+                "redirects" to TorrentLinkResult.TOO_MANY_REDIRECTS,
+                "authorization" to TorrentLinkResult.REFUSED,
+                "missing" to TorrentLinkResult.NOT_FOUND,
+                "busy" to TorrentLinkResult.BUSY,
+                "web-page" to TorrentLinkResult.WEB_PAGE,
+                "size" to TorrentLinkResult.TOO_LARGE,
+                "metainfo" to TorrentLinkResult.NOT_TORRENT,
+                "response" to TorrentLinkResult.UNEXPECTED
+            ).filter { (_, label) -> runCatching { visible(label) }.getOrDefault(false) }
+                .joinToString(",") { it.first }.ifEmpty { "none" }
+            fun shown(label: String) = runCatching { visible(label) }.getOrDefault(false)
+            android.util.Log.i("ChunksHttps", "CHUNKS_HTTPS_PHONE_REVIEW_STATE " +
+                "fetching=${shown("Getting torrent…")} ready=${shown("is ready to review below.")} " +
+                "selected=${shown("Selected .torrent:")} refused=$refusals " +
+                "form=${shown("Add a download on this phone")} " +
+                "place=${shown("Saves to: Chunks app folder")}")
+            throw failure
+        }
+    }
+
     @Test fun fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault() {
         assumeTrue("Explicit assembled HTTPS acceptance only",
             InstrumentationRegistry.getArguments().getString("chunks_https_add") == "authorized")
@@ -169,7 +201,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 type("Or paste a magnet or torrent link", url)
                 stage("before-fetch")
                 click("Get torrent from link")
-                rule.waitUntil(45_000) { visible("Review download") }
+                awaitSourceReview()
                 assertNull(LocalEngineHolder.current()?.status(preview.infoHashV1))
                 assertFalse(destination.exists())
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
@@ -189,7 +221,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 type("Optional phone download subfolder", folder)
                 type("Or paste a magnet or torrent link", url)
                 click("Get torrent from link")
-                rule.waitUntil(45_000) { visible("Review download") }
+                awaitSourceReview()
                 stage("cancel-recovered")
                 click("Start downloading after Add (recommended)")
                 val mediaKey = io.github.gamesbyian.chunks.media.MediaTransferKey.of(

@@ -81,8 +81,7 @@ class CombinedDetailSessionCapabilityTest {
             } }
         }
         val label = serverEnvironmentLabel(aliasScope)
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("A single download"))
+        awaitTransferRow()
         rule.onNodeWithContentDescription("Expand A single download on $label")
             .performScrollTo().performClick()
         rule.onNodeWithContentDescription("All details for A single download on $label")
@@ -141,11 +140,24 @@ class CombinedDetailSessionCapabilityTest {
             } }
         }
         val label = serverEnvironmentLabel(aliasScope)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("A single download"))
+        awaitTransferRow()
         rule.onNodeWithContentDescription("Expand A single download on $label")
             .performScrollTo().performClick()
         rule.onNodeWithContentDescription("All details for A single download on $label")
             .performScrollTo().performClick()
         rule.onNodeWithText("Check server capabilities").assertDoesNotExist()
+    }
+
+    private fun awaitTransferRow() {
+        // Combined initially hides jobs until its asynchronous privacy policy
+        // read completes. Scrolling once can race that legitimate locked frame.
+        // Retry only read-only row discovery; probing remains an explicit click.
+        rule.waitUntil(10_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction())
+                    .performScrollToNode(hasText("A single download"))
+                true
+            }.getOrDefault(false)
+        }
     }
 }

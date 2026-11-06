@@ -6,7 +6,7 @@ import android.provider.DocumentsContract
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ActivityScenario
@@ -111,6 +111,104 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             rule.onNodeWithText("Review download").assertDoesNotExist()
             org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
+        }
+    }
+
+    @Test fun refusedReplacementKeepsTheReviewedSourceThroughRealAndroidIntentDelivery() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val name = "public-source-kept.txt"
+        val bytes = ("d4:infod6:lengthi5e4:name${name.length}:$name" +
+            "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
+        val tree = FixtureDocumentsProvider.treeUri(context)
+        val root = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        fun document(label: String, content: ByteArray): Uri {
+            val uri = requireNotNull(DocumentsContract.createDocument(context.contentResolver, root,
+                "application/x-bittorrent", label))
+            requireNotNull(context.contentResolver.openOutputStream(uri, "wt")).use { it.write(content) }
+            return uri
+        }
+        val first = document("retained-source.torrent", bytes)
+        val refused = document("refused-replacement.torrent", "not metainfo".toByteArray())
+        fun sourceIntent(uri: Uri) = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            setDataAndType(uri, "application/x-bittorrent")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        // Establish the real engine inventory independently before the UI's
+        // normal read-only restore/observation can run. Never confirm an Add.
+        val engine = LocalEngineHolder.get(context)
+        val before = engine.completeIdentityInventory()
+        var stage = "launch"
+        var primaryFailure: Throwable? = null
+        var scenario: ActivityScenario<MainActivity>? = null
+        val launchIntent = sourceIntent(first).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        fun captureFailure(failure: Throwable) {
+            // A disposable fixture-only display, with a fixed stage and error
+            // class in the filename. No incoming URI or exception message is logged.
+            runCatching {
+                val kind = failure.javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z]+")) } ?: "Failure"
+                androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+                    .uiAutomation.takeScreenshot()?.let { bitmap ->
+                        val directory = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
+                            android.os.Environment.DIRECTORY_PICTURES), "ChunksAddAtlas").apply { mkdirs() }
+                        java.io.File(directory, "phone-source-$stage-$kind.png").outputStream().use {
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                        }
+                        bitmap.recycle()
+                    }
+            }
+        }
+        try {
+            val opened = ActivityScenario.launch<MainActivity>(launchIntent).also { scenario = it }
+            stage = "first-review"
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
+            stage = "replacement-intent"
+            opened.onActivity { it.startActivity(sourceIntent(refused)) }
+            stage = "refusal"
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("Your previous .torrent remains selected.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText(name, substring = true).assertExists()
+            stage = "combined"
+            rule.onNodeWithText("All environments…").performScrollTo().performClick()
+            stage = "return"
+            rule.onNodeWithText("Back").performClick()
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
+            org.junit.Assert.assertEquals("Replacing/refusing/browsing a source cannot register a job",
+                before, engine.completeIdentityInventory())
+            stage = "close"
+        } catch (failure: Throwable) {
+            primaryFailure = failure
+            captureFailure(failure)
+            throw failure
+        } finally {
+            try {
+                try {
+                    // ActivityScenario filters lifecycle events by its launch
+                    // Intent's data/type. Real onNewIntent calls setIntent to
+                    // the replacement URI, so restore only the test monitor's
+                    // identity AFTER all product assertions, without dispatch
+                    // or accept(). Otherwise DESTROYED is ignored at close.
+                    scenario?.onActivity { it.intent = launchIntent }
+                    scenario?.close()
+                } catch (close: Throwable) {
+                    val original = primaryFailure
+                    if (original != null) original.addSuppressed(close)
+                    else {
+                        stage = "close"
+                        captureFailure(close)
+                        throw close
+                    }
+                }
+            } finally {
+                DocumentsContract.deleteDocument(context.contentResolver, first)
+                DocumentsContract.deleteDocument(context.contentResolver, refused)
+            }
         }
     }
 

@@ -112,6 +112,7 @@ import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import io.github.gamesbyian.chunks.model.LocalBatchLifecycle
 import java.io.ByteArrayOutputStream
 import java.io.File
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -266,7 +267,7 @@ internal fun LocalEngineScreen(
     serverCopy: LocalServerCopyLink? = null,
     /** The connected rTorrent account, for Move Transfer checks; null when signed out. */
     moveServer: LocalMoveServer? = null,
-    onTorrentConsumed: () -> Unit = {},
+    onTorrentConsumed: (Uri) -> Unit = {},
     onPrefillConsumed: () -> Unit = {},
     /** Pre-fills the list search (for example an exact infohash from All environments). */
     initialSearch: String? = null,
@@ -420,6 +421,46 @@ internal fun LocalEngineScreen(
         problemOutcome = text
     }
     var busy by remember { mutableStateOf(false) }
+    // One cancellable source-read owner, shared by picker, Android handoff and
+    // HTTPS intake. Cancellation is read-only; it never consumes a queued URI.
+    var sourceReadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val sourceReading = sourceReadJob != null
+    fun cancelSourceRead() {
+        val obsolete = sourceReadJob
+        sourceReadJob = null
+        obsolete?.cancel()
+    }
+    suspend fun beginSourceRead(): kotlinx.coroutines.Job {
+        val current = requireNotNull(kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job])
+        sourceReadJob?.takeUnless { it === current }?.cancel()
+        sourceReadJob = current
+        return current
+    }
+    suspend fun reviewDocument(uri: Uri, shared: Boolean): Boolean? {
+        val read = beginSourceRead()
+        message = if (shared) "Opening shared .torrent for review. No download has started."
+            else "Opening .torrent for review. Your current draft is kept until validation finishes."
+        try {
+            androidx.compose.runtime.snapshotFlow { busy }.first { !it }
+            val reviewed = withContext(Dispatchers.IO) { SharedTorrentDocument.read(context.contentResolver, uri) }
+            if (sourceReadJob !== read) return null
+            pending = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+            message = if (shared) "Shared torrent reviewed locally. Confirm its destination and Add below."
+                else "Torrent reviewed locally. Confirm its destination and Add below."
+            return true
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            if (sourceReadJob !== read) return null
+            val error = if (shared)
+                "The shared file was unavailable, invalid or not supported v1 .torrent metadata. No torrent was added."
+            else "This document is not a supported v1 .torrent file, was inaccessible or exceeds 2 MiB."
+            noteProblem(error + if (pending != null) " Your previous .torrent remains selected." else "")
+            return false
+        } finally {
+            if (sourceReadJob === read) sourceReadJob = null
+        }
+    }
     val progressHistory = remember { LocalProgressHistory() }
     var observedDeltas by remember {
         mutableStateOf<Map<String, LocalProgressHistory.ObservedDelta>>(emptyMap())
@@ -449,6 +490,11 @@ internal fun LocalEngineScreen(
     val addFocus = androidx.compose.ui.platform.LocalFocusManager.current
     val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
     var magnet by magnetHolder
+    fun selectTextSource(value: String) {
+        cancelSourceRead()
+        initialTorrentUri?.let(onTorrentConsumed)
+        magnet = value
+    }
     // A kept draft reopens its form on return, rather than hiding it.
     var addExpanded by rememberSaveable { mutableStateOf(magnet.isNotEmpty()) }
     var finishInOrderDefault by remember { mutableStateOf(finishInOrderStore.defaultForNewAdds()) }
@@ -456,9 +502,10 @@ internal fun LocalEngineScreen(
     LaunchedEffect(pending?.preview?.infoHashV1) {
         if (pending != null) addExpanded = true
     }
-    LaunchedEffect(initialMagnet) {
+    LaunchedEffect(initialMagnet, busy) {
+        if (busy) return@LaunchedEffect
         if (initialMagnet != null && initialMagnet.startsWith("magnet:?")) {
-            magnet = initialMagnet
+            selectTextSource(initialMagnet)
             addExpanded = true
             onPrefillConsumed()
         }
@@ -652,19 +699,10 @@ internal fun LocalEngineScreen(
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
-        message = null
-        scope.launch {
-            pending = withContext(Dispatchers.IO) {
-                try {
-                    val reviewed = SharedTorrentDocument.read(context.contentResolver, uri)
-                    PendingLocalAdd(reviewed.preview, reviewed.bytes)
-                } catch (cancel: kotlinx.coroutines.CancellationException) {
-                    throw cancel
-                } catch (_: Exception) { null }
-            }
-            if (pending == null) message =
-                "This document is not a supported v1 .torrent file, was inaccessible or exceeds 2 MiB."
-        }
+        // Explicit picker selection supersedes an older queued handoff. Keep
+        // an already validated review until these replacement bytes validate.
+        initialTorrentUri?.let(onTorrentConsumed)
+        scope.launch { reviewDocument(uri, shared = false) }
     }
 
     val trackerRepairPicker = rememberLauncherForActivityResult(
@@ -698,26 +736,15 @@ internal fun LocalEngineScreen(
         }
     }
 
-    LaunchedEffect(initialTorrentUri) {
+    LaunchedEffect(initialTorrentUri, busy) {
         val externalUri = initialTorrentUri ?: return@LaunchedEffect
+        // A new source may arrive while an approved Add is settling. Keep it
+        // queued until that operation finishes instead of letting its cleanup
+        // discard the newer review. Source intake itself never authorizes Add.
+        if (busy) return@LaunchedEffect
         addExpanded = true
-        // Never start the torrent from an external VIEW/SEND Intent. Only
-        // prepare the same explicit Add review reached through the picker.
-        pending = null
-        message = "Opening shared .torrent for review. No download has started."
-        try {
-            val reviewed = withContext(Dispatchers.IO) {
-                SharedTorrentDocument.read(context.contentResolver, externalUri)
-            }
-            pending = PendingLocalAdd(reviewed.preview, reviewed.bytes)
-            message = "Shared torrent reviewed locally. Confirm its destination and Add below."
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            noteProblem("The shared file was unavailable, invalid or not supported v1 .torrent metadata. No torrent was added.")
-        } finally {
-            onTorrentConsumed()
-        }
+        val terminal = reviewDocument(externalUri, shared = true)
+        if (terminal != null) onTorrentConsumed(externalUri)
     }
 
     val scrollState = listScroll ?: rememberScrollState()
@@ -821,13 +848,14 @@ internal fun LocalEngineScreen(
             modifier = Modifier.bringIntoViewRequester(addRequester)
                 .semantics { heading() })
         ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
-            enabled = !busy && !inventoryStale && destination != null,
+            enabled = !busy && !sourceReading,
             modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
         val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
         // A web link is a different source: fetched only on request, then reviewed as a .torrent.
         val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
         val isLink = linkCheck !is TorrentLinkCheck.NotALink
-        OutlinedTextField(value = magnet, onValueChange = { magnet = it.trim() },
+        OutlinedTextField(value = magnet, onValueChange = { selectTextSource(it.trim()) },
+            enabled = !busy,
             label = { Text("Or paste a magnet or torrent link") }, singleLine = true,
             isError = if (isLink) linkCheck is TorrentLinkCheck.Problem else magnetCheck is MagnetDraftCheck.Problem,
             // Autocorrect must never rewrite a magnet's hash or trackers.
@@ -837,18 +865,24 @@ internal fun LocalEngineScreen(
                 imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             modifier = Modifier.fillMaxWidth())
         if (magnet.isEmpty()) PasteMagnetButton(
-            enabled = !busy && !inventoryStale,
-            onPaste = { magnet = it },
+            enabled = !busy,
+            onPaste = { selectTextSource(it) },
             onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
         if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
-            onClear = { magnet = ""; clipboardFilled = null }, enabled = !busy)
+            onClear = { magnet = ""; clipboardFilled = null }, enabled = !busy && !sourceReading)
         if (isLink) TorrentLinkPanel(linkCheck, fetching = linkFetching,
-            // Like Choose .torrent file: no review can appear without a verified phone location.
-            enabled = !busy && !inventoryStale && pending == null && destination != null, onFetch = { link ->
+            // Read-only source validation does not require a phone Place.
+            // Actual Add still requires the existing fresh inventory/Place gates.
+            enabled = !busy && !sourceReading && pending == null, onFetch = { link ->
+                initialTorrentUri?.let(onTorrentConsumed)
                 linkFetching = true
                 scope.launch {
+                    val read = beginSourceRead()
                     try {
-                        when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
+                        androidx.compose.runtime.snapshotFlow { busy }.first { !it }
+                        val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
+                        if (sourceReadJob !== read) return@launch
+                        when (result) {
                             is TorrentLinkResult.Fetched -> {
                                 // The same reviewed .torrent Add as the picker and Android share.
                                 pending = PendingLocalAdd(result.preview, result.bytes)
@@ -860,6 +894,7 @@ internal fun LocalEngineScreen(
                             is TorrentLinkResult.Refused -> noteProblem(result.message)
                         }
                     } finally {
+                        if (sourceReadJob === read) sourceReadJob = null
                         linkFetching = false
                     }
                 }
@@ -889,6 +924,7 @@ internal fun LocalEngineScreen(
             )
             ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
                 ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
+                if (sourceReadJob != null) return@ActionTile
                 // Submitting closes the keyboard, so the form's collapse is not
                 // racing an IME animation (see the Connect transition fix).
                 addKeyboard?.hide()
@@ -950,7 +986,7 @@ internal fun LocalEngineScreen(
                         noteProblem("Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying.")
                     }
                 }
-            }, enabled = !busy && !inventoryStale && !dhtSaving &&
+            }, enabled = !busy && !sourceReading && !inventoryStale && !dhtSaving &&
                 !placeSaving && proposedAddDestination != null && magnetCheck is MagnetDraftCheck.Valid,
                 modifier = Modifier.fillMaxWidth())
         }
@@ -1173,12 +1209,17 @@ internal fun LocalEngineScreen(
         }
 
         val add = pending
+        if (add != null && destination == null) {
+            Text("Selected .torrent: " + add.preview.name, fontWeight = FontWeight.Bold)
+        }
         if (add != null && canReviewOnConnectedServer &&
             onPrepareRemoteTorrent != null) {
             ReviewedTorrentTargetChooser(
                 verifiedTorrentBytes = add.bytes,
-                enabled = !busy && !inventoryStale,
-                onPrepareServerReview = { original ->
+                phonePlaceAvailable = destination != null,
+                enabled = !busy && !sourceReading,
+                onPrepareServerReview = prepare@{ original ->
+                    if (sourceReadJob != null || pending !== add) return@prepare
                     // The parent only enables this action for an authenticated,
                     // independently privacy-gated remote target.
                     onPrepareRemoteTorrent(original)
@@ -1203,11 +1244,13 @@ internal fun LocalEngineScreen(
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
-            busy = busy || inventoryStale || placeSaving || proposedAddDestination == null,
+            busy = busy || sourceReading || inventoryStale || placeSaving || proposedAddDestination == null,
             startAfterAdd = startAfterAdd,
+            cancelEnabled = !busy,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             seeding = seedingPreview,
-            onConfirm = {
+            onConfirm = confirm@{
+                if (sourceReadJob != null || pending !== add) return@confirm
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
                 val autoStart = startAfterAdd
@@ -1286,10 +1329,17 @@ internal fun LocalEngineScreen(
                     }
                 }
             },
-            onCancel = { pending = null; currentAddPlaceId = null; addFolderDraft = "" })
+            onCancel = cancel@{
+                if (busy || (pending !== add && sourceReadJob == null)) return@cancel
+                cancelSourceRead()
+                pending = null
+                initialTorrentUri?.let(onTorrentConsumed)
+                currentAddPlaceId = null
+                addFolderDraft = ""
+            })
 
         snapshotRestoreDraft?.let { draft ->
-            val eligible = hasConfirmedLocalInventory && !inventoryStale && !busy &&
+            val eligible = hasConfirmedLocalInventory && !inventoryStale && !busy && !sourceReading &&
                 pending == null && place != null &&
                 draft.frozenHashes == transfers.map { it.infoHash } &&
                 LocalScreenReader.revision.snapshot() == draft.frozenGeneration
@@ -1297,10 +1347,10 @@ internal fun LocalEngineScreen(
                 draft = draft,
                 selectedPlace = place?.title ?: "No verified phone download location",
                 eligible = eligible,
-                onCancel = { snapshotRestoreDraft = null },
+                onCancel = { if (snapshotRestoreDraft === draft) snapshotRestoreDraft = null },
                 onConfirm = {
                     val selected = place
-                    if (selected == null || !eligible) {
+                    if (selected == null || !eligible || sourceReadJob != null || snapshotRestoreDraft !== draft) {
                         noteProblem("The destination or transfer list changed. Reopen the snapshot.")
                     } else {
                         snapshotRestoreDraft = null
@@ -2087,9 +2137,11 @@ internal fun LocalEngineScreen(
             transfers = transfers,
             inventoryConfirmed = hasConfirmedLocalInventory,
             inventoryStale = inventoryStale,
-            busyEngine = busy,
+            busyEngine = busy || sourceReading,
             mutationGeneration = LocalScreenReader.revision.snapshot(),
             onPrepareAdd = { originalBytes ->
+                check(!busy && sourceReadJob == null) { "Another source review is in progress" }
+                initialTorrentUri?.let(onTorrentConsumed)
                 // This callback changes only the local Add DRAFT, not the
                 // engine, destination folder, existing transfers or data.
                 try {
@@ -2099,18 +2151,21 @@ internal fun LocalEngineScreen(
                     message = "Original snapshot .torrent is ready for manual phone Add review. " +
                         "Check the destination and Start choice before confirming; no Add occurred."
                     scope.launch { scrollState.animateScrollTo(0) }
-                } catch (failure: Exception) {
-                    pending = null
-                    noteProblem("Snapshot definition could not populate Add review: " +
-                        (failure.message ?: "Unsupported original torrent"))
+                } catch (_: Exception) {
+                    noteProblem("Snapshot definition could not populate Add review." +
+                        if (pending != null) " Your previous .torrent remains selected." else "")
                 }
             },
             onReviewOneRestore = { verified, entry, frozen, generation ->
+                check(!busy && sourceReadJob == null) { "Another source review is in progress" }
+                initialTorrentUri?.let(onTorrentConsumed)
                 // Assemble a canonical source fingerprint off the Compose lane.
                 // No journal mutation or engine Add happens at this stage.
                 val request = ++snapshotPreparationRevision
                 scope.launch {
+                    val read = beginSourceRead()
                     try {
+                        androidx.compose.runtime.snapshotFlow { busy }.first { !it }
                         val draft = withContext(Dispatchers.IO) {
                             val original = SnapshotVerifiedTorrentDocumentV1.prepare(
                                 verified, entry.infoHashV1)
@@ -2121,6 +2176,7 @@ internal fun LocalEngineScreen(
                                 LocalSnapshotRestoreFingerprint.of(exactArchive),
                                 frozen.toList(), generation)
                         }
+                        if (sourceReadJob !== read) return@launch
                         if (request == snapshotPreparationRevision &&
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
@@ -2135,7 +2191,10 @@ internal fun LocalEngineScreen(
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
                     } catch (_: Exception) {
-                        noteProblem("The verified original snapshot definition could not be prepared.")
+                        if (sourceReadJob === read)
+                            noteProblem("The verified original snapshot definition could not be prepared.")
+                    } finally {
+                        if (sourceReadJob === read) sourceReadJob = null
                     }
                 }
             }
@@ -2284,7 +2343,8 @@ internal fun LocalAddReview(
     /** What Smart Seeding will apply on this phone; null when no rule store is readable. */
     seeding: io.github.gamesbyian.chunks.seeding.SeedingResolution? = null,
     onConfirm: () -> Unit,
-    onCancel: () -> Unit
+    onCancel: () -> Unit,
+    cancelEnabled: Boolean = true
 ) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2353,7 +2413,7 @@ internal fun LocalAddReview(
             Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                 Text(if (startAfterAdd) "Add and start downloading" else "Add stopped")
             }
-            OutlinedButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Cancel") }
+            OutlinedButton(onClick = onCancel, enabled = cancelEnabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Cancel") }
         }
     }
 }
