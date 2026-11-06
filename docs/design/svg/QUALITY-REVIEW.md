@@ -1,5 +1,8 @@
 # Chunks SVG inventory quality review
 
+> **Campaign integration note:** [Owner's UX cohesion campaign](../../UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) requires using this existing library across coherent Android screens. Optical comparisons remain useful, but do not delay implementation solely for per-icon owner approval.
+
+
 > **Owner development approval (2026-11-05):** All existing library assets may be used in development without awaiting individual visual approval. The remaining optical-review tasks are quality-improvement work, **not release or implementation blockers solely for lack of owner sign-off**. Agents can integrate assets and iterate when the owner requests changes. Existing structural, contrast, small-size, native-behaviour and accessibility checks still apply. Do not relabel unverified pixel-fidelity as verified or alter the protected canonical launcher implicitly.
 
 
