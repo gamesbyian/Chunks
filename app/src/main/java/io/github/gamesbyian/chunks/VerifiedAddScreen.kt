@@ -577,7 +577,10 @@ fun VerifiedAddScreen(
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val orderScope = finishInOrderScope?.takeIf {
                                 bytes != null && finishInOrderAfterAdd && (selectedTorrent?.fileCount ?: 0) >= 2 }
-                            nativeStartedAttempt = startAfterAdd && orderScope == null
+                            // The shared Add draft may change after navigating away;
+                            // only this reviewed click may determine Start for this RPC.
+                            val requestedStart = startAfterAdd
+                            nativeStartedAttempt = requestedStart && orderScope == null
                             var orderNote: String? = null
                             scope.launch {
                                 try {
@@ -585,12 +588,12 @@ fun VerifiedAddScreen(
                                     // load.raw_start. Use this native path for default
                                     // Start-after-Add, retaining stopped-first for
                                     // reviewed Finish in Order priorities.
-                                    val result = if (startAfterAdd && orderScope == null) {
+                                    val result = if (requestedStart && orderScope == null) {
                                         if (bytes != null) remote.loadStartedTorrentBytes(
                                             bytes, plan.destination, plan.useServerDefault)
                                         else remote.loadStarted(plan)
                                     } else RemoteAddStarter.run(
-                                        startAfterVerifiedAdd = startAfterAdd,
+                                        startAfterVerifiedAdd = requestedStart,
                                         add = {
                                             val added = if (bytes != null) remote.loadStoppedTorrentBytes(
                                                 bytes, plan.destination, plan.useServerDefault)
