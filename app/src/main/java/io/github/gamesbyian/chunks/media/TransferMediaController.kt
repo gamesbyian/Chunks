@@ -44,8 +44,8 @@ data class TransferMediaUiState(
 
 /**
  * Coordinates recognition, explicit/consented lookups, user corrections and artwork loading.
- * Opening or displaying a transfer only reads local state; network happens only for an explicit
- * user action, or for visible transfers when the user enabled automatic lookup.
+ * Background requests require current observer/inventory authority, provider consent and the
+ * exact transfer's automation preference. Explicit corrections retain their own scoped request path.
  */
 class TransferMediaController(
     private val service: MediaEnrichmentService,
@@ -680,8 +680,8 @@ class TransferMediaController(
 
     /**
      * Apply changed presentation settings to rows already on screen: turning artwork off drops
-     * loaded images immediately (category art shows instead); turning it on reloads only from
-     * existing assignments. Never starts an identification lookup.
+     * loaded images immediately (category art shows instead). Current authorized observers can
+     * refresh eligible identification; cached hidden observations never authorize a request.
      */
     private val largeListArtworkFlow = MutableStateFlow(false)
     /** Presentation preference for list rows; refreshed from settings on first observe and on change. */
