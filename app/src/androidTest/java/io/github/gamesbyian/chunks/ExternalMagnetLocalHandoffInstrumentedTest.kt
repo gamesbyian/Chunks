@@ -19,6 +19,31 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
     @get:Rule val rule = createEmptyComposeRule()
     private val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40)
 
+    @Test fun consumedExternalShareIsNotReplayedAfterActivityRecreation() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            data = Uri.parse(magnet)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        ActivityScenario.launch<MainActivity>(intent).use { scenario ->
+            rule.waitUntil(15_000) {
+                rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty()
+            }
+            // The incoming external source was consumed into the initial phone
+            // review. Android retains the old Activity Intent across recreate,
+            // but it is no longer authority to initiate ANOTHER review.
+            scenario.recreate()
+            rule.waitUntil(15_000) {
+                rule.onAllNodesWithText("On this phone (experimental)")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            // Local navigation may legitimately restore the empty Add form;
+            // the consumed magnet must not be injected into it again.
+            rule.onNodeWithText(magnet).assertDoesNotExist()
+        }
+    }
+
     @Test fun externalViewOpensReviewedPhoneAddWithoutRemoteLoginOrAutoStart() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val intent = Intent(context, MainActivity::class.java).apply {

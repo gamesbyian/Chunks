@@ -7,8 +7,9 @@ package io.github.gamesbyian.chunks
  * rTorrent session returns to the disconnected Transfers entry screen.
  *
  * A restored route never authenticates a server, starts an engine, fetches a
- * transfer, or replays a pending command. External Android shares are handled
- * separately by the Activity's currently delivered intent.
+ * transfer, or replays a pending command. A new Android share is admitted
+ * only on a fresh launch or onNewIntent; the original Intent must not be
+ * replayed when the Activity is recreated after a consumed source.
  */
 internal object NavigationRestorePolicy {
     fun restorableSection(name: String?): String = when (name) {
