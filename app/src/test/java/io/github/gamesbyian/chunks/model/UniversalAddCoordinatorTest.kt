@@ -102,6 +102,23 @@ class UniversalAddCoordinatorTest {
         assertFalse(requireNotNull(state.beginSubmission(1000)).intent.startWhenAdded)
     }
 
+    @Test fun navigationCanReadRetainedDraftAndTicketWithoutReauthorizing() {
+        val state = UniversalAddCoordinator()
+        val draft = intent(remote)
+        assertTrue(review(state, draft).accepted)
+        assertTrue(state.retainedReview === draft)
+        assertNull(state.retainedTicket)
+        assertTrue(state.authorizeByUser())
+        val ticket = requireNotNull(state.beginSubmission(1000))
+        assertTrue(state.retainedTicket === ticket)
+        assertTrue(state.retainedReview === draft)
+        assertTrue(state.requireReadback(ticket))
+        // A remounted view is allowed to inspect the ticket, but not resend.
+        assertTrue(state.retainedTicket === ticket)
+        assertNull(state.beginSubmission(1001))
+        assertFalse(review(state, intent(remote)).accepted)
+    }
+
     @Test fun preWireRefusalCanRearmButExceptionAfterWriteCannot() {
         val state = UniversalAddCoordinator()
         val first = attempted(state)
