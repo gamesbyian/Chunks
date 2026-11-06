@@ -125,8 +125,11 @@ class MainActivity : ComponentActivity() {
     private fun accept(intent: Intent?) {
         // Shares to the separate "Create torrent" target never become Add drafts.
         incomingCreate = io.github.gamesbyian.chunks.create.SharedCreateDocument.fromIntent(intent)
-        incomingMagnet = if (incomingCreate == null) ExternalMagnetInput.fromIntent(intent) else null
         incomingTorrent = if (incomingCreate == null) SharedTorrentDocument.fromIntent(intent) else null
+        // One incoming source only: a valid content document wins over
+        // incidental text in the same Android share intent.
+        incomingMagnet = if (incomingCreate == null && incomingTorrent == null)
+            ExternalMagnetInput.fromIntent(intent) else null
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -343,6 +346,9 @@ private fun ChunksApp(
     // as a URI. A selected remote receives only locally validated metainfo bytes.
     var sharedTorrentReading by remember { mutableStateOf(false) }
     var sharedTorrentError by remember { mutableStateOf<String?>(null) }
+    // The selected phone review URI is separate from the still-unselected
+    // Android source: opening the phone inventory alone never consumes it.
+    var phoneHandoffTorrentUri by remember { mutableStateOf<Uri?>(null) }
     var phoneHandoffMagnet by remember { mutableStateOf<String?>(null) }
     // A transfer opened from All environments: searched once on the phone list.
     var phoneSearchPrefill by remember { mutableStateOf<String?>(null) }
@@ -432,7 +438,17 @@ private fun ChunksApp(
             sharedTorrentError = null
             pendingSharedMagnet = null
             localFromCombined = false
-            section = if (server == null) Section.LOCAL else Section.COMBINED
+            if (server == null) {
+                // Phone is the only currently verified target; still require
+                // its normal explicit Add confirmation, never start here.
+                phoneHandoffTorrentUri = incomingTorrent
+                onIncomingTorrentConsumed()
+                section = Section.LOCAL
+            } else {
+                // Connected remote can be chosen, but saved/offline profiles
+                // confer no execution authority until authenticated.
+                section = Section.COMBINED
+            }
         }
     }
     // A file shared to "Create torrent" opens the Create review; nothing is read yet.
@@ -597,14 +613,18 @@ private fun ChunksApp(
                 // Opening the phone inventory is non-mutating. Only the explicit
                 // Add action hands off the pending magnet to its review.
                 onAddToPhone = {
-                    if (incomingTorrent == null) {
+                    val selectedDocument = incomingTorrent
+                    if (selectedDocument != null) {
+                        phoneHandoffTorrentUri = selectedDocument
+                        onIncomingTorrentConsumed()
+                    } else {
                         pendingSharedMagnet?.let { source ->
                             phoneHandoffMagnet = source
                             pendingSharedMagnet = null
                         }
                     }
-                    // The existing phone review reads the shared content URI
-                    // under its own privacy gate, only after this choice.
+                    // The existing phone review reads only an explicitly
+                    // selected URI, under its own independent privacy gate.
                     localFromCombined = true
                     section = Section.LOCAL
                 },
@@ -725,8 +745,8 @@ private fun ChunksApp(
                     onSearchConsumed = { phoneSearchPrefill = null },
                     onAcknowledgedAdd = { hash -> latestAdded = phoneAddedKey(hash) },
                     returnFocusTool = phoneReturnFocus, onReturnFocusConsumed = { phoneReturnFocus = null },
-                    initialTorrentUri = incomingTorrent,
-                    onTorrentConsumed = onIncomingTorrentConsumed,
+                    initialTorrentUri = phoneHandoffTorrentUri,
+                    onTorrentConsumed = { phoneHandoffTorrentUri = null },
                     onPrefillConsumed = { phoneHandoffMagnet = null },
                     onPrepareRemote = { draft ->
                         magnet = draft
@@ -1045,7 +1065,7 @@ private fun ChunksApp(
                         onSearchConsumed = { phoneSearchPrefill = null },
                         onAcknowledgedAdd = { hash -> latestAdded = phoneAddedKey(hash) },
                         returnFocusTool = phoneReturnFocus, onReturnFocusConsumed = { phoneReturnFocus = null },
-                        initialTorrentUri = incomingTorrent,
+                        initialTorrentUri = phoneHandoffTorrentUri,
                         canReviewOnConnectedServer = true,
                         serverCopy = if (remotePrivacyScope == null) null
                             else LocalServerCopyLink(runCatching {
@@ -1061,7 +1081,7 @@ private fun ChunksApp(
                             else LocalMoveServer(aliasScope) { hash ->
                                 TransferMoveObservations.server(connectedRemote, hash)
                             },
-                        onTorrentConsumed = onIncomingTorrentConsumed,
+                        onTorrentConsumed = { phoneHandoffTorrentUri = null },
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
                             magnet = draft
