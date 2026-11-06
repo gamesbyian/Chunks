@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 
 /** Everything a transfer row/detail needs to present media identity. Immutable snapshot. */
 data class TransferMediaUiState(
@@ -165,8 +166,9 @@ class TransferMediaController(
     suspend fun enrichInventory(entries: Collection<Pair<MediaTransferKey, String>>) {
         kotlinx.coroutines.withContext(backgroundDispatcher) {
             for ((key, name) in entries.distinctBy { it.first }) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 val preferences = settings()
-                // Recheck between items: withdrawing consent cancels subsequent outbound work.
+                // A revoked opt-in stops subsequent requests, including queued scans.
                 if (!preferences.onlineLookupConsent || !preferences.automaticLookup) break
                 if (store.get(key) != null) continue
                 val recognition = MediaRecognizer.recognize(name)
@@ -174,13 +176,15 @@ class TransferMediaController(
                     service.lookup(recognition, preferences, network(),
                         MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
                 }.getOrNull() ?: continue
+                // The inventory can become locked or change owners while HTTP is in progress.
+                // Never persist or start another request for a canceled view.
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 val state = when (outcome.status) {
                     MediaLookupStatus.MATCHED -> MediaAssignmentState.AUTOMATIC
                     MediaLookupStatus.NEEDS_REVIEW -> MediaAssignmentState.SUGGESTED
                     MediaLookupStatus.NOT_FOUND -> MediaAssignmentState.COULDNT_IDENTIFY
                     else -> continue // Refusal/transient failures do not become permanent exclusions.
                 }
-                // A user may have made a manual choice while the request was in flight.
                 if (!settings().onlineLookupConsent || !settings().automaticLookup ||
                     store.get(key) != null) continue
                 val assignment = TransferMediaAssignment(key, state, match = outcome.match,
@@ -189,7 +193,24 @@ class TransferMediaController(
                     updatedAtMs = clock())
                 store.put(assignment)
                 flow(key)?.update { it.copy(assignment = assignment, busy = false) }
-                if (assignment.displayMatch != null && flow(key) != null) loadArtwork(key)
+                val match = assignment.displayMatch
+                if (match != null) {
+                    if (flow(key) != null) {
+                        loadArtwork(key)
+                    } else if (preferences.showArtwork && preferences.downloadArtwork &&
+                        recognition.kind != MediaKind.ADULT) {
+                        // Pre-fill the shared validated disk cache for off-screen rows.
+                        // No per-transfer user choices are touched and no bitmap stays in UI state.
+                        val net = network()
+                        if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {
+                            kotlinx.coroutines.withContext(artworkDispatcher) {
+                                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                                artwork.load(match.artwork, ArtworkRole.SQUARE, true,
+                                    service.providerInfos().map { it.id })
+                            }
+                        }
+                    }
+                }
             }
         }
     }
