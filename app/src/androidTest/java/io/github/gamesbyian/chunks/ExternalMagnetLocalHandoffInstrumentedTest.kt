@@ -138,28 +138,54 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         // normal read-only restore/observation can run. Never confirm an Add.
         val engine = LocalEngineHolder.get(context)
         val before = engine.completeIdentityInventory()
+        var stage = "launch"
+        var scenario: ActivityScenario<MainActivity>? = null
         try {
-            ActivityScenario.launch<MainActivity>(sourceIntent(first).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
-                rule.waitUntil(20_000) {
-                    rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
-                }
-                scenario.onActivity { it.startActivity(sourceIntent(refused)) }
-                rule.waitUntil(20_000) {
-                    rule.onAllNodesWithText("Your previous .torrent remains selected.", substring = true)
-                        .fetchSemanticsNodes().isNotEmpty()
-                }
-                rule.onNodeWithText(name, substring = true).assertExists()
-                rule.onNodeWithText("All environments…").performScrollTo().performClick()
-                rule.onNodeWithText("Back").performClick()
-                rule.waitUntil(20_000) {
-                    rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
-                }
-                org.junit.Assert.assertEquals("Replacing/refusing/browsing a source cannot register a job",
-                    before, engine.completeIdentityInventory())
+            val opened = ActivityScenario.launch<MainActivity>(
+                sourceIntent(first).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).also { scenario = it }
+            stage = "first-review"
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
             }
+            stage = "replacement-intent"
+            opened.onActivity { it.startActivity(sourceIntent(refused)) }
+            stage = "refusal"
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("Your previous .torrent remains selected.", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText(name, substring = true).assertExists()
+            stage = "combined"
+            rule.onNodeWithText("All environments…").performScrollTo().performClick()
+            stage = "return"
+            rule.onNodeWithText("Back").performClick()
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
+            org.junit.Assert.assertEquals("Replacing/refusing/browsing a source cannot register a job",
+                before, engine.completeIdentityInventory())
+            stage = "close"
+        } catch (failure: Throwable) {
+            // A disposable fixture-only display, with a fixed stage and error
+            // class in the filename. No incoming URI or exception message is logged.
+            runCatching {
+                val kind = failure.javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z]+")) } ?: "Failure"
+                androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+                    .uiAutomation.takeScreenshot()?.let { bitmap ->
+                        val directory = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
+                            android.os.Environment.DIRECTORY_PICTURES), "ChunksAddAtlas").apply { mkdirs() }
+                        java.io.File(directory, "phone-source-$stage-$kind.png").outputStream().use {
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                        }
+                        bitmap.recycle()
+                    }
+            }
+            throw failure
         } finally {
-            DocumentsContract.deleteDocument(context.contentResolver, first)
-            DocumentsContract.deleteDocument(context.contentResolver, refused)
+            try { scenario?.close() } finally {
+                DocumentsContract.deleteDocument(context.contentResolver, first)
+                DocumentsContract.deleteDocument(context.contentResolver, refused)
+            }
         }
     }
 
