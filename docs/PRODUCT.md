@@ -1,5 +1,8 @@
 # Chunks canonical product contract
 
+> **New owner-approved Add and routing extensions (2026-11-05):** The universal Add offers conditional original .torrent **Keep / Archive in Chunks / Delete** (Archive proposed default), a persistent per-transfer automatic metadata/artwork opt-out, and collapsible groups. Compact transfer rows reveal **Move / Remove** on left swipe without executing either action; accessible equivalent actions remain. **Smart Routing** evaluates ordered, explainable local classification rules for initial target and later job-only move suggestions, with metadata-only magnet staging where actually supported. **No payload migration or payload copy in Move/Smart Routing.** Carry aliases, artwork/custom metadata and portable rename intents; offer explicit optional speed/ratio/seeding-rule carryover. [Binding detailed contract](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md).
+
+
 > **Owner product refinement (2026-11-05):** Ordinary artwork and metadata enrichment is automatic after informed third-party lookup consent, for all accessible configured environments at startup, reconnection and when new transfers appear. Users interact chiefly to correct identification or make per-transfer custom artwork choices; system-wide choices reside in Options. The [cohesive UX and automatic artwork contract](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) and [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) govern details. Existing provider/privacy consent remains required and torrent state/payload is untouched. Progressive disclosure replaces permanent screen clutter without removing supported functions.
 
 
