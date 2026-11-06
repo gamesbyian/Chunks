@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -25,6 +26,19 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
 class PhoneAddDraftContinuityTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+
+    @Test fun artworkOptOutSurvivesAllEnvironmentsRoundTripWithoutAdding() {
+        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
+            .performScrollTo().performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40))
+        rule.onNodeWithText("Artwork & metadata").performScrollTo().performClick()
+        val choice = "Automatically identify and fetch artwork & metadata"
+        rule.onNodeWithText(choice).performScrollTo().performClick().assertIsOff()
+        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("Artwork & metadata").performScrollTo().performClick()
+        rule.onNodeWithText(choice).performScrollTo().assertIsOff()
+    }
 
     @Test fun magnetDraftSurvivesAllEnvironmentsRoundTrip() {
         val draft = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=draft"

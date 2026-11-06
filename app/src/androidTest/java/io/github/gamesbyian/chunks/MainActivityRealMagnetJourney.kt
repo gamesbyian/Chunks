@@ -243,6 +243,10 @@ internal class MainActivityRealMagnetJourney(
             }
             if (default == null) type("Custom server folder (optional)", parent)
             report("chunks_real_add_app_stage", "place-ready")
+            if (disposable) {
+                click("Artwork & metadata")
+                click("Automatically identify and fetch artwork & metadata")
+            }
             click("Review Add")
             scroll("Confirm one server operation")
             assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
@@ -257,6 +261,15 @@ internal class MainActivityRealMagnetJourney(
             click("Confirm: add then start")
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
             assertTrue("Actual app did not verify Add+Start", visible("Verified: added and started on rTorrent."))
+            if (disposable) {
+                val key = io.github.gamesbyian.chunks.media.MediaTransferKey.of(
+                    io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+                        io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(url, user), hash))
+                assertTrue("Remote Add must persist its own exact-scoped artwork exclusion",
+                    io.github.gamesbyian.chunks.media.FileMediaAutomationPreferences(
+                        java.io.File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir,
+                            "media/automation.json")).isExcluded(key))
+            }
             report("chunks_real_add_app_stage", "add-registered")
         }
         fun refreshAndFind(hash: String) {

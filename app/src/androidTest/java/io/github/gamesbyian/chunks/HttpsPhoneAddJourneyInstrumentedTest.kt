@@ -192,8 +192,17 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 rule.waitUntil(45_000) { visible("Review download") }
                 stage("cancel-recovered")
                 click("Start downloading after Add (recommended)")
+                val mediaKey = io.github.gamesbyian.chunks.media.MediaTransferKey.of(
+                    requireNotNull(phoneAddedKey(preview.infoHashV1)))
+                fun excluded() = io.github.gamesbyian.chunks.media.FileMediaAutomationPreferences(
+                    File(context.filesDir, "media/automation.json")).isExcluded(mediaKey)
+                assertFalse("Preview/cancel must not persist a transfer exclusion", excluded())
+                click("Artwork & metadata")
+                click("Automatically identify and fetch artwork & metadata")
+                assertFalse("The draft choice alone is not Add admission", excluded())
                 click("Add stopped")
                 await("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
+                assertTrue("Phone Add must persist the exclusion before exposing the job", excluded())
                 val phone = requireNotNull(LocalEngineHolder.current())
                 previousLimits = phone.rateLimits()
                 phone.setRateLimits(LocalRateLimits(downloadBytesPerSecond = 128 * 1024))

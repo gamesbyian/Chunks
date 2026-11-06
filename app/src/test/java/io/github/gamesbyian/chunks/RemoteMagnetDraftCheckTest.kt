@@ -4,6 +4,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -27,6 +28,69 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi", fontScale = 2.0f)
 class RemoteMagnetDraftCheckTest {
     @get:Rule val rule = createComposeRule()
+
+    @Test fun failedExclusionSaveSendsNoAddRequestAndKeepsTheDraftCorrectable() {
+        val root = java.nio.file.Files.createTempDirectory("add-media-refusal").toFile()
+        java.io.File(root, "automation.json").writeText("unreadable preferences")
+        val methods = java.util.concurrent.CopyOnWriteArrayList<String>()
+        val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val request = exchange.requestBody.bufferedReader().use { it.readText() }
+            methods += Regex("<methodName>([^<]+)</methodName>").find(request)!!.groupValues[1]
+            val response = ("<methodResponse><params><param><value><string>/srv</string></value>" +
+                "</param></params></methodResponse>").toByteArray()
+            exchange.sendResponseHeaders(200, response.size.toLong())
+            exchange.responseBody.use { it.write(response) }
+        }
+        server.start()
+        val mediaHttp = io.github.gamesbyian.chunks.media.FakeMediaHttp()
+        val controller = io.github.gamesbyian.chunks.media.TransferMediaController(
+            io.github.gamesbyian.chunks.media.MediaEnrichmentService(emptyList(), mediaHttp,
+                io.github.gamesbyian.chunks.media.InMemoryMediaQueryCache()),
+            io.github.gamesbyian.chunks.media.artwork.ArtworkRepository(mediaHttp,
+                io.github.gamesbyian.chunks.media.artwork.ArtworkDiskCache(java.io.File(root, "art")), hostPolicyFor = { null }),
+            { io.github.gamesbyian.chunks.media.InMemoryTransferMediaAssignmentStore() },
+            { io.github.gamesbyian.chunks.media.MediaPrivacySettings() },
+            { io.github.gamesbyian.chunks.media.MediaNetworkState(false, false) },
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined),
+            kotlinx.coroutines.Dispatchers.Unconfined, kotlinx.coroutines.Dispatchers.Unconfined,
+            automationStoreFactory = {
+                io.github.gamesbyian.chunks.media.FileMediaAutomationPreferences(java.io.File(root, "automation.json"))
+            })
+        val endpoint = "http://127.0.0.1:${server.address.port}/RPC2"
+        val source = mutableStateOf("magnet:?xt=urn:btih:" + "c".repeat(40))
+        val automatic = mutableStateOf(false)
+        var settled = 0
+        try {
+            rule.setContent {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    io.github.gamesbyian.chunks.media.LocalTransferMediaController provides controller) {
+                    ChunksTheme { Surface {
+                        VerifiedAddScreen(RTorrentRemote(RemoteCredentials(endpoint, "", "")), source.value, "/srv",
+                            onMagnet = { source.value = it }, onDestination = {}, onBack = {}, onComplete = {},
+                            onMutationStarted = { true }, onMutationSettled = { settled++ },
+                            finishInOrderScope = endpoint + "\u0000", addArtworkState = automatic)
+                    } }
+                }
+            }
+            reveal("Review Add")
+            rule.onNodeWithText("Review Add").performClick()
+            reveal("Confirm: add then start")
+            rule.onNodeWithText("Confirm: add then start").performClick()
+            rule.waitUntil(15_000) { settled == 1 }
+            reveal("The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.")
+            reveal("Magnet or torrent link")
+            rule.onNodeWithText("Magnet or torrent link").assertIsEnabled()
+            reveal("Review Add")
+            rule.onNodeWithText("Review Add").assertIsEnabled()
+            org.junit.Assert.assertFalse("Refusal retains the opt-out", automatic.value)
+            org.junit.Assert.assertTrue("Only the read-only default Place query is allowed", methods.all { it == "directory.default" })
+            org.junit.Assert.assertTrue(mediaHttp.requests.isEmpty())
+        } finally {
+            server.stop(0)
+            root.deleteRecursively()
+        }
+    }
 
     private fun show(initial: String) {
         val magnet = mutableStateOf(initial)
@@ -52,6 +116,7 @@ class RemoteMagnetDraftCheckTest {
         val source = mutableStateOf("magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=PhoneDraft")
         val onServer = mutableStateOf(false)
         val startChoice = mutableStateOf(true)
+        val artworkChoice = mutableStateOf(true)
         val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:9/RPC2", "", ""))
         rule.setContent {
             ChunksTheme { Surface {
@@ -60,7 +125,7 @@ class RemoteMagnetDraftCheckTest {
                         onMagnet = { source.value = it }, onDestination = {},
                         onBack = {}, onComplete = {},
                         onMutationStarted = { error("Viewing a shared source cannot mutate a server") },
-                        onMutationSettled = {}, addStartState = startChoice)
+                        onMutationSettled = {}, addStartState = startChoice, addArtworkState = artworkChoice)
                 } else {
                     androidx.compose.material3.Text("Phone Add source is held by the app")
                 }
@@ -71,6 +136,11 @@ class RemoteMagnetDraftCheckTest {
         rule.onNodeWithText("Magnet for: PhoneDraft").assertExists()
         reveal("Start downloading after verified Add (recommended)")
         rule.onNodeWithText("Start downloading after verified Add (recommended)").performClick()
+        reveal("Artwork & metadata")
+        rule.onNodeWithText("Artwork & metadata").performClick()
+        reveal("Automatically identify and fetch artwork & metadata")
+        rule.onNodeWithText("Automatically identify and fetch artwork & metadata").performClick()
+        rule.runOnIdle { org.junit.Assert.assertFalse(artworkChoice.value) }
         rule.runOnIdle { org.junit.Assert.assertFalse("Start selection is shared with phone", startChoice.value) }
         rule.runOnIdle {
             onServer.value = false
@@ -80,6 +150,7 @@ class RemoteMagnetDraftCheckTest {
         reveal("Magnet for: EditedOnPhone")
         rule.onNodeWithText("Magnet for: EditedOnPhone").assertExists()
         rule.runOnIdle { org.junit.Assert.assertFalse("Unmount must not reset Start intent", startChoice.value) }
+        rule.runOnIdle { org.junit.Assert.assertFalse("Unmount must not reset the artwork opt-out", artworkChoice.value) }
     }
 
     @Test fun base32MagnetIsReviewedAsItsStandardHashAtLargeText() {

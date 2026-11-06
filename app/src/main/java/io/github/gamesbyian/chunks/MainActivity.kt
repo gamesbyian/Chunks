@@ -317,6 +317,7 @@ internal fun ChunksApp(
     val phoneAddPlace = rememberSaveable { mutableStateOf<String?>(null) }
     val phoneAddFolder = rememberSaveable { mutableStateOf("") }
     val phoneAddStart = rememberSaveable { mutableStateOf(true) }
+    val addAutomaticArtwork = rememberSaveable { mutableStateOf(true) }
     val combinedListState = rememberLazyListState()
     // Combined search text, like the phone's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
@@ -743,6 +744,7 @@ internal fun ChunksApp(
                     listScroll = phoneListScroll, searchState = phoneSearch,
                     magnetDraftState = addSourceDraft,
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
+                    addArtworkState = addAutomaticArtwork,
                     onBack = { leavePhone() },
                     onSeedingRules = { openFromPhone(Section.SEEDING) },
                     onMediaSettings = { openFromPhone(Section.MEDIA) },
@@ -1064,6 +1066,7 @@ internal fun ChunksApp(
                         listScroll = phoneListScroll, searchState = phoneSearch,
                         magnetDraftState = addSourceDraft,
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
+                        addArtworkState = addAutomaticArtwork,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
                         onMediaSettings = { openFromPhone(Section.MEDIA) },
@@ -1518,6 +1521,7 @@ internal fun ChunksApp(
                         environmentLabel = serverEnvironmentLabel(aliasScope),
                         onMagnet = { magnet = it }, onDestination = { draftPath = it },
                         addStartState = phoneAddStart,
+                        addArtworkState = addAutomaticArtwork,
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->
