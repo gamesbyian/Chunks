@@ -312,7 +312,9 @@ internal fun CombinedTransfersScreen(
      */
     searchState: androidx.compose.runtime.MutableState<String>? = null,
     /** Caller-supplied verified Add identity, never inferred from a title or an inventory delta. */
-    recentlyAddedTransfer: UnifiedTransferKey? = null
+    recentlyAddedTransfer: UnifiedTransferKey? = null,
+    /** The same app-wide Connections destination as phone and signed-in-server lists. */
+    onConnections: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -1242,6 +1244,7 @@ internal fun CombinedTransfersScreen(
             showingViewOptions = !showingViewOptions
             batchScope.launch { listState.scrollToItem(COMBINED_VIEW_ITEM_INDEX) }
         },
+        onConnections = onConnections,
         addDescription = "Choose where to add a torrent"
     )
     } // measured footer + viewport

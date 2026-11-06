@@ -575,6 +575,7 @@ private fun ChunksApp(
                         shortLabel = profile.label)
                 },
                 onOpenPhone = { localFromCombined = true; section = Section.LOCAL },
+                onConnections = { section = Section.SERVER },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onAddToServer = if (server != null) ({ section = Section.ADD }) else null,
                 onOpenTransfer = { key ->

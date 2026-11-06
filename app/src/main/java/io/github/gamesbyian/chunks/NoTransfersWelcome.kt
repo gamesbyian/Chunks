@@ -40,3 +40,14 @@ internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: () -> Unit) {
         }
     }
 }
+
+/** An initial/stale/filtered empty list is not evidence of an unused setup. */
+internal fun showPhoneFirstRunWelcome(
+    inventoryConfirmed: Boolean,
+    inventoryStale: Boolean,
+    inventoryEmpty: Boolean,
+    hasRemoteEnvironment: Boolean,
+    search: String,
+    addOpen: Boolean
+): Boolean = inventoryConfirmed && !inventoryStale && inventoryEmpty &&
+    !hasRemoteEnvironment && search.isBlank() && !addOpen

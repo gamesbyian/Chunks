@@ -31,6 +31,7 @@ class CombinedFooterNavigationTest {
     @get:Rule val rule = createComposeRule()
     private val scope = "https://box.example/rutorrent2/plugins/httprpc/action.php\u0000ian"
     private val commands = ArrayList<Pair<String, Boolean>>()
+    private var connections = 0
     private val gate = CombinedServerLifecycle(begin = { true }, settled = {},
         setStarted = { hash, on -> commands += hash to on
             io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) })
@@ -44,7 +45,8 @@ class CombinedFooterNavigationTest {
             CombinedTransfersScreen(
                 server = CombinedServerSource(scope, rows, stale = false, fullView = true,
                     observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gate),
-                savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                onConnections = { connections++ })
         } }
     }
 
@@ -79,4 +81,12 @@ class CombinedFooterNavigationTest {
         rule.waitForIdle()
         rule.onNodeWithText("All environments").assertIsDisplayed()
     }
+    @Test fun sharedConnectionsIsReachableFromCombinedWithoutTransferCommands() {
+        show()
+        org.junit.Assert.assertEquals(0, connections)
+        rule.onNodeWithContentDescription("Connections").assertIsDisplayed().performClick()
+        org.junit.Assert.assertEquals(1, connections)
+        assertTrue(commands.isEmpty())
+    }
+
 }

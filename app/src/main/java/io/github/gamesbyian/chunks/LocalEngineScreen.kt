@@ -797,8 +797,9 @@ internal fun LocalEngineScreen(
         }
         // Make the true first-run choice visible before any setup or utility controls.
         // The ordinary Add disclosure replaces it as soon as Add is selected.
-        val firstRunVisible = transfers.isEmpty() && showFirstRunWelcome &&
-            onConnections != null && !addExpanded
+        val firstRunVisible = onConnections != null && showPhoneFirstRunWelcome(
+            hasConfirmedLocalInventory, inventoryStale, transfers.isEmpty(),
+            !showFirstRunWelcome, transferSearch, addExpanded)
         if (firstRunVisible) NoTransfersWelcome(
             onAdd = { addExpanded = true; addNavigationRevision++ },
             onConnections = onConnections!!
@@ -1565,8 +1566,11 @@ internal fun LocalEngineScreen(
             Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
-            if (!firstRunVisible)
-                Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+            when {
+                !hasConfirmedLocalInventory -> Text("Loading phone transfers…", style = MaterialTheme.typography.bodySmall)
+                inventoryStale -> Text("Phone transfer list is not current.", style = MaterialTheme.typography.bodySmall)
+                !firstRunVisible -> Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+            }
         } else if (displayedTransfers.isEmpty()) {
             Text("No transfers match this search or filter.",
                 style = MaterialTheme.typography.bodySmall)
