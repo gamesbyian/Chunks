@@ -20,6 +20,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows
@@ -47,6 +48,8 @@ class PhoneDocumentReplacementTest {
     private val draft = mutableStateOf<PendingLocalAdd?>(null)
     private val consumed = CopyOnWriteArrayList<Uri>()
     private val prepared = AtomicReference<ByteArray?>()
+    private var fetchLink: (TorrentLinkCheck.Fetchable) -> TorrentLinkResult =
+        { TorrentLinkResult.Refused(TorrentLinkResult.OFFLINE) }
     private fun uri(name: String) = Uri.parse("content://$authority/$name")
     private fun metainfo(name: String) = ("d4:infod6:lengthi5e4:name${name.length}:$name" +
         "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
@@ -78,6 +81,7 @@ class PhoneDocumentReplacementTest {
     }
 
     @Before fun prepare() {
+        fetchLink = { TorrentLinkResult.Refused(TorrentLinkResult.OFFLINE) }
         root.mkdirs()
         File(root, "first").writeBytes(metainfo("kept.txt"))
         File(root, "second").writeBytes(metainfo("next.txt"))
@@ -101,6 +105,7 @@ class PhoneDocumentReplacementTest {
             pendingAddState = draft,
             canReviewOnConnectedServer = true, onPrepareRemoteTorrent = { prepared.set(it) },
             onAcknowledgedAdd = { error("Source review must never authorize engine Add") },
+            fetchTorrentDocument = { fetchLink(it) },
             onTorrentConsumed = { uri -> consumed += uri; if (source.value == uri) source.value = null })
     } } }
     private fun waitFor(text: String) = rule.waitUntil(15_000) {
@@ -218,5 +223,43 @@ class PhoneDocumentReplacementTest {
         handoff()
         assertArrayEquals(metainfo("kept.txt"), prepared.get())
         assertEquals(listOf(uri("slow")), consumed.toList())
+    }
+
+
+    private fun requestHttpsReplacement(url: String) {
+        rule.onNodeWithText("Or paste a magnet or torrent link").performScrollTo()
+            .performTextInput(url)
+        rule.onNodeWithText("Get torrent from link").performScrollTo().assertIsEnabled()
+            .performClick()
+    }
+
+    @Test fun refusedHttpsReplacementKeepsThePreviousReviewedDocumentAvailable() {
+        source.value = uri("first")
+        show()
+        waitFor("kept.txt")
+        // Previously the fetch button was disabled whenever a valid .torrent
+        // was under review, forcing the user to discard A before trying B.
+        requestHttpsReplacement("https://example.org/not-available.torrent?private=token")
+        waitFor(TorrentLinkResult.OFFLINE)
+        assertArrayEquals(metainfo("kept.txt"), draft.value?.bytes)
+        rule.onNodeWithText("kept.txt", substring = true).performScrollTo().assertExists()
+        handoff()
+        assertArrayEquals(metainfo("kept.txt"), prepared.get())
+    }
+
+    @Test fun validHttpsReplacementSupersedesTheOldReviewOnlyAfterValidation() {
+        source.value = uri("first")
+        val replacement = metainfo("next.txt")
+        fetchLink = { link ->
+            assertEquals("example.org", link.uri.host)
+            TorrentLinkResult.Fetched(replacement, TorrentMetainfoReader.preview(replacement), link.display)
+        }
+        show()
+        waitFor("kept.txt")
+        requestHttpsReplacement("https://example.org/next.torrent?private=token")
+        waitFor("Torrent from example.org")
+        assertArrayEquals(replacement, draft.value?.bytes)
+        handoff()
+        assertArrayEquals(replacement, prepared.get())
     }
 }
