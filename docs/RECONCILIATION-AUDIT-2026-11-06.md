@@ -1,0 +1,24 @@
+# Chunks live documentation and issue reconciliation — 2026-11-06
+
+**Snapshot:** GitHub main `1aea0c2ef6de225556be2ec36c0c10b791311cd9`; zero open PRs and 26 open issues at the initial audit. This is an evidence/provenance report, **not** an alternate work queue or license to reopen already integrated implementations. Recheck GitHub before acting.
+
+## Evidence and merged work
+
+- [#1333](https://github.com/gamesbyian/Chunks/pull/1333) merged UX/navigation, authorized background media enrichment and the **pure** Smart Routing evaluator; no routing persistence or Add/Move executor is implied.
+- [#1334](https://github.com/gamesbyian/Chunks/pull/1334) merged the eight-destination centralized Options specification and universal **immediate-apply** preference interaction contract; comprehensive implementation is unfinished.
+- [#1335](https://github.com/gamesbyian/Chunks/pull/1335) reconciled late first-run/installed test cases. Exact head `704116221` passed [Android foundation](https://github.com/gamesbyian/Chunks/actions/runs/42167311739), [Native Add](https://github.com/gamesbyian/Chunks/actions/runs/42167311565) and [real magnet](https://github.com/gamesbyian/Chunks/actions/runs/42167311763).
+- [#1336](https://github.com/gamesbyian/Chunks/pull/1336) merged opt-in provider Android test/receipt infrastructure reclaimed from retired draft #1321, leaving the earlier native source-prefix/peer monitors intact. Exact head `89ef095` passed [Native Add](https://github.com/gamesbyian/Chunks/actions/runs/42172524381) and [installed real rTorrent magnet](https://github.com/gamesbyian/Chunks/actions/runs/42172524891). **Manual live-provider cases have not been run**; tests being present and compiling cannot count as their acceptance.
+
+## Reconciliation edits
+
+Updated the active [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [INDEX](INDEX.md), [SPEC-COVERAGE](SPEC-COVERAGE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md), [BUILD](BUILD.md) and [AGENT-LANES](AGENT-LANES.md) to remove stale next-agent/PR gates and distinguish old build previews from final-main deliverables. Added explicitly historical-status overlays to [Codex media handoff](CODEX-RELIABILITY-MEDIA-HANDOFF-2026-11-05.md), [Claude media handoff](CLAUDE-UI-MEDIA-EXECUTION-2026-11-05.md), [UX final handoff](UX-FINAL-RECONCILIATION-2026-11-05.md), [UX cohesion plan](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) and [dual-agent dispatch](UX-DUAL-AGENT-DISPATCH-2026-11-04.md). Older plans, dates, historical red CI receipts, and negative findings remain available and must be interpreted **as-of their dates**, not overwritten to appear newly green.
+
+Open issues [#8](https://github.com/gamesbyian/Chunks/issues/8), [#9](https://github.com/gamesbyian/Chunks/issues/9), [#403](https://github.com/gamesbyian/Chunks/issues/403) and [#1041](https://github.com/gamesbyian/Chunks/issues/1041) received current-status notes without prematurely closing remaining accessibility, provider, or fixture scope. Remaining open issues include real future work and separately deferred adapters [#660](https://github.com/gamesbyian/Chunks/issues/660), protected release/governance [#10](https://github.com/gamesbyian/Chunks/issues/10), ZIP/library safety [#809](https://github.com/gamesbyian/Chunks/issues/809), etc.; **an open issue is not proof the entire historical text is still current**.
+
+## Still to prove or build
+
+One universal Add and conditional safe .torrent Keep/Archive/Delete; Add-time per-transfer enrichment exclusion; swipe-only revelation (non-destructive) of Move/Remove actions with accessible equivalents; startup/reconnect process-wide authorized enrichment; saved and explainable Smart Routing rules and actual initial/late job-only dispatch; portable presentation/rename intentions, with separate user choice for supported speed/ratio/seeding policy carryover. **No payload migration** through routing or Move. Actual external live provider acceptance, genuine final-main checksum/installed preview, physical Pixel 6 Pro/keyboard/TalkBack validation and publisher signing are not inherited from passing mock/JVM/installed-test slices.
+
+## Documentation governance
+
+[AGENTS](../AGENTS.md) defines permanent engineering conduct, [WORK-QUEUE](WORK-QUEUE.md) is the sole actionable priority source, [UX](UX.md)/[PRODUCT](PRODUCT.md) and focused contracts define behavior, [SPEC-COVERAGE](SPEC-COVERAGE.md) describes which parts are actually implemented, and [QUALITY-LEDGER](QUALITY-LEDGER.md) owns exact-source evidence. Date-stamped handoffs are historical unless explicitly renewed by a newer live instruction. This targeted audit did **not** revalidate every sentence of every historical research/specification file or every issue body, and does not claim such exhaustive perfection. Future changes must update these same authority points when their implementation/CI state changes.
