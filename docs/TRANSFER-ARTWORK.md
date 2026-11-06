@@ -1,5 +1,8 @@
 # Transfer artwork and media identification contract
 
+> **Per-transfer automatic-enrichment exclusion (owner-approved 2026-11-05):** Universal Add and each transfer's Details allow disabling automatic artwork/metadata collection for that exact environment+hash. Default enabled for otherwise eligible transfers, subject to existing informed provider consent. Excluded jobs must not enter background discovery/retry/requests (not merely hide images); persist through restart/reconnect and carry with job-only Copy/Move presentation customizations. Existing manual choices remain protected. Offline content classification for Smart Routing remains permitted independently of external enrichment. [Binding source, routing and exclusion contract](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md).
+
+
 > **Superseding owner behavior decision (2026-11-05):** Artwork and media identification run automatically for *all accessible configured environments* on launch/reconnect/inventory change **after informed, revocable third-party enrichment consent**. Apply confident matches and reuse cache; background retries/fallbacks; preserve per-transfer overrides; correction/choice/import under Transfer Details only; system-wide artwork preferences under Options. Do not require per-transfer activation, a manual scan or per-asset visual approval. This supersedes below historical phrases such as "Do not silently download artwork merely because a torrent was added" **once the user has granted enrichment consent**, and stale claims that media UI has not yet been integrated. See [cohesive UX and automatic artwork campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) and [MEDIA-ARTWORK-IMPLEMENTATION](MEDIA-ARTWORK-IMPLEMENTATION.md). Future artwork sharing remains deferred.
 
 
