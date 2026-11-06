@@ -324,6 +324,32 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 val status = requireNotNull(phone.status(preview.infoHashV1))
                 assertTrue(status.doneBytes in 1 until preview.sizeBytes)
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
+                // Ordinary phone Downloads -> Combined -> Details, using the
+                // installed app's real observation of this exact local job.
+                // Reading Details must not mutate the stopped native session.
+                click("All environments…")
+                rule.waitUntil(30_000) { visible("All environments") }
+                val phoneRow = hasContentDescription("Expand ${preview.name} on On this phone", substring = true)
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneRow)
+                rule.onNode(phoneRow).performClick()
+                val details = hasContentDescription("All details for ${preview.name} on On this phone", substring = true)
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(details)
+                rule.onNode(details).performClick()
+                rule.waitUntil(30_000) {
+                    visible("Transfer details") && visible("Environment: On this phone")
+                }
+                rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+                assertTrue("Phone Details lost the exact observed hash",
+                    visible("Exact infohash: ${preview.infoHashV1}"))
+                assertTrue("Phone Details lost its exact one-time destination",
+                    visible("Save folder reported by engine: ${destination.canonicalPath}"))
+                assertTrue("Read-only Details must not restart the native job",
+                    phone.status(preview.infoHashV1)?.stopped == true)
+                click("Back to transfers")
+                rule.waitUntil(30_000) { visible("All environments") }
+                click("Back")
+                rule.waitUntil(30_000) { visible("On this phone (experimental)") }
+                stage("phone-details-verified")
                 stage("phone-open")
                 // Genuine first-run sessions use the direct Add link; populated ones retain the inline action.
                 if (visible("Add a torrent")) click("Add a torrent")
