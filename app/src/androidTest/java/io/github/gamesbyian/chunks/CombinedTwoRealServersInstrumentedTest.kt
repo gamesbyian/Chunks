@@ -101,20 +101,26 @@ class CombinedTwoRealServersInstrumentedTest {
         typeInto("Username, if required", user)
         typeInto("Password", password)
         scrollTo("Remember this server and login on this device")
-        // The IME can recycle this lazy item between readiness and touch
-        // injection (42238837684 failed before dispatching any input).
-        // Exercise the displayed/enabled production accessibility action ONCE;
-        // all authentication and independent server postconditions are unchanged.
-        if (!connectedQueue()) {
-            rule.waitUntil(15_000) {
-                connectedQueue() || runCatching {
+        // The IME can recycle this lazy item during selector resolution
+        // (42238837684 and 42241610339 failed BEFORE action invocation).
+        // Repeat only readiness/selector reads. Once the framework supplies
+        // its action, latch BEFORE invoking it: no exception or refused action
+        // may lead to a second production Connect invocation.
+        var connectInvoked = false
+        rule.waitUntil(15_000) {
+            if (connectedQueue()) true else {
+                try {
                     scrollTo("Connect to rTorrent")
                     rule.onNodeWithText("Connect to rTorrent").assertIsDisplayed().assertIsEnabled()
-                }.isSuccess
-            }
-            if (!connectedQueue()) {
-                rule.onNodeWithText("Connect to rTorrent").performSemanticsAction(SemanticsActions.OnClick) {
-                    assertTrue("The production Connect action must be accepted", it())
+                        .performSemanticsAction(SemanticsActions.OnClick) {
+                            check(!connectInvoked)
+                            connectInvoked = true
+                            assertTrue("The production Connect action must be accepted", it())
+                        }
+                    connectInvoked
+                } catch (failure: Throwable) {
+                    if (connectInvoked) throw failure
+                    false
                 }
             }
         }
