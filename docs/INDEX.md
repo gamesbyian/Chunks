@@ -1,6 +1,6 @@
 # Chunks documentation index
 
-**Live 2026-11-06 integration checkpoint:** [#1338](https://github.com/gamesbyian/Chunks/pull/1338) merged, source SHA `d459a37633d5`; [one WORK-QUEUE](WORK-QUEUE.md) continues with Universal Add *draft/submit*, not more destination-chooser work. Seven exact-head PR suites green; no final-main published APK/handset receipt. [Compact active handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md), [quality receipts](QUALITY-LEDGER.md).
+**Live 2026-11-06 integration checkpoint:** [#1341](https://github.com/gamesbyian/Chunks/pull/1341) merged as `1a790e13` after qualified `712ea326`. The shared Add enrichment-admission candidate follows; the [one WORK-QUEUE](WORK-QUEUE.md) still prioritizes authoritative Add draft/submission and existing adapters. [Active handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md) and [quality receipts](QUALITY-LEDGER.md) distinguish source, installed, real-peer and unresolved physical/provider/APK tiers.
 
 
 **ACTIVE execution pointer, 2026-11-06 (starting SHA `2084d9fd8b58`):** [One integration campaign in WORK-QUEUE](WORK-QUEUE.md) and its [short recovery handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md) supersede dated agent/UX/CI *execution* instructions, not normative feature contracts. Begin with current-source installable feedback, then one Universal Add → shared transfer context → manual job-only Move → explainable routing. #8/#567/#6/#2 own features, #9/#10 own evidence/release. No second backlog, no implied physical/API/provider acceptance.
