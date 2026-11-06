@@ -52,9 +52,10 @@ installed_apk=$(adb shell pm path "$candidate_package")
 installed_apk=${installed_apk#package:}
 installed_apk=${installed_apk//$'\r'/}
 milestone 'comparing installed APK bytes'
-adb pull "$installed_apk" "$RUNNER_TEMP/chunks-installed-base.apk" >/dev/null 2>&1
-cmp -s app/build/outputs/apk/debug/app-debug.apk "$RUNNER_TEMP/chunks-installed-base.apk"
-rm "$RUNNER_TEMP/chunks-installed-base.apk"
+# Keep the exact byte gate, but distinguish failed emulator pull from changed
+# installed bytes. The helper prints fixed diagnostics and deletes its temp copy.
+bash tools/verify_installed_apk_bytes.sh \
+  app/build/outputs/apk/debug/app-debug.apk "$installed_apk" "$RUNNER_TEMP/chunks-installed-base.apk"
 unset installed_apk
 if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   milestone 'running production phone HTTPS and one-time Place journey'
