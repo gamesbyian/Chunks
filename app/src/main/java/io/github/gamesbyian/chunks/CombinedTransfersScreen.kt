@@ -1287,6 +1287,29 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation, fresh: Boolean = 
         it.toDouble() / 1_000.0))
 } ?: emptyList()).joinToString(" · ")
 
+/**
+ * The permanently visible row states only the facts useful while scanning.
+ * Size/ETA and other details are disclosed by tapping the row. Unknown
+ * values remain explicitly unknown; the progress bar supplies the visual.
+ */
+internal fun combinedCompactRowFacts(row: UnifiedTransferObservation, fresh: Boolean = false): String = listOf(
+    if (row.metadataPending == true) "Fetching metadata" else when (row.started) {
+        true -> when {
+            row.progressPpm == 1_000_000 -> "Sharing"
+            fresh && (row.downloadBytesPerSecond ?: 0L) > 0L -> "Downloading"
+            else -> "Started"
+        }
+        false -> "Stopped"
+        null -> "State unknown"
+    },
+    row.progressPpm?.let { "${it / 10_000}%" } ?: "Progress unknown",
+    "↓ " + (row.downloadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),
+    "↑ " + (row.uploadBytesPerSecond?.let { Units.bytes(it) + "/s" } ?: "not reported"),
+    row.ratioThousandths?.let {
+        "Ratio " + String.format(java.util.Locale.US, "%.2f", it.toDouble() / 1_000.0)
+    } ?: "Ratio not reported"
+).joinToString(" · ")
+
 @Composable
 private fun CombinedTransferRow(
     row: UnifiedTransferObservation,
@@ -1349,7 +1372,7 @@ private fun CombinedTransferRow(
                     })
             }
             // A time estimate needs a live, complete source; last-known facts never get one.
-            Text(combinedRowFacts(row, fresh = source?.canClaimCompleteLiveInventory == true),
+            Text(combinedCompactRowFacts(row, fresh = source?.canClaimCompleteLiveInventory == true),
                 style = MaterialTheme.typography.bodySmall)
             row.progressPpm?.let { ppm ->
                 ChunkedProgressBar(
@@ -1370,6 +1393,13 @@ private fun CombinedTransferRow(
             if (row.hasError) Text("Needs attention in its own list",
                 color = ChunksColors.Red, style = MaterialTheme.typography.bodySmall)
             if (expanded) {
+                Text(
+                    listOfNotNull(
+                        row.sizeBytes?.let { "Size " + Units.bytes(it) } ?: "Size not reported",
+                        combinedTimeLeft(row).takeIf { source?.canClaimCompleteLiveInventory == true },
+                        row.peers?.let { "$it peers" }
+                    ).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall)
                 OutlinedButton(onClick = onDetails,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
                         contentDescription = "All details for ${row.displayName} on $environmentLabel"
