@@ -126,7 +126,7 @@ internal class UniversalAddIntent(
 internal class UniversalAddCoordinator {
     enum class Phase {
         EMPTY, REVIEWED, AUTHORIZED, WRITE_ATTEMPTED, READBACK_REQUIRED,
-        OBSERVED_UNCERTAIN, SESSION_CONFIRMED, VERIFIED
+        OBSERVED_UNCERTAIN, JOB_CONFIRMED_START_UNVERIFIED, SESSION_CONFIRMED, VERIFIED
     }
 
     data class ReviewDecision(val accepted: Boolean, val reason: String)
@@ -177,7 +177,7 @@ internal class UniversalAddCoordinator {
         availability: EnvironmentAvailability
     ): ReviewDecision {
         if (phase == Phase.WRITE_ATTEMPTED || phase == Phase.READBACK_REQUIRED ||
-            phase == Phase.OBSERVED_UNCERTAIN ||
+            phase == Phase.OBSERVED_UNCERTAIN || phase == Phase.JOB_CONFIRMED_START_UNVERIFIED ||
             phase == Phase.SESSION_CONFIRMED || phase == Phase.VERIFIED)
             return ReviewDecision(false, "Resolve or finish the previous exact Add first")
         if (capabilities.environment != intent.target.environment)
@@ -228,9 +228,12 @@ internal class UniversalAddCoordinator {
     /** Timeouts, exceptions and lost ACKs always retain the attempted-write fence. */
     fun requireReadback(ticket: Ticket): Boolean {
         if (currentTicket !== ticket ||
-            phase !in setOf(Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN))
+            phase !in setOf(Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN,
+                Phase.JOB_CONFIRMED_START_UNVERIFIED))
             return false
-        phase = Phase.READBACK_REQUIRED
+        // A later ambiguous request cannot erase an already positively
+        // observed exact hash and Place, or the user's acknowledgment option.
+        if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) phase = Phase.READBACK_REQUIRED
         return true
     }
 
@@ -248,7 +251,8 @@ internal class UniversalAddCoordinator {
         adapterVerifiedStart: Boolean = false
     ): Readback {
         if (currentTicket !== ticket || phase !in setOf(
-                Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN, Phase.SESSION_CONFIRMED, Phase.VERIFIED))
+                Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN,
+                Phase.JOB_CONFIRMED_START_UNVERIFIED, Phase.SESSION_CONFIRMED, Phase.VERIFIED))
             return Readback.WRONG_TICKET
         val intent = ticket.intent
         if (snapshot.environment != intent.target.environment)
@@ -262,13 +266,20 @@ internal class UniversalAddCoordinator {
             it.key.infoHash == intent.source.expectedInfoHash &&
                 it.key.environment == intent.target.environment
         } ?: run {
-            if (phase != Phase.VERIFIED) phase = Phase.READBACK_REQUIRED
+            if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) phase = Phase.READBACK_REQUIRED
             return Readback.NOT_OBSERVED
         }
         val startAgrees = if (intent.startWhenAdded)
             adapterVerifiedStart && match.started == true else match.started == false
         if (!adapterConfirmedNewAdd || !adapterVerifiedPlace || !startAgrees) {
-            if (phase != Phase.VERIFIED) phase = Phase.OBSERVED_UNCERTAIN
+            if (adapterVerifiedPlace && !startAgrees) {
+                // A fresh full-inventory hash plus independently verified Place
+                // proves that a job exists, but does not prove requested Start.
+                // Only an explicit user acknowledgment may retire this ticket.
+                phase = Phase.JOB_CONFIRMED_START_UNVERIFIED
+            } else if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) {
+                phase = Phase.OBSERVED_UNCERTAIN
+            }
             return Readback.OBSERVED_UNVERIFIED
         }
         phase = Phase.VERIFIED
@@ -285,7 +296,7 @@ internal class UniversalAddCoordinator {
     fun reconcileExactSession(ticket: Ticket, observation: ExactSessionObservation): Readback {
         if (currentTicket !== ticket || phase !in setOf(
                 Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN,
-                Phase.SESSION_CONFIRMED, Phase.VERIFIED))
+                Phase.JOB_CONFIRMED_START_UNVERIFIED, Phase.SESSION_CONFIRMED, Phase.VERIFIED))
             return Readback.WRONG_TICKET
         if (observation.environment != ticket.intent.target.environment)
             return Readback.WRONG_ENVIRONMENT
@@ -298,13 +309,20 @@ internal class UniversalAddCoordinator {
         if (!observation.infoHash.equals(expected, ignoreCase = true))
             return Readback.NOT_OBSERVED
         if (!observation.registered) {
-            phase = Phase.READBACK_REQUIRED
+            if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) phase = Phase.READBACK_REQUIRED
             return Readback.NOT_OBSERVED
         }
         val startMatches = if (ticket.intent.startWhenAdded)
             observation.started == true else observation.started == false
         if (!observation.reviewedPlaceVerified || !startMatches) {
-            phase = Phase.OBSERVED_UNCERTAIN
+            if (observation.reviewedPlaceVerified && !startMatches) {
+                // This includes a phone magnet registered in metadata-only
+                // mode while its deferred payload Start cannot yet be proved.
+                // The existing job may be acknowledged, never auto-started.
+                phase = Phase.JOB_CONFIRMED_START_UNVERIFIED
+            } else if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) {
+                phase = Phase.OBSERVED_UNCERTAIN
+            }
             return Readback.OBSERVED_UNVERIFIED
         }
         if (!observation.newRegistrationVerified) {
@@ -313,6 +331,25 @@ internal class UniversalAddCoordinator {
         }
         phase = Phase.VERIFIED
         return Readback.VERIFIED
+    }
+
+    /**
+     * Release an exact observed job with an unverified requested Start only
+     * after the person explicitly acknowledges the incomplete result.
+     *
+     * A registered magnet may wait indefinitely for metadata/peers before its
+     * deferred payload Start can be checked. Do not block all future Adds,
+     * silently claim Start, or repeat the non-idempotent native/RPC load.
+     * Wrong hash, Place, account, stale or merely missing observations never
+     * reach this phase. A later fresh read can still upgrade it to VERIFIED
+     * or SESSION_CONFIRMED before this acknowledgment is chosen.
+     */
+    fun acknowledgeObservedJob(): Boolean {
+        if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) return false
+        reviewed = null
+        currentTicket = null
+        phase = Phase.EMPTY
+        return true
     }
 
     /**

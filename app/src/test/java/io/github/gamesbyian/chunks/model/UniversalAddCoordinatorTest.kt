@@ -261,6 +261,137 @@ class UniversalAddCoordinatorTest {
         assertFalse(state.acknowledgeExactSession())
     }
 
+    @Test fun metadataOnlyMagnetStartPendingCanBeExplicitlyAcknowledgedWithoutReplay() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(start = true))
+        val waiting = UniversalAddCoordinator.ExactSessionObservation(
+            environment = phone.environment, infoHash = hash,
+            observedAtEpochMillis = 1001L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = true)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, waiting))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertFalse(state.finishVerified())
+        assertFalse(state.acknowledgeExactSession())
+        assertNull(state.beginSubmission(1002L))
+        assertFalse(review(state, intent()).accepted)
+        assertFalse(state.refusedBeforeAnyWrite(ticket))
+        assertTrue(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Phase.EMPTY, state.phase)
+        assertNull(state.retainedTicket)
+        assertEquals(UniversalAddCoordinator.Readback.WRONG_TICKET,
+            state.reconcileExactSession(ticket, waiting))
+        assertTrue(review(state, intent()).accepted)
+        // Acknowledging never confers new mutation authority.
+        assertNull(state.beginSubmission(1100L))
+        assertTrue(state.authorizeByUser())
+        assertNotNull(state.beginSubmission(1101L))
+    }
+
+    @Test fun deferredStartMayEventuallyVerifyWithoutAcknowledgmentOrSecondWrite() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state)
+        val pending = UniversalAddCoordinator.ExactSessionObservation(
+            environment = phone.environment, infoHash = hash,
+            observedAtEpochMillis = 1001L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = true)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, pending))
+        assertTrue(state.requireReadback(ticket))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertNull(state.beginSubmission(1002L))
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(ticket,
+                pending.copy(started = true, observedAtEpochMillis = 1400L)))
+        assertEquals(UniversalAddCoordinator.Phase.VERIFIED, state.phase)
+        assertFalse(state.acknowledgeObservedJob())
+        assertTrue(state.finishVerified())
+    }
+
+    @Test fun laterVerifiedStartWithoutRegistrationProvenanceNeedsSeparateAcknowledgment() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state)
+        val pending = UniversalAddCoordinator.ExactSessionObservation(
+            environment = phone.environment, infoHash = hash,
+            observedAtEpochMillis = 1100L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = false)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, pending))
+        assertEquals(UniversalAddCoordinator.Readback.EXACT_SESSION_CONFIRMED,
+            state.reconcileExactSession(ticket, pending.copy(
+                observedAtEpochMillis = 1200L, started = true)))
+        assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED, state.phase)
+        assertFalse(state.finishVerified())
+        assertFalse(state.acknowledgeObservedJob())
+        assertTrue(state.acknowledgeExactSession())
+    }
+
+    @Test fun wrongAccountHashPlaceStaleAndAbsentJobCannotUnlockObservedJobAcknowledgment() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote))
+        val valid = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1100L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = false)
+        assertEquals(UniversalAddCoordinator.Readback.WRONG_ENVIRONMENT,
+            state.reconcileExactSession(ticket,
+                valid.copy(environment = otherRemote.environment)))
+        assertFalse(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            state.reconcileExactSession(ticket,
+                valid.copy(infoHash = otherHash)))
+        assertFalse(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcileExactSession(ticket,
+                valid.copy(observedAtEpochMillis = 999L)))
+        assertFalse(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            state.reconcileExactSession(ticket,
+                valid.copy(registered = false)))
+        assertFalse(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket,
+                valid.copy(reviewedPlaceVerified = false)))
+        assertEquals(UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN, state.phase)
+        assertFalse(state.acknowledgeObservedJob())
+    }
+
+    @Test fun completeCatalogMayConfirmExactPlaceWhileRequestedStartRemainsUnverified() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcile(ticket, snapshot(phone, 1100L, started = false),
+                adapterConfirmedNewAdd = true, adapterVerifiedPlace = false,
+                adapterVerifiedStart = false))
+        assertFalse(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcile(ticket, snapshot(phone, 1101L, started = false),
+                adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
+                adapterVerifiedStart = false))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertNull(state.beginSubmission(1102L))
+        assertTrue(state.acknowledgeObservedJob())
+    }
+
+    @Test fun anUnexpectedStartForAReviewedStoppedAddNeedsExplicitAcknowledgment() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(start = false))
+        val unexpected = UniversalAddCoordinator.ExactSessionObservation(
+            environment = phone.environment, infoHash = hash,
+            observedAtEpochMillis = 1010L, registered = true,
+            reviewedPlaceVerified = true, started = true,
+            newRegistrationVerified = true)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, unexpected))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertFalse(state.finishVerified())
+        assertTrue(state.acknowledgeObservedJob())
+    }
+
     @Test fun sourceCopiesBytesAndRedactsPrivateValuesFromDiagnostics() {
         val bytes = byteArrayOf(1, 2, 3)
         val source = UniversalAddSource.metainfo(bytes, hash, "https://private.invalid/SECRET")
