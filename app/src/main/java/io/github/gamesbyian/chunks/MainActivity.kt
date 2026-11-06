@@ -135,7 +135,12 @@ class MainActivity : ComponentActivity() {
         // The near-black Compose surface extends behind the system status bar,
         // so the status bar icons must be light.
         WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
-        accept(intent)
+        // An Android share is a one-shot event. After an Activity recreation,
+        // the original launch Intent is still attached to this Activity, but
+        // its source may already have been consumed or superseded. Replaying
+        // it would re-open an old Add review and overwrite a newer draft.
+        // Genuine new shares still enter through onNewIntent().
+        if (savedInstanceState == null) accept(intent)
         setContent {
             ChunksTheme {
                 // One process-wide media controller for rows, details and settings alike.
