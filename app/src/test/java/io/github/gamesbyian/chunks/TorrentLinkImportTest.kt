@@ -18,7 +18,8 @@ class TorrentLinkImportTest {
 
     private class FakeConnection(url: URL, private val code: Int,
         private val headers: Map<String, String> = emptyMap(), private val body: ByteArray = ByteArray(0),
-        private val timeout: Boolean = false) : HttpURLConnection(url) {
+        private val timeout: Boolean = false,
+        private val stream: (() -> InputStream)? = null) : HttpURLConnection(url) {
         var requested = false
         override fun connect() { requested = true }
         override fun disconnect() {}
@@ -26,7 +27,7 @@ class TorrentLinkImportTest {
         override fun getResponseCode(): Int { requested = true; if (timeout) throw SocketTimeoutException(); return code }
         override fun getHeaderField(name: String?) = headers.entries.firstOrNull { it.key.equals(name, true) }?.value
         override fun getContentLengthLong(): Long = headers["Content-Length"]?.toLong() ?: -1L
-        override fun getInputStream(): InputStream = ByteArrayInputStream(body)
+        override fun getInputStream(): InputStream = stream?.invoke() ?: ByteArrayInputStream(body)
     }
 
     private val publicIp = InetAddress.getByName("207.241.224.2")
@@ -128,6 +129,37 @@ class TorrentLinkImportTest {
         assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.TOO_LARGE), declared)
         val streamed = fetcher(mapOf(url to { u -> FakeConnection(u, 200, body = ByteArray(5000)) }), max = 1024).fetch(link(url))
         assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.TOO_LARGE), streamed)
+    }
+
+    @Test fun zeroProgressHttpsResponseIsBoundedButOneEmptyReadCanRecover() {
+        val url = "https://t.example/stalled.torrent"
+        var emptyReadCount = 0
+        val stalled = fetcher(mapOf(url to { u -> FakeConnection(u, 200, stream = {
+            object : InputStream() {
+                override fun read(): Int = 0
+                override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                    emptyReadCount++
+                    return 0
+                }
+            }
+        }) })).fetch(link(url))
+        assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.OFFLINE), stalled)
+        assertEquals("The HTTPS response must not spin indefinitely", 17, emptyReadCount)
+
+        var firstRead = true
+        val recovered = fetcher(mapOf(url to { u -> FakeConnection(u, 200, stream = {
+            object : ByteArrayInputStream(torrent) {
+                override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                    if (firstRead) {
+                        firstRead = false
+                        return 0
+                    }
+                    return super.read(buffer, offset, length)
+                }
+            }
+        }) })).fetch(link(url))
+        assertTrue("A transient empty read must not discard valid metainfo",
+            recovered is TorrentLinkResult.Fetched)
     }
 
     @Test fun messagesNeverCarryTheLinkOrItsToken() {
