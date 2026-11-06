@@ -1,5 +1,8 @@
 # Codex follow-through: installed reliability, real-provider UX and Pixel candidate
 
+> **Historical handoff, superseded as of 2026-11-06:** This document preserves the original campaign instructions and exact-source evidence but is **not a live agent dispatch**. The current main at reconciliation is `1aea0c2e`; UX #1333, Options-spec #1334, first-run #1335 and real-provider test-harness #1336 are merged. PR #1321 was closed after its distinct work was retained in #1336. The latest exact-head #1336 real rTorrent and Native Add tests passed, but manual live-provider UI/offline tests, physical Pixel and a final-main signed/release APK remain unverified. For actual priorities read [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md) and current GitHub state; do not reexecute the dated instructions below or overwrite newer owner-approved UX architecture.
+
+
 > **Superseded for next UX assignment (2026-11-05):** This handoff is preserved for its technical reliability and real-provider acceptance gaps, but the owner's subsequent [cohesive UX and automatic artwork directive](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) now governs the next design campaign. Check live PR/main and use [WORK-QUEUE](WORK-QUEUE.md) for priority; do not infer these earlier tasks were fixed, nor block approved UI refactoring on stale sole-agent roster wording.
 
 

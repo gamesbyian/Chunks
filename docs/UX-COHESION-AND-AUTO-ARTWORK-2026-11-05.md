@@ -1,5 +1,8 @@
 # Chunks cohesive UX and automatic enrichment campaign (owner direction, 2026-11-05)
 
+> **Implementation-status overlay, 2026-11-06:** The #1325/#1326 candidate descriptions below are historical; their unique production and tests were merged in integration #1333 along with #1328/#1329/#1330. #1321 is closed as superseded after its unique provider acceptance harness moved into merged #1336; #1322's native prefix checks are also merged. Still **not fully delivered**: universal Add UI, launch-wide enrichment, Add-time exclusion, source Keep/Archive/Delete, swipe actions, Smart Routing dispatch/editor, remaining accessibility/Pixel and live-provider acceptance. Canonical priorities are in [WORK-QUEUE](WORK-QUEUE.md). Owner-approved design direction here remains binding.
+
+
 > **Universal UX extension:** [Universal Add, Connections and row disclosure](UNIVERSAL-NAVIGATION-AND-TRANSFER-DISCLOSURE-2026-11-05.md) is authoritative alongside automatic artwork: four permanent destinations, one Add source/target/Place/Start experience, one Connections owner, compact rows expanding to contextual tools and All details. Earlier Options-only connection and context-specific Add descriptions are transitional. Preserve native torrent safety and existing functionality.
 
 

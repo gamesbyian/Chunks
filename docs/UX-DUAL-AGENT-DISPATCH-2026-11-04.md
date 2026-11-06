@@ -1,5 +1,8 @@
 # UX/UI dual-agent dispatch — 2026-11-04
 
+> **Historical dispatch, 2026-11-06 reconciliation:** No Codex/Claude lane ownership survives this plan. The implementation pieces were reconciled in merged #1333/#1335, and #1334/#1336 add the later Options contract and provider-test infrastructure. Do not follow the old exclusive file lists or PR-status instructions below; consult [AGENT-LANES](AGENT-LANES.md) and [WORK-QUEUE](WORK-QUEUE.md) for current allocation/priority. The design reasoning and test acceptance criteria here are retained as history.
+
+
 > **Superseded 2026-11-05 (ownership only):** Codex paused; Claude absorbed both lanes. No Codex work was left unmerged (#1290/#1291 merged; #1262/#1263 superseded by #1265). File ownership below no longer applies; the remaining executable UX work is in [WORK-QUEUE](WORK-QUEUE.md) under *Remaining UX after the two-lane pass*. Evidence rules and safety boundaries below still hold.
 
 > **Operational dispatch, not a second product specification or backlog.** This file is the short entry point for simultaneous Codex and Claude work after the automated P0 A–E campaign. [WORK-QUEUE](WORK-QUEUE.md) remains priority authority; [UX](UX.md) and [PRODUCT](PRODUCT.md) govern design; [UX-73-CANDIDATE-TRACE](UX-73-CANDIDATE-TRACE-2026-11-03.md) records stable coverage numbers, not 73 mandatory jobs. [P0/UX reconciliation](P0-UX-RECONCILIATION-2026-11-04.md) records historical evidence; [QUALITY-LEDGER](QUALITY-LEDGER.md) owns receipts. Check live PRs and CI before touching work. Never infer an active agent from this dated assignment if sessions have stopped.

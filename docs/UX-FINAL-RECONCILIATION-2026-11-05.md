@@ -1,5 +1,8 @@
 # Chunks integrated UX handoff
 
+> **Historical handoff, superseded as of 2026-11-06:** This document preserves the original campaign instructions and exact-source evidence but is **not a live agent dispatch**. The current main at reconciliation is `1aea0c2e`; UX #1333, Options-spec #1334, first-run #1335 and real-provider test-harness #1336 are merged. PR #1321 was closed after its distinct work was retained in #1336. The latest exact-head #1336 real rTorrent and Native Add tests passed, but manual live-provider UI/offline tests, physical Pixel and a final-main signed/release APK remain unverified. For actual priorities read [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md) and current GitHub state; do not reexecute the dated instructions below or overwrite newer owner-approved UX architecture.
+
+
 **Current outcome:** the owner-directed sole-agent campaign [#1301](https://github.com/gamesbyian/Chunks/pull/1301) completed both confirmed Add/Place gaps and merged as `19ff314521bac6d06e45e9a3a3267a30e02c5383`. One immutable candidate, `f07a8331f81f204d4c44abb8339a3185f314051a` (tag `ux-qualification-f07a8331f81f`), passed the assembled acceptance campaign. Later documentation-only integration does not change its app source. No inherited file leases or Claude/Codex rosters remain. Make a brief live main/PR/check lookup before new work; [WORK-QUEUE](WORK-QUEUE.md) is the only executable queue.
 
 ## Completed user journeys
