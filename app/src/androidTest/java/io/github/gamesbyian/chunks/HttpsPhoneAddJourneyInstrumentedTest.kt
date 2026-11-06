@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -182,18 +182,33 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
+                // Let the pending Compose/navigation frames settle before
+                // Activity recreation. The v2 rule queues continuation work
+                // instead of re-entering Android measure/layout synchronously.
+                rule.waitForIdle()
                 stage("before-recreate")
                 scenario.recreate()
                 stage("after-recreate")
                 scenario.onActivity { activity = it }
+                instrumentation.waitForIdleSync()
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
                 // Exercise a real refused retrieval and recover the same scoped draft.
                 type("Or paste a magnet or torrent link", "https://127.0.0.1/blocked.torrent")
                 click("Get torrent from link")
-                rule.waitUntil(30_000) { visible(TorrentLinkResult.LOCAL_NETWORK) }
+                // A refused URL's notice may be below the currently composed
+                // LazyColumn viewport after recreation. Actually scroll to it:
+                // keep requiring the precise private-network refusal, not just
+                // an arbitrary error or absence of a transfer.
+                rule.waitUntil(30_000) {
+                    runCatching {
+                        scroll(TorrentLinkResult.LOCAL_NETWORK)
+                        visible(TorrentLinkResult.LOCAL_NETWORK)
+                    }.getOrDefault(false)
+                }
                 assertNull(LocalEngineHolder.current()?.status(preview.infoHashV1))
+                scroll("Saves to: Chunks app folder")
                 rule.onNodeWithText("Saves to: Chunks app folder").assertExists()
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
                 stage("refusal-recovered")
