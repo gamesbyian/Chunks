@@ -1,0 +1,44 @@
+package io.github.gamesbyian.chunks
+
+import androidx.compose.material3.Surface
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.assertExists
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
+class NoTransfersWelcomeTest {
+    @get:Rule val rule = createComposeRule()
+
+    @Test fun explainsTheTwoChoicesAndOnlyNavigatesOnTap() {
+        var add = 0
+        var connections = 0
+        rule.setContent {
+            ChunksTheme {
+                Surface {
+                    NoTransfersWelcome(onAdd = { add++ }, onConnections = { connections++ })
+                }
+            }
+        }
+        rule.onNodeWithText("Your transfers will appear here").assertExists()
+        rule.onNodeWithText("Start a download on this phone, or connect a remote BitTorrent client. " +
+            "You can use Chunks with either, or both.").assertExists()
+        assertEquals(0, add)
+        assertEquals(0, connections)
+        rule.onNodeWithText("Add a torrent").performClick()
+        assertEquals(1, add)
+        assertEquals(0, connections)
+        rule.onNodeWithText("Connections").performClick()
+        assertEquals(1, add)
+        assertEquals(1, connections)
+    }
+}
