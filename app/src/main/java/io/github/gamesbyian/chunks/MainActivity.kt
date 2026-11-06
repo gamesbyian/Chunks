@@ -118,7 +118,7 @@ private val Lime = ChunksColors.Green
 private val Coral = ChunksColors.Orange
 private val Blue = ChunksColors.Cyan
 
-private class PhoneAddAttemptOwner : androidx.lifecycle.ViewModel() {
+internal class PhoneAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val session = PhoneAddAttemptSession()
 }
 
