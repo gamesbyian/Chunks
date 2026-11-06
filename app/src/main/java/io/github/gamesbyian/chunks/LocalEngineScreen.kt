@@ -797,7 +797,8 @@ internal fun LocalEngineScreen(
         }
         // Make the true first-run choice visible before any setup or utility controls.
         // The ordinary Add disclosure replaces it as soon as Add is selected.
-        val firstRunVisible = transfers.isEmpty() && showFirstRunWelcome &&
+        val firstRunVisible = hasConfirmedLocalInventory && !inventoryStale &&
+            transfers.isEmpty() && showFirstRunWelcome &&
             onConnections != null && !addExpanded
         if (firstRunVisible) NoTransfersWelcome(
             onAdd = { addExpanded = true; addNavigationRevision++ },
