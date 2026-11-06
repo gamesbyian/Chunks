@@ -1,5 +1,10 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-06 integration-campaign starting checkpoint (docs/coordination only)
+
+Live GitHub read of `main` = `2084d9fd8b584c59ae20f45d0972264c6de606a7`; **0 open PRs, 26 open issues**. Existing #1336 Native Add [42172524381](https://github.com/gamesbyian/Chunks/actions/runs/42172524381) and real disposable rTorrent magnet [42172524891](https://github.com/gamesbyian/Chunks/actions/runs/42172524891) are **earlier exact-head** successes; neither demonstrates a freshly published and installed `2084d9fd` APK. Current-main APK/handset consent/provider tests are **not yet verified**. Documentation/issue synchronization adds no new product, peer, installed, or device acceptance. Follow the one [execution queue](WORK-QUEUE.md) and [short handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md). When an artifact is actually built, record source SHA, APK SHA-256, workflow run/artifact, installation tier and real journey receipts here before calling it current.
+
+
 ## 2026-11-06 current integration/release checkpoint (main `1aea0c2e`)
 
 - **Merged current-source milestones:** #1333 assembled common navigation/compact Combined disclosure, consented media enrichment with persisted per-job exclusion, and a pure engine-independent Smart Routing *evaluator*; #1334 documented centralized immediate-apply Options behavior (not an implementation of all eight destinations); #1335 recovered first-run/native Add/visual assertions; #1336 brought the controlled, opt-in installed real-provider test harness, offline restoration cases and strict cross-journey receipt checking onto main. Earlier #1321 and stacked UX PRs closed after reconciliation; zero open PRs at this checkpoint.

@@ -1,5 +1,8 @@
 # Building the Chunks Android pre-alpha
 
+> **2026-11-06 integration feedback rule:** Current baseline `2084d9fd8b584c59ae20f45d0972264c6de606a7` is a **source checkpoint only**, not a checksum-verified current-main APK. Publish or select a new source-exact installable preview, record workflow run, APK SHA-256, source and signing type and real installed journey separately in [QUALITY-LEDGER](QUALITY-LEDGER.md). Keep older previews below labelled with their immutable sources. Physical Pixel/TalkBack and publisher signing cannot be inferred from emulator success. Do not circulate an unverified historic APK as the new build. [Work order](WORK-QUEUE.md).
+
+
 > **Current-source and preview status (2026-11-06; main `1aea0c2ef6de225556be2ec36c0c10b791311cd9`):** The #1336 installed [Native Add](https://github.com/gamesbyian/Chunks/actions/runs/42172524381) and [disposable real rTorrent magnet](https://github.com/gamesbyian/Chunks/actions/runs/42172524891) workflows passed on its exact PR head `89ef095eca6a557cbdfb55004c004c1344746378`. This qualifies those **test scopes**, not a final-main publisher-signed release or physical Pixel acceptance. The real TVmaze/MusicBrainz/Open Library provider UI/offline tests added by #1336 are manual opt-in only and **have not been executed**. APK links and "most recent" statements in the historical sections below refer to their explicitly identified, older immutable sources; never call them a current-main APK without a new built-byte checksum and installed receipt. Use the workflow's actual artifacts and source SHA to choose an installable candidate; do not silently substitute a historic APK.
 
 

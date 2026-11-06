@@ -1,5 +1,19 @@
 # Chunks specification coverage and acceptance map
 
+## Active product-integration coverage boundary (baseline 2026-11-06, main `2084d9fd8b58`)
+
+| User journey / reusable seam | Already present on baseline | Still to build / prove |
+| --- | --- | --- |
+| Current-source daily-use feedback | Earlier exact-head Native Add and disposable rTorrent magnet green; older source-bound debug previews | Fresh source+checksum installable preview and repeatable current-APK ordinary user journey; physical Pixel/TalkBack evidence separate |
+| Universal Add | Phone and rTorrent Add, HTTPS .torrent fetch, Android intake, Place, Start, clipboard, compact chooser | One durable draft/validation/submission owner across both; no duplicate full-form navigation; session restoration, real Add and uncertain readback |
+| Transfer context and enrichment | Exact environment/hash identity, catalog, persisted media preferences/exclusion, consented background components | One reconciling inventory lifecycle for new/discovered/reconnected jobs and portable presentation; offscreen startup/reconnect dispatch and Add-time exclusion |
+| Manual Move | Existing scoped job Move semantics and per-engine capabilities | Real-engine verified destination registration/source retirement/recovery and metadata carryover; optional explicit seeding/speed rules, **no payload** |
+| Smart Routing | Pure `SmartRoutingEvaluator` with rule explanations | Persistent immediate-apply editor, capability validation, initial Add decision, late metadata staging and only then optional later job Move |
+| Engineering evidence | Installed Native Add/rTorrent receipts; many workflows | One immutable build, targeted regression and measured CI waste; owner-device/provider/publisher evidence separately accounted |
+
+This is a **coverage map, not a new work queue**. [WORK-QUEUE](WORK-QUEUE.md) determines order, [QUALITY-LEDGER](QUALITY-LEDGER.md) records verified executions. No rows should be reclassified as shipped solely from this documentation change.
+
+
 ## 2026-11-06 post-#1336 acceptance boundary (main `1aea0c2e`)
 
 UX integration #1333, centralized Options architecture/one-interaction persistent settings **specification** #1334, first-run native test reconciliation #1335 and real-provider acceptance harness #1336 are merged; zero open PRs at this checkpoint. #1336 exact head `89ef095` passed [Native Add](https://github.com/gamesbyian/Chunks/actions/runs/42172524381) and [real rTorrent magnet](https://github.com/gamesbyian/Chunks/actions/runs/42172524891) installed workflows. The **opt-in real-provider cases** for TVmaze/MusicBrainz/Open Library, including cold offline restore, have not been manually run; implementation of a test harness does not constitute provider acceptance. No currently verified final-main APK, physical Pixel, human accessibility, or publisher-signed release is claimed. See [WORK-QUEUE](WORK-QUEUE.md) for remaining Universal Add, per-transfer Add exclusions, source lifecycle, swipe actions, startup enrichment, routing persistence/dispatch and job-only Move presentation portability, and [BUILD](BUILD.md) for dated historical binaries. Dated lower sections are status snapshots; do not treat old `not merged`/pending claims as live.
