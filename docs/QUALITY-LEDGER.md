@@ -1,6 +1,6 @@
 # Chunks evidence and release gate ledger
 
-## 2026-11-06 autonomous integration: preliminary receipts, not release acceptance
+## 2026-11-06 autonomous integration #1333: preliminary receipts, not release acceptance
 
 - Live reconciliation began at main `491e9b5c` (#1331), with UX #1325/#1326/#1328/#1329/#1330 open in two stacks. All unique source/tests were preserved on `codex/universal-ux-integration`. New main `b1835cc1` adds the future-adapter/licensing contracts; it does not authorize new client implementations.
 - Pure routing commit `105e4133d056821eca67a23233c1298737aae516`: local JDK17/Gradle9.3.1 `:app:testDebugUnitTest --tests '*SmartRoutingEvaluatorTest'`, **13 executed, zero failures/errors/skips**. Review correction for UNKNOWN resolved classification was observed red before green. No Add/move executor or installed routing UI exists.
