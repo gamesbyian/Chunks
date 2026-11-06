@@ -353,12 +353,30 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // Ordinary phone Downloads -> Combined -> Details, using the
                 // installed app's real observation of this exact local job.
                 // Reading Details must not mutate the stopped native session.
+                // This source is the only native job in the fresh, isolated
+                // application. The list may legitimately display a renamed
+                // alias; exact identity is verified in Details by infohash.
+                assertEquals("Phone fixture requires one exact local job",
+                    setOf(preview.infoHashV1.lowercase()),
+                    phone.list().map { it.infoHash.lowercase() }.toSet())
                 click("All environments…")
                 rule.waitUntil(30_000) { visible("All environments") }
-                val phoneRow = hasContentDescription("Expand ${preview.name} on On this phone", substring = true)
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneRow)
+                // The Combined list reads phone inventory and its privacy
+                // policy asynchronously; entering the screen does not mean
+                // its first full snapshot has been rendered. Wait for the
+                // actual phone row to become scrollable, not just the title.
+                val phoneRow = hasContentDescription("Expand ", substring = true) and
+                    hasContentDescription(" on On this phone", substring = true)
+                rule.waitUntil(45_000) {
+                    runCatching {
+                        if (visible("Show all transfers")) click("Show all transfers")
+                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneRow)
+                        true
+                    }.getOrDefault(false)
+                }
                 rule.onNode(phoneRow).performClick()
-                val details = hasContentDescription("All details for ${preview.name} on On this phone", substring = true)
+                val details = hasContentDescription("All details for ", substring = true) and
+                    hasContentDescription(" on On this phone", substring = true)
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(details)
                 rule.onNode(details).performClick()
                 rule.waitUntil(30_000) {
