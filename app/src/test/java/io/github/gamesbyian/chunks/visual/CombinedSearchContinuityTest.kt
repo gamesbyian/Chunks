@@ -2,6 +2,8 @@ package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -38,7 +40,8 @@ class CombinedSearchContinuityTest {
         rule.onNodeWithText("Refine transfers", substring = true).performScrollTo().performClick()
         rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
             .performScrollTo().performTextInput("ubuntu")
-        rule.onNodeWithText("Open On this phone").performScrollTo().performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open On this phone"))
+        rule.onNodeWithText("Open On this phone").performClick()
         rule.waitForIdle()
         pane("Phone transfers")
         rule.onNodeWithText("Back").performClick()
