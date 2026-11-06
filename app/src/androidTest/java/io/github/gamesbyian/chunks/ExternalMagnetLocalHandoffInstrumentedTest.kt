@@ -141,6 +141,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         var stage = "launch"
         var primaryFailure: Throwable? = null
         var scenario: ActivityScenario<MainActivity>? = null
+        val launchIntent = sourceIntent(first).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         fun captureFailure(failure: Throwable) {
             // A disposable fixture-only display, with a fixed stage and error
             // class in the filename. No incoming URI or exception message is logged.
@@ -158,8 +159,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             }
         }
         try {
-            val opened = ActivityScenario.launch<MainActivity>(
-                sourceIntent(first).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).also { scenario = it }
+            val opened = ActivityScenario.launch<MainActivity>(launchIntent).also { scenario = it }
             stage = "first-review"
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
@@ -188,7 +188,15 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             throw failure
         } finally {
             try {
-                try { scenario?.close() } catch (close: Throwable) {
+                try {
+                    // ActivityScenario filters lifecycle events by its launch
+                    // Intent's data/type. Real onNewIntent calls setIntent to
+                    // the replacement URI, so restore only the test monitor's
+                    // identity AFTER all product assertions, without dispatch
+                    // or accept(). Otherwise DESTROYED is ignored at close.
+                    scenario?.onActivity { it.intent = launchIntent }
+                    scenario?.close()
+                } catch (close: Throwable) {
                     val original = primaryFailure
                     if (original != null) original.addSuppressed(close)
                     else {

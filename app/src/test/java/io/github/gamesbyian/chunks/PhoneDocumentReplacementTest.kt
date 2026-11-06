@@ -139,8 +139,9 @@ class PhoneDocumentReplacementTest {
         show()
         rule.waitUntil(15_000) { SourceProvider.opened.count == 0L }
         rule.runOnIdle { source.value = uri("second") }
-        SourceProvider.release.countDown()
         waitFor("next.txt")
+        SourceProvider.release.countDown()
+        rule.waitUntil(15_000) { SourceProvider.returned.count == 0L }
         handoff()
         assertArrayEquals(metainfo("next.txt"), prepared.get())
         assertEquals(listOf(uri("second")), consumed.toList())
@@ -177,8 +178,9 @@ class PhoneDocumentReplacementTest {
         deliverPicker(request, uri("slow"))
         rule.waitUntil(15_000) { SourceProvider.opened.count == 0L }
         rule.runOnIdle { source.value = uri("second") }
-        SourceProvider.release.countDown()
         waitFor("next.txt")
+        SourceProvider.release.countDown()
+        rule.waitUntil(15_000) { SourceProvider.returned.count == 0L }
         handoff()
         assertArrayEquals(metainfo("next.txt"), prepared.get())
         assertEquals(listOf(uri("second")), consumed.toList())
@@ -190,8 +192,9 @@ class PhoneDocumentReplacementTest {
         rule.runOnIdle { source.value = uri("slow") }
         rule.waitUntil(15_000) { SourceProvider.opened.count == 0L }
         deliverPicker(request, uri("second"))
-        SourceProvider.release.countDown()
         waitFor("next.txt")
+        SourceProvider.release.countDown()
+        rule.waitUntil(15_000) { SourceProvider.returned.count == 0L }
         handoff()
         assertArrayEquals(metainfo("next.txt"), prepared.get())
         assertEquals(listOf(uri("slow")), consumed.toList())
@@ -202,6 +205,9 @@ class PhoneDocumentReplacementTest {
         show()
         rule.waitUntil(15_000) { SourceProvider.opened.count == 0L }
         rule.runOnIdle { shown.value = false }
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Choose .torrent file").fetchSemanticsNodes().isEmpty()
+        }
         SourceProvider.release.countDown()
         rule.waitUntil(15_000) { SourceProvider.returned.count == 0L }
         rule.waitForIdle()
