@@ -57,10 +57,22 @@ class CombinedFooterNavigationTest {
         } }
     }
 
+    private fun reachLastTransfer() {
+        // Privacy/alias preferences load off main. The initial Combined frame
+        // can have no rows yet; idle composition alone does not await that IO.
+        // Retry read-only scrolling until the actual deep row is displayed.
+        rule.waitUntil(15_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
+                    .assertIsDisplayed()
+            }.isSuccess
+        }
+    }
+
     @Test fun sharedTorrentDocumentRevealsDestinationAfterPriorDeepScrollWithoutAddMutation() {
         val sharedTorrent = androidx.compose.runtime.mutableStateOf(false)
         show(pendingSharedTorrent = sharedTorrent)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
+        reachLastTransfer()
         rule.runOnIdle { sharedTorrent.value = true }
         rule.waitForIdle()
         rule.onNodeWithText("Choose a destination for the shared .torrent").assertIsDisplayed()
@@ -70,7 +82,7 @@ class CombinedFooterNavigationTest {
     @Test fun sharedMagnetRevealsDestinationAfterPriorDeepScrollWithoutAddMutation() {
         val shared = androidx.compose.runtime.mutableStateOf(false)
         show(shared)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
+        reachLastTransfer()
         rule.runOnIdle { shared.value = true }
         rule.waitForIdle()
         rule.onNodeWithText("Choose a destination for the shared magnet").assertIsDisplayed()
@@ -79,7 +91,7 @@ class CombinedFooterNavigationTest {
 
     @Test fun footerAddReturnsToExplicitDestinationsFromDeepInTheList() {
         show()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
+        reachLastTransfer()
         rule.onNodeWithContentDescription("Add download on this phone").assertDoesNotExist()
         rule.onNodeWithContentDescription("Choose where to add a torrent")
             .assertIsDisplayed().performClick()
@@ -90,7 +102,7 @@ class CombinedFooterNavigationTest {
 
     @Test fun footerOptionsRevealsEnvironmentAndFilterChoices() {
         show()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
+        reachLastTransfer()
         rule.onNodeWithContentDescription("Options").assertIsDisplayed().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Hide transfers", substring = true).assertIsDisplayed()
@@ -103,7 +115,7 @@ class CombinedFooterNavigationTest {
 
     @Test fun footerTransfersReturnsToTheTopOfTheInventory() {
         show()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
+        reachLastTransfer()
         rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("All environments").assertIsDisplayed()
