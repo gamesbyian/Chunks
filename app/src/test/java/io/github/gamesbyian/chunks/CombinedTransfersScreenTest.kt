@@ -217,6 +217,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Refine transfers", substring = true).performClick()
         revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
+        revealText("Showing 1 of 2")
         rule.onNodeWithText("Showing 1 of 2", substring = true).assertExists()
         rule.onNodeWithText("New downloads may not match this search.", substring = true)
             .assertExists()
@@ -239,6 +240,9 @@ class CombinedTransfersScreenTest {
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
         show()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("not-in-any-transfer")
         rule.onNodeWithText("Showing 0", substring = true).assertExists()
         revealText("New downloads may not match this search.")

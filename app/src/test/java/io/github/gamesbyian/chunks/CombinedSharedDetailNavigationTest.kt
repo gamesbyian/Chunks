@@ -99,8 +99,8 @@ class CombinedSharedDetailNavigationTest {
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         // Open detail never changed filter, login, selection or underlying engine.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Choose environments & filters", substring = true))
-        rule.onNodeWithText("Choose environments & filters", substring = true).performClick()
+            hasText("Refine transfers", substring = true))
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
 
