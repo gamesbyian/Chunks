@@ -2177,7 +2177,8 @@ internal fun LocalEngineScreen(
             // Repeated taps also bring the real form into view above the footer.
             addNavigationRevision++
         },
-        onOptions = { scope.launch { optionsRequester.bringIntoView() } }
+        onOptions = { scope.launch { optionsRequester.bringIntoView() } },
+        onConnections = onConnections
     )
     } // measured footer + viewport
 }
