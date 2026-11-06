@@ -232,6 +232,35 @@ class CombinedTwoRealServersInstrumentedTest {
             }
             stage("combined-rows")
 
+            // The same infohash exists on both servers. Details must follow
+            // the selected environment, never borrow the other server's
+            // observation, reported Place, or command authority. Use the real
+            // Compose row and read-only detail screen, not a synthetic panel.
+            fun inspectExactDetails(port: String, expected: io.github.gamesbyian.chunks.rpc.RemoteTransfer) {
+                val row = hasContentDescription("Expand $shared on", substring = true) and
+                    hasContentDescription(":$port", substring = true)
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
+                rule.onNode(row).performClick()
+                val details = hasContentDescription("All details for $shared on", substring = true) and
+                    hasContentDescription(":$port", substring = true)
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(details)
+                rule.onNode(details).performClick()
+                waitFor("exact-environment Details for $port") {
+                    visible("Transfer details") && visible("Environment:") && visible(":$port")
+                }
+                assertTrue("Details lost the selected transfer name on $port", visible(shared))
+                rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+                assertTrue("Details borrowed another transfer hash on $port",
+                    visible("Exact infohash: $sharedHash"))
+                assertTrue("Details borrowed another server's reported Place on $port",
+                    visible("Save folder reported by engine: ${expected.directory}"))
+                rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
+                waitFor("Combined restored after Details for $port") { visible("Showing 4") }
+            }
+            inspectExactDetails(portA, truthA.single { it.hash.equals(sharedHash, true) })
+            inspectExactDetails(portB, truthB.single { it.hash.equals(sharedHash, true) })
+            stage("combined-exact-details")
+
             // Per-target command scope: select the SAME infohash on saved-only
             // server A and signed-in server B, then Start. Only B may change;
             // independent XML-RPC is the postcondition, not the UI text.
