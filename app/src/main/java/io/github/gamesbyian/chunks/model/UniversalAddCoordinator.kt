@@ -148,6 +148,11 @@ internal class UniversalAddCoordinator {
     private var reviewed: UniversalAddIntent? = null
     private var currentTicket: Ticket? = null
 
+    /** Read-only process-memory continuity across Add/Transfers/Connections navigation. */
+    val retainedReview: UniversalAddIntent? get() = reviewed
+    /** An attempted ticket is retained for read-only recovery, never replayed. */
+    val retainedTicket: Ticket? get() = currentTicket
+
     fun review(
         intent: UniversalAddIntent,
         capabilities: EnvironmentCapabilitySnapshot,
