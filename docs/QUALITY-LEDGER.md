@@ -1,5 +1,9 @@
 # Chunks evidence and release gate ledger
 
+## 2026-11-06 merged #1343 qualification follow-up
+
+#1343 merged as 8df47d342b1edab81d3b29d5247bcb5e98175bfe. Seven exact-source CI checks passed. The Combined two-real-server workflow 42196817620 passed on retry attempt 2; attempt 1 lost the Connect node before mutation. Full disposable magnet workflow 42196817508 failed on both attempts, although the phone stage verified 47,972,352 and 41,680,896 actual piece bytes. Downloaded attempt-2 proxy artifact 13498366090 confirms rTorrent libtorrent.so.21 TrackerController internal_error at 11:12:24 UTC, followed by nginx SCGI 502 and refused upstream connections. Therefore the full remote magnet lifecycle is not accepted. Issue #9 retains the defect. No new current-main APK or physical-device acceptance.
+
 ## 2026-11-06 shared Add enrichment admission (candidate)
 
 Source `8904d0f4` extends the shared Add draft with one collapsed Artwork & metadata choice. Phone magnet/file and exact authenticated rTorrent admission persist an opt-out through the existing controller/preferences **before** engine Add. Default eligibility never removes an existing exclusion or grants provider consent. Failed persistence is a known refusal with no Add RPC and a correctable draft; uncertainty retains the exclusion and existing retry latch. Positive registration, including later read-only reconciliation, resets the next draft's choice. No new inventory/store/provider or source/payload operation.

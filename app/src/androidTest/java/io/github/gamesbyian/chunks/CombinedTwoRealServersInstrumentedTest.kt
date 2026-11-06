@@ -97,8 +97,16 @@ class CombinedTwoRealServersInstrumentedTest {
         typeInto("Username, if required", user)
         typeInto("Password", password)
         scrollTo("Remember this server and login on this device")
-        scrollTo("Connect to rTorrent")
-        rule.onNodeWithText("Connect to rTorrent").performClick()
+        // The keyboard and profile reads may recompose after scrolling.
+        // Stabilize the form before ONE click; never retry uncertain RPC.
+        if (!connectedQueue()) {
+            scrollTo("Connect to rTorrent")
+            rule.waitForIdle()
+            waitFor("stable Connect action after form edit", 15_000) {
+                connectedQueue() || visible("Connect to rTorrent")
+            }
+            if (!connectedQueue()) rule.onNodeWithText("Connect to rTorrent").performClick()
+        }
         waitFor("server queue for the requested endpoint", 90_000) { connectedQueue() }
     }
 

@@ -1,5 +1,7 @@
 # Chunks specification coverage and acceptance map
 
+> **2026-11-06 merged #1343:** per-Add phone/authenticated-rTorrent artwork exclusion is implemented with pre-admission persistence and safe refusal. Seven source-bound CI suites passed; Combined two-server passed attempt 2. Full magnet suite remains red twice due independently captured disposable rTorrent crash and 502, not accepted as a remote lifecycle pass. Universal Add, job-only Move and persistent Smart Routing remain incomplete. See QUALITY-LEDGER.
+
 ## 2026-11-06 merged intake-navigation slice (still not Universal Add)
 
 **2026-11-06 integration checkpoint:** [#1341](https://github.com/gamesbyian/Chunks/pull/1341) merged as `1a790e13` after exact-candidate `712ea326` passed foundation, complete native Add/IME, R8, atlas, Remove/data, docs and real two-server Combined (targeted attempt 2; original red retained). Shared Android .torrent/magnet intake has explicit destinations and superseded-handoff containment. **Universal Add draft/submission remains incomplete.** Candidate `8904d0f4` adds common per-Add enrichment exclusion admission; local tests pass, new installed/real-peer assertions await qualification. [QUALITY-LEDGER](QUALITY-LEDGER.md) separates those tiers and preserves unresolved upstream/physical/provider/APK boundaries.
