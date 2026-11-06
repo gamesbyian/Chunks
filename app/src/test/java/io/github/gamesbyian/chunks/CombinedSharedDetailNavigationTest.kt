@@ -82,7 +82,9 @@ class CombinedSharedDetailNavigationTest {
             .performScrollToNode(hasText("Instance two download"))
         // Exercise the real touch-coordinate path at 200% text with
         // the compact floating Back-to-top control from merged #681.
-        rule.onNodeWithContentDescription("Details for Instance two download on $connectedName")
+        rule.onNodeWithContentDescription("Expand Instance two download on $connectedName")
+            .performScrollTo().performClick()
+        rule.onNodeWithContentDescription("All details for Instance two download on $connectedName")
             .performScrollTo().performClick()
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: $connectedName").assertExists()
@@ -114,7 +116,10 @@ class CombinedSharedDetailNavigationTest {
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Instance three download"))
         rule.onNodeWithContentDescription(
-            "Details for Instance three download on Server · $savedLabel")
+            "Expand Instance three download on Server · $savedLabel")
+            .performScrollTo().performClick()
+        rule.onNodeWithContentDescription(
+            "All details for Instance three download on Server · $savedLabel")
             .performScrollTo().performClick()
         rule.onNodeWithText("Environment: Server · $savedLabel").assertExists()
         rule.onNodeWithText("Instance three download").assertExists()
@@ -143,7 +148,9 @@ class CombinedSharedDetailNavigationTest {
         }
         val origin = serverEnvironmentLabel(connectedScope)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Instance two download"))
-        rule.onNodeWithContentDescription("Details for Instance two download on $origin")
+        rule.onNodeWithContentDescription("Expand Instance two download on $origin")
+            .performScrollTo().performClick()
+        rule.onNodeWithContentDescription("All details for Instance two download on $origin")
             .performScrollTo().performClick()
         rule.onNodeWithText("Observation: The last transfer observation is out of date.", substring = true)
             .assertExists()

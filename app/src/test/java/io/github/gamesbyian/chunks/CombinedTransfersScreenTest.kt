@@ -87,9 +87,11 @@ class CombinedTransfersScreenTest {
 
     @Test fun detailFocusResolvesExactServerAndHashWithoutLifecycleCommands() {
         show()
-        val target = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
-        revealDescription(target)
-        rule.onNodeWithContentDescription(target).performClick()
+        val origin = serverEnvironmentLabel(aliasScope)
+        val expand = "Expand Big Archive on " + origin
+        revealDescription(expand)
+        rule.onNodeWithContentDescription(expand).performClick()
+        rule.onNodeWithContentDescription("All details for Big Archive on " + origin).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
         rule.onNodeWithText("Environment: " + serverEnvironmentLabel(aliasScope)).assertExists()
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
@@ -101,17 +103,18 @@ class CombinedTransfersScreenTest {
     @Test fun compactRowsKeepExactScopedDetailsWhileExtraActionsNeedDisclosure() {
         show()
         val label = serverEnvironmentLabel(aliasScope)
-        val more = "More actions for Big Archive on " + label
-        revealDescription(more)
-        rule.onNodeWithContentDescription(more).assertExists()
+        val expand = "Expand Big Archive on " + label
+        revealDescription(expand)
+        rule.onNodeWithContentDescription(expand).assertExists()
+        rule.onNodeWithText("All details").assertDoesNotExist()
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
-        // Disclosure changes only this exact source/hash row. No Start/Stop RPC.
-        rule.onNodeWithContentDescription(more).performClick()
+        // The entire transfer body expands without a Start/Stop RPC.
+        rule.onNodeWithContentDescription(expand).performClick()
+        rule.onNodeWithContentDescription("All details for Big Archive on " + label).assertExists()
         rule.onNodeWithText("Open in its list").assertExists()
-        rule.onNodeWithContentDescription(
-            "Hide extra actions for Big Archive on " + label).performClick()
+        rule.onNodeWithContentDescription("Collapse Big Archive on " + label).performClick()
+        rule.onNodeWithText("All details").assertDoesNotExist()
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
-        rule.onNodeWithContentDescription("Details for Big Archive on " + label).assertExists()
         assertTrue("Read-only disclosure may never issue lifecycle commands", commands.isEmpty())
     }
 
