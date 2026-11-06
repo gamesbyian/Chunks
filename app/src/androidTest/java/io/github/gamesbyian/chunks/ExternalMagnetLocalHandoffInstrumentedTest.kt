@@ -6,7 +6,7 @@ import android.provider.DocumentsContract
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.core.app.ActivityScenario
@@ -111,6 +111,55 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             rule.onNodeWithText("Review download").assertDoesNotExist()
             org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
+        }
+    }
+
+    @Test fun refusedReplacementKeepsTheReviewedSourceThroughRealAndroidIntentDelivery() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val name = "public-source-kept.txt"
+        val bytes = ("d4:infod6:lengthi5e4:name${name.length}:$name" +
+            "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
+        val tree = FixtureDocumentsProvider.treeUri(context)
+        val root = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        fun document(label: String, content: ByteArray): Uri {
+            val uri = requireNotNull(DocumentsContract.createDocument(context.contentResolver, root,
+                "application/x-bittorrent", label))
+            requireNotNull(context.contentResolver.openOutputStream(uri, "wt")).use { it.write(content) }
+            return uri
+        }
+        val first = document("retained-source.torrent", bytes)
+        val refused = document("refused-replacement.torrent", "not metainfo".toByteArray())
+        fun sourceIntent(uri: Uri) = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_VIEW
+            setDataAndType(uri, "application/x-bittorrent")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+        }
+        // Establish the real engine inventory independently before the UI's
+        // normal read-only restore/observation can run. Never confirm an Add.
+        val engine = LocalEngineHolder.get(context)
+        val before = engine.completeIdentityInventory()
+        try {
+            ActivityScenario.launch<MainActivity>(sourceIntent(first).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).use { scenario ->
+                rule.waitUntil(20_000) {
+                    rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
+                }
+                scenario.onActivity { it.startActivity(sourceIntent(refused)) }
+                rule.waitUntil(20_000) {
+                    rule.onAllNodesWithText("Your previous .torrent remains selected.", substring = true)
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+                rule.onNodeWithText(name, substring = true).assertExists()
+                rule.onNodeWithText("All environments…").performScrollTo().performClick()
+                rule.onNodeWithText("Back").performClick()
+                rule.waitUntil(20_000) {
+                    rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
+                }
+                org.junit.Assert.assertEquals("Replacing/refusing/browsing a source cannot register a job",
+                    before, engine.completeIdentityInventory())
+            }
+        } finally {
+            DocumentsContract.deleteDocument(context.contentResolver, first)
+            DocumentsContract.deleteDocument(context.contentResolver, refused)
         }
     }
 

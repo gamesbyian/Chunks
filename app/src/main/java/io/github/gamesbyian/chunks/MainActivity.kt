@@ -777,7 +777,9 @@ internal fun ChunksApp(
                     onAcknowledgedAdd = { hash -> latestAdded = phoneAddedKey(hash) },
                     returnFocusTool = phoneReturnFocus, onReturnFocusConsumed = { phoneReturnFocus = null },
                     initialTorrentUri = phoneHandoffTorrentUri,
-                    onTorrentConsumed = { phoneHandoffTorrentUri = null },
+                    onTorrentConsumed = { consumed ->
+                        if (phoneHandoffTorrentUri == consumed) phoneHandoffTorrentUri = null
+                    },
                     onPrefillConsumed = { phoneHandoffMagnet = null },
                     onPrepareRemote = { draft ->
                         prepareRemoteMagnet(draft)
@@ -1115,7 +1117,9 @@ internal fun ChunksApp(
                             else LocalMoveServer(aliasScope) { hash ->
                                 TransferMoveObservations.server(connectedRemote, hash)
                             },
-                        onTorrentConsumed = { phoneHandoffTorrentUri = null },
+                        onTorrentConsumed = { consumed ->
+                            if (phoneHandoffTorrentUri == consumed) phoneHandoffTorrentUri = null
+                        },
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
                             prepareRemoteMagnet(draft)
