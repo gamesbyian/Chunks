@@ -133,7 +133,10 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { visible("On this phone (experimental)") }
                 stage("phone-open")
-                click("Add torrent on this phone")
+                // A genuine first-run inventory now presents a direct text link.
+                // Existing populated sessions retain the older inline Add disclosure.
+                if (visible("Add a torrent")) click("Add a torrent")
+                else click("Add torrent on this phone")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
                 click("Change download location")
                 click("Chunks app folder")
