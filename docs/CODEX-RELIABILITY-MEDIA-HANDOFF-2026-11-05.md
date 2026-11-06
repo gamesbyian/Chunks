@@ -1,5 +1,8 @@
 # Codex follow-through: installed reliability, real-provider UX and Pixel candidate
 
+> **Superseded for next UX assignment (2026-11-05):** This handoff is preserved for its technical reliability and real-provider acceptance gaps, but the owner's subsequent [cohesive UX and automatic artwork directive](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) now governs the next design campaign. Check live PR/main and use [WORK-QUEUE](WORK-QUEUE.md) for priority; do not infer these earlier tasks were fixed, nor block approved UI refactoring on stale sole-agent roster wording.
+
+
 **Checkpoint:** 2026-11-05 UTC, `main` `f7364e5cd8508e600cee2b0323dfd6f18eede40d`; **zero open PRs** at this check. Claude is paused and Codex is the next sole integration agent by owner direction. This is one execution handoff, **not a new parallel work queue or a replacement specification**. One brief live state check is required on restart. See [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md), [CI-POLICY](CI-POLICY.md), [REAL-TRANSFER-ACCEPTANCE](REAL-TRANSFER-ACCEPTANCE.md), [MEDIA-ARTWORK-IMPLEMENTATION](MEDIA-ARTWORK-IMPLEMENTATION.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [UX](UX.md) and [BUILD](BUILD.md).
 
 ## Do not redispatch completed work
