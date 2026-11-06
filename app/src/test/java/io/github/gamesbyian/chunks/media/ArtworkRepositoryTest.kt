@@ -112,4 +112,46 @@ class ArtworkRepositoryTest {
         assertEquals("Local or private addresses are not allowed", repo.importFromUrl("https://cdn.example.org/x.png", public).second)
         assertEquals(2, http.requests.size)
     }
+    @Test fun aRevokedLiveGatePreventsQueuedAndFallbackImageRequests() {
+        var allowed = false
+        val http = FakeMediaHttp().onBytes("p.jpg", image(680, 1000))
+        val store = repo(http)
+        store.load(listOf(poster), ArtworkRole.SQUARE, true, requestAllowed = { allowed })
+        assertTrue(http.requests.isEmpty())
+        allowed = true
+        val missing = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/missing.jpg", ArtworkRole.SQUARE)
+        val changing = object : MediaHttp by http {
+            override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                val response = http.get(url, hosts, headers, maxBytes)
+                allowed = false
+                return response
+            }
+        }
+        val r = ArtworkRepository(changing, ArtworkDiskCache(Files.createTempDirectory("gated-art").toFile()),
+            hostPolicyFor = { tvmaze }).load(listOf(missing, poster), ArtworkRole.SQUARE, true, requestAllowed = { allowed })
+        assertTrue(r is ArtworkLoadResult.Unavailable)
+        assertEquals(1, http.requests.size)
+    }
+
+    @Test fun revocationDoesNotPoisonTheSharedImageCacheForAuthorizedTransfers() {
+        var allowed = true
+        var revokeOnFirstRequest = true
+        val http = FakeMediaHttp().onBytes("p.jpg", image(680, 1000))
+        val changing = object : MediaHttp by http {
+            override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                if (revokeOnFirstRequest) {
+                    revokeOnFirstRequest = false
+                    allowed = false
+                }
+                return http.get(url, hosts, headers, maxBytes)
+            }
+        }
+        val r = ArtworkRepository(changing, ArtworkDiskCache(Files.createTempDirectory("gated-art").toFile()), hostPolicyFor = { tvmaze })
+        r.load(listOf(poster), ArtworkRole.SQUARE, true, requestAllowed = { allowed })
+        assertTrue(http.requests.isEmpty())
+        allowed = true
+        assertTrue(r.load(listOf(poster), ArtworkRole.SQUARE, true, requestAllowed = { allowed }) is ArtworkLoadResult.Loaded)
+        assertEquals(1, http.requests.size)
+    }
+
 }

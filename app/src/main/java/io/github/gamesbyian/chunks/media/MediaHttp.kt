@@ -210,3 +210,10 @@ internal class PeerCheckingSocket(private val inner: javax.net.ssl.SSLSocket, pr
     override fun getRemoteSocketAddress(): java.net.SocketAddress? = inner.remoteSocketAddress
     override fun getLocalSocketAddress(): java.net.SocketAddress? = inner.localSocketAddress
 }
+
+/** Rechecked on every redirect/peer validation, so revoked work cannot authorize a later hop. */
+internal fun MediaHostPolicy.whileAllowed(allowed: () -> Boolean): MediaHostPolicy =
+    object : MediaHostPolicy by this {
+        override fun allows(host: String) = allowed() && this@whileAllowed.allows(host)
+        override fun allowsPeer(address: java.net.InetAddress) = allowed() && this@whileAllowed.allowsPeer(address)
+    }

@@ -43,7 +43,7 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
     val context = LocalContext.current
     val media = remember(context) { ChunksMedia.get(context) }
     val controller = LocalTransferMediaController.current ?: media.controller
-    val state by remember(controller, key, originalName, files) { controller.observe(key, originalName, files) }.collectAsState()
+    val state by io.github.gamesbyian.chunks.media.rememberTransferMedia(key, originalName, files, controller)
     var settings by remember { mutableStateOf(MediaPrivacySettings()) }
     var askConsent by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -121,7 +121,7 @@ fun TransferMediaSummaryRoute(key: MediaTransferKey, originalName: String, files
                               onChange: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val controller = LocalTransferMediaController.current ?: remember(context) { ChunksMedia.get(context).controller }
-    val state by remember(controller, key, originalName, files) { controller.observe(key, originalName, files) }.collectAsState()
+    val state by io.github.gamesbyian.chunks.media.rememberTransferMedia(key, originalName, files, controller)
     MediaMetadataSummary(state, onChange, modifier, onRequestPoster = { controller.requestPoster(key) })
 }
 

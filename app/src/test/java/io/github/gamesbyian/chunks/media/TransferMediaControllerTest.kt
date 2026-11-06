@@ -11,6 +11,7 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -44,13 +45,14 @@ class TransferMediaControllerTest {
         .on("/shows/57926/episodebynumber", status = 404)
         .onBytes("static.tvmaze.com", jpeg(), headers = mapOf("Content-Type" to "image/jpeg"))
 
-    private fun controller(): TransferMediaController {
+    private fun controller(httpOverride: MediaHttp = http, artDispatcher: kotlinx.coroutines.CoroutineDispatcher = Dispatchers.Unconfined): TransferMediaController {
         val tv = TvMazeProvider()
-        val service = MediaEnrichmentService(listOf(tv), http, FileMediaQueryCache(File(dir, "q.json")), { clock.now }, clock::sleep)
+        val service = MediaEnrichmentService(listOf(tv), httpOverride, FileMediaQueryCache(File(dir, "q.json")), { clock.now }, clock::sleep)
         return TransferMediaController(service,
             ArtworkRepository(http, ArtworkDiskCache(File(dir, "art")), hostPolicyFor = { tv.info.artworkHostPolicy }, memoryBytes = 4_000_000),
             { FileTransferMediaAssignmentStore(File(dir, "assign.json")) }, { settings }, { MediaNetworkState(true, false) },
-            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined, { clock.now })
+            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, artDispatcher, { clock.now },
+            automationStoreFactory = { FileMediaAutomationPreferences(File(dir, "automation.json")) })
     }
 
     @Test fun displayingNeverCallsNetworkAndShowsCategoryArt() {
@@ -271,6 +273,8 @@ class TransferMediaControllerTest {
     }
 
     @Test fun applyChoiceToRelatedTransfersIsPreviewedExplicitAndKeepsEpisodes() {
+        // External image download requires the same provider consent as ordinary enrichment.
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
         val c = controller()
         val k = { n: Int -> MediaTransferKey("phone|" + "%040x".format(n)) }
         c.observe(k(1), "Babylon.5.S02E07.Soul.Mates.mkv"); val e8 = c.observe(k(2), "Babylon 5 - S02E08 - Gropos.mkv")
@@ -352,9 +356,16 @@ class TransferMediaControllerTest {
         assertEquals(1, c.rules().size)
         // New process; a future arrival inherits the rule with its own episode, without any lookup.
         val c2 = ctl()
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        kotlinx.coroutines.runBlocking { c2.enrichInventory(listOf(k(2) to "Babylon 5 S04E03 720p.mkv")) }
         val arrival = c2.observe(k(2), "Babylon 5 S04E03 720p.mkv")
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, arrival.value.state); assertEquals(4, arrival.value.match!!.season)
         assertEquals(3, arrival.value.match!!.episode)
+        assertTrue(c2.setAutomaticLookupEnabled(k(6), false))
+        val excludedArrival = c2.observe(k(6), "Babylon 5 S04E04.mkv")
+        assertEquals(MediaAssignmentState.NOT_LOOKED_UP, excludedArrival.value.state)
+        assertEquals(MediaKind.TV_EPISODE, excludedArrival.value.recognition.kind)
+        settings = MediaPrivacySettings()
         val unrelated = c2.observe(k(3), "Babylon.Berlin.S01E01.mkv"); assertEquals(MediaAssignmentState.NOT_LOOKED_UP, unrelated.value.state)
         assertTrue(http.requests.none { it.contains("search/shows") })
         // Existing decisions are never overridden; removing the rule stops future inheritance.
@@ -362,5 +373,213 @@ class TransferMediaControllerTest {
         c2.removeRule(c2.rules().single().id)
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, ctl().observe(k(4), "Babylon.5.S05E01.mkv").value.state)
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, ctl().observe(k(2), "Babylon 5 S04E03 720p.mkv").value.state)
+    }
+    @Test fun settingsChangesNeverRescanAnObservationWhoseAuthorizationEnded() {
+        var authorized = true
+        val c = controller()
+        c.observe(server, name, isAuthorized = { authorized })
+        authorized = false // privacy gate disposed the remote screen
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        c.onSettingsChanged()
+        assertTrue(http.requests.isEmpty())
+    }
+
+    @Test fun excludedTransferNeverQueuesProvidersAcrossObservationInventoryAndRestart() {
+        val c = controller()
+        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        c.observe(phone, name)
+        kotlinx.coroutines.runBlocking { c.enrichInventory(listOf(phone to name)) }
+        c.onSettingsChanged()
+        controller().observe(phone, name)
+        assertTrue(http.requests.isEmpty())
+        controller().observe(server, name)
+        assertTrue(http.requests.isNotEmpty()) // same hash, independent environment
+    }
+
+    @Test fun togglingAutomaticLookupPreservesManualIdentification() {
+        val c = controller()
+        val flow = c.observe(phone, name)
+        val choice = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_SERIES, "Babylon 5", attribution = MediaAttribution("TVmaze", "CC", null))
+        c.choose(phone, choice)
+        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        assertEquals(choice, flow.value.match)
+        assertFalse(flow.value.automaticLookupEnabled)
+        c.reset(phone)
+        assertFalse(c.observe(phone, name).value.automaticLookupEnabled)
+        assertTrue(c.setAutomaticLookupEnabled(phone, true))
+        assertTrue(flow.value.automaticLookupEnabled)
+    }
+
+    @Test fun exclusionDuringProviderSearchBlocksFurtherRequestsAndDiscardsTheResult() {
+        lateinit var c: TransferMediaController
+        val gated = object : MediaHttp by http {
+            override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                val response = http.get(url, hosts, headers, maxBytes)
+                assertTrue(c.setAutomaticLookupEnabled(phone, false))
+                return response
+            }
+        }
+        c = controller(gated)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        val state = c.observe(phone, name)
+        assertEquals(1, http.requests.size)
+        assertNull(state.value.match)
+        assertFalse(state.value.automaticLookupEnabled)
+        assertNull(FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone))
+    }
+
+    @Test fun committedObserverLoadsAnExistingAssignmentAfterInitiallyDeniedAuthorization() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val c = controller()
+        val choice = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_SERIES, "Babylon 5", artwork = listOf(ArtworkCandidate("tvmaze", "https://static.tvmaze.com/cover.jpg", ArtworkRole.SQUARE)),
+            attribution = MediaAttribution("TVmaze", "CC", null))
+        var authorized = false
+        val state = c.observe(phone, name, isAuthorized = { authorized })
+        c.choose(phone, choice)
+        assertTrue(http.requests.isEmpty())
+        authorized = true
+        c.refreshAutomatic(phone)
+        assertNotNull(state.value.artwork)
+        assertEquals(1, http.requests.size)
+    }
+
+    @Test fun exclusionBeforeQueuedArtworkExecutionSendsNoImageRequest() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val tasks = java.util.ArrayDeque<Runnable>()
+        val dispatcher = object : kotlinx.coroutines.CoroutineDispatcher() {
+            override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) { tasks.add(block) }
+        }
+        val c = controller(artDispatcher = dispatcher)
+        val state = c.observe(phone, name)
+        c.choose(phone, MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_SERIES, "Babylon 5", artwork = listOf(ArtworkCandidate("tvmaze", "https://static.tvmaze.com/cover.jpg", ArtworkRole.SQUARE)),
+            attribution = MediaAttribution("TVmaze", "CC", null)))
+        assertTrue(tasks.isNotEmpty())
+        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        while (tasks.isNotEmpty()) tasks.removeFirst().run()
+        assertTrue(http.requests.isEmpty())
+        assertNull(state.value.artwork)
+    }
+
+    @Test fun anAuthorizedObserverHandoffDoesNotLoseTheInFlightLookup() {
+        lateinit var c: TransferMediaController
+        var first = true
+        val firstPermit = { first }
+        val secondPermit = { true }
+        var handedOff = false
+        val changing = object : MediaHttp by http {
+            override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                val response = http.get(url, hosts, headers, maxBytes)
+                if (!handedOff) {
+                    handedOff = true
+                    first = false
+                    c.stopObserving(phone, firstPermit)
+                    c.observe(phone, name, isAuthorized = secondPermit)
+                    c.refreshAutomatic(phone)
+                }
+                return response
+            }
+        }
+        c = controller(changing)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        val state = c.observe(phone, name, isAuthorized = firstPermit)
+        assertEquals(MediaAssignmentState.AUTOMATIC, state.value.state)
+        assertEquals("Babylon 5", state.value.match!!.title)
+    }
+
+    @Test fun anUncachedPriorChoiceNeverFetchesArtworkWithoutProviderConsent() {
+        val c = controller()
+        val state = c.observe(phone, name)
+        c.choose(phone, MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_SERIES, "Babylon 5", artwork = listOf(ArtworkCandidate("tvmaze", "https://static.tvmaze.com/cover.jpg", ArtworkRole.SQUARE)),
+            attribution = MediaAttribution("TVmaze", "CC", null)))
+        c.requestPoster(phone)
+        assertTrue(http.requests.isEmpty())
+        assertNotNull(state.value.match)
+        assertNull(state.value.artwork)
+    }
+
+    @Test fun negativeIdentificationExpiresAcrossRestartWithoutOverridingExclusion() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        http.routes.removeAll { it.contains == "/search/shows" }
+        http.on("/search/shows", status = 404)
+        val c = controller()
+        kotlinx.coroutines.runBlocking { c.enrichInventory(listOf(phone to name)) }
+        assertEquals(MediaAssignmentState.COULDNT_IDENTIFY,
+            FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone)!!.state)
+        val before = http.requests.size
+        http.routes.removeAll { it.contains == "/search/shows" }
+        http.on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
+        clock.now += MediaEnrichmentService.NOT_FOUND_TTL_MS - 1
+        kotlinx.coroutines.runBlocking { controller().enrichInventory(listOf(phone to name)) }
+        assertEquals(before, http.requests.size)
+        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        clock.now += 2
+        kotlinx.coroutines.runBlocking { controller().enrichInventory(listOf(phone to name)) }
+        assertEquals(before, http.requests.size)
+        val restored = controller()
+        assertTrue(restored.setAutomaticLookupEnabled(phone, true))
+        kotlinx.coroutines.runBlocking { restored.enrichInventory(listOf(phone to name)) }
+        assertEquals(MediaAssignmentState.AUTOMATIC,
+            FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone)!!.state)
+        assertTrue(http.requests.size > before)
+    }
+
+    @Test fun userChoiceWinsAgainstAnAutomaticResultAtTheStoreCommitBoundary() = choiceWinsAtCommit(true)
+    @Test fun userChoiceWinsAgainstAnExplicitLookupAtTheStoreCommitBoundary() = choiceWinsAtCommit(false)
+
+
+    private fun choiceWinsAtCommit(automatic: Boolean) {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = automatic)
+        val parent = kotlinx.coroutines.SupervisorJob()
+        val work = CoroutineScope(parent + Dispatchers.Default)
+        val reachedCommit = java.util.concurrent.CountDownLatch(1)
+        val releaseCommit = java.util.concurrent.CountDownLatch(1)
+        val manualStored = java.util.concurrent.CountDownLatch(1)
+        val blockOnce = java.util.concurrent.atomic.AtomicBoolean(true)
+        val backing = InMemoryTransferMediaAssignmentStore()
+        val store = object : TransferMediaAssignmentStore by backing {
+            override fun put(a: TransferMediaAssignment) {
+                if (a.state == MediaAssignmentState.AUTOMATIC && blockOnce.compareAndSet(true, false)) {
+                    reachedCommit.countDown()
+                    check(releaseCommit.await(10, java.util.concurrent.TimeUnit.SECONDS))
+                }
+                backing.put(a)
+                if (a.state == MediaAssignmentState.CHOSEN_BY_USER) manualStored.countDown()
+            }
+        }
+        val c = TransferMediaController(
+            MediaEnrichmentService(listOf(TvMazeProvider()), http, InMemoryMediaQueryCache(), { clock.now }, clock::sleep),
+            ArtworkRepository(http, ArtworkDiskCache(File(dir, "race-art")), hostPolicyFor = { TvMazeProvider().info.artworkHostPolicy }),
+            { store }, { settings }, { MediaNetworkState(true, false) }, work,
+            Dispatchers.Default, Dispatchers.Default, { clock.now })
+        suspend fun awaitIdle() = kotlinx.coroutines.withTimeout(10_000) {
+            while (parent.children.any()) kotlinx.coroutines.delay(10)
+        }
+        try {
+            c.observe(phone, name)
+            if (!automatic) {
+                kotlinx.coroutines.runBlocking { awaitIdle() }
+                c.lookup(phone)
+            }
+            assertTrue(reachedCommit.await(10, java.util.concurrent.TimeUnit.SECONDS))
+            val chosen = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "57926"),
+                MediaKind.TV_SERIES, "Chosen deliberately", attribution = MediaAttribution("TVmaze", "CC", null))
+            c.choose(phone, chosen)
+            // Either write order must preserve the deliberate edit. The old path permits the
+            // edit to finish before its stale lookup commits; an atomic commit serializes them.
+            manualStored.await(2, java.util.concurrent.TimeUnit.SECONDS)
+            releaseCommit.countDown()
+            kotlinx.coroutines.runBlocking { awaitIdle() }
+            assertEquals(MediaAssignmentState.CHOSEN_BY_USER, backing.get(phone)!!.state)
+            assertEquals(chosen, backing.get(phone)!!.match)
+            assertEquals(chosen, c.observe(phone, name).value.match)
+        } finally {
+            releaseCommit.countDown()
+            parent.cancel()
+        }
     }
 }

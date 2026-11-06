@@ -25,7 +25,8 @@ data class TransferMediaUiState(
     val embeddedTags: io.github.gamesbyian.chunks.media.inspection.EmbeddedMediaTags? = null,
     val busy: Boolean = false,
     val searchResults: List<MediaCandidate>? = null,
-    val message: String? = null
+    val message: String? = null,
+    val automaticLookupEnabled: Boolean = true
 ) {
     val state: MediaAssignmentState get() = assignment?.state ?: MediaAssignmentState.NOT_LOOKED_UP
     val match: MediaCandidate? get() = assignment?.displayMatch
@@ -58,8 +59,14 @@ class TransferMediaController(
     private val clock: () -> Long = System::currentTimeMillis,
     /** Separate lane so automatic lookups never queue ahead of explicit user actions. */
     private val backgroundDispatcher: CoroutineDispatcher = lookupDispatcher,
-    ruleStoreFactory: () -> MediaRuleStore = { InMemoryMediaRuleStore() }
+    ruleStoreFactory: () -> MediaRuleStore = { InMemoryMediaRuleStore() },
+    automationStoreFactory: () -> MediaAutomationPreferences = { InMemoryMediaAutomationPreferences() }
 ) {
+    private val automationStore by lazy(automationStoreFactory)
+    private val observationAuthorization = java.util.concurrent.ConcurrentHashMap<MediaTransferKey,
+        java.util.concurrent.CopyOnWriteArraySet<() -> Boolean>>()
+    private val assignmentLock = Any()
+    private val pendingAutomatic = HashSet<MediaTransferKey>()
     private val ruleStoreLazy = lazy(ruleStoreFactory)
     private val ruleStore by ruleStoreLazy
     companion object {
@@ -79,10 +86,20 @@ class TransferMediaController(
     private val store by lazy {
         val inner = storeFactory()
         object : TransferMediaAssignmentStore by inner {
-            override fun put(a: TransferMediaAssignment) { inner.put(a); assignmentRevisionFlow.update { it + 1 } }
-            override fun putAll(list: Collection<TransferMediaAssignment>) { inner.putAll(list); assignmentRevisionFlow.update { it + 1 } }
-            override fun remove(key: MediaTransferKey) { inner.remove(key); assignmentRevisionFlow.update { it + 1 } }
-            override fun clear() { inner.clear(); assignmentRevisionFlow.update { it + 1 } }
+            override fun get(key: MediaTransferKey) = synchronized(assignmentLock) { inner.get(key) }
+            override fun all() = synchronized(assignmentLock) { inner.all() }
+            override fun put(a: TransferMediaAssignment) = synchronized(assignmentLock) {
+                inner.put(a); assignmentRevisionFlow.update { it + 1 }
+            }
+            override fun putAll(list: Collection<TransferMediaAssignment>) = synchronized(assignmentLock) {
+                inner.putAll(list); assignmentRevisionFlow.update { it + 1 }
+            }
+            override fun remove(key: MediaTransferKey) = synchronized(assignmentLock) {
+                inner.remove(key); assignmentRevisionFlow.update { it + 1 }
+            }
+            override fun clear() = synchronized(assignmentLock) {
+                inner.clear(); assignmentRevisionFlow.update { it + 1 }
+            }
         }
     }
 
@@ -100,7 +117,7 @@ class TransferMediaController(
         // Each state may reference a ~0.6 MB bitmap: keep only recently observed rows (visible + margin).
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MediaTransferKey, MutableStateFlow<TransferMediaUiState>>): Boolean {
             val evict = size > MAX_STATES
-            if (evict) inputs.remove(eldest.key)
+            if (evict) { inputs.remove(eldest.key); observationAuthorization.remove(eldest.key) }
             return evict
         }
     }
@@ -118,7 +135,9 @@ class TransferMediaController(
     fun recognize(name: String, files: List<MediaFileHint> = emptyList()) = MediaRecognizer.recognize(name, files)
 
     @Synchronized
-    fun observe(key: MediaTransferKey, name: String, files: List<MediaFileHint> = emptyList()): StateFlow<TransferMediaUiState> {
+    fun observe(key: MediaTransferKey, name: String, files: List<MediaFileHint> = emptyList(),
+                isAuthorized: () -> Boolean = { true }): StateFlow<TransferMediaUiState> {
+        observationAuthorization.computeIfAbsent(key) { java.util.concurrent.CopyOnWriteArraySet() }.add(isAuthorized)
         val input = MediaRecognitionInput(name, files)
         val existing = states[key]
         if (existing != null && inputs[key] == input) return existing
@@ -128,89 +147,140 @@ class TransferMediaController(
         if (existing != null) flow.update { it.copy(recognition = recognizeWithEvidence(key, input)) }
         scope.launch(lookupDispatcher) {
             settings().let { largeListArtworkFlow.value = it.largeListArtwork; presentationFlow.value = it }
-            val a = store.get(key) ?: applyRuleIfAny(key, flow.value.recognition)
-            flow.update { it.copy(assignment = a) }
-            if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key) else if (a == null) maybeAutomatic(key)
+            val enabled = !automationStore.isExcluded(key)
+            val a = store.get(key) ?: if (enabled) applyRuleIfAny(key, flow.value.recognition) else null
+            flow.update { it.copy(assignment = a, automaticLookupEnabled = enabled) }
+            if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
+            if (automaticDue(a)) maybeAutomatic(key)
         }
         return flow
     }
 
     private fun flow(key: MediaTransferKey) = synchronized(this) { states[key] }
 
-    private fun maybeAutomatic(key: MediaTransferKey) {
-        val s = settings()
-        if (!s.onlineLookupConsent || !s.automaticLookup) return
-        scope.launch(backgroundDispatcher) {
-            automaticSlots.acquire()
-            try {
-                // Consent can be withdrawn or automatic lookup disabled while waiting.
-                val current = settings()
-                if (current.onlineLookupConsent && current.automaticLookup &&
-                    flow(key) != null && store.get(key) == null) {
-                    runLookup(key, MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
-                }
-            } finally {
-                automaticSlots.release()
-            }
+    private fun authorization(key: MediaTransferKey): () -> Boolean {
+        return { observationAuthorization[key]?.any { it() } == true }
+    }
+
+    fun stopObserving(key: MediaTransferKey, isAuthorized: () -> Boolean) {
+        observationAuthorization[key]?.remove(isAuthorized)
+    }
+
+    /** Call off main; persistence is separate from assignment/cache cleanup and manual corrections. */
+    fun setAutomaticLookupEnabled(key: MediaTransferKey, enabled: Boolean): Boolean = try {
+        synchronized(assignmentLock) { automationStore.setExcluded(key, !enabled) }
+        flow(key)?.update { it.copy(automaticLookupEnabled = enabled) }
+        if (enabled) refreshAutomatic(key)
+        true
+    } catch (_: Exception) {
+        flow(key)?.update { it.copy(automaticLookupEnabled = false,
+            message = "Could not save the automatic lookup preference. Background lookup is paused.") }
+        false
+    }
+
+    /** A committed visible observer can re-check eligibility without rescanning cached hidden rows. */
+    fun refreshAutomatic(key: MediaTransferKey) {
+        scope.launch(lookupDispatcher) {
+            val f = flow(key) ?: return@launch
+            val enabled = !automationStore.isExcluded(key)
+            val a = store.get(key) ?: if (enabled) applyRuleIfAny(key, f.value.recognition) else null
+            f.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled) }
+            if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
+            if (automaticDue(a)) maybeAutomatic(key)
         }
     }
 
-    /**
-     * Read-only inventory enrichment, independent of LazyColumn composition. Hosts supply only
-     * transfers from freshly accessible, unlocked sources. A stable environment+hash key keeps
-     * user decisions separate even when several servers hold the same torrent.
-     *
-     * This is intentionally a suspending operation: the host cancels its previous scan when
-     * the authorized inventory changes. It never mutates torrent jobs or payload files.
-     */
-    suspend fun enrichInventory(entries: Collection<Pair<MediaTransferKey, String>>) {
-        kotlinx.coroutines.withContext(backgroundDispatcher) {
-            for ((key, name) in entries.distinctBy { it.first }) {
-                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+    private fun automaticDue(assignment: TransferMediaAssignment?): Boolean {
+        if (assignment == null) return true
+        if (assignment.state != MediaAssignmentState.COULDNT_IDENTIFY || assignment.lastStatus != MediaLookupStatus.NOT_FOUND) return false
+        val now = clock()
+        return now >= assignment.updatedAtMs && now - assignment.updatedAtMs >= MediaEnrichmentService.NOT_FOUND_TTL_MS
+    }
+
+    private fun automaticAllowed(key: MediaTransferKey, authorized: () -> Boolean): Boolean =
+        authorized() && settings().let { it.onlineLookupConsent && it.automaticLookup } &&
+            !automationStore.isExcluded(key)
+
+    private fun maybeAutomatic(key: MediaTransferKey) {
+        val authorized = authorization(key)
+        // Preference reads stay on the background lane, before queue admission/provider dispatch.
+        scope.launch(backgroundDispatcher) {
+            val recognition = flow(key)?.value?.recognition ?: return@launch
+            try { enrichAutomatic(key, recognition, authorized) }
+            catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+            catch (_: Exception) { /* A later authorized refresh uses the provider retry policy. */ }
+        }
+    }
+
+    private suspend fun enrichAutomatic(key: MediaTransferKey, recognition: MediaRecognition, authorized: () -> Boolean) {
+        val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+        val permitted = { job?.isActive != false && automaticAllowed(key, authorized) }
+        if (!permitted()) return
+        if (!synchronized(this) { pendingAutomatic.add(key) }) return
+        try {
+            automaticSlots.acquire()
+            try {
+                if (!permitted()) return
+                val previous = store.get(key)
+                if (!automaticDue(previous)) return
+                // Offscreen inventory and composed rows use the same saved-rule precedence.
+                val inherited = applyRuleIfAny(key, recognition, previous, permitted)
+                if (inherited != null) {
+                    flow(key)?.update { it.copy(assignment = inherited) }
+                    if (flow(key) != null) loadArtwork(key)
+                    return
+                }
                 val preferences = settings()
-                // A revoked opt-in stops subsequent requests, including queued scans.
-                if (!preferences.onlineLookupConsent || !preferences.automaticLookup) break
-                if (store.get(key) != null) continue
-                val recognition = MediaRecognizer.recognize(name)
-                val outcome = runCatching {
-                    service.lookup(recognition, preferences, network(),
-                        MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
-                }.getOrNull() ?: continue
-                // The inventory can become locked or change owners while HTTP is in progress.
-                // Never persist or start another request for a canceled view.
+                val outcome = service.lookup(recognition, preferences, network(),
+                    MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT, requestAllowed = permitted)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                // A user edit, exclusion, withdrawn consent or closed privacy scope wins over HTTP.
+                if (!permitted() || store.get(key) != previous) return
                 val state = when (outcome.status) {
                     MediaLookupStatus.MATCHED -> MediaAssignmentState.AUTOMATIC
                     MediaLookupStatus.NEEDS_REVIEW -> MediaAssignmentState.SUGGESTED
                     MediaLookupStatus.NOT_FOUND -> MediaAssignmentState.COULDNT_IDENTIFY
-                    else -> continue // Refusal/transient failures do not become permanent exclusions.
+                    else -> return
                 }
-                if (!settings().onlineLookupConsent || !settings().automaticLookup ||
-                    store.get(key) != null) continue
                 val assignment = TransferMediaAssignment(key, state, match = outcome.match,
                     suggestions = outcome.alternates, lastStatus = outcome.status,
-                    lastMessage = outcome.message, attempts = outcome.attempts,
-                    updatedAtMs = clock())
-                store.put(assignment)
-                flow(key)?.update { it.copy(assignment = assignment, busy = false) }
-                val match = assignment.displayMatch
-                if (match != null) {
-                    if (flow(key) != null) {
-                        loadArtwork(key)
-                    } else if (preferences.showArtwork && preferences.downloadArtwork &&
-                        recognition.kind != MediaKind.ADULT) {
-                        // Pre-fill the shared validated disk cache for off-screen rows.
-                        // No per-transfer user choices are touched and no bitmap stays in UI state.
-                        val net = network()
-                        if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {
-                            kotlinx.coroutines.withContext(artworkDispatcher) {
-                                kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                                artwork.load(match.artwork, ArtworkRole.SQUARE, true,
-                                    service.providerInfos().map { it.id })
-                            }
+                    lastMessage = outcome.message, attempts = outcome.attempts, updatedAtMs = clock())
+                if (!replaceIfUnchanged(key, previous, assignment, permitted)) return
+                flow(key)?.update { cur ->
+                    if (store.get(key) == assignment) cur.copy(assignment = assignment, busy = false) else cur
+                }
+                val match = assignment.displayMatch ?: return
+                if (flow(key) != null) loadArtwork(key)
+                else if (permitted() && preferences.showArtwork && preferences.downloadArtwork && recognition.kind != MediaKind.ADULT) {
+                    val net = network()
+                    if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {
+                        kotlinx.coroutines.withContext(artworkDispatcher) {
+                            if (permitted()) artwork.load(match.artwork, ArtworkRole.SQUARE, true,
+                                service.providerInfos().map { it.id },
+                                requestAllowed = { permitted() && artworkNetworkAllowed(key) { true } })
                         }
                     }
                 }
+            } finally { automaticSlots.release() }
+        } finally { synchronized(this) { pendingAutomatic.remove(key) } }
+    }
+
+    /** Compare and commit under the same lock as every deliberate edit and exclusion change. */
+    private fun replaceIfUnchanged(key: MediaTransferKey, expected: TransferMediaAssignment?,
+                                   next: TransferMediaAssignment, allowed: () -> Boolean): Boolean =
+        synchronized(assignmentLock) {
+            if (!allowed() || store.get(key) != expected) false
+            else { store.put(next); true }
+        }
+
+    /** Fresh unlocked inventory only; cancellation ends authorization, including between HTTP requests. */
+    suspend fun enrichInventory(entries: Collection<Pair<MediaTransferKey, String>>) {
+        kotlinx.coroutines.withContext(backgroundDispatcher) {
+            for ((key, name) in entries.distinctBy { it.first }) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                try { enrichAutomatic(key, MediaRecognizer.recognize(name)) { true } }
+                catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+                catch (_: Exception) { /* Retry through the provider cache/backoff on a later inventory. */ }
             }
         }
     }
@@ -221,7 +291,7 @@ class TransferMediaController(
         scope.launch(lookupDispatcher) { runLookup(key, MediaLookupOrigin.USER_REQUEST) }
     }
 
-    private fun runLookup(key: MediaTransferKey, origin: MediaLookupOrigin) {
+    private suspend fun runLookup(key: MediaTransferKey, origin: MediaLookupOrigin) {
         val f = flow(key) ?: return
         val recognition = f.value.recognition
         val existing = store.get(key)
@@ -231,7 +301,9 @@ class TransferMediaController(
                 message = if (origin == MediaLookupOrigin.USER_REQUEST) "Your choice is kept. Use Reset to automatic to look up again, or search below." else it.message) }
             return
         }
-        val result = runCatching { service.lookup(recognition, settings(), network(), origin) }.getOrElse {
+        val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+        val allowed = { job?.isActive != false && authorization(key)() && settings().onlineLookupConsent }
+        val result = runCatching { service.lookup(recognition, settings(), network(), origin, requestAllowed = allowed) }.getOrElse {
             MediaLookupResult(MediaLookupStatus.ERROR_RETRYABLE, message = "Lookup failed; try again")
         }
         val persist = when (result.status) {
@@ -248,10 +320,13 @@ class TransferMediaController(
             match = result.match ?: existing?.match?.takeIf { !persist },
             suggestions = result.alternates, lastStatus = result.status, lastMessage = result.message,
             attempts = result.attempts, updatedAtMs = clock())
-        if (persist) store.put(assignment)
+        if (persist && !replaceIfUnchanged(key, existing, assignment, allowed)) {
+            f.update { it.copy(busy = false, assignment = store.get(key) ?: it.assignment) }
+            return
+        }
         // Background attempts that were simply not allowed leave no trace in the UI.
         val quiet = origin == MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT && !persist
-        f.update { it.copy(busy = false, assignment = if (persist) assignment else it.assignment ?: if (quiet) null else assignment,
+        f.update { it.copy(busy = false, assignment = if (persist) store.get(key) else it.assignment ?: if (quiet) null else assignment,
             message = if (quiet) it.message else result.message) }
         if (assignment.displayMatch != null) loadArtwork(key)
     }
@@ -349,15 +424,17 @@ class TransferMediaController(
     }
 
     /** A saved rule fills only transfers without any assignment; no network, reversible per transfer. */
-    private fun applyRuleIfAny(key: MediaTransferKey, r: MediaRecognition): TransferMediaAssignment? {
+    private fun applyRuleIfAny(key: MediaTransferKey, r: MediaRecognition,
+                               expected: TransferMediaAssignment? = null,
+                               authorized: () -> Boolean = authorization(key)): TransferMediaAssignment? {
         val rule = ruleStore.all().lastOrNull { it.matches(r) } ?: return null
         val base = rule.candidate
         val c = if (base.kind.isTv) base.copy(kind = if (r.episode != null) MediaKind.TV_EPISODE else if (r.season != null) MediaKind.TV_SEASON else MediaKind.TV_SERIES,
             season = r.season, episode = r.episode, episodeTitle = null,
             artwork = base.artwork.filter { a -> a.season == null || a.season == r.season }) else base
         val a = TransferMediaAssignment(key, MediaAssignmentState.CHOSEN_BY_USER, c, lastMessage = "Applied by your rule", updatedAtMs = clock())
-        store.put(a)
-        return a
+        val allowed = { authorized() && !automationStore.isExcluded(key) }
+        return if (replaceIfUnchanged(key, expected, a, allowed)) a else store.get(key)
     }
 
     /** Save "use this for future transfers with the same name" from a genuine user choice. */
@@ -525,7 +602,7 @@ class TransferMediaController(
             val s = settings()
             if (!s.showArtwork || cur.displayKind == MediaKind.ADULT) return@withContext emptyList()
             val net = network()
-            val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            val allowNetwork = authorization(key)() && !automationStore.isExcluded(key) && s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
             match.artwork.filter { it.season == null || it.season == match.season }.distinctBy { it.url }.take(limit.coerceIn(1, 24))
                 .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.SQUARE, allowNetwork) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
         }
@@ -551,7 +628,7 @@ class TransferMediaController(
             val s = settings()
             if (!s.showArtwork || cur.displayKind == MediaKind.ADULT || cur.userArtwork != null) return@withContext emptyList()
             val net = network()
-            val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            val allowNetwork = authorization(key)() && !automationStore.isExcluded(key) && s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
             posterCandidates(match).distinctBy { it.url }.take(limit.coerceIn(1, 24))
                 .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.POSTER, allowNetwork) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
         }
@@ -614,7 +691,7 @@ class TransferMediaController(
             largeListArtworkFlow.value = s.largeListArtwork
             presentationFlow.value = s
             snapshot.forEach { (key, f) ->
-                if (s.onlineLookupConsent && s.automaticLookup && f.value.assignment == null) maybeAutomatic(key)
+                if (authorization(key)() && s.onlineLookupConsent && s.automaticLookup && automaticDue(f.value.assignment)) maybeAutomatic(key)
                 if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
             }
@@ -646,15 +723,23 @@ class TransferMediaController(
         scope.launch(artworkDispatcher) {
             val s = settings()
             if (!s.showArtwork) return@launch
-            val net = network()
-            val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+            val permitted = { job?.isActive != false && artworkNetworkAllowed(key) }
             val posters = posterCandidates(match)
             // The user's chosen poster first (pinned, so offline-capable); otherwise deterministic order.
             val chosen = cur.assignment?.userPosterUrl?.let { u -> posters.firstOrNull { it.url == u } }
-            val r = chosen?.let { artwork.loadOne(it, ArtworkRole.POSTER, allowNetwork) }?.takeIf { it is ArtworkLoadResult.Loaded }
-                ?: artwork.load(posters, ArtworkRole.POSTER, allowNetwork, service.providerInfos().map { it.id })
+            val r = chosen?.let { artwork.loadOne(it, ArtworkRole.POSTER, true, permitted) }?.takeIf { it is ArtworkLoadResult.Loaded }
+                ?: artwork.load(posters, ArtworkRole.POSTER, true, service.providerInfos().map { it.id }, permitted)
             if (r is ArtworkLoadResult.Loaded) f.update { now -> if (now.match?.ref == match.ref && now.userArtwork == null) now.copy(poster = r.bitmap) else now }
         }
+    }
+
+    private fun artworkNetworkAllowed(key: MediaTransferKey, authorized: () -> Boolean = authorization(key)): Boolean {
+        if (!authorized() || automationStore.isExcluded(key)) return false
+        val s = settings()
+        val net = network()
+        return s.onlineLookupConsent && s.showArtwork && s.downloadArtwork && net.online &&
+            (!net.metered || s.artworkOnMeteredNetwork)
     }
 
     private fun loadArtwork(key: MediaTransferKey, pin: Boolean = false) {
@@ -664,13 +749,13 @@ class TransferMediaController(
         val match = a.displayMatch
         val candidates = listOfNotNull(a.userArtwork) + (match?.artwork ?: emptyList())
         if (!s.showArtwork || candidates.isEmpty() || f.value.recognition.kind == MediaKind.ADULT) return
-        val net = network()
-        val allowNetwork = s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
         scope.launch(artworkDispatcher) {
+            val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+            val permitted = { job?.isActive != false && artworkNetworkAllowed(key) }
             val providerOrder = service.providerInfos().map { it.id }
             // The user's own image always wins (explicit pin > provider art); otherwise deterministic order.
             val r = a.userArtwork?.let { artwork.loadOne(it, ArtworkRole.SQUARE, false) }?.takeIf { it is ArtworkLoadResult.Loaded }
-                ?: artwork.load(match?.artwork ?: emptyList(), ArtworkRole.SQUARE, allowNetwork, providerOrder)
+                ?: artwork.load(match?.artwork ?: emptyList(), ArtworkRole.SQUARE, true, providerOrder, permitted)
             when (r) {
                 is ArtworkLoadResult.Loaded -> {
                     if (pin && r.source.provider != LOCAL_PROVIDER) artwork.pin(r.source, ArtworkRole.SQUARE)

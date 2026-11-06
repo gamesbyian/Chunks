@@ -54,7 +54,8 @@ class ChunksMedia private constructor(context: Context) {
             lookupDispatcher = Dispatchers.IO.limitedParallelism(1),
             artworkDispatcher = Dispatchers.IO.limitedParallelism(2),
             backgroundDispatcher = Dispatchers.IO.limitedParallelism(1),
-            ruleStoreFactory = { FileMediaRuleStore(File(app.filesDir, "media/rules.json")) })
+            ruleStoreFactory = { FileMediaRuleStore(File(app.filesDir, "media/rules.json")) },
+            automationStoreFactory = { FileMediaAutomationPreferences(File(app.filesDir, "media/automation.json")) })
     }
     val controller: TransferMediaController by controllerLazy
 
@@ -124,13 +125,20 @@ val LocalTransferMediaController = staticCompositionLocalOf<TransferMediaControl
  * user enabled automatic identification. Safe for LazyColumn rows (bounded state cache).
  */
 @Composable
-fun rememberTransferMedia(key: MediaTransferKey, name: String, files: List<MediaFileHint> = emptyList()): State<TransferMediaUiState> {
-    val controller = LocalTransferMediaController.current
+fun rememberTransferMedia(key: MediaTransferKey, name: String, files: List<MediaFileHint> = emptyList(),
+                          controller: TransferMediaController? = LocalTransferMediaController.current): State<TransferMediaUiState> {
     if (controller == null) {
         val static = remember(key, name, files) { TransferMediaUiState(key, MediaRecognizer.recognize(name, files)) }
         return remember(static) { kotlinx.coroutines.flow.MutableStateFlow(static) }.collectAsState()
     }
-    val flow = remember(controller, key, name, files) { controller.observe(key, name, files) }
+    val authorized = remember(controller, key) { java.util.concurrent.atomic.AtomicBoolean(false) }
+    val isAuthorized = remember(authorized) { { authorized.get() } }
+    val flow = remember(controller, key, name, files) { controller.observe(key, name, files, isAuthorized) }
+    androidx.compose.runtime.DisposableEffect(controller, key) {
+        authorized.set(true)
+        controller.refreshAutomatic(key)
+        onDispose { authorized.set(false); controller.stopObserving(key, isAuthorized) }
+    }
     return flow.collectAsState()
 }
 

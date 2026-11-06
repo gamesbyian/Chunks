@@ -78,17 +78,33 @@ class MediaEnrichmentService(
     @Synchronized fun resetProviderPause(provider: String) { unauthorized.remove(provider); cooldownUntil.remove(provider) }
 
     fun lookup(recognition: MediaRecognition, settings: MediaPrivacySettings, network: MediaNetworkState,
-               origin: MediaLookupOrigin = MediaLookupOrigin.USER_REQUEST): MediaLookupResult =
+               origin: MediaLookupOrigin = MediaLookupOrigin.USER_REQUEST,
+               requestAllowed: () -> Boolean = { true }): MediaLookupResult =
         when (val d = MediaQuerySanitizer.fromRecognition(recognition)) {
             is MediaQueryDecision.Refused -> MediaLookupResult(MediaLookupStatus.REFUSED, message = d.reason)
-            is MediaQueryDecision.Allowed -> lookup(d.query, settings, network, origin, recognition.episodeTitle)
+            is MediaQueryDecision.Allowed -> lookup(d.query, settings, network, origin, recognition.episodeTitle, requestAllowed)
         }
 
     @Synchronized
     fun lookup(query: MediaLookupQuery, settings: MediaPrivacySettings, network: MediaNetworkState,
-               origin: MediaLookupOrigin = MediaLookupOrigin.USER_REQUEST, episodeTitle: String? = null): MediaLookupResult {
+               origin: MediaLookupOrigin = MediaLookupOrigin.USER_REQUEST, episodeTitle: String? = null,
+               requestAllowed: () -> Boolean = { true }): MediaLookupResult {
+        val requestHttp = object : MediaHttp {
+            private fun checkPermission() {
+                if (!requestAllowed()) throw MediaHttpException(MediaHttpFailure.BLOCKED_HOST, "Lookup is no longer authorized")
+            }
+            override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                checkPermission()
+                return http.get(url, hosts.whileAllowed(requestAllowed), headers, maxBytes)
+            }
+            override fun postJson(url: String, hosts: MediaHostPolicy, body: String, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                checkPermission()
+                return http.postJson(url, hosts.whileAllowed(requestAllowed), body, headers, maxBytes)
+            }
+        }
         if (!settings.onlineLookupConsent) return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT,
             message = "Online lookup is off. Turn it on in media settings to search providers.")
+        if (!requestAllowed()) return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = "Lookup is no longer authorized")
         if (origin == MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT && (!settings.automaticLookup || network.metered || network.powerSaver))
             return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = "Automatic lookup waits for an unmetered connection")
         val eligible = providers.filter { settings.providerOn(it.info) && it.supports(query) && it.isConfigured() }
@@ -103,6 +119,7 @@ class MediaEnrichmentService(
         var offline = false
         var retryable = false
         for (provider in eligible) {
+            if (!requestAllowed()) return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = "Lookup is no longer authorized")
             val id = provider.info.id
             val key = MediaQueryKeys.of(id, query)
             val cached = cache.get(key)
@@ -122,7 +139,7 @@ class MediaEnrichmentService(
                 }
                 MediaMetadataCacheDecision.OFFLINE_MISS -> { attempts.add(ProviderAttempt(id, "Offline")); offline = true; continue }
                 MediaMetadataCacheDecision.FETCH_ELIGIBLE -> {
-                    val outcome = fetch(provider, query, key, attempts)
+                    val outcome = fetch(provider, query, key, attempts, requestHttp, requestAllowed)
                     when (outcome) {
                         is FetchResult.Cooldown -> cooldown = minOf(cooldown ?: Long.MAX_VALUE, outcome.until)
                         FetchResult.Offline -> offline = true
@@ -134,9 +151,10 @@ class MediaEnrichmentService(
                 }
                 else -> { attempts.add(ProviderAttempt(id, "Skipped")); continue }
             }
+            if (!requestAllowed()) return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = "Lookup is no longer authorized")
             when (val m = MediaCandidateMatcher.match(query, candidates, episodeTitle)) {
                 is MediaMatchDecision.Confident -> {
-                    val refined = refine(provider, m.best.candidate, query)
+                    val refined = refine(provider, m.best.candidate, query, requestHttp)
                     if (confident == null) {
                         confident = refined
                         if (refined.artwork.isNotEmpty() || !settings.downloadArtwork) break
@@ -148,7 +166,7 @@ class MediaEnrichmentService(
                     }
                 }
                 is MediaMatchDecision.Ambiguous -> {
-                    val resolved = if (confident == null) disambiguateByEpisode(provider, query, m, episodeTitle) else null
+                    val resolved = if (confident == null) disambiguateByEpisode(provider, query, m, episodeTitle, requestHttp) else null
                     if (resolved != null) {
                         attempts.add(ProviderAttempt(id, "Matched by episode"))
                         confident = resolved
@@ -187,14 +205,15 @@ class MediaEnrichmentService(
     }
 
     private fun fetch(provider: MediaMetadataProvider, query: MediaLookupQuery,
-                      key: io.github.gamesbyian.chunks.model.MediaMetadataCacheKey, attempts: MutableList<ProviderAttempt>): FetchResult {
+                      key: io.github.gamesbyian.chunks.model.MediaMetadataCacheKey, attempts: MutableList<ProviderAttempt>, requestHttp: MediaHttp, requestAllowed: () -> Boolean): FetchResult {
         val id = provider.info.id
         if (id in unauthorized) { attempts.add(ProviderAttempt(id, "Paused: check provider key")); return FetchResult.Nothing }
         val until = cooldownUntil[id]
         if (until != null && clock() < until) { attempts.add(ProviderAttempt(id, "Cooling down")); return FetchResult.Cooldown(until) }
         if (!waitTurn(provider)) { attempts.add(ProviderAttempt(id, "Rate limit; deferred")); return FetchResult.Cooldown(nextAllowed(provider)) }
         lastCall[id] = clock()
-        val outcome = provider.search(query, http)
+        val outcome = provider.search(query, requestHttp)
+        if (!requestAllowed()) return FetchResult.Nothing
         val now = clock()
         fun store(state: MediaMetadataReceiptState, ttl: Long, retry: Long? = null, list: List<MediaCandidate> = emptyList()) =
             cache.put(CachedLookup(MediaMetadataCacheReceipt(key, ++revision, SCHEMA_VERSION, now, now + ttl, state, retry), list))
@@ -246,20 +265,20 @@ class MediaEnrichmentService(
         return true
     }
 
-    private fun refine(provider: MediaMetadataProvider, c: MediaCandidate, q: MediaLookupQuery): MediaCandidate {
+    private fun refine(provider: MediaMetadataProvider, c: MediaCandidate, q: MediaLookupQuery, requestHttp: MediaHttp): MediaCandidate {
         if (q.season == null) return c
         if (!waitTurn(provider)) return c
         lastCall[provider.info.id] = clock()
-        return runCatching { provider.refine(c, q, http) }.getOrDefault(c)
+        return runCatching { provider.refine(c, q, requestHttp) }.getOrDefault(c)
     }
 
     /** Ask the provider which of the tied shows actually has this exact episode (bounded to 3). */
     private fun disambiguateByEpisode(provider: MediaMetadataProvider, q: MediaLookupQuery, m: MediaMatchDecision.Ambiguous,
-                                      episodeTitle: String?): MediaCandidate? {
+                                      episodeTitle: String?, requestHttp: MediaHttp): MediaCandidate? {
         if (q.season == null || q.episode == null) return null
         val top = m.ranked.filter { it.eligible && it.titleSimilarity >= MediaCandidateMatcher.CONFIDENT_TITLE_SIMILARITY }.take(3)
         if (top.size < 2) return null
-        val withEpisode = top.mapNotNull { s -> refine(provider, s.candidate, q).takeIf { it.episodeTitle != null } }
+        val withEpisode = top.mapNotNull { s -> refine(provider, s.candidate, q, requestHttp).takeIf { it.episodeTitle != null } }
         if (withEpisode.size == 1) return withEpisode.single()
         if (episodeTitle != null && withEpisode.size > 1) {
             val byTitle = withEpisode.filter { MediaText.similarity(episodeTitle, it.episodeTitle!!) >= 0.85 }
