@@ -125,11 +125,9 @@ class MainActivity : ComponentActivity() {
     private fun accept(intent: Intent?) {
         // Shares to the separate "Create torrent" target never become Add drafts.
         incomingCreate = io.github.gamesbyian.chunks.create.SharedCreateDocument.fromIntent(intent)
-        incomingTorrent = if (incomingCreate == null) SharedTorrentDocument.fromIntent(intent) else null
-        // One incoming source only: a valid content document wins over
-        // incidental text in the same Android share intent.
-        incomingMagnet = if (incomingCreate == null && incomingTorrent == null)
-            ExternalMagnetInput.fromIntent(intent) else null
+        val source = if (incomingCreate == null) ExternalAddSource.fromIntent(intent) else null
+        incomingTorrent = (source as? ExternalAddSource.TorrentDocument)?.uri
+        incomingMagnet = (source as? ExternalAddSource.Magnet)?.value
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
