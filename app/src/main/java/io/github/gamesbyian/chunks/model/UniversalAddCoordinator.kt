@@ -1,0 +1,339 @@
+package io.github.gamesbyian.chunks.model
+
+import java.util.Locale
+
+/**
+ * Process-only source selected for a reviewed Add. A URL/document has already
+ * passed the existing source-intake and metainfo verification before becoming
+ * torrent bytes here. Never serialize this object, its origin, or a raw magnet:
+ * private tracker tokens may be present in any of them.
+ */
+internal class UniversalAddSource private constructor(
+    val kind: Kind,
+    val expectedInfoHash: String,
+    private val magnet: String?,
+    private val metainfo: ByteArray?,
+    private val originalReference: String?
+) {
+    enum class Kind { MAGNET, TORRENT_METAINFO }
+
+    companion object {
+        fun magnet(validatedMagnet: String, expectedInfoHash: String): UniversalAddSource {
+            require(validatedMagnet.startsWith("magnet:?", ignoreCase = true))
+            val identity = normalHash(expectedInfoHash)
+            // The existing MagnetDraftCheck must normalize base32/encoded xt
+            // first. Still bind this exact frozen source to the reviewed hash;
+            // a mislabeled source could otherwise reconcile the wrong job.
+            val btih = validatedMagnet.substringAfter("?").split('&')
+                .mapNotNull { part ->
+                    val parameter = part.split('=', limit = 2)
+                    if (parameter.size == 2 && parameter[0].equals("xt", ignoreCase = true) &&
+                        parameter[1].startsWith("urn:btih:", ignoreCase = true))
+                        parameter[1].substring("urn:btih:".length).lowercase(Locale.ROOT)
+                    else null
+                }
+            require(btih.size == 1 && btih.single() == identity) {
+                "The reviewed magnet and its expected hash disagree"
+            }
+            return UniversalAddSource(Kind.MAGNET, identity, validatedMagnet, null, null)
+        }
+
+        fun metainfo(verifiedBytes: ByteArray, expectedInfoHash: String,
+                     originalReference: String? = null): UniversalAddSource {
+            require(verifiedBytes.isNotEmpty())
+            return UniversalAddSource(Kind.TORRENT_METAINFO, normalHash(expectedInfoHash),
+                null, verifiedBytes.copyOf(), originalReference)
+        }
+
+        private fun normalHash(hash: String): String {
+            val canonical = hash.lowercase(Locale.ROOT)
+            require(canonical.matches(Regex("(?:[0-9a-f]{40}|[0-9a-f]{64})"))) {
+                "Expected infohash must be a valid v1/v2 hexadecimal identity"
+            }
+            return canonical
+        }
+    }
+
+    /** Source bytes/text are exposed only for the already-selected engine adapter. */
+    fun magnetForSubmission(): String? = magnet
+    fun metainfoForSubmission(): ByteArray? = metainfo?.copyOf()
+    fun originalReferenceForReview(): String? = originalReference
+    override fun toString(): String = "UniversalAddSource(kind=$kind, private)"
+}
+
+/** Exact verified target. Saved/visible/last-browsed environments are not authority. */
+internal sealed class UniversalAddTarget {
+    abstract val environment: EnvironmentId
+
+    object Phone : UniversalAddTarget() {
+        override val environment: EnvironmentId = EnvironmentSnapshots.PHONE
+        override fun toString(): String = "Phone"
+    }
+
+    class AuthenticatedServer(val accountScope: String) : UniversalAddTarget() {
+        override val environment: EnvironmentId =
+            requireNotNull(EnvironmentSnapshots.serverIdOfAliasScope(accountScope)) {
+                "Remote Add requires the exact authenticated endpoint and principal"
+            }
+
+        override fun toString(): String = "AuthenticatedServer(private)"
+    }
+}
+
+/**
+ * Place is a reviewed selection, not a substitute for the engine's writable
+ * destination/preflight check. Do not normalize an opaque phone Place ID into
+ * an rTorrent path or infer a default from a previous account.
+ */
+internal sealed class UniversalAddPlace {
+    class Phone(val verifiedPlaceId: String, val relativeSubfolder: String = "") : UniversalAddPlace() {
+        init { require(verifiedPlaceId.isNotBlank()) }
+        override fun toString(): String = "Phone(private)"
+    }
+
+    class ServerDefault(val observedDefaultPath: String) : UniversalAddPlace() {
+        init { require(observedDefaultPath.isNotBlank()) }
+        override fun toString(): String = "ServerDefault(private)"
+    }
+
+    class ServerCustom(val absolutePath: String) : UniversalAddPlace() {
+        init { require(absolutePath.startsWith("/") && absolutePath.isNotBlank()) }
+        override fun toString(): String = "ServerCustom(private)"
+    }
+}
+
+/** One immutable user-reviewed intent, not an executor or persisted job record. */
+internal class UniversalAddIntent(
+    val source: UniversalAddSource,
+    val target: UniversalAddTarget,
+    val place: UniversalAddPlace,
+    val startWhenAdded: Boolean,
+    val allowArtwork: Boolean
+) {
+    override fun toString(): String =
+        "UniversalAddIntent(source=${source.kind}, target=${target.javaClass.simpleName}, private)"
+}
+
+/**
+ * Shared, single-attempt authorization/fencing model. The existing phone and
+ * rTorrent executors own actual writes, adapter-specific preflight and
+ * proof of registration/Place/Start. Neither a capability probe nor a matching
+ * inventory row grants write authorization or retries an ambiguous command.
+ *
+ * Keep the same instance above navigation while the Activity process lives.
+ * Do not restore private sources or an attempted command from SavedState.
+ */
+internal class UniversalAddCoordinator {
+    enum class Phase {
+        EMPTY, REVIEWED, AUTHORIZED, WRITE_ATTEMPTED, READBACK_REQUIRED,
+        OBSERVED_UNCERTAIN, SESSION_CONFIRMED, VERIFIED
+    }
+
+    data class ReviewDecision(val accepted: Boolean, val reason: String)
+
+    /**
+     * Per-hash readback from an existing engine adapter, including jobs hidden
+     * from rTorrent's main view. The adapter must actually verify each flag
+     * against the selected session, never deduce it from a guessed catalog row.
+     * "New registration" needs positive provenance from that submission;
+     * a post-timeout lookup can verify a session without proving who added it.
+     */
+    data class ExactSessionObservation(
+        val environment: EnvironmentId,
+        val infoHash: String,
+        val observedAtEpochMillis: Long,
+        val registered: Boolean,
+        val reviewedPlaceVerified: Boolean,
+        val started: Boolean?,
+        val newRegistrationVerified: Boolean
+    )
+
+    enum class Readback {
+        WRONG_TICKET, WRONG_ENVIRONMENT, NEEDS_FRESH_INVENTORY,
+        NOT_OBSERVED, OBSERVED_UNVERIFIED, EXACT_SESSION_CONFIRMED, VERIFIED
+    }
+
+    /** An opaque reference to one frozen, authorized write. Never log it with private input. */
+    class Ticket internal constructor(
+        val intent: UniversalAddIntent,
+        val submittedAtEpochMillis: Long
+    ) {
+        override fun toString(): String = "UniversalAddTicket(private)"
+    }
+
+    var phase: Phase = Phase.EMPTY
+        private set
+    private var reviewed: UniversalAddIntent? = null
+    private var currentTicket: Ticket? = null
+
+    /** Read-only process-memory continuity across Add/Transfers/Connections navigation. */
+    val retainedReview: UniversalAddIntent? get() = reviewed
+    /** An attempted ticket is retained for read-only recovery, never replayed. */
+    val retainedTicket: Ticket? get() = currentTicket
+
+    fun review(
+        intent: UniversalAddIntent,
+        capabilities: EnvironmentCapabilitySnapshot,
+        availability: EnvironmentAvailability
+    ): ReviewDecision {
+        if (phase == Phase.WRITE_ATTEMPTED || phase == Phase.READBACK_REQUIRED ||
+            phase == Phase.OBSERVED_UNCERTAIN ||
+            phase == Phase.SESSION_CONFIRMED || phase == Phase.VERIFIED)
+            return ReviewDecision(false, "Resolve or finish the previous exact Add first")
+        if (capabilities.environment != intent.target.environment)
+            return ReviewDecision(false, "Capabilities belong to another environment")
+        if ((intent.target is UniversalAddTarget.Phone) != (intent.place is UniversalAddPlace.Phone))
+            return ReviewDecision(false, "Place belongs to a different engine")
+        val operation = if (intent.source.kind == UniversalAddSource.Kind.MAGNET)
+            EnvironmentOperation.ADD_MAGNET else EnvironmentOperation.ADD_TORRENT_FILE
+        val add = capabilities.decide(operation, availability)
+        if (!add.allowed) return ReviewDecision(false, add.explanation)
+        if (intent.place is UniversalAddPlace.ServerDefault) {
+            val default = capabilities.decide(EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER, availability)
+            if (!default.allowed) return ReviewDecision(false, default.explanation)
+        }
+        reviewed = intent
+        currentTicket = null
+        phase = Phase.REVIEWED // Any revised source/Place/Start invalidates previous approval.
+        return ReviewDecision(true, add.explanation)
+    }
+
+    /** Call only from the user's explicit confirmation, not during composition or recovery. */
+    fun authorizeByUser(): Boolean {
+        if (phase != Phase.REVIEWED) return false
+        phase = Phase.AUTHORIZED
+        return true
+    }
+
+    /**
+     * Must be called synchronously before entering the engine's suspend/write
+     * boundary. One confirmation yields at most one ticket.
+     */
+    fun beginSubmission(nowEpochMillis: Long): Ticket? {
+        if (phase != Phase.AUTHORIZED || nowEpochMillis < 0) return null
+        val ticket = Ticket(requireNotNull(reviewed), nowEpochMillis)
+        currentTicket = ticket
+        phase = Phase.WRITE_ATTEMPTED
+        return ticket
+    }
+
+    /** Only a positively established no-write preflight refusal may disarm the latch. */
+    fun refusedBeforeAnyWrite(ticket: Ticket): Boolean {
+        if (currentTicket !== ticket || phase != Phase.WRITE_ATTEMPTED) return false
+        currentTicket = null
+        phase = Phase.REVIEWED
+        return true
+    }
+
+    /** Timeouts, exceptions and lost ACKs always retain the attempted-write fence. */
+    fun requireReadback(ticket: Ticket): Boolean {
+        if (currentTicket !== ticket ||
+            phase !in setOf(Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN))
+            return false
+        phase = Phase.READBACK_REQUIRED
+        return true
+    }
+
+    /**
+     * Read-only exact-environment/hash reconciliation. Presence alone cannot
+     * prove a NEW Add; the existing adapter must separately confirm a new
+     * registration, the reviewed Place and (when requested) actual Start.
+     * A no-match read never permits a blind second write.
+     */
+    fun reconcile(
+        ticket: Ticket,
+        snapshot: EnvironmentTransferSnapshot,
+        adapterConfirmedNewAdd: Boolean = false,
+        adapterVerifiedPlace: Boolean = false,
+        adapterVerifiedStart: Boolean = false
+    ): Readback {
+        if (currentTicket !== ticket || phase !in setOf(
+                Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN, Phase.SESSION_CONFIRMED, Phase.VERIFIED))
+            return Readback.WRONG_TICKET
+        val intent = ticket.intent
+        if (snapshot.environment != intent.target.environment)
+            return Readback.WRONG_ENVIRONMENT
+        if (phase == Phase.VERIFIED) return Readback.VERIFIED
+        if (phase == Phase.SESSION_CONFIRMED) return Readback.EXACT_SESSION_CONFIRMED
+        if (!snapshot.canClaimCompleteLiveInventory ||
+            (snapshot.observedAtEpochMillis ?: -1L) < ticket.submittedAtEpochMillis)
+            return Readback.NEEDS_FRESH_INVENTORY
+        val match = snapshot.transfers.singleOrNull {
+            it.key.infoHash == intent.source.expectedInfoHash &&
+                it.key.environment == intent.target.environment
+        } ?: run {
+            if (phase != Phase.VERIFIED) phase = Phase.READBACK_REQUIRED
+            return Readback.NOT_OBSERVED
+        }
+        val startAgrees = if (intent.startWhenAdded)
+            adapterVerifiedStart && match.started == true else match.started == false
+        if (!adapterConfirmedNewAdd || !adapterVerifiedPlace || !startAgrees) {
+            if (phase != Phase.VERIFIED) phase = Phase.OBSERVED_UNCERTAIN
+            return Readback.OBSERVED_UNVERIFIED
+        }
+        phase = Phase.VERIFIED
+        return Readback.VERIFIED
+    }
+
+    /**
+     * The same read-only fence for an exact RPC/session getter, where the job
+     * can exist outside rTorrent's main list. This never issues a command.
+     * A session first observed after a lost ACK is **not** evidence that this
+     * Add registered it. It can be acknowledged separately for safe navigation
+     * without manufacturing a successful NEW Add attribution.
+     */
+    fun reconcileExactSession(ticket: Ticket, observation: ExactSessionObservation): Readback {
+        if (currentTicket !== ticket || phase !in setOf(
+                Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN,
+                Phase.SESSION_CONFIRMED, Phase.VERIFIED))
+            return Readback.WRONG_TICKET
+        if (observation.environment != ticket.intent.target.environment)
+            return Readback.WRONG_ENVIRONMENT
+        if (phase == Phase.VERIFIED) return Readback.VERIFIED
+        if (phase == Phase.SESSION_CONFIRMED) return Readback.EXACT_SESSION_CONFIRMED
+        if (observation.observedAtEpochMillis < ticket.submittedAtEpochMillis ||
+            observation.observedAtEpochMillis < 0)
+            return Readback.NEEDS_FRESH_INVENTORY
+        val expected = ticket.intent.source.expectedInfoHash
+        if (!observation.infoHash.equals(expected, ignoreCase = true))
+            return Readback.NOT_OBSERVED
+        if (!observation.registered) {
+            phase = Phase.READBACK_REQUIRED
+            return Readback.NOT_OBSERVED
+        }
+        val startMatches = if (ticket.intent.startWhenAdded)
+            observation.started == true else observation.started == false
+        if (!observation.reviewedPlaceVerified || !startMatches) {
+            phase = Phase.OBSERVED_UNCERTAIN
+            return Readback.OBSERVED_UNVERIFIED
+        }
+        if (!observation.newRegistrationVerified) {
+            phase = Phase.SESSION_CONFIRMED
+            return Readback.EXACT_SESSION_CONFIRMED
+        }
+        phase = Phase.VERIFIED
+        return Readback.VERIFIED
+    }
+
+    /**
+     * The person can deliberately end recovery after exact-session proof.
+     * This does not say the previous Add succeeded, and cannot replay it.
+     * The existing adapter's duplicate check still applies to a future Add.
+     */
+    fun acknowledgeExactSession(): Boolean {
+        if (phase != Phase.SESSION_CONFIRMED) return false
+        reviewed = null
+        currentTicket = null
+        phase = Phase.EMPTY
+        return true
+    }
+
+    /** A positively verified result needs an explicit next-draft action. */
+    fun finishVerified(): Boolean {
+        if (phase != Phase.VERIFIED) return false
+        reviewed = null
+        currentTicket = null
+        phase = Phase.EMPTY
+        return true
+    }
+}
