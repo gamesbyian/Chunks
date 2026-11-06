@@ -359,7 +359,9 @@ internal fun ChunksApp(
     // A phone transfer's exported .torrent waiting for the server Add review.
     // Process memory only; consumed by that review, never auto-submitted.
     var serverHandoffTorrent by remember { mutableStateOf<ByteArray?>(null) }
-    var draftPath by remember { mutableStateOf("") }
+    // Account-scoped recovery outlives Add's composition, including privacy gates
+    // and reconnects. Process memory only; Activity/process restoration is separate.
+    val remoteAddSessions = remember { RemoteAddSessions() }
     val scope = rememberCoroutineScope()
     val credentialChanges = remember { RemoteCredentialActionQueue() }
     val aliasStore = remember(context) { TransferAliasStore(context) }
@@ -370,6 +372,10 @@ internal fun ChunksApp(
     // being rolled back; each value has observable Compose state fields.
     val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
     var aliasScope by remember { mutableStateOf("") }
+    fun prepareRemoteMagnet(source: String) {
+        magnet = source
+        remoteAddSessions.selectMagnet(aliasScope)
+    }
     var aliasRevision by remember { mutableStateOf(0) }
     // Purely derive the configured identities during composition. SharedPreferences
     // writes must happen after composition, off the main thread, and only when
@@ -439,6 +445,7 @@ internal fun ChunksApp(
     // selection. The phone route retains its existing bounded read/review.
     LaunchedEffect(incomingTorrent) {
         if (incomingTorrent != null) {
+            remoteAddSessions.clearPendingSourceSelection()
             sharedTorrentError = null
             pendingSharedMagnet = null
             phoneHandoffTorrentUri = null
@@ -485,6 +492,7 @@ internal fun ChunksApp(
     // this temporary selector is replaced by the single Universal Add form.
     LaunchedEffect(sharedMagnet) {
         if (sharedMagnet != null) {
+            remoteAddSessions.clearPendingSourceSelection()
             // New explicit share replaces any older, unconsumed document review.
             phoneHandoffTorrentUri = null
             phoneHandoffMagnet = null
@@ -667,6 +675,7 @@ internal fun ChunksApp(
                                     // A newer, explicit document supersedes an older
                                     // text draft; the remote Add form reviews these bytes.
                                     magnet = ""
+                                    remoteAddSessions.clearPendingSourceSelection()
                                     serverHandoffTorrent = reviewed.bytes
                                     onIncomingTorrentConsumed()
                                     section = Section.ADD
@@ -688,7 +697,7 @@ internal fun ChunksApp(
                             "This rTorrent account is no longer verified. Reconnect before reviewing this .torrent."
                     } else if (sharedDocument == null) {
                         pendingSharedMagnet?.let { source ->
-                            magnet = source
+                            prepareRemoteMagnet(source)
                             pendingSharedMagnet = null
                         }
                         section = Section.ADD
@@ -767,10 +776,11 @@ internal fun ChunksApp(
                     onTorrentConsumed = { phoneHandoffTorrentUri = null },
                     onPrefillConsumed = { phoneHandoffMagnet = null },
                     onPrepareRemote = { draft ->
-                        magnet = draft
+                        prepareRemoteMagnet(draft)
                         section = Section.TRANSFERS
                     },
                     onPrepareRemoteTorrent = { document ->
+                        remoteAddSessions.clearPendingSourceSelection()
                         serverHandoffTorrent = document
                         section = Section.TRANSFERS
                     }
@@ -969,6 +979,9 @@ internal fun ChunksApp(
                                     snapshotRevision++
                                     version = v
                                     aliasScope = RemoteVerifiedUiIdentity.aliasScopeOf(verifiedSettings)
+                                    // A phone-prepared magnet may have waited through login.
+                                    // Apply its source-mode selection once to this exact account.
+                                    remoteAddSessions.forAccount(aliasScope)
                                     endpoint = verifiedSettings.endpoint
                                     // The fields stay aligned with the authenticated
                                     // probe even if edited while Connect was running.
@@ -977,9 +990,6 @@ internal fun ChunksApp(
                                     username = verifiedSettings.username
                                     // The full address now carries the path.
                                     rpcPath = ""
-                                    // Never carry another server/account's custom destination
-                                    // into this Add draft. Blank selects the new server default.
-                                    draftPath = ""
                                     server = candidate
                                     stale = false
                                     // A phone-origin .torrent can be prepared before a
@@ -1103,10 +1113,11 @@ internal fun ChunksApp(
                         onTorrentConsumed = { phoneHandoffTorrentUri = null },
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
-                            magnet = draft
+                            prepareRemoteMagnet(draft)
                             section = Section.ADD
                         },
                         onPrepareRemoteTorrent = { document ->
+                            remoteAddSessions.clearPendingSourceSelection()
                             serverHandoffTorrent = document
                             section = Section.ADD
                         }
@@ -1386,11 +1397,12 @@ internal fun ChunksApp(
                             busyEngine = loading,
                             mutationGeneration = snapshotRevision,
                             onPrepareAdd = { document ->
+                                remoteAddSessions.clearPendingSourceSelection()
                                 serverHandoffTorrent = document
                                 section = Section.ADD
                             },
                             onPrepareMagnet = { link ->
-                                magnet = link
+                                prepareRemoteMagnet(link)
                                 section = Section.ADD
                             }
                         )
@@ -1417,7 +1429,8 @@ internal fun ChunksApp(
                     onBack = { leaveTool() },
                     shared = createRequest, onSharedConsumed = { createRequest = null })
                 Section.PLACES -> PlacesScreen(transfers) { path ->
-                    draftPath = path
+                    remoteAddSessions.forAccount(aliasScope)
+                        .takeUnless { it.alreadyAttempted }?.destination = path
                     section = Section.ADD
                 }
                 Section.NAMES -> AliasBatchReviewScreen(
@@ -1476,7 +1489,6 @@ internal fun ChunksApp(
                         inspectionFence.invalidate()
                         mutationGate.reset()
                         server = null
-                        draftPath = ""
                         aliasScope = ""
                         aliasSessions.clear()
                         version = ""
@@ -1506,6 +1518,9 @@ internal fun ChunksApp(
                     }
                 )
                 Section.ADD -> {
+                    val addSession = remember(aliasScope) {
+                        remoteAddSessions.forAccount(aliasScope)
+                    }
                     val recentPlaces = remember(aliasScope, recentPlaceRevision) {
                         if (aliasScope.isBlank()) emptyList()
                         else recentPlaceStore.places(aliasScope)
@@ -1518,16 +1533,17 @@ internal fun ChunksApp(
                         else RemoteObservedAddPlaces.from(transfers)
                     }
                     VerifiedAddScreen(
-                        remote = connectedRemote, magnet = magnet, destination = draftPath,
+                        remote = connectedRemote, magnet = magnet, destination = addSession.destination,
+                        session = addSession,
                         observedPlaces = observedPlaces,
                         initialTorrent = serverHandoffTorrent,
                         onInitialTorrentConsumed = { serverHandoffTorrent = null },
                         finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
                         environmentLabel = serverEnvironmentLabel(aliasScope),
-                        onMagnet = { magnet = it }, onDestination = { draftPath = it },
+                        onMagnet = { magnet = it }, onDestination = { addSession.destination = it },
                         addStartState = phoneAddStart,
                         addArtworkState = addAutomaticArtwork,
-                        onBack = { draftPath = ""; section = Section.TRANSFERS },
+                        onBack = { section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->
                             if (server === connectedRemote) {
@@ -1544,7 +1560,6 @@ internal fun ChunksApp(
                                 filter = TransferFilter.ALL
                                 remoteFilterStore.save(sortEnvironment, TransferFilter.ALL)
                                 requestedView = "main"
-                                draftPath = ""
                                 section = Section.TRANSFERS
                                 refresh()
                             }

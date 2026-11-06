@@ -219,6 +219,9 @@ internal class MainActivityRealMagnetJourney(
             click("+ Add torrent")
             rule.waitUntil(30_000) { visible("Add a download to this server") }
             report("chunks_real_add_app_stage", "add-open")
+            // A verified previous Add remains a result on return; only this
+            // explicit action starts a fresh source review, without an RPC.
+            if (runCatching { scroll("Start another Add") }.isSuccess) click("Start another Add")
             // The real Seedhost must receive the actual publisher magnet, including
             // its original tracker list. The disposable controlled test keeps
             // the deliberate dead tracker to isolate the supplied peer.
@@ -270,6 +273,15 @@ internal class MainActivityRealMagnetJourney(
                         java.io.File(InstrumentationRegistry.getInstrumentation().targetContext.filesDir,
                             "media/automation.json")).isExcluded(key))
             }
+            // Exercise the production app owner, not a directly composed form:
+            // leaving/reopening must retain the exact verified result and latch.
+            click("Back to transfers")
+            click("+ Add torrent")
+            scroll("View verified transfer in rTorrent")
+            rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
+            assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
+                runCatching { scroll("Review Add") }.isFailure)
+            assertNotNull("Navigation must retain the independently registered exact job", row(hash))
             report("chunks_real_add_app_stage", "add-registered")
         }
         fun refreshAndFind(hash: String) {
