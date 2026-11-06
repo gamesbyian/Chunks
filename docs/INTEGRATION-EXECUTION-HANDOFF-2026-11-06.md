@@ -1,5 +1,8 @@
 # Active Chunks integration handoff — 2026-11-06
 
+> **LIVE merged follow-through, 2026-11-06:** #1338 merged at `d459a37633d5c240584310b454a3f21850b97b0b` after seven successful exact-head PR checks. Source intake shared magnets now demand explicit destination choice, including deep-scroll recovery. This is a first *navigation* slice; the phone and rTorrent still have independent full Add forms. The immediate implementation target is the **one authoritative Add draft/submit flow** described below. Manual current-main debug APK publication and physical Pixel feedback are still pending; never label the old build current. All other owner-approved constraints stay in force.
+
+
 **Purpose:** Compact recovery/execution card for the [one live WORK-QUEUE](WORK-QUEUE.md), not another product specification, issue backlog or agent roster.
 
 **Starting receipt:** GitHub `main` `2084d9fd8b584c59ae20f45d0972264c6de606a7`, zero open PRs, 26 open issues on check. #1333 integrated consented enrichment and a **pure** Smart Routing evaluator; #1334 standardized Options / immediate apply; #1335/#1336 delivered installed test fixes/harness. Native Add and real rTorrent magnet exact-head CI ran green on #1336 `89ef095`; real provider harness has **not** been manually run, no current-main checksum verified APK or physical Pixel/TalkBack receipt. Recheck live source/branches/CI; prior Claude/Codex/UX handoffs are historical.

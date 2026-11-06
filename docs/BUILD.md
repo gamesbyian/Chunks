@@ -1,5 +1,8 @@
 # Building the Chunks Android pre-alpha
 
+> **Merged #1338 build distinction (2026-11-06):** Seven PR-head checks passed at `69aa563db8b4` and merge landed as `d459a37633d5`; `android-check` intentionally does **not** publish its debug APK. The manual main-only `publish-debug-apk.yml` workflow must be explicitly dispatched for a downloadable, SHA-256-verified current-main debug/Preview pair. No such release has yet been established in this checkpoint. Do not repurpose expired instrumented test APK artifacts as a public preview or tell a tester to uninstall an existing app to resolve a signing conflict. [QUALITY-LEDGER](QUALITY-LEDGER.md).
+
+
 > **2026-11-06 integration feedback rule:** Current baseline `2084d9fd8b584c59ae20f45d0972264c6de606a7` is a **source checkpoint only**, not a checksum-verified current-main APK. Publish or select a new source-exact installable preview, record workflow run, APK SHA-256, source and signing type and real installed journey separately in [QUALITY-LEDGER](QUALITY-LEDGER.md). Keep older previews below labelled with their immutable sources. Physical Pixel/TalkBack and publisher signing cannot be inferred from emulator success. Do not circulate an unverified historic APK as the new build. [Work order](WORK-QUEUE.md).
 
 

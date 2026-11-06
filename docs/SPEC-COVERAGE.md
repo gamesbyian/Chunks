@@ -1,5 +1,12 @@
 # Chunks specification coverage and acceptance map
 
+## 2026-11-06 merged intake-navigation slice (still not Universal Add)
+
+**2026-11-06 merged implementation checkpoint:** [PR #1338](https://github.com/gamesbyian/Chunks/pull/1338) was squash-merged onto main as `d459a37633d5c240584310b454a3f21850b97b0b` from exact PR head `69aa563db8b4a112eb6b6c830e17d91834b1a681`. The PR made shared Android magnet intake with an authenticated remote require an **explicit phone/server destination choice** and scrolls that choice into view after a deep Combined-list return, without selecting an Add target implicitly or performing an engine write. The source remains process-only. Current-head [docs](https://github.com/gamesbyian/Chunks/actions/runs/42179018564), [Android foundation](https://github.com/gamesbyian/Chunks/actions/runs/42179018850), [native Add full shards](https://github.com/gamesbyian/Chunks/actions/runs/42179018507), [R8](https://github.com/gamesbyian/Chunks/actions/runs/42179018438), [visual atlas](https://github.com/gamesbyian/Chunks/actions/runs/42179018476), [two-server Combined](https://github.com/gamesbyian/Chunks/actions/runs/42179018447) and [remote Remove/data](https://github.com/gamesbyian/Chunks/actions/runs/42179018640) all passed. **This is only intake/nav integration:** the destination choice still opens existing two Add forms; common persisted Add draft/submission, automatic rules, portable Move context and current-main checksum-verified installable release remain unfinished. No physical Pixel/TalkBack or live provider acceptance is newly claimed.
+
+Remaining highest-value acceptance: one shared Add draft with explicit source+target+Place+Start, one submission coordinator feeding existing phone/rTorrent implementations, session-safe auth interrupt and reconciliation without blind retries. #8 is the UX owner, #567 existing observation/presentation owner, #6 routing after manual job-only Move, #9/#10 evidence/release. Do not equate source-selection UI with a finished cross-environment transaction.
+
+
 ## Active product-integration coverage boundary (baseline 2026-11-06, main `2084d9fd8b58`)
 
 | User journey / reusable seam | Already present on baseline | Still to build / prove |
