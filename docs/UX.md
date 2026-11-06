@@ -393,3 +393,8 @@ In expanded transfer details, beneath essential transfer controls, show a compac
 ## Sharing a transfer and cross-app file annotations (planned)
 
 Transfer Details shall eventually expose the same source-labelled Share magnet / Copy magnet / Share .torrent options for phone and rTorrent; unavailable metadata must be explained in place, private tracker/passkey disclosures precede external sharing and Android Sharesheet grants are scoped. Expository file-membership annotations are optional, pairable/revocable, explicitly read-only and distinguish known-stale or unknown associations. No extra transfer-Add review or mandatory companion app. [Transfer sharing](TRANSFER-SHARING.md) · [Cross-app file association](EXPOSITORY-FILE-ASSOCIATIONS.md). These features are not current P0 implementation or acceptance claims.
+
+
+## Centralized Options navigation (owner-approved 2026-11-05)
+
+The eight-destination searchable Options index, canonical setting ownership, per-transfer override/deep-link behavior, access-protection distinctions, environment identity with colours disabled, and staged consolidation are specified by [OPTIONS-INFORMATION-ARCHITECTURE](OPTIONS-INFORMATION-ARCHITECTURE.md). Existing Options/search implementations must be reused, not independently re-created. This is an organizational update, not permission to displace rTorrent daily-use qualification, cohesive UX work or multi-client adapter dependencies.
