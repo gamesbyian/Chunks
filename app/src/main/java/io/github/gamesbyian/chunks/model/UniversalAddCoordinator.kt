@@ -126,13 +126,31 @@ internal class UniversalAddIntent(
 internal class UniversalAddCoordinator {
     enum class Phase {
         EMPTY, REVIEWED, AUTHORIZED, WRITE_ATTEMPTED, READBACK_REQUIRED,
-        OBSERVED_UNCERTAIN, VERIFIED
+        OBSERVED_UNCERTAIN, SESSION_CONFIRMED, VERIFIED
     }
 
     data class ReviewDecision(val accepted: Boolean, val reason: String)
+
+    /**
+     * Per-hash readback from an existing engine adapter, including jobs hidden
+     * from rTorrent's main view. The adapter must actually verify each flag
+     * against the selected session, never deduce it from a guessed catalog row.
+     * "New registration" needs positive provenance from that submission;
+     * a post-timeout lookup can verify a session without proving who added it.
+     */
+    data class ExactSessionObservation(
+        val environment: EnvironmentId,
+        val infoHash: String,
+        val observedAtEpochMillis: Long,
+        val registered: Boolean,
+        val reviewedPlaceVerified: Boolean,
+        val started: Boolean?,
+        val newRegistrationVerified: Boolean
+    )
+
     enum class Readback {
         WRONG_TICKET, WRONG_ENVIRONMENT, NEEDS_FRESH_INVENTORY,
-        NOT_OBSERVED, OBSERVED_UNVERIFIED, VERIFIED
+        NOT_OBSERVED, OBSERVED_UNVERIFIED, EXACT_SESSION_CONFIRMED, VERIFIED
     }
 
     /** An opaque reference to one frozen, authorized write. Never log it with private input. */
@@ -159,7 +177,8 @@ internal class UniversalAddCoordinator {
         availability: EnvironmentAvailability
     ): ReviewDecision {
         if (phase == Phase.WRITE_ATTEMPTED || phase == Phase.READBACK_REQUIRED ||
-            phase == Phase.OBSERVED_UNCERTAIN || phase == Phase.VERIFIED)
+            phase == Phase.OBSERVED_UNCERTAIN ||
+            phase == Phase.SESSION_CONFIRMED || phase == Phase.VERIFIED)
             return ReviewDecision(false, "Resolve or finish the previous exact Add first")
         if (capabilities.environment != intent.target.environment)
             return ReviewDecision(false, "Capabilities belong to another environment")
@@ -229,11 +248,13 @@ internal class UniversalAddCoordinator {
         adapterVerifiedStart: Boolean = false
     ): Readback {
         if (currentTicket !== ticket || phase !in setOf(
-                Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN, Phase.VERIFIED))
+                Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN, Phase.SESSION_CONFIRMED, Phase.VERIFIED))
             return Readback.WRONG_TICKET
         val intent = ticket.intent
         if (snapshot.environment != intent.target.environment)
             return Readback.WRONG_ENVIRONMENT
+        if (phase == Phase.VERIFIED) return Readback.VERIFIED
+        if (phase == Phase.SESSION_CONFIRMED) return Readback.EXACT_SESSION_CONFIRMED
         if (!snapshot.canClaimCompleteLiveInventory ||
             (snapshot.observedAtEpochMillis ?: -1L) < ticket.submittedAtEpochMillis)
             return Readback.NEEDS_FRESH_INVENTORY
@@ -252,6 +273,59 @@ internal class UniversalAddCoordinator {
         }
         phase = Phase.VERIFIED
         return Readback.VERIFIED
+    }
+
+    /**
+     * The same read-only fence for an exact RPC/session getter, where the job
+     * can exist outside rTorrent's main list. This never issues a command.
+     * A session first observed after a lost ACK is **not** evidence that this
+     * Add registered it. It can be acknowledged separately for safe navigation
+     * without manufacturing a successful NEW Add attribution.
+     */
+    fun reconcileExactSession(ticket: Ticket, observation: ExactSessionObservation): Readback {
+        if (currentTicket !== ticket || phase !in setOf(
+                Phase.WRITE_ATTEMPTED, Phase.READBACK_REQUIRED, Phase.OBSERVED_UNCERTAIN,
+                Phase.SESSION_CONFIRMED, Phase.VERIFIED))
+            return Readback.WRONG_TICKET
+        if (observation.environment != ticket.intent.target.environment)
+            return Readback.WRONG_ENVIRONMENT
+        if (phase == Phase.VERIFIED) return Readback.VERIFIED
+        if (phase == Phase.SESSION_CONFIRMED) return Readback.EXACT_SESSION_CONFIRMED
+        if (observation.observedAtEpochMillis < ticket.submittedAtEpochMillis ||
+            observation.observedAtEpochMillis < 0)
+            return Readback.NEEDS_FRESH_INVENTORY
+        val expected = ticket.intent.source.expectedInfoHash
+        if (!observation.infoHash.equals(expected, ignoreCase = true))
+            return Readback.NOT_OBSERVED
+        if (!observation.registered) {
+            phase = Phase.READBACK_REQUIRED
+            return Readback.NOT_OBSERVED
+        }
+        val startMatches = if (ticket.intent.startWhenAdded)
+            observation.started == true else observation.started == false
+        if (!observation.reviewedPlaceVerified || !startMatches) {
+            phase = Phase.OBSERVED_UNCERTAIN
+            return Readback.OBSERVED_UNVERIFIED
+        }
+        if (!observation.newRegistrationVerified) {
+            phase = Phase.SESSION_CONFIRMED
+            return Readback.EXACT_SESSION_CONFIRMED
+        }
+        phase = Phase.VERIFIED
+        return Readback.VERIFIED
+    }
+
+    /**
+     * The person can deliberately end recovery after exact-session proof.
+     * This does not say the previous Add succeeded, and cannot replay it.
+     * The existing adapter's duplicate check still applies to a future Add.
+     */
+    fun acknowledgeExactSession(): Boolean {
+        if (phase != Phase.SESSION_CONFIRMED) return false
+        reviewed = null
+        currentTicket = null
+        phase = Phase.EMPTY
+        return true
     }
 
     /** A positively verified result needs an explicit next-draft action. */
