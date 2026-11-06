@@ -638,6 +638,8 @@ private fun ChunksApp(
                     onCreateTorrent = { openFromPhone(Section.CREATE) },
                     onZipReview = { openFromPhone(Section.ARCHIVES) },
                     onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
+                    showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
+                    onConnections = { section = Section.SERVER },
                     initialMagnet = phoneHandoffMagnet,
                     initialSearch = phoneSearchPrefill,
                     onSearchConsumed = { phoneSearchPrefill = null },
