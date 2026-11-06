@@ -111,6 +111,7 @@ class CombinedTransfersScreenTest {
         // The entire transfer body expands without a Start/Stop RPC.
         rule.onNodeWithContentDescription(expand).performClick()
         rule.onNodeWithContentDescription("All details for Big Archive on " + label).assertExists()
+        rule.onNodeWithText("Size 900 B", substring = true).assertExists()
         rule.onNodeWithText("Open in its list").assertExists()
         rule.onNodeWithContentDescription("Collapse Big Archive on " + label).performClick()
         rule.onNodeWithText("All details").assertDoesNotExist()
@@ -148,9 +149,9 @@ class CombinedTransfersScreenTest {
         seen(serverEnvironmentLabel(aliasScope) + ": Live · 2 transfers")
         seen("Showing 2 · some environments are missing or out of date")
         seen("Big Archive")
-        seen("Sharing · 100% · 900 B · ↓ 0 B/s · ↑ 10 B/s")
+        seen("Sharing · 100% · ↓ 0 B/s · ↑ 10 B/s · Ratio not reported")
         seen("Small Episode")
-        seen("Stopped · 50% · 10 B · ↓ not reported · ↑ not reported")
+        seen("Stopped · 50% · ↓ not reported · ↑ not reported · Ratio not reported")
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-all.png")
         // A read-only view must not bring up the phone engine for a remote-only user.
         assertNull(LocalEngineHolder.current())
