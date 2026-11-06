@@ -108,7 +108,7 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
             // Build from the stored preferences, never from a not-yet-loaded default copy.
             scope.launch {
                 settings = withContext(Dispatchers.IO) {
-                    media.loadSettings().copy(onlineLookupConsent = true).also { media.updateSettings(it) }
+                    media.loadSettings().copy(onlineLookupConsent = true, automaticLookup = true).also { media.updateSettings(it) }
                 }
             }
         },
@@ -133,7 +133,7 @@ fun MediaLookupConsentDialog(providerNames: List<String>, onConfirm: () -> Unit,
         text = { Text("Chunks will send a cleaned-up title, and a year, season or episode where known, to: " +
             providerNames.joinToString(", ") + ". Torrent names, magnet links, trackers, file paths, server addresses and " +
             "credentials are never sent. These services can see your network address. You can turn this off and clear " +
-            "all downloaded artwork and lookup history at any time in media settings.") },
+            "all downloaded artwork and lookup history at any time in media settings. After consent, eligible transfers are identified automatically in the background.") },
         confirmButton = { TextButton(onClick = onConfirm) { Text("Turn on") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } })
 }

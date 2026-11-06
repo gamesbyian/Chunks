@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ensureActive
 
 /** Everything a transfer row/detail needs to present media identity. Immutable snapshot. */
 data class TransferMediaUiState(
@@ -68,7 +69,9 @@ class TransferMediaController(
         /** Bounds one Similar Transfers index build (visible inventory, all environments). */
         const val MAX_SIMILAR_INVENTORY = 5_000
     }
-    private val pendingAutomatic = java.util.concurrent.atomic.AtomicInteger(0)
+    // Suspend instead of dropping the seventh and later eligible transfer. Background
+    // lookup runs on its own dispatcher; explicit Identify stays on the foreground lane.
+    private val automaticSlots = kotlinx.coroutines.sync.Semaphore(MAX_PENDING_AUTOMATIC)
 
     private val assignmentRevisionFlow = MutableStateFlow(0L)
     /** Increments after every stored assignment change; hosts use it to refresh derived views (search). */
@@ -137,13 +140,78 @@ class TransferMediaController(
     private fun maybeAutomatic(key: MediaTransferKey) {
         val s = settings()
         if (!s.onlineLookupConsent || !s.automaticLookup) return
-        // Bounded: extra rows are simply retried the next time they are observed.
-        if (pendingAutomatic.incrementAndGet() > MAX_PENDING_AUTOMATIC) { pendingAutomatic.decrementAndGet(); return }
         scope.launch(backgroundDispatcher) {
+            automaticSlots.acquire()
             try {
-                // Skip rows scrolled far away (evicted) before their turn came.
-                if (flow(key) != null && store.get(key) == null) runLookup(key, MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
-            } finally { pendingAutomatic.decrementAndGet() }
+                // Consent can be withdrawn or automatic lookup disabled while waiting.
+                val current = settings()
+                if (current.onlineLookupConsent && current.automaticLookup &&
+                    flow(key) != null && store.get(key) == null) {
+                    runLookup(key, MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
+                }
+            } finally {
+                automaticSlots.release()
+            }
+        }
+    }
+
+    /**
+     * Read-only inventory enrichment, independent of LazyColumn composition. Hosts supply only
+     * transfers from freshly accessible, unlocked sources. A stable environment+hash key keeps
+     * user decisions separate even when several servers hold the same torrent.
+     *
+     * This is intentionally a suspending operation: the host cancels its previous scan when
+     * the authorized inventory changes. It never mutates torrent jobs or payload files.
+     */
+    suspend fun enrichInventory(entries: Collection<Pair<MediaTransferKey, String>>) {
+        kotlinx.coroutines.withContext(backgroundDispatcher) {
+            for ((key, name) in entries.distinctBy { it.first }) {
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                val preferences = settings()
+                // A revoked opt-in stops subsequent requests, including queued scans.
+                if (!preferences.onlineLookupConsent || !preferences.automaticLookup) break
+                if (store.get(key) != null) continue
+                val recognition = MediaRecognizer.recognize(name)
+                val outcome = runCatching {
+                    service.lookup(recognition, preferences, network(),
+                        MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
+                }.getOrNull() ?: continue
+                // The inventory can become locked or change owners while HTTP is in progress.
+                // Never persist or start another request for a canceled view.
+                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                val state = when (outcome.status) {
+                    MediaLookupStatus.MATCHED -> MediaAssignmentState.AUTOMATIC
+                    MediaLookupStatus.NEEDS_REVIEW -> MediaAssignmentState.SUGGESTED
+                    MediaLookupStatus.NOT_FOUND -> MediaAssignmentState.COULDNT_IDENTIFY
+                    else -> continue // Refusal/transient failures do not become permanent exclusions.
+                }
+                if (!settings().onlineLookupConsent || !settings().automaticLookup ||
+                    store.get(key) != null) continue
+                val assignment = TransferMediaAssignment(key, state, match = outcome.match,
+                    suggestions = outcome.alternates, lastStatus = outcome.status,
+                    lastMessage = outcome.message, attempts = outcome.attempts,
+                    updatedAtMs = clock())
+                store.put(assignment)
+                flow(key)?.update { it.copy(assignment = assignment, busy = false) }
+                val match = assignment.displayMatch
+                if (match != null) {
+                    if (flow(key) != null) {
+                        loadArtwork(key)
+                    } else if (preferences.showArtwork && preferences.downloadArtwork &&
+                        recognition.kind != MediaKind.ADULT) {
+                        // Pre-fill the shared validated disk cache for off-screen rows.
+                        // No per-transfer user choices are touched and no bitmap stays in UI state.
+                        val net = network()
+                        if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {
+                            kotlinx.coroutines.withContext(artworkDispatcher) {
+                                kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                                artwork.load(match.artwork, ArtworkRole.SQUARE, true,
+                                    service.providerInfos().map { it.id })
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -546,6 +614,7 @@ class TransferMediaController(
             largeListArtworkFlow.value = s.largeListArtwork
             presentationFlow.value = s
             snapshot.forEach { (key, f) ->
+                if (s.onlineLookupConsent && s.automaticLookup && f.value.assignment == null) maybeAutomatic(key)
                 if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
             }

@@ -669,6 +669,20 @@ internal fun CombinedTransfersScreen(
     val sources = remember(rawSources, aliasScopes, currentAliases) {
         CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
+    // Full authorized inventory, not just composed LazyColumn rows. This catches external
+    // additions and reconnects to any accessible saved rTorrent environment.
+    // Locked/stale/offline sources are never used for third-party identification.
+    val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
+    val mediaInventory = remember(sources) {
+        sources.filter { it.availability == EnvironmentAvailability.LIVE &&
+            it.observedAtEpochMillis != null }
+            .flatMap { source -> source.transfers.map { row ->
+                io.github.gamesbyian.chunks.media.MediaTransferKey.of(row.key) to row.originalName
+            } }
+    }
+    LaunchedEffect(mediaController, mediaInventory) {
+        mediaController?.enrichInventory(mediaInventory)
+    }
     val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
     val result = remember(sources, query, mediaTitles) {
         UnifiedTransferCatalog.query(sources, query) { key ->
