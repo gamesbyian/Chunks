@@ -639,7 +639,8 @@ private fun ChunksApp(
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onAddToServer = if (server != null) ({
                     val sharedDocument = incomingTorrent
-                    if (sharedDocument != null && !sharedTorrentReading) {
+                    if (sharedDocument != null && !sharedTorrentReading &&
+                        server != null && aliasScope.isNotBlank()) {
                         // Selecting a remote authorizes only a bounded, read-only
                         // local document parse. No rTorrent operation is attempted.
                         val selectedServer = server
@@ -672,6 +673,9 @@ private fun ChunksApp(
                                 sharedTorrentReading = false
                             }
                         }
+                    } else if (sharedDocument != null && !sharedTorrentReading) {
+                        sharedTorrentError =
+                            "This rTorrent account is no longer verified. Reconnect before reviewing this .torrent."
                     } else if (sharedDocument == null) {
                         pendingSharedMagnet?.let { source ->
                             magnet = source
