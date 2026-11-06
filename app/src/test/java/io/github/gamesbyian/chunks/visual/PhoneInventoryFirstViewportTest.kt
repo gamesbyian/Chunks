@@ -54,7 +54,9 @@ class PhoneInventoryFirstViewportTest {
 
     @Test fun anEmptyPhoneSaysSoOnceWithoutAZeroOfZeroCount() {
         rule.waitForIdle()
-        rule.onNodeWithText("No transfers on this phone yet.").assertIsDisplayed()
+        rule.onNodeWithText("Your transfers will appear here").assertIsDisplayed()
+        rule.onNodeWithText("Add a torrent").assertIsDisplayed()
+        rule.onNodeWithText("Connections").assertIsDisplayed()
         rule.onNodeWithText("Showing 0 of 0 local transfers").assertDoesNotExist()
     }
 }
