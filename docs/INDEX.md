@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+**Future multi-client remote control (approved, deferred):** [Canonical adapter architecture and integration plan](REMOTE-BACKEND-ADAPTERS.md) covers rTorrent-preserving extraction, protocol differences, Transmission/qBittorrent/Deluge staging, capability matrix, shared UX/rules/routing, conformance and real-host acceptance. [Free distribution and attribution policy](LICENSING-AND-ATTRIBUTION.md) records the owner's nonproprietary/public-domain intent and mandatory third-party license audit. Neither document authorizes new adapters ahead of the existing rTorrent reliability and UX architecture priorities; the sole executable work queue remains [WORK-QUEUE](WORK-QUEUE.md).
+
+
 **Owner UX direction (2026-11-05):** [Cohesive UX and automatic artwork campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) governs the next holistic UI reorganization and automatic enrichment. Existing SVG drafts are approved for development; optical fidelity can be refined iteratively. Earlier 'next' pointers are dated status snapshots, not overrides of this owner direction.
 
 

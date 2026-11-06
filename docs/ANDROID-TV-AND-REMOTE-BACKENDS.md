@@ -1,5 +1,8 @@
 # Android TV and multi-backend remote control: binding future product contract
 
+> **2026-11-05 owner clarification:** The authoritative **detailed** multi-client remote interface, reference-implementation research, compatibility matrix, common UI/rules/job-only routing integration and rollout/acceptance plan now live in [REMOTE-BACKEND-ADAPTERS](REMOTE-BACKEND-ADAPTERS.md). This document retains the platform-level roadmap and TV presentation requirements. Existing rTorrent reliability **and the active universal UX/architecture campaign** outrank new adapters. rTorrent may be incrementally restructured after those foundations; never six independently rebuilt apps. The owner's free-distribution/credit intent is documented in [LICENSING-AND-ATTRIBUTION](LICENSING-AND-ATTRIBUTION.md). Deluge Web JSON-RPC is the preferred first Deluge route, not an assumed native daemon connection.
+
+
 **Owner direction, 2026-10-29. Status: planned and gated, not implemented or accepted.** This contract is normative for future behavior, not an executable queue or proof of readiness. Active priorities remain in [WORK-QUEUE](WORK-QUEUE.md), feature coverage in [SPEC-COVERAGE](SPEC-COVERAGE.md), and actual test evidence in [QUALITY-LEDGER](QUALITY-LEDGER.md). [Future backend umbrella #660](https://github.com/gamesbyian/Chunks/issues/660).
 
 ## Two distinct expansion tracks, after foundations
