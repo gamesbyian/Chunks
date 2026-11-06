@@ -300,6 +300,8 @@ internal fun LocalEngineScreen(
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
     /** Reviewed .torrent bytes outlive phone screen navigation, never Activity/process recreation. */
     pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null,
+    /** App-owned process-only attempt/reconciliation authority, injected by Agent 5. */
+    phoneAddAttemptSession: PhoneAddAttemptSession? = null,
     /** Read-only HTTPS metadata intake, injectable for source-replacement regression tests. */
     fetchTorrentDocument: (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { TorrentLinkFetcher().fetch(it) }
 ) {
@@ -323,6 +325,8 @@ internal fun LocalEngineScreen(
     // An initial empty Compose list is not an observed empty engine. Restore
     // comparisons require at least one actually accepted native list read.
     var hasConfirmedLocalInventory by remember { mutableStateOf(false) }
+    // Accept timestamp is updated only by the exact current native poll generation.
+    var lastAcceptedInventoryAt by remember { mutableStateOf(0L) }
     val transfers = inventoryFrame.entries
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
     var transferPage by remember { mutableStateOf(0) }
@@ -504,8 +508,8 @@ internal fun LocalEngineScreen(
     LaunchedEffect(pending?.preview?.infoHashV1) {
         if (pending != null) addExpanded = true
     }
-    LaunchedEffect(initialMagnet, busy) {
-        if (busy) return@LaunchedEffect
+    LaunchedEffect(initialMagnet, busy, phoneAddAttemptSession?.attemptedTicket) {
+        if (busy || phoneAddAttemptSession?.attemptedTicket != null) return@LaunchedEffect
         if (initialMagnet != null && initialMagnet.startsWith("magnet:?")) {
             selectTextSource(initialMagnet)
             addExpanded = true
@@ -599,8 +603,55 @@ internal fun LocalEngineScreen(
     val addPlaceResolution = placeResolution?.let { LocalAddPlacePolicy.resolve(it, currentAddPlaceId) }
     val place = addPlaceResolution?.selected
     val destination = place?.root
+    // A completed native observation after the frozen ticket, rather than a
+    // matching row in an old filter, resolves its exact phone Add identity.
+    LaunchedEffect(lastAcceptedInventoryAt, inventoryFrame) {
+        val session = phoneAddAttemptSession ?: return@LaunchedEffect
+        val ticket = session.attemptedTicket ?: return@LaunchedEffect
+        if (!hasConfirmedLocalInventory || inventoryStale ||
+            lastAcceptedInventoryAt < ticket.submittedAtEpochMillis) return@LaunchedEffect
+        val before = session.coordinator.phase
+        val result = session.reconcileInventory(transfers, lastAcceptedInventoryAt)
+        if (session.coordinator.phase != before) when (result) {
+            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.VERIFIED -> {
+                message = "The new phone transfer was verified in a fresh native list. Review the next Add when ready."
+                // A returned native status was only provisional. Tell the
+                // shared transfer list about a new job *after* exact readback.
+                rememberAdded(ticket.intent.source.expectedInfoHash, message)
+            }
+            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.EXACT_SESSION_CONFIRMED ->
+                noteProblem("This torrent exists on the phone at the reviewed location, but its Add origin is uncertain. No retry occurred.")
+            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED ->
+                noteProblem("A matching phone torrent was observed, but its Place, Start or new-Add identity is unverified. No retry occurred.")
+            else -> Unit
+        }
+    }
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
+    }
+    // This is invoked *only* inside performLocalMutation after the existing
+    // phone mutation gate has been acquired, before any IO/native call.
+    // Null sessions are used only by standalone UI test harnesses until the
+    // app owner injects its one process-only phone coordinator.
+    fun authorizePhoneTicket(
+        source: io.github.gamesbyian.chunks.model.UniversalAddIntent,
+        selectedPlace: LocalDownloadPlace,
+        inventoryReadyAtClick: Boolean
+    ): io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Ticket? {
+        val session = phoneAddAttemptSession ?: return null
+        val decision = PhoneUniversalAddAdapter.review(session.coordinator, source,
+            inventoryConfirmed = inventoryReadyAtClick, inventoryStale = !inventoryReadyAtClick)
+        if (!decision.accepted || !session.coordinator.authorizeByUser()) {
+            noteProblem("This phone Add cannot be authorized: " + decision.reason + ". Nothing was sent.")
+            return null
+        }
+        val ticket = session.coordinator.beginSubmission(System.currentTimeMillis())
+        if (ticket == null) {
+            noteProblem("An earlier phone Add is still being checked. No second Add was sent.")
+            return null
+        }
+        session.bindPlace(ticket, selectedPlace)
+        return ticket
     }
     val addFolderNameInvalid = remember(addFolderDraft) {
         LocalOwnedAddFolder.normalizedName(addFolderDraft) == null
@@ -644,7 +695,10 @@ internal fun LocalEngineScreen(
                     // A sample scheduled before an uncertain mutation cannot
                     // clear its safety latch, even if it finishes afterward.
                     if (LocalScreenReader.revision.acceptObservation(frame.revision, frame.transfers)) {
-                        if (frame.transfers != null) hasConfirmedLocalInventory = true
+                        if (frame.transfers != null) {
+                            hasConfirmedLocalInventory = true
+                            lastAcceptedInventoryAt = System.currentTimeMillis()
+                        }
                         inventoryFrame = LocalInventoryFreshness.advance(inventoryFrame, frame.transfers)
                         observedDeltas = if (frame.transfers != null) {
                             progressHistory.observe(frame.transfers, SystemClock.elapsedRealtime())
@@ -738,8 +792,10 @@ internal fun LocalEngineScreen(
         }
     }
 
-    LaunchedEffect(initialTorrentUri, busy) {
+    LaunchedEffect(initialTorrentUri, busy, phoneAddAttemptSession?.attemptedTicket) {
         val externalUri = initialTorrentUri ?: return@LaunchedEffect
+        // Keep an incoming share queued while an earlier write is unresolved.
+        if (phoneAddAttemptSession?.attemptedTicket != null) return@LaunchedEffect
         // A new source may arrive while an approved Add is settling. Keep it
         // queued until that operation finishes instead of letting its cleanup
         // discard the newer review. Source intake itself never authorizes Add.
@@ -845,19 +901,45 @@ internal fun LocalEngineScreen(
             expanded = addExpanded, pendingReview = pending != null,
             placeLabel = place?.title, onToggle = { addExpanded = !addExpanded }
         )
+        phoneAddAttemptSession?.attemptedTicket?.let {
+            val phase = phoneAddAttemptSession.coordinator.phase
+            Text("Previous phone Add: " + when (phase) {
+                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ->
+                    "new transfer verified from this Add."
+                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ->
+                    "transfer exists, but Add origin is uncertain."
+                else -> "waiting for exact phone transfer verification; no automatic retry."
+            }, style = MaterialTheme.typography.bodyMedium)
+            if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ||
+                phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED) {
+                OutlinedButton(onClick = {
+                    if (phoneAddAttemptSession.finishReviewedAttempt()) {
+                        pending = null
+                        magnet = ""
+                        addFolderDraft = ""
+                        currentAddPlaceId = null
+                        addExpanded = true
+                        message = "Previous phone Add review closed. Choose your next source explicitly."
+                    }
+                }, modifier = Modifier.fillMaxWidth()) {
+                    Text(if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED)
+                        "Review another phone Add" else "Acknowledge existing job, then review another")
+                }
+            }
+        }
         if (addExpanded) {
         Text("Add a download on this phone", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.bringIntoViewRequester(addRequester)
                 .semantics { heading() })
         ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
-            enabled = !busy && !sourceReading,
+            enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null,
             modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
         val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
         // A web link is a different source: fetched only on request, then reviewed as a .torrent.
         val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
         val isLink = linkCheck !is TorrentLinkCheck.NotALink
         OutlinedTextField(value = magnet, onValueChange = { selectTextSource(it.trim()) },
-            enabled = !busy,
+            enabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
             label = { Text("Or paste a magnet or torrent link") }, singleLine = true,
             isError = if (isLink) linkCheck is TorrentLinkCheck.Problem else magnetCheck is MagnetDraftCheck.Problem,
             // Autocorrect must never rewrite a magnet's hash or trackers.
@@ -867,17 +949,18 @@ internal fun LocalEngineScreen(
                 imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             modifier = Modifier.fillMaxWidth())
         if (magnet.isEmpty()) PasteMagnetButton(
-            enabled = !busy,
+            enabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
             onPaste = { selectTextSource(it) },
             onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
         if (clipboardFilled != null && magnet == clipboardFilled) ClipboardPrefillNote(
-            onClear = { magnet = ""; clipboardFilled = null }, enabled = !busy && !sourceReading)
+            onClear = { magnet = ""; clipboardFilled = null },
+            enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null)
         if (isLink) TorrentLinkPanel(linkCheck, fetching = linkFetching,
             // Read-only source validation does not require a phone Place.
             // Actual Add still requires the existing fresh inventory/Place gates.
             // An existing verified review remains selected until the replacement fetch
             // succeeds and validates; refusal must never require discarding it first.
-            enabled = !busy && !sourceReading, onFetch = { link ->
+            enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null, onFetch = { link ->
                 initialTorrentUri?.let(onTorrentConsumed)
                 linkFetching = true
                 scope.launch {
@@ -935,47 +1018,82 @@ internal fun LocalEngineScreen(
                 addFocus.clearFocus()
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
-                val selectedMagnet = (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: magnet
+                val checkedMagnet = magnetCheck as? MagnetDraftCheck.Valid ?: return@ActionTile
+                val selectedMagnet = checkedMagnet.normalized
                 val autoStart = startAfterAdd
                 val allowArtwork = automaticArtwork
                 val orderLater = magnetFinishInOrder
-                performLocalMutation {
+                val inventoryReadyAtClick = hasConfirmedLocalInventory && !inventoryStale
+                performLocalMutation phoneMagnet@{
+                    val selected = selectedPlace ?: run {
+                        noteProblem("Choose a verified phone download location before Add. Nothing was sent.")
+                        return@phoneMagnet
+                    }
+                    val session = phoneAddAttemptSession
+                    val ticket = if (session == null) null else try {
+                        authorizePhoneTicket(
+                            PhoneUniversalAddAdapter.magnetIntent(checkedMagnet, selected,
+                                selectedDraft, autoStart, allowArtwork),
+                            selected, inventoryReadyAtClick)
+                    } catch (_: IllegalArgumentException) {
+                        noteProblem("This phone Add source or subfolder is invalid. Nothing was sent.")
+                        return@phoneMagnet
+                    }
+                    if (session != null && ticket == null) return@phoneMagnet
+                    val enteredNative = java.util.concurrent.atomic.AtomicBoolean(false)
+                    val nativeResult = java.util.concurrent.atomic.AtomicReference<LocalAddResult?>(null)
+                    fun settleTicket() {
+                        if (session == null || ticket == null) return
+                        if (!enteredNative.get()) session.coordinator.refusedBeforeAnyWrite(ticket)
+                        else nativeResult.get()?.let { session.noteNativeResult(ticket, it, selected) }
+                            ?: session.coordinator.requireReadback(ticket)
+                    }
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            val key = phoneAddedKey((magnetCheck as? MagnetDraftCheck.Valid)?.infoHash.orEmpty())
+                            val key = phoneAddedKey(checkedMagnet.infoHash)
                             if (!allowArtwork && (key == null ||
                                 mediaController?.prepareForAdd(key, false) != true)) {
                                 return@withContext LocalAddResult.Refused(
                                     "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.")
                             }
                             val chosen = LocalOwnedAddFolder.prepare(
-                                selectedPlace?.let(LocalDownloadPlaces::materialize), selectedDraft)
+                                LocalDownloadPlaces.materialize(selected), selectedDraft)
                             if (chosen == null) LocalAddResult.Refused(
                                 "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.")
-                            else LocalEngineHolder.get(context).addMagnet(
-                                selectedMagnet, chosen, autoStartAfterMetadata = autoStart)
+                            else {
+                                val engine = LocalEngineHolder.get(context)
+                                // Even a Refused after entering libtorrent may have
+                                // registered a job. Never disarm based on that enum.
+                                enteredNative.set(true)
+                                engine.addMagnet(selectedMagnet, chosen,
+                                    autoStartAfterMetadata = autoStart).also(nativeResult::set)
+                            }
                         }
+                        settleTicket()
                         if (orderLater && result is LocalAddResult.FetchingMetadata) withContext(Dispatchers.IO) {
                             finishInOrderStore.requestAfterMetadata(result.status.infoHash)
                         }
                         message = when (result) {
-                            is LocalAddResult.Refused -> result.reason
+                            is LocalAddResult.Refused -> if (enteredNative.get())
+                                "The phone engine did not confirm this magnet Add after its native write boundary. " +
+                                    "Check the exact phone transfer list; no retry occurred."
+                                else result.reason
                             is LocalAddResult.FetchingMetadata ->
-                                if (startAfterAdd) "Magnet added. Discovering metadata; download begins automatically when metadata arrives and peers are available."
-                                else "Magnet added in metadata-only mode. Use Start after the metadata is ready."
+                                if (autoStart) "Magnet admitted. Discovering metadata; payload Start must still be verified."
+                                else "Magnet admitted in metadata-only mode. Start payload only when you choose."
                             is LocalAddResult.AddedStopped -> null
                         }
                         if (result is LocalAddResult.Refused) problemOutcome = message
-                        when (result) {
+                        if (session == null) when (result) {
                             is LocalAddResult.FetchingMetadata -> rememberAdded(result.status.infoHash, message)
                             is LocalAddResult.AddedStopped -> rememberAdded(result.status.infoHash, message)
                             is LocalAddResult.Refused -> Unit
                         }
                         if (result !is LocalAddResult.Refused) {
                             automaticArtwork = true
-                            if (startAfterAdd) {
+                            if (autoStart) {
                                 try { LocalEngineService.start(context) } catch (_: Exception) {
-                                    noteProblem("Magnet added, but Android did not start the background service. Keep Chunks open.")
+                                    noteProblem("Magnet admitted, but Android did not start the background service. Keep Chunks open.")
                                 }
                             }
                             magnet = ""
@@ -984,14 +1102,17 @@ internal fun LocalEngineScreen(
                             addExpanded = false
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        settleTicket()
                         throw cancel
                     } catch (_: Exception) {
+                        settleTicket()
                         inventoryFrame = inventoryFrame.copy(stale = true)
-                        noteProblem("Magnet Add was not confirmed. Wait for a fresh transfer list and check for the magnet before retrying.")
+                        noteProblem("Magnet Add may have reached the native engine. Wait for a fresh exact transfer list; no retry occurred.")
                     }
                 }
             }, enabled = !busy && !sourceReading && !inventoryStale && !dhtSaving &&
-                !placeSaving && proposedAddDestination != null && magnetCheck is MagnetDraftCheck.Valid,
+                !placeSaving && proposedAddDestination != null && magnetCheck is MagnetDraftCheck.Valid &&
+                phoneAddAttemptSession?.attemptedTicket == null,
                 modifier = Modifier.fillMaxWidth())
         }
         // Keep both intake methods discoverable before optional storage, seeding
@@ -1221,7 +1342,7 @@ internal fun LocalEngineScreen(
             ReviewedTorrentTargetChooser(
                 verifiedTorrentBytes = add.bytes,
                 phonePlaceAvailable = destination != null,
-                enabled = !busy && !sourceReading,
+                enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null,
                 onPrepareServerReview = prepare@{ original ->
                     if (sourceReadJob != null || pending !== add) return@prepare
                     // The parent only enables this action for an authenticated,
@@ -1248,9 +1369,10 @@ internal fun LocalEngineScreen(
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
-            busy = busy || sourceReading || inventoryStale || placeSaving || proposedAddDestination == null,
+            busy = busy || sourceReading || inventoryStale || placeSaving || proposedAddDestination == null ||
+                phoneAddAttemptSession?.attemptedTicket != null,
             startAfterAdd = startAfterAdd,
-            cancelEnabled = !busy,
+            cancelEnabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             seeding = seedingPreview,
             onConfirm = confirm@{
@@ -1260,8 +1382,32 @@ internal fun LocalEngineScreen(
                 val autoStart = startAfterAdd
                 val allowArtwork = automaticArtwork
                 val orderAfterAdd = finishInOrderAfterAdd
+                val inventoryReadyAtClick = hasConfirmedLocalInventory && !inventoryStale
                 var orderNote: String? = null
-                performLocalMutation {
+                performLocalMutation phoneDocument@{
+                    val selected = selectedPlace ?: run {
+                        noteProblem("Choose a verified phone download location before Add. Nothing was sent.")
+                        return@phoneDocument
+                    }
+                    val session = phoneAddAttemptSession
+                    val ticket = if (session == null) null else try {
+                        authorizePhoneTicket(
+                            PhoneUniversalAddAdapter.torrentIntent(add, selected,
+                                selectedDraft, autoStart, allowArtwork),
+                            selected, inventoryReadyAtClick)
+                    } catch (_: IllegalArgumentException) {
+                        noteProblem("This .torrent source or subfolder is invalid. Nothing was sent.")
+                        return@phoneDocument
+                    }
+                    if (session != null && ticket == null) return@phoneDocument
+                    val enteredNative = java.util.concurrent.atomic.AtomicBoolean(false)
+                    val nativeResult = java.util.concurrent.atomic.AtomicReference<LocalAddResult?>(null)
+                    fun settleTicket() {
+                        if (session == null || ticket == null) return
+                        if (!enteredNative.get()) session.coordinator.refusedBeforeAnyWrite(ticket)
+                        else nativeResult.get()?.let { session.noteNativeResult(ticket, it, selected) }
+                            ?: session.coordinator.requireReadback(ticket)
+                    }
                     try {
                         val result = withContext(Dispatchers.IO) {
                             val key = phoneAddedKey(add.preview.infoHashV1)
@@ -1271,15 +1417,22 @@ internal fun LocalEngineScreen(
                                     "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.") to null
                             }
                             val chosen = LocalOwnedAddFolder.prepare(
-                                selectedPlace?.let(LocalDownloadPlaces::materialize), selectedDraft)
+                                LocalDownloadPlaces.materialize(selected), selectedDraft)
                             if (chosen == null)
                                 LocalAddResult.Refused(
                                     "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.") to null
                             else {
                                 val engine = LocalEngineHolder.get(context)
-                                val added = engine.addStoppedChecked(add.bytes, chosen)
-                                // While still stopped: set up the policy and apply its first verified
-                                // step, so the very first piece requests already follow the order.
+                                enteredNative.set(true)
+                                // The shared ticket freezes the exact reviewed
+                                // bytes: never execute with the mutable screen
+                                // holder after authorization and a suspend gap.
+                                val authorizedBytes = ticket?.intent?.source?.metainfoForSubmission()
+                                    ?: add.bytes
+                                val added = engine.addStoppedChecked(authorizedBytes, chosen)
+                                    .also(nativeResult::set)
+                                // Configure file order while stopped, before any
+                                // explicitly requested payload Start.
                                 if (orderAfterAdd && added is LocalAddResult.AddedStopped) {
                                     orderNote = enableFinishInOrderAfterAdd(context, engine, added.status.infoHash)
                                 }
@@ -1288,9 +1441,13 @@ internal fun LocalEngineScreen(
                                 else added to null
                             }
                         }
+                        settleTicket()
                         val (added, started) = result
                         message = when (added) {
-                            is LocalAddResult.Refused -> added.reason
+                            is LocalAddResult.Refused -> if (enteredNative.get())
+                                "The native phone engine did not confirm this torrent Add after entering its write boundary. " +
+                                    "Check the exact phone transfer list; no retry occurred."
+                                else added.reason
                             is LocalAddResult.FetchingMetadata -> "Metadata is still loading."
                             is LocalAddResult.AddedStopped -> when (started?.outcome) {
                                 LocalCommandOutcome.VERIFIED -> {
@@ -1313,11 +1470,11 @@ internal fun LocalEngineScreen(
                             }
                         }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
-                        // Typed result: a refused Add, or a Start that was not verified.
                         if (added is LocalAddResult.Refused || (added is LocalAddResult.AddedStopped &&
                                 started != null && started.outcome != LocalCommandOutcome.VERIFIED))
                             problemOutcome = message
-                        if (added is LocalAddResult.AddedStopped) rememberAdded(added.status.infoHash, message)
+                        if (session == null && added is LocalAddResult.AddedStopped)
+                            rememberAdded(added.status.infoHash, message)
                         if (added !is LocalAddResult.Refused) {
                             automaticArtwork = true
                             pending = null
@@ -1326,10 +1483,12 @@ internal fun LocalEngineScreen(
                             addExpanded = false
                         }
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        settleTicket()
                         throw cancel
                     } catch (_: Exception) {
+                        settleTicket()
                         inventoryFrame = inventoryFrame.copy(stale = true)
-                        noteProblem("Torrent Add was not confirmed. Wait for a fresh transfer list and check for this torrent before retrying.")
+                        noteProblem("Torrent Add may have reached the native engine. Check the next fresh exact transfer list; no retry occurred.")
                     }
                 }
             },

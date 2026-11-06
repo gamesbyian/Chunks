@@ -9,6 +9,7 @@ import io.github.gamesbyian.chunks.model.UniversalAddIntent
 import io.github.gamesbyian.chunks.model.UniversalAddPlace
 import io.github.gamesbyian.chunks.model.UniversalAddSource
 import io.github.gamesbyian.chunks.model.UniversalAddTarget
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.File
 
 /**
@@ -26,10 +27,23 @@ internal object PhoneUniversalAddAdapter {
         subfolder: String,
         startWhenAdded: Boolean,
         allowArtwork: Boolean
-    ): UniversalAddIntent = intent(
-        UniversalAddSource.metainfo(reviewed.bytes, reviewed.preview.infoHashV1),
-        place, subfolder, startWhenAdded, allowArtwork
-    )
+    ): UniversalAddIntent {
+        // PendingLocalAdd retains a mutable byte array for navigation. Recheck
+        // its exact reviewed identity at the authorization boundary, then copy
+        // it into UniversalAddSource. The executor must use only that copy.
+        val current = try {
+            TorrentMetainfoReader.preview(reviewed.bytes)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("The reviewed torrent source changed")
+        }
+        require(current == reviewed.preview) {
+            "The verified source no longer matches the visible review"
+        }
+        return intent(
+            UniversalAddSource.metainfo(reviewed.bytes, current.infoHashV1),
+            place, subfolder, startWhenAdded, allowArtwork
+        )
+    }
 
     fun magnetIntent(
         checked: MagnetDraftCheck.Valid,
@@ -165,9 +179,23 @@ internal class PhoneAddAttemptSession(
 ) {
     private var ticketWithReceipt: UniversalAddCoordinator.Ticket? = null
     private var nativeGenerationReceipt: String? = null
+    private var ticketWithPlace: UniversalAddCoordinator.Ticket? = null
+    private var frozenPlace: LocalDownloadPlace? = null
 
     val attemptedTicket: UniversalAddCoordinator.Ticket?
         get() = coordinator.retainedTicket
+
+    /** Bind the exact Place alongside the ticket before any native Add call. */
+    fun bindPlace(ticket: UniversalAddCoordinator.Ticket, place: LocalDownloadPlace) {
+        require(coordinator.retainedTicket === ticket) { "Not the current phone Add attempt" }
+        require(PhoneUniversalAddAdapter.expectedDirectory(ticket, place) != null) {
+            "The frozen ticket belongs to another phone Place"
+        }
+        ticketWithPlace = ticket
+        frozenPlace = place
+        ticketWithReceipt = null
+        nativeGenerationReceipt = null
+    }
 
     fun noteNativeResult(ticket: UniversalAddCoordinator.Ticket,
                          result: LocalAddResult, place: LocalDownloadPlace) {
@@ -189,11 +217,26 @@ internal class PhoneAddAttemptSession(
         return coordinator.reconcileExactSession(ticket, exact)
     }
 
+    /** Called only after a new completed, current-generation phone inventory read. */
+    fun reconcileInventory(transfers: List<LocalTransferStatus>, observedAtEpochMillis: Long):
+        UniversalAddCoordinator.Readback? {
+        val ticket = attemptedTicket ?: return null
+        val place = frozenPlace?.takeIf { ticketWithPlace === ticket } ?: return null
+        val matching = transfers.filter {
+            it.infoHash.equals(ticket.intent.source.expectedInfoHash, ignoreCase = true)
+        }
+        // An ambiguous duplicated native identity is never positive evidence.
+        if (matching.size > 1) return UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED
+        return reconcile(ticket, matching.singleOrNull(), place, observedAtEpochMillis)
+    }
+
     fun finishReviewedAttempt(): Boolean {
         val done = coordinator.finishVerified() || coordinator.acknowledgeExactSession()
         if (done) {
             ticketWithReceipt = null
             nativeGenerationReceipt = null
+            ticketWithPlace = null
+            frozenPlace = null
         }
         return done
     }

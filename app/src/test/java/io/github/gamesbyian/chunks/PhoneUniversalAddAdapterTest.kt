@@ -70,6 +70,24 @@ class PhoneUniversalAddAdapterTest {
         assertFalse(magnet.toString().contains("passkey"))
     }
 
+    @Test fun changedReviewedTorrentBytesCannotBeAuthorizedUsingAnOldVisibleHash() {
+        // Equal-sized names keep both bencoded documents the same length.
+        val original = TorrentLinkFixtures.singleFileV1("alpha.mkv", 1_024)
+        val replacement = TorrentLinkFixtures.singleFileV1("bravo.mkv", 1_024)
+        assertEquals(original.size, replacement.size)
+        val reviewed = PendingLocalAdd(TorrentMetainfoReader.preview(original), original)
+        // A mutable review holder may change before a queued coroutine starts.
+        // The shared ticket must not borrow the earlier preview's authority.
+        replacement.copyInto(original)
+        try {
+            PhoneUniversalAddAdapter.torrentIntent(reviewed, place, "",
+                startWhenAdded = false, allowArtwork = false)
+            fail("Changed metainfo must not create a shared Add ticket")
+        } catch (_: IllegalArgumentException) {
+            // Rejection occurs before any native engine call.
+        }
+    }
+
     @Test fun liveInventoryAndCurrentPlaceRequiredBeforeAnyAttempt() {
         val session = PhoneAddAttemptSession()
         assertFalse(PhoneUniversalAddAdapter.review(session.coordinator, intent(),
