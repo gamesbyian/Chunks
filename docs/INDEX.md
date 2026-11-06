@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+**Owner UX direction (2026-11-05):** [Cohesive UX and automatic artwork campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) governs the next holistic UI reorganization and automatic enrichment. Existing SVG drafts are approved for development; optical fidelity can be refined iteratively. Earlier 'next' pointers are dated status snapshots, not overrides of this owner direction.
+
+
 **Current agent entry point (2026-11-05 UTC):** [Codex reliability, real-provider UI and Pixel candidate handoff](CODEX-RELIABILITY-MEDIA-HANDOFF-2026-11-05.md). Last checked `main=f7364e5`, zero open PRs, Claude paused. #1309–#1318 delivered transfer-row artwork, Options, Similar Transfers, media title search, poster choice, phone settings search and real-provider JVM proof. The old [Claude UI/media execution handoff](CLAUDE-UI-MEDIA-EXECUTION-2026-11-05.md) is completed historical execution context; do not rebuild those features. [WORK-QUEUE](WORK-QUEUE.md) remains the sole active priority list.
 
 
