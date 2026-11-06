@@ -1,5 +1,8 @@
 # Chunks canonical product contract
 
+> **Universal navigation (owner-approved 2026-11-05):** Chunks SHALL offer Transfers / Add / Connections / Options as permanent destinations, one environment-aware Add draft for magnet and torrent sources, one Connections editor, and compact → expanded → All details transfer rows. Genuine empty setup links to Add and Connections; saved-but-disconnected and filtered/locked views are distinct. Binding contract: [universal navigation and row disclosure](UNIVERSAL-NAVIGATION-AND-TRANSFER-DISCLOSURE-2026-11-05.md).
+
+
 > **Owner product refinement (2026-11-05):** Ordinary artwork and metadata enrichment is automatic after informed third-party lookup consent, for all accessible configured environments at startup, reconnection and when new transfers appear. Users interact chiefly to correct identification or make per-transfer custom artwork choices; system-wide choices reside in Options. The [cohesive UX and automatic artwork contract](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) and [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) govern details. Existing provider/privacy consent remains required and torrent state/payload is untouched. Progressive disclosure replaces permanent screen clutter without removing supported functions.
 
 

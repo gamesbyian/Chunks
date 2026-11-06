@@ -1,5 +1,8 @@
 # Chunks interaction and accessibility contract
 
+> **Universal UX (owner-approved 2026-11-05):** [Universal Add, Connections and three-level transfer disclosure](UNIVERSAL-NAVIGATION-AND-TRANSFER-DISCLOSURE-2026-11-05.md) governs four durable destinations, one Add draft for Android intents and all configured environments, one Connections profile manager, true-empty Add/Connections links, and collapsed/expanded/All details rows. Reuse existing per-engine executors and safeguards. The current empty-state implementation is only the first slice.
+
+
 > **Owner UX reset (2026-11-05):** [Cohesive UX and automatic artwork campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) governs screen-level hierarchy, reduction of redundant controls, feature placement and per-transfer correction. The six references and existing approved-for-development SVG library are the visual starting point. Where earlier text asks for always-visible toolbars, fields or expanded per-row controls beyond the minimum action/entry point, progressively disclose them in details/contextual menus without breaking the ability to reach functions. No changes to exact-environment identity, authorization or accessibility gates.
 
 

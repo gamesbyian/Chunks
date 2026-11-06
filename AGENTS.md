@@ -1,5 +1,8 @@
 # Chunks: permanent agent operating contract
 
+> **Owner UX mandate extended (2026-11-05):** [Universal Add/Connections/navigation and transfer disclosure](docs/UNIVERSAL-NAVIGATION-AND-TRANSFER-DISCLOSURE-2026-11-05.md) is authoritative with the artwork campaign. Genuine empty-state links, four permanent destinations, one Add and Connections screen, and collapsed/expanded/All details transfers. Use existing engine adapters and consent/privacy gates; a chooser leading to duplicated full Add forms is not final acceptance. Maintain active execution and evidence only in WORK-QUEUE/QUALITY-LEDGER.
+
+
 > **New owner UX mandate (2026-11-05):** [Cohesive UX and automatic artwork campaign](docs/UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) is the active design direction. Existing SVG drafts are owner-approved for development without per-asset visual signoff. Prior handoffs' claims that artwork needs user-driven identification or that a feature merits permanent controls are superseded. Inspect live main/PRs and maintain existing integrity and evidence gates.
 
 
