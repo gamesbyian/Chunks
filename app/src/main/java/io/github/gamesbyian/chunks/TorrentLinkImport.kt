@@ -188,9 +188,18 @@ internal class TorrentLinkFetcher(
         val out = java.io.ByteArrayOutputStream()
         connection.inputStream.use { input ->
             val buffer = ByteArray(16 * 1024)
+            var emptyReads = 0
             while (true) {
                 val n = input.read(buffer)
                 if (n < 0) break
+                // A broken HTTPS stream may repeatedly return zero without
+                // ending. Apply the same finite no-progress bound as Android
+                // content-document intake rather than spinning indefinitely.
+                if (n == 0) {
+                    if (++emptyReads > 16) return TorrentLinkResult.Refused(TorrentLinkResult.OFFLINE)
+                    continue
+                }
+                emptyReads = 0
                 if (out.size() + n > maxBytes) return TorrentLinkResult.Refused(TorrentLinkResult.TOO_LARGE)
                 out.write(buffer, 0, n)
             }
