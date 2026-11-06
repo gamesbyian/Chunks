@@ -5,7 +5,7 @@ import android.util.Base64
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -39,6 +39,8 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class CombinedTwoRealServersInstrumentedTest {
+    // Queue frame continuations on the Compose test scheduler. The legacy eager
+    // scheduler can resume Android ripple work on an IO completion thread.
     @get:Rule val rule = createEmptyComposeRule()
 
     private val args: Bundle get() = InstrumentationRegistry.getArguments()

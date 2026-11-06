@@ -317,8 +317,11 @@ internal fun CombinedTransfersScreen(
     onConnections: (() -> Unit)? = null,
     /** A distinct Add callback: merely opening the phone inventory must not consume a shared source. */
     onAddToPhone: (() -> Unit)? = null,
-    /** Source content remains in MainActivity process memory; only its presence reaches this list. */
-    pendingSharedMagnet: Boolean = false
+    /** Source content remains in MainActivity process memory; only presence/status reach this list. */
+    pendingSharedMagnet: Boolean = false,
+    pendingSharedTorrent: Boolean = false,
+    readingSharedTorrent: Boolean = false,
+    sharedTorrentError: String? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -712,8 +715,8 @@ internal fun CombinedTransfersScreen(
     // A shared Android magnet must expose its exact destination choices even
     // when the Combined list was last visited far below its Add card. This
     // changes only the view position, never authorizes an Add or remote call.
-    LaunchedEffect(pendingSharedMagnet) {
-        if (pendingSharedMagnet) listState.scrollToItem(COMBINED_ADD_ITEM_INDEX)
+    LaunchedEffect(pendingSharedMagnet, pendingSharedTorrent) {
+        if (pendingSharedMagnet || pendingSharedTorrent) listState.scrollToItem(COMBINED_ADD_ITEM_INDEX)
     }
     // Reading LazyListState.layoutInfo during composition creates a feedback
     // loop: layout publishes info, composition reads it, then remeasures.
@@ -895,6 +898,9 @@ internal fun CombinedTransfersScreen(
                 onOpenPhone = onAddToPhone ?: onOpenPhone,
                 onAddToServer = onAddToServer,
                 pendingSharedMagnet = pendingSharedMagnet,
+                pendingSharedTorrent = pendingSharedTorrent,
+                readingSharedTorrent = readingSharedTorrent,
+                sharedTorrentError = sharedTorrentError,
                 phoneHue = palette.hueOf(EnvironmentSnapshots.PHONE),
                 serverHue = serverId?.let { palette.hueOf(it) }
             )

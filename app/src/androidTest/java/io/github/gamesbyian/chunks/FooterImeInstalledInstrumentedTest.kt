@@ -2,13 +2,15 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -49,7 +51,10 @@ class FooterImeInstalledInstrumentedTest {
         waitForPhone()
         rule.waitUntil(10_000) { footerShown() }
         val field = rule.onNode(hasSetTextAction() and hasText(searchLabel))
-        field.performScrollTo().performClick()
+        // Accessibility actions can reach an unfocused Activity. A real tap
+        // after window focus is the ordinary foreground keyboard journey.
+        rule.waitUntil(15_000) { rule.activity.hasWindowFocus() }
+        field.performScrollTo().performTouchInput { click() }
         val keyboardAppeared = runCatching { rule.waitUntil(15_000) { imeShown() } }.isSuccess
         assumeTrue("This emulator did not show a soft keyboard; no IME evidence possible", keyboardAppeared)
         rule.waitUntil(10_000) { !footerShown() }

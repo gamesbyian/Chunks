@@ -37,6 +37,31 @@ class SharedTorrentDocumentInstrumentedTest {
         return uri
     }
 
+    @Test fun androidShareChoosesExactlyOneSourceWhenTorrentAndTextBothExist() {
+        val uri = document(goodBytes)
+        val magnet = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=Shared"
+        val both = Intent(Intent.ACTION_SEND).apply {
+            type = "application/x-bittorrent"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_TEXT, magnet)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val chosen = ExternalAddSource.fromIntent(both)
+        assertTrue("An explicit content document must outrank incidental shared text",
+            chosen is ExternalAddSource.TorrentDocument)
+        assertEquals(uri, (chosen as ExternalAddSource.TorrentDocument).uri)
+        val onlyMagnet = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, magnet)
+        }
+        assertEquals(ExternalAddSource.Magnet(magnet),
+            ExternalAddSource.fromIntent(onlyMagnet))
+        assertNull(ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, "not a torrent")
+        }))
+    }
+
     @Test fun androidViewsAndSharesAcceptOnlyExplicitTorrentContent() {
         val good = document(goodBytes)
         assertEquals(good, SharedTorrentDocument.fromIntent(

@@ -28,32 +28,44 @@ internal fun CombinedAddActions(
     /** Saved palette colours, shown beside the text name; never colour alone. */
     phoneHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
     serverHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
-    /** Never pass a raw magnet or a private tracker URL into this visual selector. */
-    pendingSharedMagnet: Boolean = false
+    /** Never pass raw magnet, document URI or private tracker URLs into the selector. */
+    pendingSharedMagnet: Boolean = false,
+    pendingSharedTorrent: Boolean = false,
+    readingSharedTorrent: Boolean = false,
+    sharedTorrentError: String? = null
 ) {
+    val sharedKind = when {
+        pendingSharedTorrent -> ".torrent"
+        pendingSharedMagnet -> "magnet"
+        else -> null
+    }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(if (pendingSharedMagnet) "Choose a destination for the shared magnet" else "Add a download",
+        Text(if (sharedKind != null) "Choose a destination for the shared $sharedKind" else "Add a download",
             style = MaterialTheme.typography.titleMedium)
-        if (pendingSharedMagnet) Text(
-            "A shared magnet is ready. Choose where to review it. Nothing is added until you confirm.",
+        if (sharedKind != null) Text(
+            "A shared $sharedKind is ready. Choose where to review it. Nothing is added until you confirm.",
             style = MaterialTheme.typography.bodySmall
         )
+        if (readingSharedTorrent) Text("Checking the shared .torrent on this phone…",
+            style = MaterialTheme.typography.bodySmall)
+        if (sharedTorrentError != null) Text(sharedTorrentError,
+            color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         // Always stack exact destinations: full server names (username, host,
         // numbered instance) must never be squeezed into a 412dp two-button
         // row or truncated into a misleading destination identity.
-        OutlinedButton(onClick = onOpenPhone,
+        OutlinedButton(onClick = onOpenPhone, enabled = !readingSharedTorrent,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                contentDescription = if (pendingSharedMagnet) "Review shared magnet on this phone"
+                contentDescription = if (sharedKind != null) "Review shared $sharedKind on this phone"
                     else "Add download on this phone"
             }) { DestinationLabel(phoneHue,
-                if (pendingSharedMagnet) "Review on this phone" else "Add on this phone") }
+                if (sharedKind != null) "Review on this phone" else "Add on this phone") }
         if (!serverLabel.isNullOrBlank() && onAddToServer != null) {
-            OutlinedButton(onClick = onAddToServer,
+            OutlinedButton(onClick = onAddToServer, enabled = !readingSharedTorrent,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                    contentDescription = if (pendingSharedMagnet) "Review shared magnet on $serverLabel"
+                    contentDescription = if (sharedKind != null) "Review shared $sharedKind on $serverLabel"
                         else "Add download on $serverLabel"
                 }) { DestinationLabel(serverHue,
-                    if (pendingSharedMagnet) "Review on $serverLabel" else "Add on $serverLabel") }
+                    if (sharedKind != null) "Review on $serverLabel" else "Add on $serverLabel") }
         }
         if (hasOtherSavedServers) Text(
             "Other saved servers need their own connection before adding.",
