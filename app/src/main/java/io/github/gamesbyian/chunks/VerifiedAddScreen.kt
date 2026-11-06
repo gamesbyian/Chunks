@@ -85,7 +85,9 @@ fun VerifiedAddScreen(
     /** View only a positively verified hash in this authenticated server inventory. */
     onViewVerifiedTransfer: (String) -> Unit = {},
     /** Reports each positively verified Add hash once, so the list can explain a hidden result. */
-    onVerifiedAdd: (String) -> Unit = {}
+    onVerifiedAdd: (String) -> Unit = {},
+    /** Parent-owned choice shared with phone Add; no extra Save/Apply interaction. */
+    addStartState: androidx.compose.runtime.MutableState<Boolean>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -125,7 +127,8 @@ fun VerifiedAddScreen(
             kotlinx.coroutines.delay(2_000L)
         }
     }
-    var startAfterAdd by remember { mutableStateOf(true) }
+    val startHolder = addStartState ?: remember { mutableStateOf(true) }
+    var startAfterAdd by startHolder
     // Optional read-only shortcuts, keyed to the authenticated Add destination.
     // Never open another account's saved folder suggestions on a scope change.
     var showFolderShortcuts by rememberSaveable(finishInOrderScope, environmentLabel) {
