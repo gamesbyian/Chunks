@@ -19,6 +19,7 @@ on:
       - "tests/test_finish_installed_magnet_evidence.py"
       - "tools/installed_rtorrent_magnets.sh"
       - "tools/installed_real_media.sh"
+      - "tools/installed_rtorrent_with_optional_media.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledRealMediaInstrumentedTest.kt"
       - "tests/test_installed_real_media.py"
       - "tools/finish_installed_magnet_evidence.py"
@@ -92,7 +93,7 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_real_media.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_journey_gate.py
-          bash -n tools/installed_real_media.sh
+          bash -n tools/installed_real_media.sh tools/installed_rtorrent_with_optional_media.sh
           python3 -m py_compile tools/real_magnet_peer.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
       - name: Start genuine public-magnet metadata and payload peer
@@ -184,11 +185,7 @@ jobs:
           disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
-          script: |
-            bash tools/installed_rtorrent_magnets.sh
-            if [ "${CHUNKS_REAL_MEDIA:-0}" = 1 ]; then
-              bash tools/installed_real_media.sh "io.github.gamesbyian.chunks.${CHUNKS_PREVIEW_SUFFIX:?}"
-            fi
+          script: bash tools/installed_rtorrent_with_optional_media.sh
       - name: Extract the disposable journey's exception stack (URLs redacted)
         if: failure() && env.CHUNKS_DISPOSABLE == '1'
         run: |
