@@ -139,7 +139,24 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         val engine = LocalEngineHolder.get(context)
         val before = engine.completeIdentityInventory()
         var stage = "launch"
+        var primaryFailure: Throwable? = null
         var scenario: ActivityScenario<MainActivity>? = null
+        fun captureFailure(failure: Throwable) {
+            // A disposable fixture-only display, with a fixed stage and error
+            // class in the filename. No incoming URI or exception message is logged.
+            runCatching {
+                val kind = failure.javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z]+")) } ?: "Failure"
+                androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+                    .uiAutomation.takeScreenshot()?.let { bitmap ->
+                        val directory = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
+                            android.os.Environment.DIRECTORY_PICTURES), "ChunksAddAtlas").apply { mkdirs() }
+                        java.io.File(directory, "phone-source-$stage-$kind.png").outputStream().use {
+                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
+                        }
+                        bitmap.recycle()
+                    }
+            }
+        }
         try {
             val opened = ActivityScenario.launch<MainActivity>(
                 sourceIntent(first).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)).also { scenario = it }
@@ -166,23 +183,21 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                 before, engine.completeIdentityInventory())
             stage = "close"
         } catch (failure: Throwable) {
-            // A disposable fixture-only display, with a fixed stage and error
-            // class in the filename. No incoming URI or exception message is logged.
-            runCatching {
-                val kind = failure.javaClass.simpleName.takeIf { it.matches(Regex("[A-Za-z]+")) } ?: "Failure"
-                androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
-                    .uiAutomation.takeScreenshot()?.let { bitmap ->
-                        val directory = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
-                            android.os.Environment.DIRECTORY_PICTURES), "ChunksAddAtlas").apply { mkdirs() }
-                        java.io.File(directory, "phone-source-$stage-$kind.png").outputStream().use {
-                            bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
-                        }
-                        bitmap.recycle()
-                    }
-            }
+            primaryFailure = failure
+            captureFailure(failure)
             throw failure
         } finally {
-            try { scenario?.close() } finally {
+            try {
+                try { scenario?.close() } catch (close: Throwable) {
+                    val original = primaryFailure
+                    if (original != null) original.addSuppressed(close)
+                    else {
+                        stage = "close"
+                        captureFailure(close)
+                        throw close
+                    }
+                }
+            } finally {
                 DocumentsContract.deleteDocument(context.contentResolver, first)
                 DocumentsContract.deleteDocument(context.contentResolver, refused)
             }
