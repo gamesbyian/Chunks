@@ -1,5 +1,8 @@
 # Chunks visual design references
 
+> **Owner approval (2026-11-05):** Existing extracted assets under [SVG library](../svg/README.md) are approved for app development, even if optical fidelity is not yet individually signed off. Agents may select/deploy them and accept later owner corrections. Reference screens direct overall hierarchy, navigation restraint and visual cohesion, but not speculative unimplemented functionality. See [cohesive UX campaign](../../UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md).
+
+
 **Owner-selected direction (2026-10-26).** Six unmodified PNGs from the original repository root, renamed and organized for implementation. The overview is the primary visual reference; the other five are supporting explorations, not exported code, fonts, SVGs or accepted screenshots.
 
 | Reference | What to take from it |
