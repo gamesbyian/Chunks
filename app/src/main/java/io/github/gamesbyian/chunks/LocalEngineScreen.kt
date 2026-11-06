@@ -299,7 +299,9 @@ internal fun LocalEngineScreen(
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
     /** Reviewed .torrent bytes outlive phone screen navigation, never Activity/process recreation. */
-    pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null
+    pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null,
+    /** Read-only HTTPS metadata intake, injectable for source-replacement regression tests. */
+    fetchTorrentDocument: (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { TorrentLinkFetcher().fetch(it) }
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -873,14 +875,16 @@ internal fun LocalEngineScreen(
         if (isLink) TorrentLinkPanel(linkCheck, fetching = linkFetching,
             // Read-only source validation does not require a phone Place.
             // Actual Add still requires the existing fresh inventory/Place gates.
-            enabled = !busy && !sourceReading && pending == null, onFetch = { link ->
+            // An existing verified review remains selected until the replacement fetch
+            // succeeds and validates; refusal must never require discarding it first.
+            enabled = !busy && !sourceReading, onFetch = { link ->
                 initialTorrentUri?.let(onTorrentConsumed)
                 linkFetching = true
                 scope.launch {
                     val read = beginSourceRead()
                     try {
                         androidx.compose.runtime.snapshotFlow { busy }.first { !it }
-                        val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
+                        val result = withContext(Dispatchers.IO) { fetchTorrentDocument(link) }
                         if (sourceReadJob !== read) return@launch
                         when (result) {
                             is TorrentLinkResult.Fetched -> {
