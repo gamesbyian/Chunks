@@ -2,6 +2,10 @@ package io.github.gamesbyian.chunks
 
 import android.content.Intent
 import android.net.Uri
+import android.provider.DocumentsContract
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -63,4 +67,51 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             assertTrue(rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty())
         }
     }
+
+    @Test fun reviewedTorrentSurvivesPhoneNavigationWithoutAddingOrPersistingItsPrivateSource() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val bytes = ("d8:announce14:http://ignored4:info" +
+            "d6:lengthi5e4:name8:test.txt12:piece lengthi16384e6:pieces20:" +
+            "01234567890123456789ee").toByteArray(Charsets.UTF_8)
+        val tree = FixtureDocumentsProvider.treeUri(context)
+        val root = DocumentsContract.buildDocumentUriUsingTree(
+            tree, DocumentsContract.getTreeDocumentId(tree))
+        val uri = requireNotNull(DocumentsContract.createDocument(
+            context.contentResolver, root, "application/x-bittorrent", "navigation-review.torrent"))
+        context.contentResolver.openOutputStream(uri, "wt").use {
+            requireNotNull(it).write(bytes)
+        }
+        val intent = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_SEND
+            type = "application/x-bittorrent"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
+        ActivityScenario.launch<MainActivity>(intent).use { scenario ->
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("test.txt").assertExists()
+            rule.onNodeWithText("All environments…").performScrollTo().performClick()
+            rule.onNodeWithText("Back").performClick()
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("test.txt").assertExists()
+            org.junit.Assert.assertEquals("Browsing cannot authorize a phone Add",
+                before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
+            // Source bytes are process-only. Activity recreation must not replay the
+            // consumed Android Share Intent or serialize potentially private metainfo.
+            scenario.recreate()
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("On this phone (experimental)")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("Review download").assertDoesNotExist()
+            org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
+                before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
+        }
+    }
+
 }

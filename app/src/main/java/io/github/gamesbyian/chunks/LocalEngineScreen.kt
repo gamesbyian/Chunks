@@ -239,7 +239,8 @@ private object LocalScreenReader {
     )
 }
 
-private class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: ByteArray)
+/** Process-memory-only reviewed phone .torrent. Never Bundle/save metainfo: tracker tokens may be embedded. */
+internal class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: ByteArray)
 
 @Composable
 internal fun LocalEngineScreen(
@@ -295,7 +296,9 @@ internal fun LocalEngineScreen(
     addPlaceState: androidx.compose.runtime.MutableState<String?>? = null,
     addFolderState: androidx.compose.runtime.MutableState<String>? = null,
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
-    addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null
+    addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    /** Reviewed .torrent bytes outlive phone screen navigation, never Activity/process recreation. */
+    pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -396,7 +399,8 @@ internal fun LocalEngineScreen(
     }
     var filesFor by remember { mutableStateOf<String?>(null) }
     var files by remember { mutableStateOf<List<LocalTransferFile>?>(null) }
-    var pending by remember { mutableStateOf<PendingLocalAdd?>(null) }
+    val phoneReviewHolder = pendingAddState ?: remember { mutableStateOf<PendingLocalAdd?>(null) }
+    var pending by phoneReviewHolder
     var snapshotRestoreDraft by remember { mutableStateOf<LocalSnapshotStoppedRestoreDraft?>(null) }
     var snapshotPreparationRevision by remember { mutableIntStateOf(0) }
     var repairSelectionHash by remember { mutableStateOf<String?>(null) }
