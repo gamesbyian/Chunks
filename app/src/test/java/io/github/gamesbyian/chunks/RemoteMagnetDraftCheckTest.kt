@@ -45,6 +45,38 @@ class RemoteMagnetDraftCheckTest {
     private fun reveal(text: String) =
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
 
+    @Test fun processOwnedSourceSurvivesSwitchingBetweenAddPresentationRoutes() {
+        // The phone and server forms receive the *same* owner-provided state.
+        // This test uses a deliberately disconnected server: source continuity
+        // alone must never attempt an RPC or authorize a torrent Add.
+        val source = mutableStateOf("magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=PhoneDraft")
+        val onServer = mutableStateOf(false)
+        val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:9/RPC2", "", ""))
+        rule.setContent {
+            ChunksTheme { Surface {
+                if (onServer.value) {
+                    VerifiedAddScreen(remote, magnet = source.value, destination = "",
+                        onMagnet = { source.value = it }, onDestination = {},
+                        onBack = {}, onComplete = {},
+                        onMutationStarted = { error("Viewing a shared source cannot mutate a server") },
+                        onMutationSettled = {})
+                } else {
+                    androidx.compose.material3.Text("Phone Add source is held by the app")
+                }
+            } }
+        }
+        rule.runOnIdle { onServer.value = true }
+        reveal("Magnet for: PhoneDraft")
+        rule.onNodeWithText("Magnet for: PhoneDraft").assertExists()
+        rule.runOnIdle {
+            onServer.value = false
+            source.value = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=EditedOnPhone"
+        }
+        rule.runOnIdle { onServer.value = true }
+        reveal("Magnet for: EditedOnPhone")
+        rule.onNodeWithText("Magnet for: EditedOnPhone").assertExists()
+    }
+
     @Test fun base32MagnetIsReviewedAsItsStandardHashAtLargeText() {
         show("magnet:?xt=urn:btih:3WBFL3G4PSSV7MF37AJSHWDQMLNR63I4&dn=Sintel")
         reveal("Magnet for: Sintel")
