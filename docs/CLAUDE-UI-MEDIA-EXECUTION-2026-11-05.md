@@ -1,5 +1,8 @@
 # Next Claude execution: production UX + media integration (2026-11-05)
 
+> **Historical handoff, superseded as of 2026-11-06:** This document preserves the original campaign instructions and exact-source evidence but is **not a live agent dispatch**. The current main at reconciliation is `1aea0c2e`; UX #1333, Options-spec #1334, first-run #1335 and real-provider test-harness #1336 are merged. PR #1321 was closed after its distinct work was retained in #1336. The latest exact-head #1336 real rTorrent and Native Add tests passed, but manual live-provider UI/offline tests, physical Pixel and a final-main signed/release APK remain unverified. For actual priorities read [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md) and current GitHub state; do not reexecute the dated instructions below or overwrite newer owner-approved UX architecture.
+
+
 > **Execution handoff, not a new product contract or second backlog.** Main at dispatch: `7625c6345ab05a1021971ecd417180dbfe2b38e5`, zero open PRs and no current agent file leases (owner reports Codex and Claude paused). Recheck live state once before editing. Normative sources are [AGENTS](../AGENTS.md), [UX](UX.md), [PRODUCT](PRODUCT.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [SHARED-MEDIA-IDENTITY](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md), [MEDIA-INSPECTION](MEDIA-INSPECTION.md) and [SECURITY](SECURITY.md). [WORK-QUEUE](WORK-QUEUE.md) is the sole priority board; this document specifies one coordinated implementation/test campaign, not another queue.
 
 ## Inherited accepted state: do not reopen unnecessarily
