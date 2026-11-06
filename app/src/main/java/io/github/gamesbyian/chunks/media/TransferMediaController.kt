@@ -68,7 +68,9 @@ class TransferMediaController(
         /** Bounds one Similar Transfers index build (visible inventory, all environments). */
         const val MAX_SIMILAR_INVENTORY = 5_000
     }
-    private val pendingAutomatic = java.util.concurrent.atomic.AtomicInteger(0)
+    // Suspend instead of dropping the seventh and later eligible transfer. Background
+    // lookup runs on its own dispatcher; explicit Identify stays on the foreground lane.
+    private val automaticSlots = kotlinx.coroutines.sync.Semaphore(MAX_PENDING_AUTOMATIC)
 
     private val assignmentRevisionFlow = MutableStateFlow(0L)
     /** Increments after every stored assignment change; hosts use it to refresh derived views (search). */
@@ -137,13 +139,18 @@ class TransferMediaController(
     private fun maybeAutomatic(key: MediaTransferKey) {
         val s = settings()
         if (!s.onlineLookupConsent || !s.automaticLookup) return
-        // Bounded: extra rows are simply retried the next time they are observed.
-        if (pendingAutomatic.incrementAndGet() > MAX_PENDING_AUTOMATIC) { pendingAutomatic.decrementAndGet(); return }
         scope.launch(backgroundDispatcher) {
+            automaticSlots.acquire()
             try {
-                // Skip rows scrolled far away (evicted) before their turn came.
-                if (flow(key) != null && store.get(key) == null) runLookup(key, MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
-            } finally { pendingAutomatic.decrementAndGet() }
+                // Consent can be withdrawn or automatic lookup disabled while waiting.
+                val current = settings()
+                if (current.onlineLookupConsent && current.automaticLookup &&
+                    flow(key) != null && store.get(key) == null) {
+                    runLookup(key, MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
+                }
+            } finally {
+                automaticSlots.release()
+            }
         }
     }
 
@@ -546,7 +553,8 @@ class TransferMediaController(
             largeListArtworkFlow.value = s.largeListArtwork
             presentationFlow.value = s
             snapshot.forEach { (key, f) ->
-                if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
+                if (s.onlineLookupConsent && s.automaticLookup && f.value.assignment == null) maybeAutomatic(key)
+                if (!s.showArtwork f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
             }
         }
