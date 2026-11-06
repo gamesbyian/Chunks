@@ -1,5 +1,8 @@
 # Chunks: permanent agent operating contract
 
+> **New owner UX mandate (2026-11-05):** [Cohesive UX and automatic artwork campaign](docs/UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) is the active design direction. Existing SVG drafts are owner-approved for development without per-asset visual signoff. Prior handoffs' claims that artwork needs user-driven identification or that a feature merits permanent controls are superseded. Inspect live main/PRs and maintain existing integrity and evidence gates.
+
+
 > **Current execution handoff (2026-11-05 UTC):** Codex is available as the next sole integration agent; Claude is paused (owner report). Start with [Codex reliability and media acceptance handoff](docs/CODEX-RELIABILITY-MEDIA-HANDOFF-2026-11-05.md) and one brief live PR/main check. Last checked main `f7364e5cd8508e600cee2b0323dfd6f18eede40d`, zero open PRs. **Already complete:** real Add/Place #1301, artwork and media UI #1302–#1318, including row tiles, Options, detail poster choices and Similar Transfers. **Next:** causal local-peer 576 KiB stall investigation, installed real-provider UI acceptance and source-matched modern debug Pixel candidate. Prior Claude campaign pointers below are historical, not executable; permanent safety and exact-head evidence requirements remain authoritative.
 
 
