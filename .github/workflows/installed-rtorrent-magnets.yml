@@ -18,12 +18,20 @@ on:
       - "tests/test_preload_disposable_magnet.py"
       - "tests/test_finish_installed_magnet_evidence.py"
       - "tools/installed_rtorrent_magnets.sh"
+      - "tools/installed_real_media.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledRealMediaInstrumentedTest.kt"
+      - "tests/test_installed_real_media.py"
       - "tools/finish_installed_magnet_evidence.py"
       - "tools/parse_installed_magnet_add_receipt.py"
       - ".github/workflows/installed-rtorrent-magnets.yml"
     types: [opened, reopened, synchronize, ready_for_review, converted_to_draft]
   workflow_dispatch:
     inputs:
+      real_media:
+        description: "Opt in to live TVmaze/MusicBrainz/Open Library Android acceptance (disposable emulator only)"
+        type: boolean
+        default: false
+        required: true
       source:
         description: "Production source entry path (HTTPS reuses the same real peers and also qualifies phone Place)"
         type: choice
@@ -66,6 +74,7 @@ jobs:
     timeout-minutes: 24
     env:
       CHUNKS_CONTROLLED_PEER: "1"
+      CHUNKS_REAL_MEDIA: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'disposable' && inputs.real_media && '1' || '0' }}
       CHUNKS_HTTPS_ADD: ${{ inputs.source == 'magnet' && '0' || '1' }}
       CHUNKS_PUBLIC_DISCOVERY: ${{ inputs.discovery == 'public' && '1' || '0' }}
       CHUNKS_DISPOSABLE: ${{ (inputs.environment == 'live') && '0' || '1' }}
@@ -81,6 +90,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_preload_disposable_magnet.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_real_media.py
+          bash -n tools/installed_real_media.sh
           python3 -m py_compile tools/real_magnet_peer.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
       - name: Start genuine public-magnet metadata and payload peer
@@ -172,7 +183,11 @@ jobs:
           disk-size: 2048M
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/installed_rtorrent_magnets.sh
+          script: |
+            bash tools/installed_rtorrent_magnets.sh
+            if [ "${CHUNKS_REAL_MEDIA:-0}" = 1 ]; then
+              bash tools/installed_real_media.sh "io.github.gamesbyian.chunks.${CHUNKS_PREVIEW_SUFFIX:?}"
+            fi
       - name: Extract the disposable journey's exception stack (URLs redacted)
         if: failure() && env.CHUNKS_DISPOSABLE == '1'
         run: |
@@ -217,6 +232,14 @@ jobs:
         with:
           name: chunks-installed-magnets-${{ inputs.environment || 'disposable' }}-evidence
           path: ${{ runner.temp }}/chunks-installed-magnet-evidence/
+          retention-days: 14
+          if-no-files-found: error
+      - name: Retain explicitly opted-in real-provider installed evidence
+        if: always() && env.CHUNKS_REAL_MEDIA == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-installed-real-media
+          path: ${{ runner.temp }}/chunks-real-media/
           retention-days: 14
           if-no-files-found: error
       - name: Retain phone HTTPS evidence even if remote acceptance fails
