@@ -27,22 +27,33 @@ internal fun CombinedAddActions(
     hasOtherSavedServers: Boolean = false,
     /** Saved palette colours, shown beside the text name; never colour alone. */
     phoneHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
-    serverHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null
+    serverHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
+    /** Never pass a raw magnet or a private tracker URL into this visual selector. */
+    pendingSharedMagnet: Boolean = false
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Add a download", style = MaterialTheme.typography.titleMedium)
+        Text(if (pendingSharedMagnet) "Choose a destination for the shared magnet" else "Add a download",
+            style = MaterialTheme.typography.titleMedium)
+        if (pendingSharedMagnet) Text(
+            "A shared magnet is ready. Choose where to review it. Nothing is added until you confirm.",
+            style = MaterialTheme.typography.bodySmall
+        )
         // Always stack exact destinations: full server names (username, host,
         // numbered instance) must never be squeezed into a 412dp two-button
         // row or truncated into a misleading destination identity.
         OutlinedButton(onClick = onOpenPhone,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                contentDescription = "Add download on this phone"
-            }) { DestinationLabel(phoneHue, "Add on this phone") }
+                contentDescription = if (pendingSharedMagnet) "Review shared magnet on this phone"
+                    else "Add download on this phone"
+            }) { DestinationLabel(phoneHue,
+                if (pendingSharedMagnet) "Review on this phone" else "Add on this phone") }
         if (!serverLabel.isNullOrBlank() && onAddToServer != null) {
             OutlinedButton(onClick = onAddToServer,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                    contentDescription = "Add download on $serverLabel"
-                }) { DestinationLabel(serverHue, "Add on $serverLabel") }
+                    contentDescription = if (pendingSharedMagnet) "Review shared magnet on $serverLabel"
+                        else "Add download on $serverLabel"
+                }) { DestinationLabel(serverHue,
+                    if (pendingSharedMagnet) "Review on $serverLabel" else "Add on $serverLabel") }
         }
         if (hasOtherSavedServers) Text(
             "Other saved servers need their own connection before adding.",

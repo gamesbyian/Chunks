@@ -36,7 +36,8 @@ class CombinedAddAndFreshnessTest {
         serverLabel: String?,
         onPhone: () -> Unit,
         onServer: (() -> Unit)?,
-        otherSavedServers: Boolean = false
+        otherSavedServers: Boolean = false,
+        pendingSharedMagnet: Boolean = false
     ) {
         rule.setContent {
             val density = LocalDensity.current
@@ -44,11 +45,31 @@ class CombinedAddAndFreshnessTest {
                 ChunksTheme {
                     Surface {
                         CombinedAddActions(serverLabel, onPhone, onServer,
-                            hasOtherSavedServers = otherSavedServers)
+                            hasOtherSavedServers = otherSavedServers,
+                            pendingSharedMagnet = pendingSharedMagnet)
                     }
                 }
             }
         }
+    }
+
+    @Test fun sharedMagnetRequiresExactDestinationAndDoesNotDisplaySecretSource() {
+        val phone = AtomicInteger()
+        val server = AtomicInteger()
+        val label = "Server · Personal seedbox #2"
+        show(label, { phone.incrementAndGet() }, { server.incrementAndGet() },
+            pendingSharedMagnet = true)
+        rule.onNodeWithText("A shared magnet is ready. Choose where to review it. Nothing is added until you confirm.")
+            .assertExists()
+        rule.onNodeWithContentDescription("Review shared magnet on this phone").assertIsDisplayed()
+            .performClick()
+        assertEquals(1, phone.get())
+        assertEquals(0, server.get())
+        rule.onNodeWithContentDescription("Review shared magnet on $label").assertIsDisplayed()
+            .performClick()
+        assertEquals(1, phone.get())
+        assertEquals(1, server.get())
+        rule.onNodeWithText("magnet:?xt=urn", substring = true).assertDoesNotExist()
     }
 
     @Test fun exactPhoneAndAuthenticatedServerCallbacksStaySeparateAt320And200Percent() {
