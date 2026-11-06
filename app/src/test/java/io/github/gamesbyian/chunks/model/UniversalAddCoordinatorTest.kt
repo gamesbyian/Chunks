@@ -201,6 +201,66 @@ class UniversalAddCoordinatorTest {
         assertTrue(failure is IllegalArgumentException)
     }
 
+    @Test fun hiddenRemoteSessionMayBeConfirmedWithoutInventingNewAddAttribution() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote, start = true))
+        val matched = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1200L, registered = true,
+            reviewedPlaceVerified = true, started = true,
+            newRegistrationVerified = false)
+        assertEquals(UniversalAddCoordinator.Readback.EXACT_SESSION_CONFIRMED,
+            state.reconcileExactSession(ticket, matched))
+        assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED, state.phase)
+        assertFalse(state.finishVerified()) // No proof this client created the job.
+        assertNull(state.beginSubmission(1201L))
+        assertFalse(review(state, intent(remote)).accepted)
+        // Recovery is read-only and can be deliberately ended without a retry.
+        assertTrue(state.acknowledgeExactSession())
+        assertEquals(UniversalAddCoordinator.Phase.EMPTY, state.phase)
+    }
+
+    @Test fun exactSessionResultCanVerifyOwnNewRegistrationWithPlaceAndStart() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote, start = false))
+        val evidence = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1001L, registered = true,
+            reviewedPlaceVerified = true, started = false,
+            newRegistrationVerified = true)
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(ticket, evidence))
+        assertTrue(state.finishVerified())
+    }
+
+    @Test fun hiddenSessionRejectsWrongPrincipalStaleEvidenceAndWrongPlace() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote))
+        val valid = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1010L, registered = true,
+            reviewedPlaceVerified = true, started = true,
+            newRegistrationVerified = true)
+        assertEquals(UniversalAddCoordinator.Readback.WRONG_ENVIRONMENT,
+            state.reconcileExactSession(ticket,
+                valid.copy(environment = otherRemote.environment)))
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcileExactSession(ticket,
+                valid.copy(observedAtEpochMillis = 999L)))
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            state.reconcileExactSession(ticket,
+                valid.copy(infoHash = otherHash)))
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket,
+                valid.copy(reviewedPlaceVerified = false)))
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket,
+                valid.copy(started = false)))
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(ticket, valid))
+        assertFalse(state.acknowledgeExactSession())
+    }
+
     @Test fun sourceCopiesBytesAndRedactsPrivateValuesFromDiagnostics() {
         val bytes = byteArrayOf(1, 2, 3)
         val source = UniversalAddSource.metainfo(bytes, hash, "https://private.invalid/SECRET")
