@@ -1,5 +1,7 @@
 # Chunks active engineering work queue
 
+> **Current 2026-11-06:** #1343 merged 8df47d34. Add-time artwork exclusions now persist before phone/rTorrent Add, with failed-save refusal. Seven exact-source CI checks passed; Combined two-server passed rerun. Disposable full magnet remains red twice due confirmed upstream stock-rTorrent TrackerController abort and SCGI 502, tracked under #9. Next highest-value implementation: single authoritative Universal Add draft/submit lifecycle retaining source, exact target, Place, Start, artwork and attempted/uncertain outcome together. Use existing stores/adapters; do not move payloads. No current-main APK acceptance. See QUALITY-LEDGER.
+
 > **Execution update, 2026-11-06:** #1341 is merged as `1a790e13`, qualified at `712ea326` (same tree as tested merge ref `fbd271f1`): foundation, complete native Add/IME, R8, atlas, Remove/data, docs and real two-server Combined passed. Original reds and the Combined first-Connect timeout/rerun remain in [QUALITY-LEDGER](QUALITY-LEDGER.md). The next shared Add admission slice is implemented locally at `8904d0f4`: one per-Add artwork/metadata opt-out, persisted in the existing exact-environment/hash store before phone or rTorrent Add, with known-refusal recovery. **Qualify its full candidate and real-engine journeys before merge**, then resume one authoritative capability-aware draft/submission owner. The separately red stock-rTorrent upstream crash stays under #9; no current-main APK is asserted.
 
 
