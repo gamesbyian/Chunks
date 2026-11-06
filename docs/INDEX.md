@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+**Immediate-apply preferences (owner-approved 2026-11-05):** The [Options interaction contract](OPTIONS-INFORMATION-ARCHITECTURE.md#immediate-apply-interaction-contract-owner-approved-2026-11-05) establishes one-interaction persistent choices throughout Chunks, with narrow composite remote configuration and consequential-action exceptions. Ordinary settings never require Save/Apply/Done.
+
+
 **Centralized Options (owner-approved 2026-11-05):** [Canonical Options information architecture](OPTIONS-INFORMATION-ARCHITECTURE.md) defines eight settings destinations, global versus contextual scope, settings search, local-client access protection, media/rule dependencies and staged consolidation. This is organizational UX authority, not a second priority queue or evidence of implementation.
 
 
