@@ -1,12 +1,17 @@
 package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertAny
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.gamesbyian.chunks.MainActivity
 import org.junit.Rule
 import org.junit.Test
@@ -56,6 +61,9 @@ class PhoneInventoryFirstViewportTest {
         rule.waitForIdle()
         rule.onNodeWithText("Your transfers will appear here").assertIsDisplayed()
         rule.onNodeWithText("Add a torrent").assertIsDisplayed()
+        // The shared footer may expose the same destination; match the collection safely.
+        rule.onAllNodesWithText("Connections").assertAny(hasClickAction())
+        rule.onRoot().captureRoboImage("build/chunks-visual/phone-true-empty-welcome-412dp.png")
         rule.onNodeWithText("No transfers on this phone yet.").assertDoesNotExist()
         rule.onNodeWithText("Showing 0 of 0 local transfers").assertDoesNotExist()
     }
