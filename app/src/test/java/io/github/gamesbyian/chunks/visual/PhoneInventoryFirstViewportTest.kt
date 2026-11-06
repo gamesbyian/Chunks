@@ -7,6 +7,8 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.gamesbyian.chunks.MainActivity
 import org.junit.Rule
 import org.junit.Test
@@ -57,6 +59,7 @@ class PhoneInventoryFirstViewportTest {
         rule.onNodeWithText("Your transfers will appear here").assertIsDisplayed()
         rule.onNodeWithText("Add a torrent").assertIsDisplayed()
         rule.onNodeWithText("Connections").assertIsDisplayed()
+        rule.onRoot().captureRoboImage("build/chunks-visual/phone-true-empty-welcome-412dp.png")
         rule.onNodeWithText("Showing 0 of 0 local transfers").assertDoesNotExist()
     }
 }
