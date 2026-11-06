@@ -1,5 +1,8 @@
 # Transfer artwork and media identification contract
 
+> **Superseding owner behavior decision (2026-11-05):** Artwork and media identification run automatically for *all accessible configured environments* on launch/reconnect/inventory change **after informed, revocable third-party enrichment consent**. Apply confident matches and reuse cache; background retries/fallbacks; preserve per-transfer overrides; correction/choice/import under Transfer Details only; system-wide artwork preferences under Options. Do not require per-transfer activation, a manual scan or per-asset visual approval. This supersedes below historical phrases such as "Do not silently download artwork merely because a torrent was added" **once the user has granted enrichment consent**, and stale claims that media UI has not yet been integrated. See [cohesive UX and automatic artwork campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) and [MEDIA-ARTWORK-IMPLEMENTATION](MEDIA-ARTWORK-IMPLEMENTATION.md). Future artwork sharing remains deferred.
+
+
 ## Downstream portability and sharing gate (owner direction, 2026-11-04)
 
 The artwork/metadata architecture SHALL eventually support exporting and importing **explicit user selections**, including custom preferred posters and alternate artwork image bytes, in a Chunks-specific presentation bundle alongside a magnet/.torrent or independently for an existing matching transfer. Ordinary torrent identity and data remain unchanged. The user's selected thumbnail is portable presentation data; tiny actual image bytes are intended to travel, rather than only fragile image URLs.
