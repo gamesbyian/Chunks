@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **ACTIVE 2026-11-06 lane contract:** One **primary product integration owner** controls shared Add/navigation/transfer identity/engine-facing changes in a coherent branch; coordinate changes to `MainActivity.kt`, `LocalEngineScreen.kt`, `VerifiedAddScreen.kt`, shared model, stores and Android build files. One optional **supporting evidence/CI lane** may inspect immutable heads, publish source-pinned previews and adjust narrow acceptance fixtures; it does not concurrently rewrite the integration owner's central files. No fixed agent roster or inherited leases; discover live PRs/branches each turn. The job-only Move/Smart Routing track is distinct from deferred physical relocation issue #2. Start with [WORK-QUEUE](WORK-QUEUE.md) and [short integration handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md). Avoid more agents just because tasks exist, don't re-run unchanged acceptance, and serialize releases after exact-head qualification.
+
+
 > **Current ownership checkpoint 2026-11-06:** No agents are working per owner report and no PRs are open at live check (main `1aea0c2e`). There are **no active source-file leases**. Any new agent should read [AGENTS](../AGENTS.md), the single [WORK-QUEUE](WORK-QUEUE.md), live PRs and branch state, then claim or coordinate only the new slice. All named Codex/Claude assignments, file exclusions and rosters below are dated *historical* directions, not current work allocations. UX #1333, Options-spec #1334, first-run #1335 and media harness #1336 are merged.
 
 

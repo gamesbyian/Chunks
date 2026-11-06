@@ -330,6 +330,9 @@ private fun ChunksApp(
     var filesError by remember { mutableStateOf<String?>(null) }
     var filesLoading by remember { mutableStateOf(false) }
     var magnet by remember { mutableStateOf("") }
+    // Process-memory-only Android Share source awaiting an explicit exact destination.
+    // A magnet can contain tracker passkeys: never save/log/render its raw value.
+    var pendingSharedMagnet by remember { mutableStateOf<String?>(null) }
     var phoneHandoffMagnet by remember { mutableStateOf<String?>(null) }
     // A transfer opened from All environments: searched once on the phone list.
     var phoneSearchPrefill by remember { mutableStateOf<String?>(null) }
@@ -435,20 +438,20 @@ private fun ChunksApp(
         }
     }
 
-    // Every incoming magnet becomes an explicit Add draft, never an Add call.
-    // When no rTorrent connection exists, the phone engine must be reachable
-    // without requiring remote login. A connected remote retains its Add review.
-    // Consume the Activity intent once accepted so repeating the *same* magnet
-    // from Android launches a fresh, deliberate review.
+    // Android Share/Open With is source authority, never target authority. A
+    // live server must not silently make its own Add form the default: choose
+    // the exact destination first. Keep passkey-bearing source process-only;
+    // this temporary selector is replaced by the single Universal Add form.
     LaunchedEffect(sharedMagnet) {
         if (sharedMagnet != null) {
             if (server == null) {
+                pendingSharedMagnet = null
                 phoneHandoffMagnet = sharedMagnet
                 localFromCombined = false
                 section = Section.LOCAL
             } else {
-                magnet = sharedMagnet
-                section = Section.ADD
+                pendingSharedMagnet = sharedMagnet
+                section = Section.COMBINED
             }
             onIncomingMagnetConsumed()
         }
@@ -575,9 +578,26 @@ private fun ChunksApp(
                         shortLabel = profile.label)
                 },
                 onOpenPhone = { localFromCombined = true; section = Section.LOCAL },
+                // Opening the phone inventory is non-mutating. Only the explicit
+                // Add action hands off the pending magnet to its review.
+                onAddToPhone = {
+                    pendingSharedMagnet?.let { source ->
+                        phoneHandoffMagnet = source
+                        pendingSharedMagnet = null
+                    }
+                    localFromCombined = true
+                    section = Section.LOCAL
+                },
+                pendingSharedMagnet = pendingSharedMagnet != null,
                 onConnections = { section = Section.SERVER },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
-                onAddToServer = if (server != null) ({ section = Section.ADD }) else null,
+                onAddToServer = if (server != null) ({
+                    pendingSharedMagnet?.let { source ->
+                        magnet = source
+                        pendingSharedMagnet = null
+                    }
+                    section = Section.ADD
+                }) else null,
                 onOpenTransfer = { key ->
                     // Resolve an exact owner. A saved-only server, a disconnected
                     // profile or the same hash on a different server must never

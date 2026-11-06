@@ -314,7 +314,11 @@ internal fun CombinedTransfersScreen(
     /** Caller-supplied verified Add identity, never inferred from a title or an inventory delta. */
     recentlyAddedTransfer: UnifiedTransferKey? = null,
     /** The same app-wide Connections destination as phone and signed-in-server lists. */
-    onConnections: (() -> Unit)? = null
+    onConnections: (() -> Unit)? = null,
+    /** A distinct Add callback: merely opening the phone inventory must not consume a shared source. */
+    onAddToPhone: (() -> Unit)? = null,
+    /** Source content remains in MainActivity process memory; only its presence reaches this list. */
+    pendingSharedMagnet: Boolean = false
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -705,6 +709,12 @@ internal fun CombinedTransfersScreen(
     }
 
     val listState = listState ?: rememberLazyListState()
+    // A shared Android magnet must expose its exact destination choices even
+    // when the Combined list was last visited far below its Add card. This
+    // changes only the view position, never authorizes an Add or remote call.
+    LaunchedEffect(pendingSharedMagnet) {
+        if (pendingSharedMagnet) listState.scrollToItem(COMBINED_ADD_ITEM_INDEX)
+    }
     // Reading LazyListState.layoutInfo during composition creates a feedback
     // loop: layout publishes info, composition reads it, then remeasures.
     // Capture only actual size changes and use stable scroll state for visibility.
@@ -882,8 +892,9 @@ internal fun CombinedTransfersScreen(
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
-                onOpenPhone = onOpenPhone,
+                onOpenPhone = onAddToPhone ?: onOpenPhone,
                 onAddToServer = onAddToServer,
+                pendingSharedMagnet = pendingSharedMagnet,
                 phoneHue = palette.hueOf(EnvironmentSnapshots.PHONE),
                 serverHue = serverId?.let { palette.hueOf(it) }
             )
