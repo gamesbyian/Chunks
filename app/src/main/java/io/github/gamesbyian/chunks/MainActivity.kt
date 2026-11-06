@@ -629,7 +629,7 @@ private fun ChunksApp(
                                     SharedTorrentDocument.read(context.contentResolver, sharedDocument)
                                 }
                                 if (server === selectedServer && aliasScope == selectedScope &&
-                                    incomingTorrent == sharedDocument) {
+                                    incomingTorrent == sharedDocument && section == Section.COMBINED) {
                                     // A newer, explicit document supersedes an older
                                     // text draft; the remote Add form reviews these bytes.
                                     magnet = ""
