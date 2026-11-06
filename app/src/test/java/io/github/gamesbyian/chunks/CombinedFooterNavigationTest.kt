@@ -40,16 +40,31 @@ class CombinedFooterNavigationTest {
             900, if (i % 2 == 0) 900 else 100, i % 3 == 0, "/d", 0, 10)
     }
 
-    private fun show(pendingSharedMagnet: androidx.compose.runtime.State<Boolean> =
-        androidx.compose.runtime.mutableStateOf(false)) = rule.setContent {
+    private fun show(
+        pendingSharedMagnet: androidx.compose.runtime.State<Boolean> =
+            androidx.compose.runtime.mutableStateOf(false),
+        pendingSharedTorrent: androidx.compose.runtime.State<Boolean> =
+            androidx.compose.runtime.mutableStateOf(false)
+    ) = rule.setContent {
         ChunksTheme { Surface(color = ChunksColors.Background) {
             CombinedTransfersScreen(
                 server = CombinedServerSource(scope, rows, stale = false, fullView = true,
                     observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gate),
                 savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {},
                 pendingSharedMagnet = pendingSharedMagnet.value,
+                pendingSharedTorrent = pendingSharedTorrent.value,
                 onConnections = { connections++ })
         } }
+    }
+
+    @Test fun sharedTorrentDocumentRevealsDestinationAfterPriorDeepScrollWithoutAddMutation() {
+        val sharedTorrent = androidx.compose.runtime.mutableStateOf(false)
+        show(pendingSharedTorrent = sharedTorrent)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Episode 30"))
+        rule.runOnIdle { sharedTorrent.value = true }
+        rule.waitForIdle()
+        rule.onNodeWithText("Choose a destination for the shared .torrent").assertIsDisplayed()
+        assertTrue("scrolling to document target must not run a transfer command", commands.isEmpty())
     }
 
     @Test fun sharedMagnetRevealsDestinationAfterPriorDeepScrollWithoutAddMutation() {
