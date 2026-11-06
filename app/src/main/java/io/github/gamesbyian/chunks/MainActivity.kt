@@ -216,7 +216,7 @@ private val SectionRestoreSaver = Saver<androidx.compose.runtime.MutableState<Se
 )
 
 @Composable
-private fun ChunksApp(
+internal fun ChunksApp(
     sharedMagnet: String?,
     incomingTorrent: Uri?,
     onIncomingMagnetConsumed: () -> Unit,
@@ -436,6 +436,10 @@ private fun ChunksApp(
             sharedTorrentError = null
             pendingSharedMagnet = null
             phoneHandoffTorrentUri = null
+            // A privacy gate may have delayed the previous handoff. A new
+            // explicit source must not revive it when that gate opens later.
+            phoneHandoffMagnet = null
+            serverHandoffTorrent = null
             localFromCombined = false
             if (server == null) {
                 // Phone is the only currently verified target; still require
@@ -477,6 +481,8 @@ private fun ChunksApp(
         if (sharedMagnet != null) {
             // New explicit share replaces any older, unconsumed document review.
             phoneHandoffTorrentUri = null
+            phoneHandoffMagnet = null
+            serverHandoffTorrent = null
             if (server == null) {
                 pendingSharedMagnet = null
                 phoneHandoffMagnet = sharedMagnet
