@@ -74,6 +74,17 @@ class CombinedTransfersScreenTest {
         } }
     }
 
+    @Test fun defaultCombinedTransfersDefersSearchAndSortUntilRequested() {
+        show()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
+        rule.onNodeWithText("Change sort & grouping", substring = true).assertDoesNotExist()
+        revealText("Refine transfers")
+        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Search names or hashes")
+        rule.onNodeWithText("Change sort & grouping", substring = true).assertExists()
+        assertTrue(commands.isEmpty())
+    }
+
     @Test fun detailFocusResolvesExactServerAndHashWithoutLifecycleCommands() {
         show()
         val target = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
