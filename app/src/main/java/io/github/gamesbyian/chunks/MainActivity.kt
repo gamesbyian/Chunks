@@ -437,6 +437,7 @@ private fun ChunksApp(
         if (incomingTorrent != null) {
             sharedTorrentError = null
             pendingSharedMagnet = null
+            phoneHandoffTorrentUri = null
             localFromCombined = false
             if (server == null) {
                 // Phone is the only currently verified target; still require
@@ -476,6 +477,8 @@ private fun ChunksApp(
     // this temporary selector is replaced by the single Universal Add form.
     LaunchedEffect(sharedMagnet) {
         if (sharedMagnet != null) {
+            // New explicit share replaces any older, unconsumed document review.
+            phoneHandoffTorrentUri = null
             if (server == null) {
                 pendingSharedMagnet = null
                 phoneHandoffMagnet = sharedMagnet
