@@ -89,6 +89,29 @@ class AndroidCiTriggerContract(unittest.TestCase):
         # An app change alongside a test does not match the exclusion.
         self.assertIn("app/**", pull_request_paths(source))
 
+    def test_dedicated_real_fixture_test_edits_do_not_duplicate_native_add(self):
+        native = (ROOT / ".github/workflows/native-add-instrumentation.yml").read_text()
+        own_journeys = (
+            ("CombinedTwoRealServersInstrumentedTest.kt",
+             ".github/workflows/installed-combined-two-servers.yml"),
+            ("HttpsPhoneAddJourneyInstrumentedTest.kt",
+             ".github/workflows/installed-rtorrent-magnets.yml"),
+        )
+        for filename, owning_workflow in own_journeys:
+            changed_test = "app/src/androidTest/java/io/github/gamesbyian/chunks/" + filename
+            owner = (ROOT / owning_workflow).read_text()
+            with self.subTest(filename=filename):
+                self.assertTrue(dispatches_for_changed_paths(owner, (changed_test,)))
+                self.assertFalse(dispatches_for_changed_paths(native, (changed_test,)))
+                # A test-only exclusion never disarms the native Add gate for
+                # any concurrent production or normally selected test change.
+                self.assertTrue(dispatches_for_changed_paths(
+                    native, (changed_test, "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt")))
+                self.assertTrue(dispatches_for_changed_paths(
+                    native, (changed_test, "app/src/androidTest/java/AnotherInstrumentedTest.kt")))
+        self.assertTrue(dispatches_for_changed_paths(
+            native, (".github/workflows/native-add-instrumentation.yml",)))
+
     def test_https_journey_covers_fetcher_and_phone_production_caller(self):
         source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
         paths = pull_request_paths(source)

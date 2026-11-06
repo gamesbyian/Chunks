@@ -8,6 +8,14 @@ on:
       # without this suite ever running on those PRs.
       - "app/src/main/**"
       - "app/src/androidTest/**"
+      # These two opt-in real-fixture journeys are skipped by the native Add
+      # shards. Their own installed workflows select them and execute their
+      # complete assertions; compiling skipped methods here costs two more
+      # emulator shards without exercising the changed test.
+      # Ordered per-file exclusions do not suppress any concurrent production
+      # change (or other instrumented test) that requires this native Add gate.
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsPhoneAddJourneyInstrumentedTest.kt"
       - "app/build.gradle.kts"
       # Changes to the test command must re-run this suite.
       - "tools/native_add_review.sh"
