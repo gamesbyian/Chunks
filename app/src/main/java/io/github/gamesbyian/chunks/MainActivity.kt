@@ -322,6 +322,9 @@ internal fun ChunksApp(
     val phoneAddPlace = rememberSaveable { mutableStateOf<String?>(null) }
     val phoneAddFolder = rememberSaveable { mutableStateOf("") }
     val phoneAddStart = rememberSaveable { mutableStateOf(true) }
+    // A reviewed .torrent can include private tracker tokens. Keep its bytes above
+    // the disposable phone route for navigation only; never use SavedState/Bundle.
+    val phoneReviewedTorrent = remember { mutableStateOf<PendingLocalAdd?>(null) }
     val addAutomaticArtwork = rememberSaveable { mutableStateOf(true) }
     val combinedListState = rememberLazyListState()
     // Combined search text, like the phone's: navigation state, not a preference.
@@ -759,6 +762,7 @@ internal fun ChunksApp(
                     magnetDraftState = addSourceDraft,
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     addArtworkState = addAutomaticArtwork,
+                    pendingAddState = phoneReviewedTorrent,
                     onBack = { leavePhone() },
                     onSeedingRules = { openFromPhone(Section.SEEDING) },
                     onMediaSettings = { openFromPhone(Section.MEDIA) },
@@ -1082,6 +1086,7 @@ internal fun ChunksApp(
                         magnetDraftState = addSourceDraft,
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         addArtworkState = addAutomaticArtwork,
+                        pendingAddState = phoneReviewedTorrent,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
                         onMediaSettings = { openFromPhone(Section.MEDIA) },
