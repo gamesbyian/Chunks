@@ -339,6 +339,10 @@ private fun ChunksApp(
     // Process-memory-only Android Share source awaiting an explicit exact destination.
     // A magnet can contain tracker passkeys: never save/log/render its raw value.
     var pendingSharedMagnet by remember { mutableStateOf<String?>(null) }
+    // Shared content:// documents are never persisted or sent to a remote server
+    // as a URI. A selected remote receives only locally validated metainfo bytes.
+    var sharedTorrentReading by remember { mutableStateOf(false) }
+    var sharedTorrentError by remember { mutableStateOf<String?>(null) }
     var phoneHandoffMagnet by remember { mutableStateOf<String?>(null) }
     // A transfer opened from All environments: searched once on the phone list.
     var phoneSearchPrefill by remember { mutableStateOf<String?>(null) }
@@ -420,10 +424,16 @@ private fun ChunksApp(
     val inspectionFence = remember { RemoteUiRequestFence() }
     val mutationGate = remember { RemoteMutationReadbackGate() }
 
-    // Content-only external .torrent links go to the phone's existing Add
-    // review without starting an engine, creating a file or contacting peers.
+    // An Android content document supplies a source, not an implicit Add target.
+    // With an authenticated server available, require explicit phone/server
+    // selection. The phone route retains its existing bounded read/review.
     LaunchedEffect(incomingTorrent) {
-        if (incomingTorrent != null) { localFromCombined = false; section = Section.LOCAL }
+        if (incomingTorrent != null) {
+            sharedTorrentError = null
+            pendingSharedMagnet = null
+            localFromCombined = false
+            section = if (server == null) Section.LOCAL else Section.COMBINED
+        }
     }
     // A file shared to "Create torrent" opens the Create review; nothing is read yet.
     val seedingEnvironments = remember(savedProfiles, aliasScope, server) {
@@ -587,22 +597,65 @@ private fun ChunksApp(
                 // Opening the phone inventory is non-mutating. Only the explicit
                 // Add action hands off the pending magnet to its review.
                 onAddToPhone = {
-                    pendingSharedMagnet?.let { source ->
-                        phoneHandoffMagnet = source
-                        pendingSharedMagnet = null
+                    if (incomingTorrent == null) {
+                        pendingSharedMagnet?.let { source ->
+                            phoneHandoffMagnet = source
+                            pendingSharedMagnet = null
+                        }
                     }
+                    // The existing phone review reads the shared content URI
+                    // under its own privacy gate, only after this choice.
                     localFromCombined = true
                     section = Section.LOCAL
                 },
-                pendingSharedMagnet = pendingSharedMagnet != null,
+                pendingSharedMagnet = pendingSharedMagnet != null && incomingTorrent == null,
+                pendingSharedTorrent = incomingTorrent != null,
+                readingSharedTorrent = sharedTorrentReading,
+                sharedTorrentError = sharedTorrentError,
                 onConnections = { section = Section.SERVER },
                 onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
                 onAddToServer = if (server != null) ({
-                    pendingSharedMagnet?.let { source ->
-                        magnet = source
-                        pendingSharedMagnet = null
+                    val sharedDocument = incomingTorrent
+                    if (sharedDocument != null && !sharedTorrentReading) {
+                        // Selecting a remote authorizes only a bounded, read-only
+                        // local document parse. No rTorrent operation is attempted.
+                        val selectedServer = server
+                        val selectedScope = aliasScope
+                        sharedTorrentReading = true
+                        sharedTorrentError = null
+                        scope.launch {
+                            try {
+                                val reviewed = withContext(Dispatchers.IO) {
+                                    SharedTorrentDocument.read(context.contentResolver, sharedDocument)
+                                }
+                                if (server === selectedServer && aliasScope == selectedScope &&
+                                    incomingTorrent == sharedDocument) {
+                                    // A newer, explicit document supersedes an older
+                                    // text draft; the remote Add form reviews these bytes.
+                                    magnet = ""
+                                    serverHandoffTorrent = reviewed.bytes
+                                    onIncomingTorrentConsumed()
+                                    section = Section.ADD
+                                } else {
+                                    sharedTorrentError =
+                                        "The shared source or signed-in server changed. Choose again; nothing was added."
+                                }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) {
+                                sharedTorrentError =
+                                    "The shared .torrent could not be read or verified (v1 metainfo, maximum 2 MiB). Nothing was added."
+                            } finally {
+                                sharedTorrentReading = false
+                            }
+                        }
+                    } else if (sharedDocument == null) {
+                        pendingSharedMagnet?.let { source ->
+                            magnet = source
+                            pendingSharedMagnet = null
+                        }
+                        section = Section.ADD
                     }
-                    section = Section.ADD
                 }) else null,
                 onOpenTransfer = { key ->
                     // Resolve an exact owner. A saved-only server, a disconnected
