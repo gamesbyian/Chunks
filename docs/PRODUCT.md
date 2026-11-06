@@ -1,5 +1,8 @@
 # Chunks canonical product contract
 
+> **Owner product refinement (2026-11-05):** Ordinary artwork and metadata enrichment is automatic after informed third-party lookup consent, for all accessible configured environments at startup, reconnection and when new transfers appear. Users interact chiefly to correct identification or make per-transfer custom artwork choices; system-wide choices reside in Options. The [cohesive UX and automatic artwork contract](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) and [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) govern details. Existing provider/privacy consent remains required and torrent state/payload is untouched. Progressive disclosure replaces permanent screen clutter without removing supported functions.
+
+
 ## Deferred Chunks-to-Chunks artwork sharing (dependent feature)
 
 Once the metadata/artwork system and every relevant selection and use decision are settled and accepted, Chunks shall support a portable Chunks-specific share package carrying deliberately selected custom artwork (including tiny poster/thumbnail image bytes), alternate images and compatible descriptive overrides with a standard magnet or .torrent. Non-Chunks clients still receive an ordinary torrent share. Existing recipient manual choices are preserved unless the recipient elects otherwise. No new user-facing license-check or attribution-approval bureaucracy for person-to-person tiny artwork. **No bundle implementation or final default/merge policy until the upstream artwork decisions are resolved.** [TRANSFER-SHARING](TRANSFER-SHARING.md) and [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md).
