@@ -1433,6 +1433,7 @@ private fun ChunksApp(
                         finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
                         environmentLabel = serverEnvironmentLabel(aliasScope),
                         onMagnet = { magnet = it }, onDestination = { draftPath = it },
+                        addStartState = phoneAddStart,
                         onBack = { draftPath = ""; section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->
