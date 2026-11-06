@@ -1,5 +1,8 @@
 # Chunks: permanent agent operating contract
 
+> **Owner correction 2026-11-05:** [Smart Routing/source-handling contract](docs/SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) extends the approved universal UX campaign. Move Transfer stays **job-only without payload transfer**; carry safe Chunks presentation metadata and rename intents by default, but speed/ratio/seeding-rule carryover is an explicit user option. Do not invent payload migration or conflate filesystem renames with displayed names. Source archive/delete, artwork exclusion, swipe Move/Remove and explainable routing are scoped follow-on slices, behind current reliability and exact-head evidence gates.
+
+
 > **New owner UX mandate (2026-11-05):** [Cohesive UX and automatic artwork campaign](docs/UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) is the active design direction. Existing SVG drafts are owner-approved for development without per-asset visual signoff. Prior handoffs' claims that artwork needs user-driven identification or that a feature merits permanent controls are superseded. Inspect live main/PRs and maintain existing integrity and evidence gates.
 
 
