@@ -154,6 +154,46 @@ class TransferMediaController(
         }
     }
 
+    /**
+     * Read-only inventory enrichment, independent of LazyColumn composition. Hosts supply only
+     * transfers from freshly accessible, unlocked sources. A stable environment+hash key keeps
+     * user decisions separate even when several servers hold the same torrent.
+     *
+     * This is intentionally a suspending operation: the host cancels its previous scan when
+     * the authorized inventory changes. It never mutates torrent jobs or payload files.
+     */
+    suspend fun enrichInventory(entries: Collection<Pair<MediaTransferKey, String>>) {
+        kotlinx.coroutines.withContext(backgroundDispatcher) {
+            for ((key, name) in entries.distinctBy { it.first }) {
+                val preferences = settings()
+                // Recheck between items: withdrawing consent cancels subsequent outbound work.
+                if (!preferences.onlineLookupConsent || !preferences.automaticLookup) break
+                if (store.get(key) != null) continue
+                val recognition = MediaRecognizer.recognize(name)
+                val outcome = runCatching {
+                    service.lookup(recognition, preferences, network(),
+                        MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT)
+                }.getOrNull() ?: continue
+                val state = when (outcome.status) {
+                    MediaLookupStatus.MATCHED -> MediaAssignmentState.AUTOMATIC
+                    MediaLookupStatus.NEEDS_REVIEW -> MediaAssignmentState.SUGGESTED
+                    MediaLookupStatus.NOT_FOUND -> MediaAssignmentState.COULDNT_IDENTIFY
+                    else -> continue // Refusal/transient failures do not become permanent exclusions.
+                }
+                // A user may have made a manual choice while the request was in flight.
+                if (!settings().onlineLookupConsent || !settings().automaticLookup ||
+                    store.get(key) != null) continue
+                val assignment = TransferMediaAssignment(key, state, match = outcome.match,
+                    suggestions = outcome.alternates, lastStatus = outcome.status,
+                    lastMessage = outcome.message, attempts = outcome.attempts,
+                    updatedAtMs = clock())
+                store.put(assignment)
+                flow(key)?.update { it.copy(assignment = assignment, busy = false) }
+                if (assignment.displayMatch != null && flow(key) != null) loadArtwork(key)
+            }
+        }
+    }
+
     /** Explicit user request: "Look up online". */
     fun lookup(key: MediaTransferKey) {
         flow(key)?.update { it.copy(busy = true, message = null) }
