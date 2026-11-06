@@ -1,5 +1,10 @@
 # Chunks specification coverage and acceptance map
 
+## Future remote-backend adapter contract (design specified; no new adapter acceptance, 2026-11-05)
+
+[REMOTE-BACKEND-ADAPTERS](REMOTE-BACKEND-ADAPTERS.md) now specifies direct HTTPS protocol integration, isolated adapters, shared normalized identity/observations/commands, capability/authorization/outcome state, compatibility matrix, rTorrent migration approach, Smart Routing/job-only Move interaction and per-backend actual-transfer evidence. **Transmission, qBittorrent, Deluge and other new remote clients remain unimplemented and unverified**; no fixture/mock or new document changes that status. Existing rTorrent/local acceptance continues to be tracked individually in this file and [QUALITY-LEDGER](QUALITY-LEDGER.md). Implement only after current UX architecture and rTorrent/local reliability priorities. Owner's no-proprietary-claim intent and **uncompleted** release license/attribution audit: [LICENSING-AND-ATTRIBUTION](LICENSING-AND-ATTRIBUTION.md), [#10](https://github.com/gamesbyian/Chunks/issues/10). Future adapter umbrella [#660](https://github.com/gamesbyian/Chunks/issues/660).
+
+
 ## Chunks-to-Chunks artwork transfer portability (planned, gated 2026-11-04)
 
 **NOT IMPLEMENTED; NOT ACCEPTED; NOT READY FOR DISPATCH.** Desired future capability: preserve user-selected posters/thumbnail bytes, alternate images and compatible metadata overrides with a portable transfer share, including artwork-only exchange without changing torrent payload or infohash. Gated first on all relevant canonical metadata/artwork decisions and their accepted implementation, then standard transfer sharing. Receipt requirements after design approval: same-hash import into second Chunks install, preexisting override preservation/explicit replacement, offline custom-image bytes, different environments, no credential/path exposure, malformed/oversize bundle rejection and non-Chunks magnet/.torrent interoperability. Authority: [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [TRANSFER-SHARING](TRANSFER-SHARING.md). Do not represent this as a current release blocker.
