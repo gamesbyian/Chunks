@@ -49,7 +49,7 @@ class TransferMediaControllerTest {
         val tv = TvMazeProvider()
         val service = MediaEnrichmentService(listOf(tv), httpOverride, FileMediaQueryCache(File(dir, "q.json")), { clock.now }, clock::sleep)
         return TransferMediaController(service,
-            ArtworkRepository(http, ArtworkDiskCache(File(dir, "art")), hostPolicyFor = { tv.info.artworkHostPolicy }, memoryBytes = 4_000_000),
+            ArtworkRepository(httpOverride, ArtworkDiskCache(File(dir, "art")), hostPolicyFor = { tv.info.artworkHostPolicy }, memoryBytes = 4_000_000),
             { FileTransferMediaAssignmentStore(File(dir, "assign.json")) }, { settings }, { MediaNetworkState(true, false) },
             CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, artDispatcher, { clock.now },
             automationStoreFactory = { FileMediaAutomationPreferences(File(dir, "automation.json")) })
@@ -582,4 +582,66 @@ class TransferMediaControllerTest {
             parent.cancel()
         }
     }
+    @Test fun manualSearchStopsWhenConsentIsWithdrawnDuringTheFirstResponse() = interruptedSearch(true)
+    @Test fun manualSearchStopsWhenItsObservationIsClosedDuringTheFirstResponse() = interruptedSearch(false)
+
+    private fun interruptedSearch(withdrawConsent: Boolean) {
+        var authorized = true
+        val changing = object : MediaHttp by http {
+            override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                val response = http.get(url, hosts, headers, maxBytes)
+                if (withdrawConsent) settings = settings.copy(onlineLookupConsent = false) else authorized = false
+                return response
+            }
+        }
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val c = controller(changing)
+        val state = c.observe(phone, name, isAuthorized = { authorized })
+        c.search(phone, MediaKind.TV_EPISODE, "Babylon 5", year = 1993, season = 2, episode = 7)
+        assertEquals(1, http.requests.size)
+        assertNull(state.value.searchResults)
+        assertFalse(state.value.busy)
+    }
+
+    @Test fun gallerySquareRequestsStopAfterConsentWithdrawal() = interruptedGallery(false)
+    @Test fun galleryPosterRequestsStopAfterConsentWithdrawal() = interruptedGallery(true)
+
+    private fun interruptedGallery(posters: Boolean) {
+        val changing = object : MediaHttp by http {
+            override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                val response = http.get(url, hosts, headers, maxBytes)
+                settings = settings.copy(onlineLookupConsent = false)
+                return response
+            }
+        }
+        val c = controller(changing)
+        c.observe(phone, name)
+        c.choose(phone, galleryChoice()) // offline choice; no image fetched yet
+        assertTrue(http.requests.isEmpty())
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val result = kotlinx.coroutines.runBlocking {
+            if (posters) c.posterAlternatives(phone) else c.alternatives(phone)
+        }
+        assertEquals(1, http.requests.size)
+        assertTrue(result.isEmpty())
+    }
+
+    @Test fun excludedTransfersStillAllowExplicitArtworkCorrection() {
+        val c = controller()
+        val state = c.observe(phone, name)
+        c.choose(phone, galleryChoice())
+        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val result = kotlinx.coroutines.runBlocking { c.alternatives(phone) }
+        assertEquals(2, result.size)
+        assertEquals(2, http.requests.size)
+        assertFalse(state.value.automaticLookupEnabled)
+    }
+
+    private fun galleryChoice() = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+        MediaKind.TV_SERIES, "Babylon 5", artwork = listOf(
+            ArtworkCandidate("tvmaze", "https://static.tvmaze.com/first.jpg", ArtworkRole.POSTER),
+            ArtworkCandidate("tvmaze", "https://static.tvmaze.com/second.jpg", ArtworkRole.POSTER)),
+        attribution = MediaAttribution("TVmaze", "CC", null))
+
 }

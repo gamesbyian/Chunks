@@ -149,7 +149,7 @@ class TransferMediaController(
             settings().let { largeListArtworkFlow.value = it.largeListArtwork; presentationFlow.value = it }
             val enabled = !automationStore.isExcluded(key)
             val a = store.get(key) ?: if (enabled) applyRuleIfAny(key, flow.value.recognition) else null
-            flow.update { it.copy(assignment = a, automaticLookupEnabled = enabled) }
+            flow.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
             if (automaticDue(a)) maybeAutomatic(key)
         }
@@ -226,7 +226,7 @@ class TransferMediaController(
                 // Offscreen inventory and composed rows use the same saved-rule precedence.
                 val inherited = applyRuleIfAny(key, recognition, previous, permitted)
                 if (inherited != null) {
-                    flow(key)?.update { it.copy(assignment = inherited) }
+                    flow(key)?.update { cur -> if (store.get(key) == inherited) cur.copy(assignment = inherited) else cur }
                     if (flow(key) != null) loadArtwork(key)
                     return
                 }
@@ -341,8 +341,14 @@ class TransferMediaController(
                 is MediaQueryDecision.Refused -> { f.update { it.copy(busy = false, message = d.reason, searchResults = emptyList()) }; return@launch }
                 is MediaQueryDecision.Allowed -> d.query
             }
-            val r = runCatching { service.lookup(q, settings(), network(), MediaLookupOrigin.USER_REQUEST) }
+            val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+            val permitted = { job?.isActive != false && authorization(key)() && settings().onlineLookupConsent }
+            val r = runCatching { service.lookup(q, settings(), network(), MediaLookupOrigin.USER_REQUEST, requestAllowed = permitted) }
                 .getOrElse { MediaLookupResult(MediaLookupStatus.ERROR_RETRYABLE, message = "Search failed; try again") }
+            if (!permitted()) {
+                f.update { it.copy(busy = false, searchResults = null) }
+                return@launch
+            }
             val results = listOfNotNull(r.match) + r.alternates
             f.update { it.copy(busy = false, searchResults = results, message = if (results.isEmpty()) r.message else null) }
         }
@@ -601,10 +607,10 @@ class TransferMediaController(
             val match = cur.match ?: return@withContext emptyList()
             val s = settings()
             if (!s.showArtwork || cur.displayKind == MediaKind.ADULT) return@withContext emptyList()
-            val net = network()
-            val allowNetwork = authorization(key)() && !automationStore.isExcluded(key) && s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+            val permitted = { job?.isActive != false && artworkNetworkAllowed(key, explicitRequest = true) }
             match.artwork.filter { it.season == null || it.season == match.season }.distinctBy { it.url }.take(limit.coerceIn(1, 24))
-                .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.SQUARE, allowNetwork) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
+                .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.SQUARE, true, permitted) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
         }
 
     /** The user picked one provider image: pin it and use it ahead of automatic selection. */
@@ -627,10 +633,10 @@ class TransferMediaController(
             val match = cur.match ?: return@withContext emptyList()
             val s = settings()
             if (!s.showArtwork || cur.displayKind == MediaKind.ADULT || cur.userArtwork != null) return@withContext emptyList()
-            val net = network()
-            val allowNetwork = authorization(key)() && !automationStore.isExcluded(key) && s.downloadArtwork && net.online && (!net.metered || s.artworkOnMeteredNetwork)
+            val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
+            val permitted = { job?.isActive != false && artworkNetworkAllowed(key, explicitRequest = true) }
             posterCandidates(match).distinctBy { it.url }.take(limit.coerceIn(1, 24))
-                .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.POSTER, allowNetwork) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
+                .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.POSTER, true, permitted) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
         }
 
     private fun posterCandidates(match: MediaCandidate) =
@@ -734,8 +740,9 @@ class TransferMediaController(
         }
     }
 
-    private fun artworkNetworkAllowed(key: MediaTransferKey, authorized: () -> Boolean = authorization(key)): Boolean {
-        if (!authorized() || automationStore.isExcluded(key)) return false
+    private fun artworkNetworkAllowed(key: MediaTransferKey, explicitRequest: Boolean = false,
+                                      authorized: () -> Boolean = authorization(key)): Boolean {
+        if (!authorized() || (!explicitRequest && automationStore.isExcluded(key))) return false
         val s = settings()
         val net = network()
         return s.onlineLookupConsent && s.showArtwork && s.downloadArtwork && net.online &&
