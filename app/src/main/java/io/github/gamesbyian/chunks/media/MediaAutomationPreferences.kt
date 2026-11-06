@@ -36,23 +36,25 @@ class FileMediaAutomationPreferences(private val file: File) : MediaAutomationPr
     }
     @Synchronized override fun isExcluded(key: MediaTransferKey) = !readable || key in excluded
     @Synchronized override fun setExcluded(key: MediaTransferKey, excluded: Boolean) {
-        check(readable) { "Automatic lookup preferences need recovery" }
-        val next = this.excluded.toMutableSet().apply { if (excluded) add(key) else remove(key) }
-        val text = Json.obj("v" to Json.num(1), "excluded" to Json.arr(next.map { Json.Str(it.value) })).encode()
-        require(text.toByteArray(Charsets.UTF_8).size <= 1_000_000)
-        val parent = requireNotNull(file.absoluteFile.parentFile)
-        check(parent.isDirectory || parent.mkdirs())
-        val temporary = File.createTempFile("automation-", ".tmp", parent)
+        var temporary: File? = null
         try {
-            FileOutputStream(temporary).use { out -> out.write(text.toByteArray(Charsets.UTF_8)); out.fd.sync() }
-            check(temporary.readText() == text)
-            Files.move(temporary.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            check(readable) { "Automatic lookup preferences need recovery" }
+            val next = this.excluded.toMutableSet().apply { if (excluded) add(key) else remove(key) }
+            val text = Json.obj("v" to Json.num(1), "excluded" to Json.arr(next.map { Json.Str(it.value) })).encode()
+            require(text.toByteArray(Charsets.UTF_8).size <= 1_000_000)
+            val parent = requireNotNull(file.absoluteFile.parentFile)
+            check(parent.isDirectory || parent.mkdirs())
+            val candidate = File.createTempFile("automation-", ".tmp", parent)
+            temporary = candidate
+            FileOutputStream(candidate).use { out -> out.write(text.toByteArray(Charsets.UTF_8)); out.fd.sync() }
+            check(candidate.readText() == text)
+            Files.move(candidate.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
             check(file.readText() == text)
             this.excluded.clear(); this.excluded.addAll(next)
         } catch (failure: Exception) {
-            // A failed commit/readback cannot authorize new provider requests in this process.
+            // Includes failures before temp creation: the reported pause must actually stop lookup.
             readable = false
             throw failure
-        } finally { temporary.delete() }
+        } finally { temporary?.delete() }
     }
 }

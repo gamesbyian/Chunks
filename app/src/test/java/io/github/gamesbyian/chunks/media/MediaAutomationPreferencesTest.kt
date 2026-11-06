@@ -25,4 +25,14 @@ class MediaAutomationPreferencesTest {
         file.writeText("broken preferences")
         assertTrue(FileMediaAutomationPreferences(file).isExcluded(phone))
     }
+    @Test fun aFailureBeforeTemporaryFileCreationStillBlocksAutomaticLookup() {
+        val parent = Files.createTempDirectory("media-automation").toFile()
+        val store = FileMediaAutomationPreferences(parent.resolve("preferences.json"))
+        assertFalse(store.isExcluded(phone))
+        assertTrue(parent.delete())
+        parent.writeText("a file now blocks the preference directory")
+        assertTrue(runCatching { store.setExcluded(phone, true) }.isFailure)
+        assertTrue(store.isExcluded(phone))
+    }
+
 }
