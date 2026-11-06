@@ -795,7 +795,15 @@ internal fun LocalEngineScreen(
             if (onCombined != null) OutlinedButton(onClick = onCombined,
                 modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments…") }
         }
-        PhoneIntakeDisclosure(
+        // Make the true first-run choice visible before any setup or utility controls.
+        // The ordinary Add disclosure replaces it as soon as Add is selected.
+        val firstRunVisible = transfers.isEmpty() && showFirstRunWelcome &&
+            onConnections != null && !addExpanded
+        if (firstRunVisible) NoTransfersWelcome(
+            onAdd = { addExpanded = true; addNavigationRevision++ },
+            onConnections = onConnections!!
+        )
+        if (!firstRunVisible) PhoneIntakeDisclosure(
             expanded = addExpanded, pendingReview = pending != null,
             placeLabel = place?.title, onToggle = { addExpanded = !addExpanded }
         )
@@ -1557,17 +1565,8 @@ internal fun LocalEngineScreen(
             Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
-            if (showFirstRunWelcome && onConnections != null) {
-                NoTransfersWelcome(
-                    onAdd = {
-                        addExpanded = true
-                        addNavigationRevision++
-                    },
-                    onConnections = onConnections
-                )
-            } else {
+            if (!firstRunVisible)
                 Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
-            }
         } else if (displayedTransfers.isEmpty()) {
             Text("No transfers match this search or filter.",
                 style = MaterialTheme.typography.bodySmall)
