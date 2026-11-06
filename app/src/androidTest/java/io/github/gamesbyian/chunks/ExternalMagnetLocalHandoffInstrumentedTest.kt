@@ -89,7 +89,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             putExtra(Intent.EXTRA_STREAM, uri)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
-        val before = LocalEngineHolder.current()?.completeIdentityInventory()
+        val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
         ActivityScenario.launch<MainActivity>(intent).use { scenario ->
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
@@ -102,7 +102,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             }
             rule.onNodeWithText("test.txt").assertExists()
             org.junit.Assert.assertEquals("Browsing cannot authorize a phone Add",
-                before, LocalEngineHolder.current()?.completeIdentityInventory())
+                before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
             // Source bytes are process-only. Activity recreation must not replay the
             // consumed Android Share Intent or serialize potentially private metainfo.
             scenario.recreate()
@@ -112,7 +112,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             }
             rule.onNodeWithText("Review download").assertDoesNotExist()
             org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
-                before, LocalEngineHolder.current()?.completeIdentityInventory())
+                before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
         }
     }
 
