@@ -191,14 +191,37 @@ class RemoteMagnetDraftCheckTest {
     /** Opt-in real public HTTPS fetch with a redirect: the fetched .torrent is reviewed by its verified hash. */
     @Test fun realRedirectedLinkIsReviewedByItsVerifiedHash() {
         org.junit.Assume.assumeTrue(System.getenv("CHUNKS_REAL_LINK_FETCH") == "1")
-        show("https://archive.org/download/FREE_background_music_dhalius/FREE_background_music_dhalius_archive.torrent")
+        val source = mutableStateOf("https://archive.org/download/FREE_background_music_dhalius/FREE_background_music_dhalius_archive.torrent")
+        val endpoint = "http://127.0.0.1:9/RPC2"
+        val account = endpoint + "\u0000"
+        val session = RemoteAddSession(account, "/srv/one-off")
+        val showing = mutableStateOf(true)
+        val remote = RTorrentRemote(RemoteCredentials(endpoint, "", ""))
+        rule.setContent { ChunksTheme { Surface {
+            if (showing.value) VerifiedAddScreen(remote, source.value, session.destination,
+                onMagnet = { source.value = it }, onDestination = { session.destination = it },
+                onBack = { showing.value = false }, onComplete = {},
+                onMutationStarted = { error("Fetch/review/navigation must never authorize Add") },
+                onMutationSettled = {}, finishInOrderScope = account, session = session)
+        } } }
         reveal("Get torrent from link")
         rule.onNodeWithText("Get torrent from link").performClick()
-        rule.waitUntil(30_000) { runCatching { reveal("Review Add") }.isSuccess }
+        rule.waitUntil(30_000) { session.selectedBytes != null }
+        rule.waitForIdle()
+        org.junit.Assert.assertEquals("The fetched URL is no longer the editable text source", "", source.value)
+        org.junit.Assert.assertTrue("Fetched metainfo must remain the selected source", session.useFile)
+        reveal("Review Add")
         rule.onNodeWithText("Review Add").performClick()
         reveal("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed")
         rule.onNodeWithText("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed").assertExists()
         reveal("Source: Selected .torrent file")
+        reveal("Back to transfers")
+        rule.onNodeWithText("Back to transfers").performClick()
+        rule.runOnIdle { showing.value = true }
+        reveal("Review Add")
+        rule.onNodeWithText("Review Add").performClick()
+        reveal("Source: Selected .torrent file")
+
     }
 
     /** Android 10+ denies clipboard reads without window focus (ON_RESUME precedes focus): wait for it. */

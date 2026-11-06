@@ -57,6 +57,18 @@ class ClipboardPrefillInstrumentedTest {
 
     private fun saveDiagnostic(name: String) {
         val image = rule.onNode(androidx.compose.ui.test.isRoot()).captureToImage().asAndroidBitmap()
+        saveBitmap(name, image)
+        // A composed background Activity can lack focus because another system
+        // window is on top. Keep the full installed display as well as the app
+        // root, so a recurring pre-write focus failure can be diagnosed. These
+        // controlled PR fixtures contain no protected credentials/clipboard.
+        runCatching {
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+                .uiAutomation.takeScreenshot()?.let { saveBitmap("$name-system-window", it) }
+        }
+    }
+
+    private fun saveBitmap(name: String, image: android.graphics.Bitmap) {
         val resolver = rule.activity.contentResolver
         val values = android.content.ContentValues().apply {
             put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "$name.png")

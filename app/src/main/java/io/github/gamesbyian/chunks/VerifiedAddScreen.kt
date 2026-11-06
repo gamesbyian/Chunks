@@ -24,10 +24,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -57,7 +59,7 @@ import kotlinx.coroutines.withContext
 /**
  * An optional Place override and a two-step confirmation gate
  * any RPC write; unexpected or uncertain outcomes never auto-retry.
- * ByteArray from SAF stays in this screen's process memory only.
+ * Metainfo and attempted outcomes stay in the parent session's process memory only.
  */
 @Composable
 fun VerifiedAddScreen(
@@ -88,28 +90,52 @@ fun VerifiedAddScreen(
     onVerifiedAdd: (String) -> Unit = {},
     /** Parent-owned choice shared with phone Add; no extra Save/Apply interaction. */
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
-    addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null
+    addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    /** Parent-owned exact-account review; remounting must not revive Add authority. */
+    session: RemoteAddSession? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var selectedTorrent by remember { mutableStateOf<TorrentMetainfoPreview?>(null) }
-    var selectedBytes by remember { mutableStateOf<ByteArray?>(null) }
-    var useFile by remember { mutableStateOf(false) }
+    val draft = session ?: remember(remote, finishInOrderScope) { RemoteAddSession(finishInOrderScope) }
+    require(draft.accountScope == finishInOrderScope) { "Add review belongs to another server account" }
+    var selectedTorrent by draft::selectedTorrent
+    var selectedBytes by draft::selectedBytes
+    var useFile by draft::useFile
     var choosing by remember { mutableStateOf(false) }
+    // Confirmation is deliberately local: return requires a new Review click.
     var awaitingConfirmation by remember { mutableStateOf(false) }
-    var submitting by remember { mutableStateOf(false) }
-    var outcome by remember { mutableStateOf<String?>(null) }
-    var uncertain by remember { mutableStateOf(false) }
-    var alreadyAttempted by remember { mutableStateOf(false) }
-    var verifiedHash by remember(remote) { mutableStateOf<String?>(null) }
+    var submitting by draft::submitting
+    var outcome by draft::outcome
+    var uncertain by draft::uncertain
+    var alreadyAttempted by draft::alreadyAttempted
+    var verifiedHash by draft::verifiedHash
+    // A newer Android share/phone edit cannot change the displayed recovery identity.
+    val sourceText = draft.attemptSource ?: magnet
+    val currentSource = rememberUpdatedState(magnet)
+    DisposableEffect(draft) {
+        onDispose {
+            if (draft.alreadyAttempted && draft.reportedVerifiedHash == null)
+                draft.resetArtworkAfterVerification = false
+        }
+    }
+    LaunchedEffect(sourceText, destination, selectedBytes, useFile) {
+        awaitingConfirmation = false
+    }
+    LaunchedEffect(magnet, alreadyAttempted) {
+        // Phone and remote text fields share the parent source. A text edit
+        // while this form was absent selects that newer source on return.
+        // An explicit incoming document takes precedence in its own review.
+        if (!alreadyAttempted && initialTorrent == null && useFile &&
+            draft.textAtFileSelection != magnet) draft.preferMagnet()
+    }
     val reviewKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val reviewFocus = androidx.compose.ui.platform.LocalFocusManager.current
     // Freeze the command actually submitted: mutable checkbox values do not
     // authorize treating an already-started Add as a stopped Add on recheck.
-    var nativeStartedAttempt by remember { mutableStateOf(false) }
-    var reviewedAttempt by remember { mutableStateOf<StoppedRemoteAddPlan?>(null) }
-    var submittedPlan by remember { mutableStateOf<StoppedRemoteAddPlan?>(null) }
-    var observedProgress by remember { mutableStateOf<io.github.gamesbyian.chunks.rpc.RemoteAddProgress?>(null) }
+    var nativeStartedAttempt by draft::nativeStartedAttempt
+    var reviewedAttempt by draft::reviewedAttempt
+    var submittedPlan by draft::submittedPlan
+    var observedProgress by draft::observedProgress
     var progressReadFailed by remember { mutableStateOf(false) }
     var progressRevision by remember { mutableStateOf(0) }
     LaunchedEffect(remote, submittedPlan, progressRevision) {
@@ -135,9 +161,13 @@ fun VerifiedAddScreen(
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
     LaunchedEffect(verifiedHash) {
         verifiedHash?.let {
-            onVerifiedAdd(it)
-            // Includes a later read-only reconciliation of an uncertain Add.
-            automaticArtwork = true
+            if (draft.reportedVerifiedHash != it) {
+                draft.reportedVerifiedHash = it
+                onVerifiedAdd(it)
+                // Includes a later read-only reconciliation of an uncertain Add.
+                if (draft.resetArtworkAfterVerification && magnet == draft.attemptSource && initialTorrent == null)
+                    automaticArtwork = true
+            }
         }
     }
     // Optional read-only shortcuts, keyed to the authenticated Add destination.
@@ -147,7 +177,12 @@ fun VerifiedAddScreen(
     }
     val finishInOrderStore = remember(finishInOrderScope) { finishInOrderScope?.let { FinishInOrderStore(context, it) } }
     var finishInOrderDefault by remember(finishInOrderScope) { mutableStateOf(finishInOrderStore?.defaultForNewAdds() == true) }
-    var finishInOrderAfterAdd by remember(selectedTorrent?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
+    if (!draft.finishInOrderInitialized || draft.finishInOrderHash != selectedTorrent?.infoHashV1) {
+        draft.finishInOrder.value = finishInOrderDefault
+        draft.finishInOrderInitialized = true
+        draft.finishInOrderHash = selectedTorrent?.infoHashV1
+    }
+    var finishInOrderAfterAdd by draft.finishInOrder
     var rechecking by remember { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
     var configuredDefault by remember(remote) { mutableStateOf<String?>(null) }
@@ -162,15 +197,16 @@ fun VerifiedAddScreen(
         defaultReadComplete = true
     }
 
-    var fromPhone by remember { mutableStateOf(false) }
-    LaunchedEffect(initialTorrent) {
+    var fromPhone by draft::fromPhone
+    LaunchedEffect(initialTorrent, alreadyAttempted) {
         val document = initialTorrent ?: return@LaunchedEffect
-        onInitialTorrentConsumed()
         if (submitting || alreadyAttempted) return@LaunchedEffect
+        onInitialTorrentConsumed()
         try {
             val bytes = document.copyOf()
             selectedTorrent = TorrentMetainfoReader.preview(bytes)
             selectedBytes = bytes
+            draft.textAtFileSelection = magnet
             useFile = true
             fromPhone = true
             fileError = null
@@ -200,6 +236,7 @@ fun VerifiedAddScreen(
                     }
                     selectedTorrent = result.first
                     selectedBytes = result.second
+                    draft.textAtFileSelection = magnet
                     fromPhone = false
                     useFile = true
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -214,8 +251,8 @@ fun VerifiedAddScreen(
         }
     }
 
-    val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
-    val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
+    val magnetCheck = remember(sourceText) { MagnetDraftCheck.inspect(sourceText) }
+    val linkCheck = remember(sourceText) { TorrentLinkCheck.inspect(sourceText) }
     var linkFetching by remember { mutableStateOf(false) }
     // Foreground clipboard prefill, once when this Add screen opens.
     var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
@@ -229,7 +266,7 @@ fun VerifiedAddScreen(
         val on = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
         clipboardPrefillOn = on
         if (!on) return@LaunchedEffect
-        val filled = ClipboardMagnetPrefill.decide(true, magnet,
+        val filled = ClipboardMagnetPrefill.decide(true, sourceText,
             otherSourcePresent = initialTorrent != null || selectedTorrent != null || alreadyAttempted,
             clipText = ClipboardMagnetPrefill.readText(context))
         if (filled != null) {
@@ -251,7 +288,7 @@ fun VerifiedAddScreen(
         else {
             val link = if (useFile && selectedTorrent != null && selectedBytes != null)
                 "magnet:?xt=urn:btih:" + selectedTorrent!!.infoHashV1
-            else (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: magnet
+            else (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: sourceText
             if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, effectiveDestination)
             else StoppedRemoteAddPlan.fromMagnet(link, effectiveDestination)
         }
@@ -290,7 +327,7 @@ fun VerifiedAddScreen(
         }
         item {
             OutlinedTextField(
-                value = magnet,
+                value = sourceText,
                 onValueChange = {
                     if (!alreadyAttempted) {
                         onMagnet(it)
@@ -311,7 +348,7 @@ fun VerifiedAddScreen(
                 minLines = 2,
                 maxLines = 4
             )
-            if (magnet.isBlank() && !alreadyAttempted) PasteMagnetButton(
+            if (sourceText.isBlank() && !alreadyAttempted) PasteMagnetButton(
                 enabled = !submitting && !choosing,
                 onPaste = {
                     onMagnet(it)
@@ -319,20 +356,26 @@ fun VerifiedAddScreen(
                     awaitingConfirmation = false
                 },
                 onNothingToPaste = { fileError = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
-            if (clipboardFilled != null && magnet == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
+            if (clipboardFilled != null && sourceText == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
                 onClear = { onMagnet(""); clipboardFilled = null }, enabled = !submitting)
             if (!useFile && linkCheck !is TorrentLinkCheck.NotALink) TorrentLinkPanel(linkCheck,
                 fetching = linkFetching, enabled = !submitting && !choosing && !alreadyAttempted,
                 onFetch = { link ->
+                    val requestedSource = magnet
                     linkFetching = true
                     scope.launch {
                         try {
                             when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
                                 is TorrentLinkResult.Fetched -> {
+                                    if (alreadyAttempted || submitting || currentSource.value != requestedSource) {
+                                        fileError = "The draft changed while fetching. The current source was kept."
+                                        return@launch
+                                    }
                                     // Downloaded and validated on this phone; the server never
                                     // fetches the link, so a private token stays on the phone.
                                     selectedTorrent = result.preview
                                     selectedBytes = result.bytes
+                                    draft.textAtFileSelection = ""
                                     fromPhone = false
                                     useFile = true
                                     fileError = null
@@ -384,7 +427,7 @@ fun VerifiedAddScreen(
         if (fileError != null) {
             item { Text(fileError.orEmpty(), color = MaterialTheme.colorScheme.error) }
         }
-        if (selectedTorrent != null && magnet.isNotBlank()) {
+        if (selectedTorrent != null && sourceText.isNotBlank()) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(
@@ -396,7 +439,7 @@ fun VerifiedAddScreen(
                     FilterChip(
                         selected = useFile,
                         enabled = !submitting && !choosing && !alreadyAttempted,
-                        onClick = { useFile = true; awaitingConfirmation = false },
+                        onClick = { useFile = true; draft.textAtFileSelection = magnet; awaitingConfirmation = false },
                         label = { Text(".torrent file") }
                     )
                 }
@@ -573,7 +616,7 @@ fun VerifiedAddScreen(
                                 "Add stopped, apply reviewed file priorities, then Start once. Verify each outcome; never retry an uncertain command automatically."
                             else "Add stopped only; use Start later from Transfers. No file move or download is implied.")
                             val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
-                                else TorrentMetainfoReader.magnetTrackerCount(magnet)
+                                else TorrentMetainfoReader.magnetTrackerCount(sourceText)
                             if (trackers == 0) {
                                 // Red text on this green card measured 1.74:1; a dark inset banner keeps it readable.
                                 ChunksBanner("No tracker", trackerlessWarning(useFile), ChunksTone.ERROR)
@@ -590,6 +633,7 @@ fun VerifiedAddScreen(
                             alreadyAttempted = true
                             verifiedHash = null
                             reviewedAttempt = plan
+                            draft.attemptSource = magnet
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val orderScope = finishInOrderScope?.takeIf {
                                 bytes != null && finishInOrderAfterAdd && (selectedTorrent?.fileCount ?: 0) >= 2 }
@@ -611,9 +655,7 @@ fun VerifiedAddScreen(
                                     }) {
                                         // No RPC was sent. This known refusal can be corrected
                                         // without weakening the uncertain-command retry latch.
-                                        alreadyAttempted = false
-                                        reviewedAttempt = null
-                                        uncertain = false
+                                        draft.refusedBeforeAdd()
                                         outcome = "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata."
                                         return@launch
                                     }
@@ -639,12 +681,15 @@ fun VerifiedAddScreen(
                                         },
                                         start = { hash -> remote.setStarted(hash, true) }
                                     )
-                                    uncertain = result !is RemoteAddAndStart.Started &&
+                                    val existingWithoutWrite = result is RemoteAddAndStart.AddedStopped &&
+                                        result.result is RemoteAddOutcome.AlreadyPresent
+                                    if (existingWithoutWrite) draft.refusedBeforeAdd()
+                                    uncertain = !existingWithoutWrite && result !is RemoteAddAndStart.Started &&
                                         (result !is RemoteAddAndStart.AddedStopped ||
                                             result.result !is RemoteAddOutcome.VerifiedStopped)
                                     // Both metainfo and magnets observe the same exact
                                     // submitted hash and Place; this performs reads only.
-                                    submittedPlan = plan
+                                    submittedPlan = plan.takeUnless { existingWithoutWrite }
                                     verifiedHash = verifiedAddNavigationHash(result)
                                     outcome = when (result) {
                                         is RemoteAddAndStart.Started ->
@@ -732,6 +777,26 @@ fun VerifiedAddScreen(
                 }
             }
         }
+        if (alreadyAttempted && (initialTorrent != null ||
+                (magnet.isNotBlank() && magnet != draft.attemptSource))) item {
+            Text(if (verifiedHash != null && !uncertain)
+                "A new source is waiting. Choose Start another Add to review it."
+            else "A new source is waiting. Finish checking this Add before starting another draft.")
+        }
+        if (verifiedHash != null && !uncertain) item {
+            OutlinedButton(onClick = {
+                val oldSource = draft.attemptSource
+                if (draft.beginNextDraft()) {
+                    if (magnet == oldSource) onMagnet("")
+                    onDestination("")
+                    awaitingConfirmation = false
+                    fileError = null
+                }
+            }, enabled = !submitting && !rechecking && !choosing && !linkFetching,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
+                Text("Start another Add")
+            }
+        }
         if (alreadyAttempted && reviewedAttempt != null) {
             item {
                 OutlinedButton(
@@ -773,6 +838,8 @@ fun VerifiedAddScreen(
                                             "The hash exists, but placement still requires inspection before another action."
                                     }
                                 }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                throw cancel
                             } catch (_: Exception) {
                                 verifiedHash = null
                                 uncertain = true

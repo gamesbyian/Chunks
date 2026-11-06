@@ -2,6 +2,10 @@ package io.github.gamesbyian.chunks
 
 import android.os.Bundle
 import android.util.Base64
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -97,15 +101,28 @@ class CombinedTwoRealServersInstrumentedTest {
         typeInto("Username, if required", user)
         typeInto("Password", password)
         scrollTo("Remember this server and login on this device")
-        // The keyboard and profile reads may recompose after scrolling.
-        // Stabilize the form before ONE click; never retry uncertain RPC.
-        if (!connectedQueue()) {
-            scrollTo("Connect to rTorrent")
-            rule.waitForIdle()
-            waitFor("stable Connect action after form edit", 15_000) {
-                connectedQueue() || visible("Connect to rTorrent")
+        // The IME can recycle this lazy item during selector resolution
+        // (42238837684 and 42241610339 failed BEFORE action invocation).
+        // Repeat only readiness/selector reads. Once the framework supplies
+        // its action, latch BEFORE invoking it: no exception or refused action
+        // may lead to a second production Connect invocation.
+        var connectInvoked = false
+        rule.waitUntil(15_000) {
+            if (connectedQueue()) true else {
+                try {
+                    scrollTo("Connect to rTorrent")
+                    rule.onNodeWithText("Connect to rTorrent").assertIsDisplayed().assertIsEnabled()
+                        .performSemanticsAction(SemanticsActions.OnClick) {
+                            check(!connectInvoked)
+                            connectInvoked = true
+                            assertTrue("The production Connect action must be accepted", it())
+                        }
+                    connectInvoked
+                } catch (failure: Throwable) {
+                    if (connectInvoked) throw failure
+                    false
+                }
             }
-            if (!connectedQueue()) rule.onNodeWithText("Connect to rTorrent").performClick()
         }
         waitFor("server queue for the requested endpoint", 90_000) { connectedQueue() }
     }
