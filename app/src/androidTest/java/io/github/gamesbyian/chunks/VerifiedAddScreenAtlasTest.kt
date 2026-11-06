@@ -192,30 +192,54 @@ class VerifiedAddScreenAtlasTest {
     }
 
     @Test fun uncertainAddOffersReadOnlyReconciliationInsteadOfRepeatSubmit() {
-        var magnet by mutableStateOf(validMagnet)
-        var destination by mutableStateOf("/home/dev/chunks-public-test")
-        rule.setContent {
-            MaterialTheme {
-                VerifiedAddScreen(remote, magnet, destination,
-                    onMagnet = { magnet = it },
-                    onDestination = { destination = it },
-                    onBack = {}, onComplete = {},
-                    onMutationStarted = { true }, onMutationSettled = {})
+        // An unreachable socket now correctly yields a proven pre-wire
+        // refusal. Use an actual loopback XML-RPC server that receives one
+        // load.start *before* losing its reply to exercise the uncertain fence.
+        RemoteLostAckFixture().use { fixture ->
+            val remoteWithLostAck = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            var magnet by mutableStateOf(validMagnet)
+            var destination by mutableStateOf("/home/dev/chunks-public-test")
+            var authorized = 0
+            var settled = 0
+            rule.setContent {
+                MaterialTheme {
+                    VerifiedAddScreen(remoteWithLostAck, magnet, destination,
+                        onMagnet = { magnet = it },
+                        onDestination = { destination = it },
+                        onBack = {}, onComplete = {},
+                        onMutationStarted = { authorized++; true },
+                        onMutationSettled = { settled++ })
+                }
             }
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
+            rule.onNodeWithText("Review Add").performClick()
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add then start"))
+            rule.onNodeWithText("Confirm: add then start").performClick()
+            rule.waitUntil(timeoutMillis = 15_000) { settled == 1 }
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                hasText("Check server state (read only)"))
+            rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
+            rule.onNodeWithText("Check server state (read only)").assertExists()
+            assertTrue("The fixture must receive the original one-time load",
+                fixture.methods.count { it == "load.start" } == 1)
+            save("add-uncertain-recheck-real-compose")
+            rule.onNodeWithText("Check server state (read only)").performClick()
+            rule.waitUntil(timeoutMillis = 15_000) {
+                rule.onAllNodesWithText("Acknowledge session and start another Add")
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                hasText("Acknowledge session and start another Add"))
+            rule.onNodeWithText("Acknowledge session and start another Add").performClick()
+            assertTrue("Only one user-authorized attempt, not one per readback",
+                authorized == 1)
+            assertTrue("The ambiguous load may never replay",
+                fixture.methods.count { it == "load.start" } == 1)
+            assertTrue("Recovery must not issue a second Start",
+                fixture.methods.none { it in setOf("load.verbose", "d.start", "d.resume", "d.open") })
+            assertTrue("No unexpected mutations or broken fixture requests",
+                fixture.failures.isEmpty())
         }
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").performClick()
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add then start"))
-        rule.onNodeWithText("Confirm: add then start").performClick()
-        rule.waitUntil(timeoutMillis = 15_000) {
-            rule.onAllNodesWithText("Check server state (read only)")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        rule.onNode(hasScrollAction()).performScrollToNode(
-            hasText("Check server state (read only)"))
-        rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
-        rule.onNodeWithText("Check server state (read only)").assertExists()
-        save("add-uncertain-recheck-real-compose")
     }
 
     @Test fun confirmedSessionRemovalShowsExactTargetWithoutSendingRpc() {

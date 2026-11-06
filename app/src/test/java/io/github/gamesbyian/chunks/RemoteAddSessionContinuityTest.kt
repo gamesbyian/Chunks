@@ -27,11 +27,28 @@ class RemoteAddSessionContinuityTest {
         val requests = java.util.concurrent.CopyOnWriteArrayList<String>()
         server.createContext("/RPC2") { exchange ->
             val request = exchange.requestBody.bufferedReader().use { it.readText() }
-            requests += Regex("<methodName>([^<]+)</methodName>").find(request)!!.groupValues[1]
-            val reply = if (requests.last() == "directory.default")
-                "<params><param><value><string>/srv</string></value></param></params>"
-            else "<fault><value><struct><member><name>faultCode</name><value><int>1</int></value></member>" +
-                "<member><name>faultString</name><value><string>Unavailable</string></value></member></struct></value></fault>"
+            val method = Regex("<methodName>([^<]+)</methodName>").find(request)!!.groupValues[1]
+            requests += method
+            // A *post-load* lost reply is truly uncertain. A failure at
+            // d.multicall2 before load is a proven pre-wire refusal and must
+            // remain separately recoverable instead of pinning the ticket.
+            if (method == "load.start") {
+                exchange.sendResponseHeaders(503, -1)
+                exchange.close()
+                return@createContext
+            }
+            val reply = when (method) {
+                "directory.default" ->
+                    "<params><param><value><string>/srv</string></value></param></params>"
+                "d.multicall2" ->
+                    "<params><param><value><array><data></data></array></value></param></params>"
+                "d.name" ->
+                    "<fault><value><struct><member><name>faultCode</name><value><int>-501</int></value></member>" +
+                    "<member><name>faultString</name><value><string>Could not find info-hash.</string></value></member></struct></value></fault>"
+                else ->
+                    "<fault><value><struct><member><name>faultCode</name><value><int>1</int></value></member>" +
+                    "<member><name>faultString</name><value><string>Unavailable</string></value></member></struct></value></fault>"
+            }
             val bytes = "<methodResponse>$reply</methodResponse>".toByteArray()
             exchange.sendResponseHeaders(200, bytes.size.toLong())
             exchange.responseBody.use { it.write(bytes) }
@@ -70,7 +87,9 @@ class RemoteAddSessionContinuityTest {
             rule.onNodeWithText("Check server state (read only)").performClick()
             rule.waitUntil(15_000) { requests.size > before.size }
             assertEquals(1, attempts)
-            assertFalse(requests.any { it.startsWith("load.") })
+            assertEquals("Exactly one originally authorized load, never replayed",
+                1, requests.count { it == "load.start" })
+            assertFalse(requests.any { it == "load.verbose" || it == "d.start" })
         } finally { server.stop(0) }
     }
     private val document = ("d4:infod6:lengthi5e4:name8:test.txt12:piece lengthi16384e6:pieces20:" +
@@ -213,24 +232,35 @@ class RemoteAddSessionContinuityTest {
             }
             reveal("Check server state (read only)")
             assertEquals(0, consumed)
-            assertEquals(oldHash, session.reviewedAttempt?.expectedInfoHash)
-            assertTrue(session.nativeStartedAttempt)
+            assertEquals(oldHash, session.attemptTicket?.intent?.source?.expectedInfoHash)
+            assertTrue(session.attemptTicket?.intent?.startWhenAdded == true)
             rule.onNodeWithText("Review Add").assertDoesNotExist()
             rule.onNodeWithText("Check server state (read only)").performClick()
-            rule.waitUntil(15_000) { verified == 1 }
+            rule.waitUntil(15_000) {
+                session.coordinator.phase ==
+                    io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+            }
+            assertEquals("Recovered state cannot prove which client originally registered it", 0, verified)
             assertFalse("Late old completion must preserve the newer exclusion", artwork.value)
             reveal("Back to transfers")
             rule.onNodeWithText("Back to transfers").performClick()
             rule.runOnIdle { artwork.value = false; showing.value = true }
-            reveal("Start another Add")
-            assertEquals("Remount must not repeat successful-Add notification", 1, verified)
+            // Session confirmation verifies exact hash/Place/Start but not
+            // registration provenance. The UI must expose an independent,
+            // explicit acknowledgement instead of allowing a generic new Add
+            // to clear any uncertain write latch. Scroll to the exact button,
+            // not similarly worded lazy-list guidance above it.
+            rule.onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasText("Acknowledge session and start another Add"))
+            assertEquals("Remount must not claim recovered registration as Chunks' new Add", 0, verified)
             assertFalse("Remount must not erase another draft's metadata choice", artwork.value)
-            rule.onNodeWithText("Start another Add").performClick()
+            rule.onNodeWithText("Acknowledge session and start another Add")
+                .assertIsEnabled().performClick()
             rule.waitUntil(15_000) { consumed == 1 }
             reveal("test.txt")
             assertEquals(nextSource, source.value)
             assertFalse(artwork.value)
-            assertNull(session.reviewedAttempt)
+            assertNull(session.attemptTicket)
             assertFalse(session.alreadyAttempted)
             assertEquals(1, attempts)
             assertEquals(1, calls.count { it.first == "load.start" })

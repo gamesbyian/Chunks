@@ -45,9 +45,17 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
+import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
+import io.github.gamesbyian.chunks.model.UniversalAddSource
+import io.github.gamesbyian.chunks.model.UniversalAddTarget
+import io.github.gamesbyian.chunks.model.UniversalAddPlace
+import io.github.gamesbyian.chunks.model.UniversalAddIntent
+import io.github.gamesbyian.chunks.model.EnvironmentCapabilities
+import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
-import io.github.gamesbyian.chunks.rpc.RemoteAddStarter
+import io.github.gamesbyian.chunks.rpc.RemoteUniversalAddAdapter
+import io.github.gamesbyian.chunks.rpc.RemotePreWriteRefusal
 import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
 import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
@@ -132,17 +140,22 @@ fun VerifiedAddScreen(
     val reviewFocus = androidx.compose.ui.platform.LocalFocusManager.current
     // Freeze the command actually submitted: mutable checkbox values do not
     // authorize treating an already-started Add as a stopped Add on recheck.
-    var nativeStartedAttempt by draft::nativeStartedAttempt
-    var reviewedAttempt by draft::reviewedAttempt
-    var submittedPlan by draft::submittedPlan
+    // The only submitted intent is Agent 1's shared ticket, retained by
+    // the exact-account session above navigation and reauthentication.
+    val attemptedTicket = draft.attemptTicket
     var observedProgress by draft::observedProgress
     var progressReadFailed by remember { mutableStateOf(false) }
     var progressRevision by remember { mutableStateOf(0) }
-    LaunchedEffect(remote, submittedPlan, progressRevision) {
-        val target = submittedPlan ?: return@LaunchedEffect
+    LaunchedEffect(remote, attemptedTicket, outcome, progressRevision) {
+        val ticket = attemptedTicket ?: return@LaunchedEffect
+        // A freshly authorized ticket is not yet proof that any Add RPC was
+        // attempted. Source-policy or artwork opt-out can still refuse it
+        // before the wire. Do not probe remote job progress until the engine
+        // adapter has returned a result, including an ambiguous result.
+        if (outcome == null || !draft.alreadyAttempted) return@LaunchedEffect
         repeat(60) {
             try {
-                observedProgress = remote.readAddProgress(target)
+                observedProgress = RemoteUniversalAddAdapter(remote).progress(ticket)
                 progressReadFailed = false
             } catch (cancel: kotlinx.coroutines.CancellationException) {
                 throw cancel
@@ -159,12 +172,15 @@ fun VerifiedAddScreen(
     val artworkHolder = addArtworkState ?: rememberSaveable { mutableStateOf(true) }
     var automaticArtwork by artworkHolder
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
-    LaunchedEffect(verifiedHash) {
+    LaunchedEffect(verifiedHash, draft.coordinator.phase) {
         verifiedHash?.let {
-            if (draft.reportedVerifiedHash != it) {
+            // Merely finding the exact job after a lost acknowledgement does
+            // not prove Chunks registered it. Only a positively verified NEW
+            // Add may be reported to the parent as the app's latest Added job.
+            if (draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED &&
+                draft.reportedVerifiedHash != it) {
                 draft.reportedVerifiedHash = it
                 onVerifiedAdd(it)
-                // Includes a later read-only reconciliation of an uncertain Add.
                 if (draft.resetArtworkAfterVerification && magnet == draft.attemptSource && initialTorrent == null)
                     automaticArtwork = true
             }
@@ -627,25 +643,51 @@ fun VerifiedAddScreen(
                 item {
                     Button(
                         onClick = {
-                            if (onMutationStarted()) {
+                            // Both authorization and the one-shot ticket are acquired
+                            // synchronously on this explicit Confirm click, before any
+                            // suspending source, metadata or network operation.
+                            val bytes = if (useFile) selectedBytes?.copyOf() else null
+                            val requestedStart = startAfterAdd
+                            val allowArtwork = automaticArtwork
+                            val orderScope = finishInOrderScope?.takeIf {
+                                bytes != null && requestedStart && finishInOrderAfterAdd &&
+                                    (selectedTorrent?.fileCount ?: 0) >= 2
+                            }
+                            var mutationGateAcquired = false
+                            val ticket = runCatching {
+                                val reviewedSource = if (bytes != null)
+                                    UniversalAddSource.metainfo(bytes, requireNotNull(selectedTorrent).infoHashV1)
+                                else UniversalAddSource.magnet(plan.source, plan.expectedInfoHash)
+                                val target = UniversalAddTarget.AuthenticatedServer(
+                                    finishInOrderScope ?: remote.addAccountScope())
+                                val reviewedPlace = if (plan.useServerDefault)
+                                    UniversalAddPlace.ServerDefault(plan.destination)
+                                else UniversalAddPlace.ServerCustom(plan.destination)
+                                val intent = UniversalAddIntent(
+                                    reviewedSource, target, reviewedPlace, requestedStart, allowArtwork)
+                                val review = draft.coordinator.review(
+                                    intent, EnvironmentCapabilities.unprobed(target.environment),
+                                    EnvironmentAvailability.LIVE)
+                                if (!review.accepted || !draft.coordinator.authorizeByUser()) null
+                                else {
+                                    mutationGateAcquired = onMutationStarted()
+                                    if (mutationGateAcquired)
+                                        draft.coordinator.beginSubmission(System.currentTimeMillis())
+                                    else null
+                                }
+                            }.getOrNull()
+                            if (ticket != null) {
                             awaitingConfirmation = false
                             submitting = true
                             alreadyAttempted = true
                             verifiedHash = null
-                            reviewedAttempt = plan
+                            // Clear the previous before-wire refusal BEFORE
+                            // exposing the new ticket to Compose side effects.
+                            outcome = null
+                            observedProgress = null
+                            draft.attemptTicket = ticket
                             draft.attemptSource = magnet
-                            val bytes = if (useFile) selectedBytes?.copyOf() else null
-                            val orderScope = finishInOrderScope?.takeIf {
-                                bytes != null && finishInOrderAfterAdd && (selectedTorrent?.fileCount ?: 0) >= 2 }
-                            // The shared Add draft may change after navigating away;
-                            // only this reviewed click may determine Start for this RPC.
-                            val requestedStart = startAfterAdd
-                            val allowArtwork = automaticArtwork
-                            val artworkEnvironment = finishInOrderScope?.let {
-                                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
-                            }
-                            nativeStartedAttempt = requestedStart && orderScope == null
-                            var orderNote: String? = null
+                            val artworkEnvironment = ticket.intent.target.environment
                             scope.launch {
                                 try {
                                     if (!allowArtwork && withContext(Dispatchers.IO) {
@@ -659,37 +701,48 @@ fun VerifiedAddScreen(
                                         outcome = "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata."
                                         return@launch
                                     }
-                                    // ruTorrent's ordinary Add starts inside load.start or
-                                    // load.raw_start. Use this native path for default
-                                    // Start-after-Add, retaining stopped-first for
-                                    // reviewed Finish in Order priorities.
-                                    val result = if (requestedStart && orderScope == null) {
-                                        if (bytes != null) remote.loadStartedTorrentBytes(
-                                            bytes, plan.destination, plan.useServerDefault)
-                                        else remote.loadStarted(plan)
-                                    } else RemoteAddStarter.run(
-                                        startAfterVerifiedAdd = requestedStart,
-                                        add = {
-                                            val added = if (bytes != null) remote.loadStoppedTorrentBytes(
-                                                bytes, plan.destination, plan.useServerDefault)
-                                            else remote.loadStopped(plan)
-                                            // Priorities before any Start, only for a verified stopped Add.
-                                            if (orderScope != null && added is RemoteAddOutcome.VerifiedStopped)
-                                                orderNote = enableRemoteFinishInOrderAfterAdd(
-                                                    context, remote, orderScope, added.hash)
-                                            added
-                                        },
-                                        start = { hash -> remote.setStarted(hash, true) }
-                                    )
+                                    // No alternate RPC executor: the remote port invokes
+                                    // the existing native/stopped-first engine operations.
+                                    val adapter = RemoteUniversalAddAdapter(remote)
+                                    // Give the callback its suspend type *before*
+                                    // passing it through the optional parameter. A
+                                    // nested let infers Function1 instead and fails
+                                    // the Kotlin compile despite compatible bodies.
+                                    val priorityCallback: (suspend (String) -> String?)? =
+                                        if (orderScope == null) null
+                                        else { hash: String ->
+                                            enableRemoteFinishInOrderAfterAdd(
+                                                context, remote, orderScope, hash)
+                                        }
+                                    val execution = adapter.submit(
+                                        ticket, prioritiesBeforeStart = orderScope != null,
+                                        onVerifiedStoppedBeforeStart = priorityCallback)
+                                    // A second Start in priority mode verifies active
+                                    // state, but only this read-only pass verifies Place
+                                    // after that second mutation as well.
+                                    val result = if (orderScope != null &&
+                                        execution.result is RemoteAddAndStart.Started)
+                                        adapter.reconcile(ticket) else execution.result
+                                    val orderNote = execution.orderNote
                                     val existingWithoutWrite = result is RemoteAddAndStart.AddedStopped &&
                                         result.result is RemoteAddOutcome.AlreadyPresent
                                     if (existingWithoutWrite) draft.refusedBeforeAdd()
+                                    else {
+                                        draft.coordinator.requireReadback(ticket)
+                                        // The existing engine's bounded exact-hash
+                                        // getters have proved the command's result,
+                                        // even for a job hidden from the main view.
+                                        adapter.exactObservation(
+                                            ticket, result, newRegistrationVerified = true
+                                        )?.let { exact ->
+                                            draft.coordinator.reconcileExactSession(ticket, exact)
+                                        }
+                                    }
                                     uncertain = !existingWithoutWrite && result !is RemoteAddAndStart.Started &&
                                         (result !is RemoteAddAndStart.AddedStopped ||
                                             result.result !is RemoteAddOutcome.VerifiedStopped)
                                     // Both metainfo and magnets observe the same exact
                                     // submitted hash and Place; this performs reads only.
-                                    submittedPlan = plan.takeUnless { existingWithoutWrite }
                                     verifiedHash = verifiedAddNavigationHash(result)
                                     outcome = when (result) {
                                         is RemoteAddAndStart.Started ->
@@ -717,7 +770,21 @@ fun VerifiedAddScreen(
                                         if (!saved) outcome = outcome.orEmpty() +
                                             " This folder was used but its Recent shortcut could not be saved."
                                     }
+                                } catch (_: RemotePreWriteRefusal) {
+                                    // The engine adapter proved no load was
+                                    // sent. Release only this exact ticket;
+                                    // a later attempt still needs a new click.
+                                    draft.refusedBeforeAdd()
+                                    verifiedHash = null
+                                    uncertain = false
+                                    outcome = "The server refused the Add preflight before any write. Reconnect or refresh and review again. Nothing was added."
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    draft.coordinator.requireReadback(ticket)
+                                    uncertain = true
+                                    outcome = "Add was interrupted; inspect the exact server state. No retry was sent."
+                                    throw cancel
                                 } catch (_: Exception) {
+                                    draft.coordinator.requireReadback(ticket)
                                     verifiedHash = null
                                     uncertain = true
                                     outcome = "Could not verify the operation. Inspect the current server transfer list before attempting another Add. No automatic retry occurred."
@@ -729,9 +796,9 @@ fun VerifiedAddScreen(
                                 }
                             }
                             } else {
+                                if (mutationGateAcquired) onMutationSettled()
                                 awaitingConfirmation = false
-                                uncertain = true
-                                outcome = "An earlier remote command needs a fresh server read before another Add."
+                                outcome = "Add could not be authorized for this exact server. Refresh the connection and review again; nothing was submitted."
                             }
                         },
                         enabled = !submitting && !choosing,
@@ -777,15 +844,39 @@ fun VerifiedAddScreen(
                 }
             }
         }
+        // Read-only recovery can prove the exact hash, Place and Start
+        // without proving that Chunks originally registered the job. Never
+        // present this as an ordinary newly verified Add.
+        val exactSessionConfirmed =
+            draft.coordinator.phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+        val addedByThisAttempt =
+            draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED
         if (alreadyAttempted && (initialTorrent != null ||
                 (magnet.isNotBlank() && magnet != draft.attemptSource))) item {
-            Text(if (verifiedHash != null && !uncertain)
-                "A new source is waiting. Choose Start another Add to review it."
-            else "A new source is waiting. Finish checking this Add before starting another draft.")
+            Text(when {
+                exactSessionConfirmed ->
+                    "A new source is waiting. Acknowledge this confirmed server session before reviewing it."
+                addedByThisAttempt && !uncertain ->
+                    "A new source is waiting. Choose Start another Add to review it."
+                else ->
+                    "A new source is waiting. Finish checking this Add before starting another draft."
+            })
         }
-        if (verifiedHash != null && !uncertain) item {
+        if (exactSessionConfirmed && verifiedHash != null) item {
+            Text(
+                "The server confirms the exact transfer, its destination and requested Start state. " +
+                    "Chunks cannot prove which client originally registered it after the lost reply. " +
+                    "Acknowledging this server state permits a separate new review; no Add or Start is resent.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        if (verifiedHash != null &&
+            (exactSessionConfirmed || (addedByThisAttempt && !uncertain))) item {
             OutlinedButton(onClick = {
                 val oldSource = draft.attemptSource
+                // The single explicit click acknowledges a confirmed session
+                // or finishes an attested Add. Unresolved write latches stay
+                // fenced by RemoteAddSession.beginNextDraft().
                 if (draft.beginNextDraft()) {
                     if (magnet == oldSource) onMagnet("")
                     onDestination("")
@@ -794,23 +885,28 @@ fun VerifiedAddScreen(
                 }
             }, enabled = !submitting && !rechecking && !choosing && !linkFetching,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
-                Text("Start another Add")
+                Text(if (exactSessionConfirmed)
+                    "Acknowledge session and start another Add"
+                else "Start another Add")
             }
         }
-        if (alreadyAttempted && reviewedAttempt != null) {
+        if (alreadyAttempted && attemptedTicket != null) {
             item {
                 OutlinedButton(
                     onClick = {
                         rechecking = true
                         progressRevision++
-                        val reviewedPlan = requireNotNull(reviewedAttempt)
+                        val ticket = requireNotNull(draft.attemptTicket)
                         scope.launch {
                             try {
-                                if (nativeStartedAttempt) {
-                                    // A native load may have applied before the gateway
-                                    // lost its reply. Verify the original started intent
-                                    // with exact hash, Place and ACTIVE engine, read only.
-                                    val checked = remote.reconcileStartedAdd(reviewedPlan)
+                                val adapter = RemoteUniversalAddAdapter(remote)
+                                val reviewedPlan = adapter.planFor(ticket)
+                                val checkedOutcome = adapter.reconcile(ticket)
+                                if (ticket.intent.startWhenAdded) {
+                                    // This original Start intent also covers priority-
+                                    // before-Start, not only native load.start. The
+                                    // selected server/route is rechecked before reads.
+                                    val checked = checkedOutcome
                                     uncertain = checked !is RemoteAddAndStart.Started
                                     verifiedHash = verifiedAddNavigationHash(checked)
                                     outcome = if (checked is RemoteAddAndStart.Started) {
@@ -819,11 +915,11 @@ fun VerifiedAddScreen(
                                                 onCustomPlaceVerified(reviewedPlan.destination)
                                             }.getOrDefault(false)
                                             if (!saved) "Server now confirms this exact hash, destination and active engine. Recent folder shortcut could not be saved."
-                                            else "Server now confirms this exact hash, destination and active engine. No Start or Add was resent."
+                                            else "Server now confirms this exact hash, destination and active engine. Which client originally registered it remains unknown; no Start or Add was resent."
                                         } else "Server now confirms this exact hash, destination and active engine. No Start or Add was resent."
                                     } else "Read-only check did not confirm this exact hash is started AND active at the selected destination. It may be queued, stopped, missing or unavailable. Inspect current server state; no Add or Start was resent."
                                 } else {
-                                    val checked = remote.reconcileStoppedAdd(reviewedPlan)
+                                    val checked = (checkedOutcome as RemoteAddAndStart.AddedStopped).result
                                     uncertain = checked !is RemoteAddOutcome.VerifiedStopped
                                     verifiedHash = (checked as? RemoteAddOutcome.VerifiedStopped)?.hash
                                     outcome = when (checked) {
@@ -838,9 +934,20 @@ fun VerifiedAddScreen(
                                             "The hash exists, but placement still requires inspection before another action."
                                     }
                                 }
+                                // Exact-session proof is distinct from
+                                // provenance: after a lost acknowledgement the
+                                // job may now be verified, but which client
+                                // registered it remains unknown. This permits
+                                // an explicit next draft without replaying Add.
+                                val exact = adapter.exactObservation(
+                                    ticket, checkedOutcome, newRegistrationVerified = false)
+                                if (exact != null)
+                                    draft.coordinator.reconcileExactSession(ticket, exact)
+                                else draft.coordinator.requireReadback(ticket)
                             } catch (cancel: kotlinx.coroutines.CancellationException) {
                                 throw cancel
                             } catch (_: Exception) {
+                                draft.coordinator.requireReadback(ticket)
                                 verifiedHash = null
                                 uncertain = true
                                 outcome = "Could not read server state. The earlier Add might have applied; inspect the transfer list before retrying."
