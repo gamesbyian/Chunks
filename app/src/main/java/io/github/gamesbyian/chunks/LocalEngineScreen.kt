@@ -253,6 +253,10 @@ internal fun LocalEngineScreen(
     onZipReview: (() -> Unit)? = null,
     /** Opens the read-only All environments view; null hides the entry. */
     onCombined: (() -> Unit)? = null,
+    /** Only true when no remote connection OR saved remote profile exists. */
+    showFirstRunWelcome: Boolean = false,
+    /** The central Connections route; no connection is attempted by navigating. */
+    onConnections: (() -> Unit)? = null,
     initialMagnet: String? = null,
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
@@ -791,7 +795,15 @@ internal fun LocalEngineScreen(
             if (onCombined != null) OutlinedButton(onClick = onCombined,
                 modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments…") }
         }
-        PhoneIntakeDisclosure(
+        // Make the true first-run choice visible before any setup or utility controls.
+        // The ordinary Add disclosure replaces it as soon as Add is selected.
+        val firstRunVisible = transfers.isEmpty() && showFirstRunWelcome &&
+            onConnections != null && !addExpanded
+        if (firstRunVisible) NoTransfersWelcome(
+            onAdd = { addExpanded = true; addNavigationRevision++ },
+            onConnections = onConnections!!
+        )
+        if (!firstRunVisible) PhoneIntakeDisclosure(
             expanded = addExpanded, pendingReview = pending != null,
             placeLabel = place?.title, onToggle = { addExpanded = !addExpanded }
         )
@@ -1553,7 +1565,8 @@ internal fun LocalEngineScreen(
             Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
-            Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+            if (!firstRunVisible)
+                Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
         } else if (displayedTransfers.isEmpty()) {
             Text("No transfers match this search or filter.",
                 style = MaterialTheme.typography.bodySmall)
@@ -2164,7 +2177,8 @@ internal fun LocalEngineScreen(
             // Repeated taps also bring the real form into view above the footer.
             addNavigationRevision++
         },
-        onOptions = { scope.launch { optionsRequester.bringIntoView() } }
+        onOptions = { scope.launch { optionsRequester.bringIntoView() } },
+        onConnections = onConnections
     )
     } // measured footer + viewport
 }

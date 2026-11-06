@@ -1,5 +1,8 @@
 # Chunks cohesive UX and automatic enrichment campaign (owner direction, 2026-11-05)
 
+> **Universal UX extension:** [Universal Add, Connections and row disclosure](UNIVERSAL-NAVIGATION-AND-TRANSFER-DISCLOSURE-2026-11-05.md) is authoritative alongside automatic artwork: four permanent destinations, one Add source/target/Place/Start experience, one Connections owner, compact rows expanding to contextual tools and All details. Earlier Options-only connection and context-specific Add descriptions are transitional. Preserve native torrent safety and existing functionality.
+
+
 **Status:** binding design/interaction direction; implementation and installed-app acceptance pending. This is a coordinated UX campaign, **not** a claim of deployed behavior or a replacement for the single [WORK-QUEUE](WORK-QUEUE.md). The owner approved development use of the complete existing SVG library on 2026-11-05, with changes on request rather than per-asset visual signoff.
 
 ## Implementation checkpoint: first independently reviewable slices
