@@ -53,6 +53,16 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             Thread.sleep(150)
         }
     }
+    // User actions enqueue work with the v2 StandardTestDispatcher. Unlike
+    // the independent peer/disk await() above, this wait advances the Compose
+    // clock so an Add, Stop or Remove command is actually dispatched.
+    private fun awaitUi(what: String, condition: () -> Boolean) {
+        try {
+            rule.waitUntil(90_000, condition)
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("HTTPS phone journey: $what", timeout)
+        }
+    }
     private fun visible(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun scroll(text: String) {
         if (runCatching { rule.onNodeWithText(text).assertIsDisplayed() }.isSuccess) return
@@ -248,7 +258,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 click("Automatically identify and fetch artwork & metadata")
                 assertFalse("The draft choice alone is not Add admission", excluded())
                 click("Add stopped")
-                await("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
+                awaitUi("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
                 assertTrue("Phone Add must persist the exclusion before exposing the job", excluded())
                 val phone = requireNotNull(LocalEngineHolder.current())
                 previousLimits = phone.rateLimits()
@@ -261,6 +271,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertTrue("Sequential download readback", phone.setSequentialDownload(preview.infoHashV1, true))
                 stage("added-stopped")
                 click("Start")
+                rule.waitForIdle() // Dispatch queued Start before checking the OS permission prompt.
                 if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(
                         android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     val device = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
@@ -316,7 +327,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     androidx.test.uiautomator.UiDevice.getInstance(instrumentation).hasObject(
                         androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(".*:id/permission_allow_button"))))
                 click("Stop")
-                await("production Stop") { phone.status(preview.infoHashV1)?.stopped == true }
+                awaitUi("production Stop") { phone.status(preview.infoHashV1)?.stopped == true }
                 stage("stopped-observed")
                 // A paused flag precedes asynchronous disk-cache settlement. Use
                 // the production post-Stop FLUSH_DISK_CACHE checkpoint before an
@@ -382,7 +393,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 stage("next-default-verified")
                 click("Remove…")
                 click("Remove transfer, keep data")
-                await("exact session removal") { phone.status(preview.infoHashV1) == null }
+                awaitUi("exact session removal") { phone.status(preview.infoHashV1) == null }
                 assertTrue(target.isFile)
             }
         } catch (failure: Throwable) {
