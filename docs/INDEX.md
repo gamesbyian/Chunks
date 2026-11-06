@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+**Current entry point (2026-11-06, main `1aea0c2e`):** [AGENTS](../AGENTS.md), the sole executable [WORK-QUEUE](WORK-QUEUE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md) and [QUALITY-LEDGER](QUALITY-LEDGER.md) control the next work. #1333 (combined UX, consented enrichment and pure Smart Routing preview), #1334 (central Options/immediate apply), #1335 (first-run/installed test reconciliation) and #1336 (manual opt-in real-provider acceptance harness + publication receipts) are **merged**. No PRs open at this snapshot. Actual live provider cases remain **unexecuted**; existing emulator/real-rTorrent CI success is not physical Pixel or current-main installable release qualification. Older [Codex](CODEX-RELIABILITY-MEDIA-HANDOFF-2026-11-05.md), [Claude](CLAUDE-UI-MEDIA-EXECUTION-2026-11-05.md) and [UX](UX-FINAL-RECONCILIATION-2026-11-05.md) handoffs are archived execution evidence, not active dispatch. Canonical owner requirements remain in [UX](UX.md), [SMART-ROUTING](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md), [OPTIONS](OPTIONS-INFORMATION-ARCHITECTURE.md), and [REMOTE-BACKEND-ADAPTERS](REMOTE-BACKEND-ADAPTERS.md).
+
+
 **Immediate-apply preferences (owner-approved 2026-11-05):** The [Options interaction contract](OPTIONS-INFORMATION-ARCHITECTURE.md#immediate-apply-interaction-contract-owner-approved-2026-11-05) establishes one-interaction persistent choices throughout Chunks, with narrow composite remote configuration and consequential-action exceptions. Ordinary settings never require Save/Apply/Done.
 
 
@@ -12,7 +15,6 @@
 **Owner UX direction (2026-11-05):** [Cohesive UX and automatic artwork campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) governs the next holistic UI reorganization and automatic enrichment. Existing SVG drafts are approved for development; optical fidelity can be refined iteratively. Earlier 'next' pointers are dated status snapshots, not overrides of this owner direction.
 
 
-**Current agent entry point (2026-11-05 UTC):** [Codex reliability, real-provider UI and Pixel candidate handoff](CODEX-RELIABILITY-MEDIA-HANDOFF-2026-11-05.md). Last checked `main=f7364e5`, zero open PRs, Claude paused. #1309–#1318 delivered transfer-row artwork, Options, Similar Transfers, media title search, poster choice, phone settings search and real-provider JVM proof. The old [Claude UI/media execution handoff](CLAUDE-UI-MEDIA-EXECUTION-2026-11-05.md) is completed historical execution context; do not rebuild those features. [WORK-QUEUE](WORK-QUEUE.md) remains the sole active priority list.
 
 
 - [Future artwork sharing dependency](TRANSFER-SHARING.md#deferred-chunks-to-chunks-artwork-and-metadata-accompaniment-owner-direction-2026-11-04): portable custom artwork with Chunks transfers, explicitly gated on prior artwork/metadata decisions and acceptance.
