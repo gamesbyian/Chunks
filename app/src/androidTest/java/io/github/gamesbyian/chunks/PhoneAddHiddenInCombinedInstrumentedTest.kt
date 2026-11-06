@@ -72,6 +72,10 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
         }
 
         rule.onNode(hasText("All environments…") and hasClickAction()).performScrollTo().performClick()
+        // Search is behind the intentional compact Refine disclosure.
+        val refine = hasText("Refine transfers", substring = true) and hasClickAction()
+        waitFor { runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(refine) }.isSuccess }
+        rule.onNode(refine).performClick()
         val search = hasSetTextAction() and hasText("Search names or hashes")
         waitFor { runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(search) }.isSuccess }
         rule.onNode(search).performTextInput("no transfer is called this")
