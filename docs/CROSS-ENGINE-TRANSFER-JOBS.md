@@ -1,5 +1,8 @@
 # Cross-engine Copy/Move Transfer: authoritative owner contract (2026-10-28)
 
+> **Owner correction, 2026-11-05: Smart Routing and Move remain strictly job-only.** Neither automatic routing nor manual Move copies/migrates payload data. Preserve Chunks display aliases, artwork/metadata customizations, per-transfer automatic-enrichment exclusion and *portable* filename-rename mappings/intents as job-associated presentation on the target by default. Actual disk renames are separate authorized operations, never falsely claimed as applied. Moving must offer an explicit option to **carry or omit speed and ratio/seeding rules** (default omit unless saved otherwise); show target capability and unapplied settings. See [Smart Routing and transferable preferences](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md). This does not alter existing exact-target Add/verified readback and explicit source-job retirement gates.
+
+
 This document supersedes earlier local↔remote Copy/Move designs involving downloaded payload bytes, file migration, CopyTransferPayload or MigrateTransfer. **Transfer means the torrent job, not its downloaded files.** The independent storage relocation, extraction and library-copy features are unaffected. The separately named, explicitly labelled **payload Copy** from a Seedhost/rTorrent transfer to the phone (merged #460/#462/#465, real-host verified 792,723,456-byte exact-hash Copy in run [40756284173](https://github.com/gamesbyian/Chunks/actions/runs/40756284173)) is a **distinct capability** that does transfer bytes over the BitTorrent peer wire; it must keep its own label, code path and evidence, and must never be presented as Copy/Move Transfer.
 
 ## User-visible behavior
