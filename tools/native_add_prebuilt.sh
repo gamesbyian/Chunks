@@ -25,7 +25,7 @@ raw="$RUNNER_TEMP/chunks-prebuilt-status-$index.txt"
 junit="app/build/outputs/androidTest-results/connected/prebuilt-shard-$index/TEST-chunks-prebuilt-$index.xml"
 set +e
 timeout 900 adb shell am instrument -w -r \
-  -e notClass io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest \
+  -e notClass io.github.gamesbyian.chunks.SystemFontScaleComposeInstrumentedTest,io.github.gamesbyian.chunks.InstalledRealMediaInstrumentedTest \
   -e numShards "$count" -e shardIndex "$index" \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner > "$raw" 2>&1
 adb_status=$?

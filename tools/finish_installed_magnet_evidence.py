@@ -53,7 +53,7 @@ _SAFE_FRAME_FILES = frozenset((
 ))
 
 
-def safe_failure_diagnostic(receipt, peer_valid, control_preserved):
+def safe_failure_diagnostic(receipt, peer_valid, control_preserved, journeys_verified=True):
     """Bounded causal hints; never change the underlying acceptance decision."""
     runner = receipt.get("runner") if isinstance(receipt.get("runner"), dict) else {}
     failed = runner.get("failed_tests", 0)
@@ -65,6 +65,8 @@ def safe_failure_diagnostic(receipt, peer_valid, control_preserved):
         reason = "independent-peer-evidence-not-proven"
     elif control_preserved is False:
         reason = "precompleted-control-bytes-mismatch"
+    elif not journeys_verified:
+        reason = "required-installed-journey-not-proven"
     else:
         reason = "required-case-or-phase-evidence-incomplete"
     stages = receipt.get("app_stage_evidence")
@@ -83,6 +85,41 @@ def safe_failure_diagnostic(receipt, peer_valid, control_preserved):
                 frame = f"{file}:{line}"
                 break
     return {"reason": reason, "last_ui_stage": last, "first_safe_frame": frame}
+
+
+def required_journey_specs(env):
+    required = []
+    if env.get("CHUNKS_HTTPS_ADD") == "1":
+        required.append(("chunks-https-phone-digest.json", "https-phone",
+                         "io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest",
+                         "fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault"))
+    if env.get("CHUNKS_REAL_MEDIA") == "1":
+        for method in ("phaseA_tvmazeConsentSelectionAndArtwork", "phaseA_musicbrainzSelectionAndArtwork",
+                       "phaseA_openlibrarySelectionAndArtwork", "phaseB_tvmazeOfflineProcess",
+                       "phaseB_musicbrainzOfflineProcess", "phaseB_openlibraryOfflineProcess"):
+            required.append((f"chunks-real-media/{method}-digest.json", f"installed-real-media-{method}",
+                             "io.github.gamesbyian.chunks.InstalledRealMediaInstrumentedTest", method))
+    return required
+
+
+def required_journeys_verified(root, env):
+    """A remote success cannot publish an APK after another requested journey failed."""
+    try:
+        for path, suite, classname, method in required_journey_specs(env):
+            data = json.loads((root / path).read_text())
+            expected_id = hashlib.sha256((classname + "\\0" + method).encode()).hexdigest()
+            if (data.get("schema_version") != 1 or data.get("source_sha") != env["GITHUB_SHA"] or
+                    data.get("run_id") != env["GITHUB_RUN_ID"] or data.get("suite") != suite or
+                    data.get("reported_job_status") != "success" or data.get("evidence_executed") is not True or
+                    data.get("test_identity_coverage_complete") is not True or data.get("invalid_reports") != [] or
+                    data.get("test_identity_count") != 1 or
+                    data.get("test_cases") != [{"id_sha256": expected_id, "outcome": "passed"}] or
+                    any(data.get("junit", {}).get(key) != value for key, value in
+                        dict(tests=1, executed=1, failed=0, skipped=0, reports=1).items())):
+                return False
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return False
+    return True
 
 
 def main():
@@ -130,11 +167,18 @@ def main():
     receipt["independent_evidence_kind"] = "original source pieces checked; supplied peer unused" if receipt["public_peer_discovery"] else "real supplied peer upload and connections"
     control_preserved = precompleted_control_preserved(a.runner_temp, env)
     receipt["precompleted_control_bytes_preserved"] = control_preserved
-    if not peer_valid or control_preserved is False:
+    journeys_verified = required_journeys_verified(a.runner_temp, env)
+    receipt["requested_installed_journeys"] = [spec[1] for spec in required_journey_specs(env)]
+    receipt["requested_installed_journeys_verified"] = journeys_verified
+    if journeys_verified:
+        for path, _, _, _ in required_journey_specs(env):
+            source = a.runner_temp / path
+            shutil.copyfile(source, a.output / source.name)
+    if not peer_valid or control_preserved is False or not journeys_verified:
         receipt["result"] = "failed-or-inconclusive"
     if receipt["result"] != "passed":
         receipt["safe_failure_diagnostic"] = safe_failure_diagnostic(
-            receipt, peer_valid, control_preserved)
+            receipt, peer_valid, control_preserved, journeys_verified)
     (a.output / "RECEIPT.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
     # The two test identities and outcomes come from AndroidJUnitRunner, not
     # from successful RPC acknowledgements or invented "passed" XML cases.
