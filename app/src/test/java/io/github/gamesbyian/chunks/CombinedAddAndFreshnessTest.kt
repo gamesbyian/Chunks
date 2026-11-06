@@ -4,6 +4,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -37,7 +38,9 @@ class CombinedAddAndFreshnessTest {
         onPhone: () -> Unit,
         onServer: (() -> Unit)?,
         otherSavedServers: Boolean = false,
-        pendingSharedMagnet: Boolean = false
+        pendingSharedMagnet: Boolean = false,
+        pendingSharedTorrent: Boolean = false,
+        readingSharedTorrent: Boolean = false
     ) {
         rule.setContent {
             val density = LocalDensity.current
@@ -46,11 +49,46 @@ class CombinedAddAndFreshnessTest {
                     Surface {
                         CombinedAddActions(serverLabel, onPhone, onServer,
                             hasOtherSavedServers = otherSavedServers,
-                            pendingSharedMagnet = pendingSharedMagnet)
+                            pendingSharedMagnet = pendingSharedMagnet,
+                            pendingSharedTorrent = pendingSharedTorrent,
+                            readingSharedTorrent = readingSharedTorrent)
                     }
                 }
             }
         }
+    }
+
+    @Test fun sharedTorrentIsSourceOnlyUntilExactPhoneOrServerReviewChosen() {
+        val phone = AtomicInteger()
+        val server = AtomicInteger()
+        val label = "Server · Personal seedbox #2"
+        show(label, { phone.incrementAndGet() }, { server.incrementAndGet() },
+            pendingSharedTorrent = true)
+        rule.onNodeWithText("Choose a destination for the shared .torrent").assertIsDisplayed()
+        rule.onNodeWithText("A shared .torrent is ready. Choose where to review it. Nothing is added until you confirm.")
+            .assertExists()
+        assertEquals(0, phone.get())
+        assertEquals(0, server.get())
+        rule.onNodeWithContentDescription("Review shared .torrent on this phone").performClick()
+        assertEquals(1, phone.get())
+        assertEquals(0, server.get())
+        rule.onNodeWithContentDescription("Review shared .torrent on $label").performClick()
+        assertEquals(1, phone.get())
+        assertEquals(1, server.get())
+        rule.onNodeWithText("content://", substring = true).assertDoesNotExist()
+    }
+
+    @Test fun sharedDocumentButtonsRefuseClicksWhileLocalValidationIsRunning() {
+        val phone = AtomicInteger()
+        val server = AtomicInteger()
+        val label = "Server · Personal seedbox #2"
+        show(label, { phone.incrementAndGet() }, { server.incrementAndGet() },
+            pendingSharedTorrent = true, readingSharedTorrent = true)
+        rule.onNodeWithText("Checking the shared .torrent on this phone…").assertExists()
+        rule.onNodeWithContentDescription("Review shared .torrent on this phone").assertIsNotEnabled()
+        rule.onNodeWithContentDescription("Review shared .torrent on $label").assertIsNotEnabled()
+        assertEquals(0, phone.get())
+        assertEquals(0, server.get())
     }
 
     @Test fun sharedMagnetRequiresExactDestinationAndDoesNotDisplaySecretSource() {
