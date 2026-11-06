@@ -1,5 +1,11 @@
 # Chunks documentation index
 
+**Immediate-apply preferences (owner-approved 2026-11-05):** The [Options interaction contract](OPTIONS-INFORMATION-ARCHITECTURE.md#immediate-apply-interaction-contract-owner-approved-2026-11-05) establishes one-interaction persistent choices throughout Chunks, with narrow composite remote configuration and consequential-action exceptions. Ordinary settings never require Save/Apply/Done.
+
+
+**Centralized Options (owner-approved 2026-11-05):** [Canonical Options information architecture](OPTIONS-INFORMATION-ARCHITECTURE.md) defines eight settings destinations, global versus contextual scope, settings search, local-client access protection, media/rule dependencies and staged consolidation. This is organizational UX authority, not a second priority queue or evidence of implementation.
+
+
 **Future multi-client remote control (approved, deferred):** [Canonical adapter architecture and integration plan](REMOTE-BACKEND-ADAPTERS.md) covers rTorrent-preserving extraction, protocol differences, Transmission/qBittorrent/Deluge staging, capability matrix, shared UX/rules/routing, conformance and real-host acceptance. [Free distribution and attribution policy](LICENSING-AND-ATTRIBUTION.md) records the owner's nonproprietary/public-domain intent and mandatory third-party license audit. Neither document authorizes new adapters ahead of the existing rTorrent reliability and UX architecture priorities; the sole executable work queue remains [WORK-QUEUE](WORK-QUEUE.md).
 
 
