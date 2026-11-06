@@ -38,8 +38,9 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                 rule.onAllNodesWithText("On this phone (experimental)")
                     .fetchSemanticsNodes().isNotEmpty()
             }
+            // Local navigation may legitimately restore the empty Add form;
+            // the consumed magnet must not be injected into it again.
             rule.onNodeWithText(magnet).assertDoesNotExist()
-            rule.onNodeWithText("Start downloading after Add (recommended)").assertDoesNotExist()
         }
     }
 
