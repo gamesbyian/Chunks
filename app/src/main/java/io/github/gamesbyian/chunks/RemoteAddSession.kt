@@ -4,7 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.gamesbyian.chunks.rpc.RemoteAddProgress
-import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
+import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 
 /**
@@ -25,9 +25,10 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal var submitting by mutableStateOf(false)
     internal var alreadyAttempted by mutableStateOf(false)
     internal var attemptSource by mutableStateOf<String?>(null)
-    internal var nativeStartedAttempt by mutableStateOf(false)
-    internal var reviewedAttempt by mutableStateOf<StoppedRemoteAddPlan?>(null)
-    internal var submittedPlan by mutableStateOf<StoppedRemoteAddPlan?>(null)
+    // The shared coordinator owns the only submitted remote attempt. The UI
+    // fields below describe it; they never grant a second engine write.
+    internal var coordinator = UniversalAddCoordinator()
+    internal var attemptTicket by mutableStateOf<UniversalAddCoordinator.Ticket?>(null)
     internal var outcome by mutableStateOf<String?>(null)
     internal var uncertain by mutableStateOf(false)
     internal var verifiedHash by mutableStateOf<String?>(null)
@@ -46,15 +47,30 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal fun refusedBeforeAdd() {
         alreadyAttempted = false
         attemptSource = null
-        reviewedAttempt = null
-        submittedPlan = null
-        nativeStartedAttempt = false
+        attemptTicket?.let(coordinator::refusedBeforeAnyWrite)
+        attemptTicket = null
         uncertain = false
     }
 
-    /** Only an observed successful Add opens another draft, never a timeout. */
+    /**
+     * A new draft is allowed only after a proved Add or a *separate user click*
+     * acknowledging a positively verified exact session after an uncertain
+     * acknowledgement. The latter deliberately does not attribute the Add to
+     * Chunks; neither path resends the original command.
+     */
     internal fun beginNextDraft(): Boolean {
-        if (submitting || verifiedHash == null || uncertain) return false
+        if (submitting || verifiedHash == null) return false
+        when (coordinator.phase) {
+            UniversalAddCoordinator.Phase.VERIFIED -> {
+                if (uncertain || !coordinator.finishVerified()) return false
+            }
+            UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> {
+                // An uncertain provenance bit is expected here; the exact
+                // hash/Place/Start proof is separately held by the coordinator.
+                if (!coordinator.acknowledgeExactSession()) return false
+            }
+            else -> return false
+        }
         selectedTorrent = null
         selectedBytes = null
         textAtFileSelection = null
@@ -63,9 +79,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
         finishInOrderInitialized = false
         alreadyAttempted = false
         attemptSource = null
-        nativeStartedAttempt = false
-        reviewedAttempt = null
-        submittedPlan = null
+        attemptTicket = null
         outcome = null
         uncertain = false
         verifiedHash = null

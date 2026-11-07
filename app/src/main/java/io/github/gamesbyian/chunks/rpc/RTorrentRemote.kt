@@ -120,6 +120,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * username. A challenged-and-accepted read is stronger transport evidence,
      * but a reverse proxy may still authenticate a different principal.
      */
+    /** Exact credential scope that created this transport, including numbered route. */
+    internal fun addAccountScope(): String =
+        io.github.gamesbyian.chunks.RemoteVerifiedUiIdentity.aliasScopeOf(auth)
+
     internal fun readAuthenticationEvidence(): RemoteReadAuthEvidence =
         if (acceptedReadChallenge) RemoteReadAuthEvidence.READ_CHALLENGE_ACCEPTED
         else RemoteReadAuthEvidence.NO_READ_CHALLENGE
