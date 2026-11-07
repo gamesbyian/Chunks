@@ -85,7 +85,10 @@ internal class TransferMoveStore(context: Context) {
     @Synchronized
     fun save(record: TransferMove.Record): Boolean = synchronized(JOURNAL_LOCK) {
         try {
+            val scopedPresent = prefs.contains(scopedKey(record))
             val previous = get(record.direction, record.infoHash, record.serverScopeDigest)
+            // Never replace a corrupt existing scoped journal: its attempted
+            // write and recovery state are unknown until explicitly repaired.
             // A replacement source generation/name/directory cannot silently
             // take over an unresolved journal for the same account and hash.
             // Fresh source re-observation must precede another removal attempt.
@@ -96,7 +99,7 @@ internal class TransferMoveStore(context: Context) {
                 (previous.stage == Stage.SOURCE_REMOVAL_UNCERTAIN &&
                     record.stage in setOf(Stage.AWAITING_TARGET, Stage.SOURCE_REMOVAL_REQUESTED))
             )
-            if (clobbers) false else {
+            if (clobbers || (scopedPresent && previous == null)) false else {
                 val old = prefs.getString(legacyKey(record.direction, record.infoHash), null)
                     ?.let(TransferMove::decode)
                 val edit = prefs.edit().putString(scopedKey(record), record.encode())
