@@ -269,6 +269,55 @@ class RemoteAddSessionContinuityTest {
         } finally { release.countDown(); server.stop(0) }
     }
 
+    @Test fun registeredPeerlessJobRequiresExplicitUserAcknowledgementBeforeNextRemoteAdd() {
+        val endpoint = "http://127.0.0.1:9/RPC2"
+        val account = endpoint + "\u0000"
+        val oldHash = "ab".repeat(20)
+        val oldSource = "magnet:?xt=urn:btih:$oldHash"
+        val newSource = mutableStateOf("magnet:?xt=urn:btih:" + "cd".repeat(20))
+        val session = RemoteAddSession(account, "/srv")
+        val target = io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedServer(account)
+        val intent = io.github.gamesbyian.chunks.model.UniversalAddIntent(
+            io.github.gamesbyian.chunks.model.UniversalAddSource.magnet(oldSource, oldHash),
+            target, io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerCustom("/srv"),
+            startWhenAdded = true, allowArtwork = true)
+        assertTrue(session.coordinator.review(intent,
+            io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(target.environment),
+            io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE).accepted)
+        assertTrue(session.coordinator.authorizeByUser())
+        val ticket = requireNotNull(session.coordinator.beginSubmission(1000L))
+        session.coordinator.reconcileExactSession(ticket,
+            io.github.gamesbyian.chunks.model.UniversalAddCoordinator.ExactSessionObservation(
+                target.environment, oldHash, 1001L, true, true, null, false))
+        session.attemptTicket = ticket
+        session.attemptSource = oldSource
+        session.alreadyAttempted = true
+        session.uncertain = true
+        var mutationCalls = 0
+        rule.setContent { ChunksTheme { Surface {
+            VerifiedAddScreen(RTorrentRemote(RemoteCredentials(endpoint, "", "")),
+                newSource.value, "/srv", { newSource.value = it }, {},
+                onBack = {}, onComplete = {},
+                onMutationStarted = { mutationCalls++; true }, onMutationSettled = {},
+                finishInOrderScope = account, session = session)
+        } } }
+        reveal("Acknowledge registered job; Start unverified")
+        rule.onNodeWithText("Acknowledge registered job; Start unverified").assertIsEnabled()
+        rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
+        assertEquals(io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
+            session.coordinator.phase)
+        rule.onNodeWithText("Acknowledge registered job; Start unverified").performClick()
+        rule.waitForIdle()
+        assertEquals(io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.EMPTY,
+            session.coordinator.phase)
+        assertFalse(session.alreadyAttempted)
+        assertNull(session.attemptTicket)
+        assertEquals("New shared source must be preserved", "cd".repeat(20),
+            newSource.value.substringAfter("urn:btih:"))
+        assertEquals("Explicit acknowledgement did not authorize another RPC", 0, mutationCalls)
+        reveal("Review Add")
+    }
+
     @Test(expected = IllegalArgumentException::class)
     fun anotherOpaqueAccountCannotBorrowAttemptedReview() {
         val endpoint = "http://127.0.0.1:9/RPC2"

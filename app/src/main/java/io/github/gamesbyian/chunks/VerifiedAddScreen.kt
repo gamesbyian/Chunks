@@ -714,15 +714,22 @@ fun VerifiedAddScreen(
                                             enableRemoteFinishInOrderAfterAdd(
                                                 context, remote, orderScope, hash)
                                         }
+                                    // Record the evidence's acquisition order
+                                    // before any suspend/RPC. Translating a late
+                                    // response with the completion time could
+                                    // make an older read overwrite a newer one.
+                                    val submissionReadStartedAt = System.currentTimeMillis()
                                     val execution = adapter.submit(
                                         ticket, prioritiesBeforeStart = orderScope != null,
                                         onVerifiedStoppedBeforeStart = priorityCallback)
                                     // A second Start in priority mode verifies active
                                     // state, but only this read-only pass verifies Place
                                     // after that second mutation as well.
-                                    val result = if (orderScope != null &&
-                                        execution.result is RemoteAddAndStart.Started)
-                                        adapter.reconcile(ticket) else execution.result
+                                    val (result, evidenceReadStartedAt) = if (orderScope != null &&
+                                        execution.result is RemoteAddAndStart.Started) {
+                                        val at = System.currentTimeMillis()
+                                        adapter.reconcile(ticket) to at
+                                    } else execution.result to submissionReadStartedAt
                                     val orderNote = execution.orderNote
                                     val existingWithoutWrite = result is RemoteAddAndStart.AddedStopped &&
                                         result.result is RemoteAddOutcome.AlreadyPresent
@@ -733,7 +740,8 @@ fun VerifiedAddScreen(
                                         // getters have proved the command's result,
                                         // even for a job hidden from the main view.
                                         adapter.exactObservation(
-                                            ticket, result, newRegistrationVerified = true
+                                            ticket, result, newRegistrationVerified = true,
+                                            observedAtEpochMillis = evidenceReadStartedAt
                                         )?.let { exact ->
                                             draft.coordinator.reconcileExactSession(ticket, exact)
                                         }
@@ -851,11 +859,15 @@ fun VerifiedAddScreen(
             draft.coordinator.phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
         val addedByThisAttempt =
             draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED
+        val registeredStartUnverified =
+            draft.coordinator.phase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED
         if (alreadyAttempted && (initialTorrent != null ||
                 (magnet.isNotBlank() && magnet != draft.attemptSource))) item {
             Text(when {
                 exactSessionConfirmed ->
                     "A new source is waiting. Acknowledge this confirmed server session before reviewing it."
+                registeredStartUnverified ->
+                    "A new source is waiting. The server confirms the prior job and Place, but not Start. Acknowledge that incomplete result first."
                 addedByThisAttempt && !uncertain ->
                     "A new source is waiting. Choose Start another Add to review it."
                 else ->
@@ -870,8 +882,18 @@ fun VerifiedAddScreen(
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-        if (verifiedHash != null &&
-            (exactSessionConfirmed || (addedByThisAttempt && !uncertain))) item {
+        if (registeredStartUnverified) item {
+            Text(
+                "rTorrent confirms this exact transfer and its reviewed destination. " +
+                    "Requested Start is still unverified; metadata or peers may be pending. " +
+                    "Chunks cannot prove who registered the job after the lost reply. " +
+                    "Acknowledging permits a fresh review without replaying Add or Start.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        if (registeredStartUnverified ||
+            (verifiedHash != null &&
+                (exactSessionConfirmed || (addedByThisAttempt && !uncertain)))) item {
             OutlinedButton(onClick = {
                 val oldSource = draft.attemptSource
                 // The single explicit click acknowledges a confirmed session
@@ -885,9 +907,11 @@ fun VerifiedAddScreen(
                 }
             }, enabled = !submitting && !rechecking && !choosing && !linkFetching,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
-                Text(if (exactSessionConfirmed)
-                    "Acknowledge session and start another Add"
-                else "Start another Add")
+                Text(when {
+                    registeredStartUnverified -> "Acknowledge registered job; Start unverified"
+                    exactSessionConfirmed -> "Acknowledge session and start another Add"
+                    else -> "Start another Add"
+                })
             }
         }
         if (alreadyAttempted && attemptedTicket != null) {
@@ -901,6 +925,10 @@ fun VerifiedAddScreen(
                             try {
                                 val adapter = RemoteUniversalAddAdapter(remote)
                                 val reviewedPlan = adapter.planFor(ticket)
+                                // Preserve read REQUEST order, never response
+                                // completion order: late RPC A must not look
+                                // fresher than a completed newer RPC B.
+                                val readStartedAt = System.currentTimeMillis()
                                 val checkedOutcome = adapter.reconcile(ticket)
                                 if (ticket.intent.startWhenAdded) {
                                     // This original Start intent also covers priority-
@@ -940,10 +968,26 @@ fun VerifiedAddScreen(
                                 // registered it remains unknown. This permits
                                 // an explicit next draft without replaying Add.
                                 val exact = adapter.exactObservation(
-                                    ticket, checkedOutcome, newRegistrationVerified = false)
-                                if (exact != null)
+                                    ticket, checkedOutcome, newRegistrationVerified = false,
+                                    observedAtEpochMillis = readStartedAt)
+                                if (exact != null) {
                                     draft.coordinator.reconcileExactSession(ticket, exact)
-                                else draft.coordinator.requireReadback(ticket)
+                                } else {
+                                    // A magnet may exist at the exact reviewed
+                                    // Place before rTorrent can prove active
+                                    // payload Start. Independently verify
+                                    // identity+Place, never use a mere
+                                    // progress.registered hint.
+                                    val registered = if (checkedOutcome is RemoteAddAndStart.StartNotVerified)
+                                        adapter.registeredJobWithUnverifiedStart(
+                                            ticket, observedAtEpochMillis = readStartedAt) else null
+                                    if (registered != null) {
+                                        draft.coordinator.reconcileExactSession(ticket, registered)
+                                        if (draft.coordinator.phase ==
+                                            UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
+                                            outcome = "The exact server job and Place are confirmed, but requested Start is unverified. You may explicitly acknowledge this incomplete result; no Add or Start was resent."
+                                    } else draft.coordinator.requireReadback(ticket)
+                                }
                             } catch (cancel: kotlinx.coroutines.CancellationException) {
                                 throw cancel
                             } catch (_: Exception) {

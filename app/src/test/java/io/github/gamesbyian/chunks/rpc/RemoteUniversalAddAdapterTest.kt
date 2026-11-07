@@ -4,6 +4,14 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withTimeout
 import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.model.EnvironmentCapabilities
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
@@ -81,6 +89,7 @@ class RemoteUniversalAddAdapterTest {
         observedDirectory: String = place,
         unauthorized: Boolean = false,
         hiddenFromMain: Boolean = false,
+        observedStarted: Boolean = start,
         body: suspend (
             RemoteUniversalAddAdapter, UniversalAddCoordinator.Ticket,
             MutableList<String>, () -> RTorrentRemote
@@ -111,13 +120,13 @@ class RemoteUniversalAddAdapterTest {
                 }
             }
             val response = when (method) {
-                "d.multicall2" -> if (loaded && !hiddenFromMain) row(if (start) 1 else 0, observedDirectory)
+                "d.multicall2" -> if (loaded && !hiddenFromMain) row(if (observedStarted) 1 else 0, observedDirectory)
                     else "<value><array><data></data></array></value>"
                 "d.name" -> value("Sample")
                 "d.hash" -> value(hash)
                 "d.directory" -> value(observedDirectory)
                 "d.is_multi_file" -> number(0)
-                "d.state", "d.is_active" -> number(if (start) 1 else 0)
+                "d.state", "d.is_active" -> number(if (observedStarted) 1 else 0)
                 "load.start", "load.verbose" -> number(0)
                 else -> throw AssertionError("Unexpected rTorrent RPC: $method")
             }
@@ -331,6 +340,106 @@ class RemoteUniversalAddAdapterTest {
             val newTicket = requireNotNull(coordinator.beginSubmission(1002L))
             assertNotSame(firstTicket, newTicket)
             assertTrue(methods.isEmpty())
+        }
+
+    @Test fun lostAckPeerlessMagnetCanAcknowledgeRegisteredPlaceWithoutClaimingStart() =
+        withFixture(start = true, observedStarted = false, lostAck = true, hiddenFromMain = true) {
+                adapter, approved, methods, reconnect ->
+            assertTrue(adapter.submit(approved).result is RemoteAddAndStart.StartNotVerified)
+            val recovery = RemoteUniversalAddAdapter(reconnect())
+            assertTrue(recovery.reconcile(approved) is RemoteAddAndStart.StartNotVerified)
+            val observed = requireNotNull(recovery.registeredJobWithUnverifiedStart(approved, 1200L))
+            assertEquals(true, observed.registered)
+            assertEquals(true, observed.reviewedPlaceVerified)
+            assertNull("Peerless metadata cannot prove Start", observed.started)
+            assertFalse("A lost reply cannot prove which client wrote the job", observed.newRegistrationVerified)
+
+            val coordinator = UniversalAddCoordinator()
+            val intent = approved.intent
+            assertTrue(coordinator.review(intent,
+                EnvironmentCapabilities.unprobed(intent.target.environment),
+                EnvironmentAvailability.LIVE).accepted)
+            assertTrue(coordinator.authorizeByUser())
+            val ticket = requireNotNull(coordinator.beginSubmission(1000L))
+            assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+                coordinator.reconcileExactSession(ticket, observed))
+            assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, coordinator.phase)
+            assertFalse(coordinator.acknowledgeExactSession())
+            assertFalse(coordinator.finishVerified())
+            assertTrue(coordinator.acknowledgeObservedJob())
+            assertEquals(UniversalAddCoordinator.Phase.EMPTY, coordinator.phase)
+            assertEquals(1, methods.count { it == "load.start" })
+            assertTrue(methods.none { it == "d.start" || it == "load.verbose" || it == "d.resume" })
+        }
+
+    @Test fun wrongPlaceCannotUnlockRegisteredPeerlessRecovery() =
+        withFixture(start = true, observedStarted = false, lostAck = true,
+            observedDirectory = "/wrong-place") { adapter, approved, methods, reconnect ->
+            assertTrue(adapter.submit(approved).result is RemoteAddAndStart.StartNotVerified)
+            assertNull(RemoteUniversalAddAdapter(reconnect())
+                .registeredJobWithUnverifiedStart(approved))
+            assertEquals(1, methods.count { it == "load.start" })
+            assertTrue(methods.none { it == "d.start" })
+        }
+
+    @Test fun slowerEarlierReadKeepsEarlierAcquisitionTimestampThanNewerCompletedRead() =
+        runBlocking {
+            val firstRequestEntered = CountDownLatch(1)
+            val releaseFirst = CountDownLatch(1)
+            val firstNameRead = AtomicBoolean(true)
+            val executor = Executors.newFixedThreadPool(4)
+            val server = HttpServer.create(
+                InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+            server.executor = executor
+            server.createContext("/RPC2") { exchange ->
+                val xml = exchange.requestBody.bufferedReader().use { it.readText() }
+                val method = Regex("<methodName>([^<]+)</methodName>")
+                    .find(xml)?.groupValues?.get(1).orEmpty()
+                val response = when (method) {
+                    "d.name" -> {
+                        if (firstNameRead.compareAndSet(true, false)) {
+                            firstRequestEntered.countDown()
+                            // A read begun earlier deliberately returns last.
+                            releaseFirst.await(10, TimeUnit.SECONDS)
+                        }
+                        value("Sample")
+                    }
+                    "d.hash" -> value(hash)
+                    "d.directory" -> value(place)
+                    "d.is_multi_file" -> number(0)
+                    else -> throw AssertionError("Unexpected recovery RPC: $method")
+                }
+                respond(exchange, response)
+            }
+            server.start()
+            try {
+                val endpoint = "http://127.0.0.1:${server.address.port}/RPC2"
+                val remote = RTorrentRemote(RemoteCredentials(endpoint, "", ""))
+                val approved = ticket(remote.addAccountScope())
+                val adapter = RemoteUniversalAddAdapter(remote)
+                val earlier = async(Dispatchers.IO) {
+                    adapter.registeredJobWithUnverifiedStart(approved)
+                }
+                assertTrue("First read must enter the server",
+                    firstRequestEntered.await(5, TimeUnit.SECONDS))
+                // Different wall-clock milliseconds avoid conflating ties with
+                // the model's future generation-order contract.
+                delay(50L)
+                val later = async(Dispatchers.IO) {
+                    adapter.registeredJobWithUnverifiedStart(approved)
+                }
+                val newer = requireNotNull(withTimeout(9_000L) { later.await() })
+                assertEquals(true, newer.reviewedPlaceVerified)
+                releaseFirst.countDown()
+                val older = requireNotNull(withTimeout(9_000L) { earlier.await() })
+                assertEquals(true, older.reviewedPlaceVerified)
+                assertTrue("Earlier started read finishing last must retain older order",
+                    older.observedAtEpochMillis < newer.observedAtEpochMillis)
+            } finally {
+                releaseFirst.countDown()
+                server.stop(0)
+                executor.shutdownNow()
+            }
         }
 
     @Test fun priorityModeCannotBeAppliedToMagnetOrStoppedOnlyAdd() =

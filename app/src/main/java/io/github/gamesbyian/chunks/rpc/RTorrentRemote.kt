@@ -623,6 +623,31 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     /**
+     * Confirm only the exact registered hash and reviewed parent Place.
+     * Used after a lost Start reply when a peerless magnet may be registered
+     * but not yet have metadata or active payload. This is deliberately less
+     * than verification of requested Start and cannot attribute who added it.
+     *
+     * Do not use readAddProgress.registered here: metadata promotion can
+     * momentarily expose a name without a stable/verified directory. The hash
+     * must agree both before and after the existing strict folder readback.
+     * A mismatched folder, vanished hash or fault cannot unlock a new Add.
+     */
+    internal suspend fun readRegisteredAddAtReviewedPlace(plan: StoppedRemoteAddPlan): Boolean {
+        val hash = plan.expectedInfoHash
+        val name = lookupName(hash) ?: return false
+        suspend fun guardHash() {
+            check((call("d.hash", listOf(hash)) as? String)?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent session identity changed during Add recovery"
+            }
+        }
+        guardHash()
+        val reviewedPlaceVerified = readVerifiedAddDirectory(hash, plan.destination, name) != null
+        guardHash()
+        return reviewedPlaceVerified
+    }
+
+    /**
      * Bounded READ-ONLY post-load polling, never a second load or lifecycle
      * command. In-flight hashing or a server policy can delay activation.
      * Unknown readback must remain non-verified, with explicit user refresh.
