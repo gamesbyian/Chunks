@@ -215,7 +215,7 @@ internal fun TransferMoveControl(
             record = next.record; message = next.message; true
         } else { message = "Chunks could not save the Move journal. Nothing was removed."; false }
         is TransferMove.Next.Done -> {
-            if (record?.let(store::remove) == true) {
+            if (record?.let { store.remove(it) } == true) {
                 record = null; message = next.message; true
             } else {
                 message = "The original job was checked, but the Move journal could not be cleared. Recheck it; no mutation will be repeated."
