@@ -182,7 +182,7 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertEqual("passed", result["result"])
         self.assertEqual(1, result["sources"]["magnet"]["phase_counts"]["metadata-already-resolved"])
         self.assertEqual(0, result["sources"]["magnet2"]["phase_counts"]["metadata-already-resolved"])
-        self.assertEqual(["metadata-already-resolved"], result["app_stage_evidence"])
+        self.assertEqual(["metadata-already-resolved", "combined-details"], result["app_stage_evidence"])
         self.assertTrue(result["sources"]["magnet"]["piece_verified"])
         self.assertNotEqual("passed", parse(data.replace("chunks_real_add_stage=magnet-peer-progress",
                                                        "arbitrary_early_metadata=1"), 0, env)["result"])
