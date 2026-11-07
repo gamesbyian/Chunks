@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.util.Base64
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
@@ -314,6 +315,56 @@ internal class MainActivityRealMagnetJourney(
             type("Search names, aliases, folders or hashes", "")
             rule.waitUntil(30_000) { visible("+ Add torrent") }
         }
+        // Exercise an entire real, authenticated rTorrent Add -> Transfers ->
+        // Combined -> read-only Details -> Transfers -> Stop/Start -> Remove
+        // chain once per installed journey. Separate two-server coverage also
+        // checks identity collisions on different authenticated accounts.
+        var combinedDetailsVerified = false
+        fun inspectCombinedDetails(hash: String, displayName: String, expectedPlace: String) {
+            val original = requireNotNull(row(hash))
+            val originalHashes = readOnly { remote.listTransfers("main").map { it.hash.lowercase() }.toSet() }
+            click("All environments…")
+            rule.waitUntil(45_000) { visible("All environments") }
+            // Combined asynchronously loads its phone/remote privacy and
+            // inventory. The title appearing does not prove that its exact
+            // remote transfer row has been composed yet.
+            val rowMatch = hasContentDescription("Expand $displayName on", substring = true)
+            rule.waitUntil(45_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(rowMatch)
+                    true
+                }.getOrDefault(false)
+            }
+            rule.onNode(rowMatch).performClick()
+            val detailMatch = hasContentDescription("All details for $displayName on", substring = true)
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(detailMatch)
+            rule.onNode(detailMatch).performClick()
+            rule.waitUntil(30_000) {
+                visible("Transfer details") && visible("Environment:")
+            }
+            assertFalse("Signed-in rTorrent detail opened phone instead",
+                visible("Environment: On this phone"))
+            rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+            assertTrue("Combined Details lost the exact authenticated rTorrent hash",
+                visible("Exact infohash: $hash"))
+            assertTrue("Combined Details changed the observed remote Place",
+                visible("Save folder reported by engine: $expectedPlace"))
+            // Reading a transfer never grants a Start/Stop/Remove authority,
+            // changes its target, or performs any write.
+            rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
+            rule.waitUntil(30_000) { visible("All environments") }
+            click("Back")
+            rule.waitUntil(30_000) { visible("+ Add torrent") }
+            val after = requireNotNull(row(hash))
+            assertTrue("Details altered authenticated source Place", after.directory == original.directory)
+            assertTrue("Details altered authenticated transfer name", after.name == original.name)
+            assertTrue("Details altered remote Start state", after.started == original.started)
+            assertEquals("Details changed a remote session without authorization",
+                originalHashes, readOnly { remote.listTransfers("main").map { it.hash.lowercase() }.toSet() })
+            // This bounded receipt is emitted only AFTER the exact read-only
+            // Details, return and nonmutation checks have all passed.
+            report("chunks_real_add_app_stage", "combined-details")
+        }
         for (group in groups) {
           var groupPassed = false
           for (label in group) {
@@ -431,6 +482,10 @@ internal class MainActivityRealMagnetJourney(
                 scroll(preview.name)
                 assertTrue("Actual Transfers lost original metadata name", visible(preview.name))
                 assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
+                if (!combinedDetailsVerified) {
+                    inspectCombinedDetails(hash, preview.name, payload.directory)
+                    combinedDetailsVerified = true
+                }
                 lifecycle(hash, false)
                 stage(label, "stopped")
                 val stopped = readOnly { remote.readTrafficSample(hash) }
@@ -472,6 +527,7 @@ internal class MainActivityRealMagnetJourney(
           }
           assertTrue("All genuine candidates in a publisher group were unavailable or precompleted", groupPassed)
         }
+        assertTrue("No real added rTorrent job completed Combined Details acceptance", combinedDetailsVerified)
         val run = requireNotNull(arg("chunks_acceptance_run"))
         require(run.matches(Regex("[0-9]{5,20}")))
         val negative = MessageDigest.getInstance("SHA-1").digest("chunks-peerless-$run".toByteArray())
