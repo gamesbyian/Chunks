@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.os.SystemClock
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -18,6 +19,8 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -53,6 +56,19 @@ class ClipboardPrefillInstrumentedTest {
             runCatching { saveDiagnostic("clipboard-diagnostic-" + what.replace(Regex("[^a-z]+"), "-") + diagnosis) }
             throw AssertionError("Waited for $what; screen showed: $shown", timeout)
         }
+    }
+
+    /** Only an unrelated emulator launcher ANR may be dismissed here.
+     *
+     * A system-process ANR dialog takes window focus from a healthy test
+     * Activity. It is not an application Add/authorization result. Never
+     * dismiss a Chunks ANR, a permission prompt or an arbitrary overlay,
+     * and never count this recovery as a passed clipboard interaction.
+     */
+    private fun dismissExactLauncherAnr(device: UiDevice): Boolean {
+        if (device.findObject(By.text("Pixel Launcher isn't responding")) == null) return false
+        val wait = device.findObject(By.text("Wait")) ?: return false
+        return runCatching { wait.click(); true }.getOrDefault(false)
     }
 
     private fun saveDiagnostic(name: String) {
@@ -103,7 +119,25 @@ class ClipboardPrefillInstrumentedTest {
             rule.onNode(hideAdd).performScrollTo().performClick()
             rule.waitForIdle()
         }
-        waitOrExplain("foreground window focus", 15_000) { rule.activity.hasWindowFocus() }
+        // Actual API35 GHA captures on two unrelated source heads show the
+        // *system launcher* ANR overlay stealing foreground focus. Before
+        // asserting clipboard availability, permit one precise external
+        // "Wait" dismissal. Recheck real Chunks focus afterward. Never
+        // override the enabled/usable clipboard or positive UI assertions.
+        val device = UiDevice.getInstance(
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation())
+        var launcherDialogDismissed = false
+        var nextDialogProbeAt = 0L
+        waitOrExplain("foreground window focus", 15_000) {
+            if (rule.activity.hasWindowFocus()) true else {
+                val now = SystemClock.elapsedRealtime()
+                if (!launcherDialogDismissed && now >= nextDialogProbeAt) {
+                    nextDialogProbeAt = now + 500L
+                    launcherDialogDismissed = dismissExactLauncherAnr(device)
+                }
+                false
+            }
+        }
         rule.runOnUiThread {
             org.junit.Assert.assertTrue("Clipboard prefill must be enabled for this journey", ClipboardMagnetPrefill.enabled(rule.activity))
             (rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
