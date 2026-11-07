@@ -105,8 +105,11 @@ class TransferMoveStoreAccountScopeTest {
         // A corrupt scoped value cannot resurrect the legacy job for a write.
         assertTrue(prefs.edit().putString(scopedKey, "corrupt").commit())
         assertNull(store.get(direction, hash, scopeA))
+        assertNull(store.get(direction, hash))
+        assertTrue(store.all(direction).isEmpty())
         assertFalse(store.remove(old))
         assertTrue(prefs.contains(scopedKey))
+        assertTrue(prefs.contains(staleKey))
     }
 
     @Test fun sameAccountCannotReplaceUnresolvedMoveOrResendRemovalBlindly() {
