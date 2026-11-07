@@ -83,20 +83,35 @@ internal class TransferMoveStore(context: Context) {
     }
 
     @Synchronized
-    fun save(record: TransferMove.Record): Boolean = try {
-        val old = prefs.getString(legacyKey(record.direction, record.infoHash), null)
-            ?.let(TransferMove::decode)
-        val edit = prefs.edit().putString(scopedKey(record), record.encode())
-        // Move the matching legacy entry in one committed transaction.
-        // An older entry belonging to another account is never overwritten.
-        if (exactlyMatches(old, record.direction, record.infoHash, record.serverScopeDigest))
-            edit.remove(legacyKey(record.direction, record.infoHash))
-        edit.commit()
-    } catch (_: RuntimeException) { false }
+    fun save(record: TransferMove.Record): Boolean = synchronized(JOURNAL_LOCK) {
+        try {
+            val previous = get(record.direction, record.infoHash, record.serverScopeDigest)
+            // A replacement source generation/name/directory cannot silently
+            // take over an unresolved journal for the same account and hash.
+            // Fresh source re-observation must precede another removal attempt.
+            val clobbers = previous != null && (
+                previous.name != record.name ||
+                previous.sourceReviewToken != record.sourceReviewToken ||
+                previous.sourceDirectory != record.sourceDirectory ||
+                (previous.stage == Stage.SOURCE_REMOVAL_UNCERTAIN &&
+                    record.stage in setOf(Stage.AWAITING_TARGET, Stage.SOURCE_REMOVAL_REQUESTED))
+            )
+            if (clobbers) false else {
+                val old = prefs.getString(legacyKey(record.direction, record.infoHash), null)
+                    ?.let(TransferMove::decode)
+                val edit = prefs.edit().putString(scopedKey(record), record.encode())
+                // Matching legacy record is retired atomically with its new key.
+                // Another account's legacy journal remains entirely untouched.
+                if (exactlyMatches(old, record.direction, record.infoHash, record.serverScopeDigest))
+                    edit.remove(legacyKey(record.direction, record.infoHash))
+                edit.commit()
+            }
+        } catch (_: RuntimeException) { false }
+    }
 
     /** Forget one exact journal only, never another account's same-hash job. */
     @Synchronized
-    fun remove(record: TransferMove.Record): Boolean = try {
+    fun remove(record: TransferMove.Record): Boolean = synchronized(JOURNAL_LOCK) { try {
         // A stale callback cannot discard a newer stage or a replacement
         // source review, even within the same exact server/hash identity.
         if (get(record.direction, record.infoHash, record.serverScopeDigest) !=
@@ -109,15 +124,17 @@ internal class TransferMoveStore(context: Context) {
                 edit.remove(legacyKey(record.direction, record.infoHash))
             edit.commit()
         }
-    } catch (_: RuntimeException) { false }
+    } catch (_: RuntimeException) { false } }
 
     /** Compatibility for existing batch callers until they pass exact records.
      * Multiple accounts sharing a hash must fail closed, not guess which one. */
     @Synchronized
     fun remove(direction: Direction, infoHash: String): Boolean {
-        val only = all(direction).filter { it.infoHash.equals(infoHash, ignoreCase = true) }
-            .singleOrNull() ?: return false
-        return remove(only)
+        return synchronized(JOURNAL_LOCK) {
+            val only = all(direction).filter { it.infoHash.equals(infoHash, ignoreCase = true) }
+                .singleOrNull() ?: return@synchronized false
+            remove(only)
+        }
     }
 
     /** Enumerate every account's valid journal with exact-key precedence over
@@ -137,6 +154,10 @@ internal class TransferMoveStore(context: Context) {
     } catch (_: RuntimeException) { emptyList() }
 
     companion object {
+        // MainActivity and phone/Combined cards instantiate independent Store
+        // wrappers. Serialize read-modify-commit across those instances.
+        private val JOURNAL_LOCK = Any()
+
         /** Opaque identity of one rTorrent endpoint + account; the URL is not stored. */
         fun scopeDigest(aliasScope: String): String =
             MessageDigest.getInstance("SHA-256").digest(aliasScope.toByteArray(Charsets.UTF_8))
