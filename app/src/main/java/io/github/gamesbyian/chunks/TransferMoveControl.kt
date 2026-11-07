@@ -96,7 +96,8 @@ internal class TransferMoveStore(context: Context) {
     fun remove(record: TransferMove.Record): Boolean = try {
         // A stale callback cannot discard a newer stage or a replacement
         // source review, even within the same exact server/hash identity.
-        if (get(record.direction, record.infoHash, record.serverScopeDigest) != record) false
+        if (get(record.direction, record.infoHash, record.serverScopeDigest) !=
+            TransferMove.recovered(record)) false
         else {
             val old = prefs.getString(legacyKey(record.direction, record.infoHash), null)
                 ?.let(TransferMove::decode)
