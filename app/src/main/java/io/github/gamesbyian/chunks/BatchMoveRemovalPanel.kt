@@ -73,18 +73,33 @@ internal fun BatchMoveRemovalPanel(
                         onFinished("The destination server account changed. No original jobs were removed.")
                         return@Button
                     }
-                    if (!onStarted()) {
-                        onFinished("Another change is still settling. Nothing was removed; try again shortly.")
-                        return@Button
-                    }
                     working = true
-                    scope.launch {
+                    // Acquire and release the mutation lease inside the same
+                    // coroutine. An Activity/navigation disposal can cancel
+                    // this scope while remote/native removal is suspended;
+                    // cancellation must never strand the shared mutation gate.
+                    // UNDISPATCHED starts the exact-account preflight and
+                    // admission on the click stack, before navigation races.
+                    scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+                        var acquired = false
                         val report = try {
+                            if (!onStarted()) {
+                                onFinished("Another change is still settling. Nothing was removed; try again shortly.")
+                                return@launch
+                            }
+                            acquired = true
+                            // Return control to the click dispatcher before any
+                            // potentially blocking source/target observation.
+                            // Cancellation at this boundary still runs finally
+                            // and releases the acquired gate without a write.
+                            kotlinx.coroutines.yield()
                             BatchMoveRemoval.run(pending, observeTarget, removeSource, observeSource, save, forget)
                         } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                         catch (_: Exception) { null }
-                        working = false
-                        onSettled()
+                        finally {
+                            working = false
+                            if (acquired) onSettled()
+                        }
                         onFinished(if (report == null) "The batch removal stopped unexpectedly. Check each " +
                             "transfer's Move status; nothing is retried automatically."
                         else "${report.count(BatchMoveRemoval.Result.REMOVED) + report.count(BatchMoveRemoval.Result.REMOVED_JOURNAL_PENDING)} original $sourceLabel jobs verified absent " +

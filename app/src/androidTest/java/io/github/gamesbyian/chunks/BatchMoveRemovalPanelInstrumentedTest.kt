@@ -17,6 +17,8 @@ import io.github.gamesbyian.chunks.model.TransferMove.Observation
 import java.util.Collections
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -51,6 +53,48 @@ class BatchMoveRemovalPanelInstrumentedTest {
         rule.waitUntil(10_000) { finished.isNotEmpty() }
         assertEquals(listOf(moves[0].infoHash), removed.toList())
         assertTrue(finished.single().contains("1 original phone jobs verified absent"))
+    }
+
+    @Test fun cancelledInFlightRemovalStillReleasesSharedMutationLease() {
+        val moves = listOf(move(1, "Public one"), move(2, "Public two"))
+        val visible = mutableStateOf(true)
+        val acquired = AtomicInteger()
+        val settled = AtomicInteger()
+        val enteredRemoteMutation = AtomicBoolean(false)
+        val writes = AtomicInteger()
+        rule.setContent {
+            MaterialTheme {
+                if (visible.value) {
+                    Column(Modifier.verticalScroll(rememberScrollState())) {
+                        BatchMoveRemovalPanel(
+                            pending = moves, serverScopeDigest = "a".repeat(64),
+                            serverLabel = "seed.example", busy = false,
+                            observeTarget = { Observation.Present },
+                            removeSource = {
+                                writes.incrementAndGet()
+                                enteredRemoteMutation.set(true)
+                                kotlinx.coroutines.awaitCancellation()
+                            },
+                            observeSource = { Observation.Unknown },
+                            save = { true }, forget = { true },
+                            onFinished = {},
+                            onStarted = { acquired.incrementAndGet(); true },
+                            onSettled = { settled.incrementAndGet() }
+                        )
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("Remove 2 original phone jobs…").performClick()
+        rule.onNodeWithText("Remove original jobs").performScrollTo().performClick()
+        rule.waitUntil(10_000) { enteredRemoteMutation.get() }
+        // Navigation destroys the remembered coroutine scope while the
+        // source command has an unknown outcome. Do not resume that command.
+        rule.runOnUiThread { visible.value = false }
+        rule.waitUntil(10_000) { settled.get() == 1 }
+        assertEquals(1, acquired.get())
+        assertEquals(1, settled.get())
+        assertEquals("Cancellation must never replay a destructive request", 1, writes.get())
     }
 
     @Test fun accountSwitchInvalidatesPendingBatchRemovalConfirmation() {
