@@ -14,6 +14,8 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsPhoneAddJourneyInstrumentedTest.kt"
       - "tools/real_magnet_peer.py"
+      - "tools/export_disposable_peer_numeric.py"
+      - "tests/test_disposable_peer_numeric_export.py"
       - "tools/preload_disposable_magnet.py"
       - "tests/test_preload_disposable_magnet.py"
       - "tests/test_finish_installed_magnet_evidence.py"
