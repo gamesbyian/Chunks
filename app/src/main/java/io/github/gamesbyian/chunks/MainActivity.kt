@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.viewModels
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
@@ -117,7 +118,13 @@ private val Lime = ChunksColors.Green
 private val Coral = ChunksColors.Orange
 private val Blue = ChunksColors.Cyan
 
+internal class PhoneAddAttemptOwner : androidx.lifecycle.ViewModel() {
+    val session = PhoneAddAttemptSession()
+}
+
 class MainActivity : ComponentActivity() {
+    // Retained across Activity recreation, never persisted on process death.
+    private val phoneAddAttemptOwner: PhoneAddAttemptOwner by viewModels()
     private var incomingMagnet by mutableStateOf<String?>(null)
     private var incomingTorrent by mutableStateOf<Uri?>(null)
     private var incomingCreate by mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
@@ -157,7 +164,8 @@ class MainActivity : ComponentActivity() {
                         onIncomingMagnetConsumed = { incomingMagnet = null },
                         onIncomingTorrentConsumed = { incomingTorrent = null },
                         incomingCreate = incomingCreate,
-                        onIncomingCreateConsumed = { incomingCreate = null }
+                        onIncomingCreateConsumed = { incomingCreate = null },
+                        phoneAddAttemptSession = phoneAddAttemptOwner.session
                     )
                 }
                 }
@@ -227,7 +235,8 @@ internal fun ChunksApp(
     onIncomingMagnetConsumed: () -> Unit,
     onIncomingTorrentConsumed: () -> Unit,
     incomingCreate: io.github.gamesbyian.chunks.create.SharedCreateDocument.Request? = null,
-    onIncomingCreateConsumed: () -> Unit = {}
+    onIncomingCreateConsumed: () -> Unit = {},
+    phoneAddAttemptSession: PhoneAddAttemptSession? = null
 ) {
     val context = LocalContext.current
     val vault = remember(context) { RememberedRemoteLogin(context) }
@@ -325,6 +334,9 @@ internal fun ChunksApp(
     // A reviewed .torrent can include private tracker tokens. Keep its bytes above
     // the disposable phone route for navigation only; never use SavedState/Bundle.
     val phoneReviewedTorrent = remember { mutableStateOf<PendingLocalAdd?>(null) }
+    // Production passes a configuration-retained attempt owner; test-only
+    // standalone Compose callers have a process-only local fallback.
+    val activePhoneAddAttempt = phoneAddAttemptSession ?: remember { PhoneAddAttemptSession() }
     val addAutomaticArtwork = rememberSaveable { mutableStateOf(true) }
     val combinedListState = rememberLazyListState()
     // Combined search text, like the phone's: navigation state, not a preference.
@@ -763,6 +775,7 @@ internal fun ChunksApp(
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     addArtworkState = addAutomaticArtwork,
                     pendingAddState = phoneReviewedTorrent,
+                    phoneAddAttemptSession = activePhoneAddAttempt,
                     onBack = { leavePhone() },
                     onSeedingRules = { openFromPhone(Section.SEEDING) },
                     onMediaSettings = { openFromPhone(Section.MEDIA) },
@@ -1089,6 +1102,7 @@ internal fun ChunksApp(
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         addArtworkState = addAutomaticArtwork,
                         pendingAddState = phoneReviewedTorrent,
+                        phoneAddAttemptSession = activePhoneAddAttempt,
                         onBack = { leavePhone() },
                         onSeedingRules = { openFromPhone(Section.SEEDING) },
                         onMediaSettings = { openFromPhone(Section.MEDIA) },
