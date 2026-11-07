@@ -124,6 +124,21 @@ class PhoneUniversalAddAdapterTest {
         }
     }
 
+    @Test fun visibleAddEligibilityRequiresAnActuallyAcceptedFirstInventory() {
+        // Compose's initial empty list has stale=false before its first native
+        // observation. A tappable Add here would be rejected by the shared
+        // coordinator while leaving the UI looking as if Add was submitted.
+        assertFalse(PhoneUniversalAddAdapter.inventoryReadyForReview(false, false))
+        assertFalse(PhoneUniversalAddAdapter.inventoryReadyForReview(false, true))
+        assertFalse(PhoneUniversalAddAdapter.inventoryReadyForReview(true, true))
+        assertTrue(PhoneUniversalAddAdapter.inventoryReadyForReview(true, false))
+        val session = PhoneAddAttemptSession()
+        assertFalse(PhoneUniversalAddAdapter.review(session.coordinator, intent(),
+            inventoryConfirmed = false, inventoryStale = false).accepted)
+        assertEquals(UniversalAddCoordinator.Phase.EMPTY, session.coordinator.phase)
+        assertNull(session.attemptedTicket)
+    }
+
     @Test fun liveInventoryAndCurrentPlaceRequiredBeforeAnyAttempt() {
         val session = PhoneAddAttemptSession()
         assertFalse(PhoneUniversalAddAdapter.review(session.coordinator, intent(),

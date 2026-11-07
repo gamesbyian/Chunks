@@ -2248,7 +2248,7 @@ private fun TransfersScreen(
                         }
                     )
                     val serverDigest = TransferMoveStore.scopeDigest(aliasScope)
-                    val pendingServerMoves = remember(list, serverMoveRevision) {
+                    val pendingServerMoves = remember(list, serverMoveRevision, serverDigest) {
                         TransferMoveStore(context).all(TransferMove.Direction.SERVER_TO_PHONE).filter { record ->
                             record.stage == TransferMove.Stage.TARGET_VERIFIED &&
                                 record.serverScopeDigest == serverDigest &&
@@ -2258,7 +2258,8 @@ private fun TransfersScreen(
                         }
                     }
                     if (view == "main") BatchMoveRemovalPanel(
-                        pending = pendingServerMoves, serverLabel = "this phone", sourceLabel = "server",
+                        pending = pendingServerMoves, serverScopeDigest = serverDigest,
+                        serverLabel = "this phone", sourceLabel = "server",
                         busy = stale || loading,
                         observeTarget = { hash -> TransferMoveObservations.phone(hash) },
                         removeSource = { hash ->

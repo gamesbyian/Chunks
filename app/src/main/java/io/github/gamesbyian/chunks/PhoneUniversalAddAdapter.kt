@@ -91,12 +91,17 @@ internal object PhoneUniversalAddAdapter {
         )
     }
 
+    /** A first Compose empty list is not an observed empty native inventory.
+     * Keep the visible Add action and shared ticket authorization in sync. */
+    fun inventoryReadyForReview(observed: Boolean, stale: Boolean): Boolean =
+        observed && !stale
+
     /** A capability may refuse the review; it can never perform a mutation. */
     fun review(coordinator: UniversalAddCoordinator, intent: UniversalAddIntent,
                inventoryConfirmed: Boolean, inventoryStale: Boolean):
         UniversalAddCoordinator.ReviewDecision = coordinator.review(
             intent, EnvironmentCapabilities.phone(),
-            if (inventoryConfirmed && !inventoryStale) EnvironmentAvailability.LIVE
+            if (inventoryReadyForReview(inventoryConfirmed, inventoryStale)) EnvironmentAvailability.LIVE
             else EnvironmentAvailability.STALE
         )
 
