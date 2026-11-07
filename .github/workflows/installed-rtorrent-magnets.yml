@@ -18,6 +18,8 @@ on:
       - "tests/test_preload_disposable_magnet.py"
       - "tests/test_finish_installed_magnet_evidence.py"
       - "tools/installed_rtorrent_magnets.sh"
+      - "tools/verify_installed_apk_bytes.sh"
+      - "tests/test_installed_apk_identity.py"
       - "tools/installed_real_media.sh"
       - "tools/installed_rtorrent_with_optional_media.sh"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledRealMediaInstrumentedTest.kt"
@@ -96,6 +98,8 @@ jobs:
           bash -n tools/installed_real_media.sh tools/installed_rtorrent_with_optional_media.sh
           python3 -m py_compile tools/real_magnet_peer.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
+          bash -n tools/verify_installed_apk_bytes.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_apk_identity.py
       - name: Start genuine public-magnet metadata and payload peer
         run: |
           sudo timeout 180s apt-get update -qq
