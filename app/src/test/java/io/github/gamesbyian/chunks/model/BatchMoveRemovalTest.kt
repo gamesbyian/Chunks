@@ -18,6 +18,7 @@ class BatchMoveRemovalTest {
         val targetPresent = mutableSetOf<String>()
         val journal = mutableMapOf<String, TransferMove.Record>()
         val removals = mutableListOf<String>()
+        val completedJournalStages = mutableListOf<Stage>()
         var loseReplyFor: String? = null
     }
 
@@ -28,7 +29,7 @@ class BatchMoveRemovalTest {
             observeSource = { if (it == w.loseReplyFor) Observation.Unknown
                 else if (it in w.sourcePresent) Observation.Present else Observation.Absent },
             save = { w.journal[it.infoHash] = it; true },
-            forget = { w.journal -= it.infoHash })
+            forget = { w.completedJournalStages += it.stage; w.journal -= it.infoHash })
     }
 
     @Test fun removesOnlyWhereTargetIsReconfirmedAndJournalsFirst() {
@@ -43,6 +44,8 @@ class BatchMoveRemovalTest {
         assertTrue(moves[1].infoHash in w.sourcePresent)
         assertEquals(Stage.AWAITING_TARGET, w.journal[moves[1].infoHash]?.stage)
         assertFalse(moves[0].infoHash in w.journal)
+        assertEquals(listOf(Stage.SOURCE_REMOVAL_REQUESTED, Stage.SOURCE_REMOVAL_REQUESTED),
+            w.completedJournalStages)
     }
 
     @Test fun stopsAtFirstUnconfirmedRemovalWithoutRetrying() {
