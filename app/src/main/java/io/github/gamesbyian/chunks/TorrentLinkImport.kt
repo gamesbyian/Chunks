@@ -134,8 +134,17 @@ internal class TorrentLinkFetcher(
     fun fetch(start: TorrentLinkCheck.Fetchable): TorrentLinkResult {
         var uri = start.uri
         repeat(maxRedirects + 1) {
-            if (!uri.scheme.equals("https", ignoreCase = true)) return TorrentLinkResult.Refused(TorrentLinkResult.DOWNGRADE)
-            val host = uri.host ?: return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
+            if (!uri.scheme.equals("https", ignoreCase = true))
+                return TorrentLinkResult.Refused(TorrentLinkResult.DOWNGRADE)
+            // A redirect is a new source chosen by a remote site, not a user
+            // waiver of the original HTTPS-only/credential/length/port policy.
+            // Reuse the exact admission check on EVERY hop before DNS or I/O.
+            val hop = when (val check = TorrentLinkCheck.inspect(uri.toString())) {
+                is TorrentLinkCheck.Fetchable -> check
+                is TorrentLinkCheck.Problem -> return TorrentLinkResult.Refused(check.message)
+                TorrentLinkCheck.NotALink -> return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
+            }
+            val host = hop.uri.host ?: return TorrentLinkResult.Refused(TorrentLinkResult.UNEXPECTED)
             val addresses = try { resolve(host) } catch (_: UnknownHostException) {
                 return TorrentLinkResult.Refused(TorrentLinkResult.NO_HOST)
             } catch (_: SecurityException) {

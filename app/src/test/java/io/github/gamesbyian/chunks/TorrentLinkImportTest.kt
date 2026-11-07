@@ -98,6 +98,33 @@ class TorrentLinkImportTest {
         assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.TOO_MANY_REDIRECTS), loop)
     }
 
+    @Test fun everyRedirectReappliesCredentialPortAndBoundedUrlAdmission() {
+        val first = "https://archive.org/download/first.torrent"
+        fun blocked(location: String, expected: String) {
+            opened.clear()
+            val result = fetcher(mapOf(
+                first to { u -> FakeConnection(u, 302, mapOf("Location" to location)) }
+            )).fetch(link(first))
+            assertEquals(TorrentLinkResult.Refused(expected), result)
+            assertEquals("A rejected redirect must not open its target", listOf(first), opened)
+        }
+
+        blocked("https://user:secret@cdn.example.net/next.torrent", TorrentLinkCheck.CREDENTIALS)
+        blocked("https://cdn.example.net:0/next.torrent", TorrentLinkCheck.UNSUPPORTED)
+        blocked("https://cdn.example.net/" + "x".repeat(4_100) + ".torrent",
+            TorrentLinkCheck.UNSUPPORTED)
+        blocked("http://cdn.example.net/next.torrent", TorrentLinkResult.DOWNGRADE)
+
+        opened.clear()
+        val next = "https://archive.org/verified.torrent"
+        val accepted = fetcher(mapOf(
+            first to { u -> FakeConnection(u, 302, mapOf("Location" to "../verified.torrent")) },
+            next to { u -> FakeConnection(u, 200, body = torrent) }
+        )).fetch(link(first))
+        assertTrue("A safe same-site relative redirect still resolves", accepted is TorrentLinkResult.Fetched)
+        assertEquals(listOf(first, next), opened)
+    }
+
     @Test fun aHostThatResolvesPrivatelyIsNeverOpened() {
         val url = "https://intranet.example/a.torrent"
         val result = fetcher(emptyMap(), dns = mapOf("intranet.example" to
