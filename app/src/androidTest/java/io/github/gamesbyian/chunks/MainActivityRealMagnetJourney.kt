@@ -361,6 +361,9 @@ internal class MainActivityRealMagnetJourney(
             assertTrue("Details altered remote Start state", after.started == original.started)
             assertEquals("Details changed a remote session without authorization",
                 originalHashes, readOnly { remote.listTransfers("main").map { it.hash.lowercase() }.toSet() })
+            // This bounded receipt is emitted only AFTER the exact read-only
+            // Details, return and nonmutation checks have all passed.
+            report("chunks_real_add_app_stage", "combined-details")
         }
         for (group in groups) {
           var groupPassed = false
