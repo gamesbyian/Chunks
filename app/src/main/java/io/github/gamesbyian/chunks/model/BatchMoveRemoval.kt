@@ -16,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 internal object BatchMoveRemoval {
     enum class Result(val label: String) {
         REMOVED("original job removed; files kept"),
+        REMOVED_JOURNAL_PENDING("original job independently absent; journal cleanup failed; check again"),
         TARGET_NOT_CONFIRMED("kept: the new job is no longer confirmed on the destination"),
         UNCONFIRMED("removal not confirmed; check the original job (not retried)"),
         JOURNAL_FAILED("kept: the Move journal could not be saved"),
@@ -33,7 +34,7 @@ internal object BatchMoveRemoval {
         removeSource: suspend (String) -> Unit,
         observeSource: suspend (String) -> Observation,
         save: (TransferMove.Record) -> Boolean,
-        forget: (TransferMove.Record) -> Unit
+        forget: (TransferMove.Record) -> Boolean
     ): Report {
         require(moves.all { it.stage == Stage.TARGET_VERIFIED }) { "Only verified moves can be completed" }
         require(moves.map { it.direction to it.infoHash }.toSet().size == moves.size) { "Duplicate move" }
@@ -57,7 +58,13 @@ internal object BatchMoveRemoval {
             try { removeSource(move.infoHash) } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) {}
             when (val after = TransferMove.onRemovalResult(begin.record, safely { observeSource(move.infoHash) })) {
-                is Next.Done -> { forget(begin.record); results += move to Result.REMOVED }
+                is Next.Done -> {
+                    val cleared = try { forget(begin.record) }
+                        catch (cancel: CancellationException) { throw cancel }
+                        catch (_: Exception) { false }
+                    results += move to if (cleared) Result.REMOVED else Result.REMOVED_JOURNAL_PENDING
+                    if (!cleared) stopped = true
+                }
                 is Next.Save -> { save(after.record); results += move to Result.UNCONFIRMED; stopped = true }
                 is Next.Keep -> { results += move to Result.UNCONFIRMED; stopped = true }
             }
