@@ -10,6 +10,7 @@ import android.security.NetworkSecurityPolicy
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -433,7 +434,16 @@ class ChunksMainActivityAtlasTest {
             "magnet:?xt=urn:btih:" + "ab".repeat(20))
         replaceTextInLazyField("Custom server folder (optional)", "/srv/one-off")
         dismissSearchKeyboard()
-        addList.performScrollToNode(hasText("Review Add"))
+        // The Add list is lazy and its editable folder field recomposes after
+        // keyboard dismissal. Demand an *enabled, displayed* Review target
+        // before dispatching its single read-only click. Do not retry an
+        // action after it may have run; a timeout is a genuine red test.
+        rule.waitUntil(15_000) {
+            runCatching {
+                addList.performScrollToNode(hasText("Review Add"))
+                rule.onNodeWithText("Review Add").assertIsEnabled().assertIsDisplayed()
+            }.isSuccess
+        }
         rule.onNodeWithText("Review Add").performClick()
         addList.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
         rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()
@@ -452,8 +462,12 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(reset).performClick()
         // Scrolling to Review Add proves the old confirmation was invalidated;
         // merely finding no offscreen confirmation node would be insufficient.
-        addList.performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").assertExists()
+        rule.waitUntil(15_000) {
+            runCatching {
+                addList.performScrollToNode(hasText("Review Add"))
+                rule.onNodeWithText("Review Add").assertIsEnabled().assertIsDisplayed()
+            }.isSuccess
+        }
         rule.onNodeWithText("Review Add").performClick()
         addList.performScrollToNode(hasText(
             "Destination: /downloads (server default; no directory override)"))
