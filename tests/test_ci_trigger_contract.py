@@ -96,6 +96,8 @@ class AndroidCiTriggerContract(unittest.TestCase):
              ".github/workflows/installed-combined-two-servers.yml"),
             ("HttpsPhoneAddJourneyInstrumentedTest.kt",
              ".github/workflows/installed-rtorrent-magnets.yml"),
+            ("MainActivityRealMagnetJourney.kt",
+             ".github/workflows/installed-rtorrent-magnets.yml"),
         )
         for filename, owning_workflow in own_journeys:
             changed_test = "app/src/androidTest/java/io/github/gamesbyian/chunks/" + filename
@@ -111,6 +113,22 @@ class AndroidCiTriggerContract(unittest.TestCase):
                     native, (changed_test, "app/src/androidTest/java/AnotherInstrumentedTest.kt")))
         self.assertTrue(dispatches_for_changed_paths(
             native, (".github/workflows/native-add-instrumentation.yml",)))
+
+    def test_remote_real_peer_helper_is_compiled_in_its_own_installed_journey(self):
+        # It has no independent Android @Test. All its actual execution is
+        # through the real installed SeedhostAndroidAddUi test, and that test
+        # is run with real peer sources by the dedicated magnet workflow.
+        helper = (ROOT / "app/src/androidTest/java/io/github/gamesbyian/chunks/"
+                  "MainActivityRealMagnetJourney.kt").read_text()
+        owner = (ROOT / "app/src/androidTest/java/io/github/gamesbyian/chunks/"
+                 "SeedhostAndroidAddUiInstrumentedTest.kt").read_text()
+        campaign = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
+        self.assertNotIn("@Test", helper)
+        self.assertIn("MainActivityRealMagnetJourney(", owner)
+        self.assertIn("SeedhostAndroidAddUiInstrumentedTest", campaign)
+        changed = ("app/src/androidTest/java/io/github/gamesbyian/chunks/"
+                   "MainActivityRealMagnetJourney.kt",)
+        self.assertTrue(dispatches_for_changed_paths(campaign, changed))
 
     def test_https_journey_covers_fetcher_and_phone_production_caller(self):
         source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
