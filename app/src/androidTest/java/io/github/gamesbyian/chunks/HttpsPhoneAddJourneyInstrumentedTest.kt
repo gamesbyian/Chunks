@@ -204,6 +204,10 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
+                // A retained process-only Add owner must never turn recreation into an
+                // implicit write before the person explicitly confirms this source.
+                assertNull("Activity recreation cannot authorize a phone Add",
+                    LocalEngineHolder.current()?.status(preview.infoHashV1))
                 // Exercise a real refused retrieval and recover the same scoped draft.
                 type("Or paste a magnet or torrent link", "https://127.0.0.1/blocked.torrent")
                 click("Get torrent from link")
