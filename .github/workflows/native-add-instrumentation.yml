@@ -16,6 +16,11 @@ on:
       # change (or other instrumented test) that requires this native Add gate.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsPhoneAddJourneyInstrumentedTest.kt"
+      # Helper-only edits run in the dedicated real-peer installed lifecycle
+      # through SeedhostAndroidAddUiInstrumentedTest. There is no @Test in this
+      # helper to execute in the native Add shards. Concurrent production or
+      # any other AndroidTest changes still select the full native Add gate.
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
       - "app/build.gradle.kts"
       # Changes to the test command must re-run this suite.
       - "tools/native_add_review.sh"
