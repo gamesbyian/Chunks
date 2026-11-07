@@ -50,6 +50,7 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
                 lines.append("INSTRUMENTATION_STATUS: chunks_real_add_stage=" + label + "-" + stage)
             lines.append("INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_initial=300000,262144,1000000,1,10000")
             lines.append("INSTRUMENTATION_STATUS: chunks_real_add_traffic_" + label + "_resumed=600000,524288,1000000,1,10000")
+        lines.append("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=combined-details")
         lines += ["INSTRUMENTATION_STATUS: chunks_real_add_negative_stage=" + s for s in
                   ("preflight", "registered", "add-ui-truthful", "transfers-ui-truthful", "removed")]
         lines += ["INSTRUMENTATION_STATUS: chunks_real_add_hash_negative=" + "c" * 40,
@@ -72,6 +73,20 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertNotEqual("passed", parse(data.replace("chunks_real_add_hash_negative", "unknown"), 0, env)["result"])
         self.assertNotEqual("passed", parse(data.replace("SeedhostAndroidAddUiInstrumentedTest", "UnexpectedClass"), 0, env)["result"])
         self.assertNotEqual("passed", parse(data.replace("chunks_real_add_stage=magnet0-removed", "ignored=missing"), 0, env)["result"])
+
+    def test_controlled_real_peer_requires_exactly_one_combined_details_readback_witness(self):
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1")
+        raw = self.controlled_log()
+        marker = "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=combined-details"
+        self.assertEqual("passed", parse(raw, 0, env)["result"])
+        self.assertEqual(1, parse(raw, 0, env)["app_stage_evidence"].count("combined-details"))
+        self.assertNotEqual("passed", parse(raw.replace(marker, "ignored=missing"), 0, env)["result"])
+        self.assertNotEqual("passed", parse(raw + "\n" + marker, 0, env)["result"])
+        self.assertNotEqual("passed", parse(raw.replace(marker,
+            "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=combined-details-fake"), 0, env)["result"])
+        # Non-controlled upstream tests have no MainActivity Combined hop;
+        # their separate real piece/restart requirements remain unchanged.
+        self.assertEqual("passed", parse(self.success_log(), 0, self.env)["result"])
 
     def test_https_gate_requires_actual_fetch_review_witnesses_for_each_passing_source(self):
         env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1", CHUNKS_HTTPS_ADD="1")
