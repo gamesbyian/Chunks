@@ -341,6 +341,8 @@ internal fun LocalEngineScreen(
     var lastAcceptedInventoryAt by remember { mutableStateOf(0L) }
     val transfers = inventoryFrame.entries
     val inventoryStale = inventoryFrame.stale || LocalScreenReader.revision.blocksMutations()
+    val addInventoryReady = PhoneUniversalAddAdapter.inventoryReadyForReview(
+        hasConfirmedLocalInventory, inventoryStale)
     var transferPage by remember { mutableStateOf(0) }
     val transferSearchHolder = searchState ?: remember { mutableStateOf("") }
     var transferSearch by transferSearchHolder
@@ -1077,7 +1079,7 @@ internal fun LocalEngineScreen(
                 val autoStart = startAfterAdd
                 val allowArtwork = automaticArtwork
                 val orderLater = magnetFinishInOrder
-                val inventoryReadyAtClick = hasConfirmedLocalInventory && !inventoryStale
+                val inventoryReadyAtClick = addInventoryReady
                 performLocalMutation phoneMagnet@{
                     val selected = selectedPlace ?: run {
                         noteProblem("Choose a verified phone download location before Add. Nothing was sent.")
@@ -1171,8 +1173,8 @@ internal fun LocalEngineScreen(
                         noteProblem("Magnet Add may have reached the native engine. Wait for a fresh exact transfer list; no retry occurred.")
                     }
                 }
-            }, enabled = !busy && !sourceReading && !inventoryStale && !dhtSaving &&
-                !placeSaving && proposedAddDestination != null && magnetCheck is MagnetDraftCheck.Valid &&
+            }, enabled = !busy && !sourceReading && addInventoryReady && !dhtSaving && !placeSaving && proposedAddDestination != null &&
+                magnetCheck is MagnetDraftCheck.Valid &&
                 phoneAddAttemptSession?.attemptedTicket == null,
                 modifier = Modifier.fillMaxWidth())
         }
@@ -1433,7 +1435,7 @@ internal fun LocalEngineScreen(
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
-            busy = busy || sourceReading || inventoryStale || placeSaving || proposedAddDestination == null ||
+            busy = busy || sourceReading || !addInventoryReady || placeSaving || proposedAddDestination == null ||
                 phoneAddAttemptSession?.attemptedTicket != null,
             startAfterAdd = startAfterAdd,
             cancelEnabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
@@ -1451,7 +1453,7 @@ internal fun LocalEngineScreen(
                 val autoStart = startAfterAdd
                 val allowArtwork = automaticArtwork
                 val orderAfterAdd = finishInOrderAfterAdd
-                val inventoryReadyAtClick = hasConfirmedLocalInventory && !inventoryStale
+                val inventoryReadyAtClick = addInventoryReady
                 var orderNote: String? = null
                 performLocalMutation phoneDocument@{
                     val selected = selectedPlace ?: run {
@@ -1647,7 +1649,7 @@ internal fun LocalEngineScreen(
 
         moveServer?.let { server ->
             val digest = TransferMoveStore.scopeDigest(server.aliasScope)
-            val pending = remember(transfers, moveRevision) {
+            val pending = remember(transfers, moveRevision, digest) {
                 moveStore.all(TransferMove.Direction.PHONE_TO_SERVER).filter { record ->
                     record.stage == TransferMove.Stage.TARGET_VERIFIED && record.serverScopeDigest == digest &&
                         transfers.any { it.infoHash.equals(record.infoHash, ignoreCase = true) &&
@@ -1655,7 +1657,8 @@ internal fun LocalEngineScreen(
                 }
             }
             BatchMoveRemovalPanel(
-                pending = pending, serverLabel = TransferMoveStore.hostLabel(server.aliasScope),
+                pending = pending, serverScopeDigest = digest,
+                serverLabel = TransferMoveStore.hostLabel(server.aliasScope),
                 busy = busy || inventoryStale,
                 observeTarget = { hash -> server.observe(hash) },
                 removeSource = { hash ->

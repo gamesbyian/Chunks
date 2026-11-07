@@ -77,6 +77,21 @@ class BatchMoveRemovalTest {
         assertTrue(w.journal.isEmpty())
     }
 
+    @Test fun batchConsentCannotCarryAcrossServerAccountsWithIdenticalHashes() {
+        val accountA = scope
+        val accountB = "b".repeat(64)
+        val first = move(1)
+        val second = move(2)
+        // A stale remembered A selection must never run against B, even when
+        // both destinations happen to contain the same infohashes.
+        assertTrue(BatchMoveRemoval.matchesServerScope(listOf(first, second), accountA))
+        assertFalse(BatchMoveRemoval.matchesServerScope(listOf(first, second), accountB))
+        assertFalse(BatchMoveRemoval.matchesServerScope(
+            listOf(first, second.copy(serverScopeDigest = accountB)), accountA))
+        assertFalse(BatchMoveRemoval.matchesServerScope(emptyList(), accountA))
+        assertFalse(BatchMoveRemoval.matchesServerScope(listOf(first), "wrong-account"))
+    }
+
     @Test fun refusesUnverifiedMoves() {
         assertThrows(IllegalArgumentException::class.java) {
             runBlocking { BatchMoveRemoval.run(listOf(move(1).copy(stage = Stage.AWAITING_TARGET)),

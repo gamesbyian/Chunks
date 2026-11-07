@@ -29,6 +29,8 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun BatchMoveRemovalPanel(
     pending: List<TransferMove.Record>,
+    /** Opaque exact endpoint+account; never a URL or host display label. */
+    serverScopeDigest: String,
     serverLabel: String,
     busy: Boolean,
     observeTarget: suspend (String) -> TransferMove.Observation,
@@ -45,13 +47,16 @@ internal fun BatchMoveRemovalPanel(
 ) {
     if (pending.size < 2) return   // a single move is finished from its own card
     val scope = rememberCoroutineScope()
-    var confirming by remember { mutableStateOf(false) }
+    // A new account or a different pending set cannot inherit a prior
+    // confirmation. The job list is independently keyed by server scope.
+    var confirming by remember(serverScopeDigest, pending) { mutableStateOf(false) }
     var working by remember { mutableStateOf(false) }
+    val exactScope = BatchMoveRemoval.matchesServerScope(pending, serverScopeDigest)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("${pending.size} transfers are now on $serverLabel. Their original $sourceLabel jobs are still here.",
             style = MaterialTheme.typography.bodyMedium)
         if (!confirming) {
-            Button(onClick = { confirming = true }, enabled = !busy && !working,
+            Button(onClick = { confirming = true }, enabled = !busy && !working && exactScope,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Remove ${pending.size} original $sourceLabel jobs…")
             }
@@ -64,6 +69,10 @@ internal fun BatchMoveRemovalPanel(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = {
                     confirming = false
+                    if (!BatchMoveRemoval.matchesServerScope(pending, serverScopeDigest)) {
+                        onFinished("The destination server account changed. No original jobs were removed.")
+                        return@Button
+                    }
                     if (!onStarted()) {
                         onFinished("Another change is still settling. Nothing was removed; try again shortly.")
                         return@Button
@@ -82,7 +91,8 @@ internal fun BatchMoveRemovalPanel(
                             "(files kept)." + report.results.filter { it.second != BatchMoveRemoval.Result.REMOVED }
                                 .take(10).joinToString("") { "\n• " + it.first.name.take(80) + ": " + it.second.label })
                     }
-                }, enabled = !busy && !working, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                }, enabled = !busy && !working && exactScope,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                     Text("Remove original jobs")
                 }
                 OutlinedButton(onClick = { confirming = false },

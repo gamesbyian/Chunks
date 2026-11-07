@@ -6,9 +6,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.runtime.mutableStateOf
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.gamesbyian.chunks.model.TransferMove
 import io.github.gamesbyian.chunks.model.TransferMove.Observation
@@ -33,7 +35,8 @@ class BatchMoveRemovalPanelInstrumentedTest {
         rule.setContent {
             MaterialTheme {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
-                    BatchMoveRemovalPanel(moves, "seed.example", busy = false,
+                    BatchMoveRemovalPanel(pending = moves, serverScopeDigest = "a".repeat(64),
+                        serverLabel = "seed.example", busy = false,
                         observeTarget = { if (it == moves[0].infoHash) Observation.Present else Observation.Absent },
                         removeSource = { removed += it },
                         observeSource = { if (it in removed) Observation.Absent else Observation.Present },
@@ -48,5 +51,32 @@ class BatchMoveRemovalPanelInstrumentedTest {
         rule.waitUntil(10_000) { finished.isNotEmpty() }
         assertEquals(listOf(moves[0].infoHash), removed.toList())
         assertTrue(finished.single().contains("1 original phone jobs removed"))
+    }
+
+    @Test fun accountSwitchInvalidatesPendingBatchRemovalConfirmation() {
+        val moves = listOf(move(1, "Public one"), move(2, "Public two"))
+        val activeScope = mutableStateOf("a".repeat(64))
+        val removed = Collections.synchronizedList(mutableListOf<String>())
+        rule.setContent {
+            MaterialTheme {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    BatchMoveRemovalPanel(
+                        pending = moves, serverScopeDigest = activeScope.value,
+                        serverLabel = "seed.example", busy = false,
+                        observeTarget = { Observation.Present },
+                        removeSource = { removed += it },
+                        observeSource = { Observation.Absent },
+                        save = { true }, forget = {}, onFinished = {}
+                    )
+                }
+            }
+        }
+        rule.onNodeWithText("Remove 2 original phone jobs…").performClick()
+        rule.onNodeWithText("Remove original jobs").assertExists()
+        rule.runOnUiThread { activeScope.value = "b".repeat(64) }
+        rule.waitForIdle()
+        // Same infohashes on another account do not preserve source-removal consent.
+        rule.onNodeWithText("Remove 2 original phone jobs…").assertIsNotEnabled()
+        assertTrue(removed.isEmpty())
     }
 }
