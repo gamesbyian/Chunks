@@ -57,7 +57,7 @@ internal object BatchMoveRemoval {
             try { removeSource(move.infoHash) } catch (cancel: CancellationException) { throw cancel }
             catch (_: Exception) {}
             when (val after = TransferMove.onRemovalResult(begin.record, safely { observeSource(move.infoHash) })) {
-                is Next.Done -> { forget(move); results += move to Result.REMOVED }
+                is Next.Done -> { forget(begin.record); results += move to Result.REMOVED }
                 is Next.Save -> { save(after.record); results += move to Result.UNCONFIRMED; stopped = true }
                 is Next.Keep -> { results += move to Result.UNCONFIRMED; stopped = true }
             }
