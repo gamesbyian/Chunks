@@ -100,6 +100,16 @@ class TransferMoveStoreAccountScopeTest {
         assertTrue(prefs.all.isEmpty())
     }
 
+    @Test fun successfulRemovalCanClearRecoveredRequestedStageOnlyForSameJob() {
+        val store = TransferMoveStore(context)
+        val requested = record(scopeA).copy(stage = TransferMove.Stage.SOURCE_REMOVAL_REQUESTED)
+        assertTrue(store.save(requested))
+        assertEquals(TransferMove.Stage.SOURCE_REMOVAL_UNCERTAIN,
+            store.get(direction, hash, scopeA)?.stage)
+        assertTrue(store.remove(requested))
+        assertNull(store.get(direction, hash, scopeA))
+    }
+
     @Test fun legacyAndScopedDuplicateCountAsOneJournal() {
         val original = record(scopeA)
         val legacyKey = direction.name + "_" + hash
