@@ -89,6 +89,25 @@ class TransferMoveStoreAccountScopeTest {
         assertTrue(prefs.contains(wrongKey)) // no destructive cleanup of unknown records
     }
 
+    @Test fun conflictingScopedRecordNeverFallsBackToLegacySource() {
+        val old = record(scopeA)
+        val staleKey = direction.name + "_" + hash
+        val scopedKey = direction.name + "_" + scopeA + "_" + hash
+        val newer = old.copy(stage = TransferMove.Stage.TARGET_VERIFIED)
+        assertTrue(prefs.edit().putString(staleKey, old.encode())
+            .putString(scopedKey, newer.encode()).commit())
+        val store = TransferMoveStore(context)
+        assertEquals(newer, store.get(direction, hash, scopeA))
+        assertFalse(store.remove(old))
+        assertEquals(newer, store.get(direction, hash, scopeA))
+        assertTrue(prefs.contains(staleKey))
+        // A corrupt scoped value cannot resurrect the legacy job for a write.
+        assertTrue(prefs.edit().putString(scopedKey, "corrupt").commit())
+        assertNull(store.get(direction, hash, scopeA))
+        assertFalse(store.remove(old))
+        assertTrue(prefs.contains(scopedKey))
+    }
+
     @Test fun staleRemovalCompletionCannotClearNewerUncertainMoveStage() {
         val store = TransferMoveStore(context)
         val latest = record(scopeA)
