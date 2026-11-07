@@ -88,6 +88,11 @@ internal fun BatchMoveRemovalPanel(
                                 return@launch
                             }
                             acquired = true
+                            // Return control to the click dispatcher before any
+                            // potentially blocking source/target observation.
+                            // Cancellation at this boundary still runs finally
+                            // and releases the acquired gate without a write.
+                            kotlinx.coroutines.yield()
                             BatchMoveRemoval.run(pending, observeTarget, removeSource, observeSource, save, forget)
                         } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                         catch (_: Exception) { null }
