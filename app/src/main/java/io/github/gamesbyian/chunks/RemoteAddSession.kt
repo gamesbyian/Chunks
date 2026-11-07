@@ -59,7 +59,9 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
      * Chunks; neither path resends the original command.
      */
     internal fun beginNextDraft(): Boolean {
-        if (submitting || verifiedHash == null) return false
+        val registeredWithoutStart =
+            coordinator.phase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED
+        if (submitting || (verifiedHash == null && !registeredWithoutStart)) return false
         when (coordinator.phase) {
             UniversalAddCoordinator.Phase.VERIFIED -> {
                 if (uncertain || !coordinator.finishVerified()) return false
@@ -68,6 +70,12 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
                 // An uncertain provenance bit is expected here; the exact
                 // hash/Place/Start proof is separately held by the coordinator.
                 if (!coordinator.acknowledgeExactSession()) return false
+            }
+            UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> {
+                // The exact hash and Place were observed, but payload Start
+                // may remain unverified indefinitely while peers are absent.
+                // This releases no write without the person's explicit click.
+                if (!coordinator.acknowledgeObservedJob()) return false
             }
             else -> return false
         }

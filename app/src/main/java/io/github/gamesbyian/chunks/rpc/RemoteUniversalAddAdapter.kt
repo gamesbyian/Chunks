@@ -193,6 +193,32 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
         )
     }
 
+    /**
+     * A weaker, independently guarded exact-job witness when requested Start
+     * cannot be verified after a lost acknowledgement. Registration + Place
+     * are proved by stable d.hash and strict d.directory/d.is_multi_file;
+     * the Start bit remains unknown, and the write's author remains unknown.
+     * Only the user's explicit shared-model acknowledgement can release this
+     * ticket. Never construct this witness from progress.registered alone.
+     */
+    suspend fun registeredJobWithUnverifiedStart(
+        ticket: UniversalAddCoordinator.Ticket,
+        observedAtEpochMillis: Long = System.currentTimeMillis()
+    ): ExactSessionObservation? {
+        if (!ticket.intent.startWhenAdded) return null
+        val plan = planFor(ticket)
+        if (!remote.readRegisteredAddAtReviewedPlace(plan)) return null
+        return ExactSessionObservation(
+            environment = ticket.intent.target.environment,
+            infoHash = plan.expectedInfoHash,
+            observedAtEpochMillis = observedAtEpochMillis,
+            registered = true,
+            reviewedPlaceVerified = true,
+            started = null,
+            newRegistrationVerified = false
+        )
+    }
+
     suspend fun progress(ticket: UniversalAddCoordinator.Ticket): RemoteAddProgress =
         remote.readAddProgress(planFor(ticket))
 }
