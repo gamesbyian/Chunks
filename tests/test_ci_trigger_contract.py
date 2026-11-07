@@ -136,6 +136,18 @@ class AndroidCiTriggerContract(unittest.TestCase):
         for name in ("TorrentLinkImport.kt", "LocalEngineScreen.kt"):
             self.assertIn("app/src/main/java/io/github/gamesbyian/chunks/" + name, paths)
 
+    def test_disposable_peer_numeric_diagnostic_selects_own_future_edits(self):
+        source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
+        paths = pull_request_paths(source)
+        self.assertIn("tools/export_disposable_peer_numeric.py", paths)
+        self.assertIn("tests/test_disposable_peer_numeric_export.py", paths)
+        self.assertIn(
+            "python3 -m unittest discover -s tests -p test_disposable_peer_numeric_export.py",
+            source,
+        )
+        self.assertIn("chunks-disposable-peer-numeric-diagnosis", source)
+        self.assertIn("if: failure() && env.CHUNKS_DISPOSABLE == '1'", source)
+
     def test_real_source_draft_skip_has_a_ready_transition(self):
         source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
         self.assertIn("github.event_name == 'pull_request' && !github.event.pull_request.draft", source)
