@@ -1682,6 +1682,15 @@ internal fun LocalEngineScreen(
                 forget = { record -> moveStore.remove(record) },
                 onFinished = { text -> message = text; moveRevision++ }
             )
+            OrphanMoveRecoveryPanel(
+                direction = TransferMove.Direction.PHONE_TO_SERVER,
+                serverAliasScope = server.aliasScope,
+                visibleSourceHashes = transfers.map { it.infoHash },
+                enabled = !busy && !inventoryStale && hasConfirmedLocalInventory,
+                revision = moveRevision,
+                observeSource = { hash -> TransferMoveObservations.phone(hash) },
+                onChanged = { moveRevision++ }
+            )
         }
         // Batch selection acts on the list itself, so it sits with the list (as on
         // rTorrent) and near the outcome/confirmation area above it. With no
