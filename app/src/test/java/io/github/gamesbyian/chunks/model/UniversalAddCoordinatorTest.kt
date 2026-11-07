@@ -392,6 +392,138 @@ class UniversalAddCoordinatorTest {
         assertTrue(state.acknowledgeObservedJob())
     }
 
+    @Test fun olderExactReadCannotPromotePendingStartAfterNewerExactObservation() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote, start = true))
+        val pending = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1700L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = false)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, pending))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        // Both observations followed Submit; only one followed the latest read.
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcileExactSession(ticket, pending.copy(
+                observedAtEpochMillis = 1500L, started = true, newRegistrationVerified = true)))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertNull(state.beginSubmission(1750L))
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(ticket, pending.copy(
+                observedAtEpochMillis = 1800L, started = true, newRegistrationVerified = true)))
+    }
+
+    @Test fun catalogReadbackWatermarkAlsoFencesOlderExactSession() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcile(ticket, snapshot(phone, 1800L, started = false),
+                adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
+                adapterVerifiedStart = false))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        val exact = UniversalAddCoordinator.ExactSessionObservation(
+            environment = phone.environment, infoHash = hash,
+            observedAtEpochMillis = 1700L, registered = true,
+            reviewedPlaceVerified = true, started = true,
+            newRegistrationVerified = true)
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcileExactSession(ticket, exact))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(ticket,
+                exact.copy(observedAtEpochMillis = 1900L)))
+    }
+
+    @Test fun exactReadbackWatermarkAlsoFencesOlderCatalogSnapshot() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state)
+        val pending = UniversalAddCoordinator.ExactSessionObservation(
+            environment = phone.environment, infoHash = hash,
+            observedAtEpochMillis = 1700L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = false)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, pending))
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcile(ticket, snapshot(phone, 1400L, started = true),
+                adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
+                adapterVerifiedStart = true))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcile(ticket, snapshot(phone, 1900L, started = true),
+                adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
+                adapterVerifiedStart = true))
+    }
+
+    @Test fun unrelatedHashWrongAccountAndIncompleteReadNeverPoisonTimestampFence() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote))
+        val exact = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1600L, registered = true,
+            reviewedPlaceVerified = true, started = true,
+            newRegistrationVerified = true)
+        assertEquals(UniversalAddCoordinator.Readback.WRONG_ENVIRONMENT,
+            state.reconcileExactSession(ticket, exact.copy(
+                environment = otherRemote.environment, observedAtEpochMillis = 9000L)))
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            state.reconcileExactSession(ticket, exact.copy(
+                infoHash = otherHash, observedAtEpochMillis = 9000L)))
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcile(ticket, snapshot(remote, 9000L, started = true, complete = false),
+                adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
+                adapterVerifiedStart = true))
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(ticket, exact))
+    }
+
+    @Test fun acceptedNegativeReadbackFencesOlderLatePositiveWithoutReplaying() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote))
+        val valid = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1800L, registered = false,
+            reviewedPlaceVerified = false, started = null,
+            newRegistrationVerified = false)
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            state.reconcileExactSession(ticket, valid))
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcileExactSession(ticket, valid.copy(
+                observedAtEpochMillis = 1700L, registered = true,
+                reviewedPlaceVerified = true, started = true,
+                newRegistrationVerified = true)))
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, state.phase)
+        assertNull(state.beginSubmission(1900L))
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(ticket, valid.copy(
+                observedAtEpochMillis = 2000L, registered = true,
+                reviewedPlaceVerified = true, started = true,
+                newRegistrationVerified = true)))
+    }
+
+    @Test fun latestObservationIsScopedToTicketAndEqualTimeEvidenceCanResolve() {
+        val state = UniversalAddCoordinator()
+        val first = attempted(state)
+        val pending = UniversalAddCoordinator.ExactSessionObservation(
+            environment = phone.environment, infoHash = hash,
+            observedAtEpochMillis = 2000L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = true)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(first, pending))
+        // Independent exact engine proofs may legitimately share a millisecond.
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(first, pending.copy(started = true)))
+        assertTrue(state.finishVerified())
+        val second = attempted(state)
+        assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
+            state.reconcileExactSession(second,
+                pending.copy(observedAtEpochMillis = 1001L, started = true)))
+        assertEquals(UniversalAddCoordinator.Readback.WRONG_TICKET,
+            state.reconcileExactSession(first, pending))
+    }
+
     @Test fun sourceCopiesBytesAndRedactsPrivateValuesFromDiagnostics() {
         val bytes = byteArrayOf(1, 2, 3)
         val source = UniversalAddSource.metainfo(bytes, hash, "https://private.invalid/SECRET")
