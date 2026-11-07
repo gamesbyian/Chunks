@@ -20,6 +20,7 @@ class BatchMoveRemovalTest {
         val removals = mutableListOf<String>()
         val completedJournalStages = mutableListOf<Stage>()
         var loseReplyFor: String? = null
+        var forgetSucceeds = true
     }
 
     private fun run(w: World, moves: List<TransferMove.Record>) = runBlocking {
@@ -29,7 +30,11 @@ class BatchMoveRemovalTest {
             observeSource = { if (it == w.loseReplyFor) Observation.Unknown
                 else if (it in w.sourcePresent) Observation.Present else Observation.Absent },
             save = { w.journal[it.infoHash] = it; true },
-            forget = { w.completedJournalStages += it.stage; w.journal -= it.infoHash })
+            forget = {
+                w.completedJournalStages += it.stage
+                if (w.forgetSucceeds) w.journal -= it.infoHash
+                w.forgetSucceeds
+            })
     }
 
     @Test fun removesOnlyWhereTargetIsReconfirmedAndJournalsFirst() {
@@ -78,6 +83,20 @@ class BatchMoveRemovalTest {
         assertTrue(old.infoHash in w.sourcePresent)
         assertTrue(next.infoHash in w.sourcePresent)
         assertTrue(w.journal.isEmpty())
+    }
+
+    @Test fun failedJournalCleanupDoesNotClaimCompletedMoveOrContinueBatch() {
+        val moves = (1..2).map(::move)
+        val w = World().apply {
+            moves.forEach { sourcePresent += it.infoHash; targetPresent += it.infoHash }
+            forgetSucceeds = false
+        }
+        val report = run(w, moves)
+        assertEquals(listOf(Result.REMOVED_JOURNAL_PENDING, Result.NOT_RUN),
+            report.results.map { it.second })
+        assertEquals(listOf(moves.first().infoHash), w.removals)
+        assertEquals(Stage.SOURCE_REMOVAL_REQUESTED, w.journal[moves.first().infoHash]?.stage)
+        assertTrue(w.sourcePresent.contains(moves.last().infoHash))
     }
 
     @Test fun refusesUnverifiedMoves() {
