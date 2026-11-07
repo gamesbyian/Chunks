@@ -37,7 +37,7 @@ class BatchMoveRemovalPanelInstrumentedTest {
                         observeTarget = { if (it == moves[0].infoHash) Observation.Present else Observation.Absent },
                         removeSource = { removed += it },
                         observeSource = { if (it in removed) Observation.Absent else Observation.Present },
-                        save = { true }, forget = {}, onFinished = { finished += it })
+                        save = { true }, forget = { true }, onFinished = { finished += it })
                 }
             }
         }
