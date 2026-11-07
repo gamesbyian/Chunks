@@ -108,6 +108,24 @@ class TransferMoveStoreAccountScopeTest {
         assertTrue(prefs.contains(scopedKey))
     }
 
+    @Test fun sameAccountCannotReplaceUnresolvedMoveOrResendRemovalBlindly() {
+        val store = TransferMoveStore(context)
+        val uncertain = record(scopeA)
+        assertTrue(store.save(uncertain))
+        assertFalse(store.save(uncertain.copy(sourceReviewToken = "phone-generation-2")))
+        assertFalse(store.save(uncertain.copy(name = "Another transfer")))
+        assertFalse(store.save(uncertain.copy(stage = TransferMove.Stage.AWAITING_TARGET)))
+        assertFalse(store.save(uncertain.copy(stage = TransferMove.Stage.SOURCE_REMOVAL_REQUESTED)))
+        assertEquals(uncertain, TransferMoveStore(context).get(direction, hash, scopeA))
+        // A fresh observed source followed by an explicit second approval
+        // may advance UNCERTAIN -> TARGET_VERIFIED -> REQUESTED.
+        val rechecked = uncertain.copy(stage = TransferMove.Stage.TARGET_VERIFIED)
+        assertTrue(store.save(rechecked))
+        assertTrue(store.save(rechecked.copy(stage = TransferMove.Stage.SOURCE_REMOVAL_REQUESTED)))
+        assertEquals(TransferMove.Stage.SOURCE_REMOVAL_UNCERTAIN,
+            TransferMoveStore(context).get(direction, hash, scopeA)?.stage)
+    }
+
     @Test fun staleRemovalCompletionCannotClearNewerUncertainMoveStage() {
         val store = TransferMoveStore(context)
         val latest = record(scopeA)
