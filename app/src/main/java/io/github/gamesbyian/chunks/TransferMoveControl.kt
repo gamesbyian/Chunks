@@ -94,12 +94,17 @@ internal class TransferMoveStore(context: Context) {
     /** Forget one exact journal only, never another account's same-hash job. */
     @Synchronized
     fun remove(record: TransferMove.Record): Boolean = try {
-        val old = prefs.getString(legacyKey(record.direction, record.infoHash), null)
-            ?.let(TransferMove::decode)
-        val edit = prefs.edit().remove(scopedKey(record))
-        if (exactlyMatches(old, record.direction, record.infoHash, record.serverScopeDigest))
-            edit.remove(legacyKey(record.direction, record.infoHash))
-        edit.commit()
+        // A stale callback cannot discard a newer stage or a replacement
+        // source review, even within the same exact server/hash identity.
+        if (get(record.direction, record.infoHash, record.serverScopeDigest) != record) false
+        else {
+            val old = prefs.getString(legacyKey(record.direction, record.infoHash), null)
+                ?.let(TransferMove::decode)
+            val edit = prefs.edit().remove(scopedKey(record))
+            if (exactlyMatches(old, record.direction, record.infoHash, record.serverScopeDigest))
+                edit.remove(legacyKey(record.direction, record.infoHash))
+            edit.commit()
+        }
     } catch (_: RuntimeException) { false }
 
     /** Compatibility for existing batch callers until they pass exact records.
