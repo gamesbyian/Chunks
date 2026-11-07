@@ -1679,7 +1679,7 @@ internal fun LocalEngineScreen(
                 },
                 observeSource = { hash -> TransferMoveObservations.phone(hash) },
                 save = { record -> moveStore.save(record) },
-                forget = { record -> moveStore.remove(record.direction, record.infoHash) },
+                forget = { record -> moveStore.remove(record) },
                 onFinished = { text -> message = text; moveRevision++ }
             )
         }

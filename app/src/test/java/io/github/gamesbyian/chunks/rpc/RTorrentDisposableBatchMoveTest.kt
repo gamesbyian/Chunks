@@ -62,7 +62,7 @@ class RTorrentDisposableBatchMoveTest {
             },
             observeSource = { h -> if (rtorrent.listTransfers("main").any { it.hash.equals(h, true) })
                 TransferMove.Observation.Present else TransferMove.Observation.Absent },
-            save = { true }, forget = { forgotten += it.infoHash })
+            save = { true }, forget = { forgotten.add(it.infoHash) })
         assertEquals(listOf(BatchMoveRemoval.Result.REMOVED, BatchMoveRemoval.Result.TARGET_NOT_CONFIRMED),
             report.results.map { it.second })
         val listed = rtorrent.listTransfers("main").map { it.hash.lowercase() }

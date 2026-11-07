@@ -40,7 +40,7 @@ class BatchMoveRemovalPanelInstrumentedTest {
                         observeTarget = { if (it == moves[0].infoHash) Observation.Present else Observation.Absent },
                         removeSource = { removed += it },
                         observeSource = { if (it in removed) Observation.Absent else Observation.Present },
-                        save = { true }, forget = {}, onFinished = { finished += it })
+                        save = { true }, forget = { true }, onFinished = { finished += it })
                 }
             }
         }
@@ -50,7 +50,7 @@ class BatchMoveRemovalPanelInstrumentedTest {
         rule.onNodeWithText("Remove original jobs").performScrollTo().performClick()
         rule.waitUntil(10_000) { finished.isNotEmpty() }
         assertEquals(listOf(moves[0].infoHash), removed.toList())
-        assertTrue(finished.single().contains("1 original phone jobs removed"))
+        assertTrue(finished.single().contains("1 original phone jobs verified absent"))
     }
 
     @Test fun accountSwitchInvalidatesPendingBatchRemovalConfirmation() {
@@ -66,7 +66,7 @@ class BatchMoveRemovalPanelInstrumentedTest {
                         observeTarget = { Observation.Present },
                         removeSource = { removed += it },
                         observeSource = { Observation.Absent },
-                        save = { true }, forget = {}, onFinished = {}
+                        save = { true }, forget = { true }, onFinished = {}
                     )
                 }
             }

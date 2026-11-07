@@ -37,7 +37,7 @@ internal fun BatchMoveRemovalPanel(
     removeSource: suspend (String) -> Unit,
     observeSource: suspend (String) -> TransferMove.Observation,
     save: (TransferMove.Record) -> Boolean,
-    forget: (TransferMove.Record) -> Unit,
+    forget: (TransferMove.Record) -> Boolean,
     onFinished: (String) -> Unit,
     /** Where the original jobs live, for the confirmation text. */
     sourceLabel: String = "phone",
@@ -87,7 +87,7 @@ internal fun BatchMoveRemovalPanel(
                         onSettled()
                         onFinished(if (report == null) "The batch removal stopped unexpectedly. Check each " +
                             "transfer's Move status; nothing is retried automatically."
-                        else "${report.count(BatchMoveRemoval.Result.REMOVED)} original $sourceLabel jobs removed " +
+                        else "${report.count(BatchMoveRemoval.Result.REMOVED) + report.count(BatchMoveRemoval.Result.REMOVED_JOURNAL_PENDING)} original $sourceLabel jobs verified absent " +
                             "(files kept)." + report.results.filter { it.second != BatchMoveRemoval.Result.REMOVED }
                                 .take(10).joinToString("") { "\n• " + it.first.name.take(80) + ": " + it.second.label })
                     }

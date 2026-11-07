@@ -30,35 +30,142 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Device-private Move journal; one entry per direction + transfer identity. */
+/** Device-private Move journals, exact endpoint+account+job identity.
+ *
+ * Older entries were indexed only by direction+hash. Preserve those bytes and
+ * look them up only when their decoded exact server scope matches; a second
+ * account with the same hash receives an independent new key. No migration
+ * clears an uncertain Move or invents a successful source removal.
+ */
 internal class TransferMoveStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(
         "chunks_transfer_moves_v1", Context.MODE_PRIVATE)
 
-    fun get(direction: Direction, infoHash: String): TransferMove.Record? = try {
-        prefs.getString(key(direction, infoHash), null)?.let(TransferMove::decode)
-    } catch (_: RuntimeException) { null }
-
-    @Synchronized
-    fun save(record: TransferMove.Record): Boolean = try {
-        prefs.edit().putString(key(record.direction, record.infoHash), record.encode()).commit()
-    } catch (_: RuntimeException) { false }
-
-    @Synchronized
-    fun remove(direction: Direction, infoHash: String): Boolean = try {
-        prefs.edit().remove(key(direction, infoHash)).commit()
-    } catch (_: RuntimeException) { false }
-
-    /** Every journaled move in one direction (malformed entries are skipped). */
-    fun all(direction: Direction): List<TransferMove.Record> = try {
-        prefs.all.filterKeys { it.startsWith(direction.name + "_") }.values
-            .mapNotNull { (it as? String)?.let(TransferMove::decode) }
-    } catch (_: RuntimeException) { emptyList() }
-
-    private fun key(direction: Direction, infoHash: String) =
+    private fun legacyKey(direction: Direction, infoHash: String) =
         direction.name + "_" + infoHash.lowercase(Locale.ROOT)
 
+    private fun scopedKey(direction: Direction, infoHash: String, serverDigest: String) =
+        direction.name + "_" + serverDigest + "_" + infoHash.lowercase(Locale.ROOT)
+
+    private fun scopedKey(record: TransferMove.Record) =
+        scopedKey(record.direction, record.infoHash, record.serverScopeDigest)
+
+    private fun exactlyMatches(record: TransferMove.Record?, direction: Direction,
+                               hash: String, serverDigest: String?): Boolean =
+        record != null && record.direction == direction &&
+            record.infoHash.equals(hash, ignoreCase = true) &&
+            (serverDigest == null || record.serverScopeDigest == serverDigest)
+
+    /** An exact account finds only its own Move. Disconnected UI may show a
+     * single unambiguous journal for read-only reconnect guidance. */
+    @Synchronized
+    fun get(direction: Direction, infoHash: String,
+            serverScopeDigest: String? = null): TransferMove.Record? {
+        if (!Regex("[0-9a-fA-F]{40}").matches(infoHash) ||
+            (serverScopeDigest != null && !Regex("[0-9a-f]{64}").matches(serverScopeDigest)))
+            return null
+        if (serverScopeDigest == null)
+            return all(direction).filter { it.infoHash.equals(infoHash, ignoreCase = true) }
+                .singleOrNull()
+        return try {
+            val scoped = scopedKey(direction, infoHash, serverScopeDigest)
+            // An existing malformed or changed scoped entry must never fall
+            // through to a legacy record and authorize removal of its newer job.
+            if (prefs.contains(scoped)) {
+                prefs.getString(scoped, null)?.let(TransferMove::decode)
+                    .takeIf { exactlyMatches(it, direction, infoHash, serverScopeDigest) }
+            } else {
+                val old = prefs.getString(legacyKey(direction, infoHash), null)
+                    ?.let(TransferMove::decode)
+                old.takeIf { exactlyMatches(it, direction, infoHash, serverScopeDigest) }
+            }
+        } catch (_: RuntimeException) { null }
+    }
+
+    @Synchronized
+    fun save(record: TransferMove.Record): Boolean = synchronized(JOURNAL_LOCK) {
+        try {
+            val scopedPresent = prefs.contains(scopedKey(record))
+            val previous = get(record.direction, record.infoHash, record.serverScopeDigest)
+            // Never replace a corrupt existing scoped journal: its attempted
+            // write and recovery state are unknown until explicitly repaired.
+            // A replacement source generation/name/directory cannot silently
+            // take over an unresolved journal for the same account and hash.
+            // Fresh source re-observation must precede another removal attempt.
+            val clobbers = previous != null && (
+                previous.name != record.name ||
+                previous.sourceReviewToken != record.sourceReviewToken ||
+                previous.sourceDirectory != record.sourceDirectory ||
+                (previous.stage == Stage.SOURCE_REMOVAL_UNCERTAIN &&
+                    record.stage in setOf(Stage.AWAITING_TARGET, Stage.SOURCE_REMOVAL_REQUESTED))
+            )
+            if (clobbers || (scopedPresent && previous == null)) false else {
+                val old = prefs.getString(legacyKey(record.direction, record.infoHash), null)
+                    ?.let(TransferMove::decode)
+                val edit = prefs.edit().putString(scopedKey(record), record.encode())
+                // Matching legacy record is retired atomically with its new key.
+                // Another account's legacy journal remains entirely untouched.
+                if (exactlyMatches(old, record.direction, record.infoHash, record.serverScopeDigest))
+                    edit.remove(legacyKey(record.direction, record.infoHash))
+                edit.commit()
+            }
+        } catch (_: RuntimeException) { false }
+    }
+
+    /** Forget one exact journal only, never another account's same-hash job. */
+    @Synchronized
+    fun remove(record: TransferMove.Record): Boolean = synchronized(JOURNAL_LOCK) { try {
+        // A stale callback cannot discard a newer stage or a replacement
+        // source review, even within the same exact server/hash identity.
+        if (get(record.direction, record.infoHash, record.serverScopeDigest) !=
+            TransferMove.recovered(record)) false
+        else {
+            val old = prefs.getString(legacyKey(record.direction, record.infoHash), null)
+                ?.let(TransferMove::decode)
+            val edit = prefs.edit().remove(scopedKey(record))
+            if (exactlyMatches(old, record.direction, record.infoHash, record.serverScopeDigest))
+                edit.remove(legacyKey(record.direction, record.infoHash))
+            edit.commit()
+        }
+    } catch (_: RuntimeException) { false } }
+
+    /** Compatibility for existing batch callers until they pass exact records.
+     * Multiple accounts sharing a hash must fail closed, not guess which one. */
+    @Synchronized
+    fun remove(direction: Direction, infoHash: String): Boolean {
+        return synchronized(JOURNAL_LOCK) {
+            val only = all(direction).filter { it.infoHash.equals(infoHash, ignoreCase = true) }
+                .singleOrNull() ?: return@synchronized false
+            remove(only)
+        }
+    }
+
+    /** Enumerate every account's valid journal with exact-key precedence over
+     * a duplicated legacy key. Neither list order nor a hash alone grants a
+     * deletion or changes a remote profile. */
+    @Synchronized
+    fun all(direction: Direction): List<TransferMove.Record> = try {
+        val snapshot = prefs.all
+        snapshot.entries.mapNotNull { (key, raw) ->
+            val record = (raw as? String)?.let(TransferMove::decode)
+                ?: return@mapNotNull null
+            val legacy = key == legacyKey(direction, record.infoHash)
+            if (record.direction != direction ||
+                (key != scopedKey(record) && !legacy) ||
+                // A broken or newer exact scoped entry must not let an older
+                // legacy value be resurrected for batch source retirement.
+                (legacy && snapshot.containsKey(scopedKey(record))))
+                null else key to record
+        }.sortedBy { (key, record) -> if (key == scopedKey(record)) 0 else 1 }
+            .map { it.second }
+            .distinctBy { Triple(it.direction, it.infoHash, it.serverScopeDigest) }
+    } catch (_: RuntimeException) { emptyList() }
+
     companion object {
+        // MainActivity and phone/Combined cards instantiate independent Store
+        // wrappers. Serialize read-modify-commit across those instances.
+        private val JOURNAL_LOCK = Any()
+
         /** Opaque identity of one rTorrent endpoint + account; the URL is not stored. */
         fun scopeDigest(aliasScope: String): String =
             MessageDigest.getInstance("SHA-256").digest(aliasScope.toByteArray(Charsets.UTF_8))
@@ -128,9 +235,14 @@ internal fun TransferMoveControl(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { TransferMoveStore(context) }
-    var record by remember(direction, infoHash, revision) { mutableStateOf(store.get(direction, infoHash)) }
-    var confirmingStart by remember(infoHash) { mutableStateOf(false) }
-    var confirmingRemoval by remember(infoHash, sourceReviewToken, sourceDirectory) { mutableStateOf(false) }
+    val serverDigest = serverAliasScope?.let(TransferMoveStore::scopeDigest)
+    var record by remember(direction, infoHash, revision, serverDigest) {
+        mutableStateOf(store.get(direction, infoHash, serverDigest))
+    }
+    var confirmingStart by remember(infoHash, serverDigest) { mutableStateOf(false) }
+    var confirmingRemoval by remember(infoHash, sourceReviewToken, sourceDirectory, serverDigest) {
+        mutableStateOf(false)
+    }
     var working by remember(infoHash) { mutableStateOf(false) }
     var message by remember(infoHash) { mutableStateOf<String?>(null) }
     val destination = if (direction == Direction.PHONE_TO_SERVER) "server" else "phone"
@@ -141,7 +253,12 @@ internal fun TransferMoveControl(
             record = next.record; message = next.message; true
         } else { message = "Chunks could not save the Move journal. Nothing was removed."; false }
         is TransferMove.Next.Done -> {
-            store.remove(direction, infoHash); record = null; message = next.message; true
+            if (record?.let { store.remove(it) } == true) {
+                record = null; message = next.message; true
+            } else {
+                message = "The original job was checked, but the Move journal could not be cleared. Recheck it; no mutation will be repeated."
+                false
+            }
         }
         is TransferMove.Next.Keep -> { message = next.message.ifEmpty { null }; false }
     }
@@ -283,7 +400,7 @@ internal fun TransferMoveControl(
                         message = "Reconnect to the Move's original server account before cancelling its journal."
                         return@OutlinedButton
                     }
-                    if (store.remove(direction, infoHash)) {
+                    if (store.remove(current)) {
                         record = null
                         message = "Move cancelled. Both jobs, if any, were left as they are."
                     }

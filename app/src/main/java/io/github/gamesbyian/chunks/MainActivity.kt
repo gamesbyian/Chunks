@@ -2278,7 +2278,7 @@ private fun TransfersScreen(
                         },
                         observeSource = { hash -> TransferMoveObservations.server(remote, hash) },
                         save = { record -> TransferMoveStore(context).save(record) },
-                        forget = { record -> TransferMoveStore(context).remove(record.direction, record.infoHash) },
+                        forget = { record -> TransferMoveStore(context).remove(record) },
                         onFinished = { text -> serverMoveMessage = text; serverMoveRevision++ },
                         onStarted = onMutationStarted,
                         onSettled = onLifecycleSettled
