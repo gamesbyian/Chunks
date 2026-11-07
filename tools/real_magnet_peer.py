@@ -37,6 +37,8 @@ def bounded_phase_length(value):
     if (not isinstance(value, str) or not 1 <= len(value) <= 3 or
             not value.isascii() or not value.isdecimal()):
         raise ValueError("Invalid phase request size")
+    if len(value) > 1 and value.startswith("0"):
+        raise ValueError("Invalid phase request size")
     size = int(value)
     if not 1 <= size <= 128:
         raise ValueError("Invalid phase request size")
