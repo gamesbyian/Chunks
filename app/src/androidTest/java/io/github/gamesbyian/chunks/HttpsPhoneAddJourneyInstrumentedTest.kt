@@ -4,7 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -51,6 +51,16 @@ class HttpsPhoneAddJourneyInstrumentedTest {
         while (!condition()) {
             if (System.nanoTime() > end) fail("HTTPS phone journey: $what" + runCatching { detail() }.getOrDefault("").let { if (it.isEmpty()) "" else " ($it)" })
             Thread.sleep(150)
+        }
+    }
+    // User actions enqueue work with the v2 StandardTestDispatcher. Unlike
+    // the independent peer/disk await() above, this wait advances the Compose
+    // clock so an Add, Stop or Remove command is actually dispatched.
+    private fun awaitUi(what: String, condition: () -> Boolean) {
+        try {
+            rule.waitUntil(90_000, condition)
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            throw AssertionError("HTTPS phone journey: $what", timeout)
         }
     }
     private fun visible(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
@@ -182,18 +192,33 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
+                // Let the pending Compose/navigation frames settle before
+                // Activity recreation. The v2 rule queues continuation work
+                // instead of re-entering Android measure/layout synchronously.
+                rule.waitForIdle()
                 stage("before-recreate")
                 scenario.recreate()
                 stage("after-recreate")
                 scenario.onActivity { activity = it }
+                instrumentation.waitForIdleSync()
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
                 // Exercise a real refused retrieval and recover the same scoped draft.
                 type("Or paste a magnet or torrent link", "https://127.0.0.1/blocked.torrent")
                 click("Get torrent from link")
-                rule.waitUntil(30_000) { visible(TorrentLinkResult.LOCAL_NETWORK) }
+                // A refused URL's notice may be below the currently composed
+                // LazyColumn viewport after recreation. Actually scroll to it:
+                // keep requiring the precise private-network refusal, not just
+                // an arbitrary error or absence of a transfer.
+                rule.waitUntil(30_000) {
+                    runCatching {
+                        scroll(TorrentLinkResult.LOCAL_NETWORK)
+                        visible(TorrentLinkResult.LOCAL_NETWORK)
+                    }.getOrDefault(false)
+                }
                 assertNull(LocalEngineHolder.current()?.status(preview.infoHashV1))
+                scroll("Saves to: Chunks app folder")
                 rule.onNodeWithText("Saves to: Chunks app folder").assertExists()
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
                 stage("refusal-recovered")
@@ -233,7 +258,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 click("Automatically identify and fetch artwork & metadata")
                 assertFalse("The draft choice alone is not Add admission", excluded())
                 click("Add stopped")
-                await("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
+                awaitUi("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
                 assertTrue("Phone Add must persist the exclusion before exposing the job", excluded())
                 val phone = requireNotNull(LocalEngineHolder.current())
                 previousLimits = phone.rateLimits()
@@ -246,6 +271,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertTrue("Sequential download readback", phone.setSequentialDownload(preview.infoHashV1, true))
                 stage("added-stopped")
                 click("Start")
+                rule.waitForIdle() // Dispatch queued Start before checking the OS permission prompt.
                 if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(
                         android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     val device = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
@@ -301,7 +327,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     androidx.test.uiautomator.UiDevice.getInstance(instrumentation).hasObject(
                         androidx.test.uiautomator.By.res(java.util.regex.Pattern.compile(".*:id/permission_allow_button"))))
                 click("Stop")
-                await("production Stop") { phone.status(preview.infoHashV1)?.stopped == true }
+                awaitUi("production Stop") { phone.status(preview.infoHashV1)?.stopped == true }
                 stage("stopped-observed")
                 // A paused flag precedes asynchronous disk-cache settlement. Use
                 // the production post-Stop FLUSH_DISK_CACHE checkpoint before an
@@ -324,6 +350,50 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 val status = requireNotNull(phone.status(preview.infoHashV1))
                 assertTrue(status.doneBytes in 1 until preview.sizeBytes)
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
+                // Ordinary phone Downloads -> Combined -> Details, using the
+                // installed app's real observation of this exact local job.
+                // Reading Details must not mutate the stopped native session.
+                // This source is the only native job in the fresh, isolated
+                // application. The list may legitimately display a renamed
+                // alias; exact identity is verified in Details by infohash.
+                assertEquals("Phone fixture requires one exact local job",
+                    setOf(preview.infoHashV1.lowercase()),
+                    phone.list().map { it.infoHash.lowercase() }.toSet())
+                click("All environments…")
+                rule.waitUntil(30_000) { visible("All environments") }
+                // The Combined list reads phone inventory and its privacy
+                // policy asynchronously; entering the screen does not mean
+                // its first full snapshot has been rendered. Wait for the
+                // actual phone row to become scrollable, not just the title.
+                val phoneRow = hasContentDescription("Expand ", substring = true) and
+                    hasContentDescription(" on On this phone", substring = true)
+                rule.waitUntil(45_000) {
+                    runCatching {
+                        if (visible("Show all transfers")) click("Show all transfers")
+                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneRow)
+                        true
+                    }.getOrDefault(false)
+                }
+                rule.onNode(phoneRow).performClick()
+                val details = hasContentDescription("All details for ", substring = true) and
+                    hasContentDescription(" on On this phone", substring = true)
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(details)
+                rule.onNode(details).performClick()
+                rule.waitUntil(30_000) {
+                    visible("Transfer details") && visible("Environment: On this phone")
+                }
+                rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+                assertTrue("Phone Details lost the exact observed hash",
+                    visible("Exact infohash: ${preview.infoHashV1}"))
+                assertTrue("Phone Details lost its exact one-time destination",
+                    visible("Save folder reported by engine: ${destination.canonicalPath}"))
+                assertTrue("Read-only Details must not restart the native job",
+                    phone.status(preview.infoHashV1)?.stopped == true)
+                click("Back to transfers")
+                rule.waitUntil(30_000) { visible("All environments") }
+                click("Back")
+                rule.waitUntil(30_000) { visible("On this phone (experimental)") }
+                stage("phone-details-verified")
                 stage("phone-open")
                 // Genuine first-run sessions use the direct Add link; populated ones retain the inline action.
                 if (visible("Add a torrent")) click("Add a torrent")
@@ -341,7 +411,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 stage("next-default-verified")
                 click("Remove…")
                 click("Remove transfer, keep data")
-                await("exact session removal") { phone.status(preview.infoHashV1) == null }
+                awaitUi("exact session removal") { phone.status(preview.infoHashV1) == null }
                 assertTrue(target.isFile)
             }
         } catch (failure: Throwable) {
