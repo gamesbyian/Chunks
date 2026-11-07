@@ -11,6 +11,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.click
+import android.os.SystemClock
+import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -53,7 +57,28 @@ class FooterImeInstalledInstrumentedTest {
         val field = rule.onNode(hasSetTextAction() and hasText(searchLabel))
         // Accessibility actions can reach an unfocused Activity. A real tap
         // after window focus is the ordinary foreground keyboard journey.
-        rule.waitUntil(15_000) { rule.activity.hasWindowFocus() }
+        // Two independent installed runs showed Android's *external* Pixel
+        // Launcher ANR stealing focus from an otherwise responsive Chunks screen.
+        // Dismiss only that exact system dialog's Wait button once, then demand
+        // real Chunks focus. Never dismiss an app ANR, permission or Add dialog,
+        // and never treat a dismissal as evidence that the IME journey passed.
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        var externalLauncherWaitClicked = false
+        var nextProbeAt = 0L
+        rule.waitUntil(15_000) {
+            if (rule.activity.hasWindowFocus()) true else {
+                val now = SystemClock.elapsedRealtime()
+                if (!externalLauncherWaitClicked && now >= nextProbeAt) {
+                    nextProbeAt = now + 500L
+                    val launcher = device.findObject(By.text("Pixel Launcher isn't responding"))
+                    val wait = if (launcher != null) device.findObject(By.text("Wait")) else null
+                    if (wait != null) {
+                        externalLauncherWaitClicked = runCatching { wait.click(); true }.getOrDefault(false)
+                    }
+                }
+                false
+            }
+        }
         field.performScrollTo().performTouchInput { click() }
         val keyboardAppeared = runCatching { rule.waitUntil(15_000) { imeShown() } }.isSuccess
         assumeTrue("This emulator did not show a soft keyboard; no IME evidence possible", keyboardAppeared)

@@ -272,6 +272,13 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 stage("added-stopped")
                 click("Start")
                 rule.waitForIdle() // Dispatch queued Start before checking the OS permission prompt.
+                // Connect the verified piece-0 publisher immediately when Start is dispatched.
+                // Android notification permission may take many seconds to resolve; delaying
+                // the only independently verified first-piece peer until afterward lets the
+                // full-source fixture compete for other pieces throughout that interval.
+                // Peer connection is not a second Add/Start write or a retry.
+                assertTrue("Independent publisher connection", phone.connectPeer(
+                    preview.infoHashV1, InetSocketAddress("127.0.0.1", seed.listenPort())))
                 if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(
                         android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
                     val device = androidx.test.uiautomator.UiDevice.getInstance(instrumentation)
@@ -311,7 +318,6 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                         context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS))
                     stage("notification-allowed")
                 }
-                assertTrue(phone.connectPeer(preview.infoHashV1, InetSocketAddress("127.0.0.1", seed.listenPort())))
                 await("actual peer bytes and verified piece progression") {
                     phone.status(preview.infoHashV1)?.let { it.doneBytes >= piece.size && it.payloadDownloadedBytes > 0 } == true
                 }
@@ -319,7 +325,18 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // whole file, so other pieces can finish while piece 0 is still partial (observed:
                 // done=22 MB, only 48 KiB of piece 0 on disk). Wait for piece 0 itself before Stop.
                 val firstPieceFile = File(destination, preview.name)
-                await("piece 0 itself on disk before Stop") {
+                await("piece 0 itself on disk before Stop", detail = {
+                    val head = if (firstPieceFile.isFile)
+                        firstPieceFile.inputStream().use { it.readNBytes(piece.size) } else ByteArray(0)
+                    val matchingPrefix = head.indices.firstOrNull { index -> head[index] != piece[index] }
+                        ?: head.size
+                    val observed = phone.status(preview.infoHashV1)
+                    // Public disposable fixture only: no paths, URLs, names or private payload.
+                    "file=${firstPieceFile.isFile} read=${head.size} expected=${piece.size} " +
+                        "matchingPrefix=$matchingPrefix done=${observed?.doneBytes} " +
+                        "downloaded=${observed?.payloadDownloadedBytes} " +
+                        "stopped=${observed?.stopped}"
+                }) {
                     firstPieceFile.isFile && firstPieceFile.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
                 }
                 stage("pieces-received")

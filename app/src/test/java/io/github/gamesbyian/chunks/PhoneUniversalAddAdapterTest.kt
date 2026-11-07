@@ -70,6 +70,60 @@ class PhoneUniversalAddAdapterTest {
         assertFalse(magnet.toString().contains("passkey"))
     }
 
+    @Test fun changedReviewedTorrentBytesCannotBeAuthorizedUsingAnOldVisibleHash() {
+        // Equal-sized names keep both bencoded documents the same length.
+        val original = TorrentLinkFixtures.singleFileV1("alpha.mkv", 1_024)
+        val replacement = TorrentLinkFixtures.singleFileV1("bravo.mkv", 1_024)
+        assertEquals(original.size, replacement.size)
+        val reviewed = PendingLocalAdd(TorrentMetainfoReader.preview(original), original)
+        // A mutable review holder may change before a queued coroutine starts.
+        // The shared ticket must not borrow the earlier preview's authority.
+        replacement.copyInto(original)
+        try {
+            PhoneUniversalAddAdapter.torrentIntent(reviewed, place, "",
+                startWhenAdded = false, allowArtwork = false)
+            fail("Changed metainfo must not create a shared Add ticket")
+        } catch (_: IllegalArgumentException) {
+            // Rejection occurs before any native engine call.
+        }
+    }
+
+    @Test fun existingPhoneHashIsRefusedReadOnlyOnlyWhenInventoryIsFresh() {
+        val existing = status(hash = infohash)
+        val different = status(hash = "b".repeat(40))
+        assertFalse(PhoneUniversalAddAdapter.alreadyPresentInFreshInventory(
+            infohash, listOf(existing), fresh = false))
+        assertFalse(PhoneUniversalAddAdapter.alreadyPresentInFreshInventory(
+            infohash, listOf(different), fresh = true))
+        assertTrue(PhoneUniversalAddAdapter.alreadyPresentInFreshInventory(
+            infohash.uppercase(), listOf(existing, different), fresh = true))
+        // No coordinator authorization, native call, target substitution or
+        // instance mutation occurs from an already-existing hash check.
+    }
+
+    @Test fun changedTrackerUrlWithIdenticalInfohashAndPreviewCannotAcquireOldReviewApproval() {
+        val source = TorrentLinkFixtures.singleFileV1("same.mkv", 1_024)
+        val preview = TorrentMetainfoReader.preview(source)
+        val review = PendingLocalAdd(preview, source)
+        val oldUrl = "https://tracker.example/announce"
+        val changedUrl = "https://tracker.example/bnnounce"
+        val offset = source.toString(Charsets.ISO_8859_1).indexOf(oldUrl)
+        assertTrue("Fixture must have an announce URL", offset >= 0)
+        assertEquals(oldUrl.length, changedUrl.length)
+        changedUrl.toByteArray(Charsets.US_ASCII).copyInto(source, offset)
+        // v1 infohash covers the info dictionary, and preview redacts the
+        // tracker URL's private path. Both remain identical after this edit.
+        assertEquals(preview, TorrentMetainfoReader.preview(source))
+        assertFalse(review.stillMatchesReviewedSource(source))
+        try {
+            PhoneUniversalAddAdapter.torrentIntent(review, place, "",
+                startWhenAdded = false, allowArtwork = true)
+            fail("Altered complete metainfo must never use the older approval")
+        } catch (_: IllegalArgumentException) {
+            // Exact-source denial occurs before review authorization/native IO.
+        }
+    }
+
     @Test fun liveInventoryAndCurrentPlaceRequiredBeforeAnyAttempt() {
         val session = PhoneAddAttemptSession()
         assertFalse(PhoneUniversalAddAdapter.review(session.coordinator, intent(),
@@ -94,10 +148,16 @@ class PhoneUniversalAddAdapterTest {
     @Test fun exactNativeGenerationAndReviewedPlaceProveStoppedNewAdd() {
         val (session, ticket) = prepared()
         session.noteNativeResult(ticket, LocalAddResult.AddedStopped(status()), place)
+        assertTrue("A native generation receipt can announce a registered job",
+            session.announceNativeRegistrationOnce(ticket))
+        assertFalse("A single ticket cannot emit a second Combined notice",
+            session.announceNativeRegistrationOnce(ticket))
         assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, session.coordinator.phase)
         assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
             session.reconcile(ticket, status(), place, 11_000L))
         assertEquals(UniversalAddCoordinator.Phase.VERIFIED, session.coordinator.phase)
+        assertFalse("Fresh full-intent proof cannot duplicate the registration notice",
+            session.announceVerifiedRegistrationOnce(ticket))
         assertNull(session.coordinator.beginSubmission(12_000L))
         assertTrue(session.finishReviewedAttempt())
         assertNull(session.attemptedTicket)
@@ -116,6 +176,8 @@ class PhoneUniversalAddAdapterTest {
     @Test fun nativeRefusalAfterPossibleRegistrationCannotEraseWriteFence() {
         val (session, ticket) = prepared()
         session.noteNativeResult(ticket, LocalAddResult.Refused("Could not read back native handle"), place)
+        assertFalse("An uncertain post-native refusal cannot announce a new transfer",
+            session.announceNativeRegistrationOnce(ticket))
         assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, session.coordinator.phase)
         assertNull(session.coordinator.beginSubmission(10_001L))
         assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
@@ -130,6 +192,7 @@ class PhoneUniversalAddAdapterTest {
         val (session, ticket) = prepared()
         val native = status(nativeToken = "n1")
         session.noteNativeResult(ticket, LocalAddResult.AddedStopped(native), place)
+        assertTrue(session.announceNativeRegistrationOnce(ticket))
         assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
             session.reconcile(ticket, native, place, 9_999L))
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
@@ -152,6 +215,50 @@ class PhoneUniversalAddAdapterTest {
         assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
             startSession.reconcile(startTicket,
                 metadata.copy(stopped = false, uploadOnly = false, metadataKnown = true), place, 12_000L))
+    }
+
+    @Test fun peerlessMagnetWithStartRequestedAcknowledgesObservedJobWithoutStartingOrRetrying() {
+        val (session, ticket) = prepared(start = true)
+        session.bindPlace(ticket, place)
+        val metadataOnly = status(stopped = false, uploadOnly = true, metadataKnown = false)
+        session.noteNativeResult(ticket, LocalAddResult.FetchingMetadata(metadataOnly), place)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            session.reconcileInventory(listOf(metadataOnly), 11_000L))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
+            session.coordinator.phase)
+        assertFalse(session.finishReviewedAttempt())
+        assertNull("A valid existing job does not authorize another Add",
+            session.coordinator.beginSubmission(12_000L))
+        assertTrue(session.acknowledgeObservedJob())
+        assertNull(session.attemptedTicket)
+        assertEquals(UniversalAddCoordinator.Phase.EMPTY, session.coordinator.phase)
+        assertFalse(session.acknowledgeObservedJob())
+        assertNull("Acknowledgement alone never authorizes a new native mutation",
+            session.coordinator.beginSubmission(13_000L))
+        assertEquals(UniversalAddCoordinator.Readback.WRONG_TICKET,
+            session.reconcile(ticket, metadataOnly, place, 14_000L))
+    }
+
+    @Test fun unknownOrWrongPlaceDoesNotUnlockPeerlessMagnetAcknowledgement() {
+        val (session, ticket) = prepared(start = true)
+        session.bindPlace(ticket, place)
+        val metadataOnly = status(stopped = false, uploadOnly = true, metadataKnown = false)
+        session.noteNativeResult(ticket, LocalAddResult.FetchingMetadata(metadataOnly), place)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            session.reconcileInventory(
+                listOf(metadataOnly.copy(savePath = File(root, "somewhere-else").path)), 11_000L))
+        assertEquals(UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN,
+            session.coordinator.phase)
+        assertFalse(session.acknowledgeObservedJob())
+        assertNotNull(session.attemptedTicket)
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            session.reconcile(ticket, metadataOnly, place, 9_999L))
+        assertFalse(session.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            session.reconcileInventory(listOf(metadataOnly), 13_000L))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
+            session.coordinator.phase)
+        assertTrue(session.acknowledgeObservedJob())
     }
 
     @Test fun positivePrewriteRefusalReopensReviewWithoutAuthorizingAutomaticRetry() {

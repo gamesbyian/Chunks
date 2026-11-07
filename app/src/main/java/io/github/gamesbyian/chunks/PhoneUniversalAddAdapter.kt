@@ -9,6 +9,7 @@ import io.github.gamesbyian.chunks.model.UniversalAddIntent
 import io.github.gamesbyian.chunks.model.UniversalAddPlace
 import io.github.gamesbyian.chunks.model.UniversalAddSource
 import io.github.gamesbyian.chunks.model.UniversalAddTarget
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.File
 
 /**
@@ -20,16 +21,45 @@ import java.io.File
  * mutation. All writes remain in LocalTorrentEngine.
  */
 internal object PhoneUniversalAddAdapter {
+    /**
+     * Existing hashes in one COMPLETE fresh phone inventory are a known
+     * no-write refusal before libtorrent is entered. Never use an incomplete
+     * or stale list to conclude that the source is already registered.
+     */
+    fun alreadyPresentInFreshInventory(
+        hash: String, inventory: List<LocalTransferStatus>, fresh: Boolean
+    ): Boolean = fresh && inventory.any { it.infoHash.equals(hash, ignoreCase = true) }
+
     fun torrentIntent(
         reviewed: PendingLocalAdd,
         place: LocalDownloadPlace,
         subfolder: String,
         startWhenAdded: Boolean,
         allowArtwork: Boolean
-    ): UniversalAddIntent = intent(
-        UniversalAddSource.metainfo(reviewed.bytes, reviewed.preview.infoHashV1),
-        place, subfolder, startWhenAdded, allowArtwork
-    )
+    ): UniversalAddIntent {
+        // PendingLocalAdd retains a mutable byte array for navigation. Recheck
+        // its exact reviewed identity at the authorization boundary, then copy
+        // it into UniversalAddSource. The executor must use only that copy.
+        // Snapshot once before parsing. An Activity/source replacement must
+        // never change the bytes between the preview hash check and the
+        // coordinator's frozen submission copy.
+        val sourceBytes = reviewed.bytes.copyOf()
+        require(reviewed.stillMatchesReviewedSource(sourceBytes)) {
+            "The reviewed torrent source changed"
+        }
+        val current = try {
+            TorrentMetainfoReader.preview(sourceBytes)
+        } catch (_: Exception) {
+            throw IllegalArgumentException("The reviewed torrent source changed")
+        }
+        require(current == reviewed.preview) {
+            "The verified source no longer matches the visible review"
+        }
+        return intent(
+            UniversalAddSource.metainfo(sourceBytes, current.infoHashV1),
+            place, subfolder, startWhenAdded, allowArtwork
+        )
+    }
 
     fun magnetIntent(
         checked: MagnetDraftCheck.Valid,
@@ -165,9 +195,26 @@ internal class PhoneAddAttemptSession(
 ) {
     private var ticketWithReceipt: UniversalAddCoordinator.Ticket? = null
     private var nativeGenerationReceipt: String? = null
+    /** A positive registration may be shown in Combined once, separately from Start proof. */
+    private var announcedRegistrationTicket: UniversalAddCoordinator.Ticket? = null
+    private var ticketWithPlace: UniversalAddCoordinator.Ticket? = null
+    private var frozenPlace: LocalDownloadPlace? = null
 
     val attemptedTicket: UniversalAddCoordinator.Ticket?
         get() = coordinator.retainedTicket
+
+    /** Bind the exact Place alongside the ticket before any native Add call. */
+    fun bindPlace(ticket: UniversalAddCoordinator.Ticket, place: LocalDownloadPlace) {
+        require(coordinator.retainedTicket === ticket) { "Not the current phone Add attempt" }
+        require(PhoneUniversalAddAdapter.expectedDirectory(ticket, place) != null) {
+            "The frozen ticket belongs to another phone Place"
+        }
+        ticketWithPlace = ticket
+        frozenPlace = place
+        ticketWithReceipt = null
+        nativeGenerationReceipt = null
+        announcedRegistrationTicket = null
+    }
 
     fun noteNativeResult(ticket: UniversalAddCoordinator.Ticket,
                          result: LocalAddResult, place: LocalDownloadPlace) {
@@ -175,6 +222,30 @@ internal class PhoneAddAttemptSession(
         ticketWithReceipt = ticket
         nativeGenerationReceipt = PhoneUniversalAddAdapter.registrationToken(ticket, result, place)
         coordinator.requireReadback(ticket)
+    }
+
+    /**
+     * The existing Combined "new transfer" notice means a registration was
+     * positively read back, not that metadata, payload Start or peer bytes
+     * have been verified. The source must have returned this ticket's exact
+     * native-generation receipt at the reviewed Place. Never announce on
+     * Refused or on finding only an already-present matching hash.
+     */
+    fun announceNativeRegistrationOnce(ticket: UniversalAddCoordinator.Ticket): Boolean {
+        if (coordinator.retainedTicket !== ticket ||
+            ticketWithReceipt !== ticket || nativeGenerationReceipt.isNullOrBlank() ||
+            announcedRegistrationTicket === ticket) return false
+        announcedRegistrationTicket = ticket
+        return true
+    }
+
+    /** A later independently verified ticket may notify only if not already announced. */
+    fun announceVerifiedRegistrationOnce(ticket: UniversalAddCoordinator.Ticket): Boolean {
+        if (coordinator.retainedTicket !== ticket ||
+            coordinator.phase != UniversalAddCoordinator.Phase.VERIFIED ||
+            announcedRegistrationTicket === ticket) return false
+        announcedRegistrationTicket = ticket
+        return true
     }
 
     /** Called only for a new completed post-attempt engine observation. */
@@ -189,11 +260,36 @@ internal class PhoneAddAttemptSession(
         return coordinator.reconcileExactSession(ticket, exact)
     }
 
-    fun finishReviewedAttempt(): Boolean {
-        val done = coordinator.finishVerified() || coordinator.acknowledgeExactSession()
+    /** Called only after a new completed, current-generation phone inventory read. */
+    fun reconcileInventory(transfers: List<LocalTransferStatus>, observedAtEpochMillis: Long):
+        UniversalAddCoordinator.Readback? {
+        val ticket = attemptedTicket ?: return null
+        val place = frozenPlace?.takeIf { ticketWithPlace === ticket } ?: return null
+        val matching = transfers.filter {
+            it.infoHash.equals(ticket.intent.source.expectedInfoHash, ignoreCase = true)
+        }
+        // An ambiguous duplicated native identity is never positive evidence.
+        if (matching.size > 1) return UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED
+        return reconcile(ticket, matching.singleOrNull(), place, observedAtEpochMillis)
+    }
+
+    /**
+     * A fresh read established an exact job and reviewed Place, but requested
+     * payload Start remains uncertain. Only an explicit user acknowledgement
+     * can release that ticket; no engine Start or Add is sent here.
+     */
+    fun acknowledgeObservedJob(): Boolean = clearEvidenceAfter(coordinator.acknowledgeObservedJob())
+
+    fun finishReviewedAttempt(): Boolean =
+        clearEvidenceAfter(coordinator.finishVerified() || coordinator.acknowledgeExactSession())
+
+    private fun clearEvidenceAfter(done: Boolean): Boolean {
         if (done) {
             ticketWithReceipt = null
             nativeGenerationReceipt = null
+            announcedRegistrationTicket = null
+            ticketWithPlace = null
+            frozenPlace = null
         }
         return done
     }
