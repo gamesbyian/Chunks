@@ -1,10 +1,12 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -48,14 +50,14 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         assertTrue(store.save(a))
         assertTrue(store.save(b))
         val reads = AtomicInteger()
-        val changed = AtomicInteger()
+        val changed = mutableIntStateOf(0)
         rule.setContent {
             MaterialTheme {
                 OrphanMoveRecoveryPanel(
                     direction = Direction.PHONE_TO_SERVER, serverAliasScope = scopeA,
-                    visibleSourceHashes = emptyList(), enabled = true, revision = changed.get(),
+                    visibleSourceHashes = emptyList(), enabled = true, revision = changed.intValue,
                     observeSource = { reads.incrementAndGet(); Observation.Absent },
-                    onChanged = { changed.incrementAndGet() }
+                    onChanged = { changed.intValue++ }
                 )
             }
         }
@@ -64,7 +66,7 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         assertEquals(a, store.get(Direction.PHONE_TO_SERVER, hash, a.serverScopeDigest))
         rule.onNodeWithText("Check original job (read-only)").performClick()
         rule.waitUntil(10_000) {
-            rule.onNodeWithText("Clear only this Move reminder").fetchSemanticsNodeOrNull() != null
+            rule.onAllNodesWithText("Clear only this Move reminder").fetchSemanticsNodes().isNotEmpty()
         }
         assertEquals(1, reads.get())
         assertEquals(a, store.get(Direction.PHONE_TO_SERVER, hash, a.serverScopeDigest))
@@ -74,7 +76,7 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         }
         assertEquals("Only the two explicit independent observations are allowed", 2, reads.get())
         assertEquals(b, store.get(Direction.PHONE_TO_SERVER, hash, b.serverScopeDigest))
-        assertEquals(1, changed.get())
+        assertEquals(1, changed.intValue)
         // There is no Remove, Add or Stop/Start handler in this UI.
     }
 
@@ -97,7 +99,7 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         }
         rule.onNodeWithText("Check original job (read-only)").performClick()
         rule.waitUntil(10_000) {
-            rule.onNodeWithText("Clear only this Move reminder").fetchSemanticsNodeOrNull() != null
+            rule.onAllNodesWithText("Clear only this Move reminder").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Clear only this Move reminder").performClick()
         rule.waitUntil(10_000) { reads.get() == 2 }
@@ -122,7 +124,7 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         }
         rule.onNodeWithText("Check original job (read-only)").performClick()
         rule.waitUntil(10_000) {
-            rule.onNodeWithText("Clear only this Move reminder").fetchSemanticsNodeOrNull() != null
+            rule.onAllNodesWithText("Clear only this Move reminder").fetchSemanticsNodes().isNotEmpty()
         }
         rule.runOnUiThread { active.value = scopeB }
         rule.waitForIdle()
