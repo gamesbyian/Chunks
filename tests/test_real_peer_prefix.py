@@ -16,6 +16,28 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 
 @unittest.skipUnless(lt is not None, "native libtorrent source recheck gate only")
 class RealPeerPrefixTest(unittest.TestCase):
+    def test_peer_phase_http_body_length_is_bounded_before_read(self):
+        from real_magnet_peer import bounded_phase_length
+        for raw, expected in (("1", 1), ("64", 64), ("128", 128)):
+            with self.subTest(allowed=raw):
+                self.assertEqual(expected, bounded_phase_length(raw))
+        for raw in (None, 0, True, "", "0", "-1", "+3", "129",
+                    "999", "01", "001", "0001", "1.0", "1\\n", "１２"):
+            with self.subTest(rejected=raw):
+                with self.assertRaises(ValueError):
+                    bounded_phase_length(raw)
+
+    def test_boolean_port_is_not_a_real_peer_port(self):
+        with tempfile.TemporaryDirectory() as directory:
+            peer = self.fixture(Path(directory))
+            try:
+                with self.assertRaisesRegex(ValueError, "Invalid observed peer port"):
+                    peer.new_seed("magnet", "payload", True)
+                self.assertEqual({}, peer.active)
+                self.assertEqual([], peer.fixtures["magnet"]["stages"])
+            finally:
+                peer.close()
+
     def fixture(self, root, corrupt=False):
         from real_magnet_peer import Peer
         source = root / "magnet"

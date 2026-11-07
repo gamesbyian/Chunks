@@ -27,6 +27,24 @@ from public_fixture_collector import bstr, debian_fixture, parse_bencode
 PREFIX_BUDGET = 32 * 1024 * 1024
 
 
+def bounded_phase_length(value):
+    """Accept only a small, canonical ASCII HTTP request body length.
+
+    A negative Content-Length would make rfile.read(-1) wait for connection
+    close, potentially wedging an installed peer-fixture phase indefinitely.
+    Reject malformed lengths before accessing the request stream.
+    """
+    if (not isinstance(value, str) or not 1 <= len(value) <= 3 or
+            not value.isascii() or not value.isdecimal()):
+        raise ValueError("Invalid phase request size")
+    if len(value) > 1 and value.startswith("0"):
+        raise ValueError("Invalid phase request size")
+    size = int(value)
+    if not 1 <= size <= 128:
+        raise ValueError("Invalid phase request size")
+    return size
+
+
 def fetch(url, limit, offset=0):
     request = urllib.request.Request(url, headers={
         "User-Agent": "Chunks-real-magnet-acceptance/1.0",
@@ -159,7 +177,7 @@ class Peer:
         # The controller is not an arbitrary network probe or filesystem API.
         if label not in self.fixtures or stage not in ("preflight", "metadata", "payload", "resume"):
             raise ValueError("Invalid fixture or phase")
-        if stage != "preflight" and (not isinstance(port, int) or not 1 <= port <= 65535):
+        if stage != "preflight" and (type(port) is not int or not 1 <= port <= 65535):
             raise ValueError("Invalid observed peer port")
         with self.lock:
             item = self.fixtures[label]
@@ -341,11 +359,21 @@ def main():
 
             def do_POST(self):
                 parts = self.path.strip("/").split("/")
-                if len(parts) != 2 or int(self.headers.get("Content-Length", "0")) > 128:
+                try:
+                    length = bounded_phase_length(self.headers.get("Content-Length"))
+                except ValueError:
+                    self.send_error(400, "Invalid peer fixture request size")
+                    return
+                if len(parts) != 2:
                     self.send_error(400)
                     return
                 try:
-                    body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+                    payload = self.rfile.read(length)
+                    if len(payload) != length:
+                        raise ValueError("Incomplete phase request")
+                    body = json.loads(payload)
+                    if not isinstance(body, dict) or type(body.get("port")) is not int:
+                        raise ValueError("Invalid peer port")
                     peer.new_seed(parts[0], parts[1], body["port"])
                 except Exception:
                     self.send_error(400, "Peer fixture phase failed")
