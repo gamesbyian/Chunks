@@ -86,6 +86,7 @@ class TransferMoveStoreAccountScopeTest {
         assertTrue(store.all(direction).isEmpty())
         assertNull(store.get(direction, hash, "invalid"))
         assertFalse(store.remove(direction, hash))
+        assertFalse(store.save(record(scopeB)))
         assertTrue(prefs.contains(wrongKey)) // no destructive cleanup of unknown records
     }
 
