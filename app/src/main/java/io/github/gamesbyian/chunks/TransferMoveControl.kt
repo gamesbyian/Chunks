@@ -68,10 +68,13 @@ internal class TransferMoveStore(context: Context) {
             return all(direction).filter { it.infoHash.equals(infoHash, ignoreCase = true) }
                 .singleOrNull()
         return try {
-            val exact = prefs.getString(scopedKey(direction, infoHash, serverScopeDigest), null)
-                ?.let(TransferMove::decode)
-            if (exactlyMatches(exact, direction, infoHash, serverScopeDigest)) exact
-            else {
+            val scoped = scopedKey(direction, infoHash, serverScopeDigest)
+            // An existing malformed or changed scoped entry must never fall
+            // through to a legacy record and authorize removal of its newer job.
+            if (prefs.contains(scoped)) {
+                prefs.getString(scoped, null)?.let(TransferMove::decode)
+                    .takeIf { exactlyMatches(it, direction, infoHash, serverScopeDigest) }
+            } else {
                 val old = prefs.getString(legacyKey(direction, infoHash), null)
                     ?.let(TransferMove::decode)
                 old.takeIf { exactlyMatches(it, direction, infoHash, serverScopeDigest) }
