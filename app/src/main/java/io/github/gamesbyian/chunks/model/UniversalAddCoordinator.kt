@@ -137,6 +137,12 @@ internal class UniversalAddCoordinator {
      * against the selected session, never deduce it from a guessed catalog row.
      * "New registration" needs positive provenance from that submission;
      * a post-timeout lookup can verify a session without proving who added it.
+     *
+     * The timestamp must be tied to a trustworthy adapter sampling/generation
+     * boundary (for RPC reads, capture before the read starts), not assigned
+     * merely when a delayed response is translated into this value. A late
+     * completion of an older read can otherwise acquire a deceptively newer
+     * timestamp. The coordinator compares trusted timestamps, not RPC order.
      */
     data class ExactSessionObservation(
         val environment: EnvironmentId,
@@ -165,6 +171,22 @@ internal class UniversalAddCoordinator {
         private set
     private var reviewed: UniversalAddIntent? = null
     private var currentTicket: Ticket? = null
+    // Compare adapter-provided *sampling-order* timestamps, not callback
+    // completion order. Late results from older samples cannot rewrite newer
+    // accepted evidence when the adapter stamps them before asynchronous reads
+    // or uses an independently fenced native sampling generation. This alone
+    // cannot detect an older RPC mislabeled with a later completion timestamp.
+    // Share one per-ticket watermark across both readback APIs, without IO.
+    private var latestAcceptedObservationAtEpochMillis: Long? = null
+
+    private fun isStaleReadback(ticket: Ticket, observedAt: Long): Boolean =
+        observedAt < 0 || observedAt < ticket.submittedAtEpochMillis ||
+            (latestAcceptedObservationAtEpochMillis?.let { observedAt < it } == true)
+
+    private fun acceptReadbackAt(observedAt: Long) {
+        latestAcceptedObservationAtEpochMillis = maxOf(
+            latestAcceptedObservationAtEpochMillis ?: observedAt, observedAt)
+    }
 
     /** Read-only process-memory continuity across Add/Transfers/Connections navigation. */
     val retainedReview: UniversalAddIntent? get() = reviewed
@@ -194,6 +216,7 @@ internal class UniversalAddCoordinator {
         }
         reviewed = intent
         currentTicket = null
+        latestAcceptedObservationAtEpochMillis = null
         phase = Phase.REVIEWED // Any revised source/Place/Start invalidates previous approval.
         return ReviewDecision(true, add.explanation)
     }
@@ -213,6 +236,7 @@ internal class UniversalAddCoordinator {
         if (phase != Phase.AUTHORIZED || nowEpochMillis < 0) return null
         val ticket = Ticket(requireNotNull(reviewed), nowEpochMillis)
         currentTicket = ticket
+        latestAcceptedObservationAtEpochMillis = null
         phase = Phase.WRITE_ATTEMPTED
         return ticket
     }
@@ -221,6 +245,7 @@ internal class UniversalAddCoordinator {
     fun refusedBeforeAnyWrite(ticket: Ticket): Boolean {
         if (currentTicket !== ticket || phase != Phase.WRITE_ATTEMPTED) return false
         currentTicket = null
+        latestAcceptedObservationAtEpochMillis = null
         phase = Phase.REVIEWED
         return true
     }
@@ -242,6 +267,9 @@ internal class UniversalAddCoordinator {
      * prove a NEW Add; the existing adapter must separately confirm a new
      * registration, the reviewed Place and (when requested) actual Start.
      * A no-match read never permits a blind second write.
+     *
+     * Snapshot observedAtEpochMillis must represent the adapter-accepted
+     * sample/generation, not an unfenced asynchronous callback completion.
      */
     fun reconcile(
         ticket: Ticket,
@@ -259,9 +287,13 @@ internal class UniversalAddCoordinator {
             return Readback.WRONG_ENVIRONMENT
         if (phase == Phase.VERIFIED) return Readback.VERIFIED
         if (phase == Phase.SESSION_CONFIRMED) return Readback.EXACT_SESSION_CONFIRMED
-        if (!snapshot.canClaimCompleteLiveInventory ||
-            (snapshot.observedAtEpochMillis ?: -1L) < ticket.submittedAtEpochMillis)
+        val observedAt = snapshot.observedAtEpochMillis
+        if (!snapshot.canClaimCompleteLiveInventory || observedAt == null ||
+            isStaleReadback(ticket, observedAt))
             return Readback.NEEDS_FRESH_INVENTORY
+        // A complete inventory is evidence even when the hash is absent.
+        // A late older inventory must never overwrite newer exact-session proof.
+        acceptReadbackAt(observedAt)
         val match = snapshot.transfers.singleOrNull {
             it.key.infoHash == intent.source.expectedInfoHash &&
                 it.key.environment == intent.target.environment
@@ -292,6 +324,9 @@ internal class UniversalAddCoordinator {
      * A session first observed after a lost ACK is **not** evidence that this
      * Add registered it. It can be acknowledged separately for safe navigation
      * without manufacturing a successful NEW Add attribution.
+     *
+     * A trustworthy per-read sampling timestamp is required, not an arbitrary
+     * wall-clock instant assigned after a stale asynchronous RPC returns.
      */
     fun reconcileExactSession(ticket: Ticket, observation: ExactSessionObservation): Readback {
         if (currentTicket !== ticket || phase !in setOf(
@@ -302,12 +337,14 @@ internal class UniversalAddCoordinator {
             return Readback.WRONG_ENVIRONMENT
         if (phase == Phase.VERIFIED) return Readback.VERIFIED
         if (phase == Phase.SESSION_CONFIRMED) return Readback.EXACT_SESSION_CONFIRMED
-        if (observation.observedAtEpochMillis < ticket.submittedAtEpochMillis ||
-            observation.observedAtEpochMillis < 0)
+        if (isStaleReadback(ticket, observation.observedAtEpochMillis))
             return Readback.NEEDS_FRESH_INVENTORY
         val expected = ticket.intent.source.expectedInfoHash
         if (!observation.infoHash.equals(expected, ignoreCase = true))
             return Readback.NOT_OBSERVED
+        // A valid exact-hash observation includes an authoritative negative
+        // when the job is not registered. Do not accept unrelated hash probes.
+        acceptReadbackAt(observation.observedAtEpochMillis)
         if (!observation.registered) {
             if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) phase = Phase.READBACK_REQUIRED
             return Readback.NOT_OBSERVED
@@ -348,6 +385,7 @@ internal class UniversalAddCoordinator {
         if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) return false
         reviewed = null
         currentTicket = null
+        latestAcceptedObservationAtEpochMillis = null
         phase = Phase.EMPTY
         return true
     }
@@ -361,6 +399,7 @@ internal class UniversalAddCoordinator {
         if (phase != Phase.SESSION_CONFIRMED) return false
         reviewed = null
         currentTicket = null
+        latestAcceptedObservationAtEpochMillis = null
         phase = Phase.EMPTY
         return true
     }
@@ -370,6 +409,7 @@ internal class UniversalAddCoordinator {
         if (phase != Phase.VERIFIED) return false
         reviewed = null
         currentTicket = null
+        latestAcceptedObservationAtEpochMillis = null
         phase = Phase.EMPTY
         return true
     }
