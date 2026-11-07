@@ -47,6 +47,6 @@ class BatchMoveRemovalPanelInstrumentedTest {
         rule.onNodeWithText("Remove original jobs").performScrollTo().performClick()
         rule.waitUntil(10_000) { finished.isNotEmpty() }
         assertEquals(listOf(moves[0].infoHash), removed.toList())
-        assertTrue(finished.single().contains("1 original phone jobs removed"))
+        assertTrue(finished.single().contains("1 original phone jobs verified absent"))
     }
 }
