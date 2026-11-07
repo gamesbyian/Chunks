@@ -89,6 +89,17 @@ class TransferMoveStoreAccountScopeTest {
         assertTrue(prefs.contains(wrongKey)) // no destructive cleanup of unknown records
     }
 
+    @Test fun staleRemovalCompletionCannotClearNewerUncertainMoveStage() {
+        val store = TransferMoveStore(context)
+        val latest = record(scopeA)
+        assertTrue(store.save(latest))
+        val stale = latest.copy(stage = TransferMove.Stage.TARGET_VERIFIED)
+        assertFalse(store.remove(stale))
+        assertEquals(latest, store.get(direction, hash, scopeA))
+        assertTrue(store.remove(latest))
+        assertTrue(prefs.all.isEmpty())
+    }
+
     @Test fun legacyAndScopedDuplicateCountAsOneJournal() {
         val original = record(scopeA)
         val legacyKey = direction.name + "_" + hash
