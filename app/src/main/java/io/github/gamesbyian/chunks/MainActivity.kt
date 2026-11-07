@@ -2283,6 +2283,15 @@ private fun TransfersScreen(
                         onStarted = onMutationStarted,
                         onSettled = onLifecycleSettled
                     )
+                    if (view == "main") OrphanMoveRecoveryPanel(
+                        direction = TransferMove.Direction.SERVER_TO_PHONE,
+                        serverAliasScope = aliasScope,
+                        visibleSourceHashes = list.map { it.hash },
+                        enabled = !stale && !loading,
+                        revision = serverMoveRevision,
+                        observeSource = { hash -> TransferMoveObservations.server(remote, hash) },
+                        onChanged = { serverMoveRevision++ }
+                    )
                     serverMoveMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             }
