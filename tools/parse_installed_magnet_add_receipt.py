@@ -67,7 +67,7 @@ def parse(raw, exit_code, env=None):
         if line in ("INSTRUMENTATION_STATUS_CODE: 0", "INSTRUMENTATION_STATUS_CODE: -2", "INSTRUMENTATION_STATUS_CODE: -3"):
             cases.append(current_case)
             case_results.append({"class": current_class, "name": current_case, "outcome": "passed" if line.endswith(": 0") else "failed"})
-        app_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_app_stage=(runner-ready|connect-click-attempt|connect-submitted|queue|add-open-requested|add-open|magnet-entered|place-ready|add-review|add-submitted|add-registered|metadata-already-resolved)", line)
+        app_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_app_stage=(runner-ready|connect-click-attempt|connect-submitted|queue|add-open-requested|add-open|magnet-entered|place-ready|add-review|add-submitted|add-registered|metadata-already-resolved|combined-details)", line)
         if app_stage:
             app_stages.append(app_stage.group(1))
         negative_stage = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_negative_stage=(preflight|registered|add-ui-truthful|transfers-ui-truthful|removed)", line)
@@ -157,6 +157,11 @@ def parse(raw, exit_code, env=None):
                     and x["cleanup"] == "verified-by-test"
                     for x in per_source.values())
     if controlled:
+        # A complete installed journey must prove read-only navigation through
+        # exact authenticated Combined Details and back, not merely the
+        # source/peer/Remove controls. This bounded status is emitted once,
+        # after the actual screen assertions and nonmutation readback.
+        complete = complete and app_stages.count("combined-details") == 1
         complete = complete and peerless == 1 and terminal_count == 1 and set(cases) == expected_cases and len(cases) == expected_test_count
         complete = complete and len(peerless_hashes) == 1 and not (peerless_hashes & set.union(*observed_hashes.values()))
         complete = complete and all(c["class"] == "io.github.gamesbyian.chunks.SeedhostAndroidAddUiInstrumentedTest" for c in case_results)
