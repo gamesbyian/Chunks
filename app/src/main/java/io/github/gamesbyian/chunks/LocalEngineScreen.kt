@@ -1171,8 +1171,9 @@ internal fun LocalEngineScreen(
                         noteProblem("Magnet Add may have reached the native engine. Wait for a fresh exact transfer list; no retry occurred.")
                     }
                 }
-            }, enabled = !busy && !sourceReading && !inventoryStale && !dhtSaving &&
-                !placeSaving && proposedAddDestination != null && magnetCheck is MagnetDraftCheck.Valid &&
+            }, enabled = !busy && !sourceReading && !inventoryStale && hasConfirmedLocalInventory &&
+                !dhtSaving && !placeSaving && proposedAddDestination != null &&
+                magnetCheck is MagnetDraftCheck.Valid &&
                 phoneAddAttemptSession?.attemptedTicket == null,
                 modifier = Modifier.fillMaxWidth())
         }
@@ -1433,7 +1434,8 @@ internal fun LocalEngineScreen(
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
-            busy = busy || sourceReading || inventoryStale || placeSaving || proposedAddDestination == null ||
+            busy = busy || sourceReading || inventoryStale || !hasConfirmedLocalInventory ||
+                placeSaving || proposedAddDestination == null ||
                 phoneAddAttemptSession?.attemptedTicket != null,
             startAfterAdd = startAfterAdd,
             cancelEnabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
