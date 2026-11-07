@@ -15,7 +15,9 @@
 
 The sections below preserve earlier owner-approved requirements and dated integration plans. **Old statements that call themselves “current,” “live,” “next,” or “only executable sequence” are historical snapshots, not competing authority.**
 
-## Historical original Add-to-transfer campaign (2026-11-06; sequence superseded)
+## ACTIVE CAMPAIGN — one Add-to-transfer journey (2026-11-06)
+
+> Historical original sequence, retained for prior references and section anchors. The current execution authority above supersedes its ordering; all owner-approved product/safety requirements continue to apply.
 
 **Historical authority at its checkpoint:** This delivery order is superseded by the live sequence above; product and safety requirements remain binding. Baseline verified main `2084d9fd8b584c59ae20f45d0972264c6de606a7`, zero open PRs, 26 open issues. Supersedes older *execution ordering* below, while preserving owner-approved product contracts, safety gates and all recorded evidence. [Current short handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md); [architecture](ARCHITECTURE.md); [UX mandate](UNIVERSAL-NAVIGATION-AND-TRANSFER-DISCLOSURE-2026-11-05.md).
 
