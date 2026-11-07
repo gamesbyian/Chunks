@@ -100,6 +100,7 @@ jobs:
           bash -n tools/installed_rtorrent_magnets.sh
           bash -n tools/verify_installed_apk_bytes.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_apk_identity.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_disposable_peer_numeric_export.py
       - name: Start genuine public-magnet metadata and payload peer
         run: |
           sudo timeout 180s apt-get update -qq
@@ -257,6 +258,29 @@ jobs:
             ${{ runner.temp }}/chunks-https-phone-crash.txt
           if-no-files-found: warn
           retention-days: 14
+      # Failure-only and disposable-only: retain numeric upload/request/choke
+      # chronology to diagnose independent-peer attribution gaps. The controller's
+      # raw file and log are never uploaded. The allowlisted export drops all
+      # addresses, URLs, names and payload bytes. It is diagnostic only.
+      - name: Export bounded disposable peer protocol chronology on failure
+        if: failure() && env.CHUNKS_DISPOSABLE == '1'
+        run: |
+          if [ -f "$RUNNER_TEMP/chunks-real-peer/PEER-TIMELINE.json" ]; then
+            python3 tools/export_disposable_peer_numeric.py \
+              --source "$RUNNER_TEMP/chunks-real-peer/PEER-TIMELINE.json" \
+              --output "$RUNNER_TEMP/chunks-peer-protocol-numeric.json" ||
+              echo "CHUNKS_PEER_NUMERIC_EXPORT: unavailable"
+          else
+            echo "CHUNKS_PEER_NUMERIC_EXPORT: unavailable"
+          fi
+      - name: Upload bounded numeric peer diagnosis on failure
+        if: failure() && env.CHUNKS_DISPOSABLE == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-disposable-peer-numeric-diagnosis
+          path: ${{ runner.temp }}/chunks-peer-protocol-numeric.json
+          if-no-files-found: warn
+          retention-days: 7
       # Disposable only (no credentials, no protected host): the proxy/rTorrent side of an
       # RPC non-2xx during the installed journey (nginx status + upstream error, rTorrent output).
       - name: Retain disposable rTorrent proxy logs on failure
