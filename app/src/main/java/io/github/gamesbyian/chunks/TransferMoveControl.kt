@@ -83,6 +83,23 @@ internal class TransferMovePorts(
 )
 
 /**
+ * A matching transfer name/hash is insufficient when the currently selected
+ * server profile changed. Recheck the exact account scope at the final source
+ * retirement boundary, even after a confirmation dialog is already open.
+ */
+internal fun moveRetirementScopeConfirmed(
+    record: TransferMove.Record,
+    activeServerScope: String?,
+    currentName: String,
+    currentSourceToken: String?,
+    currentSourceDirectory: String?
+): Boolean = activeServerScope != null &&
+    TransferMoveStore.scopeDigest(activeServerScope) == record.serverScopeDigest &&
+    TransferMove.sourceIdentityMatches(
+        record, currentName, currentSourceToken, currentSourceDirectory
+    )
+
+/**
  * Move Transfer control for one source transfer card. [onStartMove] opens the
  * existing reviewed destination Add (the same handoff as Copy); this control
  * owns only the journal and the separately confirmed source-job removal.
@@ -173,6 +190,8 @@ internal fun TransferMoveControl(
                 TransferMoveStore.scopeDigest(serverAliasScope) == current.serverScopeDigest
             val sameSource = TransferMove.sourceIdentityMatches(
                 current, name, sourceReviewToken, sourceDirectory)
+            val canRetire = moveRetirementScopeConfirmed(
+                current, serverAliasScope, name, sourceReviewToken, sourceDirectory)
             Text(when (current.stage) {
                 Stage.AWAITING_TARGET -> "Move to $destination started. Add it there, then check."
                 Stage.TARGET_VERIFIED -> "Move to $destination: the new job is confirmed there. " +
@@ -197,8 +216,7 @@ internal fun TransferMoveControl(
                 Stage.TARGET_VERIFIED -> {
                     if (!confirmingRemoval) {
                         Button(onClick = { confirmingRemoval = true },
-                            enabled = !busy && !working && sameServer && sameSource &&
-                                observeTarget != null,
+                            enabled = !busy && !working && canRetire && observeTarget != null,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                             Text("Remove original job from the $source…")
                         }
@@ -210,9 +228,10 @@ internal fun TransferMoveControl(
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(onClick = {
                                 confirmingRemoval = false
-                                if (!TransferMove.sourceIdentityMatches(
-                                        current, name, sourceReviewToken, sourceDirectory)) {
-                                    message = "The original transfer changed. No Remove was sent. Cancel and start a fresh Move."
+                                if (!moveRetirementScopeConfirmed(
+                                        current, serverAliasScope, name, sourceReviewToken, sourceDirectory) ||
+                                        observeTarget == null) {
+                                    message = "The server account, original transfer or destination changed. No Remove was sent."
                                     return@Button
                                 }
                                 if (!onMutationStarted()) {
@@ -233,7 +252,7 @@ internal fun TransferMoveControl(
                                         }
                                     } finally { onMutationSettled() }
                                 }
-                            }, enabled = !busy && !working && sameSource,
+                            }, enabled = !busy && !working && canRetire && observeTarget != null,
                                 modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                                 Text("Remove original job")
                             }
@@ -243,11 +262,15 @@ internal fun TransferMoveControl(
                     }
                 }
                 Stage.SOURCE_REMOVAL_REQUESTED, Stage.SOURCE_REMOVAL_UNCERTAIN -> OutlinedButton(onClick = {
+                    if (!sameServer) {
+                        message = "Reconnect to the Move's original server account before checking its job."
+                        return@OutlinedButton
+                    }
                     run {
                         val seen = try { ports.observeSource() } catch (_: Exception) { Observation.Unknown }
                         apply(TransferMove.onSourceObserved(TransferMove.recovered(current), seen))
                     }
-                }, enabled = !working, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                }, enabled = !working && sameServer, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Check the original job")
                 }
             }
@@ -256,11 +279,15 @@ internal fun TransferMoveControl(
                 Text(ports.targetUnavailableReason, style = MaterialTheme.typography.bodySmall)
             if (current.stage == Stage.AWAITING_TARGET || current.stage == Stage.TARGET_VERIFIED) {
                 OutlinedButton(onClick = {
+                    if (!sameServer) {
+                        message = "Reconnect to the Move's original server account before cancelling its journal."
+                        return@OutlinedButton
+                    }
                     if (store.remove(direction, infoHash)) {
                         record = null
                         message = "Move cancelled. Both jobs, if any, were left as they are."
                     }
-                }, enabled = !working, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                }, enabled = !working && sameServer, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Cancel Move (keep both jobs)")
                 }
             }
