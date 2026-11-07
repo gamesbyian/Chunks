@@ -145,11 +145,16 @@ internal class TransferMoveStore(context: Context) {
      * deletion or changes a remote profile. */
     @Synchronized
     fun all(direction: Direction): List<TransferMove.Record> = try {
-        prefs.all.entries.mapNotNull { (key, raw) ->
+        val snapshot = prefs.all
+        snapshot.entries.mapNotNull { (key, raw) ->
             val record = (raw as? String)?.let(TransferMove::decode)
                 ?: return@mapNotNull null
+            val legacy = key == legacyKey(direction, record.infoHash)
             if (record.direction != direction ||
-                (key != scopedKey(record) && key != legacyKey(direction, record.infoHash)))
+                (key != scopedKey(record) && !legacy) ||
+                // A broken or newer exact scoped entry must not let an older
+                // legacy value be resurrected for batch source retirement.
+                (legacy && snapshot.containsKey(scopedKey(record))))
                 null else key to record
         }.sortedBy { (key, record) -> if (key == scopedKey(record)) 0 else 1 }
             .map { it.second }
