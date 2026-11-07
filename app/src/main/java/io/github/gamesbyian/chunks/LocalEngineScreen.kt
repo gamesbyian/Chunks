@@ -1647,7 +1647,7 @@ internal fun LocalEngineScreen(
 
         moveServer?.let { server ->
             val digest = TransferMoveStore.scopeDigest(server.aliasScope)
-            val pending = remember(transfers, moveRevision) {
+            val pending = remember(transfers, moveRevision, digest) {
                 moveStore.all(TransferMove.Direction.PHONE_TO_SERVER).filter { record ->
                     record.stage == TransferMove.Stage.TARGET_VERIFIED && record.serverScopeDigest == digest &&
                         transfers.any { it.infoHash.equals(record.infoHash, ignoreCase = true) &&
@@ -1655,7 +1655,8 @@ internal fun LocalEngineScreen(
                 }
             }
             BatchMoveRemovalPanel(
-                pending = pending, serverLabel = TransferMoveStore.hostLabel(server.aliasScope),
+                pending = pending, serverScopeDigest = digest,
+                serverLabel = TransferMoveStore.hostLabel(server.aliasScope),
                 busy = busy || inventoryStale,
                 observeTarget = { hash -> server.observe(hash) },
                 removeSource = { hash ->
