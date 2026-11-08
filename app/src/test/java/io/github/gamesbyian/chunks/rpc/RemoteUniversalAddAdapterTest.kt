@@ -90,6 +90,7 @@ class RemoteUniversalAddAdapterTest {
         unauthorized: Boolean = false,
         hiddenFromMain: Boolean = false,
         observedStarted: Boolean = start,
+        multiFileFlag: Long = 0,
         body: suspend (
             RemoteUniversalAddAdapter, UniversalAddCoordinator.Ticket,
             MutableList<String>, () -> RTorrentRemote
@@ -125,7 +126,7 @@ class RemoteUniversalAddAdapterTest {
                 "d.name" -> value("Sample")
                 "d.hash" -> value(hash)
                 "d.directory" -> value(observedDirectory)
-                "d.is_multi_file" -> number(0)
+                "d.is_multi_file" -> number(multiFileFlag)
                 "d.state", "d.is_active" -> number(if (observedStarted) 1 else 0)
                 "load.start", "load.verbose" -> number(0)
                 else -> throw AssertionError("Unexpected rTorrent RPC: $method")
@@ -184,6 +185,41 @@ class RemoteUniversalAddAdapterTest {
             assertTrue(adapter.submit(approved).result is RemoteAddAndStart.StartNotVerified)
             assertTrue(RemoteUniversalAddAdapter(reconnect()).reconcile(approved) is RemoteAddAndStart.StartNotVerified)
             assertEquals(1, methods.count { it == "load.start" })
+        }
+
+    @Test fun validMultiFileDirectoryRemainsVerifiableForStartedAdd() =
+        withFixture(observedDirectory = "$place/Sample", multiFileFlag = 1) {
+                adapter, approved, methods, _ ->
+            assertEquals(RemoteAddAndStart.Started(hash), adapter.submit(approved).result)
+            assertEquals(1, methods.count { it == "load.start" })
+            assertFalse(methods.any { it == "d.start" })
+        }
+
+    @Test fun malformedMultiFileFlagCannotConfirmStartedAddOrRegisteredRecovery() =
+        withFixture(observedDirectory = "$place/Sample", multiFileFlag = 2,
+            lostAck = true) { adapter, approved, methods, reconnect ->
+            assertTrue(adapter.submit(approved).result is RemoteAddAndStart.StartNotVerified)
+            val refreshed = RemoteUniversalAddAdapter(reconnect())
+            assertTrue(refreshed.reconcile(approved) is RemoteAddAndStart.StartNotVerified)
+            try {
+                refreshed.registeredJobWithUnverifiedStart(approved)
+                fail("Malformed multi-file flag must not prove reviewed Place")
+            } catch (_: IllegalArgumentException) {
+                // Read-only recovery retains the attempted-write fence.
+            }
+            assertEquals(1, methods.count { it == "load.start" })
+            assertTrue(methods.none { it == "d.start" || it == "load.verbose" })
+        }
+
+    @Test fun malformedMultiFileFlagCannotVerifyStoppedAddAfterOneLoad() =
+        withFixture(start = false, observedDirectory = "$place/Sample",
+            multiFileFlag = -1) { adapter, approved, methods, reconnect ->
+            assertEquals(RemoteAddAndStart.AddedStopped(RemoteAddOutcome.Uncertain(hash)),
+                adapter.submit(approved).result)
+            assertEquals(RemoteAddAndStart.AddedStopped(RemoteAddOutcome.Uncertain(hash)),
+                RemoteUniversalAddAdapter(reconnect()).reconcile(approved))
+            assertEquals(1, methods.count { it == "load.verbose" })
+            assertTrue(methods.none { it == "d.start" || it == "load.start" })
         }
 
     @Test fun authenticationLossBeforeLoadNeverMutates() =

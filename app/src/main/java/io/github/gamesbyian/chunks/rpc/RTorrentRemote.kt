@@ -885,8 +885,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         hash: String, parent: String, name: String
     ): String? {
         val directory = call("d.directory", listOf(hash)) as? String ?: return null
-        val multi = number(call("d.is_multi_file", listOf(hash))) != 0L
-        val expected = if (multi) {
+        // rTorrent defines this as a boolean. Treat malformed/unknown
+        // gateway values as inconclusive, never as proof of a multi-file
+        // root that can release an attempted Universal Add ticket.
+        val multiFlag = number(call("d.is_multi_file", listOf(hash)))
+        require(multiFlag == 0L || multiFlag == 1L) { "Invalid rTorrent multi-file flag" }
+        val expected = if (multiFlag == 1L) {
             if (name.isBlank() || name == "." || name == ".." ||
                 name.contains('/') || name.contains('\\') || name.any { it.code < 32 }) {
                 return null
