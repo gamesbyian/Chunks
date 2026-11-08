@@ -1054,6 +1054,56 @@ internal fun CombinedTransfersScreen(
                         .semantics { contentDescription = "Group by environment" })
             }
         }
+        // Batch controls appear immediately upon request, ahead of rows only
+        // for that explicit task. They never consume the initial first fold.
+        if (showingBatchTools) {
+        item {
+            key(batchIdentity) {
+            CombinedBatchSection(
+                selecting = selecting,
+                onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
+                selected = selected,
+                visible = result.transfers.map { it.key }.toSet(),
+                labels = labels,
+                running = batchRunning,
+                result = batchResult,
+                onClear = { selected = emptySet() },
+                onRun = { start ->
+                    batchRunning = true
+                    batchResult = emptyList()
+                    val chosen = selected
+                    val snapshot = sources
+                    val owner = batchIdentity
+                    val lifecycle = server?.lifecycle
+                    val targetServer = serverId
+                    batchScope.launch {
+                        // Dispatch may be queued behind a server/account switch.
+                        if (latestBatchIdentity.value != owner) return@launch
+                        var unconfirmedPhoneStops = 0
+                        try {
+                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
+                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
+                                    reviewStillCurrent = { latestBatchIdentity.value == owner },
+                                    onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
+                            }
+                            // A late completion is evidence about the OLD owner only.
+                            if (latestBatchIdentity.value == owner) {
+                                val warning = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget
+                                    .warning(unconfirmedPhoneStops)
+                                batchResult = if (warning.isEmpty()) report else report + warning.trim()
+                            }
+                        } finally {
+                            if (latestBatchIdentity.value == owner) {
+                                selected = emptySet()
+                                batchRunning = false
+                            }
+                        }
+                    }
+                }
+            )
+            }
+        }
+        }
         item(key = "combined-compact-count") {
             Text(combinedShowingText(result.transfers.size,
                 result.sources.sumOf { it.transfers.size }) +
@@ -1183,54 +1233,6 @@ internal fun CombinedTransfersScreen(
                     if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
                     style = MaterialTheme.typography.titleSmall)
             }
-        }
-        if (showingBatchTools) {
-        item {
-            key(batchIdentity) {
-            CombinedBatchSection(
-                selecting = selecting,
-                onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
-                selected = selected,
-                visible = result.transfers.map { it.key }.toSet(),
-                labels = labels,
-                running = batchRunning,
-                result = batchResult,
-                onClear = { selected = emptySet() },
-                onRun = { start ->
-                    batchRunning = true
-                    batchResult = emptyList()
-                    val chosen = selected
-                    val snapshot = sources
-                    val owner = batchIdentity
-                    val lifecycle = server?.lifecycle
-                    val targetServer = serverId
-                    batchScope.launch {
-                        // Dispatch may be queued behind a server/account switch.
-                        if (latestBatchIdentity.value != owner) return@launch
-                        var unconfirmedPhoneStops = 0
-                        try {
-                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
-                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
-                                    reviewStillCurrent = { latestBatchIdentity.value == owner },
-                                    onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
-                            }
-                            // A late completion is evidence about the OLD owner only.
-                            if (latestBatchIdentity.value == owner) {
-                                val warning = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget
-                                    .warning(unconfirmedPhoneStops)
-                                batchResult = if (warning.isEmpty()) report else report + warning.trim()
-                            }
-                        } finally {
-                            if (latestBatchIdentity.value == owner) {
-                                selected = emptySet()
-                                batchRunning = false
-                            }
-                        }
-                    }
-                }
-            )
-            }
-        }
         }
         item {
             OutlinedButton(onClick = { choosingColours = !choosingColours },

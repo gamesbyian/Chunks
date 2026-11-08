@@ -307,13 +307,13 @@ internal fun ChunksApp(
         // Returning to the phone: the button that opened this tool regains focus.
         if (toolOrigin == Section.LOCAL.name) phoneReturnFocus = section.name
         section = toolOrigin?.let { origin -> Section.entries.firstOrNull { it.name == origin } }
-            ?: Section.TRANSFERS
+            ?: Section.LOCAL
         toolOrigin = null
     }
     fun leavePhone() {
         val returnToCombined = localFromCombined
         localFromCombined = false
-        section = if (returnToCombined) Section.COMBINED else Section.TRANSFERS
+        section = if (returnToCombined) Section.COMBINED else Section.LOCAL
     }
     var query by remember { mutableStateOf("") }
     // Secondary destinations appear only when requested on the ordinary list.
@@ -325,6 +325,7 @@ internal fun ChunksApp(
     val phoneAddScroll = rememberScrollState()
     val phoneOptionsScroll = rememberScrollState()
     val phoneSearch = rememberSaveable { mutableStateOf("") }
+    val phoneOptionsSearch = rememberSaveable { mutableStateOf("") }
     // The single Add source draft belongs to the app, never to the currently
     // displayed phone/server Add form. Both adapters edit the same source;
     // neither browsing filters nor opening a screen silently authorizes Add.
@@ -811,7 +812,7 @@ internal fun ChunksApp(
                         Section.LOCAL_ADD -> phoneAddScroll
                         Section.OPTIONS -> phoneOptionsScroll
                         else -> phoneListScroll
-                    }, searchState = phoneSearch,
+                    }, searchState = phoneSearch, optionsSearchState = phoneOptionsSearch,
                     magnetDraftState = addSourceDraft,
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     addArtworkState = addAutomaticArtwork,
@@ -1154,7 +1155,7 @@ internal fun ChunksApp(
                         Section.LOCAL_ADD -> phoneAddScroll
                         Section.OPTIONS -> phoneOptionsScroll
                         else -> phoneListScroll
-                    }, searchState = phoneSearch,
+                    }, searchState = phoneSearch, optionsSearchState = phoneOptionsSearch,
                         magnetDraftState = addSourceDraft,
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         addArtworkState = addAutomaticArtwork,

@@ -342,6 +342,8 @@ class CombinedTransfersScreenTest {
             ": Out of date, showing last list · 2 transfers"
         revealText(staleLabel)
         rule.onNodeWithText(staleLabel).assertExists()
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -361,6 +363,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {
         show()
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -404,6 +408,8 @@ class CombinedTransfersScreenTest {
                     onOpenPhone = {}, onOpenServer = {}, onBack = {})
             } }
         }
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -426,6 +432,8 @@ class CombinedTransfersScreenTest {
 
         // Reconnect to the same account also retires the new session's
         // selection even though both its hash and authenticated scope match.
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val otherRow = "Select Big Archive on " + serverEnvironmentLabel(otherScope)

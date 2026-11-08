@@ -306,6 +306,7 @@ internal fun LocalEngineScreen(
      */
     listScroll: androidx.compose.foundation.ScrollState? = null,
     searchState: androidx.compose.runtime.MutableState<String>? = null,
+    optionsSearchState: androidx.compose.runtime.MutableState<String>? = null,
     /**
      * Typed magnet draft held by the caller in process memory, so visiting All
      * environments or Seeding rules does not discard it. Never saved to
@@ -869,7 +870,8 @@ internal fun LocalEngineScreen(
     val restoreRequester = remember { BringIntoViewRequester() }
     val exportsRequester = remember { BringIntoViewRequester() }
     val namesRequester = remember { BringIntoViewRequester() }
-    var phoneOptionsSearch by rememberSaveable { mutableStateOf("") }
+    val optionsSearchHolder = optionsSearchState ?: rememberSaveable { mutableStateOf("") }
+    var phoneOptionsSearch by optionsSearchHolder
     var showBatchTools by rememberSaveable { mutableStateOf(false) }
     // Back from a phone tool returns keyboard focus to the button that opened it.
     val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }

@@ -109,7 +109,7 @@ class CombinedFooterNavigationTest {
         rule.onNodeWithText("Show").assertIsDisplayed()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Refine transfers", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("Hide filters", substring = true).assertIsDisplayed()
         assertTrue(commands.isEmpty())
     }
 
