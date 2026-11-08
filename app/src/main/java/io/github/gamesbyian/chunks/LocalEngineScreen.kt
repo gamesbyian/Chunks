@@ -918,7 +918,8 @@ internal fun LocalEngineScreen(
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments") }
             }
             if (firstRunVisible) NoTransfersWelcome(
-                onAdd = { addExpanded = true; addNavigationRevision++ },
+                onAdd = { if (onOpenAdd != null) onOpenAdd.invoke()
+                    else { addExpanded = true; addNavigationRevision++ } },
                 onConnections = onConnections!!
             )
         }

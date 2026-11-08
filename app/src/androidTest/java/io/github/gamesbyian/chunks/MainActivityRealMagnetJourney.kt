@@ -197,10 +197,8 @@ internal class MainActivityRealMagnetJourney(
             }
         }
         require(fixtures.values.map { it.infoHashV1 }.toSet().size == fixtures.size)
-        // Fresh installs now open phone Transfers first. Reach server setup
-        // explicitly without bypassing the real authentication UI.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performScrollTo().performClick()
+        // Enter the real Connections destination, never an implicit login.
+        rule.onNodeWithText("Connections").assertExists().performClick()
         // Real connection UI; its ordinary authentication, saved profile,
         // selected environment and mutation fence remain in the call chain.
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
