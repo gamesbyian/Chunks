@@ -29,6 +29,14 @@ internal object BatchServerCopy {
         NOT_RUN("not attempted (the batch stopped earlier)")
     }
 
+    /** Add/duplicate outcomes alone do not confer Move source-retirement
+     * authority. A separate read-only, exact-account destination observation
+     * must prove the job is registered before creating a verified Move journal
+     * or carrying its presentation preferences. */
+    fun observedDestinationForMove(result: Result, seen: TransferMove.Observation): Boolean =
+        (result == Result.ADDED || result == Result.ALREADY_ON_SERVER) &&
+            seen == TransferMove.Observation.Present
+
     data class Report(val results: List<Pair<Item, Result>>) {
         val stoppedEarly: Boolean get() = results.any { it.second == Result.NOT_RUN }
         fun count(result: Result) = results.count { it.second == result }

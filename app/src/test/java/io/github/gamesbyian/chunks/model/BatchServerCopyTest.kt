@@ -50,6 +50,24 @@ class BatchServerCopyTest {
         assertEquals(listOf(Result.UNCONFIRMED, Result.NOT_RUN), uncertain.results.map { it.second })
     }
 
+    @Test fun sourceJobRetirementAndPortableAliasWaitForFreshExactServerPresence() {
+        for (result in Result.entries) {
+            for (observed in listOf(TransferMove.Observation.Present,
+                    TransferMove.Observation.Absent, TransferMove.Observation.Unknown)) {
+                val expected = (result == Result.ADDED || result == Result.ALREADY_ON_SERVER) &&
+                    observed == TransferMove.Observation.Present
+                assertEquals("Never trust only Add classification: $result / $observed",
+                    expected, BatchServerCopy.observedDestinationForMove(result, observed))
+            }
+        }
+        // A previously existing or newly registered same-hash job on a
+        // different account is not proof about the chosen exact destination.
+        assertFalse(BatchServerCopy.observedDestinationForMove(
+            Result.ALREADY_ON_SERVER, TransferMove.Observation.Unknown))
+        assertFalse(BatchServerCopy.observedDestinationForMove(
+            Result.ADDED, TransferMove.Observation.Absent))
+    }
+
     @Test fun mismatchedDefinitionIsNeverSentAndSelectionIsValidated() = runBlocking {
         val (h1, _) = torrent("one"); val (_, other) = torrent("other")
         var sent = 0

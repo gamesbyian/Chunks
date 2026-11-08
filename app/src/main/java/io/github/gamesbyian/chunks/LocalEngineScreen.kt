@@ -1757,36 +1757,55 @@ internal fun LocalEngineScreen(
                         }
                         var aliasCopied = 0
                         var aliasFailed = 0
+                        var missingReadback = 0
                         val journaled = withContext(Dispatchers.IO) {
-                            verified.count { (item, _) ->
+                            var confirmed = 0
+                            for ((item, result) in verified) {
+                                // The Add adapter's classification does not by
+                                // itself prove the exact remote account still
+                                // owns this job. Read back independently before
+                                // persisting any source-retirement authority.
+                                val observed = try {
+                                    server.observe(item.infoHash)
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) {
+                                    TransferMove.Observation.Unknown
+                                }
+                                if (!io.github.gamesbyian.chunks.model.BatchServerCopy
+                                        .observedDestinationForMove(result, observed)) {
+                                    missingReadback++
+                                    continue
+                                }
                                 val original = transfers.singleOrNull {
                                     it.infoHash.equals(item.infoHash, ignoreCase = true) &&
                                         it.name == item.name && it.nativeReviewToken.isNotBlank()
-                                }
-                                val saved = original != null && moveStore.save(TransferMove.start(
+                                } ?: continue
+                                val saved = moveStore.save(TransferMove.start(
                                     TransferMove.Direction.PHONE_TO_SERVER,
                                     item.infoHash, item.name, TransferMoveStore.scopeDigest(server.aliasScope),
                                     TransferMoveStore.hostLabel(server.aliasScope),
                                     sourceReviewToken = original.nativeReviewToken
                                 ).copy(stage = TransferMove.Stage.TARGET_VERIFIED))
-                                if (saved) {
-                                    when (aliasStore.carryVerifiedMoveAlias(
-                                        TransferCollectionStore.LOCAL_ENGINE_SCOPE,
-                                        server.aliasScope, item.infoHash)) {
-                                        TransferAliasStore.MoveAliasCarry.COPIED -> aliasCopied++
-                                        TransferAliasStore.MoveAliasCarry.FAILED -> aliasFailed++
-                                        else -> Unit
-                                    }
+                                if (!saved) continue
+                                confirmed++
+                                when (aliasStore.carryVerifiedMoveAlias(
+                                    TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                                    server.aliasScope, item.infoHash)) {
+                                    TransferAliasStore.MoveAliasCarry.COPIED -> aliasCopied++
+                                    TransferAliasStore.MoveAliasCarry.FAILED -> aliasFailed++
+                                    else -> Unit
                                 }
-                                saved
                             }
+                            confirmed
                         }
                         moveRevision++
                         if (aliasCopied > 0) aliasRevision++
                         report.summary() + " $journaled ready to finish moving: review removal of the " +
                             "original phone jobs below." +
                             (if (aliasCopied > 0) " $aliasCopied display aliases carried to the server view." else "") +
-                            (if (aliasFailed > 0) " $aliasFailed display aliases could not be carried; edit them on the server view." else "")
+                            (if (aliasFailed > 0) " $aliasFailed display aliases could not be carried; edit them on the server view." else "") +
+                            (if (missingReadback > 0) " $missingReadback destination jobs could not be independently confirmed on this exact server. Their original phone jobs were kept; check the destination before a new Move review." else "")
                     } catch (cancel: kotlinx.coroutines.CancellationException) {
                         throw cancel
                     } catch (_: Exception) {
