@@ -60,7 +60,8 @@ class PhoneTouchTargetAuditTest {
         rule.waitForIdle()
         val density = rule.activity.resources.displayMetrics.density
         val small = rule.smallTouchTargets(density).toMutableList()
-        // The bottom of the phone document: Phone options, tools and speed limits.
+        // Traverse the real Options destination before auditing its lower controls.
+        rule.onNodeWithText("Options").performClick()
         rule.onNodeWithText("Save speed limits").performScrollTo()
         rule.waitForIdle()
         small += rule.smallTouchTargets(density)

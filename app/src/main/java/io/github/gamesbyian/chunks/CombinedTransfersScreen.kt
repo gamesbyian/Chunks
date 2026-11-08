@@ -1232,10 +1232,6 @@ internal fun CombinedTransfersScreen(
                     color = ChunksColors.Yellow)
                 Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
                     style = MaterialTheme.typography.bodySmall)
-                Text(combinedShowingText(result.transfers.size,
-                    result.sources.sumOf { it.transfers.size }) +
-                    if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
-                    style = MaterialTheme.typography.titleSmall)
             }
         }
         item {

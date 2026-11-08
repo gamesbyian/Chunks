@@ -101,8 +101,7 @@ open class ChunksServerRenderTest {
             .apply { isDaemon = true; start() }
         // Connect explicitly through the phone-first route, with no shortcut
         // into the authenticated server screen.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         // The Connect list composes lazily; at large text the field starts below the fold.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
@@ -126,6 +125,7 @@ open class ChunksServerRenderTest {
         connectToFixture()
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("On the connected server").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Add a download to this server").assertExists()
         val addList = rule.onNode(hasScrollToIndexAction())

@@ -49,7 +49,7 @@ class ConnectionScreenImeTest {
 
     @Test fun addressAndUsernameOfferNext() {
         rule.waitForIdle()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("Connections").performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname, ruTorrent URL or RPC address"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Next))
@@ -59,8 +59,7 @@ class ConnectionScreenImeTest {
 
     @Test fun phoneMagnetFieldClosesWithDone() {
         rule.waitForIdle()
-        rule.onNode(androidx.compose.ui.test.hasContentDescription("Add torrent on this phone"))
-            .performClick()
+        rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))

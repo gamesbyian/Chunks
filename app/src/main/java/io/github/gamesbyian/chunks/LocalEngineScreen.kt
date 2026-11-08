@@ -923,11 +923,6 @@ internal fun LocalEngineScreen(
                 if (onCombined != null) OutlinedButton(onClick = onCombined,
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments") }
             }
-            if (firstRunVisible) NoTransfersWelcome(
-                onAdd = { if (onOpenAdd != null) onOpenAdd.invoke()
-                    else { addExpanded = true; addNavigationRevision++ } },
-                onConnections = onConnections!!
-            )
         }
         if (pane == PhonePane.ADD) {
         Text("Add on this device", style = MaterialTheme.typography.titleLarge,
@@ -1916,6 +1911,12 @@ internal fun LocalEngineScreen(
             Text("Showing ${displayedTransfers.size} of ${transfers.size} transfers on this device",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
+            // Search and filters precede welcome even for an empty inventory.
+            if (firstRunVisible) NoTransfersWelcome(
+                onAdd = { if (onOpenAdd != null) onOpenAdd.invoke()
+                    else { addExpanded = true; addNavigationRevision++ } },
+                onConnections = onConnections!!
+            )
             when {
                 !hasConfirmedLocalInventory -> Text("Loading transfers on this device…", style = MaterialTheme.typography.bodySmall)
                 inventoryStale -> Text("The transfer list on this device is not current.", style = MaterialTheme.typography.bodySmall)

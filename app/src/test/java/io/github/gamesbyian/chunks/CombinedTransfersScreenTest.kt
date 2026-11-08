@@ -432,8 +432,6 @@ class CombinedTransfersScreenTest {
 
         // Reconnect to the same account also retires the new session's
         // selection even though both its hash and authenticated scope match.
-        revealText("Batch tools")
-        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val otherRow = "Select Big Archive on " + serverEnvironmentLabel(otherScope)
@@ -462,6 +460,8 @@ class CombinedTransfersScreenTest {
                     onOpenPhone = {}, onOpenServer = {}, onBack = {})
             } }
         }
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)

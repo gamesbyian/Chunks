@@ -30,21 +30,21 @@ class ChunksScreenRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     @Test fun connectScreen() {
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/connect.png")
     }
 
     @Test fun phoneScreen() {
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("This device").assertExists()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/phone.png")
     }
 
     @Test fun offlineScreens() {
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect a local ZIP without connecting"))
@@ -54,10 +54,10 @@ class ChunksScreenRenderTest {
     }
 
     @Test fun privacyScreen() {
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("This device").assertExists()
         rule.waitForIdle()
         // Privacy & authentication lives in Phone options, reached from the footer.
-        rule.onNodeWithContentDescription("Options on this phone").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Privacy & authentication").performScrollTo().performClick()
         rule.waitForIdle()
@@ -66,8 +66,8 @@ class ChunksScreenRenderTest {
     }
 
     @Test fun createScreen() {
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))

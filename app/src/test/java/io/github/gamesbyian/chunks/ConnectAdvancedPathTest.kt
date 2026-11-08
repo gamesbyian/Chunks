@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
@@ -28,8 +29,7 @@ class ConnectAdvancedPathTest {
 
     private fun enter(address: String, path: String) {
         // Phone-first startup retains server Connect via the ordinary Back route.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         scrollTo("Seedbox hostname")
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname", substring = true))
             .performTextReplacement(address)
@@ -44,8 +44,7 @@ class ConnectAdvancedPathTest {
     }
 
     @Test fun freshPhoneEntryKeepsServerConnectionOptionalAndAvailable() {
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
         // Navigating here alone never authenticates or submits a transfer.

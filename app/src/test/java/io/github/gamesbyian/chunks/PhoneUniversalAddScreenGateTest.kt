@@ -64,6 +64,7 @@ class PhoneUniversalAddScreenGateTest {
             ChunksTheme {
                 Surface {
                     LocalEngineScreen(
+                        pane = PhonePane.ADD,
                         magnetDraftState = source,
                         phoneAddAttemptSession = session,
                         onAcknowledgedAdd = { error("Read-only screen cannot authorize an Add") }

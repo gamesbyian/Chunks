@@ -34,7 +34,7 @@ class PhoneAddDraftContinuityTest {
         rule.onNodeWithText("Artwork & metadata").performScrollTo().performClick()
         val choice = "Automatically identify and fetch artwork & metadata"
         rule.onNodeWithText(choice).performScrollTo().performClick().assertIsOff()
-        rule.onNodeWithText("Options").performScrollTo().performClick()
+        rule.onNodeWithText("Options").performClick()
         rule.onNodeWithText("+ Add").performClick()
         rule.onNodeWithText("Artwork & metadata").performScrollTo().performClick()
         rule.onNodeWithText(choice).performScrollTo().assertIsOff()
@@ -47,7 +47,7 @@ class PhoneAddDraftContinuityTest {
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
             .performScrollTo().performTextInput(draft)
-        rule.onNodeWithText("Options").performScrollTo().performClick()
+        rule.onNodeWithText("Options").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()

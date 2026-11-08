@@ -101,7 +101,8 @@ class PhoneDocumentReplacementTest {
     }
 
     private fun show() = rule.setContent { ChunksTheme { Surface {
-        if (shown.value) LocalEngineScreen(onBack = {}, initialTorrentUri = source.value,
+        if (shown.value) LocalEngineScreen(pane = PhonePane.ADD,
+            onBack = {}, initialTorrentUri = source.value,
             pendingAddState = draft,
             canReviewOnConnectedServer = true, onPrepareRemoteTorrent = { prepared.set(it) },
             onAcknowledgedAdd = { error("Source review must never authorize engine Add") },
@@ -115,8 +116,6 @@ class PhoneDocumentReplacementTest {
         rule.onNodeWithText("Review .torrent on connected server").performScrollTo().assertIsEnabled().performClick()
     }
     private fun openPicker(): ShadowActivity.IntentForResult {
-        if (rule.onAllNodesWithText("Choose .torrent file").fetchSemanticsNodes().isEmpty())
-            rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
         rule.onNodeWithText("Choose .torrent file").performScrollTo().assertIsEnabled().performClick()
         return requireNotNull(Shadows.shadowOf(rule.activity).nextStartedActivityForResult).also {
             assertEquals(Intent.ACTION_OPEN_DOCUMENT, it.intent.action)

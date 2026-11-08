@@ -60,7 +60,7 @@ class ExternalSourceReplacementTest {
         rule.onNodeWithText("Phone transfers locked").assertExists()
         rule.onNodeWithText("Back to Chunks").performClick()
         rule.runOnIdle { policy(TransferLockMode.NEVER) }
-        rule.onNodeWithText("Open phone downloads").performScrollTo().performClick()
+        rule.onNodeWithText("+ Add").performClick()
         rule.waitUntil(15_000) {
             rule.onAllNodes(hasText("The shared file was unavailable", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
