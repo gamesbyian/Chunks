@@ -890,7 +890,8 @@ internal fun CombinedTransfersScreen(
                 .onSizeChanged { viewportHeightPx = it.height },
             state = listState, contentPadding = PaddingValues(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item {
+        // The global wordmark and footer already supply location and navigation.
+        if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
         }
         // Add lives in its own destination when this is the app's primary list.
