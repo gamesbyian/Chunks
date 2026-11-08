@@ -289,10 +289,11 @@ class PhoneUniversalAddAdapterTest {
         // A later accepted full list cannot establish a UNIQUE exact native
         // job. Returning a naked OBSERVED_UNVERIFIED enum here would leave
         // the earlier acknowledgement button incorrectly enabled.
-        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
             session.reconcileInventory(listOf(metadataOnly,
                 metadataOnly.copy(nativeReviewToken = "duplicate")), 12_000L))
-        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+        // Present-but-ambiguous evidence is uncertain, not an absent job.
+        assertEquals(UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN,
             session.coordinator.phase)
         assertFalse(session.acknowledgeObservedJob())
         assertSame(ticket, session.attemptedTicket)
