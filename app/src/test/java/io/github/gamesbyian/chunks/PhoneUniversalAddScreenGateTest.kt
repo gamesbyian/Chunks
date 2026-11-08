@@ -37,7 +37,13 @@ class PhoneUniversalAddScreenGateTest {
         assertTrue(PhoneUniversalAddAdapter.review(session.coordinator, intent,
             inventoryConfirmed = true, inventoryStale = false).accepted)
         assertTrue(session.coordinator.authorizeByUser())
-        val ticket = requireNotNull(session.coordinator.beginSubmission(10_000L))
+        // This is a UI-only fixture, not a native readback test. Keep the
+        // synthetic attempt logically newer than the live screen's unrelated
+        // empty native inventory, so a background poll cannot supersede its
+        // positive synthetic observation while Compose renders the CTA.
+        // Production uses real wall-clock submission timestamps.
+        val submittedAt = System.currentTimeMillis() + 120_000L
+        val ticket = requireNotNull(session.coordinator.beginSubmission(submittedAt))
         session.bindPlace(ticket, place)
         session.coordinator.requireReadback(ticket)
         if (exactSessionKnown || startUnverified) {
@@ -48,7 +54,7 @@ class PhoneUniversalAddScreenGateTest {
                     UniversalAddCoordinator.ExactSessionObservation(
                         environment = intent.target.environment,
                         infoHash = checked.infoHash,
-                        observedAtEpochMillis = 11_000L,
+                        observedAtEpochMillis = submittedAt + 1_000L,
                         registered = true,
                         reviewedPlaceVerified = true,
                         started = if (startUnverified) null else false,
