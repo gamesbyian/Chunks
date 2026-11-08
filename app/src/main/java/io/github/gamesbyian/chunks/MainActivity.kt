@@ -1377,6 +1377,7 @@ internal fun ChunksApp(
                     onCombined = { combinedFromPhone = false; section = Section.COMBINED },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     onConnections = { section = Section.SERVER },
+                    showNavigationFooter = false,
                     optionsOpen = optionsOpen,
                     onOptions = { optionsOpen = !optionsOpen; if (!optionsOpen) optionsSearch = "" },
                     onReviewNames = { section = Section.NAMES },
@@ -1989,6 +1990,7 @@ private fun TransfersScreen(
     direction: UnifiedSortDirection,
     onSort: (TransferOrder, UnifiedSortDirection) -> Unit, onRefresh: () -> Unit, onAdd: () -> Unit,
     onConnections: () -> Unit,
+    showNavigationFooter: Boolean = true,
     optionsOpen: Boolean, onOptions: () -> Unit,
     onReviewNames: () -> Unit, onExportSnapshot: () -> Unit,
     onInspectSnapshot: () -> Unit,
@@ -2473,7 +2475,7 @@ private fun TransfersScreen(
         }
         // Naturally sized below the scroll viewport; cannot steal a tap
         // from a transfer card, irrespective of density or text scaling.
-        AuthenticatedTransfersFooter(
+        if (showNavigationFooter) AuthenticatedTransfersFooter(
             optionsOpen = optionsOpen,
             onTransfers = { topControlScope.launch { listState.scrollToItem(0) } },
             onAdd = onAdd,
