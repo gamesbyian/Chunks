@@ -55,9 +55,14 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
             if (assignment == null) {
                 assignment = if (facts.addedAtMs < epoch) Assignment(null, null, null)
                 else {
-                    // Magnets wait for metadata, so tracker identity and the private flag are known.
+                    // Tracker URLs may arrive before the metainfo private flag.
+                    // Never durably snapshot a provisional fallback as if the
+                    // rule were resolved: assignments do not auto-rematch after
+                    // later metadata arrives.
                     if (facts.trackerUrls == null) continue
-                    val r = SeedingRuleEngine.resolve(TransferFacts(environment, facts.trackerUrls, facts.isPrivate), rules, default)
+                    val r = SeedingRuleEngine.resolve(
+                        TransferFacts(environment, facts.trackerUrls, facts.isPrivate), rules, default)
+                    if (r.source == SeedingResolution.Source.PENDING) continue
                     Assignment(r.policy, r.source, r.ruleId, r.reasons)
                 }
                 if (!store.put(facts.infoHash, assignment)) continue
