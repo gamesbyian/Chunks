@@ -87,23 +87,48 @@ class PhoneUniversalAddScreenGateTest {
         assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, session.coordinator.phase)
     }
 
-    @Test fun peerlessMagnetAcknowledgmentExplainsUnverifiedStartAndNeverReplaysAdd() {
+    @Test fun newerCompleteNativeInventoryRevokesUnverifiedStartAcknowledgmentWithoutRetry() {
         val session = attempt(startUnverified = true)
+        val ticket = requireNotNull(session.attemptedTicket)
         assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
             session.coordinator.phase)
+        // The initial positive observation above is synthetic. Mounting the
+        // real LocalEngineScreen also starts a genuine native list poll. An
+        // empty *complete* newer sample contradicts that synthetic job and
+        // must take away its acknowledgement CTA, never silently retire the
+        // attempted write or replay Add. Make the contradictory sample explicit
+        // instead of racing the native observation pump in this UI fixture.
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            session.reconcileInventory(emptyList(), 12_000L))
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+            session.coordinator.phase)
+        assertFalse(session.acknowledgeObservedJob())
         show(session)
         rule.waitUntil(15_000) {
-            rule.onAllNodes(hasText("Acknowledge existing job (Start unverified)"))
+            rule.onAllNodes(hasText("Previous phone Add: waiting for exact phone transfer verification", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Or paste a magnet or torrent link").assertIsNotEnabled()
-        rule.onNodeWithText("requested Start remains unverified.", substring = true).assertExists()
-        rule.onNodeWithText("Acknowledge existing job (Start unverified)")
-            .performScrollTo().performClick()
-        rule.onNodeWithText("Or paste a magnet or torrent link").assertIsEnabled()
+        rule.onNodeWithText("Acknowledge existing job (Start unverified)").assertDoesNotExist()
+        rule.onNodeWithText("Review another phone Add").assertDoesNotExist()
+        assertSame("Contrary inventory keeps the exact attempted ticket", ticket, session.attemptedTicket)
+        assertNull("No new engine Add is authorized by contrary readback",
+            session.coordinator.beginSubmission(13_000L))
+    }
+
+    @Test fun positivePeerlessMagnetAcknowledgmentRequiresUserActionAndNeverReplaysAdd() {
+        val session = attempt(startUnverified = true)
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
+            session.coordinator.phase)
+        // Separate positive-control contract: acknowledgement remains
+        // possible while no *newer* authoritative read has contradicted the
+        // exact hash and Place. The full UI is not mounted here because its
+        // real native poll would invalidate this synthetic fixture.
+        assertNotNull(session.attemptedTicket)
+        assertTrue(session.acknowledgeObservedJob())
         assertEquals(UniversalAddCoordinator.Phase.EMPTY, session.coordinator.phase)
         assertNull(session.attemptedTicket)
-        assertNull("No new engine Add is authorized by acknowledging a job",
+        assertNull("Read-only acknowledgement cannot authorize another Add",
             session.coordinator.beginSubmission(12_000L))
     }
 
