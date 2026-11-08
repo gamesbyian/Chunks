@@ -50,8 +50,8 @@ class LocalTransferPrivacyGateInstrumentedTest {
                 }
             }
         }
-        compose.onNodeWithText("Phone transfers locked").assertExists()
-        compose.onNodeWithText("Unlock phone transfers").assertExists()
+        compose.onNodeWithText("Transfers on this device locked").assertExists()
+        compose.onNodeWithText("Unlock transfers on this device").assertExists()
         compose.onNodeWithText("Back to Chunks").assertExists()
         compose.onNodeWithText("PERSONAL TORRENT TITLE AND PATH").assertDoesNotExist()
         compose.runOnIdle { assertEquals(0, compositions) }
@@ -75,7 +75,7 @@ class LocalTransferPrivacyGateInstrumentedTest {
                 }
             }
         }
-        compose.onNodeWithText("Phone transfers locked").assertExists()
+        compose.onNodeWithText("Transfers on this device locked").assertExists()
         compose.onNodeWithText("NEVER DISCLOSE SOURCE").assertDoesNotExist()
         compose.runOnIdle { assertFalse(composed) }
     }
@@ -91,9 +91,9 @@ class LocalTransferPrivacyGateInstrumentedTest {
         compose.onNodeWithText("Local client status placeholder").assertExists()
         compose.onNodeWithText("Privacy & authentication").performClick()
         compose.onNodeWithText(
-            "Phone transfer privacy is off. Enabling it requires a device screen lock " +
+            "Privacy for transfers on this device is off. Enabling it requires a device screen lock " +
                 "and will immediately hide transfers."
         ).assertExists()
-        compose.onNodeWithText("Phone transfers locked").assertDoesNotExist()
+        compose.onNodeWithText("Transfers on this device locked").assertDoesNotExist()
     }
 }
