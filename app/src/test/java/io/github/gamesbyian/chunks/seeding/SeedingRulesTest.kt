@@ -80,6 +80,50 @@ class SeedingRulesTest {
         assertEquals(Source.DEFAULT, r.source)
     }
 
+    @Test fun unknownPrivateFlagNeverMatchesPrivateOrPublicRule() {
+        val privateRule = forever.copy(
+            id = "private-only", privateOnly = true, environments = setOf(phone))
+        val publicRule = privateRule.copy(id = "public-only", privateOnly = false)
+        val knownTrackers = listOf("https://routing.iptorrents.com/announce.php?passkey=SECRET")
+        for (conditioned in listOf(privateRule, publicRule)) {
+            val pending = SeedingRuleEngine.resolve(
+                TransferFacts(phone, knownTrackers, null), listOf(conditioned), everythingElse)
+            assertEquals(Source.PENDING, pending.source)
+            assertNull(pending.ruleId)
+            assertEquals(everythingElse, pending.policy)
+            assertFalse(pending.reasons.joinToString().contains("SECRET"))
+        }
+        assertEquals(Source.RULE, SeedingRuleEngine.resolve(
+            TransferFacts(phone, knownTrackers, true), listOf(privateRule), everythingElse).source)
+        assertEquals(Source.DEFAULT, SeedingRuleEngine.resolve(
+            TransferFacts(phone, knownTrackers, false), listOf(privateRule), everythingElse).source)
+        assertEquals(Source.RULE, SeedingRuleEngine.resolve(
+            TransferFacts(phone, knownTrackers, false), listOf(publicRule), everythingElse).source)
+        assertEquals(Source.DEFAULT, SeedingRuleEngine.resolve(
+            TransferFacts(phone, knownTrackers, true), listOf(publicRule), everythingElse).source)
+    }
+
+    @Test fun unknownHigherPriorityPrivateRuleBlocksLowerMatchingPolicy() {
+        val conditional = forever.copy(
+            id = "private-first", privateOnly = true, environments = setOf(phone))
+        val unconditional = conditional.copy(id = "other", privateOnly = null, policy = everythingElse)
+        val facts = TransferFacts(phone, listOf("https://iptorrents.com/a"), null)
+        val pending = SeedingRuleEngine.resolve(
+            facts, listOf(conditional, unconditional), SeedingPolicy())
+        assertEquals(Source.PENDING, pending.source)
+        assertNull(pending.ruleId)
+        // A known, higher priority unconditional rule may still win without
+        // knowing the private flag. Never block already resolved precedence.
+        val safe = SeedingRuleEngine.resolve(
+            facts, listOf(unconditional, conditional), SeedingPolicy())
+        assertEquals(Source.RULE, safe.source)
+        assertEquals("other", safe.ruleId)
+        val unrelated = SeedingRuleEngine.resolve(
+            TransferFacts(phone, listOf("https://unrelated.example/announce"), null),
+            listOf(conditional, unconditional), SeedingPolicy())
+        assertEquals(Source.DEFAULT, unrelated.source)
+    }
+
     @Test fun generatedNamesFollowConditionsUntilTheUserRenames() {
         val renamed = forever.withConditions(setOf("iptorrents.com"), everythingElse)
         assertEquals("Iptorrents · Ratio 1.00 · 24 KiB/s", renamed.name)
