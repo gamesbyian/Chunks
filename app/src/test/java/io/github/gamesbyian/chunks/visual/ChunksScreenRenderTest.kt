@@ -61,7 +61,7 @@ class ChunksScreenRenderTest {
         rule.waitForIdle()
         rule.onNodeWithText("Privacy & authentication").performScrollTo().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("privacy is off", substring = true).assertExists()
+        rule.onNodeWithText("Privacy for transfers on this device is off", substring = true).assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/privacy.png")
     }
 
