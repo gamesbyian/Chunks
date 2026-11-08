@@ -2283,7 +2283,6 @@ private fun TransfersScreen(
                         onStarted = onMutationStarted,
                         onSettled = onLifecycleSettled
                     )
-                    serverMoveMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             }
         }
@@ -2297,8 +2296,17 @@ private fun TransfersScreen(
                 enabled = !stale && !loading,
                 revision = serverMoveRevision,
                 observeSource = { hash -> TransferMoveObservations.server(remote, hash) },
-                onChanged = { serverMoveRevision++ }
+                onChanged = {
+                    serverMoveMessage = "Only the resolved local Move reminder was cleared. " +
+                        "Torrent jobs and downloaded files were not changed."
+                    serverMoveRevision++
+                }
             )
+        }
+        // Journal recovery may close its panel as soon as it succeeds; keep
+        // the outcome visible in ordinary Transfers, not only in Select mode.
+        if (serverMoveMessage != null) item(key = "remote-move-outcome") {
+            Text(serverMoveMessage.orEmpty(), style = MaterialTheme.typography.bodySmall)
         }
         if (addedHidden) item(key = "remote-added-hidden") {
             PhoneAddedHiddenNotice(onShowAll = onClearView,
