@@ -1054,6 +1054,74 @@ internal fun CombinedTransfersScreen(
                         .semantics { contentDescription = "Group by environment" })
             }
         }
+        item(key = "combined-compact-count") {
+            Text(combinedShowingText(result.transfers.size,
+                result.sources.sumOf { it.transfers.size }) +
+                if (result.hasIncompleteOrStaleSource) " · some environments are offline or out of date" else "",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        // Even when a saved subset or a filter hides every row, the way back
+        // remains visible without finding an offscreen chip or opening Settings.
+        // This changes presentation only, never an Add destination or command target.
+        if (addedHidden) item(key = "combined-added-hidden") {
+            CombinedAddedHiddenNotice(labels[recentlyAddedTransfer?.environment].orEmpty(),
+                onShowAll = { update(CombinedViewPreferences.showAll(query)) })
+        }
+        if (!addedHidden && result.transfers.isEmpty() && CombinedViewPreferences.narrowingActive(query)) {
+            item(key = "recover-empty-combined-view") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("No transfers are visible with these view choices. " +
+                        "Locked or offline environments may still need attention.",
+                        style = MaterialTheme.typography.bodySmall)
+                    if (query.filter != UnifiedTransferFilter.ALL ||
+                        query.scope != EnvironmentViewScope.All) {
+                        Text(
+                            "New downloads may be hidden by this view. Show all transfers " +
+                                "clears view filters, not your Add destination.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { update(CombinedViewPreferences.showAll(query)) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text("Show all transfers") }
+                }
+            }
+        }
+        if (query.groupByEnvironment) {
+            result.groups.forEach { group ->
+                item(key = "header-" + group.source.environment.value) {
+                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        EnvironmentDot(palette.hueOf(group.source.environment))
+                        Text(labels[group.source.environment].orEmpty() + " · " + group.transfers.size +
+                            " shown", style = MaterialTheme.typography.titleMedium,
+                            modifier = Modifier.semantics { heading() })
+                    }
+                }
+                items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
+                    CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    visibleEnvironmentLabel = rowLabels[row.key.environment],
+                    source = sourcesByEnvironment[row.key.environment],
+                        selection = if (selecting) row.key in selected else null,
+                        onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
+                        onOpen = openFor(row.key),
+                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
+                }
+            }
+        } else {
+            items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
+                CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    visibleEnvironmentLabel = rowLabels[row.key.environment],
+                    source = sourcesByEnvironment[row.key.environment],
+                    selection = if (selecting) row.key in selected else null,
+                    onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
+                    onOpen = openFor(row.key),
+                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
+            }
+        }
+        // Detailed environment status is available after the inventory, rather
+        // than charging every user a tall status panel before the first row.
         item {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (showingSourceStatus || result.sources.size > 1 || result.hasIncompleteOrStaleSource ||
@@ -1114,66 +1182,6 @@ internal fun CombinedTransfersScreen(
                     result.sources.sumOf { it.transfers.size }) +
                     if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
                     style = MaterialTheme.typography.titleSmall)
-            }
-        }
-        // Even when a saved subset or a filter hides every row, the way back
-        // remains visible without finding an offscreen chip or opening Settings.
-        // This changes presentation only, never an Add destination or command target.
-        if (addedHidden) item(key = "combined-added-hidden") {
-            CombinedAddedHiddenNotice(labels[recentlyAddedTransfer?.environment].orEmpty(),
-                onShowAll = { update(CombinedViewPreferences.showAll(query)) })
-        }
-        if (!addedHidden && result.transfers.isEmpty() && CombinedViewPreferences.narrowingActive(query)) {
-            item(key = "recover-empty-combined-view") {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("No transfers are visible with these view choices. " +
-                        "Locked or offline environments may still need attention.",
-                        style = MaterialTheme.typography.bodySmall)
-                    if (query.filter != UnifiedTransferFilter.ALL ||
-                        query.scope != EnvironmentViewScope.All) {
-                        Text(
-                            "New downloads may be hidden by this view. Show all transfers " +
-                                "clears view filters, not your Add destination.",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    OutlinedButton(
-                        onClick = { update(CombinedViewPreferences.showAll(query)) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text("Show all transfers") }
-                }
-            }
-        }
-        if (query.groupByEnvironment) {
-            result.groups.forEach { group ->
-                item(key = "header-" + group.source.environment.value) {
-                    Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        EnvironmentDot(palette.hueOf(group.source.environment))
-                        Text(labels[group.source.environment].orEmpty() + " · " + group.transfers.size +
-                            " shown", style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.semantics { heading() })
-                    }
-                }
-                items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                    CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
-                    visibleEnvironmentLabel = rowLabels[row.key.environment],
-                    source = sourcesByEnvironment[row.key.environment],
-                        selection = if (selecting) row.key in selected else null,
-                        onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                        onOpen = openFor(row.key),
-                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
-                }
-            }
-        } else {
-            items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
-                    visibleEnvironmentLabel = rowLabels[row.key.environment],
-                    source = sourcesByEnvironment[row.key.environment],
-                    selection = if (selecting) row.key in selected else null,
-                    onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                    onOpen = openFor(row.key),
-                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
             }
         }
         if (showingBatchTools) {
