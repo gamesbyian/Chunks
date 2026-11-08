@@ -1689,7 +1689,11 @@ internal fun LocalEngineScreen(
                 enabled = !busy && !inventoryStale && hasConfirmedLocalInventory,
                 revision = moveRevision,
                 observeSource = { hash -> TransferMoveObservations.phone(hash) },
-                onChanged = { moveRevision++ }
+                onChanged = {
+                    message = "Only the resolved local Move reminder was cleared. " +
+                        "Torrent jobs and downloaded files were not changed."
+                    moveRevision++
+                }
             )
         }
         // Batch selection acts on the list itself, so it sits with the list (as on
