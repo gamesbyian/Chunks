@@ -2082,6 +2082,10 @@ private fun TransfersScreen(
     // accepted queue revision clears it: never apply an old batch to new rows.
     var selecting by remember(aliasScope, view) { mutableStateOf(false) }
     var toolsOpen by remember(aliasScope) { mutableStateOf(false) }
+    // The app-wide Options tab no longer toggles the old remote-only panel.
+    // Keep the existing authenticated batch tools reachable through an
+    // explicit local disclosure without creating another mutation executor.
+    var advancedToolsOpen by rememberSaveable(aliasScope, view) { mutableStateOf(false) }
     // Exact server/view scoped presentation state only; no operation lease is stored here.
     var listControlsOpen by rememberSaveable(aliasScope, view) { mutableStateOf(false) }
     var batchHashes by remember(aliasScope, view) { mutableStateOf<Set<String>>(emptySet()) }
@@ -2140,8 +2144,12 @@ private fun TransfersScreen(
                 // Options destination, instead of occupying a permanent row
                 // above the actual transfer inventory. Keep Exit visible while
                 // selection is active, even if the server becomes stale.
+                OutlinedButton(onClick = { advancedToolsOpen = !advancedToolsOpen },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text(if (advancedToolsOpen) "Hide batch & tools" else "Batch & tools")
+                }
                 RemoteAdvancedListActions(
-                    optionsOpen = optionsOpen,
+                    optionsOpen = optionsOpen || advancedToolsOpen,
                     selecting = selecting,
                     toolsOpen = toolsOpen,
                     enabled = if (selecting) !batchBusy
@@ -2155,11 +2163,14 @@ private fun TransfersScreen(
                         // Reveal the actual rows to select immediately rather than
                         // leaving the large Options navigation above the batch.
                         // The persistent footer still reopens Options at any time.
-                        if (enteringSelection && optionsOpen) onOptions()
+                        if (enteringSelection) {
+                            advancedToolsOpen = false
+                            if (optionsOpen) onOptions()
+                        }
                     },
                     onToggleTools = { toolsOpen = !toolsOpen }
                 )
-                if (optionsOpen && toolsOpen) {
+                if ((optionsOpen || advancedToolsOpen) && toolsOpen) {
                     OutlinedButton(onClick = onReviewNames,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                         Text("Review suggested queue names")
@@ -2184,7 +2195,7 @@ private fun TransfersScreen(
                 }
             }
         }
-        if (optionsOpen && toolsOpen) item {
+        if ((optionsOpen || advancedToolsOpen) && toolsOpen) item {
             val down = remember(list) { RemoteRateEvidence.download(list) }
             val up = remember(list) { RemoteRateEvidence.upload(list) }
             RemoteRateStatTiles(down, up, list.count { it.started })
@@ -2195,7 +2206,7 @@ private fun TransfersScreen(
                 Text(it, style = MaterialTheme.typography.bodySmall)
             }
         }
-        if (optionsOpen && toolsOpen) item {
+        if ((optionsOpen || advancedToolsOpen) && toolsOpen) item {
             val transferring = list.count {
                 (it.downBytesPerSecond ?: 0L) > 0L ||
                     (it.upBytesPerSecond ?: 0L) > 0L
