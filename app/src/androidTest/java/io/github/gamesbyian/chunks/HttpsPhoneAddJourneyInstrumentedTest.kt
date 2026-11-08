@@ -76,7 +76,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             scroll(text); rule.onNodeWithText(text).assertIsEnabled(); true
         }.getOrDefault(false) }
         if (text == "Stop") stage("stop-ready")
-        rule.onNodeWithText(text).performScrollTo()
+        // Re-use the visibility-aware scroll helper: fixed footer tabs have
+        // no scrolling ancestor, while transfer cards still require scrolling.
+        scroll(text)
         if (text == "Stop") stage("stop-visible")
         // A semantic click cannot miss when the list re-lays out between lookup and touch
         // injection (a lost Start tap left no permission prompt). Touch only if not clickable.

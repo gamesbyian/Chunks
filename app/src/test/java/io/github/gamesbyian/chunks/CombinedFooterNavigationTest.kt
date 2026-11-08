@@ -105,11 +105,11 @@ class CombinedFooterNavigationTest {
         reachLastTransfer()
         rule.onNodeWithContentDescription("Options").assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Hide transfers", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("Hide filters").assertIsDisplayed()
         rule.onNodeWithText("Show").assertIsDisplayed()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Hide filters", substring = true).assertIsDisplayed()
+        rule.onNodeWithText("Filters").assertIsDisplayed()
         assertTrue(commands.isEmpty())
     }
 

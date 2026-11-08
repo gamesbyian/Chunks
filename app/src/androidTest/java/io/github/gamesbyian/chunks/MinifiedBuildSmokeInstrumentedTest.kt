@@ -5,6 +5,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -54,11 +55,9 @@ class MinifiedBuildSmokeInstrumentedTest {
     }
 
     @Test fun nativeEngineMovesExactBytesAndComposeRenders() {
-        // The fresh phone-first experience is the default for an unsaved account.
-        // Server setup remains available via the explicit Back route. This
-        // navigation check precedes, but cannot replace, the native peer-byte test.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        // The persistent Connections tab enters the same real server setup.
+        // This UI assertion must pass before the exact native peer-byte test.
+        rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         // The Connect list composes lazily; at large text the field starts below the fold.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()

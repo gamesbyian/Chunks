@@ -9,6 +9,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -142,7 +143,11 @@ class PhoneIntakeJourneyInstrumentedTest {
                 false
             }
         }
-        rule.onNodeWithText(text).performScrollTo().assertIsEnabled().performClick()
+        val node = rule.onNodeWithText(text)
+        // Footer tabs live outside the scroll viewport. Never require a
+        // Scroll SemanticsAction for an already-visible navigation control.
+        if (runCatching { node.assertIsDisplayed() }.isFailure) node.performScrollTo()
+        node.assertIsEnabled().performClick()
     }
 
     @Test fun phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies() {

@@ -626,9 +626,9 @@ internal fun ChunksApp(
                 if (server != null && aliasScope.isNotBlank()) {
                     OutlinedButton(onClick = { section = Section.ADD },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text("On " + (savedProfiles.firstOrNull {
-                            RemoteVerifiedUiIdentity.aliasScopeOf(it.credentials) == aliasScope
-                        }?.label ?: "the connected server"))
+                        // Avoid disclosing a saved account name in this local
+                        // chooser before the independent remote privacy gate.
+                        Text("On the connected server")
                     }
                 }
                 if (savedProfiles.isNotEmpty() && server == null) {
@@ -1304,7 +1304,9 @@ internal fun ChunksApp(
             // On other routes (Add, Places…) the destinations are a compact,
             // two-row-high strip so the screen itself (and its keyboard) keeps
             // its space; the open Transfers Options panel may use more.
-            if (section != Section.TRANSFERS || optionsOpen) Column(
+            // A legacy remote options disclosure is kept only if explicitly
+            // open. Other screens use the root footer and central Options.
+            if (section == Section.TRANSFERS && optionsOpen) Column(
                 Modifier.fillMaxWidth()
                     .heightIn(max = if (section == Section.TRANSFERS)
                         (androidx.compose.ui.platform.LocalConfiguration.current.screenHeightDp * 0.45f).dp

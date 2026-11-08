@@ -2417,8 +2417,9 @@ internal fun LocalEngineScreen(
         }
         if (remoteEnvironmentLabel != null && onRemotePlaces != null &&
             onRemoteOrganize != null && onRemoteNames != null && onRemoteSnapshot != null) {
-            Text("Connected server · $remoteEnvironmentLabel",
-                style = MaterialTheme.typography.titleMedium)
+            // The local Options route is independently privacy-gated from
+            // remote profiles. Do not speak the server host/username here.
+            Text("Connected server tools", style = MaterialTheme.typography.titleMedium)
             Text("These tools operate only on the currently authenticated server. Opening a tool does not submit an Add or change any torrent.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = onRemotePlaces,
