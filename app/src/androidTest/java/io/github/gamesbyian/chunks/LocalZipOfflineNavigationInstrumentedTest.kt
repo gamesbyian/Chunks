@@ -19,8 +19,7 @@ class LocalZipOfflineNavigationInstrumentedTest {
     @Test fun offlineZipReviewIsAvailableWithoutCredentialsAndReturnsToConnection() {
         // Offline tools remain available from the optional server-setup route.
         // New installations correctly start in phone Transfers instead.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("Connections").performClick()
         rule.onNodeWithText("Your downloads").assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()

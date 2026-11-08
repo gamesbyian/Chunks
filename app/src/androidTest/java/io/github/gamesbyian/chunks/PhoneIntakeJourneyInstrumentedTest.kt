@@ -186,7 +186,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                 URLEncoder.encode(tracker.url, "UTF-8")))
 
             ActivityScenario.launch<MainActivity>(input).use {
-                waitForText("On this phone (experimental)")
+                waitForText("Add on this device")
                 waitForText("Saves to: Downloads/Chunks Downloads")
                 val target = File(publicRoot, name)
                 assertFalse("Review cannot create payload", target.exists())
@@ -257,6 +257,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                     (phone.status(hash)?.payloadDownloadedBytes ?: 0) >= payload.size &&
                         (seed.status(hash)?.payloadUploadedBytes ?: 0) >= payload.size
                 }
+                click("Transfers")
                 waitForText("100% ·", substring = true)
                 click("Stop")
                 await("UI Stop readback") { phone.status(hash)?.stopped == true }
@@ -309,11 +310,12 @@ class PhoneIntakeJourneyInstrumentedTest {
         // to Add another job or resume the existing restored transfer.
         ActivityScenario.launch<MainActivity>(intent(Intent.ACTION_VIEW,
             Uri.parse("magnet:?xt=urn:btih:$hash"))).use {
-            waitForText("On this phone (experimental)")
+            waitForText("Add on this device")
             await("exact stopped restore") { LocalEngineHolder.current()?.status(hash)?.stopped == true }
             val phone = requireNotNull(LocalEngineHolder.current())
             assertTrue(phone.restoreProblems.toString(), phone.restoreProblems.isEmpty())
             assertEquals(listOf(hash), phone.completeIdentityInventory())
+            click("Transfers")
             waitForText("Start")
             val uploadedBefore = requireNotNull(phone.status(hash)).payloadUploadedBytes
             click("Start")

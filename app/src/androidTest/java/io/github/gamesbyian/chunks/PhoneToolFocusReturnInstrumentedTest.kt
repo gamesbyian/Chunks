@@ -7,6 +7,8 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
@@ -26,7 +28,7 @@ import org.junit.runner.RunWith
 class PhoneToolFocusReturnInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private fun phone() = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Phone transfers")
+    private fun phone() = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
 
     private fun waitForPhone() = rule.waitUntil(20_000) {
         rule.onAllNodes(phone()).fetchSemanticsNodes().isNotEmpty()
@@ -34,6 +36,7 @@ class PhoneToolFocusReturnInstrumentedTest {
 
     private fun keyboardReturn(button: String, paneTitle: String) {
         waitForPhone()
+        rule.onNodeWithText("Options").performClick()
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_TAB)
         rule.waitForIdle()
         rule.onNode(hasText(button) and hasClickAction()).performScrollTo()
@@ -44,7 +47,10 @@ class PhoneToolFocusReturnInstrumentedTest {
         }
         rule.onNode(hasText("Back") and hasClickAction()).performScrollTo()
             .performSemanticsAction(SemanticsActions.OnClick)
-        waitForPhone()
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Options"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.waitUntil(10_000) {
             rule.onAllNodes(hasText(button) and hasClickAction() and
                 SemanticsMatcher.expectValue(SemanticsProperties.Focused, true))
