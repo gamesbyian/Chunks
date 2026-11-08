@@ -74,6 +74,10 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         }
         assertEquals("Only the two explicit independent observations are allowed", 2, reads.get())
         assertEquals(b, store.get(Direction.PHONE_TO_SERVER, hash, b.serverScopeDigest))
+        // Storage commit precedes the Compose onChanged callback; waiting for
+        // durable absence alone races the UI dispatcher after withContext(IO).
+        // Require the UI to observe exactly one completion as a separate gate.
+        rule.waitUntil(10_000) { changed.intValue == 1 }
         assertEquals(1, changed.intValue)
         // There is no Remove, Add or Stop/Start handler in this UI.
     }
