@@ -213,11 +213,25 @@ object SeedingRuleEngine {
         val urls = facts.trackerUrls ?: return SeedingResolution(default, SeedingResolution.Source.PENDING, null,
             listOf("Tracker details are not known yet; the default applies until they are."))
         val hosts = urls.mapNotNull(TrackerHosts::host).distinct()
-        val matching = usable.mapNotNull { rule ->
-            if (rule.privateOnly != null && facts.isPrivate != null && rule.privateOnly != facts.isPrivate) return@mapNotNull null
+        val matching = mutableListOf<Pair<SeedingRule, String>>()
+        for (rule in usable) {
             val hit = hosts.firstOrNull { host -> rule.trackerDomains.any { TrackerHosts.matches(host, it) } }
-                ?: return@mapNotNull null
-            rule to hit
+                ?: continue
+            if (rule.privateOnly != null) {
+                // A magnet may disclose trackers before metainfo's private flag.
+                // Missing private/public evidence cannot satisfy either condition.
+                // An earlier known match keeps its precedence, but an unknown
+                // higher-priority match blocks lower rules from silently winning.
+                if (facts.isPrivate == null) {
+                    if (matching.isEmpty()) return SeedingResolution(
+                        default, SeedingResolution.Source.PENDING, null,
+                        listOf("The private/public torrent flag is not verified yet; " +
+                            "a matching tracker rule needs it. No seeding rule was selected."))
+                    continue
+                }
+                if (rule.privateOnly != facts.isPrivate) continue
+            }
+            matching += rule to hit
         }
         if (matching.isEmpty()) return SeedingResolution(default, SeedingResolution.Source.DEFAULT, null,
             listOf(if (hosts.isEmpty()) "No tracker, so no rule matched; the default applies."
