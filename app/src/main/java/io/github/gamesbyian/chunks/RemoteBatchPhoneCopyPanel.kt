@@ -111,8 +111,11 @@ internal suspend fun runBatchPhoneMove(
     originalTransfers: List<RemoteTransfer> = emptyList()
 ): String {
     var journaled = 0
+    var aliasCopied = 0
+    var aliasFailed = 0
     val text = runBatchPhoneCopy(context, remote, items) { report ->
         val store = TransferMoveStore(context)
+        val aliases = TransferAliasStore(context)
         journaled = report.results.filter {
             it.second == BatchPhoneCopy.Result.ADDED || it.second == BatchPhoneCopy.Result.ALREADY_ON_PHONE
         }.count { (item, _) ->
@@ -120,15 +123,26 @@ internal suspend fun runBatchPhoneMove(
                 it.hash.equals(item.infoHash, ignoreCase = true) &&
                     it.name == item.name && it.directory.startsWith("/")
             }
-            original != null && store.save(io.github.gamesbyian.chunks.model.TransferMove.start(
+            val saved = original != null && store.save(io.github.gamesbyian.chunks.model.TransferMove.start(
                 io.github.gamesbyian.chunks.model.TransferMove.Direction.SERVER_TO_PHONE,
                 item.infoHash, item.name,
                 TransferMoveStore.scopeDigest(aliasScope), TransferMoveStore.hostLabel(aliasScope),
                 sourceDirectory = original.directory
             ).copy(stage = io.github.gamesbyian.chunks.model.TransferMove.Stage.TARGET_VERIFIED))
+            if (saved) {
+                when (aliases.carryVerifiedMoveAlias(
+                    aliasScope, TransferCollectionStore.LOCAL_ENGINE_SCOPE, item.infoHash)) {
+                    TransferAliasStore.MoveAliasCarry.COPIED -> aliasCopied++
+                    TransferAliasStore.MoveAliasCarry.FAILED -> aliasFailed++
+                    else -> Unit
+                }
+            }
+            saved
         }
     }
-    return "$text $journaled ready to finish moving: review removal of the original server jobs below."
+    return "$text $journaled ready to finish moving: review removal of the original server jobs below." +
+        (if (aliasCopied > 0) " $aliasCopied display aliases carried to this phone." else "") +
+        (if (aliasFailed > 0) " $aliasFailed display aliases could not be carried; edit them on the phone." else "")
 }
 
 /** The production runner: public-tracker magnets into the phone's verified default Place. */
