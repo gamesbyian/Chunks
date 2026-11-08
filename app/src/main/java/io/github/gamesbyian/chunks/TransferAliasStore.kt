@@ -83,11 +83,12 @@ internal class TransferAliasStore(context: Context) {
             if (from == to) return@synchronized MoveAliasCarry.TARGET_ALREADY_SET
             // Even a malformed existing target value is user state, never
             // silent permission for an automated Move to overwrite it.
-            val snapshot = preferences.all
-            if (snapshot.containsKey(to)) return@synchronized MoveAliasCarry.TARGET_ALREADY_SET
-            val alias = (snapshot[from] as? String)?.let {
-                runCatching { TransferDisplayNames.validateAlias(it) }.getOrNull()
-            } ?: return@synchronized MoveAliasCarry.SOURCE_UNSET
+            // O(1) exact-key reads: never scan the full alias map on the
+            // Compose click path, which may contain thousands of labels.
+            if (preferences.contains(to)) return@synchronized MoveAliasCarry.TARGET_ALREADY_SET
+            val alias = runCatching { preferences.getString(from, null) }.getOrNull()
+                ?.let { runCatching { TransferDisplayNames.validateAlias(it) }.getOrNull() }
+                ?: return@synchronized MoveAliasCarry.SOURCE_UNSET
             if (!preferences.edit().putString(to, alias).commit())
                 MoveAliasCarry.FAILED
             else {
