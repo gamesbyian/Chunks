@@ -566,11 +566,13 @@ internal fun LocalEngineScreen(
     // Android 10+ lets an app read the clipboard only while its window has input focus, and
     // ON_RESUME arrives before focus returns: reading then is silently denied. Read once focused.
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
-    LaunchedEffect(addExpanded, clipboardPrefillOn, resumeTick, windowFocused,
+    LaunchedEffect(pane, addExpanded, clipboardPrefillOn, resumeTick, windowFocused,
         phoneAddAttemptSession?.attemptedTicket) {
-        // Even automatic foreground clipboard intake is source replacement.
-        // Never alter a draft or read clipboard during an unresolved Add ticket.
-        if (!addExpanded || clipboardPrefillOn != true || !windowFocused ||
+        // The dedicated Add destination renders the form even before the
+        // legacy inline disclosure is expanded. Clipboard intake is still
+        // focus-gated, one-shot and never replaces a draft or pending review.
+        if ((pane != PhonePane.ADD && !addExpanded) ||
+            clipboardPrefillOn != true || !windowFocused ||
             busy || phoneAddAttemptSession?.attemptedTicket != null) return@LaunchedEffect
         val filled = ClipboardMagnetPrefill.decide(
             enabled = true, currentDraft = magnet,

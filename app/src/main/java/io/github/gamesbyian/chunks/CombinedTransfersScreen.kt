@@ -1111,7 +1111,7 @@ internal fun CombinedTransfersScreen(
         item(key = "combined-compact-count") {
             Text(combinedShowingText(result.transfers.size,
                 result.sources.sumOf { it.transfers.size }) +
-                if (result.hasIncompleteOrStaleSource) " · some environments are offline or out of date" else "",
+                if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
                 style = MaterialTheme.typography.bodySmall)
         }
         // Even when a saved subset or a filter hides every row, the way back

@@ -995,10 +995,10 @@ internal fun ChunksApp(
                         }
                     }
                 },
-                onLocalZipReview = { toolOrigin = null; section = Section.ARCHIVES },
+                onLocalZipReview = { openTool(Section.ARCHIVES, Section.SERVER) },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
                 onLocalEngine = { localFromCombined = false; section = Section.LOCAL },
-                onCreateTorrent = { toolOrigin = null; section = Section.CREATE },
+                onCreateTorrent = { openTool(Section.CREATE, Section.SERVER) },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
                 onConnect = {

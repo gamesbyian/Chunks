@@ -313,8 +313,7 @@ class ChunksMainActivityAtlasTest {
         receivedMethods.clear() // Record the real installed-app calls separately.
         // A fresh installation now opens the useful local Transfers inventory.
         // Server connection is still one deliberate Back/Connect route away.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         // The Connect list composes lazily; at large text the field starts below the fold.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)

@@ -274,6 +274,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // within the wait. Use the production "download in order" setting so it comes first.
                 assertTrue("Sequential download readback", phone.setSequentialDownload(preview.infoHashV1, true))
                 stage("added-stopped")
+                // Add review never exposes a competing lifecycle executor.
+                // Start the positively registered job from Transfers.
+                click("Transfers")
                 click("Start")
                 rule.waitForIdle() // Dispatch queued Start before checking the OS permission prompt.
                 // Connect the verified piece-0 publisher immediately when Start is dispatched.

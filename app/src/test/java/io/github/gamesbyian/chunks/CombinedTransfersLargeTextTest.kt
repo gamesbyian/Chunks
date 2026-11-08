@@ -61,8 +61,8 @@ class CombinedTransfersLargeTextTest {
         show(opened, backed)
         rule.onNodeWithText("All environments").assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Refine transfers", substring = true))
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+            hasText("Filters"))
+        rule.onNodeWithText("Filters").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
         // This label lives inside a lazy list item, not a nested ScrollState.
@@ -80,8 +80,8 @@ class CombinedTransfersLargeTextTest {
         rule.onNodeWithText("Done selecting").assertExists()
         rule.onNodeWithText("Done selecting").performClick()
 
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open On this phone"))
-        val open = rule.onNodeWithText("Open On this phone")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open transfers on this device"))
+        val open = rule.onNodeWithText("Open transfers on this device")
         val openBounds = open.getUnclippedBoundsInRoot()
         assertTrue("Phone navigation keeps a 48dp touch target", openBounds.bottom - openBounds.top >= 48.dp)
         open.performClick()
@@ -96,8 +96,8 @@ class CombinedTransfersLargeTextTest {
         val opened = intArrayOf(0)
         val backed = intArrayOf(0)
         show(opened, backed)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Refine transfers", substring = true))
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filters"))
+        rule.onNodeWithText("Filters").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change sort & grouping", substring = true))
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Group by environment"))
@@ -123,8 +123,8 @@ class CombinedTransfersLargeTextTest {
         val list = rule.onNode(hasScrollToIndexAction())
         // The current-value summary opens all chips on demand, without
         // horizontal scrolling or losing the saved environment selection.
-        list.performScrollToNode(hasText("Refine transfers", substring = true))
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        list.performScrollToNode(hasText("Filters"))
+        rule.onNodeWithText("Filters").performClick()
         list.performScrollToNode(hasText("Attention"))
         rule.onNodeWithText("Attention").performClick()
         assertEquals(UnifiedTransferFilter.ATTENTION,

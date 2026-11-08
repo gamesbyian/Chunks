@@ -98,25 +98,26 @@ class ClipboardPrefillInstrumentedTest {
 
     @Test fun copiedMagnetPrefillsTheForegroundPhoneAdd() {
         val link = "magnet:?xt=urn:btih:" + "f".repeat(40) + "&dn=Installed%20clipboard"
-        val phone = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Phone transfers")
-        val entry = hasText("Open phone downloads") and hasClickAction()
+        val phone = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
+        val entry = hasText("Transfers") and hasClickAction()
         // A login remembered by an earlier installed test starts on the server
         // entry instead; reach the phone the way a person would, from there.
         waitOrExplain("the phone screen or its entry", 30_000) {
             rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() ||
                 rule.onAllNodes(entry).fetchSemanticsNodes().isNotEmpty() ||
                 rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty() &&
-                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open phone downloads")) }.isSuccess
+                runCatching { rule.onNodeWithText("Transfers").assertExists() }.isSuccess
         }
         if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
-            rule.onNode(entry).performScrollTo().performClick()
+            rule.onNode(entry).performClick()
             waitOrExplain("the phone screen", 15_000) { rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() }
         }
         // The journey under test is "copy, then open Add": if the form is already
         // open on arrival, close it first so opening it is a real transition.
-        val hideAdd = hasText("Hide phone Add options") and hasClickAction()
-        if (rule.onAllNodes(hideAdd).fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNode(hideAdd).performScrollTo().performClick()
+        // Transfers and Add are separate persistent destinations; ensure
+        // prefill is tested on a genuinely new Add entry.
+        if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
+            rule.onNodeWithText("Transfers").performClick()
             rule.waitForIdle()
         }
         // Actual API35 GHA captures on two unrelated source heads show the
@@ -144,7 +145,7 @@ class ClipboardPrefillInstrumentedTest {
                 .setPrimaryClip(ClipData.newPlainText("magnet", link))
         }
         try {
-            rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+            rule.onNodeWithText("+ Add").performClick()
             waitOrExplain("the prefilled magnet", 10_000) {
                 rule.onAllNodes(hasSetTextAction() and hasText(link)).fetchSemanticsNodes().isNotEmpty()
             }

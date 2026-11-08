@@ -93,8 +93,8 @@ class CombinedManyServersLargeTextTest {
         show()
         // Disclose chips only on request, preserving the 200% text vertical route.
         rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Refine transfers", substring = true))
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+            .performScrollToNode(hasText("Filters"))
+        rule.onNodeWithText("Filters").performClick()
         // The final server remains scroll-reachable without a horizontal gesture.
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Server · Seedbox 12"))

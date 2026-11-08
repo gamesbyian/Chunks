@@ -486,6 +486,9 @@ class PhoneIntakeJourneyInstrumentedTest {
                     }
                     assertTrue(phone.flushCompletedForLibraryRead(hash, 30_000))
                     assertPublicBytes(target, payload, "before delete-data")
+                    // The Share review stays on Add; the verified job and
+                    // lifecycle controls live only in device Transfers.
+                    click("Transfers")
                     waitForText("100% ·", substring = true)
                     click("Stop")
                     await("UI Stop readback") { phone.status(hash)?.stopped == true }
@@ -520,6 +523,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                         assertTrue("Re-add must reuse kept bytes, not download them again: $reused",
                             reused.payloadDownloadedBytes < payload.size)
                         assertPublicBytes(target, payload, "after same-hash re-add")
+                        click("Transfers")
                         waitForText("100% ·", substring = true)
                         click("Stop")
                         await("UI Stop readback after re-add") { phone.status(hash)?.stopped == true }
