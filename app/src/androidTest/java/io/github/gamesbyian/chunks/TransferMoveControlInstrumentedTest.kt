@@ -31,6 +31,8 @@ class TransferMoveControlInstrumentedTest {
     @Before fun clean() {
         context.getSharedPreferences("chunks_transfer_moves_v1", Context.MODE_PRIVATE)
             .edit().clear().commit()
+        context.getSharedPreferences("chunks_display_aliases_v1", Context.MODE_PRIVATE)
+            .edit().clear().commit()
     }
 
     private fun show(
@@ -80,6 +82,70 @@ class TransferMoveControlInstrumentedTest {
         waitFor("Moved: the job now lives on the server")
         assertEquals(1, removals.get())
         assertNull(TransferMoveStore(context).get(TransferMove.Direction.PHONE_TO_SERVER, hash))
+    }
+
+    @Test fun verifiedPhoneToServerMoveCarriesOnlyChunksAliasWithoutRemovingSource() {
+        val removals = AtomicInteger()
+        val starts = AtomicInteger()
+        val aliases = TransferAliasStore(context)
+        val phone = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+        assertEquals(true, aliases.save(phone, hash, "Personal favorite"))
+        show({ Observation.Present }, { Observation.Present }, removals, starts)
+        rule.onNodeWithText("Move Transfer to server…").performClick()
+        rule.onNodeWithText("Review server Add").performClick()
+        rule.onNodeWithText("Check the server").performClick()
+        waitFor("Remove original job from the phone…")
+        assertEquals("Personal favorite", aliases.get(scope, hash))
+        assertEquals("Personal favorite", aliases.get(phone, hash))
+        assertEquals(0, removals.get())
+    }
+
+    @Test fun firstMoveVerificationPreservesPreviouslyCustomizedDestinationAlias() {
+        val removals = AtomicInteger()
+        val starts = AtomicInteger()
+        val aliases = TransferAliasStore(context)
+        val phone = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+        assertEquals(true, aliases.save(phone, hash, "Source title"))
+        assertEquals(true, aliases.save(scope, hash, "Target-specific title"))
+        show({ Observation.Present }, { Observation.Present }, removals, starts)
+        rule.onNodeWithText("Move Transfer to server…").performClick()
+        rule.onNodeWithText("Review server Add").performClick()
+        rule.onNodeWithText("Check the server").performClick()
+        waitFor("Remove original job from the phone…")
+        assertEquals("Target-specific title", aliases.get(scope, hash))
+        assertEquals("Source title", aliases.get(phone, hash))
+        assertEquals(0, removals.get())
+    }
+
+    @Test fun verifiedServerToPhoneMoveCarriesExactAccountAlias() {
+        val removals = AtomicInteger()
+        val starts = AtomicInteger()
+        val aliases = TransferAliasStore(context)
+        val phone = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+        assertEquals(true, aliases.save(scope, hash, "Server original"))
+        rule.setContent {
+            MaterialTheme {
+                Column {
+                    TransferMoveControl(
+                        direction = TransferMove.Direction.SERVER_TO_PHONE,
+                        infoHash = hash, name = "Big Buck Bunny", serverAliasScope = scope,
+                        sourceDirectory = "/seed/Big Buck Bunny", busy = false,
+                        ports = TransferMovePorts(
+                            observeTarget = { Observation.Present },
+                            observeSource = { Observation.Present },
+                            removeSource = { removals.incrementAndGet() },
+                            targetUnavailableReason = "Connect"),
+                        onStartMove = { starts.incrementAndGet() })
+                }
+            }
+        }
+        rule.onNodeWithText("Move Transfer to phone…").performClick()
+        rule.onNodeWithText("Review phone Add").performClick()
+        rule.onNodeWithText("Check the phone").performClick()
+        waitFor("Remove original job from the server…")
+        assertEquals("Server original", aliases.get(phone, hash))
+        assertEquals("Server original", aliases.get(scope, hash))
+        assertEquals(0, removals.get())
     }
 
     @Test fun replacementPhoneSourceCannotInheritPersistedMoveRemovalConsent() {
