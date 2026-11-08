@@ -570,26 +570,32 @@ class ChunksMainActivityAtlasTest {
             substring = true).assertExists()
         save("app-alias-saved-populated-real-compose")
 
-        // Secondary destinations are one explicit Options tap away; the
-        // ordinary Transfers viewport no longer carries a permanent tab rail.
+        // The root Options destination is searchable and routes to the
+        // existing exact-account tools. No remote write is issued by navigation.
         rule.onNodeWithContentDescription("Options").performClick()
-        rule.onNodeWithText("Find a screen or tool").performTextReplacement("server")
-        rule.onNodeWithText("Server").assertExists()
-        rule.onNodeWithText("Places").assertDoesNotExist()
-        rule.onNodeWithText("Find a screen or tool").performTextReplacement("")
-        rule.onNodeWithText("Places").performClick()
+        rule.onNodeWithText("Search options").performTextReplacement("server")
+        rule.onNodeWithText("Clients & environments").assertExists()
+        rule.onNodeWithText("Server folders & destinations").assertExists()
+        rule.onNodeWithText("Create a torrent").assertDoesNotExist()
+        rule.onNodeWithText("Search options").performTextReplacement("")
+        rule.onNodeWithText("Server folders & destinations").performScrollTo().performClick()
         rule.onNodeWithText("Everything has a place.").assertExists()
         save("app-places-populated-real-compose")
 
-        rule.onNodeWithText("Organize").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithText("Server collections").performScrollTo().performClick()
         rule.onNodeWithText("Chunks has ideas.").assertExists()
         save("app-organize-populated-real-compose")
 
-        rule.onNodeWithText("Server").performClick()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNodeWithText("Server settings", substring = true).assertExists()
         save("app-server-populated-real-compose")
 
+        // Transfers now leads through the read-only combined inventory;
+        // return to the exact authenticated server before inspecting files.
         rule.onNodeWithText("Transfers").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
+        rule.onNodeWithText("Open server list").performClick()
         // The filtered card remains the exact same server/infohash identity.
         // Reopen its secondary actions only if navigation recreated the row.
         if (rule.onAllNodesWithText("Inspect files").fetchSemanticsNodes().isEmpty()) {
