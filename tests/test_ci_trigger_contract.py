@@ -244,7 +244,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
             ("minified-smoke.yml", "minified-smoke",
              ("require_minified_smoke_digest.py", "reactivecircus/android-emulator-runner@v2")),
             ("native-visual-atlas.yml", "android-native-atlas",
-             ("native_atlas_capture.sh", "CHUNKS_NATIVE_ATLAS: all 3 required installed Android tests passed")),
+             ("native_atlas_capture.sh", "CHUNKS_NATIVE_ATLAS: all 4 required installed Android tests passed")),
         ):
             with self.subTest(filename=filename):
                 source = (ROOT / ".github/workflows" / filename).read_text()

@@ -574,11 +574,21 @@ class ChunksMainActivityAtlasTest {
         // existing exact-account tools. No remote write is issued by navigation.
         rule.onNodeWithContentDescription("Options").performClick()
         rule.onNodeWithText("Search options").performTextReplacement("server")
-        rule.onNodeWithText("Clients & environments").assertExists()
-        rule.onNodeWithText("Server folders & destinations").assertExists()
+        // Result titles are also shown as standing section headings below the
+        // filtered cards. Assert each exact search-result description, scrolling
+        // its real LazyColumn into view, before opening the actionable result.
+        // A heading alone must never satisfy the searchable-route acceptance.
+        save("app-options-server-filter-precheck-real-compose")
+        val connectionResult = "Manage device and server connections · opens Connections"
+        val placesResult = "Folders on the authenticated server · opens Server places"
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(connectionResult))
+        rule.onNodeWithText(connectionResult).assertIsDisplayed()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(placesResult))
+        rule.onNodeWithText(placesResult).assertIsDisplayed()
         rule.onNodeWithText("Create a torrent").assertDoesNotExist()
-        rule.onNodeWithText("Search options").performTextReplacement("")
-        rule.onNodeWithText("Server folders & destinations").performScrollTo().performClick()
+        // Clicking the filtered result must open the existing authenticated
+        // folder tool, without an Add or any mutation of the RPC fixture.
+        rule.onNodeWithText(placesResult).performClick()
         rule.onNodeWithText("Everything has a place.").assertExists()
         save("app-places-populated-real-compose")
 
