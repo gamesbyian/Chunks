@@ -298,7 +298,10 @@ internal class UniversalAddCoordinator {
             it.key.infoHash == intent.source.expectedInfoHash &&
                 it.key.environment == intent.target.environment
         } ?: run {
-            if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) phase = Phase.READBACK_REQUIRED
+            // A complete *newer* exact-environment catalog disproves the
+            // previously observed job. Do not leave its old acknowledgment
+            // CTA enabled. Incomplete/stale catalogs are filtered above.
+            phase = Phase.READBACK_REQUIRED
             return Readback.NOT_OBSERVED
         }
         val startAgrees = if (intent.startWhenAdded)
@@ -309,7 +312,10 @@ internal class UniversalAddCoordinator {
                 // proves that a job exists, but does not prove requested Start.
                 // Only an explicit user acknowledgment may retire this ticket.
                 phase = Phase.JOB_CONFIRMED_START_UNVERIFIED
-            } else if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) {
+            } else {
+                // A newer read that disproves reviewed Place (or no longer
+                // proves the original incomplete Start premise) revokes the
+                // earlier positive job/Place acknowledgment eligibility.
                 phase = Phase.OBSERVED_UNCERTAIN
             }
             return Readback.OBSERVED_UNVERIFIED
@@ -346,7 +352,11 @@ internal class UniversalAddCoordinator {
         // when the job is not registered. Do not accept unrelated hash probes.
         acceptReadbackAt(observation.observedAtEpochMillis)
         if (!observation.registered) {
-            if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) phase = Phase.READBACK_REQUIRED
+            // The exact hash was queried in the intended account, after
+            // the last accepted sample. A genuine negative supersedes a
+            // previously seen registration; only fresh positive proof may
+            // restore its acknowledgement CTA.
+            phase = Phase.READBACK_REQUIRED
             return Readback.NOT_OBSERVED
         }
         val startMatches = if (ticket.intent.startWhenAdded)
@@ -357,7 +367,9 @@ internal class UniversalAddCoordinator {
                 // mode while its deferred payload Start cannot yet be proved.
                 // The existing job may be acknowledged, never auto-started.
                 phase = Phase.JOB_CONFIRMED_START_UNVERIFIED
-            } else if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) {
+            } else {
+                // A newer registered hash with a disproved Place is not a
+                // currently confirmed job at the reviewed destination.
                 phase = Phase.OBSERVED_UNCERTAIN
             }
             return Readback.OBSERVED_UNVERIFIED
@@ -377,9 +389,10 @@ internal class UniversalAddCoordinator {
      * A registered magnet may wait indefinitely for metadata/peers before its
      * deferred payload Start can be checked. Do not block all future Adds,
      * silently claim Start, or repeat the non-idempotent native/RPC load.
-     * Wrong hash, Place, account, stale or merely missing observations never
-     * reach this phase. A later fresh read can still upgrade it to VERIFIED
-     * or SESSION_CONFIRMED before this acknowledgment is chosen.
+     * Wrong hash/account or stale/incomplete reads cannot grant this phase.
+     * A newer authoritative negative hash/registration or contradicted Place
+     * revokes earlier eligibility; a later positive exact read may restore it.
+     * Fresh Start proof may instead upgrade to VERIFIED or SESSION_CONFIRMED.
      */
     fun acknowledgeObservedJob(): Boolean {
         if (phase != Phase.JOB_CONFIRMED_START_UNVERIFIED) return false

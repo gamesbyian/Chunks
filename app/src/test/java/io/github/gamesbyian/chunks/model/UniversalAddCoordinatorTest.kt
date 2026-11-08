@@ -392,6 +392,104 @@ class UniversalAddCoordinatorTest {
         assertTrue(state.acknowledgeObservedJob())
     }
 
+    @Test fun newerExactMissingRegistrationRevokesPreviouslyAcknowledgableJob() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote))
+        val observed = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1700L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = false)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, observed))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            state.reconcileExactSession(ticket, observed.copy(
+                observedAtEpochMillis = 1800L, registered = false)))
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, state.phase)
+        assertFalse(state.acknowledgeObservedJob())
+        assertNull(state.beginSubmission(1801L))
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcileExactSession(ticket, observed.copy(observedAtEpochMillis = 1750L)))
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, observed.copy(observedAtEpochMillis = 1900L)))
+        assertTrue(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Phase.EMPTY, state.phase)
+    }
+
+    @Test fun newerExactPlaceContradictionRevokesObservedJobAcknowledgment() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state)
+        val observed = UniversalAddCoordinator.ExactSessionObservation(
+            environment = phone.environment, infoHash = hash,
+            observedAtEpochMillis = 1700L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = false)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, observed))
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, observed.copy(
+                observedAtEpochMillis = 1800L, reviewedPlaceVerified = false)))
+        assertEquals(UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN, state.phase)
+        assertFalse(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            state.reconcileExactSession(ticket, observed.copy(observedAtEpochMillis = 1900L)))
+        assertTrue(state.acknowledgeObservedJob())
+    }
+
+    @Test fun newerCompleteCatalogAbsentJobOrWrongPlaceRevokesOldAcknowledgment() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state)
+        fun present(at: Long, placeVerified: Boolean) = state.reconcile(
+            ticket, snapshot(phone, at, started = false),
+            adapterConfirmedNewAdd = false, adapterVerifiedPlace = placeVerified,
+            adapterVerifiedStart = false)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            present(1700L, true))
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            present(1800L, false))
+        assertEquals(UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN, state.phase)
+        assertFalse(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            present(1900L, true))
+        val empty = EnvironmentTransferSnapshot(
+            phone.environment, EnvironmentAvailability.LIVE,
+            true, 2000L, emptyList())
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            state.reconcile(ticket, empty))
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, state.phase)
+        assertFalse(state.acknowledgeObservedJob())
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            present(2100L, true))
+        assertTrue(state.acknowledgeObservedJob())
+    }
+
+    @Test fun ambiguousOrUnrelatedReadsDoNotRevokePositiveObservedJob() {
+        val state = UniversalAddCoordinator()
+        val ticket = attempted(state, intent(remote))
+        val observed = UniversalAddCoordinator.ExactSessionObservation(
+            environment = remote.environment, infoHash = hash,
+            observedAtEpochMillis = 1700L, registered = true,
+            reviewedPlaceVerified = true, started = null,
+            newRegistrationVerified = false)
+        state.reconcileExactSession(ticket, observed)
+        assertEquals(UniversalAddCoordinator.Readback.WRONG_ENVIRONMENT,
+            state.reconcileExactSession(ticket, observed.copy(
+                environment = otherRemote.environment, observedAtEpochMillis = 2000L)))
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            state.reconcileExactSession(ticket, observed.copy(
+                infoHash = otherHash, observedAtEpochMillis = 2000L)))
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcile(ticket, snapshot(remote, 2000L, started = false, complete = false),
+                adapterVerifiedPlace = false))
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            state.reconcileExactSession(ticket, observed.copy(observedAtEpochMillis = 1200L)))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertTrue(state.requireReadback(ticket))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
+        assertTrue(state.acknowledgeObservedJob())
+    }
+
     @Test fun olderExactReadCannotPromotePendingStartAfterNewerExactObservation() {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state, intent(remote, start = true))
