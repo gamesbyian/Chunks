@@ -1,5 +1,8 @@
 # Chunks: permanent agent operating contract
 
+> **INTEGRATION UPDATE · 2026-11-08:** #1405 (`0c526a8b`) passed its six exact-head checks and was independently squash-merged onto main as `b69a6367bdb6d3cdf742548c17fcb5aaa4d9a701`. #1407 remains open and stacked on an obsolete #1405 base; restack and rerun combined checks. #1404 is blocked by native/real-magnet failures; #1408's newer green test-only gates do not waive that missing installed magnet proof. #1411 remains draft with skipped native/R8/real-magnet gates. The dated next-push snapshot below predates this merge. No current assembled APK or device/peer acceptance claimed.
+
+
 > **CURRENT READ-FIRST STATUS · 2026-11-08:** Owner reports no agents currently working. See [next-push source-exact handoff](docs/NEXT-PUSH-HANDOFF-2026-11-08.md) for main `e978d069`, five open PRs, actual checked-head workflow conclusions, stacked dependencies and restart roles. The dated LIVE/agent assignment checkpoints below are preserved historical receipts, **not active leases**. Reinspect GitHub before editing or merging. In particular #1404's latest native and real-magnet runs are red; #1408 depends on it, #1407 depends on #1405, and draft #1411 has skipped gates. Do not infer current-main APK or physical/provider acceptance.
 
 
