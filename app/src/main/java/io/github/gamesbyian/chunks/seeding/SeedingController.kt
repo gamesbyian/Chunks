@@ -73,8 +73,21 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
     }
 
     private fun enforce(hash: String, policy: SeedingPolicy, assignment: Assignment) {
-        val wanted = policy.uploadLimit?.bytesPerSecond?.toInt() ?: 0
-        if (engine.uploadLimit(hash) != wanted && !engine.setUploadLimit(hash, policy.uploadLimit?.bytesPerSecond)) {
+        val requestedCap = policy.uploadLimit?.bytesPerSecond
+        // The phone adapter and native libtorrent expose an Int cap, whereas
+        // portable seeding policy permits Long values for other engines.
+        // toInt() would wrap an out-of-range value and the native adapter
+        // rejects it outside its own exception boundary. Do not issue a
+        // guessed/clamped write, report success or proceed with automated
+        // mutation when the intended policy cannot be represented.
+        if (requestedCap != null && requestedCap !in 1..Int.MAX_VALUE.toLong()) {
+            store.put(hash, assignment.copy(
+                note = "This upload limit is outside the phone engine's supported range. " +
+                    "No upload-limit command was sent; review the rule."))
+            return
+        }
+        val wanted = requestedCap?.toInt() ?: 0
+        if (engine.uploadLimit(hash) != wanted && !engine.setUploadLimit(hash, requestedCap)) {
             store.put(hash, assignment.copy(note = "The phone engine did not confirm the upload limit."))
         }
         if (assignment.stoppedByRule != null) return
