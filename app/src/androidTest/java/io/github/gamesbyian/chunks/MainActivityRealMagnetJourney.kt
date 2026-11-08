@@ -351,7 +351,8 @@ internal class MainActivityRealMagnetJourney(
             // changes its target, or performs any write.
             rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
             rule.waitUntil(30_000) { visible("All environments") }
-            click("Back")
+            // Return to the exact authenticated owner, never a guessed target.
+            click("Open server list")
             rule.waitUntil(30_000) { visible("+ Add torrent") }
             val after = requireNotNull(row(hash))
             assertTrue("Details altered authenticated source Place", after.directory == original.directory)

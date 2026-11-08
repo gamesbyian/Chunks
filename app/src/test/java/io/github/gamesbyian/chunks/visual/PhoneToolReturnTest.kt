@@ -38,7 +38,7 @@ class PhoneToolReturnTest {
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, paneTitle)).assertExists()
         rule.onNode(hasText("Back") and hasClickAction()).performScrollTo().performClick()
         rule.waitForIdle()
-        onPhone()
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Options")).assertExists()
     }
 
     @Test fun seedingRulesReturnsToThePhone() = openAndReturn("Seeding rules…", "Seeding rules")
