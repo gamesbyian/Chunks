@@ -1291,7 +1291,10 @@ internal fun CombinedTransfersScreen(
 /** Unconditional leading items: header (0), Add destinations (1), batch (2), view (3). */
 private const val COMBINED_ADD_ITEM_KEY = "combined-add-destinations"
 internal const val COMBINED_ADD_ITEM_INDEX = 1
-internal const val COMBINED_VIEW_ITEM_INDEX = 3
+// The first item is the heading; the second is Add choices. The filter
+// disclosure is the *third* item (zero-based index 2), before search.
+// Scrolling to 3 can leave the just-opened filters clipped at 320dp/200%.
+internal const val COMBINED_VIEW_ITEM_INDEX = 2
 
 /**
  * Save only the exact read-only detail identity across rotation/process recreation.
