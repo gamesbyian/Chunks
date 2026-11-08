@@ -581,14 +581,16 @@ class ChunksMainActivityAtlasTest {
         save("app-options-server-filter-precheck-real-compose")
         val connectionResult = "Manage device and server connections · opens Connections"
         val placesResult = "Folders on the authenticated server · opens Server places"
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(connectionResult))
-        rule.onNodeWithText(connectionResult).assertIsDisplayed()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(placesResult))
-        rule.onNodeWithText(placesResult).assertIsDisplayed()
+        // These results are immediately visible on the recorded Options
+        // viewport. A LazyColumn scroll-to-*item* cannot resolve this nested
+        // card text, even when the user can already see and tap the card.
+        // Match the unique shortcut description, not its duplicated heading.
+        rule.onNodeWithText(connectionResult, substring = true).assertIsDisplayed()
+        rule.onNodeWithText(placesResult, substring = true).assertIsDisplayed()
         rule.onNodeWithText("Create a torrent").assertDoesNotExist()
         // Clicking the filtered result must open the existing authenticated
         // folder tool, without an Add or any mutation of the RPC fixture.
-        rule.onNodeWithText(placesResult).performClick()
+        rule.onNodeWithText(placesResult, substring = true).performClick()
         rule.onNodeWithText("Everything has a place.").assertExists()
         save("app-places-populated-real-compose")
 
