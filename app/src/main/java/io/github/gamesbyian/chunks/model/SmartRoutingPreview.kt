@@ -88,11 +88,12 @@ internal object SmartRoutingPreview {
     private val books = setOf("epub", "mobi", "azw", "azw3")
     private val comics = setOf("cbz", "cbr")
     private val music = setOf("flac", "mp3", "ogg", "m4a", "aac", "wav", "opus")
+    private val audiobooks = setOf("m4b")
     private val pictures = setOf("jpg", "jpeg", "png", "webp", "heic", "gif")
     private val archives = setOf("zip", "rar", "7z", "tar", "gz")
     private val docs = setOf("pdf", "doc", "docx", "odt", "txt", "rtf")
     private val software = setOf("apk", "exe", "msi", "deb", "rpm")
-    private val games = setOf("nes", "sfc", "smc", "gba", "nsp", "xci", "iso")
+    private val games = setOf("nes", "sfc", "smc", "gba", "nsp", "xci")
     private val episode = Regex("(?i)(?:^|[ ._\\-])s[0-9]{1,2}e[0-9]{1,3}(?:$|[ ._\\-])")
 
     fun classify(evidence: Evidence): Classification {
@@ -109,6 +110,7 @@ internal object SmartRoutingPreview {
                     episode.containsMatchIn(evidence.title)) Kind.TV else Kind.MOVIE
                 ext in comics -> Kind.COMIC
                 ext in books -> Kind.BOOK
+                ext in audiobooks -> Kind.AUDIOBOOK
                 ext in music -> Kind.MUSIC
                 ext in pictures -> Kind.PICTURE
                 ext in archives -> Kind.ARCHIVE
@@ -130,7 +132,7 @@ internal object SmartRoutingPreview {
             Kind.ARCHIVE, Kind.DOCUMENT, Kind.PICTURE -> 75
             Kind.TV -> 96
             Kind.BOOK, Kind.COMIC, Kind.MUSIC, Kind.GAME, Kind.SOFTWARE -> 90
-            Kind.AUDIOBOOK -> 0 // audio extensions alone do not prove a book
+            Kind.AUDIOBOOK -> 95 // audiobook-specific container, not generic audio
         }
         return Classification(kind, confidence,
             listOf(if (evidence.fileNames.isEmpty()) "title-extension" else "file-extensions",
@@ -148,6 +150,9 @@ internal object SmartRoutingPreview {
         explicitEnvironmentId: String? = null
     ): Decision {
         require(rules.size <= 500 && destinations.size <= 100)
+        // Duplicate IDs with equal priorities could otherwise change the
+        // selected account just because caller list iteration order changed.
+        require(rules.map { it.id }.toSet().size == rules.size) { "Duplicate routing rule IDs" }
         val category = classify(evidence)
         // Multiple descriptors of the same account are ambiguous authority.
         val targets = destinations.groupBy { it.environmentId }
