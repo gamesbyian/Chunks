@@ -65,12 +65,10 @@ class ChunksMainActivityAtlasTest {
     private val receivedMethods = Collections.synchronizedList(mutableListOf<String>())
     @Volatile private var fixtureProblem: String? = null
 
-    /** UI-only disclosure: reach the same original intake without assuming it opens by default. */
+    /** The dedicated Add destination retains the original review without submitting. */
     private fun assertPhoneAddEntryIsReachable() {
-        val open = rule.onAllNodesWithText("Add torrent on this phone")
-            .fetchSemanticsNodes().isNotEmpty()
-        if (open) rule.onNodeWithText("Add torrent on this phone").performScrollTo().performClick()
-        rule.onNodeWithText("Add a download on this phone").assertExists()
+        rule.onNodeWithText("Add on this device").assertExists()
+        rule.onNodeWithText("Add a download on this device").assertExists()
     }
 
     private fun str(s: String) = "<value><string>" + s.replace("&", "&amp;")
@@ -384,44 +382,26 @@ class ChunksMainActivityAtlasTest {
             .assertIsDisplayed()
         save("app-transfers-populated-real-compose")
 
-        // An installed, authenticated server must route from the real shared
-        // combined list into its existing Add review. Opening that review
-        // requests only the read-only default Place, never a torrent mutation.
+        // Real combined navigation keeps the signed-in server identity, and
+        // the four root destinations never imply an Add or a server mutation.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
         rule.onNodeWithText("All environments…").performClick()
-        // Remote-initiated combined Back returns to the signed-in server,
-        // preserving its authenticated queue instead of opening phone UI.
-        rule.onNodeWithText("Back").performClick()
-        rule.onNodeWithText("3 transfers", substring = true).assertExists()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
-        rule.onNodeWithText("All environments…").performClick()
-        // Regression: Add on this phone must render while a remote session is
-        // authenticated using the connected phone adapter, without changing
-        // the verified remote session or dispatching any remote torrent command.
-        val phoneAdd = androidx.compose.ui.test.hasContentDescription("Add download on this phone")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
-        rule.onNode(phoneAdd).performClick()
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        assertPhoneAddEntryIsReachable()
-        // Local Back, distinct from the Combined header Back, returns to the
-        // review's originating Combined list while the server remains signed in.
-        rule.onNodeWithText("Back").performScrollTo().performClick()
         rule.onNodeWithText("All environments").assertExists()
-        // Re-enter phone from Combined without submitting any torrent.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
-        rule.onNode(phoneAdd).performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
+        rule.onNodeWithText("Open server list").performClick()
+        rule.onNodeWithText("3 transfers", substring = true).assertExists()
+
+        // The destination chooser requires an explicit choice, keeping the
+        // phone and authenticated server's Add reviews distinct.
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("On this device").performClick()
         assertPhoneAddEntryIsReachable()
-        rule.onNodeWithText("All environments…").performScrollTo().performClick()
-        // This second entry came from the phone while server is still connected.
-        rule.onNodeWithText("Back").performClick()
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("On this device").performClick()
         assertPhoneAddEntryIsReachable()
-        // Return again, then choose the separately authenticated server Add.
-        rule.onNodeWithText("All environments…").performScrollTo().performClick()
-        val remoteAdd = androidx.compose.ui.test.hasContentDescription(
-            "Add download on Server", substring = true)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(remoteAdd)
-        rule.onNode(remoteAdd).performClick()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("On the connected server").performClick()
         rule.onNodeWithText("Add a download to this server").assertExists()
         rule.onNodeWithText("Magnet or torrent link").assertExists()
         // Exercise the production Add screen, including the parent-owned draft.

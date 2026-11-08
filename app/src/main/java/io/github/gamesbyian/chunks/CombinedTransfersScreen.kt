@@ -1194,6 +1194,12 @@ internal fun CombinedTransfersScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = ChunksColors.Yellow)
                 }
+                // When the first-fold count has scrolled away, preserve an
+                // explicit stale-source warning here with the detailed status.
+                if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
+                    Text("Some environments are missing or out of date. Exact per-source status follows.",
+                        style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
+                }
                 if (showingSourceStatus) result.sources.forEach { source ->
                     val listing = activeSavedScopes[source.environment]?.let { witness ->
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }

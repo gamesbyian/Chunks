@@ -111,7 +111,21 @@ class ClipboardPrefillInstrumentedTest {
         }
         if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
             rule.onNode(entry).performClick()
-            waitOrExplain("the phone screen", 15_000) { rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() }
+            waitOrExplain("device or combined transfer list", 15_000) {
+                rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() ||
+                    rule.onAllNodesWithText("Open transfers on this device").fetchSemanticsNodes().isNotEmpty() ||
+                    rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()
+            }
+            if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
+                // A remembered server makes Transfers show the combined list.
+                // Explicitly open the device inventory, without changing login.
+                rule.onNode(hasScrollToIndexAction())
+                    .performScrollToNode(hasText("Open transfers on this device"))
+                rule.onNodeWithText("Open transfers on this device").performClick()
+            }
+            waitOrExplain("the phone screen", 15_000) {
+                rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty()
+            }
         }
         // The journey under test is "copy, then open Add": if the form is already
         // open on arrival, close it first so opening it is a real transition.
@@ -147,6 +161,10 @@ class ClipboardPrefillInstrumentedTest {
         }
         try {
             rule.onNodeWithText("+ Add").performClick()
+            // The connected-server chooser is a separate screen; make the
+            // device choice explicit, and retain the original clipboard proof.
+            if (rule.onAllNodesWithText("On this device").fetchSemanticsNodes().isNotEmpty())
+                rule.onNodeWithText("On this device").performClick()
             waitOrExplain("the prefilled magnet", 10_000) {
                 rule.onAllNodes(hasSetTextAction() and hasText(link)).fetchSemanticsNodes().isNotEmpty()
             }

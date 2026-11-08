@@ -925,6 +925,10 @@ internal fun LocalEngineScreen(
                 if (onCombined != null) OutlinedButton(onClick = onCombined,
                     modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments") }
             }
+            // This screen owns Stop/Remove outcomes. A successful native
+            // deletion removes its row, but must not remove the user's
+            // independently verified confirmation with it.
+            message?.let { PhoneOutcomeNotice(it, needsAttention = problemOutcome == it) }
         }
         if (pane == PhonePane.ADD) {
         Text("Add on this device", style = MaterialTheme.typography.titleLarge,
