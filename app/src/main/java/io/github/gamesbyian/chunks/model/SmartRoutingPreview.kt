@@ -55,7 +55,8 @@ internal object SmartRoutingPreview {
         val acceptsAdd: Boolean,
         val verifiedPlace: Boolean
     ) {
-        init { require(environmentId.isNotBlank() && environmentId.length <= 256) }
+        init { require(environmentId.isNotBlank() && environmentId.length <= 256 &&
+            environmentId.none { it.isISOControl() }) }
         val usable: Boolean get() = authenticated && acceptsAdd && verifiedPlace
     }
 
@@ -69,9 +70,10 @@ internal object SmartRoutingPreview {
         val targetEnvironmentId: String
     ) {
         init {
-            require(id.isNotBlank() && id.length <= 120)
+            require(id.isNotBlank() && id.length <= 120 && id.none { it.isISOControl() })
             require(minimumConfidence in 0..100)
-            require(targetEnvironmentId.isNotBlank() && targetEnvironmentId.length <= 256)
+            require(targetEnvironmentId.isNotBlank() && targetEnvironmentId.length <= 256 &&
+                targetEnvironmentId.none { it.isISOControl() })
         }
     }
 
