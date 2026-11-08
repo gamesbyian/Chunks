@@ -20,6 +20,9 @@ import java.util.Locale
 internal class TransferAliasStore(context: Context) {
     companion object {
         private val currentRevision = mutableIntStateOf(0)
+        // All UI/store instances share the same preferences file. A Move's
+        // "copy only if target is absent" must be atomic against manual edits.
+        private val aliasWriteLock = Any()
         val revision: Int get() = currentRevision.intValue
         private fun changed() { currentRevision.intValue++ }
     }
@@ -53,14 +56,46 @@ internal class TransferAliasStore(context: Context) {
     }
 
     /** A null alias clears the override. A write failure must not be called a saved change. */
-    fun save(endpoint: String, hash: String, alias: String?): Boolean {
+    fun save(endpoint: String, hash: String, alias: String?): Boolean = synchronized(aliasWriteLock) {
         val preferenceKey = key(endpoint, hash)
         val editor = preferences.edit()
         if (alias == null) editor.remove(preferenceKey)
         else editor.putString(preferenceKey, TransferDisplayNames.validateAlias(alias))
         val committed = editor.commit()
         if (committed) changed()
-        return committed
+        committed
+    }
+
+    /** Chunks-only display label carried after independent destination Add readback.
+     * Caller must already have checked the exact Move journal, target hash and
+     * explicit original Move review. Never reads/metainfo, calls engines, alters
+     * filenames, or sends the alias over rTorrent. Target manual edits win. */
+    enum class MoveAliasCarry { COPIED, SOURCE_UNSET, TARGET_ALREADY_SET, FAILED }
+
+    fun carryVerifiedMoveAlias(
+        sourceScope: String, targetScope: String, infoHash: String
+    ): MoveAliasCarry = synchronized(aliasWriteLock) {
+        try {
+            if (!Regex("[0-9a-fA-F]{40}").matches(infoHash))
+                return@synchronized MoveAliasCarry.FAILED
+            val from = key(sourceScope, infoHash)
+            val to = key(targetScope, infoHash)
+            if (from == to) return@synchronized MoveAliasCarry.TARGET_ALREADY_SET
+            // Even a malformed existing target value is user state, never
+            // silent permission for an automated Move to overwrite it.
+            // O(1) exact-key reads: never scan the full alias map on the
+            // Compose click path, which may contain thousands of labels.
+            if (preferences.contains(to)) return@synchronized MoveAliasCarry.TARGET_ALREADY_SET
+            val alias = runCatching { preferences.getString(from, null) }.getOrNull()
+                ?.let { runCatching { TransferDisplayNames.validateAlias(it) }.getOrNull() }
+                ?: return@synchronized MoveAliasCarry.SOURCE_UNSET
+            if (!preferences.edit().putString(to, alias).commit())
+                MoveAliasCarry.FAILED
+            else {
+                changed()
+                MoveAliasCarry.COPIED
+            }
+        } catch (_: RuntimeException) { MoveAliasCarry.FAILED }
     }
 
     /**
@@ -69,7 +104,7 @@ internal class TransferAliasStore(context: Context) {
      * than allowing a partial overwrite of someone's manual label.
      */
     @Synchronized
-    fun saveReviewedBatch(endpoint: String, writes: List<AliasReviewWrite>): Boolean {
+    fun saveReviewedBatch(endpoint: String, writes: List<AliasReviewWrite>): Boolean = synchronized(aliasWriteLock) {
         if (endpoint.isBlank() || writes.isEmpty() ||
             writes.size > AliasReviewPlanner.MAX_REVIEW_ITEMS) return false
         val keys = writes.map { entry ->
@@ -91,7 +126,7 @@ internal class TransferAliasStore(context: Context) {
      * batch that Chunks applied. Never erase a newer manually edited alias.
      */
     @Synchronized
-    fun undoReviewedBatch(endpoint: String, writes: List<AliasReviewWrite>): Boolean {
+    fun undoReviewedBatch(endpoint: String, writes: List<AliasReviewWrite>): Boolean = synchronized(aliasWriteLock) {
         if (endpoint.isBlank() || writes.isEmpty() ||
             writes.size > AliasReviewPlanner.MAX_REVIEW_ITEMS) return false
         val keys = writes.map { key(endpoint, it.hash) }

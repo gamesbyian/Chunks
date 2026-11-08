@@ -32,6 +32,18 @@ class BatchPhoneCopyTest {
         assertTrue(report.summary().startsWith("1 added to the phone, 1 already there"))
     }
 
+    @Test fun moveJournalAndPortableAliasRequireIndependentPhoneJobReadback() {
+        for (result in Result.entries) {
+            for (seen in listOf(TransferMove.Observation.Present,
+                TransferMove.Observation.Absent, TransferMove.Observation.Unknown)) {
+                val accepted = result == Result.ADDED || result == Result.ALREADY_ON_PHONE
+                assertEquals("Move target must be present for $result / $seen",
+                    accepted && seen == TransferMove.Observation.Present,
+                    BatchPhoneCopy.observedDestinationForMove(result, seen))
+            }
+        }
+    }
+
     @Test fun stopsAtFirstUnknownOutcome() = runBlocking {
         var calls = 0
         val report = BatchPhoneCopy.run((1..3).map(::item), { "magnet:?xt=urn:btih:${it.infoHash}" },

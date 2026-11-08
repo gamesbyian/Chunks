@@ -26,6 +26,13 @@ internal object BatchPhoneCopy {
         NOT_RUN("not attempted (the batch stopped earlier)")
     }
 
+    /** A positive local Add/duplicate classification is insufficient on its
+     * own for source-job retirement or portable preferences. Require an
+     * independent exact-hash inventory observation on the phone. */
+    fun observedDestinationForMove(result: Result, seen: TransferMove.Observation): Boolean =
+        (result == Result.ADDED || result == Result.ALREADY_ON_PHONE) &&
+            seen == TransferMove.Observation.Present
+
     data class Report(val results: List<Pair<Item, Result>>) {
         fun count(r: Result) = results.count { it.second == r }
         fun summary(): String = "${count(Result.ADDED)} added to the phone, ${count(Result.ALREADY_ON_PHONE)} " +
