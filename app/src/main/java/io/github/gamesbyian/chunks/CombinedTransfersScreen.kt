@@ -1186,6 +1186,14 @@ internal fun CombinedTransfersScreen(
                     ) { Text(if (showingSourceStatus) "Hide environment status"
                         else "Environment status · ${result.sources.size} sources") }
                 }
+                // The first-fold count is recycled when the user scrolls down
+                // to investigate a failed server. Keep its freshness warning
+                // beside the exact-source rows without moving diagnostics up.
+                if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
+                    Text("some environments are missing or out of date · last-known rows are not current",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ChunksColors.Yellow)
+                }
                 if (showingSourceStatus) result.sources.forEach { source ->
                     val listing = activeSavedScopes[source.environment]?.let { witness ->
                         listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
