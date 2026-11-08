@@ -1,5 +1,8 @@
 # Chunks specification coverage and acceptance map
 
+> **2026-11-08 INTEGRATION COVERAGE DELTA:** #1405 contrary authoritative Add observation acknowledgment revocation has merged as `b69a6367bdb6d3cdf742548c17fcb5aaa4d9a701` after six candidate-head checks. Its shared coordinator cannot alone establish the phone duplicate-hash behavior in still-open #1407, which must restack and qualify. Four-root footer (#1404/#1408) remains unmerged and lacks latest assembled real-magnet acceptance; rTorrent malformed `d.is_multi_file` defense (#1411) is draft with skipped installed/R8 gates. No new production main APK/peer-piece/source-and-SHA receipt. Existing protected account, physical Pixel, TalkBack and OEM/Doze exclusions remain.
+
+
 > **2026-11-08 CURRENT COVERAGE / RESTART:** [Next-push handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) supersedes earlier LIVE scheduling labels below. Five open PRs; #1404 remains unqualified after red native/real-magnet gates, #1408 is stacked on #1404; #1407 is stacked on #1405; #1411 is draft with skipped installed gates. Main `e978d069` has **no new assembled navigation + Add reconciliation acceptance**, checked APK digest, physical Pixel, protected-provider, TalkBack/Doze or publisher-signature evidence. Maintain exact source/account/Place/Start, read-only uncertain reconciliation and job-only Move boundaries. Old evidence paragraphs are source-pinned historical proof, never inherited by new heads.
 
 
