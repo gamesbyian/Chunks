@@ -474,7 +474,7 @@ internal fun ChunksApp(
                 // its normal explicit Add confirmation, never start here.
                 phoneHandoffTorrentUri = incomingTorrent
                 onIncomingTorrentConsumed()
-                section = Section.LOCAL
+                section = Section.LOCAL_ADD
             } else {
                 // Connected remote can be chosen, but saved/offline profiles
                 // confer no execution authority until authenticated.
@@ -516,7 +516,7 @@ internal fun ChunksApp(
                 pendingSharedMagnet = null
                 phoneHandoffMagnet = sharedMagnet
                 localFromCombined = false
-                section = Section.LOCAL
+                section = Section.LOCAL_ADD
             } else {
                 pendingSharedMagnet = sharedMagnet
                 section = Section.COMBINED
@@ -1655,7 +1655,13 @@ internal fun ChunksApp(
                 // otherwise the device's own inventory. Never selects a write target.
                 section = if (savedProfiles.isEmpty() && server == null) Section.LOCAL else Section.COMBINED
             },
-            onAdd = { section = if (server != null || savedProfiles.isNotEmpty()) Section.ADD_CHOOSE else Section.LOCAL_ADD },
+            onAdd = {
+                section = when {
+                    pendingSharedMagnet != null || incomingTorrent != null -> Section.COMBINED
+                    server != null || savedProfiles.isNotEmpty() -> Section.ADD_CHOOSE
+                    else -> Section.LOCAL_ADD
+                }
+            },
             onOptions = { section = Section.OPTIONS },
             onConnections = { section = Section.SERVER },
             addDescription = "Choose where to add a transfer"
