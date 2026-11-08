@@ -107,7 +107,20 @@ internal class TransferAliasStore(context: Context) {
 
     private fun key(endpoint: String, hash: String): String {
         require(endpoint.isNotBlank() && hash.isNotBlank()) { "Missing transfer identity" }
-        val identity = endpoint.trim() + "\u0000" + hash.trim().uppercase(Locale.ROOT)
+        // The server scope is endpoint + NUL + the *exact* authenticated
+        // username. Trimming the entire scope silently drops trailing spaces
+        // from usernames, potentially projecting one account's private alias
+        // onto another account on the same RPC endpoint.
+        val separator = endpoint.indexOf('\u0000')
+        val scope = if (separator < 0) endpoint.trim() else {
+            require(separator > 0 && separator == endpoint.lastIndexOf('\u0000')) {
+                "Invalid exact server account scope"
+            }
+            endpoint.substring(0, separator).trim() + '\u0000' +
+                endpoint.substring(separator + 1)
+        }
+        require(scope.isNotBlank()) { "Missing transfer scope" }
+        val identity = scope + "\u0000" + hash.trim().uppercase(Locale.ROOT)
         val bytes = MessageDigest.getInstance("SHA-256").digest(identity.toByteArray(Charsets.UTF_8))
         return "alias_" + bytes.joinToString("") { "%02x".format(it.toInt() and 0xff) }
     }
