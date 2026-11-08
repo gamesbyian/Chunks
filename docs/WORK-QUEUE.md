@@ -1,5 +1,8 @@
 # Chunks active engineering work queue
 
+> **2026-11-08 INTEGRATION CHECKPOINT (supersedes older next-push priority below):** Main `b69a6367bdb6d3cdf742548c17fcb5aaa4d9a701` now includes qualified #1405 (candidate `0c526a8b`, six checks green); **next executable dependency is #1407 restack onto current main** with retained negative/positive UI controls, fresh exact-head JVM/R8/native Add execution, and independent review. In parallel #1404 remains blocked by exact-head native `42505110698` and real-magnet `42505110567` red; QA #1408 `7e034c65` has newer native/atlas/docs green but has not re-run the entire installed magnet journey on the assembled navigation tree. #1411 remains draft with native/R8/magnet skipped. Central documentation-only checkpoint is unqualified until docs CI executes. No source-matched assembled APK is approved. See [integration handoff](NEXT-PUSH-HANDOFF-2026-11-08.md).
+
+
 > **NEXT PUSH · 2026-11-08 (authoritative active priority):** [Source-exact handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) records current main `e978d069` and all five open heads. No agents are currently assigned. First review/qualify #1405 then restack/qualify #1407; independently repair #1404's red native/real-magnet tests, integrate #1408's actually executed fixed-footer acceptance, and qualify draft #1411. **Do not merge red, skipped-only, stale, or incompatible heads.** Only after merges, run and bind assembled source, genuine peer/piece installed acceptance and APK checksum. The older ACTIVE/LIVE paragraphs below are dated checkpoints superseded for present scheduling by this paragraph and the handoff; their red receipts remain valid history.
 
 
