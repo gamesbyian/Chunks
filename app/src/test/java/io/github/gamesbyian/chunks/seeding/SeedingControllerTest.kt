@@ -110,6 +110,33 @@ class SeedingControllerTest {
         assertEquals(capped, store.get(facts.infoHash)?.policy)
     }
 
+    @Test fun outOfRangeNativeCapNeverWrapsOrThrowsAndCannotClaimEnforcement() {
+        val engine = FakeEngine()
+        val store = MemStore().apply { epochMs = 0 }
+        val hash = "oversize"
+        engine.facts[hash] = Facts(hash, 10, listOf("https://tracker.example/a"), true)
+        engine.observed[hash] = SeedingObservation(3_000, 1_000, 60, seeding = true)
+        val beyondInt = RateLimit(Int.MAX_VALUE.toLong() + 1,
+            RateLimit.Unit.BYTES)
+        val tooLarge = capped.copy(uploadLimit = beyondInt)
+        val ruleWithCap = rule.copy(policy = tooLarge)
+        val controller = SeedingController(engine, store)
+        controller.tick("phone", listOf(ruleWithCap), SeedingPolicy(), nowMs = 100)
+        assertEquals(tooLarge, store.map[hash]?.policy)
+        assertTrue(store.map[hash]?.note.orEmpty().contains("outside the phone engine"))
+        assertTrue("No overflowed cap or automatic pause may execute", engine.log.isEmpty())
+        // An ordinary exactly-representable cap continues through the
+        // same verification boundary, with no silent clamp.
+        val maxNative = RateLimit(Int.MAX_VALUE.toLong(), RateLimit.Unit.BYTES)
+        val secondHash = "representable"
+        engine.facts[secondHash] = Facts(secondHash, 20,
+            listOf("https://tracker.example/a"), true)
+        controller.tick("phone", listOf(rule.copy(policy = capped.copy(uploadLimit = maxNative))),
+            SeedingPolicy(), nowMs = 200)
+        assertEquals(Int.MAX_VALUE, engine.limits[secondHash])
+        assertTrue(engine.log.any { it == "cap representable=2147483647" })
+    }
+
     @Test fun unconfirmedPauseIsNotedAndMagnetsWaitForMetadata() {
         val engine = FakeEngine().apply { pauseConfirms = false }; val store = MemStore().apply { epochMs = 0 }
         engine.facts["m"] = Facts("m", 10, null, null)
