@@ -276,6 +276,43 @@ class PhoneUniversalAddAdapterTest {
         assertTrue(session.acknowledgeObservedJob())
     }
 
+    @Test fun duplicateHashInNewerAcceptedInventoryRevokesPriorStartUnverifiedAcknowledgement() {
+        val (session, ticket) = prepared(start = true)
+        session.bindPlace(ticket, place)
+        val metadataOnly = status(stopped = false, uploadOnly = true, metadataKnown = false)
+        session.noteNativeResult(ticket, LocalAddResult.FetchingMetadata(metadataOnly), place)
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            session.reconcileInventory(listOf(metadataOnly), 11_000L))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
+            session.coordinator.phase)
+
+        // A later accepted full list cannot establish a UNIQUE exact native
+        // job. Returning a naked OBSERVED_UNVERIFIED enum here would leave
+        // the earlier acknowledgement button incorrectly enabled.
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            session.reconcileInventory(listOf(metadataOnly,
+                metadataOnly.copy(nativeReviewToken = "duplicate")), 12_000L))
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+            session.coordinator.phase)
+        assertFalse(session.acknowledgeObservedJob())
+        assertSame(ticket, session.attemptedTicket)
+        assertNull("A contradiction never permits a blind Add retry",
+            session.coordinator.beginSubmission(12_001L))
+
+        // Older positive evidence cannot restore the CTA.
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            session.reconcileInventory(listOf(metadataOnly), 11_500L))
+        assertFalse(session.acknowledgeObservedJob())
+
+        // A newer unique exact job at the frozen Place may restore the
+        // explicit acknowledgment without claiming requested payload Start.
+        assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
+            session.reconcileInventory(listOf(metadataOnly), 13_000L))
+        assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
+            session.coordinator.phase)
+        assertTrue(session.acknowledgeObservedJob())
+    }
+
     @Test fun positivePrewriteRefusalReopensReviewWithoutAuthorizingAutomaticRetry() {
         val (session, ticket) = prepared()
         assertTrue(session.coordinator.refusedBeforeAnyWrite(ticket))

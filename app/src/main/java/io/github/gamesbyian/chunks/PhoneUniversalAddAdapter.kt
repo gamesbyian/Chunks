@@ -273,8 +273,13 @@ internal class PhoneAddAttemptSession(
         val matching = transfers.filter {
             it.infoHash.equals(ticket.intent.source.expectedInfoHash, ignoreCase = true)
         }
-        // An ambiguous duplicated native identity is never positive evidence.
-        if (matching.size > 1) return UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED
+        // This is a completed, accepted full phone inventory. Two native
+        // rows with the same hash cannot identify one exact job/Place. Feed
+        // the authoritative negative through the coordinator so a newer
+        // contradiction revokes an earlier Start-unverified acknowledgement,
+        // while the attempted-write/no-retry fence remains intact.
+        if (matching.size > 1)
+            return reconcile(ticket, null, place, observedAtEpochMillis)
         return reconcile(ticket, matching.singleOrNull(), place, observedAtEpochMillis)
     }
 
