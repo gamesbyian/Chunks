@@ -125,7 +125,8 @@ open class ChunksServerRenderTest {
         connectToFixture()
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("On the connected server").performClick()
+        // The chooser scrolls vertically at 320dp / 200% text.
+        rule.onNodeWithText("On the connected server").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Add a download to this server").assertExists()
         val addList = rule.onNode(hasScrollToIndexAction())
@@ -182,6 +183,8 @@ open class ChunksServerRenderTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-cards.png")
         // Batch selection is a local disclosure on the owning server list.
         // Options now owns app settings and exact-account server destinations.
+        // This disclosure is above the current transfer in the lazy list.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Batch & tools"))
         rule.onNodeWithText("Batch & tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select transfers for a batch"))
         rule.onNodeWithText("Select transfers for a batch").performClick()

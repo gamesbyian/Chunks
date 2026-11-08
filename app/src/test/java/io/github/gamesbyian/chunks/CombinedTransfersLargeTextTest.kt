@@ -72,6 +72,9 @@ class CombinedTransfersLargeTextTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sort by"))
         rule.onNodeWithText("Sort by").assertExists()
 
+        // Batch controls begin collapsed to prioritize the first transfer.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Batch tools"))
+        rule.onNodeWithText("Batch tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select…"))
         val select = rule.onNodeWithText("Select…")
         val selectionBounds = select.getUnclippedBoundsInRoot()

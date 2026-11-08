@@ -46,6 +46,8 @@ class ConnectAdvancedPathTest {
     @Test fun freshPhoneEntryKeepsServerConnectionOptionalAndAvailable() {
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         rule.onNodeWithText("Your downloads").assertExists()
+        // The connection form is lazy and must be scroll-reachable.
+        scrollTo("Seedbox hostname")
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
         // Navigating here alone never authenticates or submits a transfer.
         rule.onNodeWithText("Connection unsuccessful").assertDoesNotExist()
