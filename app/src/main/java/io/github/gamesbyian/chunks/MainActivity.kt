@@ -2283,18 +2283,22 @@ private fun TransfersScreen(
                         onStarted = onMutationStarted,
                         onSettled = onLifecycleSettled
                     )
-                    if (view == "main") OrphanMoveRecoveryPanel(
-                        direction = TransferMove.Direction.SERVER_TO_PHONE,
-                        serverAliasScope = aliasScope,
-                        visibleSourceHashes = list.map { it.hash },
-                        enabled = !stale && !loading,
-                        revision = serverMoveRevision,
-                        observeSource = { hash -> TransferMoveObservations.server(remote, hash) },
-                        onChanged = { serverMoveRevision++ }
-                    )
                     serverMoveMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 }
             }
+        }
+        // An uncertain source removal may leave zero server jobs. Recovery
+        // must remain reachable without batch-selection mode or a source card.
+        if (view == "main") item(key = "remote-orphan-move-recovery") {
+            OrphanMoveRecoveryPanel(
+                direction = TransferMove.Direction.SERVER_TO_PHONE,
+                serverAliasScope = aliasScope,
+                visibleSourceHashes = list.map { it.hash },
+                enabled = !stale && !loading,
+                revision = serverMoveRevision,
+                observeSource = { hash -> TransferMoveObservations.server(remote, hash) },
+                onChanged = { serverMoveRevision++ }
+            )
         }
         if (addedHidden) item(key = "remote-added-hidden") {
             PhoneAddedHiddenNotice(onShowAll = onClearView,
