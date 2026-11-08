@@ -48,27 +48,27 @@ internal fun optionsWordsMatch(title: String, words: String, rawQuery: String): 
  * an engine command or picks a Place.
  */
 internal enum class PhoneOptionsShortcut(val title: String, val where: String, private val words: String) {
-    SPEED_LIMITS("Speed limits", "Download and upload limits for this phone · shown in Phone options",
+    SPEED_LIMITS("Speed limits", "Download and upload limits for this device · in Options",
         "speed limit limits bandwidth throttle rate download upload kib mib unlimited"),
-    DHT("DHT peer discovery", "Find peers without trackers · in phone Add",
+    DHT("DHT peer discovery", "Find peers without trackers · in Add",
         "dht peer peers discovery trackerless magnet distributed hash table"),
-    DOWNLOAD_LOCATION("Download location", "Where new phone downloads are saved · in phone Add",
+    DOWNLOAD_LOCATION("Download location", "Where new downloads are saved on this device · in Add",
         "download location place folder storage save path directory downloads"),
     SEEDING_RULES("Seeding rules", "Ratio and seeding-time rules · opens Seeding rules",
         "seeding seed ratio share sharing time rule rules stop upload goal"),
     MEDIA("Artwork & media info", "Online lookup consent, providers, artwork downloads and cache · opens Artwork & info",
         "artwork art poster cover image picture media metadata info identify identification match provider providers tmdb key tvmaze musicbrainz lookup online cache consent similar"),
-    PRIVACY("Privacy & authentication", "Lock and hide transfer names · shown in Phone options",
+    PRIVACY("Privacy & authentication", "Lock and hide transfer names · in Options",
         "privacy private lock unlock pin password biometric fingerprint hide screenshot recents authentication secure"),
-    SNAPSHOT_RESTORE("Restore from a snapshot", "Compare a saved phone snapshot and review a stopped restore · shown in Phone options",
+    SNAPSHOT_RESTORE("Restore from a snapshot", "Compare a saved device snapshot and review a stopped restore · in Options",
         "snapshot restore backup import compare recover"),
     CREATE_TORRENT("Create a torrent", "Make a .torrent from files on this phone · opens Create",
         "create make new torrent metainfo share publish"),
     ZIP_REVIEW("Review ZIP archives", "Inspect and extract downloaded ZIP files · opens ZIP review",
         "zip archive archives extract unzip unpack compressed"),
-    EXPORTS("Snapshots and exports", "Inventory snapshot, health export and magnet links · under More phone tools",
+    EXPORTS("Snapshots and exports", "Inventory snapshot, health export and magnet links · in Advanced tools",
         "snapshot export backup inventory health report magnet magnets links copy list"),
-    COLLECTION_NAMES("Collection names", "Rename or remove collection names · shown in Phone options",
+    COLLECTION_NAMES("Collection names", "Rename or remove collection names · in Options",
         "collection collections group groups name names rename label");
 
     fun matches(rawQuery: String): Boolean = optionsWordsMatch(title, words, rawQuery)

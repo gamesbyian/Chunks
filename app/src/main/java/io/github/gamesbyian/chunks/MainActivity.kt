@@ -830,6 +830,7 @@ internal fun ChunksApp(
                         ({ localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED }) else null,
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
                     onConnections = { section = Section.SERVER },
+                    onOpenAdd = { section = Section.LOCAL_ADD },
                     initialMagnet = phoneHandoffMagnet,
                     initialSearch = phoneSearchPrefill,
                     onSearchConsumed = { phoneSearchPrefill = null },
@@ -1171,6 +1172,7 @@ internal fun ChunksApp(
                         onCombined = if (savedProfiles.isNotEmpty() || server != null)
                         ({ localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED }) else null,
                         onConnections = { section = Section.SERVER },
+                        onOpenAdd = { section = Section.LOCAL_ADD },
                         initialMagnet = phoneHandoffMagnet,
                         initialSearch = phoneSearchPrefill,
                         onSearchConsumed = { phoneSearchPrefill = null },

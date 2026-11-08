@@ -42,23 +42,23 @@ class PhoneOptionsSearchTest {
     private fun search(text: String) {
         rule.waitForIdle()
         rule.onNodeWithText("Options").performClick()
-        rule.onNode(hasSetTextAction() and hasText("Find a phone setting or tool")).performScrollTo().performTextInput(text)
+        rule.onNode(hasSetTextAction() and hasText("Search options")).performScrollTo().performTextInput(text)
         rule.waitForIdle()
     }
 
     @Test fun speedResultScrollsToTheExistingSpeedLimitsPanel() {
         search("speed")
-        rule.onNodeWithText("Download and upload limits for this phone · shown in Phone options").performScrollTo().performClick()
+        rule.onNodeWithText("Download and upload limits for this device · in Options").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Now: unlimited download and upload (default).").assertIsDisplayed()
         assertEquals("Choosing a result clears the search", 0,
-            rule.onAllNodesWithText("Download and upload limits for this phone · shown in Phone options").fetchSemanticsNodes().size)
+            rule.onAllNodesWithText("Download and upload limits for this device · in Options").fetchSemanticsNodes().size)
     }
 
     @Test fun collectionNamesResultScrollsFarDownToTheExistingPanel() {
         search("collection")
         val text = "Create empty collection"
-        rule.onNodeWithText("Rename or remove collection names · shown in Phone options").performScrollTo().performClick()
+        rule.onNodeWithText("Rename or remove collection names · in Options").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithText(text).assertIsDisplayed()
     }
@@ -72,6 +72,6 @@ class PhoneOptionsSearchTest {
 
     @Test fun noMatchExplainsHowToSeeEverything() {
         search("zzqx")
-        rule.onNodeWithText("No matching phone setting or tool", substring = true).assertExists()
+        rule.onNodeWithText("No matching option", substring = true).assertExists()
     }
 }

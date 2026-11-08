@@ -276,6 +276,8 @@ internal fun LocalEngineScreen(
     showFirstRunWelcome: Boolean = false,
     /** The central Connections route; no connection is attempted by navigating. */
     onConnections: (() -> Unit)? = null,
+    /** Opens the existing device Add review, without submitting or choosing Place. */
+    onOpenAdd: (() -> Unit)? = null,
     initialMagnet: String? = null,
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
@@ -2343,7 +2345,7 @@ internal fun LocalEngineScreen(
                 .bringIntoViewRequester(optionsRequester)
                 .semantics { heading() })
         ClearableTransferSearchField(value = phoneOptionsSearch, onValueChange = { phoneOptionsSearch = it },
-            label = "Find a phone setting or tool")
+            label = "Search options")
         val privacyControlsHosted = io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current != null
         if (phoneOptionsSearch.isNotBlank()) {
             // Only entries whose screen or panel exists here; a result never changes a value.
@@ -2357,7 +2359,7 @@ internal fun LocalEngineScreen(
                     else -> true
                 }
             }
-            if (results.isEmpty()) Text("No matching phone setting or tool. Clear search to see everything in Phone options.",
+            if (results.isEmpty()) Text("No matching option. Clear search to see all settings and tools.",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
             results.forEach { shortcut ->
@@ -2368,7 +2370,12 @@ internal fun LocalEngineScreen(
                         PhoneOptionsShortcut.MEDIA -> onMediaSettings?.invoke()
                         PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent?.invoke()
                         PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview?.invoke()
-                        PhoneOptionsShortcut.DHT, PhoneOptionsShortcut.DOWNLOAD_LOCATION -> { addExpanded = true; addNavigationRevision++ }
+                        PhoneOptionsShortcut.DHT, PhoneOptionsShortcut.DOWNLOAD_LOCATION -> {
+                            // These controls still live with the existing Add workflow.
+                            // Navigating cannot authorize or submit a transfer.
+                            if (onOpenAdd != null) onOpenAdd.invoke()
+                            else { addExpanded = true; addNavigationRevision++ }
+                        }
                         PhoneOptionsShortcut.SPEED_LIMITS -> scope.launch { speedRequester.bringIntoView() }
                         PhoneOptionsShortcut.PRIVACY -> scope.launch { privacyRequester.bringIntoView() }
                         PhoneOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { restoreRequester.bringIntoView() }
@@ -2383,6 +2390,13 @@ internal fun LocalEngineScreen(
                 }
             }
         }
+        if (onConnections != null) {
+            Text("Clients & environments", style = MaterialTheme.typography.titleMedium)
+            OutlinedButton(onClick = onConnections, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Manage connections and environments")
+            }
+        }
+        Text("Automation & media", style = MaterialTheme.typography.titleMedium)
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(seedingFocus)) {
             Text("Seeding rules…")
@@ -2391,6 +2405,7 @@ internal fun LocalEngineScreen(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("Artwork & media info…")
         }
+        Text("Privacy, security & bandwidth", style = MaterialTheme.typography.titleMedium)
         io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.let { controls ->
             Column(Modifier.fillMaxWidth().bringIntoViewRequester(privacyRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
         }
@@ -2415,7 +2430,8 @@ internal fun LocalEngineScreen(
                     addStorage = null
                     message = "Original snapshot .torrent is ready for manual phone Add review. " +
                         "Check the destination and Start choice before confirming; no Add occurred."
-                    scope.launch { scrollState.animateScrollTo(0) }
+                    if (onOpenAdd != null) onOpenAdd.invoke()
+                    else scope.launch { scrollState.animateScrollTo(0) }
                 } catch (_: Exception) {
                     noteProblem("Snapshot definition could not populate Add review." +
                         if (pending != null) " Your previous .torrent remains selected." else "")
