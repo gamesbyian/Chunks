@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **2026-11-08 ACTIVE ASSIGNMENT UPDATE:** Owner has restarted four parallel Chunks lanes. Agent 1 owns navigation/Options (#1404), Agent 2 shared coordinator + phone intake (#1407 after #1405 merge), Agent 3 authenticated rTorrent (#1411), and Agent 4 owns independent qualification, integration merges and central engineering documentation. This assignment supersedes the stale 'zero active agents' and Agent 5 integration role statements in the earlier dated snapshots below. Agent 4 merged #1405 as `b69a6367`; Agents 1–3 must not edit central queue/ledger/coverage/lanes/handoff. Do not overlap production paths; negotiate through PR comments.
+
+
 > **2026-11-08 STAFFING / OWNERSHIP RESET:** Owner reports **zero active Chunks agents**. [Next-push handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) specifies proposed Agent 1–5 responsibilities and live stacked PR dependencies; earlier lane leases/checkpoints in this file are historical and grant no current ownership. On restart, integration lead exclusively edits canonical queue, ledger, coverage, lanes and handoffs; claim all other files explicitly and inspect live main/heads before modifications.
 
 
