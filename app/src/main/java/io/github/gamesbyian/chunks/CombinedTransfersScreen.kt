@@ -272,7 +272,7 @@ internal fun availabilityText(source: EnvironmentTransferSnapshot): String = whe
     EnvironmentAvailability.LIVE -> if (source.canClaimCompleteLiveInventory) "Live" else "Live, list may be incomplete"
     EnvironmentAvailability.STALE -> "Out of date, showing last list"
     EnvironmentAvailability.OFFLINE -> if (source.environment == EnvironmentSnapshots.PHONE)
-        "Engine not running, open On this phone" else "Not connected"
+        "Engine not running; open transfers on this device" else "Not connected"
     EnvironmentAvailability.LOCKED -> "Locked, open it to unlock"
 }
 
@@ -1244,7 +1244,7 @@ internal fun CombinedTransfersScreen(
         item {
             ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
                 OutlinedButton(onClick = onOpenPhone, modifier = actionModifier) {
-                    Text("Open On this phone")
+                    Text("Open transfers on this device")
                 }
                 if (onOpenServer != null) OutlinedButton(onClick = onOpenServer,
                     modifier = actionModifier) { Text("Open server list") }

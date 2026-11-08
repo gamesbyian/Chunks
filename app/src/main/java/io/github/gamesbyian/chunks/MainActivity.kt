@@ -1215,7 +1215,7 @@ internal fun ChunksApp(
                     color = MaterialTheme.colorScheme.error)
                 OutlinedButton(onClick = { localFromCombined = false; section = Section.LOCAL },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("On this phone")
+                    Text("Transfers on this device")
                 }
             } else {
                 RemoteTransferPrivacyGate(
@@ -2710,7 +2710,7 @@ private fun TransferCard(
                     observeSource = { TransferMoveObservations.server(remote, transfer.hash) },
                     // Guarded by the current name and Place; session-only d.erase.
                     removeSource = { remote.eraseFromSession(transfer.hash, transfer.name, transfer.directory) },
-                    targetUnavailableReason = "Open phone transfers once so Chunks can check the phone."
+                    targetUnavailableReason = "Open transfers on this device once so Chunks can check the device."
                 ),
                 onStartMove = onPreparePhone,
                 onMutationStarted = onMutationStarted,

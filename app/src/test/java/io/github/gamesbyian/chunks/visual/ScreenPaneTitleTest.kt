@@ -27,7 +27,7 @@ class ScreenPaneTitleTest {
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, title))
 
     @Test fun titlesNameTheScreenAndEnvironmentOnly() {
-        assertEquals("Phone transfers", ScreenPaneTitles.of("LOCAL", "On this phone", null))
+        assertEquals("Transfers on this device", ScreenPaneTitles.of("LOCAL", "Transfers on this device", null))
         assertEquals("Transfers on Server · alice @ seed.example",
             ScreenPaneTitles.of("TRANSFERS", "Transfers", "Server · alice @ seed.example"))
         assertEquals("Connect to a server", ScreenPaneTitles.of("TRANSFERS", "Transfers", null))
@@ -36,12 +36,12 @@ class ScreenPaneTitleTest {
 
     @Test fun movingBetweenPhoneAndAllEnvironmentsChangesThePaneTitle() {
         rule.waitForIdle()
-        pane("Phone transfers").assertExists()
-        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        pane("Transfers on this device").assertExists()
+        rule.onNodeWithText("Options").performClick()
         rule.waitForIdle()
-        pane("All environments").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        pane("Options").assertExists()
+        rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
-        pane("Phone transfers").assertExists()
+        pane("Transfers on this device").assertExists()
     }
 }
