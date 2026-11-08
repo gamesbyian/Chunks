@@ -144,6 +144,15 @@ class SmartRoutingPreviewTest {
             Rule("invalid", 1, Kind.TV, 101, phone.environmentId)
         }
         assertThrows(IllegalArgumentException::class.java) {
+            Destination("remote:\\u0000account", true, true, true)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Rule("tab\\tidentity", 1, Kind.TV, 95, phone.environmentId)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            Rule("id", 1, Kind.TV, 95, "remote:\\u0000secret")
+        }
+        assertThrows(IllegalArgumentException::class.java) {
             SmartRoutingPreview.decide(Evidence("x"), emptyList(),
                 List(101) { Destination("server-${it}", true, true, true) })
         }
