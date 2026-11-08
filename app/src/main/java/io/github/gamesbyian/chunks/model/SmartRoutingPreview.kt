@@ -177,6 +177,6 @@ internal object SmartRoutingPreview {
             return Decision(Outcome.TARGET_UNAVAILABLE, category, ruleId = chosen.id,
                 reason = "matched-rule-exact-target-unavailable")
         return Decision(Outcome.PROPOSED, category, chosen.id, exact.environmentId,
-            "matched-rule; reviewed-add-required")
+            "matched-rule; review-required")
     }
 }
