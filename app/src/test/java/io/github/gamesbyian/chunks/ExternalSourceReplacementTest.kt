@@ -59,6 +59,11 @@ class ExternalSourceReplacementTest {
         rule.waitForIdle()
         rule.onNodeWithText("Phone transfers locked").assertExists()
         rule.onNodeWithText("Back to Chunks").performClick()
+        // The old Back route disposed the privacy gate. Fixed navigation now
+        // keeps one local gate mounted when moving between local destinations.
+        // Navigate to Connections before the test-only policy reset so the
+        // next Add mounts a fresh gate that reads the updated store.
+        rule.onNodeWithText("Connections").performClick()
         rule.runOnIdle { policy(TransferLockMode.NEVER) }
         rule.onNodeWithText("+ Add").performClick()
         rule.waitUntil(15_000) {
