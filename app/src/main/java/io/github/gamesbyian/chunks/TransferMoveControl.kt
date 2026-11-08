@@ -235,6 +235,7 @@ internal fun TransferMoveControl(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val store = remember { TransferMoveStore(context) }
+    val aliasStore = remember(context) { TransferAliasStore(context) }
     val serverDigest = serverAliasScope?.let(TransferMoveStore::scopeDigest)
     var record by remember(direction, infoHash, revision, serverDigest) {
         mutableStateOf(store.get(direction, infoHash, serverDigest))
@@ -249,9 +250,32 @@ internal fun TransferMoveControl(
     val source = if (direction == Direction.PHONE_TO_SERVER) "phone" else "server"
 
     fun apply(next: TransferMove.Next): Boolean = when (next) {
-        is TransferMove.Next.Save -> if (store.save(next.record)) {
-            record = next.record; message = next.message; true
-        } else { message = "Chunks could not save the Move journal. Nothing was removed."; false }
+        is TransferMove.Next.Save -> {
+            val firstConfirmedTarget = record?.stage == Stage.AWAITING_TARGET &&
+                next.record.stage == Stage.TARGET_VERIFIED &&
+                moveRetirementScopeConfirmed(next.record, serverAliasScope,
+                    name, sourceReviewToken, sourceDirectory)
+            if (store.save(next.record)) {
+                // The destination is already independently observed by the
+                // Move model before this stage. Only local Chunks presentation
+                // follows; target user labels always win, source job/files stay.
+                val carried = if (firstConfirmedTarget && serverAliasScope != null) {
+                    val source = if (direction == Direction.PHONE_TO_SERVER)
+                        TransferCollectionStore.LOCAL_ENGINE_SCOPE else serverAliasScope
+                    val target = if (direction == Direction.PHONE_TO_SERVER)
+                        serverAliasScope else TransferCollectionStore.LOCAL_ENGINE_SCOPE
+                    aliasStore.carryVerifiedMoveAlias(source, target, infoHash)
+                } else null
+                record = next.record
+                message = next.message + if (carried == TransferAliasStore.MoveAliasCarry.FAILED)
+                    " The job was verified, but Chunks could not carry its display alias. You can edit the destination alias."
+                    else ""
+                true
+            } else {
+                message = "Chunks could not save the Move journal. Nothing was removed."
+                false
+            }
+        }
         is TransferMove.Next.Done -> {
             if (record?.let { store.remove(it) } == true) {
                 record = null; message = next.message; true
