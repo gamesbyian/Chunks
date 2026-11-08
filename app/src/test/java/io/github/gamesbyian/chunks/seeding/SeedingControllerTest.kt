@@ -73,6 +73,43 @@ class SeedingControllerTest {
         assertTrue(engine.log.none { it.startsWith("pause") })
     }
 
+    @Test fun trackerBeforePrivateFlagCannotPermanentlyFreezeWrongPolicy() {
+        val engine = FakeEngine()
+        val store = MemStore().apply { epochMs = 0 }
+        val controller = SeedingController(engine, store)
+        val privateRule = rule.copy(privateOnly = true)
+        val facts = Facts("same-hash", 10, listOf("https://tracker.example/a"), null)
+        engine.facts[facts.infoHash] = facts
+        controller.tick("phone", listOf(privateRule), SeedingPolicy(), nowMs = 100)
+        assertNull("Private-only rule must await flag evidence", store.get(facts.infoHash))
+        assertTrue("No cap, pause or other engine write while private status is unknown", engine.log.isEmpty())
+        // The same observed tracker now comes with a verified private flag.
+        engine.facts[facts.infoHash] = facts.copy(isPrivate = true)
+        controller.tick("phone", listOf(privateRule), SeedingPolicy(), nowMs = 200)
+        assertEquals(SeedingResolution.Source.RULE, store.get(facts.infoHash)?.source)
+        assertEquals(capped, store.get(facts.infoHash)?.policy)
+        assertEquals(listOf("cap same-hash=24576"), engine.log)
+        // Existing policy snapshots still remain fixed across later edits.
+        controller.tick("phone", listOf(privateRule.copy(policy = SeedingPolicy())),
+            SeedingPolicy(), nowMs = 300)
+        assertEquals(capped, store.get(facts.infoHash)?.policy)
+    }
+
+    @Test fun verifiedPublicFlagAllowsDefaultAfterPrivateRuleDoesNotMatch() {
+        val engine = FakeEngine()
+        val store = MemStore().apply { epochMs = 0 }
+        val privateRule = rule.copy(privateOnly = true)
+        val facts = Facts("public-hash", 10, listOf("https://tracker.example/a"), null)
+        engine.facts[facts.infoHash] = facts
+        val controller = SeedingController(engine, store)
+        controller.tick("phone", listOf(privateRule), capped, nowMs = 100)
+        assertNull(store.get(facts.infoHash))
+        engine.facts[facts.infoHash] = facts.copy(isPrivate = false)
+        controller.tick("phone", listOf(privateRule), capped, nowMs = 200)
+        assertEquals(SeedingResolution.Source.DEFAULT, store.get(facts.infoHash)?.source)
+        assertEquals(capped, store.get(facts.infoHash)?.policy)
+    }
+
     @Test fun unconfirmedPauseIsNotedAndMagnetsWaitForMetadata() {
         val engine = FakeEngine().apply { pauseConfirms = false }; val store = MemStore().apply { epochMs = 0 }
         engine.facts["m"] = Facts("m", 10, null, null)
