@@ -50,14 +50,14 @@ class ExternalSourceReplacementTest {
             }
         }
         rule.runOnIdle { incomingMagnet.value = magnet }
-        rule.onNodeWithText("Phone transfers locked").assertExists()
+        rule.onNodeWithText("Transfers on this device are locked").assertExists()
         // The provider intentionally refuses this new source. Even a refused
         // document must not cause the old, never-consumed magnet to be offered.
         rule.runOnIdle {
             incomingDocument.value = Uri.parse("content://missing.example/new.torrent")
         }
         rule.waitForIdle()
-        rule.onNodeWithText("Phone transfers locked").assertExists()
+        rule.onNodeWithText("Transfers on this device are locked").assertExists()
         rule.onNodeWithText("Back to Chunks").performClick()
         rule.runOnIdle { policy(TransferLockMode.NEVER) }
         rule.onNodeWithText("Open phone downloads").performScrollTo().performClick()
