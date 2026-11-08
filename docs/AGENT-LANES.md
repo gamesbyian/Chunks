@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **2026-11-08 STAFFING / OWNERSHIP RESET:** Owner reports **zero active Chunks agents**. [Next-push handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) specifies proposed Agent 1–5 responsibilities and live stacked PR dependencies; earlier lane leases/checkpoints in this file are historical and grant no current ownership. On restart, integration lead exclusively edits canonical queue, ledger, coverage, lanes and handoffs; claim all other files explicitly and inspect live main/heads before modifications.
+
+
 > **LIVE OWNERSHIP CHECKPOINT · 2026-11-07 UTC:** #1363 and #1370 have merged with assembled-source qualification (see [ledger](QUALITY-LEDGER.md)); no active PRs remain. The prior four implementation lanes plus Agent 5 integration lease completed their assigned Universal Add handoff. **Do not infer any agent is currently working or has an enduring file lock.** Future agents must recheck live PRs, issue state and owner instructions before claiming a fresh scoped lease. The capability partition below is reference history, not a permanent roster.
 
 
