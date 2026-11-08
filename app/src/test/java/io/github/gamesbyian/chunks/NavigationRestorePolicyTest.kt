@@ -5,7 +5,7 @@ import org.junit.Test
 
 class NavigationRestorePolicyTest {
     @Test fun onlyPrivacyGatedPhoneAndReadOnlyCombinedCanReopenAfterProcessDeath() {
-        for (safe in listOf("LOCAL", "COMBINED", "MEDIA")) {
+        for (safe in listOf("LOCAL", "COMBINED", "MEDIA", "OPTIONS")) {
             assertEquals(safe, NavigationRestorePolicy.restorableSection(safe))
         }
     }
@@ -14,7 +14,7 @@ class NavigationRestorePolicyTest {
         for (unsafe in listOf("ADD", "CREATE", "SEEDING", "NAMES", "SNAPSHOT",
             "SNAPSHOT_INSPECT", "PLACES", "ORGANIZE", "SERVER", "ARCHIVES",
             "TRANSFERS", "", "NOT_A_ROUTE", "LOCAL;ADD", null)) {
-            assertEquals("TRANSFERS", NavigationRestorePolicy.restorableSection(unsafe))
+            assertEquals("LOCAL", NavigationRestorePolicy.restorableSection(unsafe))
         }
     }
 }

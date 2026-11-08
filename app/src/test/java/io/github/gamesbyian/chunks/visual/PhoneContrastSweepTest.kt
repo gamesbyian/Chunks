@@ -61,11 +61,11 @@ class PhoneContrastSweepTest {
 
     @Test fun phoneInventoryAddAndOptionsReadAtAA() {
         sweep("phone")
-        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        rule.onNodeWithContentDescription("+ Add").performClick()
         sweep("add-top")
         rule.onNode(hasText("Optional phone download subfolder")).performScrollTo()
         sweep("add-place")
-        rule.onNodeWithContentDescription("Options on this phone").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
         sweep("options")
         rule.onNode(hasText("Save speed limits")).performScrollTo()
         sweep("options-speed")

@@ -41,6 +41,7 @@ class PhoneOptionsSearchTest {
 
     private fun search(text: String) {
         rule.waitForIdle()
+        rule.onNodeWithText("Options").performClick()
         rule.onNode(hasSetTextAction() and hasText("Find a phone setting or tool")).performScrollTo().performTextInput(text)
         rule.waitForIdle()
     }

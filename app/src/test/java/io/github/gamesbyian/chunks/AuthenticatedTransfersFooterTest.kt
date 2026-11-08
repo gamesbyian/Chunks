@@ -186,7 +186,7 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(1, adds)
     }
 
-    @Test fun softKeyboardYieldsFooterSpaceAndRestoresTheSameActionsWhenClosed() {
+    @Test fun softKeyboardKeepsAllDestinationsVisibleAndActionable() {
         var ime by mutableStateOf(true)
         var adds = 0
         rule.setContent {
@@ -196,9 +196,9 @@ class AuthenticatedTransfersFooterTest {
                 }
             }
         }
-        rule.onAllNodesWithText("Transfers").assertCountEquals(0)
-        rule.onAllNodesWithText("+ Add").assertCountEquals(0)
-        rule.onAllNodesWithText("Options").assertCountEquals(0)
+        rule.onAllNodesWithText("Transfers").assertCountEquals(1)
+        rule.onAllNodesWithText("+ Add").assertCountEquals(1)
+        rule.onAllNodesWithText("Options").assertCountEquals(1)
         ime = false
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
@@ -206,7 +206,7 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(1, adds)
     }
 
-    @Test fun platformImeInsetsHideFooterThroughTheDefaultParameter() {
+    @Test fun platformImeInsetsCannotHideGlobalFooter() {
         var view: android.view.View? = null
         rule.setContent {
             view = LocalView.current
@@ -223,7 +223,7 @@ class AuthenticatedTransfersFooterTest {
                 .build())
         }
         rule.waitForIdle()
-        rule.onAllNodesWithText("+ Add").assertCountEquals(0)
+        rule.onAllNodesWithText("+ Add").assertCountEquals(1)
         rule.runOnIdle {
             ViewCompat.dispatchApplyWindowInsets(requireNotNull(view).rootView,
                 WindowInsetsCompat.Builder()

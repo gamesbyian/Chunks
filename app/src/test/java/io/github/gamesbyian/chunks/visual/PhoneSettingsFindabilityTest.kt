@@ -35,6 +35,7 @@ class PhoneSettingsFindabilityTest {
 
     @Test fun speedLimitsPrecedeOccasionalPhoneTools() {
         rule.waitForIdle()
+        rule.onNodeWithText("Options").performClick()
         val value = rule.onNodeWithText("Now: unlimited download and upload (default).")
             .performScrollTo()
         val speedTop = value.getUnclippedBoundsInRoot().top
@@ -44,6 +45,6 @@ class PhoneSettingsFindabilityTest {
         assertTrue("speed limits ($speedTop) should come before tools ($toolsTop)",
             rule.onNodeWithText("Now: unlimited download and upload (default).")
                 .getUnclippedBoundsInRoot().top < toolsTop)
-        rule.onNodeWithText("Phone options").assertExists()
+        rule.onNodeWithText("Options · this device").assertExists()
     }
 }

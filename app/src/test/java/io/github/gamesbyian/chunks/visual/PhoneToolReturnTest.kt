@@ -27,11 +27,12 @@ class PhoneToolReturnTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     private fun onPhone() = rule.onNode(
-        SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Phone transfers")).assertExists()
+        SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")).assertExists()
 
     private fun openAndReturn(button: String, paneTitle: String) {
         rule.waitForIdle()
         onPhone()
+        rule.onNodeWithText("Options").performClick()
         rule.onNodeWithText(button).performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, paneTitle)).assertExists()
