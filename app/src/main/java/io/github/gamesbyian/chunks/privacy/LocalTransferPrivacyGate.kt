@@ -59,7 +59,7 @@ internal fun LocalTransferPrivacyGate(
     controlsInContent: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    TransferPrivacyGate(scope, onBack, "Phone transfers", "Phone transfer",
+    TransferPrivacyGate(scope, onBack, "Transfers on this device", "transfers on this device",
         redactLocalService = true, controlsInContent = controlsInContent, content = content)
 }
 
@@ -346,14 +346,17 @@ private fun TransferPrivacyGate(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Back to Chunks")
             }
-            Text(lockedTitle + " locked", style = MaterialTheme.typography.headlineMedium)
+            Text(if (redactLocalService) "Transfers on this device are locked"
+                else lockedTitle + " locked", style = MaterialTheme.typography.headlineMedium)
             Text("Your torrent names, files, folders, Collections and transfer controls " +
                 "are hidden until Android verifies your fingerprint, face or device screen lock.")
             OutlinedButton(
                 onClick = ::authenticateUnlock, enabled = !busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
             ) {
-                Text(if (busy) "Authenticating…" else "Unlock " + lockedTitle.lowercase())
+                Text(if (busy) "Authenticating…"
+                    else if (redactLocalService) "Unlock transfers on this device"
+                    else "Unlock " + lockedTitle.lowercase())
             }
             if (activity == null || !TransferDeviceAuthenticator.hasSecureLock(activity))
                 Text("This device currently has no usable secure screen lock. " +
@@ -362,7 +365,7 @@ private fun TransferPrivacyGate(
             notice?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Text(if (redactLocalService)
                 "Locked Chunks UI does not pause or stop already-running local torrents."
-                else "This lock neither disconnects the rTorrent server nor stops phone transfers.",
+                else "This lock neither disconnects the rTorrent server nor stops transfers on this device.",
                 style = MaterialTheme.typography.bodySmall)
         }
     } else {
@@ -381,8 +384,9 @@ private fun TransferPrivacyGate(
         val settings: @Composable () -> Unit = {
             if (settingsOpen) {
                 Text(if (mode == TransferLockMode.NEVER)
-                    subject + " privacy is off. Enabling it requires a device " +
-                        "screen lock and will immediately hide transfers."
+                    (if (redactLocalService) "Privacy for transfers on this device is off. "
+                    else subject + " privacy is off. ") +
+                        "Enabling it requires a device screen lock and will immediately hide transfers."
                     else "Current privacy mode: " + mode.name.replace('_', ' ').lowercase() +
                         ". Every change, including disabling, requires fresh Android authentication.",
                     style = MaterialTheme.typography.bodySmall)
