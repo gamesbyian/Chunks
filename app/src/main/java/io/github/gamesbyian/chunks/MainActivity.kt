@@ -305,7 +305,8 @@ internal fun ChunksApp(
     fun openFromPhone(tool: Section) = openTool(tool, Section.LOCAL)
     fun leaveTool() {
         // Returning to the phone: the button that opened this tool regains focus.
-        if (toolOrigin == Section.LOCAL.name) phoneReturnFocus = section.name
+        if (toolOrigin == Section.LOCAL.name || toolOrigin == Section.OPTIONS.name)
+            phoneReturnFocus = section.name
         section = toolOrigin?.let { origin -> Section.entries.firstOrNull { it.name == origin } }
             ?: Section.LOCAL
         toolOrigin = null
@@ -827,8 +828,7 @@ internal fun ChunksApp(
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                     onZipReview = { openTool(Section.ARCHIVES,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                    onCombined = if (savedProfiles.isNotEmpty() || server != null)
-                        ({ localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED }) else null,
+                    onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
                     onConnections = { section = Section.SERVER },
                     onOpenAdd = { section = Section.LOCAL_ADD },
@@ -1170,8 +1170,7 @@ internal fun ChunksApp(
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                         onZipReview = { openTool(Section.ARCHIVES,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                        onCombined = if (savedProfiles.isNotEmpty() || server != null)
-                        ({ localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED }) else null,
+                        onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                         onConnections = { section = Section.SERVER },
                         onOpenAdd = { section = Section.LOCAL_ADD },
                         initialMagnet = phoneHandoffMagnet,

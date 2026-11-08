@@ -38,7 +38,7 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
     private fun waitFor(ms: Long = 20_000, condition: () -> Boolean) = rule.waitUntil(ms, condition)
 
     private fun reachPhone() {
-        val phone = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Phone transfers")
+        val phone = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
         val entry = hasText("Open phone downloads") and hasClickAction()
         waitFor(30_000) {
             rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() ||
@@ -52,7 +52,7 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
 
     @Test fun anAcknowledgedPhoneAddHiddenByTheCombinedSearchIsExplained() {
         reachPhone()
-        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
         val field = hasSetTextAction() and hasText("Or paste a magnet or torrent link")
         waitFor { rule.onAllNodes(field).fetchSemanticsNodes().isNotEmpty() }
@@ -71,11 +71,9 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
             rule.onAllNodes(hasText("Magnet added in metadata-only mode", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
 
-        rule.onNode(hasText("All environments…") and hasClickAction()).performScrollTo().performClick()
-        // Search is behind the intentional compact Refine disclosure.
-        val refine = hasText("Refine transfers", substring = true) and hasClickAction()
-        waitFor { runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(refine) }.isSuccess }
-        rule.onNode(refine).performClick()
+        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithText("All environments").performScrollTo().performClick()
+        // Search remains visible in the compact combined inventory.
         val search = hasSetTextAction() and hasText("Search names or hashes")
         waitFor { runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(search) }.isSuccess }
         rule.onNode(search).performTextInput("no transfer is called this")

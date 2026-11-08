@@ -893,6 +893,10 @@ internal fun CombinedTransfersScreen(
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
+        } else item {
+            // Keep one compact, spoken view identity without a duplicate Back.
+            Text("All environments", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
         }
         // Add lives in its own destination when this is the app's primary list.
         // A shared source still surfaces a target choice, never auto-submits.
