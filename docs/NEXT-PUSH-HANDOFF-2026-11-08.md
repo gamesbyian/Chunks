@@ -1,5 +1,8 @@
 # Chunks next-push integration handoff — 2026-11-08
 
+> **LATEST INTEGRATION CHECKPOINT · 2026-11-08:** The table below is the pre-integration snapshot. #1405 candidate `0c526a8b` was independently reviewed and squash-merged into main as `b69a6367bdb6d3cdf742548c17fcb5aaa4d9a701`. Four PRs remain open: #1407 `11456f81` stacked on obsolete #1405 parent (must restack/requalify); #1404 `cdaceaf8` blocked by actual native `42505110698` and real magnet `42505110567` failures; #1408 `7e034c65` has latest native `42509555928`, atlas `42509555910` and docs `42509555932` successes on its stacked head (not full real-magnet proof); #1411 draft `34c9e6f3` still has skipped native/R8/magnet workflows. Comments coordinating necessary agent fixes posted to #1407, #1404 and #1411. Agent 4 now owns integration/QA/docs; Agents 1–3 own navigation, shared/phone Add, and remote respectively. Do not treat earlier no-agent wording or five-open-PR table as live. No assembled main peer/piece receipt or APK SHA-256 after this merge. The next unblocked action is Agent 2's #1407 restack plus exact-head gates, while #1404 real-magnet failure diagnosis proceeds independently.
+
+
 **Status:** owner reports no agents currently working. This is a readiness snapshot, not an agent lease or claim of installed-product acceptance. Recheck GitHub live main, heads, checks and the queue before making changes.
 
 ## Source of truth and merge topology
