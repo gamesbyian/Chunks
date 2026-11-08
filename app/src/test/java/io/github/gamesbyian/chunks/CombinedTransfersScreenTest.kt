@@ -329,6 +329,11 @@ class CombinedTransfersScreenTest {
             ": Out of date, showing last list · 2 transfers"
         revealText(staleLabel)
         rule.onNodeWithText(staleLabel).assertExists()
+        // The first-fold count is recycled after scrolling to these rows;
+        // the expanded status must keep its own stale-source warning.
+        revealText("some environments are missing or out of date")
+        rule.onNodeWithText("some environments are missing or out of date",
+            substring = true).assertExists()
     }
 
     @Test fun oldSignedInServerRowsRemainVisibleButAreNotLiveOrActionable() {
