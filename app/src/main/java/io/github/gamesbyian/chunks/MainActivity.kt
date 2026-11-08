@@ -691,7 +691,7 @@ internal fun ChunksApp(
                     // The existing phone review reads only an explicitly
                     // selected URI, under its own independent privacy gate.
                     localFromCombined = true
-                    section = Section.LOCAL
+                    section = Section.LOCAL_ADD
                 },
                 pendingSharedMagnet = pendingSharedMagnet != null && incomingTorrent == null,
                 pendingSharedTorrent = incomingTorrent != null,
@@ -1643,6 +1643,8 @@ internal fun ChunksApp(
                         }
                     )
                 }
+                // These destinations render above, before remote-only routing.
+                else -> Unit
             }
                 } // RemoteTransferPrivacyGate: all remote tabs/actions protected.
             } // Connected local/remote route split.
