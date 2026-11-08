@@ -32,18 +32,17 @@ class LocalPhoneFirstfoldEntryTest {
         rule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
-                ChunksTheme { Surface { LocalEngineScreen(onBack = {}, onCombined = {}, onSeedingRules = {}) } }
+                ChunksTheme { Surface { LocalEngineScreen(pane = PhonePane.ADD, onBack = {}, onCombined = {}, onSeedingRules = {}) } }
             }
         }
         // A normal return opens on transfers. Enter Add explicitly for this
         // existing first-fold source-order and safety-description acceptance.
-        rule.onNodeWithText("Add a download on this phone").assertDoesNotExist()
-        rule.onNodeWithText("Add torrent on this phone").performScrollTo().performClick()
+        rule.onNodeWithText("Add a download on this device").assertExists()
     }
 
     @Test fun phoneIntakeIsAheadOfLongAdvancedExplanationAt320Dp() {
         showPhoneAt200Percent()
-        val title = rule.onNodeWithText("Add a download on this phone")
+        val title = rule.onNodeWithText("Add a download on this device")
         val torrent = rule.onNodeWithText("Choose .torrent file")
         val magnet = rule.onNodeWithText("Or paste a magnet or torrent link")
         val warning = rule.onNodeWithText("Downloads and seeds with Chunks' own engine.", substring = true)
