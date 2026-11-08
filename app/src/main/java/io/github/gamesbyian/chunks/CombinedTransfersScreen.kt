@@ -304,6 +304,7 @@ internal fun CombinedTransfersScreen(
     /** Opens this exact transfer in its own environment's list; only phone and the signed-in server. */
     onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
     onBack: () -> Unit,
+    showNavigationFooter: Boolean = true,
     /** Caller-owned list position, kept when visiting an owning list and returning. */
     listState: androidx.compose.foundation.lazy.LazyListState? = null,
     /**
@@ -590,6 +591,7 @@ internal fun CombinedTransfersScreen(
     }
     var choosingColours by remember { mutableStateOf(false) }
     var showingViewOptions by rememberSaveable { mutableStateOf(false) }
+    var showingBatchTools by rememberSaveable { mutableStateOf(false) }
     var showingSortOptions by rememberSaveable { mutableStateOf(false) }
     var showingSourceStatus by rememberSaveable { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
@@ -891,7 +893,9 @@ internal fun CombinedTransfersScreen(
         item {
             CombinedTransfersHeader(onBack)
         }
-        item(key = COMBINED_ADD_ITEM_KEY) {
+        // Add lives in its own destination when this is the app's primary list.
+        // A shared source still surfaces a target choice, never auto-submits.
+        if (showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent) item(key = COMBINED_ADD_ITEM_KEY) {
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
@@ -904,52 +908,6 @@ internal fun CombinedTransfersScreen(
                 phoneHue = palette.hueOf(EnvironmentSnapshots.PHONE),
                 serverHue = serverId?.let { palette.hueOf(it) }
             )
-        }
-        item {
-            key(batchIdentity) {
-            CombinedBatchSection(
-                selecting = selecting,
-                onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
-                selected = selected,
-                visible = result.transfers.map { it.key }.toSet(),
-                labels = labels,
-                running = batchRunning,
-                result = batchResult,
-                onClear = { selected = emptySet() },
-                onRun = { start ->
-                    batchRunning = true
-                    batchResult = emptyList()
-                    val chosen = selected
-                    val snapshot = sources
-                    val owner = batchIdentity
-                    val lifecycle = server?.lifecycle
-                    val targetServer = serverId
-                    batchScope.launch {
-                        // Dispatch may be queued behind a server/account switch.
-                        if (latestBatchIdentity.value != owner) return@launch
-                        var unconfirmedPhoneStops = 0
-                        try {
-                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
-                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
-                                    reviewStillCurrent = { latestBatchIdentity.value == owner },
-                                    onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
-                            }
-                            // A late completion is evidence about the OLD owner only.
-                            if (latestBatchIdentity.value == owner) {
-                                val warning = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget
-                                    .warning(unconfirmedPhoneStops)
-                                batchResult = if (warning.isEmpty()) report else report + warning.trim()
-                            }
-                        } finally {
-                            if (latestBatchIdentity.value == owner) {
-                                selected = emptySet()
-                                batchRunning = false
-                            }
-                        }
-                    }
-                }
-            )
-            }
         }
         item {
             val scopeName = when (val scope = query.scope) {
@@ -966,12 +924,15 @@ internal fun CombinedTransfersScreen(
                 UnifiedTransferFilter.TRANSFERRING -> "Transferring"
                 UnifiedTransferFilter.ATTENTION -> "Needs attention"
             }
-            OutlinedButton(
-                onClick = { showingViewOptions = !showingViewOptions; if (!showingViewOptions) showingSortOptions = false },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            ) {
-                Text((if (showingViewOptions) "Hide" else "Refine") +
-                    " transfers · $scopeName · $filterName")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { showingViewOptions = !showingViewOptions; if (!showingViewOptions) showingSortOptions = false },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                ) { Text(if (showingViewOptions) "Hide filters" else "Filters") }
+                OutlinedButton(onClick = { showingBatchTools = !showingBatchTools },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    Text(if (showingBatchTools) "Hide batch tools" else "Batch tools")
+                }
             }
             // Search has its own clear affordance; do not insert a second button
             // above the text field as the user types and shift its focus/position.
@@ -1011,7 +972,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
         }
-        if (showingViewOptions || query.search.isNotBlank()) item {
+        item {
             ClearableTransferSearchField(
                 value = query.search,
                 onValueChange = {
@@ -1214,6 +1175,54 @@ internal fun CombinedTransfersScreen(
                         onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
             }
         }
+        if (showingBatchTools) {
+        item {
+            key(batchIdentity) {
+            CombinedBatchSection(
+                selecting = selecting,
+                onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
+                selected = selected,
+                visible = result.transfers.map { it.key }.toSet(),
+                labels = labels,
+                running = batchRunning,
+                result = batchResult,
+                onClear = { selected = emptySet() },
+                onRun = { start ->
+                    batchRunning = true
+                    batchResult = emptyList()
+                    val chosen = selected
+                    val snapshot = sources
+                    val owner = batchIdentity
+                    val lifecycle = server?.lifecycle
+                    val targetServer = serverId
+                    batchScope.launch {
+                        // Dispatch may be queued behind a server/account switch.
+                        if (latestBatchIdentity.value != owner) return@launch
+                        var unconfirmedPhoneStops = 0
+                        try {
+                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
+                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
+                                    reviewStillCurrent = { latestBatchIdentity.value == owner },
+                                    onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
+                            }
+                            // A late completion is evidence about the OLD owner only.
+                            if (latestBatchIdentity.value == owner) {
+                                val warning = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget
+                                    .warning(unconfirmedPhoneStops)
+                                batchResult = if (warning.isEmpty()) report else report + warning.trim()
+                            }
+                        } finally {
+                            if (latestBatchIdentity.value == owner) {
+                                selected = emptySet()
+                                batchRunning = false
+                            }
+                        }
+                    }
+                }
+            )
+            }
+        }
+        }
         item {
             OutlinedButton(onClick = { choosingColours = !choosingColours },
                 modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp)) {
@@ -1248,7 +1257,7 @@ internal fun CombinedTransfersScreen(
             }
         }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
     } // scroll viewport
-    AuthenticatedTransfersFooter(
+    if (showNavigationFooter) AuthenticatedTransfersFooter(
         optionsOpen = showingViewOptions,
         onTransfers = {
             batchScope.launch {
