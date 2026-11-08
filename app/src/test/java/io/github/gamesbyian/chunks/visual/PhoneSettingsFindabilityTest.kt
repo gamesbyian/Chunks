@@ -4,6 +4,7 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performClick
 import io.github.gamesbyian.chunks.MainActivity
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
 import io.github.gamesbyian.chunks.speedLimitSummary

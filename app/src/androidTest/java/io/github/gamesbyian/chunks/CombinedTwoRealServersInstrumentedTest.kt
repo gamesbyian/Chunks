@@ -139,8 +139,8 @@ class CombinedTwoRealServersInstrumentedTest {
         val before = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
             .map { it.hash to it.started }.toSet()
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("entry after process death") { connectedQueue() || visible("On this phone (experimental)") }
-            if (!connectedQueue()) rule.onNodeWithText("Back").performScrollTo().performClick()
+            waitFor("entry after process death") { connectedQueue() || visible("Connections") }
+            if (!connectedQueue()) rule.onNodeWithText("Connections").performClick()
             waitFor("reconnect after process death", 90_000) { connectedQueue() }
             assertTrue(!visible("Seedbox hostname, ruTorrent URL or RPC address"))
             stage("process-death-reconnected")
@@ -178,8 +178,9 @@ class CombinedTwoRealServersInstrumentedTest {
         stage("ground-truth")
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("phone-first launch") { visible("On this phone (experimental)") }
-            rule.onNodeWithText("Back").performScrollTo().performClick()
+            waitFor("persistent Connections destination") { visible("Connections") }
+            rule.onNodeWithText("Connections").performClick()
+            waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             connect(urlA, userA, passA)
             stage("connected-a")
             // Options lists screen destinations; Disconnect is on "Server".
