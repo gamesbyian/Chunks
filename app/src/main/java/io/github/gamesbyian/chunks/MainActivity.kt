@@ -834,6 +834,21 @@ internal fun ChunksApp(
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
                     onConnections = { section = Section.SERVER },
                     onOpenAdd = { section = Section.LOCAL_ADD },
+                    remoteEnvironmentLabel = aliasScope.takeIf {
+                        server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
+                    }?.let(::serverEnvironmentLabel),
+                    onRemotePlaces = if (server != null &&
+                        RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
+                        ({ section = Section.PLACES }) else null,
+                    onRemoteOrganize = if (server != null &&
+                        RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
+                        ({ section = Section.ORGANIZE }) else null,
+                    onRemoteNames = if (server != null &&
+                        RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
+                        ({ section = Section.NAMES }) else null,
+                    onRemoteSnapshot = if (server != null &&
+                        RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
+                        ({ section = Section.SNAPSHOT }) else null,
                     initialMagnet = phoneHandoffMagnet,
                     initialSearch = phoneSearchPrefill,
                     onSearchConsumed = { phoneSearchPrefill = null },
@@ -1175,6 +1190,13 @@ internal fun ChunksApp(
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                         onConnections = { section = Section.SERVER },
                         onOpenAdd = { section = Section.LOCAL_ADD },
+                        remoteEnvironmentLabel = aliasScope.takeIf {
+                            RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
+                        }?.let(::serverEnvironmentLabel),
+                        onRemotePlaces = if (remotePrivacyScope != null) ({ section = Section.PLACES }) else null,
+                        onRemoteOrganize = if (remotePrivacyScope != null) ({ section = Section.ORGANIZE }) else null,
+                        onRemoteNames = if (remotePrivacyScope != null) ({ section = Section.NAMES }) else null,
+                        onRemoteSnapshot = if (remotePrivacyScope != null) ({ section = Section.SNAPSHOT }) else null,
                         initialMagnet = phoneHandoffMagnet,
                         initialSearch = phoneSearchPrefill,
                         onSearchConsumed = { phoneSearchPrefill = null },

@@ -48,6 +48,16 @@ internal fun optionsWordsMatch(title: String, words: String, rawQuery: String): 
  * an engine command or picks a Place.
  */
 internal enum class PhoneOptionsShortcut(val title: String, val where: String, private val words: String) {
+    CONNECTIONS("Clients & environments", "Manage device and server connections · opens Connections",
+        "clients client connections connection server remote local account accounts login endpoint profile profiles password authentication"),
+    SERVER_PLACES("Server folders & destinations", "Folders on the authenticated server · opens Server places",
+        "remote server place places folder folders directory directories destination path save"),
+    SERVER_ORGANIZE("Server collections", "Organize transfers on the authenticated server · opens Organize",
+        "remote server collection collections organize organizing grouping groups"),
+    SERVER_NAMES("Server transfer names", "Edit display aliases on the authenticated server · opens Names",
+        "remote server alias aliases name names rename title"),
+    SERVER_BACKUP("Server inventory backup", "Export the authenticated server inventory · opens Inventory backup",
+        "remote server snapshot backup export inventory"),
     SPEED_LIMITS("Speed limits", "Download and upload limits for this device · in Options",
         "speed limit limits bandwidth throttle rate download upload kib mib unlimited"),
     DHT("DHT peer discovery", "Find peers without trackers · in Add",

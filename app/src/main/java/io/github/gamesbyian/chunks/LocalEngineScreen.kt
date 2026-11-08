@@ -276,6 +276,12 @@ internal fun LocalEngineScreen(
     showFirstRunWelcome: Boolean = false,
     /** The central Connections route; no connection is attempted by navigating. */
     onConnections: (() -> Unit)? = null,
+    /** Existing authenticated rTorrent destinations; null when no exact current account. */
+    remoteEnvironmentLabel: String? = null,
+    onRemotePlaces: (() -> Unit)? = null,
+    onRemoteOrganize: (() -> Unit)? = null,
+    onRemoteNames: (() -> Unit)? = null,
+    onRemoteSnapshot: (() -> Unit)? = null,
     /** Opens the existing device Add review, without submitting or choosing Place. */
     onOpenAdd: (() -> Unit)? = null,
     initialMagnet: String? = null,
@@ -2359,6 +2365,11 @@ internal fun LocalEngineScreen(
                     PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent != null
                     PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview != null
                     PhoneOptionsShortcut.PRIVACY -> privacyControlsHosted
+                    PhoneOptionsShortcut.CONNECTIONS -> onConnections != null
+                    PhoneOptionsShortcut.SERVER_PLACES -> onRemotePlaces != null
+                    PhoneOptionsShortcut.SERVER_ORGANIZE -> onRemoteOrganize != null
+                    PhoneOptionsShortcut.SERVER_NAMES -> onRemoteNames != null
+                    PhoneOptionsShortcut.SERVER_BACKUP -> onRemoteSnapshot != null
                     else -> true
                 }
             }
@@ -2371,6 +2382,11 @@ internal fun LocalEngineScreen(
                     when (shortcut) {
                         PhoneOptionsShortcut.SEEDING_RULES -> onSeedingRules?.invoke()
                         PhoneOptionsShortcut.MEDIA -> onMediaSettings?.invoke()
+                        PhoneOptionsShortcut.CONNECTIONS -> onConnections?.invoke()
+                        PhoneOptionsShortcut.SERVER_PLACES -> onRemotePlaces?.invoke()
+                        PhoneOptionsShortcut.SERVER_ORGANIZE -> onRemoteOrganize?.invoke()
+                        PhoneOptionsShortcut.SERVER_NAMES -> onRemoteNames?.invoke()
+                        PhoneOptionsShortcut.SERVER_BACKUP -> onRemoteSnapshot?.invoke()
                         PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent?.invoke()
                         PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview?.invoke()
                         PhoneOptionsShortcut.DHT, PhoneOptionsShortcut.DOWNLOAD_LOCATION -> {
@@ -2397,6 +2413,29 @@ internal fun LocalEngineScreen(
             Text("Clients & environments", style = MaterialTheme.typography.titleMedium)
             OutlinedButton(onClick = onConnections, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Manage connections and environments")
+            }
+        }
+        if (remoteEnvironmentLabel != null && onRemotePlaces != null &&
+            onRemoteOrganize != null && onRemoteNames != null && onRemoteSnapshot != null) {
+            Text("Connected server · $remoteEnvironmentLabel",
+                style = MaterialTheme.typography.titleMedium)
+            Text("These tools operate only on the currently authenticated server. Opening a tool does not submit an Add or change any torrent.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = onRemotePlaces,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Server folders & destinations")
+            }
+            OutlinedButton(onClick = onRemoteOrganize,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Server collections")
+            }
+            OutlinedButton(onClick = onRemoteNames,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Server transfer names")
+            }
+            OutlinedButton(onClick = onRemoteSnapshot,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Server inventory backup")
             }
         }
         Text("Automation & media", style = MaterialTheme.typography.titleMedium)
