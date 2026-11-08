@@ -127,8 +127,8 @@ internal suspend fun runBatchPhoneMove(
             // independent inventory observation. Never journal a Move as
             // target-verified, or carry presentation, until the phone proves
             // this exact job is currently registered.
-            if (TransferMoveObservations.phone(item.infoHash) !=
-                io.github.gamesbyian.chunks.model.TransferMove.Observation.Present) continue
+            if (!BatchPhoneCopy.observedDestinationForMove(
+                    result, TransferMoveObservations.phone(item.infoHash))) continue
             val saved = store.save(io.github.gamesbyian.chunks.model.TransferMove.start(
                 io.github.gamesbyian.chunks.model.TransferMove.Direction.SERVER_TO_PHONE,
                 item.infoHash, item.name,
