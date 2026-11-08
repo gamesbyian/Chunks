@@ -255,9 +255,14 @@ internal class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: B
             java.security.MessageDigest.getInstance("SHA-256").digest(candidate))
 }
 
+/** Presentation destinations share the same phone engine and Add coordinator. */
+internal enum class PhonePane { TRANSFERS, ADD, OPTIONS }
+
 @Composable
 internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
+    pane: PhonePane = PhonePane.TRANSFERS,
+    showNavigationFooter: Boolean = true,
     /** Opens Smart Seeding Rules; null hides the entry. */
     onSeedingRules: (() -> Unit)? = null,
     /** Options → Artwork & media info (app-wide presentation preferences). */
@@ -863,6 +868,7 @@ internal fun LocalEngineScreen(
     val exportsRequester = remember { BringIntoViewRequester() }
     val namesRequester = remember { BringIntoViewRequester() }
     var phoneOptionsSearch by rememberSaveable { mutableStateOf("") }
+    var showBatchTools by rememberSaveable { mutableStateOf(false) }
     // Back from a phone tool returns keyboard focus to the button that opened it.
     val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val createFocus = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -881,8 +887,8 @@ internal fun LocalEngineScreen(
     }
     val addRequester = remember { BringIntoViewRequester() }
     var addNavigationRevision by remember { mutableIntStateOf(0) }
-    LaunchedEffect(addExpanded, addNavigationRevision) {
-        if (addExpanded) addRequester.bringIntoView()
+    LaunchedEffect(pane, addExpanded, addNavigationRevision) {
+        if (pane == PhonePane.ADD) addRequester.bringIntoView()
     }
     // The footer occupies measured space and never overlays a transfer action.
     Column(Modifier.fillMaxSize()) {
@@ -892,44 +898,29 @@ internal fun LocalEngineScreen(
             .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Compact orientation: who/where in two short rows, so the actual
-        // transfer inventory starts within the first viewport. Optional
-        // tools and settings live in "Phone options" beneath the list.
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            if (onBack != null) OutlinedButton(onClick = onBack,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
-            Text("On this phone (experimental)", style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.CenterVertically).semantics { heading() })
-        }
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false,
-                environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE,
-                modifier = Modifier.align(Alignment.CenterVertically))
-            if (onCombined != null) OutlinedButton(onClick = onCombined,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments…") }
-        }
-        // Make the true first-run choice visible before any setup or utility controls.
-        // The ordinary Add disclosure replaces it as soon as Add is selected.
+        // A destination must only display its own content. No Back breadcrumb,
+        // Add disclosure, or settings stack precedes the first transfer row.
         val firstRunVisible = onConnections != null && showPhoneFirstRunWelcome(
             hasConfirmedLocalInventory, inventoryStale, transfers.isEmpty(),
             !showFirstRunWelcome, transferSearch, addExpanded)
-        if (firstRunVisible) NoTransfersWelcome(
-            onAdd = { addExpanded = true; addNavigationRevision++ },
-            onConnections = onConnections!!
-        )
-        if (!firstRunVisible) PhoneIntakeDisclosure(
-            expanded = addExpanded, pendingReview = pending != null,
-            placeLabel = place?.title, onToggle = { addExpanded = !addExpanded }
-        )
+        if (pane == PhonePane.TRANSFERS) {
+            FlowRow(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                EnvironmentBadge("This device", server = false,
+                    environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE,
+                    modifier = Modifier.align(Alignment.CenterVertically))
+                if (onCombined != null) OutlinedButton(onClick = onCombined,
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments") }
+            }
+            if (firstRunVisible) NoTransfersWelcome(
+                onAdd = { addExpanded = true; addNavigationRevision++ },
+                onConnections = onConnections!!
+            )
+        }
+        if (pane == PhonePane.ADD) {
+        Text("Add on this device", style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         phoneAddAttemptSession?.attemptedTicket?.let {
             val phase = phoneAddAttemptSession.coordinator.phase
             Text("Previous phone Add: " + when (phase) {
@@ -974,8 +965,8 @@ internal fun LocalEngineScreen(
                 }
             }
         }
-        if (addExpanded) {
-        Text("Add a download on this phone", style = MaterialTheme.typography.titleMedium,
+        if (addExpanded || pane == PhonePane.ADD) {
+        Text("Add a download on this device", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.bringIntoViewRequester(addRequester)
                 .semantics { heading() })
         ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
@@ -1647,6 +1638,8 @@ internal fun LocalEngineScreen(
             )
         }
 
+        } // Add presentation
+        if (pane == PhonePane.TRANSFERS) {
         moveServer?.let { server ->
             val digest = TransferMoveStore.scopeDigest(server.aliasScope)
             val pending = remember(transfers, moveRevision, digest) {
@@ -1699,7 +1692,7 @@ internal fun LocalEngineScreen(
         // Batch selection acts on the list itself, so it sits with the list (as on
         // rTorrent) and near the outcome/confirmation area above it. With no
         // phone transfers there is nothing to select, so it is not shown.
-        if (transfers.isNotEmpty()) LocalBatchCollectionPanel(
+        if (showBatchTools && transfers.isNotEmpty()) LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
             inventoryStale = inventoryStale || busy,
@@ -1831,15 +1824,18 @@ internal fun LocalEngineScreen(
                 }
             }
         )
-        Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.bringIntoViewRequester(transfersRequester)
-                .semantics { heading() })
+        // Compact controls immediately precede the inventory. All batch tools
+        // stay collapsed until explicitly requested.
         ClearableTransferSearchField(
             value = transferSearch,
             onValueChange = { transferSearch = it },
-            label = "Search local names, aliases, folders or hashes"
+            label = "Search transfers on this device"
         )
+        OutlinedButton(onClick = { showBatchTools = !showBatchTools },
+            modifier = Modifier.heightIn(min = 48.dp)
+                .semantics { stateDescription = if (showBatchTools) "Expanded" else "Collapsed" }) {
+            Text(if (showBatchTools) "Hide batch tools" else "Batch tools")
+        }
         OutlinedButton(
             onClick = { showListOptions = !showListOptions },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -1906,13 +1902,13 @@ internal fun LocalEngineScreen(
         }
         // An empty phone says so once, instead of "Showing 0 of 0" above it.
         if (transfers.isNotEmpty())
-            Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
+            Text("Showing ${displayedTransfers.size} of ${transfers.size} transfers on this device",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
             when {
-                !hasConfirmedLocalInventory -> Text("Loading phone transfers…", style = MaterialTheme.typography.bodySmall)
-                inventoryStale -> Text("Phone transfer list is not current.", style = MaterialTheme.typography.bodySmall)
-                !firstRunVisible -> Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+                !hasConfirmedLocalInventory -> Text("Loading transfers on this device…", style = MaterialTheme.typography.bodySmall)
+                inventoryStale -> Text("The transfer list on this device is not current.", style = MaterialTheme.typography.bodySmall)
+                !firstRunVisible -> Text("No transfers on this device yet.", style = MaterialTheme.typography.bodySmall)
             }
         } else if (displayedTransfers.isEmpty()) {
             Text("No transfers match this search or filter.",
@@ -2338,9 +2334,10 @@ internal fun LocalEngineScreen(
             if (!inventoryStale && transfer.metadataKnown && transfer.progressPpm == 1_000_000)
                 LocalLibraryCopyPanel(transfer)
         }
-        // Optional phone tools and settings. The footer Options action
-        // brings this section into view; nothing here mutates on display.
-        Text("Phone options", style = MaterialTheme.typography.titleLarge,
+        } // Transfers presentation
+        if (pane == PhonePane.OPTIONS) {
+        // App-wide settings live behind a real Options destination.
+        Text("Options · this device", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 12.dp)
                 .bringIntoViewRequester(optionsRequester)
@@ -2511,6 +2508,7 @@ internal fun LocalEngineScreen(
         )
         } // names anchor
         LocalZipInterruptedExtractions()
+        } // Options presentation
     }
     ReturnToTopControl(
         visible = showBackToTop,
@@ -2523,10 +2521,10 @@ internal fun LocalEngineScreen(
         }
     )
     } // scroll viewport
-    AuthenticatedTransfersFooter(
-        // Phone Options is a scroll destination, not a disclosure.
+    if (showNavigationFooter) AuthenticatedTransfersFooter(
+        // Standalone phone tests retain their footer; ChunksApp owns the global one.
         optionsOpen = null,
-        environmentLabel = "this phone",
+        environmentLabel = "this device",
         onTransfers = { scope.launch { transfersRequester.bringIntoView() } },
         onAdd = {
             addExpanded = true
