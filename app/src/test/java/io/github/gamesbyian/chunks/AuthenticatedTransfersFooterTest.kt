@@ -69,6 +69,24 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(0, options)
     }
 
+    @Test fun normalPhoneWidthShowsFourDestinationsOnOnePersistentRow() {
+        rule.setContent {
+            ChunksTheme {
+                Box(Modifier.width(412.dp)) {
+                    AuthenticatedTransfersFooter(false, {}, {}, {}, onConnections = {})
+                }
+            }
+        }
+        val transfers = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
+        val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val connections = rule.onNodeWithContentDescription("Connections").getUnclippedBoundsInRoot()
+        val options = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
+        assertTrue("four destinations stay in one row",
+            transfers.top == add.top && add.top == connections.top && connections.top == options.top)
+        assertTrue("every tab remains an accessible 48dp target",
+            listOf(transfers, add, connections, options).all { it.bottom - it.top >= 48.dp })
+    }
+
     @Test fun bottomControlsPreserveExactExistingCallbacksAndTouchTargets() {
         var transfers = 0
         var adds = 0

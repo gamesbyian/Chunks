@@ -61,7 +61,7 @@ class PhoneContrastSweepTest {
 
     @Test fun phoneInventoryAddAndOptionsReadAtAA() {
         sweep("phone")
-        rule.onNodeWithContentDescription("+ Add").performClick()
+        rule.onNodeWithText("+ Add").performClick()
         sweep("add-top")
         rule.onNode(hasText("Optional phone download subfolder")).performScrollTo()
         sweep("add-place")

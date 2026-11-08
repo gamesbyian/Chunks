@@ -28,21 +28,21 @@ class PhoneFirstFooterAddRenderTest {
         rule.waitForIdle()
         // Launch does not scroll away from where-am-I and Back, even here.
         rule.onNodeWithText("This device").assertIsDisplayed()
-        rule.onNodeWithContentDescription("Transfers")
+        rule.onNodeWithText("Transfers")
             .assertIsDisplayed().performClick()
         rule.onNodeWithText("Search transfers on this device").assertIsDisplayed()
         // The persistent footer retains direct Add without needing to scroll
         // back through secondary tools.
-        rule.onNodeWithContentDescription("+ Add").assertIsDisplayed()
+        rule.onNodeWithText("+ Add").assertIsDisplayed()
     }
 
     @Test fun footerAddRevealsActualPhoneAddFormAboveFooter() {
         rule.onNodeWithText("This device").assertExists()
-        val add = rule.onNodeWithContentDescription("+ Add")
+        val add = rule.onNodeWithText("+ Add")
         add.assertIsDisplayed().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Add a download on this device").assertIsDisplayed()
         // The button remains actionable after opening the actual in-place form.
-        rule.onNodeWithContentDescription("+ Add").assertIsDisplayed()
+        rule.onNodeWithText("+ Add").assertIsDisplayed()
     }
 }

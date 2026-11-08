@@ -49,7 +49,7 @@ class PhoneInventoryFirstViewportTest {
         // Privacy settings are an Option on this screen, not a pinned top row.
         rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
         // Returning to the list is one tap from the same persistent footer.
-        rule.onNodeWithContentDescription("Transfers").performClick()
+        rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Search transfers on this device").assertIsDisplayed()
     }
