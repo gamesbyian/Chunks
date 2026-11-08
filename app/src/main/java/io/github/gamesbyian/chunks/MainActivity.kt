@@ -193,7 +193,7 @@ class MainActivity : ComponentActivity() {
 }
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Server"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("On this phone"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 /** "12 shown", or "3 of 12 shown" when a search or filter narrows the list (as on the phone). */
@@ -285,7 +285,7 @@ internal fun ChunksApp(
     // existing single-attempt reconnect journey. Restored routes keep their
     // explicit prior section; this default grants no server mutation authority.
     var section by rememberSaveable(saver = SectionRestoreSaver) {
-        mutableStateOf(if (remembered == null) Section.LOCAL else Section.TRANSFERS)
+        mutableStateOf(if (remembered == null) Section.LOCAL else Section.COMBINED)
     }
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
@@ -589,6 +589,9 @@ internal fun ChunksApp(
         } else {
             ChunksBrandHeader()
         }
+        // One measured viewport and one shared footer for every destination.
+        // Child routes must not each own competing bottom navigation bars.
+        Box(Modifier.weight(1f)) {
 
         if (section == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
@@ -604,8 +607,34 @@ internal fun ChunksApp(
             ) {
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
+        } else if (section == Section.ADD_CHOOSE) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Add a transfer", style = MaterialTheme.typography.headlineSmall)
+                Text("Choose its destination. The source and Start choice remain yours to review; opening a destination never submits a torrent.")
+                OutlinedButton(onClick = { section = Section.LOCAL_ADD },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("On this device")
+                }
+                if (server != null && aliasScope.isNotBlank()) {
+                    OutlinedButton(onClick = { section = Section.ADD },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("On " + (savedProfiles.firstOrNull {
+                            RemoteVerifiedUiIdentity.aliasScopeOf(it.credentials) == aliasScope
+                        }?.label ?: "the connected server"))
+                    }
+                }
+                if (savedProfiles.isNotEmpty() && server == null) {
+                    OutlinedButton(onClick = { section = Section.SERVER },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Connect to a saved server")
+                    }
+                }
+            }
         } else if (section == Section.COMBINED) {
             CombinedTransfersScreen(
+                showNavigationFooter = false,
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
@@ -763,13 +792,19 @@ internal fun ChunksApp(
         } else if (section == Section.CREATE && server == null) {
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { leaveTool() },
                 shared = createRequest, onSharedConsumed = { createRequest = null })
-        } else if (section == Section.LOCAL && server == null) {
+        } else if (section in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS) && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { leavePhone() },
                 controlsInContent = true
             ) {
                 LocalEngineScreen(
+                    pane = when (section) {
+                        Section.LOCAL_ADD -> PhonePane.ADD
+                        Section.OPTIONS -> PhonePane.OPTIONS
+                        else -> PhonePane.TRANSFERS
+                    },
+                    showNavigationFooter = false,
                     listScroll = phoneListScroll, searchState = phoneSearch,
                     magnetDraftState = addSourceDraft,
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
@@ -781,7 +816,8 @@ internal fun ChunksApp(
                     onMediaSettings = { openFromPhone(Section.MEDIA) },
                     onCreateTorrent = { openFromPhone(Section.CREATE) },
                     onZipReview = { openFromPhone(Section.ARCHIVES) },
-                    onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
+                    onCombined = if (savedProfiles.isNotEmpty() || server != null)
+                        ({ localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED }) else null,
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
                     onConnections = { section = Section.SERVER },
                     initialMagnet = phoneHandoffMagnet,
@@ -1088,7 +1124,7 @@ internal fun ChunksApp(
             val remotePrivacyScope = remember(aliasScope) {
                 RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
             }
-            if (section == Section.LOCAL) {
+            if (section in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS)) {
                 // Phone and rTorrent privacy are independent. A locked remote
                 // profile can still navigate to the separately gated phone.
                 LocalTransferPrivacyGate(
@@ -1097,7 +1133,13 @@ internal fun ChunksApp(
                     controlsInContent = true
                 ) {
                     LocalEngineScreen(
-                        listScroll = phoneListScroll, searchState = phoneSearch,
+                        pane = when (section) {
+                        Section.LOCAL_ADD -> PhonePane.ADD
+                        Section.OPTIONS -> PhonePane.OPTIONS
+                        else -> PhonePane.TRANSFERS
+                    },
+                    showNavigationFooter = false,
+                    listScroll = phoneListScroll, searchState = phoneSearch,
                         magnetDraftState = addSourceDraft,
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         addArtworkState = addAutomaticArtwork,
@@ -1108,7 +1150,8 @@ internal fun ChunksApp(
                         onMediaSettings = { openFromPhone(Section.MEDIA) },
                         onCreateTorrent = { openFromPhone(Section.CREATE) },
                         onZipReview = { openFromPhone(Section.ARCHIVES) },
-                        onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
+                        onCombined = if (savedProfiles.isNotEmpty() || server != null)
+                        ({ localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED }) else null,
                         onConnections = { section = Section.SERVER },
                         initialMagnet = phoneHandoffMagnet,
                         initialSearch = phoneSearchPrefill,
@@ -1603,6 +1646,19 @@ internal fun ChunksApp(
                 } // RemoteTransferPrivacyGate: all remote tabs/actions protected.
             } // Connected local/remote route split.
         }
+        } // scrollable/independent destination viewport
+        AuthenticatedTransfersFooter(
+            optionsOpen = null,
+            onTransfers = {
+                // One predictable home: selected environments if any are saved,
+                // otherwise the device's own inventory. Never selects a write target.
+                section = if (savedProfiles.isEmpty() && server == null) Section.LOCAL else Section.COMBINED
+            },
+            onAdd = { section = if (server != null || savedProfiles.isNotEmpty()) Section.ADD_CHOOSE else Section.LOCAL_ADD },
+            onOptions = { section = Section.OPTIONS },
+            onConnections = { section = Section.SERVER },
+            addDescription = "Choose where to add a transfer"
+        )
     }
 }
 
