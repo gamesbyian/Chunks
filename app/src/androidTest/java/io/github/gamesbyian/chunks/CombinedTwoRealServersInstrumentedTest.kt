@@ -62,6 +62,19 @@ class CombinedTwoRealServersInstrumentedTest {
     // Compact server header: "<host> · <n> transfers" with the server's own
     // Add action. Each disposable server holds exactly two fixtures.
     private fun connectedQueue() = visible("127.0.0.1 · 2 transfers") && visible("+ Add torrent")
+    private fun enterConnectedQueueIfCombined() {
+        if (connectedQueue()) return
+        // Startup may show a read-only Combined view during a saved-profile
+        // reconnect. Wait for positive authenticated navigation; never infer
+        // connection success from a saved label or silently call Connect.
+        waitFor("authenticated server list entry", 90_000) {
+            connectedQueue() || visible("Open server list")
+        }
+        if (!connectedQueue()) {
+            scrollTo("Open server list")
+            rule.onNodeWithText("Open server list").performClick()
+        }
+    }
 
     private fun scrollTo(text: String) =
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
@@ -139,8 +152,7 @@ class CombinedTwoRealServersInstrumentedTest {
         val before = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
             .map { it.hash to it.started }.toSet()
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("entry after process death") { connectedQueue() || visible("Connections") }
-            if (!connectedQueue()) rule.onNodeWithText("Connections").performClick()
+            enterConnectedQueueIfCombined()
             waitFor("reconnect after process death", 90_000) { connectedQueue() }
             assertTrue(!visible("Seedbox hostname, ruTorrent URL or RPC address"))
             stage("process-death-reconnected")
@@ -183,24 +195,11 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             connect(urlA, userA, passA)
             stage("connected-a")
-            // Options lists screen destinations; Disconnect is on "Server".
-            // The footer yields to the soft keyboard (#1274); wait for it to
-            // return after Connect instead of racing the IME hide animation.
-            waitFor("footer Options after connect") { visible("Options") }
-            rule.onNodeWithText("Options").performClick()
-            waitFor("Options destinations") { visible("Find a screen or tool") }
-            // Destination chips can reflow between scroll and tap (run
-            // 41827315011 selected the neighbouring Organize chip). Verify
-            // the Server screen opened and re-tap the exact chip if not.
-            var opened = false
-            repeat(4) {
-                if (opened) return@repeat
-                rule.onNodeWithText("Server").performScrollTo()
-                rule.waitForIdle()
-                rule.onNodeWithText("Server").performClick()
-                opened = runCatching { rule.waitUntil(10_000) { visible("Disconnect") } }.isSuccess
-            }
-            waitFor("Server screen") { visible("Disconnect") }
+            // Connections is now a persistent direct destination. The exact
+            // connected server's Disconnect remains distinct from Forget.
+            waitFor("Connections destination") { visible("Connections") }
+            rule.onNodeWithText("Connections").performClick()
+            waitFor("connected server screen") { visible("Disconnect") }
             scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
             waitFor("connection screen after Disconnect") {
@@ -288,6 +287,8 @@ class CombinedTwoRealServersInstrumentedTest {
                     rule.onNodeWithText("Select…").performClick()
                 }
             }
+            scrollTo("Batch tools")
+            rule.onNodeWithText("Batch tools").performClick()
             ensureSelecting()
             selectRow(portA)
             selectRow(portB)
@@ -310,8 +311,7 @@ class CombinedTwoRealServersInstrumentedTest {
             // Run 41789912090: with a remembered verified server, launch opens
             // that server's queue directly. Accept either entry route, but the
             // queue must appear with no address or credential retyped.
-            waitFor("relaunch entry") { connectedQueue() || visible("On this phone (experimental)") }
-            if (!connectedQueue()) rule.onNodeWithText("Back").performScrollTo().performClick()
+            enterConnectedQueueIfCombined()
             waitFor("automatic read-only reconnect of remembered server", 90_000) {
                 connectedQueue()
             }
@@ -331,8 +331,7 @@ class CombinedTwoRealServersInstrumentedTest {
         // failure, keep its last rows marked out of date, keep B live, and
         // never claim A is current.
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("relaunch entry for C2") { connectedQueue() || visible("On this phone (experimental)") }
-            if (!connectedQueue()) rule.onNodeWithText("Back").performScrollTo().performClick()
+            enterConnectedQueueIfCombined()
             waitFor("reconnect for C2", 90_000) { connectedQueue() }
             rule.onAllNodesWithText("All environments…")[0].performClick()
             waitFor("Combined for C2") { visible("All environments") && !visible("All environments…") }

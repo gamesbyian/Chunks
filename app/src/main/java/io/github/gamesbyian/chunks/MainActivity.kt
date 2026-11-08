@@ -285,7 +285,9 @@ internal fun ChunksApp(
     // existing single-attempt reconnect journey. Restored routes keep their
     // explicit prior section; this default grants no server mutation authority.
     var section by rememberSaveable(saver = SectionRestoreSaver) {
-        mutableStateOf(if (remembered == null) Section.LOCAL else Section.COMBINED)
+        // A saved login needs the existing one-shot authenticated reconnect
+        // owner to mount. Combined is a read-only list, not a reconnect executor.
+        mutableStateOf(if (remembered == null) Section.LOCAL else Section.TRANSFERS)
     }
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
