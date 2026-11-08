@@ -322,6 +322,8 @@ internal fun ChunksApp(
     // (phone ↔ All environments ↔ server ↔ settings) and rotation. It holds
     // no selection, confirmation or command state.
     val phoneListScroll = rememberScrollState()
+    val phoneAddScroll = rememberScrollState()
+    val phoneOptionsScroll = rememberScrollState()
     val phoneSearch = rememberSaveable { mutableStateOf("") }
     // The single Add source draft belongs to the app, never to the currently
     // displayed phone/server Add form. Both adapters edit the same source;
@@ -805,17 +807,25 @@ internal fun ChunksApp(
                         else -> PhonePane.TRANSFERS
                     },
                     showNavigationFooter = false,
-                    listScroll = phoneListScroll, searchState = phoneSearch,
+                    listScroll = when (section) {
+                        Section.LOCAL_ADD -> phoneAddScroll
+                        Section.OPTIONS -> phoneOptionsScroll
+                        else -> phoneListScroll
+                    }, searchState = phoneSearch,
                     magnetDraftState = addSourceDraft,
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     addArtworkState = addAutomaticArtwork,
                     pendingAddState = phoneReviewedTorrent,
                     phoneAddAttemptSession = activePhoneAddAttempt,
                     onBack = { leavePhone() },
-                    onSeedingRules = { openFromPhone(Section.SEEDING) },
-                    onMediaSettings = { openFromPhone(Section.MEDIA) },
-                    onCreateTorrent = { openFromPhone(Section.CREATE) },
-                    onZipReview = { openFromPhone(Section.ARCHIVES) },
+                    onSeedingRules = { openTool(Section.SEEDING,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                    onMediaSettings = { openTool(Section.MEDIA,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                    onCreateTorrent = { openTool(Section.CREATE,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                    onZipReview = { openTool(Section.ARCHIVES,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                     onCombined = if (savedProfiles.isNotEmpty() || server != null)
                         ({ localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED }) else null,
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
@@ -1139,17 +1149,25 @@ internal fun ChunksApp(
                         else -> PhonePane.TRANSFERS
                     },
                     showNavigationFooter = false,
-                    listScroll = phoneListScroll, searchState = phoneSearch,
+                    listScroll = when (section) {
+                        Section.LOCAL_ADD -> phoneAddScroll
+                        Section.OPTIONS -> phoneOptionsScroll
+                        else -> phoneListScroll
+                    }, searchState = phoneSearch,
                         magnetDraftState = addSourceDraft,
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         addArtworkState = addAutomaticArtwork,
                         pendingAddState = phoneReviewedTorrent,
                         phoneAddAttemptSession = activePhoneAddAttempt,
                         onBack = { leavePhone() },
-                        onSeedingRules = { openFromPhone(Section.SEEDING) },
-                        onMediaSettings = { openFromPhone(Section.MEDIA) },
-                        onCreateTorrent = { openFromPhone(Section.CREATE) },
-                        onZipReview = { openFromPhone(Section.ARCHIVES) },
+                        onSeedingRules = { openTool(Section.SEEDING,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                        onMediaSettings = { openTool(Section.MEDIA,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                        onCreateTorrent = { openTool(Section.CREATE,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                        onZipReview = { openTool(Section.ARCHIVES,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                         onCombined = if (savedProfiles.isNotEmpty() || server != null)
                         ({ localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED }) else null,
                         onConnections = { section = Section.SERVER },
