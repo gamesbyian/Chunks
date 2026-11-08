@@ -108,7 +108,7 @@ class TransferAliasStoreExactPrincipalTest {
         assertEquals(TransferAliasStore.MoveAliasCarry.FAILED,
             store.carryVerifiedMoveAlias(alice, phone, "not-a-v1-infohash"))
         assertEquals(TransferAliasStore.MoveAliasCarry.FAILED,
-            store.carryVerifiedMoveAlias(alice + "\\u0000ambiguous", phone, hash))
+            store.carryVerifiedMoveAlias(alice + 0.toChar() + "ambiguous", phone, hash))
         assertEquals(TransferAliasStore.MoveAliasCarry.TARGET_ALREADY_SET,
             store.carryVerifiedMoveAlias(alice, alice, hash))
         assertEquals(1, prefs.all.size)
