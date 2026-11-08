@@ -107,6 +107,32 @@ class SmartRoutingPreviewTest {
             evidence, listOf(low.copy(minimumConfidence = 65)), listOf(phone)).outcome)
     }
 
+    @Test fun audiobookContainerIsRecognizedButGenericDiscImageIsNotAProvenGame() {
+        val audio = SmartRoutingPreview.classify(Evidence("Chapter one",
+            listOf("Chapter 01.m4b")))
+        assertEquals(Kind.AUDIOBOOK, audio.kind)
+        assertEquals(95, audio.confidence)
+        val disk = SmartRoutingPreview.classify(Evidence("unknown", listOf("image.iso")))
+        assertNull(disk.kind)
+        assertEquals(0, disk.confidence)
+        assertEquals(Outcome.ASK, SmartRoutingPreview.decide(
+            Evidence("unknown", listOf("image.iso")),
+            listOf(rule("games", 100, Kind.GAME, phone.environmentId)),
+            listOf(phone)).outcome)
+    }
+
+    @Test fun duplicateRuleIdsCannotSelectDifferentAccountsByCallerOrder() {
+        val evidence = Evidence("show", listOf("Show.S01E01.mkv"))
+        val left = rule("ambiguous", 50, Kind.TV, phone.environmentId)
+        val right = rule("ambiguous", 50, Kind.TV, server.environmentId)
+        assertThrows(IllegalArgumentException::class.java) {
+            SmartRoutingPreview.decide(evidence, listOf(left, right), listOf(phone, server))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            SmartRoutingPreview.decide(evidence, listOf(right, left), listOf(phone, server))
+        }
+    }
+
     @Test fun evidenceAndRulesRejectMalformedOrUnboundedInputs() {
         assertThrows(IllegalArgumentException::class.java) {
             Evidence("bad\u0000tracker")
