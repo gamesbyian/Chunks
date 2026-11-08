@@ -273,13 +273,20 @@ internal class PhoneAddAttemptSession(
         val matching = transfers.filter {
             it.infoHash.equals(ticket.intent.source.expectedInfoHash, ignoreCase = true)
         }
-        // This is a completed, accepted full phone inventory. Two native
-        // rows with the same hash cannot identify one exact job/Place. Feed
-        // the authoritative negative through the coordinator so a newer
-        // contradiction revokes an earlier Start-unverified acknowledgement,
-        // while the attempted-write/no-retry fence remains intact.
+        // Multiple native rows prove presence of this hash, but cannot
+        // establish one exact job at the reviewed Place. Record an accepted
+        // ambiguous observation, never a false assertion of absence.
         if (matching.size > 1)
-            return reconcile(ticket, null, place, observedAtEpochMillis)
+            return coordinator.reconcileExactSession(ticket,
+                UniversalAddCoordinator.ExactSessionObservation(
+                    environment = ticket.intent.target.environment,
+                    infoHash = ticket.intent.source.expectedInfoHash,
+                    observedAtEpochMillis = observedAtEpochMillis,
+                    registered = true,
+                    reviewedPlaceVerified = false,
+                    started = null,
+                    newRegistrationVerified = false
+                ))
         return reconcile(ticket, matching.singleOrNull(), place, observedAtEpochMillis)
     }
 
