@@ -395,6 +395,12 @@ class CombinedTwoRealServersInstrumentedTest {
             }
             assertTrue("Offline server A must not be shown as Live", !line(portA, ": Live"))
             assertTrue("Signed-in server B stays live", line(portB, "· 2 transfers") && !line(portB, "Refresh failed"))
+            // The compact stale-source summary follows the search/filter
+            // controls in the lazy Combined list. Bring it into composition
+            // before checking the truthful, specific out-of-date claim.
+            // This remains an assertion on the production wording, not a
+            // substitute for the independently verified A/B status rows.
+            scrollTo("some environments are missing or out of date")
             assertTrue("Combined must flag an out-of-date source",
                 visible("some environments are missing or out of date"))
             stage("c2-offline-truthful")
