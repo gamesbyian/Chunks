@@ -50,7 +50,7 @@ class LocalTransferPrivacyGateInstrumentedTest {
                 }
             }
         }
-        compose.onNodeWithText("Transfers on this device locked").assertExists()
+        compose.onNodeWithText("Transfers on this device are locked").assertExists()
         compose.onNodeWithText("Unlock transfers on this device").assertExists()
         compose.onNodeWithText("Back to Chunks").assertExists()
         compose.onNodeWithText("PERSONAL TORRENT TITLE AND PATH").assertDoesNotExist()
@@ -75,7 +75,7 @@ class LocalTransferPrivacyGateInstrumentedTest {
                 }
             }
         }
-        compose.onNodeWithText("Transfers on this device locked").assertExists()
+        compose.onNodeWithText("Transfers on this device are locked").assertExists()
         compose.onNodeWithText("NEVER DISCLOSE SOURCE").assertDoesNotExist()
         compose.runOnIdle { assertFalse(composed) }
     }
@@ -94,6 +94,6 @@ class LocalTransferPrivacyGateInstrumentedTest {
             "Privacy for transfers on this device is off. Enabling it requires a device screen lock " +
                 "and will immediately hide transfers."
         ).assertExists()
-        compose.onNodeWithText("Transfers on this device locked").assertDoesNotExist()
+        compose.onNodeWithText("Transfers on this device are locked").assertDoesNotExist()
     }
 }

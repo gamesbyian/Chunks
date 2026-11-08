@@ -346,14 +346,17 @@ private fun TransferPrivacyGate(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Back to Chunks")
             }
-            Text(lockedTitle + " locked", style = MaterialTheme.typography.headlineMedium)
+            Text(if (redactLocalService) "Transfers on this device are locked"
+                else lockedTitle + " locked", style = MaterialTheme.typography.headlineMedium)
             Text("Your torrent names, files, folders, Collections and transfer controls " +
                 "are hidden until Android verifies your fingerprint, face or device screen lock.")
             OutlinedButton(
                 onClick = ::authenticateUnlock, enabled = !busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
             ) {
-                Text(if (busy) "Authenticating…" else "Unlock " + lockedTitle.lowercase())
+                Text(if (busy) "Authenticating…"
+                    else if (redactLocalService) "Unlock transfers on this device"
+                    else "Unlock " + lockedTitle.lowercase())
             }
             if (activity == null || !TransferDeviceAuthenticator.hasSecureLock(activity))
                 Text("This device currently has no usable secure screen lock. " +
@@ -381,9 +384,9 @@ private fun TransferPrivacyGate(
         val settings: @Composable () -> Unit = {
             if (settingsOpen) {
                 Text(if (mode == TransferLockMode.NEVER)
-                    (if (redactLocalService) "Privacy for transfers on this device is off." else
-                        subject + " privacy is off.") +
-                        " Enabling it requires a device screen lock and will immediately hide transfers."
+                    (if (redactLocalService) "Privacy for transfers on this device is off. "
+                    else subject + " privacy is off. ") +
+                        "Enabling it requires a device screen lock and will immediately hide transfers."
                     else "Current privacy mode: " + mode.name.replace('_', ' ').lowercase() +
                         ". Every change, including disabling, requires fresh Android authentication.",
                     style = MaterialTheme.typography.bodySmall)
