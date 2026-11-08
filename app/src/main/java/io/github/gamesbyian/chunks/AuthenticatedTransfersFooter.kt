@@ -20,6 +20,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * Persistent, measured navigation beneath the authenticated server inventory.
@@ -54,8 +55,7 @@ internal fun AuthenticatedTransfersFooter(
             // At 412dp, 140% fonts already make "Transfers" wrap awkwardly
             // in a three-column row. Give Options its own row before that
             // threshold, without penalizing normal-scale everyday layouts.
-            val stacked = onConnections != null || maxWidth < 380.dp ||
-                LocalDensity.current.fontScale >= 1.3f
+            val stacked = maxWidth < 400.dp || LocalDensity.current.fontScale >= 1.3f
             if (stacked) {
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
@@ -83,9 +83,21 @@ internal fun AuthenticatedTransfersFooter(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel)
-                    FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription)
-                    FooterOptions(optionsOpen, onOptions, Modifier.weight(1f), environmentLabel)
+                    if (onConnections != null) {
+                        // Four equal, compact destinations at ordinary handset font size.
+                        // The taller two-row variant above remains for narrow/large text.
+                        FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel,
+                            FourItemPadding, compact = true)
+                        FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription,
+                            FourItemPadding, compact = true)
+                        FooterConnections(onConnections, Modifier.weight(1f), FourItemPadding, compact = true)
+                        FooterOptions(optionsOpen, onOptions, Modifier.weight(1f), environmentLabel,
+                            FourItemPadding, compact = true)
+                    } else {
+                        FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel)
+                        FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription)
+                        FooterOptions(optionsOpen, onOptions, Modifier.weight(1f), environmentLabel)
+                    }
                 }
             }
         }
@@ -93,47 +105,59 @@ internal fun AuthenticatedTransfersFooter(
 }
 
 private val CompactFooterPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+private val FourItemPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 3.dp, vertical = 8.dp)
 
 @Composable
 private fun FooterTransfers(
     onClick: () -> Unit, modifier: Modifier, environmentLabel: String?,
-    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
+    compact: Boolean = false
 ) {
     OutlinedButton(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
         .then(if (environmentLabel == null) Modifier else Modifier.semantics {
             contentDescription = "Show transfers on $environmentLabel"
         })) {
-        Text("Transfers", maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text("Transfers", fontSize = if (compact) 12.sp else 14.sp,
+            maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
 private fun FooterAdd(
     onClick: () -> Unit, modifier: Modifier, environmentLabel: String?, description: String?,
-    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
+    compact: Boolean = false
 ) {
     val spoken = description ?: environmentLabel?.let { "Add torrent on $it" }
     Button(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
         .then(if (spoken == null) Modifier else Modifier.semantics {
             contentDescription = spoken
         })) {
-        Text("+ Add", maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text("+ Add", fontSize = if (compact) 12.sp else 14.sp,
+            maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
-private fun FooterConnections(onClick: () -> Unit, modifier: Modifier) {
-    OutlinedButton(onClick = onClick, modifier = modifier.heightIn(min = 48.dp)
+private fun FooterConnections(onClick: () -> Unit, modifier: Modifier,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
+    compact: Boolean = false) {
+    OutlinedButton(onClick = onClick, contentPadding = contentPadding,
+        modifier = modifier.heightIn(min = 48.dp)
         .semantics { contentDescription = "Connections" }) {
-        Text("Connections", maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text("Connections", fontSize = if (compact) 12.sp else 14.sp,
+            maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
     }
 }
 
 @Composable
 private fun FooterOptions(
-    open: Boolean?, onClick: () -> Unit, modifier: Modifier, environmentLabel: String?
+    open: Boolean?, onClick: () -> Unit, modifier: Modifier, environmentLabel: String?,
+    contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
+    compact: Boolean = false
 ) {
     OutlinedButton(
+        contentPadding = contentPadding,
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp)
             .semantics {
@@ -142,6 +166,7 @@ private fun FooterOptions(
                 if (open != null) stateDescription = if (open) "Expanded" else "Collapsed"
             }
     ) {
-        Text("Options", maxLines = 2, overflow = TextOverflow.Ellipsis)
+        Text("Options", fontSize = if (compact) 12.sp else 14.sp,
+            maxLines = if (compact) 1 else 2, overflow = TextOverflow.Ellipsis)
     }
 }
