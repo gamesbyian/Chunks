@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **LIVE SIX-PR OWNERSHIP · 2026-11-09 UTC:** Agent1 Options clipboard presentation #1442; Agent2 phone source/intent boundaries #1445 and #1449; Agent3 authenticated rTorrent reader #1444 and remote exact readback coordination #1443; Agent4 QA #1448, source/API35 tests, merge decisions, APK identity and all central engineering documentation. #1447 has merged main `9435087e`; old #1421/#1429/#1431 are closed unmerged superseded, do not edit their branches. Keep central docs owned only by Agent4 and production files solely by each assigned agent.
+
+
 > **ACTIVE FOUR-LANE HANDOFF · 2026-11-09 UTC:** Main `5a5779ad` now contains #1441 remote delete safety, #1438 remote progress, #1435 Share-magnet scheme and #1439 DHT Options. Agent1 owns Options UI (#1442 clipboard preference) and its real clipboard/footer IME/API29/peer red tests; Agent2 owns Android Share URI-list #1440 restack + focused phone intake; Agent3 owns remote contrary exact-session Recheck #1443 and exact account/Place/Start proof; Agent4 exclusively owns central docs, test/CI evidence, issue reconciliation and merges. Older #1421/#1429/#1431 are superseded stacks, not acceptance. Do not modify the other lane's production files; no new submission authority or hidden automatic mutation. Current-main APK/owner Pixel/protected account tiers still require qualification.
 
 
