@@ -216,7 +216,18 @@ class CombinedTwoRealServersInstrumentedTest {
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
             // Two real sources, two rows each: the union must keep the
             // same-hash transfer once PER SERVER, never collapse it by hash.
-            waitFor("union of both real servers", 60_000) { visible("Showing 4") }
+            // The compact count is an earlier LazyColumn item. Clicking the
+            // bottom-of-list saved-server load action can leave the viewport
+            // scrolled past it, so a raw semantics lookup can falsely report
+            // absence even when both same-hash rows are already composed.
+            // Scroll to the actual count item; still require a real four-row
+            // result before proceeding with all per-server identity checks.
+            waitFor("union of both real servers", 60_000) {
+                runCatching {
+                    scrollTo("Showing 4")
+                    visible("Showing 4")
+                }.getOrDefault(false)
+            }
             stage("combined-union")
             scrollTo("Environment status")
             rule.onNodeWithText("Environment status", substring = true).performClick()
