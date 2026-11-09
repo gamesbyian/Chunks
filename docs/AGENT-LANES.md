@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **NEXT AGENT START / OWNERSHIP · 2026-11-09 UTC:** Read [binding next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) plus live main/heads/checks, AGENTS/WORK-QUEUE/LEDGER/COVERAGE before claiming work. Five open PRs at baseline: #1442 Agent1 (Options/native red), #1443 Agent3+Agent1 (Recheck/native red), #1444 Agent3 (auth/foundation red, draft installed skipped), #1449/#1450 Agent2 (Share/VIEW draft skipped). New priority: Agent1 navigation/footer/list/Details/action grid; Agent2 shared Add artwork preference and phone intake; Agent3 authenticated rTorrent and media authorized enrichment; Agent4 independent test/CI/source-APK evidence, merges and central docs. No assumption agents are running or files indefinitely reserved. #1453/#1454 reflect binding owner directions; no red/skipped/old-head merges.
+
+
 > **REPLACEMENT OWNERSHIP UPDATE · 2026-11-09 UTC:** Agent2 now owns clean-main draft #1450 uppercase `MAGNET` VIEW resolver rather than obsolete closed #1445, alongside #1449 invalid extra fail-closed intake. Agent4 owns merge/qualification. All other lanes as below.
 
 
