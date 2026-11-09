@@ -549,7 +549,7 @@ internal fun LocalEngineScreen(
     }
     LaunchedEffect(initialMagnet, busy, phoneAddAttemptSession?.attemptedTicket) {
         if (busy || phoneAddAttemptSession?.attemptedTicket != null) return@LaunchedEffect
-        if (reviewablePhoneExternalText(initialMagnet)) {
+        if (initialMagnet != null && reviewablePhoneExternalText(initialMagnet)) {
             selectTextSource(initialMagnet)
             addExpanded = true
             onPrefillConsumed()
