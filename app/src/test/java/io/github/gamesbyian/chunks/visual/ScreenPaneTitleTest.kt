@@ -42,6 +42,9 @@ class ScreenPaneTitleTest {
         pane("Options").assertExists()
         rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
+        pane("All environments").assertExists()
+        rule.onNodeWithText("Open transfers on this device").performScrollTo().performClick()
+        rule.waitForIdle()
         pane("Transfers on this device").assertExists()
     }
 }
