@@ -2402,11 +2402,11 @@ internal fun LocalEngineScreen(
                             if (onOpenAdd != null) onOpenAdd.invoke()
                             else { addExpanded = true; addNavigationRevision++ }
                         }
-                        PhoneOptionsShortcut.SPEED_LIMITS -> scope.launch { speedRequester.bringIntoView() }
-                        PhoneOptionsShortcut.PRIVACY -> scope.launch { privacyRequester.bringIntoView() }
-                        PhoneOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { restoreRequester.bringIntoView() }
+                        PhoneOptionsShortcut.SPEED_LIMITS -> scope.launch { androidx.compose.runtime.withFrameNanos { }; speedRequester.bringIntoView() }
+                        PhoneOptionsShortcut.PRIVACY -> scope.launch { androidx.compose.runtime.withFrameNanos { }; privacyRequester.bringIntoView() }
+                        PhoneOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { androidx.compose.runtime.withFrameNanos { }; restoreRequester.bringIntoView() }
                         PhoneOptionsShortcut.EXPORTS -> { showPhoneTools = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; exportsRequester.bringIntoView() } }
-                        PhoneOptionsShortcut.COLLECTION_NAMES -> scope.launch { namesRequester.bringIntoView() }
+                        PhoneOptionsShortcut.COLLECTION_NAMES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; namesRequester.bringIntoView() }
                     }
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Column(Modifier.fillMaxWidth()) {
@@ -2416,6 +2416,10 @@ internal fun LocalEngineScreen(
                 }
             }
         }
+        // Search is a filtered destination view: unrelated settings and their
+        // duplicate headings must not remain below matching shortcut cards.
+        // Clearing search restores the existing controls without saving new state.
+        if (phoneOptionsSearch.isBlank()) {
         if (onConnections != null) {
             Text("Clients & environments", style = MaterialTheme.typography.titleMedium)
             OutlinedButton(onClick = onConnections, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -2574,6 +2578,7 @@ internal fun LocalEngineScreen(
         )
         } // names anchor
         LocalZipInterruptedExtractions()
+        } // full Options controls, hidden while displaying search results
         } // Options presentation
     }
     ReturnToTopControl(
