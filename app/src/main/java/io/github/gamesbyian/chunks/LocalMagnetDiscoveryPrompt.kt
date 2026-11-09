@@ -34,7 +34,8 @@ internal fun LocalMagnetDiscoveryPrompt(
     if (!LocalMagnetDiscoveryAdvice.warn(magnet, dhtEnabled)) return
     Text("This magnet has no usable tracker address and DHT is off. " +
         "Chunks may be unable to find peers and fetch its metadata. " +
-        "Enable DHT or use a .torrent file with tracker information. " +
+        (if (opensOptions) "Configure DHT in Options" else "Enable DHT") +
+        " or use a .torrent file with tracker information. " +
         "Without metadata or peers, downloading cannot begin.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.error)
