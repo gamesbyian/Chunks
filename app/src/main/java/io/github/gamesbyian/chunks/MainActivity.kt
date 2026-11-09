@@ -1708,6 +1708,10 @@ internal fun ChunksApp(
                 // modes. Its chips change view scopes only; this route grants
                 // no engine, server or per-job mutation authority.
                 section = Section.COMBINED
+                // Re-tapping Transfers is useful even when already on this
+                // list: return to its first row without resetting search,
+                // filter, exact environment selection or any Add draft.
+                scope.launch { combinedListState.scrollToItem(0) }
             },
             onAdd = {
                 section = when {
