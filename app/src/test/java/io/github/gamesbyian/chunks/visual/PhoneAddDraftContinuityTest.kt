@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -28,16 +29,34 @@ class PhoneAddDraftContinuityTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     @Test fun artworkOptOutSurvivesAllEnvironmentsRoundTripWithoutAdding() {
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
-            .performScrollTo().performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40))
-        rule.onNodeWithText("Artwork & metadata").performScrollTo().performClick()
-        val choice = "Automatically identify and fetch artwork & metadata"
-        rule.onNodeWithText(choice).performScrollTo().performClick().assertIsOff()
-        rule.onNodeWithText("Options").performClick()
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("Artwork & metadata").performScrollTo().performClick()
-        rule.onNodeWithText(choice).performScrollTo().assertIsOff()
+        // This test explicitly chooses the globally enabled branch. The app
+        // intentionally hides the Add choice when global artwork is disabled.
+        // Never change provider consent, and restore pre-existing preferences.
+        val media = io.github.gamesbyian.chunks.media.ChunksMedia.get(rule.activity)
+        val original = media.loadSettings()
+        media.updateSettings(original.copy(showArtwork = true, downloadArtwork = true))
+        try {
+            rule.onNodeWithText("+ Add").performClick()
+            rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
+                .performScrollTo().performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40))
+            // AddArtworkChoice deliberately waits for a local IO settings read.
+            // The actual choice must materialize before any user interaction.
+            rule.waitUntil(10_000) {
+                rule.onAllNodesWithText("Artwork & metadata").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("Artwork & metadata").performScrollTo().performClick()
+            val choice = "Automatically identify and fetch artwork & metadata"
+            rule.onNodeWithText(choice).performScrollTo().performClick().assertIsOff()
+            rule.onNodeWithText("Options").performClick()
+            rule.onNodeWithText("+ Add").performClick()
+            rule.waitUntil(10_000) {
+                rule.onAllNodesWithText("Artwork & metadata").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("Artwork & metadata").performScrollTo().performClick()
+            rule.onNodeWithText(choice).performScrollTo().assertIsOff()
+        } finally {
+            media.updateSettings(original)
+        }
     }
 
     @Test fun magnetDraftSurvivesAllEnvironmentsRoundTrip() {
