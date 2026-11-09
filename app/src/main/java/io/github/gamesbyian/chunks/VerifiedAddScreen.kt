@@ -932,6 +932,9 @@ fun VerifiedAddScreen(
                         rechecking = true
                         progressRevision++
                         val ticket = requireNotNull(draft.attemptTicket)
+                        val priorConfirmedHash = if (draft.coordinator.phase ==
+                            UniversalAddCoordinator.Phase.SESSION_CONFIRMED)
+                            verifiedHash else null
                         scope.launch {
                             try {
                                 val adapter = RemoteUniversalAddAdapter(remote)
@@ -1032,6 +1035,20 @@ fun VerifiedAddScreen(
                                 uncertain = true
                                 outcome = "Could not read server state. The earlier Add might have applied; inspect the transfer list before retrying."
                             } finally {
+                                // A failed, stale or incomplete Recheck cannot
+                                // silently remove the previous acknowledgment.
+                                // Only the coordinator may revoke that proof
+                                // after accepting a newer exact-job witness.
+                                if (draft.attemptTicket === ticket && verifiedHash == null) {
+                                    val retained = retainedAcknowledgedHash(
+                                        verifiedHash, priorConfirmedHash, draft.coordinator.phase)
+                                    if (retained != null) {
+                                        verifiedHash = retained
+                                        outcome = outcome.orEmpty() +
+                                            " Previous exact-session confirmation is retained; " +
+                                            "you may acknowledge it without resending Add or Start."
+                                    }
+                                }
                                 rechecking = false
                                 onComplete()
                             }
@@ -1208,8 +1225,18 @@ internal fun canCloseRemoteAddReview(
     verifiedHash: String?,
     uncertain: Boolean
 ): Boolean = when (phase) {
-    UniversalAddCoordinator.Phase.SESSION_CONFIRMED,
+    UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> verifiedHash != null
     UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> true
     UniversalAddCoordinator.Phase.VERIFIED -> verifiedHash != null && !uncertain
     else -> false
+}
+
+/** Restores a prior confirmed exact-session hash after an inconclusive Recheck,
+ * but only if the existing coordinator STILL owns that positive confirmation. */
+internal fun retainedAcknowledgedHash(
+    current: String?,
+    previous: String?,
+    phase: UniversalAddCoordinator.Phase
+): String? = current ?: previous?.takeIf {
+    phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
 }

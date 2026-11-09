@@ -57,10 +57,18 @@ class VerifiedAddRecheckWitnessTest {
             .forEach { assertFalse(shouldProbeContradictoryRecheck(it)) }
     }
 
-    @Test fun incompleteReadCannotHideExistingSessionAcknowledgement() {
+    @Test fun incompleteReadRetainsPriorProofWithoutCreatingDeadAcknowledgment() {
         val hash = "a".repeat(40)
-        assertTrue(canCloseRemoteAddReview(UniversalAddCoordinator.Phase.SESSION_CONFIRMED,
-            verifiedHash = null, uncertain = true))
+        val phase = UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+        assertFalse(canCloseRemoteAddReview(phase, verifiedHash = null, uncertain = true))
+        assertEquals(hash, retainedAcknowledgedHash(null, hash, phase))
+        assertTrue(canCloseRemoteAddReview(phase,
+            verifiedHash = retainedAcknowledgedHash(null, hash, phase), uncertain = true))
+        assertNull(retainedAcknowledgedHash(null, hash,
+            UniversalAddCoordinator.Phase.READBACK_REQUIRED))
+        assertNull(retainedAcknowledgedHash(null, hash,
+            UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN))
+        assertNull(retainedAcknowledgedHash(null, null, phase))
         assertTrue(canCloseRemoteAddReview(
             UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
             verifiedHash = null, uncertain = true))
