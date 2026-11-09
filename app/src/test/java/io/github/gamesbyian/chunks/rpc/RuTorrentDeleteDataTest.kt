@@ -47,6 +47,18 @@ class RuTorrentDeleteDataTest {
         }
     }
 
+    @Test fun nonzeroCommandResultsCannotBecomeAcceptedDeletionQueueReceipt() {
+        for (body in listOf(
+                "[1,0,0]", "[0,-1,0]", "[0,0,2]", "[1,1,1]",
+                "[\"\",1,0]", "[\"\",0,\"1\"]", "[\"\",\"-1\",\"0\"]",
+                "[\"1\",\"0\",\"0\"]", "[\"\",0,-1]")) {
+            assertFalse("Nonzero/negative cleanup command result: $body",
+                RuTorrentDeleteData.acceptedResponse(body))
+        }
+        assertTrue(RuTorrentDeleteData.acceptedResponse("[\"0\",\"0\",\"0\"]"))
+        assertTrue(RuTorrentDeleteData.acceptedResponse("[  \"\" , \"0\" , 0 ]"))
+    }
+
     @Test fun refusesHtmlOrFalseRatherThanClaimingDeletion() {
         assertTrue(RuTorrentDeleteData.acceptedResponse("[0,0,0]"))
         assertTrue(RuTorrentDeleteData.acceptedResponse("[\"\",\"0\",\"0\"]"))

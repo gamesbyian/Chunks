@@ -49,15 +49,16 @@ internal object RuTorrentDeleteData {
      * actual accepted response shape: no Android JSON stub in host JVM tests,
      * no HTML, objects, trailers, nested arrays or permissive prefix parsing.
      */
-    private val scalarArray = Regex("""\[\s*(?:(?:-?[0-9]+|"-?[0-9]+")
-        (?:\s*,\s*(?:-?[0-9]+|"-?[0-9]+"))*)?\s*\]""".replace("\n", "").replace(" ", ""))
-    // Real legacy rTorrent: d.set_custom5 -> "", then d.delete_tied/d.erase
-    // -> decimal zeroes, so upstream PHP sends ["","0","0"].
-    private val voidFirstThree = Regex("""\[\s*""\s*,\s*(?:-?[0-9]+|"-?[0-9]+")\s*,\s*(?:-?[0-9]+|"-?[0-9]+")\s*\]""")
+    // rTorrent's setter/delete_tied/erase command results are success zeroes.
+    // A three-element JSON array alone is not a successful cleanup receipt:
+    // a nonzero or negative command result must not become QueuedForCleanup.
+    // Legacy d.set_custom5 may return "" instead of its numeric zero.
+    private val zeroThree = Regex("""\[\s*(?:0|"0")\s*,\s*(?:0|"0")\s*,\s*(?:0|"0")\s*\]""")
+    private val voidThenZeroes = Regex("""\[\s*""\s*,\s*(?:0|"0")\s*,\s*(?:0|"0")\s*\]""")
+
     fun acceptedResponse(body: String): Boolean =
         body.length in 5..16384 &&
-            (voidFirstThree.matches(body) ||
-                (scalarArray.matches(body) && body.count { it == ',' } == 2))
+            (zeroThree.matches(body) || voidThenZeroes.matches(body))
 
 }
 

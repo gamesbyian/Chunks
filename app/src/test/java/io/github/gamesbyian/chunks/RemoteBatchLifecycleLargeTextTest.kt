@@ -38,7 +38,7 @@ class RemoteBatchLifecycleLargeTextTest {
         RemoteTransfer("2".repeat(40), "Second started item", 1000, 100, true, "/p")
     )
 
-    @Test fun narrowTwoHundredPercentActionsStackAndCannotBypassMutationLease() {
+    @Test fun narrowTwoHundredPercentActionsFitTwoAcrossAndCannotBypassMutationLease() {
         var attempts = 0
         var settled = 0
         val commands = mutableListOf<String>()
@@ -66,21 +66,21 @@ class RemoteBatchLifecycleLargeTextTest {
 
         val start = rule.onNode(hasText("Start 1") and hasClickAction()).getUnclippedBoundsInRoot()
         val stop = rule.onNode(hasText("Stop 1") and hasClickAction()).getUnclippedBoundsInRoot()
-        assertTrue("Start/Stop must stack vertically at 200% text", stop.top >= start.bottom)
+        assertEquals("Start/Stop must share one row at 200% text", start.top, stop.top)
+        assertTrue("Start/Stop targets must not overlap", start.right <= stop.left)
         assertTrue(start.bottom - start.top >= 48.dp)
         assertTrue(stop.bottom - stop.top >= 48.dp)
-        assertEquals(start.left, stop.left)
-        assertEquals(start.right, stop.right)
+        
         rule.onNodeWithText("Start 1").performClick()
 
         rule.onNodeWithText("Cancel").performScrollTo()
         val confirm = rule.onNode(hasText("Confirm Start") and hasClickAction()).getUnclippedBoundsInRoot()
         val cancel = rule.onNode(hasText("Cancel") and hasClickAction()).getUnclippedBoundsInRoot()
-        assertTrue("Confirm/Cancel must stack at 200% text", cancel.top >= confirm.bottom)
+        assertEquals("Confirm/Cancel must share one row at 200% text", confirm.top, cancel.top)
+        assertTrue("Confirmation controls must not overlap", confirm.right <= cancel.left)
         assertTrue(confirm.bottom - confirm.top >= 48.dp)
         assertTrue(cancel.bottom - cancel.top >= 48.dp)
-        assertEquals(confirm.left, cancel.left)
-        assertEquals(confirm.right, cancel.right)
+        
         rule.onNodeWithText("Cancel").performClick()
         assertEquals(0, attempts)
 
