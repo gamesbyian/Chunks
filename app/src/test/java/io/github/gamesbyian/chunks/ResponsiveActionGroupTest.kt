@@ -48,7 +48,7 @@ class ResponsiveActionGroupTest {
         }
     }
 
-    @Test fun narrowTwoHundredPercentActionsStackInsideViewportAndRemainClickable() {
+    @Test fun narrowTwoHundredPercentActionsWrapTwoAcrossAndRemainClickable() {
         val calls = mutableListOf<String>()
         show(width = 288, fontScale = 2f, calls = calls)
         val container = rule.onNodeWithTag("action-group").getUnclippedBoundsInRoot()
@@ -56,8 +56,10 @@ class ResponsiveActionGroupTest {
         val bounds = labels.map { label ->
             rule.onNodeWithText(label).assertExists().getUnclippedBoundsInRoot()
         }
-        assertTrue("buttons must stack instead of competing for horizontal pixels",
-            bounds[0].bottom < bounds[1].top && bounds[1].bottom < bounds[2].top)
+        assertTrue("two actions occupy the first row at 200% text",
+            bounds[0].top == bounds[1].top && bounds[0].right <= bounds[1].left)
+        assertTrue("the third action wraps without adding a three-row stack",
+            bounds[2].top >= bounds[0].bottom)
         bounds.forEach { b ->
             assertTrue("each target is at least 48dp high", b.bottom - b.top >= 48.dp)
             assertTrue("action clipped left", b.left >= container.left)
