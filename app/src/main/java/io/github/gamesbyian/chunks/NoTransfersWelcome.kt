@@ -27,7 +27,7 @@ internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: () -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Your transfers will appear here", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.semantics { heading() })
-        Text("Start a download on this phone, or connect a remote BitTorrent client. " +
+        Text("Start a download on this device, or connect a remote BitTorrent client. " +
             "You can use Chunks with either, or both.",
             style = MaterialTheme.typography.bodyMedium)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
