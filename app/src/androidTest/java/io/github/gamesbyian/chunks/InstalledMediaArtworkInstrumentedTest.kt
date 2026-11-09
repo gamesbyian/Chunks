@@ -203,7 +203,17 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)
         hideKeyboard()
         clickLazyButton("Connect to rTorrent")
-        rule.waitUntil(20_000) { rule.onAllNodesWithText("2 transfers", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        // The real server count is in a LazyColumn item that may be recycled
+        // when Connect changes routes. Scroll to the exact main-view count,
+        // then still require the positive two-transfer state before artwork.
+        rule.waitUntil(20_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasText("Showing 2 transfers from 'main'", substring = true))
+                rule.onAllNodesWithText("Showing 2 transfers from 'main'", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }.getOrDefault(false)
+        }
 
         // Real row, bundled category art from the original torrent name; nothing looked up.
         waitForDescription("TV episode category artwork. $format")
