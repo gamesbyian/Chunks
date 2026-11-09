@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks
 import android.content.ClipData
 import android.content.ClipDescription
 import android.content.Intent
+import android.content.pm.PackageManager
+import androidx.test.platform.app.InstrumentationRegistry
 import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -19,6 +21,39 @@ class ExternalClipMagnetUriInstrumentedTest {
     private val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40) +
         "&tr=https%3A%2F%2Fexample.org%2Fannounce%3Ftoken%3Dprivatefixture"
     private val other = "magnet:?xt=urn:btih:" + "b".repeat(40)
+    private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    @Test fun androidChooserOffersChunksForUriListShareWithoutClaimingGenericFiles() {
+        val uriList = Intent(Intent.ACTION_SEND).apply {
+            type = ClipDescription.MIMETYPE_TEXT_URILIST
+            addCategory(Intent.CATEGORY_DEFAULT)
+            clipData = ClipData.newRawUri("magnet", Uri.parse(magnet))
+            setPackage(context.packageName)
+        }
+        @Suppress("DEPRECATION")
+        val matches = context.packageManager.queryIntentActivities(
+            uriList, PackageManager.MATCH_DEFAULT_ONLY)
+        assertEquals("Expected exactly one Chunks Add URI-list handler", 1,
+            matches.count {
+                it.activityInfo.packageName == context.packageName &&
+                    it.activityInfo.name == MainActivity::class.java.name
+            })
+
+        // Resolve only SEND URI-list, not arbitrary VIEW to a remote URL or
+        // arbitrary application/octet-stream shares.
+        val ordinaryView = Intent(Intent.ACTION_VIEW,
+            Uri.parse("https://example.org/file.torrent")).apply {
+            addCategory(Intent.CATEGORY_DEFAULT)
+            setPackage(context.packageName)
+        }
+        @Suppress("DEPRECATION")
+        val unrelated = context.packageManager.queryIntentActivities(
+            ordinaryView, PackageManager.MATCH_DEFAULT_ONLY)
+        assertEquals(0, unrelated.count {
+            it.activityInfo.packageName == context.packageName &&
+                it.activityInfo.name == MainActivity::class.java.name
+        })
+    }
 
     private fun shared(uri: Uri, text: String? = null): Intent =
         Intent(Intent.ACTION_SEND).apply {
