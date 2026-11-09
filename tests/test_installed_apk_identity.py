@@ -58,7 +58,7 @@ class InstalledApkIdentityTests(unittest.TestCase):
         self.assertFalse(self.pulled.exists(), "pulled candidate must be removed")
         return result
 
-    def test_matching_installed_bytes_pass_without_extra_output(self):
+    def test_matching_installed_bytes_emits_path_free_hash_and_size(self):
         result = self.invoke()
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("", result.stderr)
@@ -82,11 +82,11 @@ class InstalledApkIdentityTests(unittest.TestCase):
         # Even a malfunctioning comparison must not conceal the independent
         # pulled-file SHA mismatch or create a success receipt.
         cmp = self.bin / "cmp"
-        cmp.write_text("#!/usr/bin/env bash\\nexit 0\\n", encoding="utf-8")
+        cmp.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
         cmp.chmod(0o755)
         result = self.invoke("altered")
         self.assertEqual(1, result.returncode)
-        self.assertEqual("CHUNKS_INSTALLED_APK: byte-mismatch\\n", result.stderr)
+        self.assertEqual("CHUNKS_INSTALLED_APK: byte-mismatch\n", result.stderr)
 
     def test_comparison_error_is_not_reported_as_verified_identity(self):
         cmp = self.bin / "cmp"
