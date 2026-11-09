@@ -995,7 +995,32 @@ fun VerifiedAddScreen(
                                         if (draft.coordinator.phase ==
                                             UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
                                             outcome = "The exact server job and Place are confirmed, but requested Start is unverified. You may explicitly acknowledge this incomplete result; no Add or Start was resent."
-                                    } else draft.coordinator.requireReadback(ticket)
+                                    } else {
+                                        // A newer authenticated exact-job read
+                                        // can contradict an unacknowledged
+                                        // positive CTA. Catalog absence, stale
+                                        // status and read errors cannot.
+                                        val earlier = draft.coordinator.phase
+                                        if (shouldProbeContradictoryRecheck(earlier)) {
+                                            // This timestamp precedes this
+                                            // individual RPC read, so delayed
+                                            // completions retain true read order.
+                                            val witnessReadStartedAt = System.currentTimeMillis()
+                                            val witness = adapter.contradictoryExactSession(
+                                                ticket, observedAtEpochMillis = witnessReadStartedAt)
+                                            if (witness != null) {
+                                                draft.coordinator.reconcileExactSession(ticket, witness)
+                                                if (draft.coordinator.phase != earlier) {
+                                                    verifiedHash = null
+                                                    uncertain = true
+                                                    outcome = if (!witness.registered)
+                                                        "A newer authenticated exact-job read confirms this hash is absent from the reviewed server. The earlier session acknowledgment is no longer available. No Add or Start was resent."
+                                                    else
+                                                        "A newer authenticated exact-job read found this hash at a different destination. The earlier session acknowledgment is no longer available. No Add or Start was resent."
+                                                }
+                                            } else draft.coordinator.requireReadback(ticket)
+                                        } else draft.coordinator.requireReadback(ticket)
+                                    }
                                 }
                             } catch (cancel: kotlinx.coroutines.CancellationException) {
                                 throw cancel
@@ -1166,3 +1191,10 @@ internal suspend fun pollRemoteAddReadOnlyProgress(
         kotlinx.coroutines.delay(intervalMillis)
     }
 }
+
+/** A negative exact-job witness is useful only to revoke a positive,
+ * not-yet-acknowledged session readback. No source, account or RPC state here. */
+internal fun shouldProbeContradictoryRecheck(
+    phase: UniversalAddCoordinator.Phase
+): Boolean = phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED ||
+    phase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED
