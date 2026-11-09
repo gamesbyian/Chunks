@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **FOUR LANES AFTER NAVIGATION INTEGRATION · 2026-11-09 UTC:** Main `6e980ca4`. Agent1 remains responsible for presentation/Options and DHT (#1421, dependent #1429); Agent2 phone Share/clipboard/source integrity (#1425/#1433; earlier #1424 merged); Agent3 authenticated remote progress/add/readback (#1431; #1427 optional witness merged). Agent4 exclusively controls merge decisions, installed genuine peers, APK source/byte acceptance and central AGENTS/WORK-QUEUE/QUALITY-LEDGER/SPEC-COVERAGE/AGENT-LANES/handoffs. Source-equivalent navigation PR #1430 merged into main `07fbc170`, parent #1404 closed superseded and #1408 QA incorporated. QA #1432 now only four CI/test files, rebased onto main, in focused actual native atlas qualification; avoid agent production path collisions. No Agent4 production model or UI changes, no parallel Add dispatch authority or new executor. Red old-head tests preserved, newer main APK not yet built/accepted.
+
+
 > **FOUR ACTIVE LANES · 2026-11-09 UTC:** Agent1 owns #1404 production navigation and #1421 DHT/Options changes; Agent2 owns #1422 exact-session coordinator and #1424 phone clipboard URI; Agent3's #1411 strict rTorrent flag fix is merged to main as `ec8e5cd9`; Agent4 independently owns QA tests, evidence, branch integration, final merges and this central documentation. #1408 QA suite merged into the #1404 branch as `fd94ef6f` but not into main. Agent1/2 current red test cases remain required, with no assertion bypass. No shared production edits from Agent4; do not regard an unmerged branch APK as current-main acceptance.
 
 
