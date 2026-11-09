@@ -71,6 +71,22 @@ class PhoneOptionsSearchTest {
         rule.onNodeWithText("Find peers without trackers · in Options").assertDoesNotExist()
     }
 
+    @Test fun clipboardPrefillIsAnOptionsSettingNotAnAddFormSetting() {
+        search("clipboard")
+        rule.onNodeWithText("Fill an empty Add source from the clipboard · in Options")
+            .performScrollTo().performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Fill in a copied magnet or torrent link when Add opens")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+            .assertIsDisplayed()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+            .assertDoesNotExist()
+    }
+
     @Test fun mediaResultOpensArtworkAndInfo() {
         search("artwork")
         rule.onNodeWithText("Artwork & media info").performScrollTo().performClick()
