@@ -273,8 +273,21 @@ internal class PhoneAddAttemptSession(
         val matching = transfers.filter {
             it.infoHash.equals(ticket.intent.source.expectedInfoHash, ignoreCase = true)
         }
-        // An ambiguous duplicated native identity is never positive evidence.
-        if (matching.size > 1) return UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED
+        // Multiple native rows establish presence of the expected hash, but
+        // cannot prove a unique job at the reviewed Place. Accept this sample
+        // as present-but-ambiguous so newer evidence revokes any obsolete
+        // acknowledgment without falsely reporting the job absent.
+        if (matching.size > 1)
+            return coordinator.reconcileExactSession(ticket,
+                UniversalAddCoordinator.ExactSessionObservation(
+                    environment = ticket.intent.target.environment,
+                    infoHash = ticket.intent.source.expectedInfoHash,
+                    observedAtEpochMillis = observedAtEpochMillis,
+                    registered = true,
+                    reviewedPlaceVerified = false,
+                    started = null,
+                    newRegistrationVerified = false
+                ))
         return reconcile(ticket, matching.singleOrNull(), place, observedAtEpochMillis)
     }
 
