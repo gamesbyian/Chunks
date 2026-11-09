@@ -9,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import io.github.gamesbyian.chunks.ClipboardMagnetPrefill
 import io.github.gamesbyian.chunks.MainActivity
 import io.github.gamesbyian.chunks.PhoneOptionsShortcut
 import org.junit.Assert.assertEquals
@@ -69,6 +70,33 @@ class PhoneOptionsSearchTest {
         rule.waitForIdle()
         rule.onNodeWithText("Find peers without trackers (DHT)").assertIsDisplayed()
         rule.onNodeWithText("Find peers without trackers · in Options").assertDoesNotExist()
+    }
+
+    @Test fun clipboardPrefillIsAnOptionsSettingNotAnAddFormSetting() {
+        search("clipboard")
+        rule.onNodeWithText("Fill an empty Add source from the clipboard · in Options")
+            .performScrollTo().performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Fill in a copied magnet or torrent link when Add opens")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        val setting = rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+            .assertIsDisplayed()
+        // The existing persistent preference changes only after its original
+        // committed readback. Restore it for unrelated clipboard intake tests.
+        val original = ClipboardMagnetPrefill.enabled(rule.activity)
+        try {
+            setting.performClick()
+            rule.waitUntil(10_000) {
+                ClipboardMagnetPrefill.enabled(rule.activity) == !original
+            }
+            rule.onNodeWithText("+ Add").performClick()
+            rule.waitForIdle()
+            rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+                .assertDoesNotExist()
+        } finally {
+            org.junit.Assert.assertTrue(ClipboardMagnetPrefill.setEnabled(rule.activity, original))
+        }
     }
 
     @Test fun mediaResultOpensArtworkAndInfo() {

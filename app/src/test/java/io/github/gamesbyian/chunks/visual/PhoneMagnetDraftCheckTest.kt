@@ -104,23 +104,25 @@ class PhoneMagnetDraftCheckTest {
         val prefs = rule.activity.getSharedPreferences("add-clipboard-prefill", Context.MODE_PRIVATE)
         val original = prefs.getBoolean("enabled", true)
         try {
-            // A prior test can leave this same link in the OS clipboard.
-            // Disabling future prefill must NOT discard an already admitted
-            // draft, so first ensure the Add entry starts with unrelated text.
+            // The persistent opt-out belongs in Options. First prove the
+            // actual Add form remains reachable, then take the direct footer.
             org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", true).commit())
+            // The OS clipboard is shared across test cases. Disabling future
+            // prefill does not erase an already admitted draft, so start with
+            // irrelevant text before entering Add and verify a blank source.
             copy("unrelated text, not a magnet or torrent link")
             openAdd()
             rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
+            rule.onNodeWithText("Options").performClick()
             rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
                 .performScrollTo().performClick()
             rule.waitUntil(5_000) { !prefs.getBoolean("enabled", true) }
             copy(link)
-            // Navigation cannot override the saved opt-out or submit Add.
-            rule.onNodeWithText("Options").performClick()
+            // Options -> Add is explicit navigation. Neither this route nor
+            // a copied source authorizes a transfer, and opt-out must persist.
             rule.onNodeWithText("+ Add").performClick()
             rule.waitForIdle()
             rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
-            // A deliberate manual Paste still works with prefill disabled.
             rule.onNodeWithText("Paste link").performScrollTo().performClick()
             rule.waitForIdle()
             rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
