@@ -259,6 +259,12 @@ internal class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: B
 }
 
 /** Presentation destinations share the same phone engine and Add coordinator. */
+/** An explicit phone handoff is only a draft. HTTPS still needs Get torrent,
+ * strict metainfo verification, Place and the ordinary Add confirmation. */
+internal fun reviewablePhoneExternalText(value: String?): Boolean =
+    value != null && (value.startsWith("magnet:?", ignoreCase = true) ||
+        TorrentLinkCheck.inspect(value) is TorrentLinkCheck.Fetchable)
+
 internal enum class PhonePane { TRANSFERS, ADD, OPTIONS }
 
 @Composable
@@ -543,7 +549,7 @@ internal fun LocalEngineScreen(
     }
     LaunchedEffect(initialMagnet, busy, phoneAddAttemptSession?.attemptedTicket) {
         if (busy || phoneAddAttemptSession?.attemptedTicket != null) return@LaunchedEffect
-        if (initialMagnet != null && initialMagnet.startsWith("magnet:?")) {
+        if (reviewablePhoneExternalText(initialMagnet)) {
             selectTextSource(initialMagnet)
             addExpanded = true
             onPrefillConsumed()
