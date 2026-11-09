@@ -63,6 +63,14 @@ class PhoneOptionsSearchTest {
         rule.onNodeWithText(text).assertIsDisplayed()
     }
 
+    @Test fun dhtSearchOpensTheSingleDeviceSettingInOptions() {
+        search("dht")
+        rule.onNodeWithText("Find peers without trackers · in Options").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Find peers without trackers (DHT)").assertIsDisplayed()
+        rule.onNodeWithText("Find peers without trackers · in Options").assertDoesNotExist()
+    }
+
     @Test fun mediaResultOpensArtworkAndInfo() {
         search("artwork")
         rule.onNodeWithText("Artwork & media info").performScrollTo().performClick()
