@@ -63,7 +63,11 @@ class TmdbProvider(private val credential: () -> String?) : MediaMetadataProvide
         return if (candidates.isEmpty()) MediaProviderOutcome.NotFound else MediaProviderOutcome.Found(candidates)
     }
 
-    private fun imagePath(p: String): String? = p.takeIf { it.matches(Regex("/[A-Za-z0-9]+\\.(?:jpg|png)")) }
+    private fun imagePath(p: String): String? = p.takeIf {
+        // TMDB image IDs may contain URL-safe '-'/'_'. Keep a single bounded
+        // root filename: never accept traversal, query strings or external URLs.
+        it.matches(Regex("/[A-Za-z0-9_-]{1,120}\\.(?:jpg|png)"))
+    }
 
     companion object {
         const val ID = "tmdb"
