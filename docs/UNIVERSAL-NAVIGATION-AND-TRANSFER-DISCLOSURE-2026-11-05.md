@@ -1,5 +1,8 @@
 # Chunks universal navigation, Add, Connections and transfer disclosure
 
+> **BINDING 2026-11-09 ROUTE/DENSITY UPDATE:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) supersedes any conflicting inline expanded-card or two-row-footer guidance below. **Exactly one canonical compact Combined-derived transfer row**, same in All/device/server filters, tap to **dedicated full Details**; no complete tool bank in list entries. **One-row fixed footer Transfers | + Add | Connections | Options** across all routes/IME; action groups two or fitting three across by default. Preserve every existing capability, safe exact-account mutation and narrow/large-text accessibility. Add's default-checked artwork checkbox appears only when global feature enabled; never in active Details.
+
+
 **Status:** owner-approved normative UX direction, 2026-11-05; implementation is incremental and acceptance must distinguish current/target. Read with [UX](UX.md), [PRODUCT](PRODUCT.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [ADD-SOURCE-INTAKE](ADD-SOURCE-INTAKE.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [TRANSFER-PRIVACY-LOCK](TRANSFER-PRIVACY-LOCK.md), and [cohesion campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md). Execution priority remains only in [WORK-QUEUE](WORK-QUEUE.md). This contract supersedes descriptions of separate permanent phone/server Add screens, repeated connection editors, or permanently expanded row toolboxes.
 
 ## Primary navigation
