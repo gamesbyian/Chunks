@@ -35,6 +35,10 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="text/plain" />
+                <!-- One URI-list magnet may contain ClipData.Item.uri with
+                     no text representation. The intake still rejects
+                     documents, conflicting/multiple sources and unrelated URIs. -->
+                <data android:mimeType="text/uri-list" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
