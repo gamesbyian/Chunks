@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+> **CURRENT DOCUMENTATION AUTHORITY · 2026-11-09:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) records new owner decisions, the five open PRs at audited main `0a1e7a4d`, scoped implementation ownership and exact-head acceptance. It supersedes contradictory old layout and per-transfer artwork-toggle placement instructions, **not historical test evidence**. Read it alongside [WORK-QUEUE](WORK-QUEUE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md). Recheck live heads before acting.
+
+
 > **Next development push:** [2026-11-08 source-exact integration handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) provides current open-PR topology, evidence and the agent restart order. This status pointer supersedes older dated LIVE checkpoint labels; normative feature contracts below remain authoritative.
 
 
