@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.text.input.ImeAction
@@ -49,7 +50,10 @@ class ConnectionScreenImeTest {
 
     @Test fun addressAndUsernameOfferNext() {
         rule.waitForIdle()
-        rule.onNodeWithText("Connections").performClick()
+        // The welcome panel and persistent footer both have Connections text.
+        // Choose the uniquely accessible root-footer destination, then still
+        // prove both actual form fields publish IME Next.
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname, ruTorrent URL or RPC address"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Next))
