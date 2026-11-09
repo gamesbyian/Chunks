@@ -17,6 +17,11 @@ internal sealed interface ExternalAddSource {
 
     companion object {
         fun fromIntent(intent: Intent?): ExternalAddSource? {
+            return try {
+            // Intent extras and ClipData are untrusted Parcelable input. Even
+            // after document admission refuses a malformed parcel, source
+            // selection can encounter it again. Fail closed for the *whole*
+            // source decision; never fall back to incidental magnet text.
             SharedTorrentDocument.fromIntent(intent)?.let { return TorrentDocument(it) }
 
             if (intent?.action == Intent.ACTION_SEND) {
@@ -51,7 +56,10 @@ internal sealed interface ExternalAddSource {
             }
 
             ExternalMagnetInput.fromIntent(intent)?.let { return Magnet(it) }
-            return null
+            null
+            } catch (_: RuntimeException) {
+                null
+            }
         }
 
         /** Only the URI scheme is normalized; the complete private query is untouched. */
