@@ -1053,41 +1053,88 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             expectedDirectory.any { it.code < 32 || it.code == 127 })
             return RemoteDeleteDataOutcome.Refused
 
+        // The main view may exclude a stopped or custom-view torrent. A
+        // destructive payload removal must not rely on that partial catalog.
+        // rTorrent's unfiltered "default" view is the broad session inventory.
+        // If unavailable, inconsistent with main, or changing, refuse.
+        suspend fun fullSession(): List<RemoteTransfer>? = try {
+            listTransfers("default")
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) { null }
+        fun identityRows(rows: List<RemoteTransfer>) = rows.map {
+            Triple(it.hash.uppercase(java.util.Locale.ROOT), it.name, it.directory)
+        }.toSet()
+        fun coversMain(main: List<RemoteTransfer>, all: List<RemoteTransfer>): Boolean {
+            val byHash = all.associateBy { it.hash.uppercase(java.util.Locale.ROOT) }
+            val selected = byHash[hash.uppercase(java.util.Locale.ROOT)]
+            if (selected?.name != expectedName || selected.directory != expectedDirectory)
+                return false
+            return main.all { row ->
+                val sessionRow = byHash[row.hash.uppercase(java.util.Locale.ROOT)]
+                sessionRow?.name == row.name && sessionRow.directory == row.directory
+            }
+        }
         val inventory = try { listTransfers("main") }
-            catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
+        catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+        catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
         val current = inventory.filter { it.hash.equals(hash, true) }
         if (current.size != 1 || current.single().name != expectedName ||
             current.single().directory != expectedDirectory)
             return RemoteDeleteDataOutcome.Refused
+
+        val allSession = fullSession() ?: return RemoteDeleteDataOutcome.Refused
+        if (!coversMain(inventory, allSession)) return RemoteDeleteDataOutcome.Refused
         val files = try { listFiles(hash) }
-            catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
+        catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+        catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
         if (!RuTorrentDeleteData.safeFilePaths(files))
             return RemoteDeleteDataOutcome.Refused
-        // Check other visible jobs whose destination can overlap these exact
-        // files. A shared path must be resolved by a separate user decision.
+
         fun full(dir: String, file: String) =
             (dir.trimEnd('/') + "/" + file).lowercase(java.util.Locale.ROOT)
         val selectedPaths = files.map { full(expectedDirectory, it.path) }.toSet()
-        for (other in inventory) {
-            if (other.hash.equals(hash, true)) continue
-            val a = expectedDirectory.trimEnd('/')
-            val b = other.directory.trimEnd('/')
-            if (a != b && !a.startsWith("$b/") && !b.startsWith("$a/")) continue
-            val otherFiles = try { listFiles(other.hash) }
-                catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
-            if (!RuTorrentDeleteData.safeFilePaths(otherFiles) ||
-                otherFiles.any { full(other.directory, it.path) in selectedPaths })
-                return RemoteDeleteDataOutcome.Refused
+        suspend fun noSharedSessionFiles(rows: List<RemoteTransfer>): Boolean {
+            for (other in rows) {
+                if (other.hash.equals(hash, true)) continue
+                val selectedRoot = expectedDirectory.trimEnd('/')
+                val otherRoot = other.directory.trimEnd('/')
+                // An absent or unparseable directory cannot be safely
+                // treated as disjoint from the selected payload.
+                if (!otherRoot.startsWith("/") ||
+                    otherRoot.any { it.code < 32 || it.code == 127 }) return false
+                if (selectedRoot != otherRoot && !selectedRoot.startsWith("$otherRoot/") &&
+                    !otherRoot.startsWith("$selectedRoot/")) continue
+                val otherFiles = try { listFiles(other.hash) }
+                catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+                catch (_: Exception) { return false }
+                if (!RuTorrentDeleteData.safeFilePaths(otherFiles) ||
+                    otherFiles.any { full(other.directory, it.path) in selectedPaths }) return false
+            }
+            return true
         }
+        if (!noSharedSessionFiles(allSession)) return RemoteDeleteDataOutcome.Refused
 
-        // An old view snapshot does not authorize a destructive mutation.
+        // Recheck both the exact target and session membership immediately
+        // before the one permitted erasedata POST. If another client adds,
+        // removes, renames or moves a job during the preflight, refuse instead
+        // of deleting files that a newly registered job may share.
         val fresh = try {
             sessionContainsExactHash(hash) &&
                 lookupName(hash) == expectedName &&
                 (call("d.directory", listOf(hash)) as? String) == expectedDirectory &&
                 sessionContainsExactHash(hash)
-        } catch (_: Exception) { false }
+        } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+          catch (_: Exception) { false }
         if (!fresh) return RemoteDeleteDataOutcome.Refused
+        val latestSession = fullSession() ?: return RemoteDeleteDataOutcome.Refused
+        if (identityRows(allSession) != identityRows(latestSession) ||
+            !coversMain(inventory, latestSession) || !noSharedSessionFiles(latestSession))
+            return RemoteDeleteDataOutcome.Refused
+        val latestFiles = try { listFiles(hash) }
+        catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+        catch (_: Exception) { return RemoteDeleteDataOutcome.Refused }
+        if (latestFiles != files) return RemoteDeleteDataOutcome.Refused
 
         val accepted = try {
             withContext(Dispatchers.IO) {
