@@ -13,6 +13,8 @@ import android.net.Uri
  */
 internal sealed interface ExternalAddSource {
     data class Magnet(val value: String) : ExternalAddSource
+    /** A source link only. Existing Add must explicitly fetch, validate and confirm its metainfo. */
+    data class TorrentLink(val value: String) : ExternalAddSource
     data class TorrentDocument(val uri: Uri) : ExternalAddSource
 
     companion object {
@@ -35,44 +37,58 @@ internal sealed interface ExternalAddSource {
                 val item = clip?.getItemAt(0)
                 val sharedUri = item?.uri
                 if (sharedUri != null) {
-                    // Browsers may send a magnet as a URI-list ClipData item,
-                    // not EXTRA_TEXT. Accept only that scheme, never a
-                    // rejected content:// document or an HTTP(S) document URI.
-                    val magnet = schemeNormalizedMagnet(sharedUri.toString()) ?: return null
+                    // Browsers may send a single magnet or HTTPS .torrent link
+                    // as a URI-list item, not EXTRA_TEXT. This admits only a
+                    // draft: no remote URL, content URI or local file is read.
+                    val source = sharedTextSource(sharedUri.toString()) ?: return null
                     // A single item may supply parallel text representations.
                     // They must identify the *same exact source*: comparing
                     // only btih would lose tracker/passkey and source intent.
                     val embeddedText = item.text?.toString()?.trim()
                     if (!embeddedText.isNullOrEmpty() &&
-                        schemeNormalizedMagnet(embeddedText) != magnet) return null
+                        sharedTextSource(embeddedText) != source) return null
                     if (intent.hasExtra(Intent.EXTRA_TEXT)) {
                         val explicitText = runCatching {
                             intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
                         }.getOrNull() ?: return null
-                        if (schemeNormalizedMagnet(explicitText) != magnet) return null
+                        if (sharedTextSource(explicitText) != source) return null
                     }
-                    return Magnet(magnet)
+                    return source
                 }
                 // ACTION_SEND may carry a single plain-text ClipData item as
                 // well as EXTRA_TEXT. Both are independent source assertions,
                 // not a priority order: a conflicting tracker/passkey or hash
                 // must not be silently replaced by either representation.
                 if (item?.text != null) {
-                    val clipMagnet = schemeNormalizedMagnet(item.text.toString()) ?: return null
+                    val clipSource = sharedTextSource(item.text.toString()) ?: return null
                     if (intent.hasExtra(Intent.EXTRA_TEXT)) {
                         val explicitText = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)
                             ?.toString() ?: return null
-                        if (schemeNormalizedMagnet(explicitText) != clipMagnet) return null
+                        if (sharedTextSource(explicitText) != clipSource) return null
                     }
-                    return Magnet(clipMagnet)
+                    return clipSource
                 }
             }
 
             ExternalMagnetInput.fromIntent(intent)?.let { return Magnet(it) }
-            null
+            // Android ACTION_SEND with a pure HTTPS download link enters the
+            // same editable Add source as a pasted link. Generic HTTPS VIEW
+            // intents remain the browser's, not an app-wide Chunks handler.
+            if (intent?.action == Intent.ACTION_SEND) {
+                val text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+                text?.let(::sharedTextSource)
+            } else null
             } catch (_: RuntimeException) {
                 null
             }
+        }
+
+        /** No URL fetch here. Preserve exact signed query and normalize only a URI scheme. */
+        private fun sharedTextSource(text: String): ExternalAddSource? {
+            val candidate = text.trim()
+            schemeNormalizedMagnet(candidate)?.let { return Magnet(it) }
+            if (TorrentLinkCheck.inspect(candidate) !is TorrentLinkCheck.Fetchable) return null
+            return TorrentLink("https://" + candidate.substring("https://".length))
         }
 
         /** Only the URI scheme is normalized; the complete private query is untouched. */
