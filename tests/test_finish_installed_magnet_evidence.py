@@ -6,7 +6,47 @@ import tempfile
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from finish_installed_magnet_evidence import precompleted_control_preserved, safe_failure_diagnostic
+from finish_installed_magnet_evidence import (
+    precompleted_control_preserved, safe_failure_diagnostic, parse_installed_apk_identity,
+)
+
+
+class InstalledApkSourceBoundReceiptTests(unittest.TestCase):
+    source = "a" * 40
+    tree = "b" * 40
+    sha = "c" * 64
+
+    def test_installed_bytes_have_one_cryptographic_source_bound_receipt(self):
+        raw = f"CHUNKS_INSTALLED_APK: matched size_bytes=42157013 sha256={self.sha}\\n"
+        self.assertEqual({
+            "source_sha": self.source,
+            "git_tree_sha": self.tree,
+            "installed_apk_sha256": self.sha,
+            "installed_apk_size_bytes": 42157013,
+            "installed_equals_built_bytes": True,
+        }, parse_installed_apk_identity(raw, self.source, self.tree))
+
+    def test_duplicate_oversized_or_unbound_receipt_never_qualifies(self):
+        valid = f"CHUNKS_INSTALLED_APK: matched size_bytes=42157013 sha256={self.sha}\\n"
+        invalid = (
+            "", "CHUNKS_INSTALLED_APK: byte-mismatch\\n", valid * 2,
+            valid + "secret\\n", valid + " " * 200,
+            valid.replace("42157013", "0"), valid.replace("42157013", "500000001"),
+            valid.replace(self.sha, "Z" * 64), valid.replace(self.sha, "d" * 63),
+            valid.replace("matched", "unverified"),
+        )
+        for raw in invalid:
+            with self.subTest(raw=raw[:70]):
+                self.assertIsNone(parse_installed_apk_identity(raw, self.source, self.tree))
+        self.assertIsNone(parse_installed_apk_identity(valid, "bad", self.tree))
+        self.assertIsNone(parse_installed_apk_identity(valid, self.source, "bad"))
+        self.assertIsNone(parse_installed_apk_identity(valid, self.source, None))
+
+    def test_missing_apk_identity_keeps_full_journey_unqualified(self):
+        detail = safe_failure_diagnostic(
+            {"runner": {"failed_tests": 0, "runner_finished": True}},
+            peer_valid=True, control_preserved=True, journeys_verified=True, apk_valid=False)
+        self.assertEqual("installed-apk-provenance-not-proven", detail["reason"])
 
 
 class PrecompletedControlEvidenceTests(unittest.TestCase):
