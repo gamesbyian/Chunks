@@ -76,7 +76,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             scroll(text); rule.onNodeWithText(text).assertIsEnabled(); true
         }.getOrDefault(false) }
         if (text == "Stop") stage("stop-ready")
-        rule.onNodeWithText(text).performScrollTo()
+        // Re-use the visibility-aware scroll helper: fixed footer tabs have
+        // no scrolling ancestor, while transfer cards still require scrolling.
+        scroll(text)
         if (text == "Stop") stage("stop-visible")
         // A semantic click cannot miss when the list re-lays out between lookup and touch
         // injection (a lost Start tap left no permission prompt). Touch only if not clickable.
@@ -173,11 +175,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             stage("seed-verified")
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
-                rule.waitUntil(30_000) { visible("On this phone (experimental)") }
+                rule.waitUntil(30_000) { visible("This device") }
                 stage("phone-open")
-                // Genuine first-run sessions use the direct Add link; populated ones retain the inline action.
-                if (visible("Add a torrent")) click("Add a torrent")
-                else click("Add torrent on this phone")
+                click("+ Add")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
                 click("Change download location")
                 click("Chunks app folder")
@@ -186,9 +186,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // Leaving the phone screen must not turn an explicit one-time root
                 // into the saved default when the same draft returns.
                 stage("override-set")
-                click("All environments…")
-                rule.waitUntil(30_000) { visible("All environments") }
-                click("Back")
+                click("Options")
+                rule.waitUntil(30_000) { visible("Options · this device") }
+                click("+ Add")
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
                 rule.onNodeWithText("Optional phone download subfolder").assertTextContains(folder)
@@ -274,6 +274,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // within the wait. Use the production "download in order" setting so it comes first.
                 assertTrue("Sequential download readback", phone.setSequentialDownload(preview.infoHashV1, true))
                 stage("added-stopped")
+                // Add review never exposes a competing lifecycle executor.
+                // Start the positively registered job from Transfers.
+                click("Transfers")
                 click("Start")
                 rule.waitForIdle() // Dispatch queued Start before checking the OS permission prompt.
                 // Connect the verified piece-0 publisher immediately when Start is dispatched.
@@ -380,7 +383,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertEquals("Phone fixture requires one exact local job",
                     setOf(preview.infoHashV1.lowercase()),
                     phone.list().map { it.infoHash.lowercase() }.toSet())
-                click("All environments…")
+                click("Transfers")
+                rule.waitUntil(30_000) { visible("This device") }
+                click("All environments")
                 rule.waitUntil(30_000) { visible("All environments") }
                 // The Combined list reads phone inventory and its privacy
                 // policy asynchronously; entering the screen does not mean
@@ -412,13 +417,11 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     phone.status(preview.infoHashV1)?.stopped == true)
                 click("Back to transfers")
                 rule.waitUntil(30_000) { visible("All environments") }
-                click("Back")
-                rule.waitUntil(30_000) { visible("On this phone (experimental)") }
+                click("Transfers")
+                rule.waitUntil(30_000) { visible("This device") }
                 stage("phone-details-verified")
                 stage("phone-open")
-                // Genuine first-run sessions use the direct Add link; populated ones retain the inline action.
-                if (visible("Add a torrent")) click("Add a torrent")
-                else click("Add torrent on this phone")
+                click("+ Add")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
                 stage("before-recreate")
                 scenario.recreate()
@@ -428,7 +431,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 android.util.Log.i("ChunksHttps", "CHUNKS_HTTPS_PHONE verified=true received=${status.payloadDownloadedBytes} " +
                     "pieces_bytes=${status.doneBytes} complete=false default_preserved=true " +
                     "piece_sha256=" + MessageDigest.getInstance("SHA-256").digest(piece).joinToString("") { "%02x".format(it) })
-                click("Hide phone Add options")
+                click("Transfers")
                 stage("next-default-verified")
                 click("Remove…")
                 click("Remove transfer, keep data")

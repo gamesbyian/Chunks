@@ -7,6 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -61,11 +62,11 @@ class PhoneContrastSweepTest {
 
     @Test fun phoneInventoryAddAndOptionsReadAtAA() {
         sweep("phone")
-        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        rule.onNodeWithText("+ Add").performClick()
         sweep("add-top")
         rule.onNode(hasText("Optional phone download subfolder")).performScrollTo()
         sweep("add-place")
-        rule.onNodeWithContentDescription("Options on this phone").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
         sweep("options")
         rule.onNode(hasText("Save speed limits")).performScrollTo()
         sweep("options-speed")

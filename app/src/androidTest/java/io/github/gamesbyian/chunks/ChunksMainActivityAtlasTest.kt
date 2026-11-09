@@ -65,12 +65,10 @@ class ChunksMainActivityAtlasTest {
     private val receivedMethods = Collections.synchronizedList(mutableListOf<String>())
     @Volatile private var fixtureProblem: String? = null
 
-    /** UI-only disclosure: reach the same original intake without assuming it opens by default. */
+    /** The dedicated Add destination retains the original review without submitting. */
     private fun assertPhoneAddEntryIsReachable() {
-        val open = rule.onAllNodesWithText("Add torrent on this phone")
-            .fetchSemanticsNodes().isNotEmpty()
-        if (open) rule.onNodeWithText("Add torrent on this phone").performScrollTo().performClick()
-        rule.onNodeWithText("Add a download on this phone").assertExists()
+        rule.onNodeWithText("Add on this device").assertExists()
+        rule.onNodeWithText("Add a download on this device").assertExists()
     }
 
     private fun str(s: String) = "<value><string>" + s.replace("&", "&amp;")
@@ -313,8 +311,7 @@ class ChunksMainActivityAtlasTest {
         receivedMethods.clear() // Record the real installed-app calls separately.
         // A fresh installation now opens the useful local Transfers inventory.
         // Server connection is still one deliberate Back/Connect route away.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         // The Connect list composes lazily; at large text the field starts below the fold.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)
@@ -385,44 +382,26 @@ class ChunksMainActivityAtlasTest {
             .assertIsDisplayed()
         save("app-transfers-populated-real-compose")
 
-        // An installed, authenticated server must route from the real shared
-        // combined list into its existing Add review. Opening that review
-        // requests only the read-only default Place, never a torrent mutation.
+        // Real combined navigation keeps the signed-in server identity, and
+        // the four root destinations never imply an Add or a server mutation.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
         rule.onNodeWithText("All environments…").performClick()
-        // Remote-initiated combined Back returns to the signed-in server,
-        // preserving its authenticated queue instead of opening phone UI.
-        rule.onNodeWithText("Back").performClick()
-        rule.onNodeWithText("3 transfers", substring = true).assertExists()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
-        rule.onNodeWithText("All environments…").performClick()
-        // Regression: Add on this phone must render while a remote session is
-        // authenticated using the connected phone adapter, without changing
-        // the verified remote session or dispatching any remote torrent command.
-        val phoneAdd = androidx.compose.ui.test.hasContentDescription("Add download on this phone")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
-        rule.onNode(phoneAdd).performClick()
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        assertPhoneAddEntryIsReachable()
-        // Local Back, distinct from the Combined header Back, returns to the
-        // review's originating Combined list while the server remains signed in.
-        rule.onNodeWithText("Back").performScrollTo().performClick()
         rule.onNodeWithText("All environments").assertExists()
-        // Re-enter phone from Combined without submitting any torrent.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(phoneAdd)
-        rule.onNode(phoneAdd).performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
+        rule.onNodeWithText("Open server list").performClick()
+        rule.onNodeWithText("3 transfers", substring = true).assertExists()
+
+        // The destination chooser requires an explicit choice, keeping the
+        // phone and authenticated server's Add reviews distinct.
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("On this device").performClick()
         assertPhoneAddEntryIsReachable()
-        rule.onNodeWithText("All environments…").performScrollTo().performClick()
-        // This second entry came from the phone while server is still connected.
-        rule.onNodeWithText("Back").performClick()
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
+        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("On this device").performClick()
         assertPhoneAddEntryIsReachable()
-        // Return again, then choose the separately authenticated server Add.
-        rule.onNodeWithText("All environments…").performScrollTo().performClick()
-        val remoteAdd = androidx.compose.ui.test.hasContentDescription(
-            "Add download on Server", substring = true)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(remoteAdd)
-        rule.onNode(remoteAdd).performClick()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("On the connected server").performClick()
         rule.onNodeWithText("Add a download to this server").assertExists()
         rule.onNodeWithText("Magnet or torrent link").assertExists()
         // Exercise the production Add screen, including the parent-owned draft.
@@ -591,26 +570,44 @@ class ChunksMainActivityAtlasTest {
             substring = true).assertExists()
         save("app-alias-saved-populated-real-compose")
 
-        // Secondary destinations are one explicit Options tap away; the
-        // ordinary Transfers viewport no longer carries a permanent tab rail.
+        // The root Options destination is searchable and routes to the
+        // existing exact-account tools. No remote write is issued by navigation.
         rule.onNodeWithContentDescription("Options").performClick()
-        rule.onNodeWithText("Find a screen or tool").performTextReplacement("server")
-        rule.onNodeWithText("Server").assertExists()
-        rule.onNodeWithText("Places").assertDoesNotExist()
-        rule.onNodeWithText("Find a screen or tool").performTextReplacement("")
-        rule.onNodeWithText("Places").performClick()
+        rule.onNodeWithText("Search options").performTextReplacement("server")
+        // Result titles are also shown as standing section headings below the
+        // filtered cards. Assert each exact search-result description, scrolling
+        // its real LazyColumn into view, before opening the actionable result.
+        // A heading alone must never satisfy the searchable-route acceptance.
+        save("app-options-server-filter-precheck-real-compose")
+        val connectionResult = "Manage device and server connections · opens Connections"
+        val placesResult = "Folders on the authenticated server · opens Server places"
+        // These results are immediately visible on the recorded Options
+        // viewport. A LazyColumn scroll-to-*item* cannot resolve this nested
+        // card text, even when the user can already see and tap the card.
+        // Match the unique shortcut description, not its duplicated heading.
+        rule.onNodeWithText(connectionResult, substring = true).assertIsDisplayed()
+        rule.onNodeWithText(placesResult, substring = true).assertIsDisplayed()
+        rule.onNodeWithText("Create a torrent").assertDoesNotExist()
+        // Clicking the filtered result must open the existing authenticated
+        // folder tool, without an Add or any mutation of the RPC fixture.
+        rule.onNodeWithText(placesResult, substring = true).performClick()
         rule.onNodeWithText("Everything has a place.").assertExists()
         save("app-places-populated-real-compose")
 
-        rule.onNodeWithText("Organize").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithText("Server collections").performScrollTo().performClick()
         rule.onNodeWithText("Chunks has ideas.").assertExists()
         save("app-organize-populated-real-compose")
 
-        rule.onNodeWithText("Server").performClick()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNodeWithText("Server settings", substring = true).assertExists()
         save("app-server-populated-real-compose")
 
+        // Transfers now leads through the read-only combined inventory;
+        // return to the exact authenticated server before inspecting files.
         rule.onNodeWithText("Transfers").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
+        rule.onNodeWithText("Open server list").performClick()
         // The filtered card remains the exact same server/infohash identity.
         // Reopen its secondary actions only if navigation recreated the row.
         if (rule.onAllNodesWithText("Inspect files").fetchSemanticsNodes().isEmpty()) {

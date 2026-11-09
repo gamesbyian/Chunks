@@ -11,6 +11,15 @@ import struct
 import sys
 import xml.etree.ElementTree as ET
 
+# A screenshot's pixel hash proves its bytes, not which screen was captured.
+# Match real UIAutomator text on each fresh-install emulator before claiming
+# that the first screen was the device transfer inventory with fixed navigation.
+REQUIRED_FIRST_LAUNCH_TEXT = frozenset({
+    "Your transfers will appear here",
+    "Search transfers on this device",
+    "Transfers", "+ Add", "Connections", "Options",
+})
+
 CASES = {
     "small": {"pixels": [1080, 2400], "density": 480, "font_scale": 1.0},
     "standard": {"pixels": [1080, 2400], "density": 420, "font_scale": 1.0},
@@ -39,32 +48,43 @@ def report(folder):
     report_data = {
         "schema": "chunks.native-atlas.v1",
         "source": "Android emulator screenshot, not mockup",
-        "tested_screen": "initial server connection / no credentials",
-        "claims_excluded": ["torrent list state", "real Seedhost authentication",
-                            "Add dialog", "physical device", "screen-reader quality"],
+        "tested_screen": "first-launch empty device Transfers inventory and four visible navigation labels",
+        "claims_excluded": ["populated transfer rows", "real peer/piece progress",
+                            "protected server authentication", "Add and Details screens",
+                            "physical device", "screen-reader usability"],
         "cases": []
     }
     for case, expected in CASES.items():
         png = root / (case + ".png")
         result = inspect(png, expected)
         xml = root / (case + ".xml")
-        if xml.is_file():
-            try:
-                tree = ET.parse(xml)
-                result["accessibility_hierarchy_nodes"] = len(tree.findall(".//node"))
-                result["hierarchy_file"] = xml.name
-            except ET.ParseError:
-                result["hierarchy_error"] = "Malformed uiautomator XML"
-        else:
-            result["hierarchy_error"] = "uiautomator did not produce XML"
+        if not xml.is_file():
+            raise ValueError(f"Missing UIAutomator hierarchy for {case}: first-launch screen unverified")
+        try:
+            tree = ET.parse(xml)
+        except ET.ParseError as failure:
+            raise ValueError(f"Malformed UIAutomator hierarchy for {case}") from failure
+        nodes = tree.findall(".//node")
+        texts = {node.get("text", "") for node in nodes}
+        missing = REQUIRED_FIRST_LAUNCH_TEXT - texts
+        if missing:
+            raise ValueError(
+                f"First-launch device Transfers/footer not verified in {case}: "
+                + ", ".join(sorted(missing))
+            )
+        result["accessibility_hierarchy_nodes"] = len(nodes)
+        result["hierarchy_file"] = xml.name
+        result["first_launch_transfer_inventory_verified"] = True
         report_data["cases"].append(result)
     root.joinpath("manifest.json").write_text(json.dumps(report_data, indent=2) + "\n")
     root.joinpath("REVIEW.md").write_text(
-        "# Native Chunks connection-state screenshot review\n\n" +
-        "These are real emulator PNGs at 4 viewport/font states, not proposed illustrations.\n\n" +
-        "Check truncation, tap targets, text-scale overflow, safe insets, contrast, "
-        "field labels and screen-reader hierarchy. Main/Add/Transfer screenshot "
-        "coverage and physical Pixel proof remain OPEN.\n\n" +
+        "# Native Chunks first-launch Transfers screenshot review\n\n" +
+        "These are real, source-exact emulator PNGs of the empty device transfer "
+        "inventory at 4 viewport/font states. Each case's UIAutomator hierarchy "
+        "proves the inventory heading, device search and all four navigation labels.\n\n" +
+        "Review truncation, tap targets, text-scale overflow, safe insets and contrast. "
+        "Populated transfer rows, Add/Details/Connections, screen-reader usability "
+        "and physical Pixel evidence remain OPEN.\n\n" +
         "\n".join(f"- **{v['image']}**: {v['width']}×{v['height']} px, "
                   f"{v['density_dpi']} dpi, text {v['font_scale']}×"
                   for v in report_data["cases"]) + "\n"

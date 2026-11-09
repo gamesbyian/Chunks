@@ -272,7 +272,7 @@ internal fun availabilityText(source: EnvironmentTransferSnapshot): String = whe
     EnvironmentAvailability.LIVE -> if (source.canClaimCompleteLiveInventory) "Live" else "Live, list may be incomplete"
     EnvironmentAvailability.STALE -> "Out of date, showing last list"
     EnvironmentAvailability.OFFLINE -> if (source.environment == EnvironmentSnapshots.PHONE)
-        "Engine not running, open On this phone" else "Not connected"
+        "Engine not running; open transfers on this device" else "Not connected"
     EnvironmentAvailability.LOCKED -> "Locked, open it to unlock"
 }
 
@@ -304,6 +304,7 @@ internal fun CombinedTransfersScreen(
     /** Opens this exact transfer in its own environment's list; only phone and the signed-in server. */
     onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
     onBack: () -> Unit,
+    showNavigationFooter: Boolean = true,
     /** Caller-owned list position, kept when visiting an owning list and returning. */
     listState: androidx.compose.foundation.lazy.LazyListState? = null,
     /**
@@ -590,6 +591,7 @@ internal fun CombinedTransfersScreen(
     }
     var choosingColours by remember { mutableStateOf(false) }
     var showingViewOptions by rememberSaveable { mutableStateOf(false) }
+    var showingBatchTools by rememberSaveable { mutableStateOf(false) }
     var showingSortOptions by rememberSaveable { mutableStateOf(false) }
     var showingSourceStatus by rememberSaveable { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
@@ -888,10 +890,17 @@ internal fun CombinedTransfersScreen(
                 .onSizeChanged { viewportHeightPx = it.height },
             state = listState, contentPadding = PaddingValues(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item {
+        // The global wordmark and footer already supply location and navigation.
+        if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
+        } else item {
+            // Keep one compact, spoken view identity without a duplicate Back.
+            Text("All environments", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
         }
-        item(key = COMBINED_ADD_ITEM_KEY) {
+        // Add lives in its own destination when this is the app's primary list.
+        // A shared source still surfaces a target choice, never auto-submits.
+        if (showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent) item(key = COMBINED_ADD_ITEM_KEY) {
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
@@ -904,52 +913,6 @@ internal fun CombinedTransfersScreen(
                 phoneHue = palette.hueOf(EnvironmentSnapshots.PHONE),
                 serverHue = serverId?.let { palette.hueOf(it) }
             )
-        }
-        item {
-            key(batchIdentity) {
-            CombinedBatchSection(
-                selecting = selecting,
-                onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
-                selected = selected,
-                visible = result.transfers.map { it.key }.toSet(),
-                labels = labels,
-                running = batchRunning,
-                result = batchResult,
-                onClear = { selected = emptySet() },
-                onRun = { start ->
-                    batchRunning = true
-                    batchResult = emptyList()
-                    val chosen = selected
-                    val snapshot = sources
-                    val owner = batchIdentity
-                    val lifecycle = server?.lifecycle
-                    val targetServer = serverId
-                    batchScope.launch {
-                        // Dispatch may be queued behind a server/account switch.
-                        if (latestBatchIdentity.value != owner) return@launch
-                        var unconfirmedPhoneStops = 0
-                        try {
-                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
-                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
-                                    reviewStillCurrent = { latestBatchIdentity.value == owner },
-                                    onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
-                            }
-                            // A late completion is evidence about the OLD owner only.
-                            if (latestBatchIdentity.value == owner) {
-                                val warning = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget
-                                    .warning(unconfirmedPhoneStops)
-                                batchResult = if (warning.isEmpty()) report else report + warning.trim()
-                            }
-                        } finally {
-                            if (latestBatchIdentity.value == owner) {
-                                selected = emptySet()
-                                batchRunning = false
-                            }
-                        }
-                    }
-                }
-            )
-            }
         }
         item {
             val scopeName = when (val scope = query.scope) {
@@ -966,12 +929,15 @@ internal fun CombinedTransfersScreen(
                 UnifiedTransferFilter.TRANSFERRING -> "Transferring"
                 UnifiedTransferFilter.ATTENTION -> "Needs attention"
             }
-            OutlinedButton(
-                onClick = { showingViewOptions = !showingViewOptions; if (!showingViewOptions) showingSortOptions = false },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            ) {
-                Text((if (showingViewOptions) "Hide" else "Refine") +
-                    " transfers · $scopeName · $filterName")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = { showingViewOptions = !showingViewOptions; if (!showingViewOptions) showingSortOptions = false },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                ) { Text(if (showingViewOptions) "Hide filters" else "Filters") }
+                OutlinedButton(onClick = { showingBatchTools = !showingBatchTools },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                    Text(if (showingBatchTools) "Hide batch tools" else "Batch tools")
+                }
             }
             // Search has its own clear affordance; do not insert a second button
             // above the text field as the user types and shift its focus/position.
@@ -1011,7 +977,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
         }
-        if (showingViewOptions || query.search.isNotBlank()) item {
+        item {
             ClearableTransferSearchField(
                 value = query.search,
                 onValueChange = {
@@ -1092,67 +1058,61 @@ internal fun CombinedTransfersScreen(
                         .semantics { contentDescription = "Group by environment" })
             }
         }
+        // Batch controls appear immediately upon request, ahead of rows only
+        // for that explicit task. They never consume the initial first fold.
+        if (showingBatchTools) {
         item {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (showingSourceStatus || result.sources.size > 1 || result.hasIncompleteOrStaleSource ||
-                    listings.values.any { it.error != null || it.loading }) {
-                    OutlinedButton(
-                        onClick = { showingSourceStatus = !showingSourceStatus },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text(if (showingSourceStatus) "Hide environment status"
-                        else "Environment status · ${result.sources.size} sources") }
-                }
-                if (showingSourceStatus) result.sources.forEach { source ->
-                    val listing = activeSavedScopes[source.environment]?.let { witness ->
-                        listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
-                    }
-                    val status = when {
-                        source.environment in invalidSavedProfiles ->
-                            "Saved account identity could not be verified; reconnect this profile"
-                        privacyEvidence == null ->
-                            "Privacy policy not yet verified; transfers hidden"
-                        listing?.loading == true -> "Loading list…"
-                        listing?.error != null && listing.observedAtEpochMillis == null ->
-                            "Could not load (" + listing.error + ")"
-                        listing?.error != null ->
-                            "Refresh failed (" + listing.error + "), showing last list"
-                        else -> availabilityText(source)
-                    }
-                    Text(labels[source.environment].orEmpty() + ": " + status + " · " +
-                        source.transfers.size + " transfers", style = MaterialTheme.typography.bodySmall)
-                    loadable.firstOrNull { it.id == source.environment.value }?.let { profile ->
-                        val label = labels[source.environment].orEmpty()
-                        val verb = if (listing?.observedAtEpochMillis == null) "Load" else "Refresh"
-                        OutlinedButton(
-                            onClick = { loadSavedServers(listOf(profile)) },
-                            enabled = listing?.loading != true,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                                contentDescription = "$verb transfers on $label; read only"
-                                stateDescription = if (listing?.loading == true) "Loading" else "Ready"
+            key(batchIdentity) {
+            CombinedBatchSection(
+                selecting = selecting,
+                onSelecting = { selecting = it; if (!it) selected = emptySet(); batchResult = emptyList() },
+                selected = selected,
+                visible = result.transfers.map { it.key }.toSet(),
+                labels = labels,
+                running = batchRunning,
+                result = batchResult,
+                onClear = { selected = emptySet() },
+                onRun = { start ->
+                    batchRunning = true
+                    batchResult = emptyList()
+                    val chosen = selected
+                    val snapshot = sources
+                    val owner = batchIdentity
+                    val lifecycle = server?.lifecycle
+                    val targetServer = serverId
+                    batchScope.launch {
+                        // Dispatch may be queued behind a server/account switch.
+                        if (latestBatchIdentity.value != owner) return@launch
+                        var unconfirmedPhoneStops = 0
+                        try {
+                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
+                                runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
+                                    reviewStillCurrent = { latestBatchIdentity.value == owner },
+                                    onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
                             }
-                        ) { Text(if (listing?.loading == true) "Loading $label transfers…"
-                            else "$verb $label transfers") }
+                            // A late completion is evidence about the OLD owner only.
+                            if (latestBatchIdentity.value == owner) {
+                                val warning = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget
+                                    .warning(unconfirmedPhoneStops)
+                                batchResult = if (warning.isEmpty()) report else report + warning.trim()
+                            }
+                        } finally {
+                            if (latestBatchIdentity.value == owner) {
+                                selected = emptySet()
+                                batchRunning = false
+                            }
+                        }
                     }
                 }
-                if (loadable.isNotEmpty()) OutlinedButton(enabled = listings.none { (id, listing) ->
-                    listing.loading && activeSavedScopes[id] == listing.sourceAliasScope
-                },
-                    onClick = {
-                        loadSavedServers(loadable)
-                    }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (listings.isEmpty()) "Load other saved servers (read-only)" else "Refresh other saved servers")
-                }
-                if (result.missingSelectedEnvironments.isNotEmpty()) Text(
-                    (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected environment is" else "$n selected environments are" }) + " no longer set up. " +
-                        "Choose All or reselect environments.", style = MaterialTheme.typography.bodySmall,
-                    color = ChunksColors.Yellow)
-                Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
-                    style = MaterialTheme.typography.bodySmall)
-                Text(combinedShowingText(result.transfers.size,
-                    result.sources.sumOf { it.transfers.size }) +
-                    if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
-                    style = MaterialTheme.typography.titleSmall)
+            )
             }
+        }
+        }
+        item(key = "combined-compact-count") {
+            Text(combinedShowingText(result.transfers.size,
+                result.sources.sumOf { it.transfers.size }) +
+                if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
+                style = MaterialTheme.typography.bodySmall)
         }
         // Even when a saved subset or a filter hides every row, the way back
         // remains visible without finding an offscreen chip or opening Settings.
@@ -1214,6 +1174,80 @@ internal fun CombinedTransfersScreen(
                         onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
             }
         }
+        // Detailed environment status is available after the inventory, rather
+        // than charging every user a tall status panel before the first row.
+        item {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                if (showingSourceStatus || result.sources.size > 1 || result.hasIncompleteOrStaleSource ||
+                    listings.values.any { it.error != null || it.loading }) {
+                    OutlinedButton(
+                        onClick = { showingSourceStatus = !showingSourceStatus },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    ) { Text(if (showingSourceStatus) "Hide environment status"
+                        else "Environment status · ${result.sources.size} sources") }
+                }
+                // The first-fold count is recycled when the user scrolls down
+                // to investigate a failed server. Keep its freshness warning
+                // beside the exact-source rows without moving diagnostics up.
+                if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
+                    Text("some environments are missing or out of date · last-known rows are not current",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = ChunksColors.Yellow)
+                }
+                // When the first-fold count has scrolled away, preserve an
+                // explicit stale-source warning here with the detailed status.
+                if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
+                    Text("Some environments are missing or out of date. Exact per-source status follows.",
+                        style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
+                }
+                if (showingSourceStatus) result.sources.forEach { source ->
+                    val listing = activeSavedScopes[source.environment]?.let { witness ->
+                        listings[source.environment]?.takeIf { it.sourceAliasScope == witness }
+                    }
+                    val status = when {
+                        source.environment in invalidSavedProfiles ->
+                            "Saved account identity could not be verified; reconnect this profile"
+                        privacyEvidence == null ->
+                            "Privacy policy not yet verified; transfers hidden"
+                        listing?.loading == true -> "Loading list…"
+                        listing?.error != null && listing.observedAtEpochMillis == null ->
+                            "Could not load (" + listing.error + ")"
+                        listing?.error != null ->
+                            "Refresh failed (" + listing.error + "), showing last list"
+                        else -> availabilityText(source)
+                    }
+                    Text(labels[source.environment].orEmpty() + ": " + status + " · " +
+                        source.transfers.size + " transfers", style = MaterialTheme.typography.bodySmall)
+                    loadable.firstOrNull { it.id == source.environment.value }?.let { profile ->
+                        val label = labels[source.environment].orEmpty()
+                        val verb = if (listing?.observedAtEpochMillis == null) "Load" else "Refresh"
+                        OutlinedButton(
+                            onClick = { loadSavedServers(listOf(profile)) },
+                            enabled = listing?.loading != true,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                                contentDescription = "$verb transfers on $label; read only"
+                                stateDescription = if (listing?.loading == true) "Loading" else "Ready"
+                            }
+                        ) { Text(if (listing?.loading == true) "Loading $label transfers…"
+                            else "$verb $label transfers") }
+                    }
+                }
+                if (loadable.isNotEmpty()) OutlinedButton(enabled = listings.none { (id, listing) ->
+                    listing.loading && activeSavedScopes[id] == listing.sourceAliasScope
+                },
+                    onClick = {
+                        loadSavedServers(loadable)
+                    }, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(if (listings.isEmpty()) "Load other saved servers (read-only)" else "Refresh other saved servers")
+                }
+                if (result.missingSelectedEnvironments.isNotEmpty()) Text(
+                    (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected environment is" else "$n selected environments are" }) + " no longer set up. " +
+                        "Choose All or reselect environments.", style = MaterialTheme.typography.bodySmall,
+                    color = ChunksColors.Yellow)
+                Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
+                    style = MaterialTheme.typography.bodySmall)
+            }
+        }
         item {
             OutlinedButton(onClick = { choosingColours = !choosingColours },
                 modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp)) {
@@ -1234,7 +1268,7 @@ internal fun CombinedTransfersScreen(
         item {
             ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
                 OutlinedButton(onClick = onOpenPhone, modifier = actionModifier) {
-                    Text("Open On this phone")
+                    Text("Open transfers on this device")
                 }
                 if (onOpenServer != null) OutlinedButton(onClick = onOpenServer,
                     modifier = actionModifier) { Text("Open server list") }
@@ -1248,7 +1282,7 @@ internal fun CombinedTransfersScreen(
             }
         }, modifier = Modifier.align(Alignment.BottomEnd).padding(end = 16.dp, bottom = 16.dp))
     } // scroll viewport
-    AuthenticatedTransfersFooter(
+    if (showNavigationFooter) AuthenticatedTransfersFooter(
         optionsOpen = showingViewOptions,
         onTransfers = {
             batchScope.launch {
@@ -1271,7 +1305,10 @@ internal fun CombinedTransfersScreen(
 /** Unconditional leading items: header (0), Add destinations (1), batch (2), view (3). */
 private const val COMBINED_ADD_ITEM_KEY = "combined-add-destinations"
 internal const val COMBINED_ADD_ITEM_INDEX = 1
-internal const val COMBINED_VIEW_ITEM_INDEX = 3
+// The first item is the heading; the second is Add choices. The filter
+// disclosure is the *third* item (zero-based index 2), before search.
+// Scrolling to 3 can leave the just-opened filters clipped at 320dp/200%.
+internal const val COMBINED_VIEW_ITEM_INDEX = 2
 
 /**
  * Save only the exact read-only detail identity across rotation/process recreation.

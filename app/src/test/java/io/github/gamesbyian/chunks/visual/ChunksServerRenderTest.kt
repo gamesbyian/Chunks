@@ -101,8 +101,7 @@ open class ChunksServerRenderTest {
             .apply { isDaemon = true; start() }
         // Connect explicitly through the phone-first route, with no shortcut
         // into the authenticated server screen.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         // The Connect list composes lazily; at large text the field starts below the fold.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
@@ -126,6 +125,8 @@ open class ChunksServerRenderTest {
         connectToFixture()
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
+        // The chooser scrolls vertically at 320dp / 200% text.
+        rule.onNodeWithText("On the connected server").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Add a download to this server").assertExists()
         val addList = rule.onNode(hasScrollToIndexAction())
@@ -180,9 +181,11 @@ open class ChunksServerRenderTest {
         small += rule.smallTouchTargets(density)
         org.junit.Assert.assertTrue("rTorrent touch targets under 48dp: ${small.distinct()}", small.isEmpty())
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-cards.png")
-        // The batch entry is now explicitly behind the persistent Options
-        // footer; selecting immediately closes Options so real rows are visible.
-        rule.onNodeWithContentDescription("Options").performClick()
+        // Batch selection is a local disclosure on the owning server list.
+        // Options now owns app settings and exact-account server destinations.
+        // This disclosure is above the current transfer in the lazy list.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Batch & tools"))
+        rule.onNodeWithText("Batch & tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select transfers for a batch"))
         rule.onNodeWithText("Select transfers for a batch").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Collection name for selected transfers"))
@@ -192,32 +195,33 @@ open class ChunksServerRenderTest {
         rule.onNodeWithText("Exit batch selection").performClick()
         rule.waitForIdle()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sci Fi Pack (2024)"))
-        rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-scrolled.png")
-        // The authenticated Transfers screen now puts secondary destinations
-        // behind its persistent Options footer. Exercise that actual disclosure
-        // instead of assuming the old permanent tab rail still exists.
-        // The compact "+ Add" names its exact target for TalkBack.
-        rule.onNodeWithContentDescription("Add torrent on ", substring = true).assertExists()
+
+        // The root four-destination footer is the only global navigation bar.
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        // Destinations wrap in a height-bounded, vertically scrollable panel
-        // instead of a sideways scroller: each can be brought on screen at
-        // 411dp, including at 200% text, and the footer is never pushed away.
-        for (tab in listOf("Places", "Organize", "Server", "Create", "ZIP review")) {
-            rule.onNodeWithText(tab).performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Connected server tools").performScrollTo().assertIsDisplayed()
+        for (label in listOf("Server folders & destinations", "Server collections",
+                "Manage connections and environments", "Create a torrent…",
+                "Review ZIP archives…", "Privacy & authentication")) {
+            rule.onNodeWithText(label).performScrollTo().assertIsDisplayed()
         }
-        // Privacy & authentication is an Option for this profile, not a pinned row.
-        rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithContentDescription("Options").assertIsDisplayed()
-        for (tab in listOf("Places", "Organize", "Server")) {
-            // Off Transfers the destinations are a short scrollable strip: bring each into view first.
-            rule.onNodeWithText(tab).performScrollTo().performClick()
-            rule.waitForIdle()
-            rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-${tab.lowercase()}.png")
-        }
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-options.png")
+
+        rule.onNodeWithText("Server folders & destinations").performScrollTo().performClick()
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-scrolled.png")
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-places.png")
+        rule.onNodeWithContentDescription("Options").performClick()
+
+        rule.onNodeWithText("Server collections").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-organize.png")
+        rule.onNodeWithContentDescription("Options").performClick()
+
+        rule.onNodeWithText("Manage connections and environments").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-server.png")
+        rule.onNodeWithContentDescription("Options").assertIsDisplayed()
     }
 }
 

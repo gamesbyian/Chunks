@@ -50,17 +50,22 @@ class ExternalSourceReplacementTest {
             }
         }
         rule.runOnIdle { incomingMagnet.value = magnet }
-        rule.onNodeWithText("Phone transfers locked").assertExists()
+        rule.onNodeWithText("Transfers on this device are locked").assertExists()
         // The provider intentionally refuses this new source. Even a refused
         // document must not cause the old, never-consumed magnet to be offered.
         rule.runOnIdle {
             incomingDocument.value = Uri.parse("content://missing.example/new.torrent")
         }
         rule.waitForIdle()
-        rule.onNodeWithText("Phone transfers locked").assertExists()
+        rule.onNodeWithText("Transfers on this device are locked").assertExists()
         rule.onNodeWithText("Back to Chunks").performClick()
+        // The old Back route disposed the privacy gate. Fixed navigation now
+        // keeps one local gate mounted when moving between local destinations.
+        // Navigate to Connections before the test-only policy reset so the
+        // next Add mounts a fresh gate that reads the updated store.
+        rule.onNodeWithText("Connections").performClick()
         rule.runOnIdle { policy(TransferLockMode.NEVER) }
-        rule.onNodeWithText("Open phone downloads").performScrollTo().performClick()
+        rule.onNodeWithText("+ Add").performClick()
         rule.waitUntil(15_000) {
             rule.onAllNodes(hasText("The shared file was unavailable", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()

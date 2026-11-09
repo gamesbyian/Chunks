@@ -27,14 +27,13 @@ class PhoneNavigationContinuityTest {
 
     @Test fun searchSurvivesAllEnvironmentsRoundTrip() {
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Search local names", substring = true))
+        rule.onNode(hasSetTextAction() and hasText("Search transfers on this device", substring = true))
             .performTextInput("ubuntu")
-        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        rule.onNodeWithText("Options").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("All environments").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("Options · this device").assertExists()
+        rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
 }

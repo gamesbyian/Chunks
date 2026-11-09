@@ -11,7 +11,9 @@ package io.github.gamesbyian.chunks
 internal object ScreenPaneTitles {
     fun of(sectionName: String, sectionLabel: String, connectedServerLabel: String?): String =
         when (sectionName) {
-            "LOCAL" -> "Phone transfers"
+            "LOCAL" -> "Transfers on this device"
+            "LOCAL_ADD" -> "Add on this device"
+            "OPTIONS" -> "Options"
             "COMBINED" -> "All environments"
             "TRANSFERS" -> if (connectedServerLabel == null) "Connect to a server"
                 else "Transfers on $connectedServerLabel"

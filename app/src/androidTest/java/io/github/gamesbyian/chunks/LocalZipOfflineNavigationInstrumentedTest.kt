@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
@@ -19,8 +20,8 @@ class LocalZipOfflineNavigationInstrumentedTest {
     @Test fun offlineZipReviewIsAvailableWithoutCredentialsAndReturnsToConnection() {
         // Offline tools remain available from the optional server-setup route.
         // New installations correctly start in phone Transfers instead.
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNodeWithText("Your downloads").assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()

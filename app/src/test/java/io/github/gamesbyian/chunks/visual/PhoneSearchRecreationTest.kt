@@ -22,7 +22,7 @@ class PhoneSearchRecreationTest {
 
     @Test fun phoneSearchSurvivesRecreation() {
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Search local names, aliases, folders or hashes"))
+        rule.onNode(hasSetTextAction() and hasText("Search transfers on this device"))
             .performScrollTo().performTextInput("debian")
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()

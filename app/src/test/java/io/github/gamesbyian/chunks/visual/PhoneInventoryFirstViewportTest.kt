@@ -33,28 +33,25 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneInventoryFirstViewportTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    @Test fun orientationAndInventoryShareTheFirstViewport() {
+    @Test fun deviceInventoryOwnsTheFirstViewportWithoutSettingsAboveIt() {
         rule.waitForIdle()
-        rule.onNodeWithText("On this phone (experimental)").assertIsDisplayed()
-        rule.onNodeWithText("Phone transfers").assertIsDisplayed()
-        rule.onNodeWithText("Search local names, aliases, folders or hashes").assertIsDisplayed()
-        // Privacy settings are not pinned above the inventory; they follow it.
-        val inventoryTop = rule.onNodeWithText("Phone transfers").getUnclippedBoundsInRoot().top
-        val privacyTop = rule.onNodeWithText("Privacy & authentication").getUnclippedBoundsInRoot().top
-        org.junit.Assert.assertTrue("privacy follows the inventory", privacyTop > inventoryTop)
+        rule.onNodeWithText("This device").assertIsDisplayed()
+        rule.onNodeWithText("Search transfers on this device").assertIsDisplayed()
+        rule.onNodeWithText("Options · this device").assertDoesNotExist()
+        rule.onNodeWithText("Privacy & authentication").assertDoesNotExist()
     }
 
     @Test fun footerOptionsBringsPhoneOptionsAndToolsIntoView() {
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Options on this phone").assertIsDisplayed().performClick()
+        rule.onNodeWithContentDescription("Options").assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Phone options").assertIsDisplayed()
+        rule.onNodeWithText("Options · this device").assertIsDisplayed()
         // Privacy settings are an Option on this screen, not a pinned top row.
         rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
         // Returning to the list is one tap from the same persistent footer.
-        rule.onNodeWithContentDescription("Show transfers on this phone").performClick()
+        rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Phone transfers").assertIsDisplayed()
+        rule.onNodeWithText("Search transfers on this device").assertIsDisplayed()
     }
 
     @Test fun anEmptyPhoneSaysSoOnceWithoutAZeroOfZeroCount() {
@@ -64,7 +61,7 @@ class PhoneInventoryFirstViewportTest {
         // The shared footer may expose the same destination; match the collection safely.
         rule.onAllNodesWithText("Connections").assertAny(hasClickAction())
         rule.onRoot().captureRoboImage("build/chunks-visual/phone-true-empty-welcome-412dp.png")
-        rule.onNodeWithText("No transfers on this phone yet.").assertDoesNotExist()
+        rule.onNodeWithText("No transfers on this device yet.").assertDoesNotExist()
         rule.onNodeWithText("Showing 0 of 0 local transfers").assertDoesNotExist()
     }
 }

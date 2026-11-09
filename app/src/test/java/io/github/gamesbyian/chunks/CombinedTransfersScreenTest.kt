@@ -76,10 +76,10 @@ class CombinedTransfersScreenTest {
 
     @Test fun defaultCombinedTransfersDefersSearchAndSortUntilRequested() {
         show()
-        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
+        rule.onNodeWithText("Search names or hashes").assertExists()
         rule.onNodeWithText("Change sort & grouping", substring = true).assertDoesNotExist()
-        revealText("Refine transfers")
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Filters")
+        rule.onNodeWithText("Filters", substring = true).performClick()
         revealText("Search names or hashes")
         rule.onNodeWithText("Change sort & grouping", substring = true).assertExists()
         assertTrue(commands.isEmpty())
@@ -144,7 +144,7 @@ class CombinedTransfersScreenTest {
                 .performScrollToNode(androidx.compose.ui.test.hasText(text))
             rule.onNodeWithText(text).assertExists()
         }
-        seen("On this phone: Engine not running, open On this phone · 0 transfers")
+        seen("On this phone: Engine not running; open transfers on this device · 0 transfers")
         seen("Server · seed @ other.example/RPC2: Not connected · 0 transfers")
         seen(serverEnvironmentLabel(aliasScope) + ": Live · 2 transfers")
         seen("Showing 2 · some environments are missing or out of date")
@@ -159,8 +159,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun sortDirectionScopeAndGroupingPersistAcrossReopen() {
         show()
-        revealText("Refine transfers")
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Filters")
+        rule.onNodeWithText("Filters", substring = true).performClick()
         revealText("Change sort & grouping")
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         revealText("Size")
@@ -198,7 +198,7 @@ class CombinedTransfersScreenTest {
         // retains the exact address-bearing label.
         revealText(compactServerLabel(aliasScope))
         rule.onAllNodesWithText(compactServerLabel(aliasScope))[0].performClick()
-        rule.onNodeWithText("On this phone: Engine not running, open On this phone · 0 transfers").assertDoesNotExist()
+        rule.onNodeWithText("On this phone: Engine not running; open transfers on this device · 0 transfers").assertDoesNotExist()
         revealText("Showing 2")
         rule.onNodeWithText("Showing 2").assertExists()
         revealText("Group by environment")
@@ -216,9 +216,9 @@ class CombinedTransfersScreenTest {
 
     @Test fun clearSearchRestoresAllMatchesWithoutChangingSelectedEnvironments() {
         show()
-        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
-        revealText("Refine transfers")
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        rule.onNodeWithText("Search names or hashes").assertExists()
+        revealText("Filters")
+        rule.onNodeWithText("Filters", substring = true).performClick()
         revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
         revealText("Showing 1 of 2")
@@ -244,8 +244,8 @@ class CombinedTransfersScreenTest {
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
         show()
-        revealText("Refine transfers")
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Filters")
+        rule.onNodeWithText("Filters", substring = true).performClick()
         revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("not-in-any-transfer")
         revealText("Showing 0")
@@ -275,8 +275,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun entirelyHiddenFilteredSearchExplainsWhyAddMayNotAppear() {
         show()
-        revealText("Refine transfers")
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Filters")
+        rule.onNodeWithText("Filters", substring = true).performClick()
         revealText("Stopped")
         rule.onNodeWithText("Stopped").performClick()
         revealText("Search names or hashes")
@@ -295,8 +295,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {
         show()
-        revealText("Refine transfers")
-        rule.onNodeWithText("Refine transfers", substring = true).performClick()
+        revealText("Filters")
+        rule.onNodeWithText("Filters", substring = true).performClick()
         rule.onNodeWithText("Filter transfers").assertExists()
         rule.onNodeWithText("Stopped").performClick()
         revealText("Small Episode")
@@ -329,6 +329,11 @@ class CombinedTransfersScreenTest {
             ": Out of date, showing last list · 2 transfers"
         revealText(staleLabel)
         rule.onNodeWithText(staleLabel).assertExists()
+        // The first-fold count is recycled after scrolling. The expanded
+        // source diagnostics must themselves explain what is out of date.
+        revealText("Some environments are missing or out of date.")
+        rule.onNodeWithText("Some environments are missing or out of date.",
+            substring = true).assertExists()
     }
 
     @Test fun oldSignedInServerRowsRemainVisibleButAreNotLiveOrActionable() {
@@ -342,6 +347,8 @@ class CombinedTransfersScreenTest {
             ": Out of date, showing last list · 2 transfers"
         revealText(staleLabel)
         rule.onNodeWithText(staleLabel).assertExists()
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -361,6 +368,8 @@ class CombinedTransfersScreenTest {
 
     @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {
         show()
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -404,6 +413,8 @@ class CombinedTransfersScreenTest {
                     onOpenPhone = {}, onOpenServer = {}, onBack = {})
             } }
         }
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -454,6 +465,8 @@ class CombinedTransfersScreenTest {
                     onOpenPhone = {}, onOpenServer = {}, onBack = {})
             } }
         }
+        revealText("Batch tools")
+        rule.onNodeWithText("Batch tools").performClick()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)

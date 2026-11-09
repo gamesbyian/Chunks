@@ -48,7 +48,7 @@ class PhoneAddLargeTextAuditTest {
 
     @Test fun pasteProblemAndValidStatesKeepTargetsAt320dpAnd200Percent() {
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Paste link").performScrollTo()
         assertFitsAndTargets("empty draft")

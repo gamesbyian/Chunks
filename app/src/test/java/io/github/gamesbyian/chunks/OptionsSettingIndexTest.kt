@@ -6,6 +6,14 @@ import org.junit.Test
 
 /** The Options index only points to existing screens; it holds no values. */
 class OptionsSettingIndexTest {
+    @Test fun authenticatedServerDestinationsAreSearchableWithoutInventingSettingWrites() {
+        assertTrue(PhoneOptionsShortcut.SERVER_PLACES in PhoneOptionsShortcut.search("server folder"))
+        assertTrue(PhoneOptionsShortcut.SERVER_ORGANIZE in PhoneOptionsShortcut.search("server collections"))
+        assertTrue(PhoneOptionsShortcut.SERVER_NAMES in PhoneOptionsShortcut.search("alias"))
+        assertTrue(PhoneOptionsShortcut.SERVER_BACKUP in PhoneOptionsShortcut.search("server backup"))
+        assertTrue(PhoneOptionsShortcut.CONNECTIONS in PhoneOptionsShortcut.search("remote login"))
+    }
+
     @Test fun emptySearchShowsNoShortcuts() {
         assertEquals(emptyList<OptionsShortcut>(), OptionsShortcut.search("   "))
     }

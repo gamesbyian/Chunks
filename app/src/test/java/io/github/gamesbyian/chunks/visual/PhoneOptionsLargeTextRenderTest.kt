@@ -30,7 +30,7 @@ class PhoneOptionsLargeTextRenderTest {
 
     @Test fun phoneOptionsStayReadableAt200Percent() {
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Options on this phone").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         for (label in listOf("Seeding rules…", "Privacy & authentication", "Create a torrent…",
                 "Review ZIP archives…")) {

@@ -30,7 +30,7 @@ class PhoneAddDestinationContinuityInstrumentedTest {
         val oldKind = prefs.getString("default-kind", null)
         val oldRoot = prefs.getString("resolved-root", null)
         try {
-            rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+            rule.onNodeWithText("+ Add").performClick()
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText("Change download location").fetchSemanticsNodes().isNotEmpty()
             }
@@ -43,9 +43,9 @@ class PhoneAddDestinationContinuityInstrumentedTest {
             rule.onNodeWithText("Start downloading after Add (recommended)").assertIsOff()
             rule.onNodeWithText("Or paste a magnet or torrent link").performScrollTo()
                 .performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40))
-            rule.onNodeWithText("All environments…").performScrollTo().performClick()
+            rule.onNodeWithText("Options").performClick()
             rule.waitForIdle()
-            rule.onNodeWithText("Back").performClick()
+            rule.onNodeWithText("+ Add").performClick()
             awaitPlace()
             rule.onNodeWithText("Optional phone download subfolder").assertTextContains("chosen-once")
             rule.onNodeWithText("Start downloading after Add (recommended)").assertIsOff()

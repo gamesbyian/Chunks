@@ -29,7 +29,7 @@ class NoTransfersWelcomeTest {
             }
         }
         rule.onNodeWithText("Your transfers will appear here").assertExists()
-        rule.onNodeWithText("Start a download on this phone, or connect a remote BitTorrent client. " +
+        rule.onNodeWithText("Start a download on this device, or connect a remote BitTorrent client. " +
             "You can use Chunks with either, or both.").assertExists()
         assertEquals(0, add)
         assertEquals(0, connections)
