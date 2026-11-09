@@ -1191,7 +1191,7 @@ internal fun ChunksApp(
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                         onConnections = { section = Section.SERVER },
                         onOpenAdd = { section = Section.LOCAL_ADD },
-                    onOpenOptions = { section = Section.OPTIONS },
+                        onOpenOptions = { section = Section.OPTIONS },
                         remoteEnvironmentLabel = aliasScope.takeIf {
                             RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
                         }?.let(::serverEnvironmentLabel),
