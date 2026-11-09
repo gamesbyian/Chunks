@@ -1,34 +1,33 @@
-# Chunks next-push agent instructions
+# Chunks next-push execution handoff
 
-**Follow these steps; do not treat the archived session story as a live plan.** The previous narrative and old PR tables are preserved at [NEXT-PUSH-HANDOFF-HISTORY-2026-11-08.md](NEXT-PUSH-HANDOFF-HISTORY-2026-11-08.md). [WORK-QUEUE](WORK-QUEUE.md) owns rank, [AGENT-LANES](AGENT-LANES.md) owns boundaries, and [NEXT-PUSH-UX-RECONCILIATION](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) contains the owner-approved UX/media target. Read [AGENTS](../AGENTS.md) before edits.
+**Start here only after reading [AGENTS](../AGENTS.md) and the [ranked work queue](WORK-QUEUE.md).** This file supplies actions and proof requirements, not a rolling progress report. History is archived in [NEXT-PUSH-HANDOFF-HISTORY-2026-11-08.md](NEXT-PUSH-HANDOFF-HISTORY-2026-11-08.md). [AGENT-LANES](AGENT-LANES.md) is the current **five-agent** ownership contract.
 
-## Step 1: take a fresh source and checks snapshot
+## 1. Capture live source, work and evidence
 
-Read live main, every open PR head, diff and required check, open issues, CI policy, QA ledger and source history. Pay particular attention to #1442, #1443, #1444, #1449 and #1450 if still open. Do not use an old PR count or prior run as current acceptance. Preserve red/skipped failures, distinguish infrastructure abort from assertion failure, and avoid branch overlap.
+Agent 5 must inspect current main SHA and Git tree, all open PR numbers, drafts, exact heads, merge bases, changed-file overlaps, every relevant workflow/job and its actual executed test receipts. Read the current [CI policy](CI-POLICY.md), [coverage gates](SPEC-COVERAGE.md), [QA ledger](QUALITY-LEDGER.md) and [owner UX/media contract](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). Treat #1442, #1443, #1444, #1449, #1450 and #1457 as discovery pointers, not assumed open or qualified work.
 
-## Step 2: finish or explicitly retire existing incomplete PRs
+## 2. Qualify #1457 before merging
 
-Have the responsible owners fix the exact native/IME, real magnet/API29, Combined contrast, remote read-only 401 and Android Share/VIEW cases. Require every applicable executed exact-head gate and independent review before a merge. Do not let one stalled PR block disjoint safe changes; do not waive actual failed assertions.
+Confirm four independent names: normal system/application/notifications **Chunks**; public full product **Chunks Torrent Client & Remote**; visual wordmark **chunks.**; debug labels **Chunks Preview** / **Chunks Magnet Preview**. Review source, merged manifest/resources, exact PR head and tested Git tree; require documentation, foundation, R8 and applicable real installed native evidence without red/skipped waiver. If native Add fails in unrelated QA, classify and repair/qualify it rather than treating branding as Android-accepted. Merging source metadata never publishes a Play listing or proves a tested APK.
 
-## Step 3: implement the approved UI/media architecture in separately owned slices
+## 3. Resolve the existing dependent failures without duplicate production edits
 
-- **Agent 1:** make one Combined-derived compact transfer list and dedicated full Details in All/device/server scopes; one-row persistent four-destination footer; two/three-across action groups. Preserve all existing operations, accessibility and exact environment scoping. See #1454.
-- **Agent 2:** surface one-time default-checked auto-artwork choice **only in Add when the global feature is enabled**; persist exact-job opt-out using existing Add seam. Remove active Details toggle in coordination with Agent 1. Preserve Share/Open With and source/Place/Start authority. See #1453.
-- **Agent 3:** repair authenticated rTorrent and integrate privacy/consent-aware background matching and poster fetch for all eligible authorized inventories, cold launch/reconnect/new job. Diagnose actual provider/network blockers instead of assuming. See #1453.
-- **Agent 4:** own tests, documentation and integration; verify source-exact cases before merging, no self-merge. All lanes coordinate shared interfaces before edits.
+- Agent 1 owns #1442 Options/IME and independent actual Combined contrast fixes, then #1454 presentation. Preserve native focus, API29 recreation, real magnet and all other executed red observations until corrected, including any applicable newly introduced regressions.
+- Agent 2 owns #1449 malformed Share extras and #1450 uppercase MAGNET VIEW resolver; keep well-typed source precedence, exact tracker query and explicit Add review. Qualify latest-head native resolver/Share identities, foundation, R8 and API29 as applicable.
+- Agent 3 owns #1444 typed 401/auth transport and the remote portion of #1443 read-only Recheck. Coordinate any presentation change with Agent 1; never retry remote writes or substitute accounts.
+- Agent 4 owns #1453 automatic recognition/provider/artwork. Coordinate the Add-only option with Agent 2 and poster states with Agent 1.
+- Agent 5 identifies each failure's first actual assertion and stage, investigates shared QA fixture failures once, demands exact-head repeats where necessary and merges only independent compatible qualified changes. Do not merge old stacked parents or infer green from a parent's receipt.
 
-## Step 4: perform independent installed qualification
+## 4. Qualify the assembled product, not disconnected demonstrations
 
-Test 320/412dp and 200% fonts, IME, TalkBack/focus semantics; one-row footer, action density, exact common Details, scope/scroll preservation, Add-only conditional artwork checkbox, default-on global feature with separate online consent, real provider poster and override persistence. Exercise complete source → Add → Transfers → Details → reconnect → Stop/Start → Remove with phone HTTPS and genuine disposable authenticated rTorrent peers/pieces; verify old failures and negative cases remain covered. No blind writes, payload-delete Move or private tracker data disclosure.
+On actual installed Android builds, require the same compact Transfers list and dedicated full Details across All/device/server, one-row Transfers / + Add / Connections / Options footer, accessible two/three-across action groups, 320/412dp and 200% text, IME, TalkBack/focus and truthful offline/error UI. Verify Add-only conditional default-checked artwork choice, absent active Details toggle, separate third-party consent and real automatically fetched persistent posters after startup/reconnect/offscreen inventory.
 
-## Step 5: merge and hand off a source-matched APK
+Run source → Add → Transfers → Details → reconnect → Stop/Start → Remove with real phone HTTPS and authenticated disposable rTorrent, controlled actual BitTorrent peers and independently verified pieces. Test negative exact-account/hash, duplicate hash, refusal/uncertainty and nondeletion of payload on job-only Move. Never use protected credentials or tracker passkeys in public artifacts.
 
-Review dependency order and qualification on final heads. Merge only accepted work; run the final assembled tree. Extract/re-hash the *actual tested* debug APK and record source SHA/Git tree, APK digest, runner/case evidence, independent peer/piece receipts and explicit exclusions. Publisher signing, protected server and owner physical device acceptance require their own evidence. Put execution receipts in [QUALITY-LEDGER](QUALITY-LEDGER.md) and update only actionable status in [WORK-QUEUE](WORK-QUEUE.md).
+## 5. Merge, record proof and release only source-exact bytes
 
-## Exit criteria
+Before each merge, compare final branch ancestry/overlaps and check the *last actual* SHA, merge ref/test tree, executed cases, skipped cases, run IDs and outstanding failures. Preserve unsuccessful attempts. After integration, rerun relevant final-tree gates and independently extract and hash the actual **installed/tested APK** (bytes and SHA-256); attach source commit/Git tree and peer/piece receipts with evidence tiers in [QUALITY-LEDGER](QUALITY-LEDGER.md). Do not reuse a historical APK as current-main proof. Physical Pixel, protected server, OEM/Doze, publisher signing and user accessibility remain separate unless personally demonstrated.
 
-Main contains the qualified cohesive UI and artwork slices or has narrowly described blockers with assigned next steps; no contradictory requirements across product specs; all PRs either qualified or explicitly blocked; exact-assembled-source APK provenance documented if produced; no false claims of physical or protected-host acceptance.
+## 6. Control CI cost without reducing truth
 
-## Boundaries
-
-Single shared Add coordinator, source- and account-exact command gate, durable opt-outs, separate provider consent, never silent retries, explicit destructive authorization and no payload migration on job-only Move. Avoid speculative feature expansion, unnecessary CI fan-out and duplicate documentation status logs.
+Diagnose first failures and reuse build-once verified artifacts; prefer focused cheap verification before expensive emulators and remove duplicate fan-out. Retain full native shards/verifier, no assertion weakening or accepting skipped conditions. Keep active [WORK-QUEUE](WORK-QUEUE.md) ranked and instructional, [SPEC-COVERAGE](SPEC-COVERAGE.md) gate-based and central docs without run diaries. Archive history rather than rewriting it as current instructions.
