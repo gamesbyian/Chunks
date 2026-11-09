@@ -12,10 +12,10 @@ Use qualified #1457 source contract as the baseline: normal system/application/n
 
 ## 3. Resolve the existing dependent failures without duplicate production edits
 
-- Agent 1 owns #1442 Options/IME and independent actual Combined contrast fixes, then #1454 presentation. Preserve native focus, API29 recreation, real magnet and all other executed red observations until corrected, including any applicable newly introduced regressions.
+- Agent 1 owns clean replacement #1484 Options/IME, independent genuine Combined contrast and #1454 navigation; #1458's one-row footer is merged, #1459 two/three-across requires new ready-head native/R8 proof. Reconcile stacked #1468 → #1472 → #1481 in that dependency order. Preserve native focus, API29 recreation and real magnet/peer red histories until corrected.
 - Agent 2 treats qualified #1449 malformed Share and #1450 uppercase MAGNET VIEW as **merged**, preserves their source precedence/resolver tests and owns the still-open Add-only artwork choice #1453 and any newly observed intake defects. Qualify latest-head native resolver/Share identities, foundation, R8 and API29 as applicable.
-- Agent 3 owns #1444 typed 401/auth transport and the remote portion of #1443 read-only Recheck. Coordinate any presentation change with Agent 1; never retry remote writes or substitute accounts.
-- Agent 4 owns #1453 automatic recognition/provider/artwork. Coordinate the Add-only option with Agent 2 and poster states with Agent 1.
+- Agent 3 owns currently unqualified #1473 typed 401 restoration (obsolete #1444 closed unmerged) and the remote portion of #1443 read-only Recheck. Coordinate any presentation change with Agent 1; never retry remote writes or substitute accounts.
+- Agent 4 owns #1453 automatic recognition/provider/artwork, with #1460's global default-on/independent consent branch undergoing exact-head native and R8. Coordinate the Add-only option with Agent 2 and poster states with Agent 1.
 - Agent 5 identifies each failure's first actual assertion and stage, investigates shared QA fixture failures once, demands exact-head repeats where necessary and merges only independent compatible qualified changes. Do not merge old stacked parents or infer green from a parent's receipt.
 
 ## 4. Qualify the assembled product, not disconnected demonstrations
@@ -26,7 +26,7 @@ Run source → Add → Transfers → Details → reconnect → Stop/Start → Re
 
 ## 5. Merge, record proof and release only source-exact bytes
 
-Before each merge, compare final branch ancestry/overlaps and check the *last actual* SHA, merge ref/test tree, executed cases, skipped cases, run IDs and outstanding failures. Preserve unsuccessful attempts. After integration, rerun relevant final-tree gates and independently extract and hash the actual **installed/tested APK** (bytes and SHA-256); attach source commit/Git tree and peer/piece receipts with evidence tiers in [QUALITY-LEDGER](QUALITY-LEDGER.md). Do not reuse a historical APK as current-main proof. Physical Pixel, protected server, OEM/Doze, publisher signing and user accessibility remain separate unless personally demonstrated.
+Before each merge, compare final branch ancestry/overlaps and check the *last actual* SHA, merge ref/test tree, executed cases, skipped cases, run IDs and outstanding failures. Preserve unsuccessful attempts. After integration, rerun relevant final-tree gates and independently extract and hash the actual **installed/tested APK** (bytes and SHA-256); attach source commit/Git tree and peer/piece receipts with evidence tiers in [QUALITY-LEDGER](QUALITY-LEDGER.md). Use the successful `a7e063d9` disposable run as the last accepted benchmark, never as evidence for a later changed main. Do not reuse a historical APK as current-main proof. Physical Pixel, protected server, OEM/Doze, publisher signing and user accessibility remain separate unless personally demonstrated.
 
 ## 6. Control CI cost without reducing truth
 
