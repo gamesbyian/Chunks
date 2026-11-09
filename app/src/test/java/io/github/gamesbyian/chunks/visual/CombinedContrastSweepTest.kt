@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -69,8 +70,15 @@ class CombinedContrastSweepTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Small Episode"))
         sweep("combined-rows")
         val label = serverEnvironmentLabel(scope)
+        // The fixed one-row footer can change how much of the lazy catalog
+        // is initially visible. Scroll to real targets rather than assuming
+        // the same initial viewport at every font scale.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasContentDescription("Expand Big Archive on $label"))
         rule.onNodeWithContentDescription("Expand Big Archive on $label").performClick()
         sweep("combined-more")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasContentDescription("All details for Big Archive on $label"))
         rule.onNodeWithContentDescription("All details for Big Archive on $label").performClick()
         sweep("detail")
         assertTrue("Text below 4.5:1: $failures", failures.isEmpty())

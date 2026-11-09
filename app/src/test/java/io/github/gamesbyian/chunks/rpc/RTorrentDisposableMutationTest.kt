@@ -1,6 +1,12 @@
 package io.github.gamesbyian.chunks.rpc
 
+import com.sun.net.httpserver.HttpServer
+import java.net.HttpURLConnection
+import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.URI
+import java.util.Base64
+import java.util.Collections
 import java.nio.file.Files
 import java.nio.file.Paths
 import kotlinx.coroutines.runBlocking
@@ -287,6 +293,143 @@ class RTorrentDisposableMutationTest {
             FilePriorityOutcome.Unchanged(hash, 0, requested),
             remote.setFilePriority(hash, 0, first.path, first.sizeBytes,
                 requested, requested))
+    }
+
+
+    /**
+     * Integration boundary: a named Basic-auth login at one numbered
+     * gateway, forwarding only this disposable fixture's exact RPCs to
+     * the genuine engine. Never connects to an owner server.
+     *
+     * This complements anonymous real-engine mutations and synthetic auth
+     * tests. Stop/start and data deletion remain separate user-authorized
+     * journeys. This test does ONE Add and ONE session-only erase.
+     */
+    @Test fun namedNumberedGatewayAuthenticatesOneAddAndOneSessionOnlyErase() = runBlocking {
+        val upstreamRemote = temporaryRemote() // pins 127.0.0.1:18080/RPC2
+        val upstream = URI(System.getenv("CHUNKS_DISPOSABLE_RT_URL"))
+        val root = System.getenv("CHUNKS_DISPOSABLE_TARGET_DIR").orEmpty()
+        require(root.startsWith("/") && root.contains("chunks-data"))
+        val torrent = ("d4:infod6:lengthi5e4:name14:auth-route.dat12:piece lengthi16384e6:pieces20:" +
+            "01234567890123456789ee").toByteArray(Charsets.ISO_8859_1)
+        val infoHash = TorrentMetainfoReader.preview(torrent).infoHashV1
+        assertNull("Disposable fixture must have fresh exact hash", upstreamRemote.lookupName(infoHash))
+        val payload = Paths.get(root, "auth-route.dat")
+        Files.createDirectories(payload.parent)
+        val original = "HELLO".toByteArray(Charsets.UTF_8)
+        Files.write(payload, original)
+
+        val route = "/rutorrent3/RPC2"
+        val principal = "fixture-three"
+        val password = "disposable-secret"
+        val auth = "Basic " + Base64.getEncoder().encodeToString(
+            "$principal:$password".toByteArray(Charsets.UTF_8))
+        val allowed = setOf(
+            "system.client_version", "d.multicall2", "d.name", "d.hash",
+            "d.directory", "d.is_multi_file", "d.state", "d.is_active",
+            "load.raw_verbose", "d.erase"
+        )
+        val methods = Collections.synchronizedList(mutableListOf<String>())
+        val accepted = Collections.synchronizedList(mutableListOf<String>())
+        val gateway = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        gateway.createContext(route) { exchange ->
+            val xml = exchange.requestBody.use { it.readBytes() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(xml.toString(Charsets.UTF_8))?.groupValues?.get(1).orEmpty()
+            methods += method
+            when {
+                exchange.requestHeaders.getFirst("Authorization") != auth -> {
+                    exchange.responseHeaders.add("WWW-Authenticate", "Basic realm=\"fixture-three\"")
+                    exchange.sendResponseHeaders(401, -1)
+                    exchange.close()
+                }
+                exchange.requestMethod != "POST" || method !in allowed -> {
+                    exchange.sendResponseHeaders(403, -1)
+                    exchange.close()
+                }
+                else -> {
+                    val conn = upstream.toURL().openConnection() as HttpURLConnection
+                    try {
+                        conn.requestMethod = "POST"
+                        conn.connectTimeout = 8_000
+                        conn.readTimeout = 15_000
+                        conn.instanceFollowRedirects = false
+                        conn.setRequestProperty("Content-Type", "text/xml; charset=utf-8")
+                        conn.doOutput = true
+                        conn.setFixedLengthStreamingMode(xml.size)
+                        // No Authorization header is forwarded to rTorrent.
+                        conn.outputStream.use { it.write(xml) }
+                        val code = conn.responseCode
+                        if (code !in 200..299 || conn.contentLengthLong > 4_194_304L) {
+                            exchange.sendResponseHeaders(502, -1)
+                            exchange.close()
+                        } else {
+                            val body = conn.inputStream.use { it.readNBytes(4_194_305) }
+                            if (body.size > 4_194_304) {
+                                exchange.sendResponseHeaders(502, -1)
+                                exchange.close()
+                            } else {
+                                accepted += method
+                                exchange.responseHeaders.add("Content-Type", "text/xml")
+                                exchange.sendResponseHeaders(200, body.size.toLong())
+                                exchange.responseBody.use { it.write(body) }
+                            }
+                        }
+                    } finally { conn.disconnect() }
+                }
+            }
+        }
+        gateway.start()
+        try {
+            val address = "http://127.0.0.1:" + gateway.address.port + route
+            val rejected = RTorrentRemote(RemoteCredentials(address, principal, "wrong"))
+            assertThrows(RpcHttpStatusException::class.java) {
+                runBlocking { rejected.version() }
+            }
+            assertTrue("Denied login never reaches real rTorrent", accepted.isEmpty())
+
+            val creds = RemoteCredentials(address, principal, password)
+            val authenticated = RTorrentRemote(creds)
+            assertTrue(authenticated.version().isNotBlank())
+            assertEquals(RemoteReadAuthEvidence.READ_CHALLENGE_ACCEPTED,
+                authenticated.readAuthenticationEvidence())
+            requireRemoteConnectIdentityEvidence(creds, authenticated)
+            val outcome = authenticated.loadStoppedTorrentBytes(torrent, root)
+            assertTrue("Authenticated exact Add must not be uncertain: $outcome",
+                outcome is RemoteAddOutcome.VerifiedStopped ||
+                    outcome is RemoteAddOutcome.PendingVerification)
+            var current: RemoteTransfer? = null
+            for (attempt in 1..15) {
+                current = authenticated.listTransfers("main").firstOrNull {
+                    it.hash.equals(infoHash, true)
+                }
+                if (current != null) break
+                kotlinx.coroutines.delay(350L)
+            }
+            val job = requireNotNull(current) { "Authenticated Add not registered" }
+            assertEquals("auth-route.dat", job.name)
+            assertEquals(root, job.directory)
+            assertFalse(job.started)
+            assertEquals(1, accepted.count { it == "load.raw_verbose" })
+
+            val removed = authenticated.eraseFromSession(infoHash, job.name, job.directory)
+            assertTrue("Real session-only Remove must not be an ambiguous write: $removed",
+                removed is SessionEraseOutcome.VerifiedRemoved ||
+                    removed is SessionEraseOutcome.PendingRemoval)
+            var absent = false
+            for (attempt in 1..15) {
+                absent = upstreamRemote.lookupName(infoHash) == null
+                if (absent) break
+                kotlinx.coroutines.delay(350L)
+            }
+            assertTrue("Exact job was not removed on real engine", absent)
+            assertEquals("Exactly one source job removal command was sent", 1,
+                accepted.count { it == "d.erase" })
+            assertArrayEquals("Session-only Remove must preserve original disk bytes",
+                original, Files.readAllBytes(payload))
+            assertTrue(methods.all { it in allowed })
+        } finally { gateway.stop(0) }
     }
 
 }

@@ -1125,23 +1125,26 @@ internal fun LocalEngineScreen(
                     }
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            val key = phoneAddedKey(checkedMagnet.infoHash)
-                            if (!allowArtwork && (key == null ||
-                                mediaController?.prepareForAdd(key, false) != true)) {
-                                return@withContext LocalAddResult.Refused(
+                            val preflight = prepareLocalAddPlaceAndArtwork(
+                                root = LocalDownloadPlaces.materialize(selected),
+                                subfolder = selectedDraft, allowArtwork = allowArtwork,
+                                persistExactExclusion = {
+                                    val key = phoneAddedKey(checkedMagnet.infoHash)
+                                    key != null && mediaController?.prepareForAdd(key, false) == true
+                                })
+                            when (preflight) {
+                                LocalAddArtworkPreflight.InvalidPlace -> LocalAddResult.Refused(
+                                    "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.")
+                                LocalAddArtworkPreflight.PreferenceNotSaved -> LocalAddResult.Refused(
                                     "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.")
-                            }
-                            val chosen = LocalOwnedAddFolder.prepare(
-                                LocalDownloadPlaces.materialize(selected), selectedDraft)
-                            if (chosen == null) LocalAddResult.Refused(
-                                "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.")
-                            else {
-                                val engine = LocalEngineHolder.get(context)
-                                // Even a Refused after entering libtorrent may have
-                                // registered a job. Never disarm based on that enum.
-                                enteredNative.set(true)
-                                engine.addMagnet(selectedMagnet, chosen,
-                                    autoStartAfterMetadata = autoStart).also(nativeResult::set)
+                                is LocalAddArtworkPreflight.Ready -> {
+                                    val engine = LocalEngineHolder.get(context)
+                                    // Only after Place AND exclusion are ready can
+                                    // the frozen ticket cross the native write fence.
+                                    enteredNative.set(true)
+                                    engine.addMagnet(selectedMagnet, preflight.folder,
+                                        autoStartAfterMetadata = autoStart).also(nativeResult::set)
+                                }
                             }
                         }
                         settleTicket()
@@ -1479,35 +1482,37 @@ internal fun LocalEngineScreen(
                     }
                     try {
                         val result = withContext(Dispatchers.IO) {
-                            val key = phoneAddedKey(add.preview.infoHashV1)
-                            if (!allowArtwork && (key == null ||
-                                mediaController?.prepareForAdd(key, false) != true)) {
-                                return@withContext LocalAddResult.Refused(
-                                    "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.") to null
-                            }
-                            val chosen = LocalOwnedAddFolder.prepare(
-                                LocalDownloadPlaces.materialize(selected), selectedDraft)
-                            if (chosen == null)
-                                LocalAddResult.Refused(
+                            val preflight = prepareLocalAddPlaceAndArtwork(
+                                root = LocalDownloadPlaces.materialize(selected),
+                                subfolder = selectedDraft, allowArtwork = allowArtwork,
+                                persistExactExclusion = {
+                                    val key = phoneAddedKey(add.preview.infoHashV1)
+                                    key != null && mediaController?.prepareForAdd(key, false) == true
+                                })
+                            when (preflight) {
+                                LocalAddArtworkPreflight.InvalidPlace -> LocalAddResult.Refused(
                                     "The download location or subfolder is unavailable, nonempty or unsafe. Nothing was added.") to null
-                            else {
-                                val engine = LocalEngineHolder.get(context)
-                                enteredNative.set(true)
-                                // The shared ticket freezes the exact reviewed
-                                // bytes: never execute with the mutable screen
-                                // holder after authorization and a suspend gap.
-                                val authorizedBytes = ticket?.intent?.source?.metainfoForSubmission()
-                                    ?: add.bytes
-                                val added = engine.addStoppedChecked(authorizedBytes, chosen)
-                                    .also(nativeResult::set)
-                                // Configure file order while stopped, before any
-                                // explicitly requested payload Start.
-                                if (orderAfterAdd && added is LocalAddResult.AddedStopped) {
-                                    orderNote = enableFinishInOrderAfterAdd(context, engine, added.status.infoHash)
+                                LocalAddArtworkPreflight.PreferenceNotSaved -> LocalAddResult.Refused(
+                                    "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.") to null
+                                is LocalAddArtworkPreflight.Ready -> {
+                                    val engine = LocalEngineHolder.get(context)
+                                    enteredNative.set(true)
+                                    // The shared ticket freezes the exact reviewed
+                                    // bytes: never execute with the mutable screen
+                                    // holder after authorization and a suspend gap.
+                                    val authorizedBytes = ticket?.intent?.source?.metainfoForSubmission()
+                                        ?: add.bytes
+                                    val added = engine.addStoppedChecked(authorizedBytes, preflight.folder)
+                                        .also(nativeResult::set)
+                                    // Configure file order while stopped, before any
+                                    // explicitly requested payload Start.
+                                    if (orderAfterAdd && added is LocalAddResult.AddedStopped) {
+                                        orderNote = enableFinishInOrderAfterAdd(context, engine, added.status.infoHash)
+                                    }
+                                    if (autoStart && added is LocalAddResult.AddedStopped)
+                                        added to engine.resume(added.status.infoHash)
+                                    else added to null
                                 }
-                                if (autoStart && added is LocalAddResult.AddedStopped)
-                                    added to engine.resume(added.status.infoHash)
-                                else added to null
                             }
                         }
                         settleTicket()

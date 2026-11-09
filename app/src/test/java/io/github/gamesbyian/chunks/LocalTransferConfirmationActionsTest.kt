@@ -27,7 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 class LocalTransferConfirmationActionsTest {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun phoneRemoveAt200PercentPresentsDistinctFullWidthTargetsWithoutCommands() {
+    @Test fun phoneRemoveAt200PercentKeepsDistinctAdjacentTargetsWithoutCommands() {
         var removes = 0
         var declined = 0
         rule.setContent {
@@ -44,7 +44,8 @@ class LocalTransferConfirmationActionsTest {
         }
         val confirm = rule.onNodeWithText("Remove, keep files").getUnclippedBoundsInRoot()
         val cancel = rule.onNodeWithText("Keep").getUnclippedBoundsInRoot()
-        assertTrue("Confirm and cancel stack at 200%", cancel.top >= confirm.bottom)
+        assertEquals("Confirm and cancel share one row at 200%", confirm.top, cancel.top)
+        assertTrue("Destructive and safe actions do not overlap", confirm.right <= cancel.left)
         assertTrue("Both have >=48dp semantic touch targets",
             rule.onNode(androidx.compose.ui.test.hasText("Remove, keep files") and
                 androidx.compose.ui.test.hasClickAction()).getUnclippedBoundsInRoot().let { it.bottom - it.top >= 48.dp })
@@ -55,7 +56,7 @@ class LocalTransferConfirmationActionsTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
-    fun phoneToServerReviewAlsoStacksAt200Percent() {
+    fun phoneToServerReviewFitsTwoAcrossAt200Percent() {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme { Surface {
@@ -68,7 +69,8 @@ class LocalTransferConfirmationActionsTest {
         }
         val confirm = rule.onNodeWithText("Review server Add").getUnclippedBoundsInRoot()
         val cancel = rule.onNodeWithText("Cancel").getUnclippedBoundsInRoot()
-        assertTrue(cancel.top >= confirm.bottom)
+        assertEquals("Review and cancel stay on a single row", confirm.top, cancel.top)
+        assertTrue("Buttons remain separate", confirm.right <= cancel.left)
     }
 
     @Test

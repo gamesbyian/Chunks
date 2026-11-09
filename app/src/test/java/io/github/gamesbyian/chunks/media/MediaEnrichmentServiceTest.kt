@@ -13,7 +13,7 @@ import org.junit.Test
 import java.nio.file.Files
 
 class MediaEnrichmentServiceTest {
-    private val consent = MediaPrivacySettings(onlineLookupConsent = true)
+    private val consent = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
     private val online = MediaNetworkState(online = true, metered = false)
     private val clock = FakeClock()
 
@@ -35,6 +35,20 @@ class MediaEnrichmentServiceTest {
         assertEquals(MediaLookupStatus.BLOCKED_CONSENT, s.lookup(rec("Babylon.5.S02E07.mkv"), consent, online, bg).status)
         assertEquals(MediaLookupStatus.BLOCKED_CONSENT, s.lookup(rec("Babylon.5.S02E07.mkv"), consent.copy(automaticLookup = true),
             MediaNetworkState(true, metered = true), bg).status)
+        assertTrue(http.requests.isEmpty())
+    }
+
+    @Test fun globallyDisabledArtworkNeverStartsAutomaticProviderRequests() {
+        val http = FakeMediaHttp().on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
+        val s = service(http, TvMazeProvider())
+        val enabled = consent.copy(automaticLookup = true)
+        val origin = MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT
+        val recognition = rec("Babylon.5.S02E07.mkv")
+        val hidden = s.lookup(recognition, enabled.copy(showArtwork = false), online, origin)
+        val noDownloads = s.lookup(recognition, enabled.copy(downloadArtwork = false), online, origin)
+        assertEquals(MediaLookupStatus.BLOCKED_CONSENT, hidden.status)
+        assertEquals(MediaLookupStatus.BLOCKED_CONSENT, noDownloads.status)
+        assertTrue(hidden.message.contains("switched off"))
         assertTrue(http.requests.isEmpty())
     }
 

@@ -36,7 +36,7 @@ import org.robolectric.annotation.GraphicsMode
 class AuthenticatedTransfersFooterTest {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun fourDestinationFooterPutsConnectionsBesideOptionsWithoutIssuingAdd() {
+    @Test fun fourDestinationFooterKeepsAllTargetsOnOneRowWithoutIssuingAdd() {
         var adds = 0
         var connections = 0
         var options = 0
@@ -59,8 +59,8 @@ class AuthenticatedTransfersFooterTest {
         val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
         val conn = rule.onNodeWithContentDescription("Connections").getUnclippedBoundsInRoot()
         val opts = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
-        assertTrue("Connections is secondary navigation, below Add", conn.top >= add.bottom)
-        assertTrue("Options shares a secondary row", conn.right <= opts.left)
+        assertTrue("Connections stays on the same navigation row as Add", conn.top == add.top)
+        assertTrue("Options follows Connections in the same row", conn.right <= opts.left && conn.top == opts.top)
         assertTrue(conn.bottom - conn.top >= 48.dp)
         assertTrue(opts.bottom - opts.top >= 48.dp)
         rule.onNodeWithContentDescription("Connections").performClick()
@@ -118,7 +118,7 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(1, options)
     }
 
-    @Test fun atPrimaryPhoneWidthEnlargedTextDoesNotCompressThreeNavigationButtons() {
+    @Test fun atPrimaryPhoneWidthEnlargedTextKeepsThreeNavigationButtonsInOneRow() {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme {
@@ -131,9 +131,9 @@ class AuthenticatedTransfersFooterTest {
         val t = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
         val a = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
         val o = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
-        assertTrue("Two primary actions remain on one readable row", t.right < a.left)
-        assertTrue("Advanced navigation receives its own full-width row", o.top >= a.bottom)
-        assertTrue("Options should cover most of the footer at 200% text", o.right - o.left >= 280.dp)
+        assertTrue("all navigation remains on one row at 200% text",
+            t.top == a.top && a.top == o.top)
+        assertTrue("all targets remain operable", listOf(t, a, o).all { it.bottom - it.top >= 48.dp })
     }
 
     @Test fun primaryPhoneAt140PercentKeepsFullTransfersWordOnReadableRow() {
@@ -149,9 +149,9 @@ class AuthenticatedTransfersFooterTest {
         val transfers = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
         val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
         val options = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
-        assertTrue("Primary transfers and Add still fit side-by-side", transfers.right < add.left)
-        assertTrue("140% type moves secondary Options to a readable second row",
-            options.top >= add.bottom)
+        assertTrue("140% text retains one row", transfers.top == add.top && add.top == options.top)
+        assertTrue("each control has distinct horizontal bounds",
+            transfers.right <= add.left && add.right <= options.left)
     }
 
     @Test fun phoneFooterActionsNameTheExactScopeWithoutChangingRemoteSemantics() {
@@ -179,29 +179,40 @@ class AuthenticatedTransfersFooterTest {
 
     @Test
     @Config(qualifiers = "w320dp-h700dp-mdpi")
-    fun enlargedTypeFooterRetainsAllThreeActions() {
+    fun enlargedTypeFooterRetainsAllFourActionsInOneRow() {
         var adds = 0
+        var connections = 0
+        var options = 0
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme {
                     Box(Modifier.width(320.dp)) {
-                        AuthenticatedTransfersFooter(false, {}, { adds++ }, {})
+                        AuthenticatedTransfersFooter(
+                            false, {}, { adds++ }, { options++ },
+                            onConnections = { connections++ })
                     }
                 }
             }
         }
         val transfers = rule.onNodeWithText("Transfers")
         val add = rule.onNodeWithText("+ Add")
-        val options = rule.onNodeWithContentDescription("Options")
-        val firstRow = transfers.getUnclippedBoundsInRoot()
-        val addRow = add.getUnclippedBoundsInRoot()
-        val secondRow = options.getUnclippedBoundsInRoot()
-        assertTrue("Transfers and Add share the readable first row", firstRow.right < addRow.left)
-        assertTrue("Options moves below at 200% text", secondRow.top >= addRow.bottom)
-        assertTrue("Options remains a full-size target", secondRow.bottom - secondRow.top >= 48.dp)
+        val connection = rule.onNodeWithContentDescription("Connections")
+        val option = rule.onNodeWithContentDescription("Options")
+        val bounds = listOf(transfers, add, connection, option).map {
+            it.getUnclippedBoundsInRoot()
+        }
+        assertTrue("all four destinations remain a single row at 320dp/200%",
+            bounds.all { it.top == bounds.first().top })
+        assertTrue("all destinations have separate horizontal hit regions",
+            bounds.zipWithNext().all { (a, b) -> a.right <= b.left })
+        assertTrue("each destination keeps an accessible minimum 48dp target",
+            bounds.all { it.bottom - it.top >= 48.dp })
         add.performClick()
-        options.performClick()
+        connection.performClick()
+        option.performClick()
         assertEquals(1, adds)
+        assertEquals(1, connections)
+        assertEquals(1, options)
     }
 
     @Test fun softKeyboardKeepsAllDestinationsVisibleAndActionable() {
