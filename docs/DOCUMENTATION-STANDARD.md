@@ -1,13 +1,15 @@
 # Documentation architecture and agent authoring standard
 
+**Binding authoring policy: active documents are instructions, not status diaries.**
 
-## Current-status hygiene after the 2026-10-31 full repository inventory
+- **AGENTS, AGENT-LANES, WORK-QUEUE, current NEXT-PUSH handoff and implementation plans** must state what to do, in what order, who owns it, which files/interfaces to use, constraints, decision rules and acceptance tests. Prefer imperative verbs, a bounded task, dependency and exit criterion for every active work item.
+- **PRODUCT, UX, ARCHITECTURE, OPTIONS and feature specifications** must describe desired behaviour, states, defaults, APIs/interfaces, exclusions and edge-case tests. Do not prepend rolling PR histories, retrospective commentary, old SHAs or claims of what an agent did last.
+- **SPEC-COVERAGE** must be a compact requirement-to-test matrix and clearly label unverified gates. **QUALITY-LEDGER** is the appropriate chronological evidence record, including failures, source SHA, APK hashes, CI run details and historic qualification.
+- **Dated historical plans and handoffs** go into explicit `*-HISTORY-YYYY-MM-DD.md` snapshots in the same relative documentation directory or other indexed archives. Link them from INDEX. Preserve original failures and audit provenance; do not delete test-history facts to make the queue look green.
+- **On every integration:** recheck live main/PRs, edit the one executable queue and current handoff *in place*, supersede obsolete tasks, and append a separate dated receipt to the ledger. Do not accumulate "latest" paragraph stacks. Keep history links rather than duplicating past progress narratives above executable instructions.
+- **Review gate:** refuse a docs change that adds a progress-log paragraph to an active spec/queue/agent contract, creates a second backlog, claims tested status without source evidence, or removes a currently required invariant.
 
-The [dated tracking audit](REPOSITORY-DOCS-AND-TRACKING-AUDIT-2026-10-31.md) enumerated all Markdown/text docs and all then-open issues/PRs. This standard is prospective: every *live* status claim should name the governing issue/PR, observed exact-head evidence and current disposition. Historical dated tests and red classifications are preserved as historical evidence, **not** repeated as current release blockers after a binding owner correction. Write the supersession next to the claim when it would otherwise direct an agent incorrectly; a disclaimer at the front alone may not cure a contradictory imperative deeper in the active contract.
-
-For issue and PR descriptions, place current status, exact base/head, red CI and missing acceptance at the top. Keep old detail only in an explicitly dated section or linked quality ledger. Do not treat an old PR run as proof for a newer stacked commit, silence a test because other jobs are green, or close a draft while unported unique source/test contributions remain. Review and update reference links after changes; use the one [WORK-QUEUE](WORK-QUEUE.md) and refrain from creating a new active backlog inside a dated audit.
-
-**Status:** normative repository maintenance policy. **Applies to:** human maintainers and autonomous agents. **Purpose:** make product intent, implementation evidence, and next actions independently discoverable without competing sources of truth.
+Read [the current queue](WORK-QUEUE.md), [agent instructions](../AGENTS.md), [coverage](SPEC-COVERAGE.md), [evidence ledger](QUALITY-LEDGER.md) and the [archive links](INDEX.md).
 
 ## Start here: authority by question
 
