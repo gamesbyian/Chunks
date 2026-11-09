@@ -13,7 +13,14 @@ internal object ExternalMagnetInput {
             Intent.ACTION_VIEW -> intent.dataString
             // EXTRA_TEXT is contractually CharSequence; some share providers
             // send SpannableString rather than String. getStringExtra loses it.
-            Intent.ACTION_SEND -> intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+            // External apps can violate this Parcelable/Bundle type contract:
+            // a wrong-type extra must refuse this one handoff, never crash Add
+            // or silently nominate an unrelated document as its replacement.
+            Intent.ACTION_SEND -> try {
+                intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+            } catch (_: RuntimeException) {
+                null
+            }
             else -> null
         }?.trim() ?: return null
         if (candidate.length > 8192 || !candidate.startsWith("magnet:?", ignoreCase = true))
