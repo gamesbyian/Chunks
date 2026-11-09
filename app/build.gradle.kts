@@ -22,8 +22,14 @@ android {
         require(previewSuffix.matches(Regex("[a-z][a-z0-9_]{1,60}"))) { "Invalid preview application identity" }
         applicationId = if (sideBySide) "io.github.gamesbyian.chunks.$previewSuffix"
                         else "io.github.gamesbyian.chunks"
+        // System-owned app identity (launcher, Settings and notification attribution) stays short.
+        // Debug/QA side-by-side installs retain distinct labels to avoid testing the wrong APK.
         resValue("string", "chunks_app_name", if (!sideBySide) "Chunks"
             else if (previewSuffix.startsWith("magnet")) "Chunks Magnet Preview" else "Chunks Preview")
+        // Full descriptive product/Play listing title is deliberately NOT the Android app label.
+        // Store metadata is independently configured in Play Console; this resource is the
+        // source-controlled branding contract for About/release metadata consumers.
+        resValue("string", "chunks_product_name", "Chunks Torrent Client & Remote")
         minSdk = 29
         targetSdk = 37
         // Release builds supply a monotonically increasing code; dev stays 1.
