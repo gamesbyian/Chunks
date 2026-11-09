@@ -1,35 +1,6 @@
-# Chunks cohesive UX and automatic enrichment campaign (owner direction, 2026-11-05)
+# Unified Chunks UX and background artwork: implementation plan
 
-> **BINDING OWNER UPDATE · 2026-11-09:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) supersedes any older allowance for expandable complete transfer cards or stacked footer. One Combined-derived compact list for all scopes, **full Details on tap**, always-one-row four-root footer, and two/three-across grouped actions. Global automatic artwork collection/display preference default enabled **without** implicit network consent; **Add-only** optional per-transfer exclusion default checked when global feature enabled; **no active Details checkbox**. Automatically enrich authorized visible inventory and apply confident provider matches; manual Identify is correction, not routine work. These are observed installed-app gaps pending source-exact implementation and tests.
-
-
-> **Implementation-status overlay, 2026-11-06:** The #1325/#1326 candidate descriptions below are historical; their unique production and tests were merged in integration #1333 along with #1328/#1329/#1330. #1321 is closed as superseded after its unique provider acceptance harness moved into merged #1336; #1322's native prefix checks are also merged. Still **not fully delivered**: universal Add UI, launch-wide enrichment, Add-time exclusion, source Keep/Archive/Delete, swipe actions, Smart Routing dispatch/editor, remaining accessibility/Pixel and live-provider acceptance. Canonical priorities are in [WORK-QUEUE](WORK-QUEUE.md). Owner-approved design direction here remains binding.
-
-
-> **Universal UX extension:** [Universal Add, Connections and row disclosure](UNIVERSAL-NAVIGATION-AND-TRANSFER-DISCLOSURE-2026-11-05.md) is authoritative alongside automatic artwork: four permanent destinations, one Add source/target/Place/Start experience, one Connections owner, compact rows expanding to contextual tools and All details. Earlier Options-only connection and context-specific Add descriptions are transitional. Preserve native torrent safety and existing functionality.
-
-
-**Status:** binding design/interaction direction; implementation and installed-app acceptance pending. This is a coordinated UX campaign, **not** a claim of deployed behavior or a replacement for the single [WORK-QUEUE](WORK-QUEUE.md). The owner approved development use of the complete existing SVG library on 2026-11-05, with changes on request rather than per-asset visual signoff.
-
-## Implementation checkpoint: first independently reviewable slices
-
-This dated checkpoint describes **open work, not accepted/deployed behavior**. Live PR heads and checks supersede any SHA written here.
-
-- [#1325](https://github.com/gamesbyian/Chunks/pull/1325): first automatic-enrichment slice. Consent enables the automatic preference; previously observed rows and the authorized, fully enumerated **Combined** inventory are scanned without requiring every card to be composed. Identity remains exact environment+infohash; persisted user choices override automatic matches. Locked/offline/stale sources do not supply lookup entries. Canceling a scan prevents storing late results; off-screen match artwork can warm the existing cache. **Still not a global process-wide launch worker**: ordinary phone-only/remote-only home inventory, retry/backoff, negative-result expiry, process/reconnection durability, installed provider/privacy tests and pixel-level visual acceptance remain open. Merge only against exact-head checks.
-- [#1326](https://github.com/gamesbyian/Chunks/pull/1326): independent first screen-hierarchy slice. Combined Transfers discloses search, filters and sort/group controls on demand, preserving active search and existing commands. Installed before/after screenshots, 200% typography and accessibility verification remain required. Not a wholesale redesign.
-- [#1321](https://github.com/gamesbyian/Chunks/pull/1321) and [#1322](https://github.com/gamesbyian/Chunks/pull/1322) remain separate controlled-peer/native-evidence work and must not be silently treated as a UX acceptance pass.
-
-### Current-to-target action-placement map
-
-| Surface | Source inventory issue | Intended primary route and preserved advanced access |
-| --- | --- | --- |
-| Combined Transfers | Search field and several always-present sorting/filter controls compete with rows | Transfer list + Add immediately; **Refine transfers** discloses search/sort/filter/group, with active search visible until cleared. Other screens still need whole-screen review |
-| Phone/rTorrent Transfers | Compact artwork and details already implemented, but full default-screen hierarchy not yet accepted | Scannable rows + Add as dominant action; Start/Stop only when applicable; exact-scope details and contextual advanced tools |
-| Details | Existing media summary, Identify, poster selection, Similar transfers and technical sections can accumulate competing tool groups | Focused single transfer, status and files/peers/trackers; Identify/Change artwork in contextual detail only; per-transfer manual override preserved |
-| Add | Existing real Add/Place behavior has an approved default vs one-time destination change | One source, one target/Place, Start choice; advanced options collapsed; no mandatory review |
-| Options | Media preferences and provider privacy consent already exist in a shared route | App-wide artwork/network and provider preferences centralized; per-transfer corrections remain in Details |
-
-**Evidence discipline:** Source edits and Robolectric tests are preliminary; complete current-head CI, rendered installed screenshots compared with owner reference sheets, accessibility/real-provider tests, source-bound APK receipt and owner Pixel verification remain independent gates. Never advertise a pre-media or pre-UX preview as the new integrated candidate.
+**Execute this plan with [current UX/media acceptance](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) and [WORK-QUEUE](WORK-QUEUE.md).** Use the Combined-derived transfer row for All/device/server scopes and full Details on tap; provide a persistent **one-row** four-destination footer and two/three-across action groups. Treat the global media feature as default enabled, with online consent separate. Show the per-job default-checked option **only at Add when global collection/display is on**; remove active Details toggle. Automatically enrich authorized eligible inventory on launch/reconnect/new job and display confident matches/posters. Avoid duplicate UI/model/engine implementations. Record testing in [QUALITY-LEDGER](QUALITY-LEDGER.md), not this execution plan.
 
 ## Goal and authority
 
