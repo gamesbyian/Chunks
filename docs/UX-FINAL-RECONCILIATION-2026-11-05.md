@@ -1,5 +1,8 @@
 # Chunks integrated UX handoff
 
+> **HISTORICAL UX REFERENCE ONLY · 2026-11-09:** [Current binding next-push UI/media directions](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) supersede old stacked-footer, inline-expanded-card, and active Details media checkbox placement. Preserve dated decisions and test results here as history, not live agent instructions.
+
+
 > **Historical handoff, superseded as of 2026-11-06:** This document preserves the original campaign instructions and exact-source evidence but is **not a live agent dispatch**. The current main at reconciliation is `1aea0c2e`; UX #1333, Options-spec #1334, first-run #1335 and real-provider test-harness #1336 are merged. PR #1321 was closed after its distinct work was retained in #1336. The latest exact-head #1336 real rTorrent and Native Add tests passed, but manual live-provider UI/offline tests, physical Pixel and a final-main signed/release APK remain unverified. For actual priorities read [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md) and current GitHub state; do not reexecute the dated instructions below or overwrite newer owner-approved UX architecture.
 
 
