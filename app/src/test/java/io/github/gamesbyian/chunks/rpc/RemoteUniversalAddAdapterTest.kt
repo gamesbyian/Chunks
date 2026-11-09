@@ -93,6 +93,7 @@ class RemoteUniversalAddAdapterTest {
         multiFileFlag: Long = 0,
         metadataPending: Long = 0,
         transientMissingNameOnce: Boolean = false,
+        transientMissingHashOnce: Boolean = false,
         observedDirectoryAfterFirstRead: String? = null,
         reportedHash: String = hash,
         body: suspend (
@@ -102,6 +103,7 @@ class RemoteUniversalAddAdapterTest {
     ) = runBlocking {
         var loaded = initialPresent
         var nameReads = 0
+        var hashReads = 0
         var directoryReads = 0
         val methods = mutableListOf<String>()
         val server = HttpServer.create(
@@ -116,9 +118,11 @@ class RemoteUniversalAddAdapterTest {
                 return@createContext
             }
             if (method == "d.name") nameReads++
+            if (method == "d.hash") hashReads++
             if ((method == "d.name" && (!loaded ||
                     (transientMissingNameOnce && nameReads == 1))) ||
-                (method == "d.hash" && !loaded)) {
+                (method == "d.hash" && (!loaded ||
+                    (transientMissingHashOnce && hashReads == 1)))) {
                 absent(exchange)
                 return@createContext
             }
@@ -548,7 +552,7 @@ class RemoteUniversalAddAdapterTest {
                 methods.all { it.startsWith("d.") })
         }
 
-    @Test fun singleTransientUnknownNameCannotRevokeExistingPositive() =
+    @Test fun transientExactAbsenceCannotRevokeExistingPositive() {
         withFixture(initialPresent = true, transientMissingNameOnce = true,
             observedDirectory = "/wrong-parent") { adapter, ticket, methods, _ ->
             assertNull(adapter.contradictoryExactSession(ticket))
@@ -556,6 +560,18 @@ class RemoteUniversalAddAdapterTest {
             assertEquals(1, methods.count { it == "d.hash" })
             assertTrue(methods.all { it.startsWith("d.") })
         }
+        // Metadata promotion may hide BOTH name and hash for one coherent
+        // read round. A second independent lookup restoring the exact job
+        // vetoes the negative; no write or acknowledgment change is allowed.
+        withFixture(initialPresent = true, transientMissingNameOnce = true,
+            transientMissingHashOnce = true, observedDirectory = "/wrong-parent") {
+                adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertEquals(2, methods.count { it == "d.name" })
+            assertEquals(1, methods.count { it == "d.hash" })
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+    }
 
     @Test fun validReviewedPlaceAndMetadataPromotionCannotContradict() {
         withFixture(initialPresent = true) { adapter, ticket, methods, _ ->
