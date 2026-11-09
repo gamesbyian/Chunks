@@ -73,5 +73,8 @@ class PhoneOptionsSearchTest {
     @Test fun noMatchExplainsHowToSeeEverything() {
         search("zzqx")
         rule.onNodeWithText("No matching option", substring = true).assertExists()
+        // Filtering must not leave the entire settings tree behind the results.
+        rule.onNodeWithText("Create a torrent…").assertDoesNotExist()
+        rule.onNodeWithText("Now: unlimited download and upload (default).").assertDoesNotExist()
     }
 }
