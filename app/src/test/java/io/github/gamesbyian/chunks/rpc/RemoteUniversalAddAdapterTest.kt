@@ -222,6 +222,29 @@ class RemoteUniversalAddAdapterTest {
             assertTrue(methods.none { it == "d.start" || it == "load.start" })
         }
 
+    @Test fun validMultiFileHiddenJobVerifiesOnlyTheExactSessionRoot() =
+        withFixture(start = false, hiddenFromMain = true,
+            observedDirectory = "$place/Sample", multiFileFlag = 1) {
+                adapter, approved, methods, reconnect ->
+            val expected = RemoteAddAndStart.AddedStopped(
+                RemoteAddOutcome.VerifiedStopped(hash, "$place/Sample"))
+            assertEquals(expected, adapter.submit(approved).result)
+            assertEquals(expected, RemoteUniversalAddAdapter(reconnect()).reconcile(approved))
+            assertEquals(1, methods.count { it == "load.verbose" })
+            assertTrue(methods.none { it == "load.start" || it == "d.start" })
+        }
+
+    @Test fun malformedMultiFileHiddenJobCannotVerifyStoppedPlaceAfterLostAck() =
+        withFixture(start = false, hiddenFromMain = true, lostAck = true,
+            observedDirectory = "$place/Sample", multiFileFlag = 2) {
+                adapter, approved, methods, reconnect ->
+            val uncertain = RemoteAddAndStart.AddedStopped(RemoteAddOutcome.Uncertain(hash))
+            assertEquals(uncertain, adapter.submit(approved).result)
+            assertEquals(uncertain, RemoteUniversalAddAdapter(reconnect()).reconcile(approved))
+            assertEquals(1, methods.count { it == "load.verbose" })
+            assertTrue(methods.none { it == "load.start" || it == "d.start" })
+        }
+
     @Test fun authenticationLossBeforeLoadNeverMutates() =
         withFixture(unauthorized = true) { adapter, approved, methods, _ ->
             try {
