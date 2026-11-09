@@ -42,6 +42,19 @@ def parse_installed_apk_identity(raw, source_sha, source_tree):
     }
 
 
+def still_matches_built_apk(identity, path):
+    """Refuse changed build bytes between installed compare and artifact emission."""
+    if identity is None:
+        return False
+    try:
+        if path.stat().st_size != identity["installed_apk_size_bytes"]:
+            return False
+        with path.open("rb") as stream:
+            return hashlib.file_digest(stream, "sha256").hexdigest() == identity["installed_apk_sha256"]
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def exact_checkout_tree(source_sha):
     """Bind the report to checkout HEAD, not an unrelated source SHA assertion."""
     try:
@@ -195,6 +208,9 @@ def main():
         read("chunks-installed-apk-identity.txt"),
         env.get("GITHUB_SHA", ""), exact_checkout_tree(env.get("GITHUB_SHA", "")),
     )
+    if not still_matches_built_apk(
+            apk_identity, Path("app/build/outputs/apk/debug/app-debug.apk")):
+        apk_identity = None
     receipt["installed_apk_provenance"] = apk_identity or {"status": "not-proven"}
     if apk_identity is not None:
         (a.output / "APK-IDENTITY.json").write_text(
