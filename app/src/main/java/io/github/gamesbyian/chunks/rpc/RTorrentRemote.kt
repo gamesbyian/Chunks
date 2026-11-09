@@ -1049,8 +1049,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(Regex("[0-9a-fA-F]{40}").matches(hash))
         val plugin = RuTorrentDeleteData.endpoint(endpoint)
             ?: return RemoteDeleteDataOutcome.Unsupported
-        if (expectedName.isBlank() || !expectedDirectory.startsWith("/") ||
-            expectedDirectory.any { it.code < 32 || it.code == 127 })
+        if (expectedName.isBlank() ||
+            !RuTorrentDeleteData.safeDirectory(expectedDirectory))
             return RemoteDeleteDataOutcome.Refused
 
         // The main view may exclude a stopped or custom-view torrent. A
@@ -1100,13 +1100,15 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             for (other in rows) {
                 if (other.hash.equals(hash, true)) continue
                 val selectedRoot = expectedDirectory.trimEnd('/')
-                val otherRoot = other.directory.trimEnd('/')
-                // An absent or unparseable directory cannot be safely
-                // treated as disjoint from the selected payload.
-                if (!otherRoot.startsWith("/") ||
-                    otherRoot.any { it.code < 32 || it.code == 127 }) return false
-                if (selectedRoot != otherRoot && !selectedRoot.startsWith("$otherRoot/") &&
-                    !otherRoot.startsWith("$selectedRoot/")) continue
+                val otherRoot = other.directory.trimEnd('/').ifEmpty { "/" }
+                // A relative, dot-segment or otherwise ambiguous directory
+                // cannot prove non-overlap, even if its text looks disjoint.
+                if (!RuTorrentDeleteData.safeDirectory(other.directory, allowRoot = true))
+                    return false
+                fun nested(path: String, ancestor: String) =
+                    ancestor == "/" || path == ancestor || path.startsWith("$ancestor/")
+                if (!nested(selectedRoot, otherRoot) &&
+                    !nested(otherRoot, selectedRoot)) continue
                 val otherFiles = try { listFiles(other.hash) }
                 catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                 catch (_: Exception) { return false }
