@@ -114,7 +114,29 @@ class MediaProviderFixtureTest {
         assertEquals("Bearer $jwt", http2.requestHeaders.single()["Authorization"])
     }
 
-    @Test fun httpStatusesMapToTypedOutcomes() {
+    @Test fun tmdbAllowsSafeFilenameCharactersButRejectsTraversalAndQueryInjection() {
+        val body = """{"results":[
+            {"id":1,"title":"Hackers","release_date":"1995-09-15",
+                "poster_path":"/a_b-c.jpg","backdrop_path":"/a_B-2.png"},
+            {"id":2,"title":"Hackers","release_date":"1995-09-15",
+                "poster_path":"/../private.jpg","backdrop_path":"/abc.jpg?query=1"},
+            {"id":3,"title":"Hackers","release_date":"1995-09-15",
+                "poster_path":"//other.example/evil.jpg","backdrop_path":"https://evil.example/z.jpg"}
+        ]}"""
+        val http = FakeMediaHttp().on("search/movie", body = body)
+        val out = TmdbProvider { "0123456789abcdef0123456789abcdef" }
+            .search(q(MediaKind.MOVIE, "Hackers", 1995), http) as MediaProviderOutcome.Found
+        assertEquals(3, out.candidates.size)
+        assertEquals(listOf(
+            "https://image.tmdb.org/t/p/w500/a_b-c.jpg",
+            "https://image.tmdb.org/t/p/w780/a_B-2.png"),
+            out.candidates[0].artwork.map { it.url })
+        assertTrue(out.candidates[1].artwork.isEmpty())
+        assertTrue(out.candidates[2].artwork.isEmpty())
+        assertTrue(http.requests.single().startsWith("https://api.themoviedb.org/"))
+    }
+
+
         val p = TvMazeProvider(); val query = q(MediaKind.TV_SERIES, "X")
         assertEquals(MediaProviderOutcome.NotFound, p.search(query, FakeMediaHttp().on("search", status = 404)))
         assertEquals(MediaProviderOutcome.Unauthorized, p.search(query, FakeMediaHttp().on("search", status = 403)))
