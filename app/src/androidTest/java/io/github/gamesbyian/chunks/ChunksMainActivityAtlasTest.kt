@@ -574,11 +574,23 @@ class ChunksMainActivityAtlasTest {
         // existing exact-account tools. No remote write is issued by navigation.
         rule.onNodeWithContentDescription("Options").performClick()
         rule.onNodeWithText("Search options").performTextReplacement("server")
-        rule.onNodeWithText("Clients & environments").assertExists()
-        rule.onNodeWithText("Server folders & destinations").assertExists()
+        // Result titles are also shown as standing section headings below the
+        // filtered cards. Assert each exact search-result description, scrolling
+        // its real LazyColumn into view, before opening the actionable result.
+        // A heading alone must never satisfy the searchable-route acceptance.
+        save("app-options-server-filter-precheck-real-compose")
+        val connectionResult = "Manage device and server connections · opens Connections"
+        val placesResult = "Folders on the authenticated server · opens Server places"
+        // These results are immediately visible on the recorded Options
+        // viewport. A LazyColumn scroll-to-*item* cannot resolve this nested
+        // card text, even when the user can already see and tap the card.
+        // Match the unique shortcut description, not its duplicated heading.
+        rule.onNodeWithText(connectionResult, substring = true).assertIsDisplayed()
+        rule.onNodeWithText(placesResult, substring = true).assertIsDisplayed()
         rule.onNodeWithText("Create a torrent").assertDoesNotExist()
-        rule.onNodeWithText("Search options").performTextReplacement("")
-        rule.onNodeWithText("Server folders & destinations").performScrollTo().performClick()
+        // Clicking the filtered result must open the existing authenticated
+        // folder tool, without an Add or any mutation of the RPC fixture.
+        rule.onNodeWithText(placesResult, substring = true).performClick()
         rule.onNodeWithText("Everything has a place.").assertExists()
         save("app-places-populated-real-compose")
 
