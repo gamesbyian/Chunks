@@ -342,7 +342,35 @@ internal class UniversalAddCoordinator {
         if (observation.environment != ticket.intent.target.environment)
             return Readback.WRONG_ENVIRONMENT
         if (phase == Phase.VERIFIED) return Readback.VERIFIED
-        if (phase == Phase.SESSION_CONFIRMED) return Readback.EXACT_SESSION_CONFIRMED
+        if (phase == Phase.SESSION_CONFIRMED) {
+            // Exact-session confirmation is eligible for explicit user
+            // acknowledgment, but a newer *exact* observation may contradict
+            // it before that acknowledgment. Unlike a general rTorrent main
+            // catalog, this getter can authoritatively observe hidden jobs.
+            // Wrong principal (above), hash and stale reads cannot revoke it.
+            if (isStaleReadback(ticket, observation.observedAtEpochMillis))
+                return Readback.NEEDS_FRESH_INVENTORY
+            if (!observation.infoHash.equals(ticket.intent.source.expectedInfoHash, ignoreCase = true))
+                return Readback.NOT_OBSERVED
+            acceptReadbackAt(observation.observedAtEpochMillis)
+            if (!observation.registered) {
+                phase = Phase.READBACK_REQUIRED
+                return Readback.NOT_OBSERVED
+            }
+            if (!observation.reviewedPlaceVerified) {
+                phase = Phase.OBSERVED_UNCERTAIN
+                return Readback.OBSERVED_UNVERIFIED
+            }
+            // A new concrete Start mismatch revokes the *full-intent*
+            // confirmation. An unknown Start bit does not contradict the
+            // previous positive exact-job/Place/Start observation.
+            if (observation.started != null &&
+                observation.started != ticket.intent.startWhenAdded) {
+                phase = Phase.JOB_CONFIRMED_START_UNVERIFIED
+                return Readback.OBSERVED_UNVERIFIED
+            }
+            return Readback.EXACT_SESSION_CONFIRMED
+        }
         if (isStaleReadback(ticket, observation.observedAtEpochMillis))
             return Readback.NEEDS_FRESH_INVENTORY
         val expected = ticket.intent.source.expectedInfoHash
