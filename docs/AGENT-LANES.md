@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **ACTIVE LANES AFTER #1432 MERGE · 2026-11-09 UTC:** Main `89c2d9f4` includes independent Agent4 QA-only launcher-overlay capture fix; Agent4 keeps exclusive CI/central-doc integration and release evidence authority. Agent1 owns #1421/#1429 Options presentation and the real native clipboard/focus regressions; Agent2 owns #1425/#1433/#1435 Share and phone intake; Agent3 owns #1431 read-only remote progress and actual magnet evidence. Keep source, exact environment/account, Place/Start and no-blind-write-retry invariants; no cross-lane production edits or automatic merge of red/skipped heads.
+
+
 > **FOUR LANES AFTER NAVIGATION INTEGRATION · 2026-11-09 UTC:** Main `6e980ca4`. Agent1 remains responsible for presentation/Options and DHT (#1421, dependent #1429); Agent2 phone Share/clipboard/source integrity (#1425/#1433; earlier #1424 merged); Agent3 authenticated remote progress/add/readback (#1431; #1427 optional witness merged). Agent4 exclusively controls merge decisions, installed genuine peers, APK source/byte acceptance and central AGENTS/WORK-QUEUE/QUALITY-LEDGER/SPEC-COVERAGE/AGENT-LANES/handoffs. Source-equivalent navigation PR #1430 merged into main `07fbc170`, parent #1404 closed superseded and #1408 QA incorporated. QA #1432 now only four CI/test files, rebased onto main, in focused actual native atlas qualification; avoid agent production path collisions. No Agent4 production model or UI changes, no parallel Add dispatch authority or new executor. Red old-head tests preserved, newer main APK not yet built/accepted.
 
 
