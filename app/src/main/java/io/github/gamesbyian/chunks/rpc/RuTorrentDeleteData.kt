@@ -12,6 +12,23 @@ internal object RuTorrentDeleteData {
         return URI.create("${rpc.scheme}://${rpc.rawAuthority}$path")
     }
 
+    /**
+     * A remote directory must be a canonical absolute path before its string
+     * can prove filesystem non-overlap. Dot segments, duplicate separators
+     * and backslashes could make an apparently disjoint path alias another.
+     * Root may be examined as an OTHER job, but is never a safe selected
+     * payload deletion destination.
+     */
+    fun safeDirectory(path: String, allowRoot: Boolean = false): Boolean {
+        if (path == "/") return allowRoot
+        return path.length in 2..4096 && path.startsWith("/") &&
+            '\\' !in path &&
+            path.none { it.code < 32 || it.code == 127 } &&
+            path.substring(1).split('/').all {
+                it.isNotEmpty() && it != "." && it != ".."
+            }
+    }
+
     fun safeFilePaths(paths: List<RemoteFile>): Boolean {
         if (paths.isEmpty() || paths.size > 12_000) return false
         val seen = HashSet<String>()

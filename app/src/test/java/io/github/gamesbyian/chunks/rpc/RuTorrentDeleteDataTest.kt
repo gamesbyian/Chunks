@@ -33,6 +33,20 @@ class RuTorrentDeleteDataTest {
             RemoteFile("Same.mp4", 1, 1), RemoteFile("same.MP4", 1, 1))))
     }
 
+    @Test fun safeDirectoriesCannotAliasAnotherJobThroughDotsOrRoot() {
+        assertTrue(RuTorrentDeleteData.safeDirectory("/downloads/Films"))
+        assertTrue(RuTorrentDeleteData.safeDirectory("/home/person/My Shows"))
+        assertFalse("Deleting from filesystem root is never approved",
+            RuTorrentDeleteData.safeDirectory("/"))
+        assertTrue("A different job at root must still be checked",
+            RuTorrentDeleteData.safeDirectory("/", allowRoot = true))
+        for (path in listOf("", "relative", "//downloads", "/downloads/",
+                "/downloads/../other", "/other/./downloads", "/other//downloads",
+                "/downloads\\files", "/downloads\nother")) {
+            assertFalse(path, RuTorrentDeleteData.safeDirectory(path, allowRoot = true))
+        }
+    }
+
     @Test fun refusesHtmlOrFalseRatherThanClaimingDeletion() {
         assertTrue(RuTorrentDeleteData.acceptedResponse("[0,0,0]"))
         assertTrue(RuTorrentDeleteData.acceptedResponse("[\"\",\"0\",\"0\"]"))
