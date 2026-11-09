@@ -1458,8 +1458,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun readActivity(hash: String): RemoteTransferActivity {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
-        suspend fun get(method: String): Long? = try {
-            number(call(method, listOf(hash))).takeIf { it >= 0L }
+        suspend fun get(method: String, binaryFlag: Boolean = false): Long? = try {
+            val result = number(call(method, listOf(hash)))
+            // Engine lifecycle flags must be exactly 0 or 1. A malformed
+            // response cannot turn Details into a fabricated active/open state.
+            if (binaryFlag) {
+                require(result in 0L..1L) { "Invalid rTorrent $method flag" }
+                result
+            } else result.takeIf { it >= 0L }
         } catch (fault: RpcFault) {
             // Older servers may omit optional getters. Only a recognizable
             // "method unavailable" RPC fault can become an unknown statistic.
@@ -1473,8 +1479,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // four more requests against an expired login and falsely report a
         // connected server with merely unavailable optional statistics.
         return RemoteTransferActivity(
-            active = get("d.is_active")?.let { it != 0L },
-            open = get("d.is_open")?.let { it != 0L },
+            active = get("d.is_active", binaryFlag = true)?.let { it == 1L },
+            open = get("d.is_open", binaryFlag = true)?.let { it == 1L },
             connectedPeers = get("d.peers_connected"),
             downloadBytesPerSecond = get("d.down.rate")
         )
