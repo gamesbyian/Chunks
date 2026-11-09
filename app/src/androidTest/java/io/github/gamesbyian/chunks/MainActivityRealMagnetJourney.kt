@@ -135,6 +135,10 @@ internal class MainActivityRealMagnetJourney(
                 Thread.sleep(1_000)
             }
         }
+        // After four READ-ONLY I/O attempts, preserve only a fixed failure
+        // category. Do not emit RPC URLs, exception text, tracker values or
+        // credentials, and never retry a mutation through this helper.
+        report("chunks_real_add_app_stage", "read-only-exhausted")
         throw last!!
     }
     private fun controller(path: String, port: Long? = null): ByteArray {
