@@ -461,8 +461,12 @@ class TransferMediaController(
             val title = r.title?.let { MediaText.withoutArticle(MediaText.normalize(it)) }?.takeIf { it.isNotEmpty() } ?: return@launch
             if (r.kind == MediaKind.ADULT || r.kind == MediaKind.UNKNOWN) return@launch
             val family = MediaAssignmentRule.familyOf(r.kind)
+            // The chosen provider year is authoritative. Never seed a yearless
+            // movie rule or one contradicting the source filename year.
+            if (family == "movie" && (m.year == null || (r.year != null && r.year != m.year))) return@launch
+            val ruleYear = if (family == "movie") m.year else r.year
             val series = m.copy(episodeTitle = null, episode = null, artwork = m.artwork.filter { it.role != ArtworkRole.BANNER && it.season == null })
-            ruleStore.put(MediaAssignmentRule("$family|$title|${r.year ?: ""}", title, family, r.year, series, clock()))
+            ruleStore.put(MediaAssignmentRule("$family|$title|${ruleYear ?: ""}", title, family, ruleYear, series, clock()))
         }
     }
 
