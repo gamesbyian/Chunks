@@ -40,7 +40,7 @@
 
 ## G6. Assembled daily-use acceptance and APK provenance (Agent 5)
 
-**Action:** Run source → Add → Transfers → Details → reconnect → Stop/Start → Remove through installed phone HTTPS and authenticated disposable real rTorrent peers, plus two-server same-hash identity. Verify independent piece/hash/source proof, exact Place, UI/IME/contrast, art consent, source SHA/Git tree and independently rehashed **actual installed APK bytes**. Keep API29/35 and owner Pixel/protected-server/signing tiers separate.
+**Action:** Reproduce and resolve the already observed **read-only `SocketTimeoutException` at `RTorrentRemote.kt:1744` after Combined Details** on the latest disposable HTTPS+real-peer journey. Maintain previously proven phone HTTPS exact-place and controlled uploaded/verified piece receipts. After qualified integration, rerun source → Add → Transfers → dedicated Details → reconnect → Stop/Start → Remove through installed phone HTTPS and authenticated disposable real rTorrent peers, plus two-server same-hash identity. Verify independent piece/hash/source proof, exact Place, UI/IME/contrast, art consent, source SHA/Git tree and independently rehashed **actual installed APK bytes**. Require a durable source-bound **tested installed APK SHA-256 and byte size** on successful or failed journeys; silent `cmp` alone cannot populate release provenance. Keep API29/35 and owner Pixel/protected-server/signing tiers separate.
 
 **Exit:** all required source-exact installed gates pass and QUALITY-LEDGER records source/tree, run/case receipts, peer pieces, SHA-256/size of tested APK and known exclusions. A prior APK does not qualify updated main.
 
