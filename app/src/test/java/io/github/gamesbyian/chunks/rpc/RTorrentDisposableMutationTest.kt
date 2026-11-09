@@ -143,6 +143,8 @@ class RTorrentDisposableMutationTest {
         }
         val added = requireNotNull(observed) { "Multi-file torrent hash not visible on real engine" }
         assertFalse("Multi-file Add must remain stopped", added.started)
+        assertTrue("rTorrent's default view must include the real registered job",
+            rtorrent.listTransfers("default").any { it.hash.equals(hash, true) })
         assertEquals("The user-selected folder is a PARENT, not a replacement torrent root",
             expectedRoot, added.directory)
         // Explicitly cross-check real RPC 0/1 semantics against the new strict
