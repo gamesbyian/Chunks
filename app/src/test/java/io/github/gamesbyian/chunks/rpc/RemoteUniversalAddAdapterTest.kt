@@ -620,8 +620,12 @@ class RemoteUniversalAddAdapterTest {
 
     @Test fun wrongAuthenticatedRouteCannotEvenStartExactContradictionRead() =
         withFixture(initialPresent = true, observedDirectory = "/wrong-parent") {
-                adapter, _, methods, _ ->
-            val unrelated = ticket("different-authenticated-server")
+                adapter, approved, methods, _ ->
+            // A different principal on the same exact endpoint is a VALID
+            // authenticated scope, but never authority for this transport.
+            val firstScope = (approved.intent.target as UniversalAddTarget.AuthenticatedServer)
+                .accountScope
+            val unrelated = ticket(firstScope + "other-principal")
             try {
                 adapter.contradictoryExactSession(unrelated)
                 fail("Wrong account cannot provide exact-job contrary evidence")
