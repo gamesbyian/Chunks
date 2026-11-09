@@ -10,7 +10,7 @@
 
 ## G1. Resolve or supersede active incompatible PRs (Agents 1–3, qualified by Agent 5)
 
-**Action:** Reconcile live source heads in dependency order: #1499 exact-session read-only Recheck, #1484 Options/clipboard, and #1489 HTTPS .torrent Share intake followed by #1491 malformed-source retention. Repair the **actual** failed Add/IME/contrast assertions on the responsible source, not by removing tests; preserve the original failed attempts. Confirm that prior #1497 typed read 401, #1504 binary Details flags and intake #1449/#1450 remain merged and that obsolete #1442/#1444/#1461/#1473/#1486 branches cannot be accidentally replayed. Require exact-head foundation, R8, complete native verifier and genuinely scoped disposable peer/HTTP evidence before integration. Do not merge a stacked child ahead of its parent.
+**Action:** Preserve already-qualified and merged #1499 read-only exact-session Recheck (old #1443 closed unmerged); reconcile #1484 Options/clipboard and #1489 HTTPS .torrent Share intake followed by #1491 malformed-source retention. Repair the **actual** failed Add/IME/contrast assertions on the responsible source, not by removing tests; preserve the original failed attempts. Confirm that prior #1497 typed read 401, #1504 binary Details flags and intake #1449/#1450 remain merged and that obsolete #1442/#1444/#1461/#1473/#1486 branches cannot be accidentally replayed. Require exact-head foundation, R8, complete native verifier and genuinely scoped disposable peer/HTTP evidence before integration. Do not merge a stacked child ahead of its parent.
 
 **Exit:** each PR independently qualified and merged in compatible order, or explicitly blocked/superseded with an owner and exact failed proof; no real red test reclassified as green.
 
@@ -34,7 +34,7 @@
 
 ## G5. Remote integrity and exact-session lifecycle (Agent 3)
 
-**Action:** Preserve merged typed HTTP 401 #1497, strict binary Details flags #1504 and authenticated remote deletion/reconnect fences. Qualify #1499 fresh exact-job Recheck, retaining older positive acknowledgment only until a genuinely newer authenticated contradictory witness is accepted; never blindly resend Add/Start. Verify numbered routes and principal identity, session Remove vs Remove+data, read-only errors, partial acknowledgments, Start/Stop and job-only Move on disposable authenticated rTorrent peers; require positive verified payload pieces plus wrong-account/hash/uncertainty refusals.
+**Action:** Preserve merged typed HTTP 401 #1497, strict binary Details flags #1504 and authenticated remote deletion/reconnect fences. Preserve already-qualified #1499 fresh exact-job Recheck, retaining older positive acknowledgment only until a genuinely newer authenticated contradictory witness is accepted; never blindly resend Add/Start. Verify numbered routes and principal identity, session Remove vs Remove+data, read-only errors, partial acknowledgments, Start/Stop and job-only Move on disposable authenticated rTorrent peers; require positive verified payload pieces plus wrong-account/hash/uncertainty refusals.
 
 **Exit:** source-and-principal-exact installed/rTorrent positive and refusal/uncertainty proofs including verified pieces and controlled cleanup.
 
