@@ -46,6 +46,9 @@ class RuTorrentFullSessionDeleteGuardTest {
         check: suspend (RTorrentRemote, AtomicInteger, AtomicInteger, AtomicInteger) -> Unit
     ) = runBlocking {
         val defaultReads = AtomicInteger()
+        val hiddenCandidate = (defaultFirst + defaultLater).firstOrNull {
+            it.hash.equals(hidden.hash, true)
+        } ?: hidden
         val hiddenFileReads = AtomicInteger()
         val pluginPosts = AtomicInteger()
         val server = HttpServer.create(
@@ -68,7 +71,7 @@ class RuTorrentFullSessionDeleteGuardTest {
                 "f.multicall" -> {
                     val t = if (request.contains("<string>" + hidden.hash + "</string>")) {
                         hiddenFileReads.incrementAndGet()
-                        hidden
+                        hiddenCandidate
                     } else selected
                     array(listOf(array(listOf(string(t.file), number(100), number(1)))))
                 }
@@ -106,6 +109,26 @@ class RuTorrentFullSessionDeleteGuardTest {
                 defaultReads.get() >= 1)
             assertEquals("The hidden same-file job must be examined", 1, hiddenFileReads.get())
             assertEquals("Shared remote payload must never be deleted", 0, posts.get())
+        }
+
+    @Test fun hiddenRootDirectoryFilesStillOverlapSelectedChildRoot() =
+        fixture(defaultFirst = listOf(selected,
+            hidden.copy(directory = "/", file = "downloads/shared.bin"))) {
+                remote, _, hiddenFileReads, posts ->
+            assertEquals(RemoteDeleteDataOutcome.Refused,
+                remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+            assertEquals("A root-owned file must be compared against selected paths",
+                1, hiddenFileReads.get())
+            assertEquals(0, posts.get())
+        }
+
+    @Test fun hiddenDotSegmentDirectoryCannotProveSafeNonOverlap() =
+        fixture(defaultFirst = listOf(selected,
+            hidden.copy(directory = "/other/../downloads"))) {
+                remote, _, _, posts ->
+            assertEquals(RemoteDeleteDataOutcome.Refused,
+                remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+            assertEquals(0, posts.get())
         }
 
     @Test fun defaultSessionMissingMainJobRefusesDestructiveAction() =
