@@ -8,6 +8,8 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.text.input.ImeAction
@@ -49,7 +51,13 @@ class ConnectionScreenImeTest {
 
     @Test fun addressAndUsernameOfferNext() {
         rule.waitForIdle()
-        rule.onNodeWithText("Connections").performClick()
+        // Startup can hydrate saved destinations asynchronously. Require the
+        // actual user-visible footer route before pressing it; the subsequent
+        // address/username IME=Next assertions stay strict.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithContentDescription("Connections").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname, ruTorrent URL or RPC address"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Next))

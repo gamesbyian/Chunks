@@ -4,6 +4,7 @@ Fake adb is confined to a private temporary directory. No Android emulator,
 protected server, token, downloaded artifact or external network is used.
 """
 import os
+import hashlib
 from pathlib import Path
 import subprocess
 import tempfile
@@ -48,16 +49,24 @@ class InstalledApkIdentityTests(unittest.TestCase):
              "/fixture/base.apk", str(pulled or self.pulled)],
             env=env, capture_output=True, text=True, check=False, timeout=10,
         )
-        self.assertEqual("", result.stdout)
+        if result.returncode != 0:
+            self.assertEqual("", result.stdout)
+        self.assertNotIn(str(self.root), result.stdout)
+        self.assertNotIn("/fixture/base.apk", result.stdout)
         self.assertNotIn(str(self.root), result.stderr)
         self.assertNotIn("/fixture/base.apk", result.stderr)
         self.assertFalse(self.pulled.exists(), "pulled candidate must be removed")
         return result
 
-    def test_matching_installed_bytes_pass_without_extra_output(self):
+    def test_matching_installed_bytes_emits_path_free_hash_and_size(self):
         result = self.invoke()
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("", result.stderr)
+        self.assertEqual(
+            "CHUNKS_INSTALLED_APK: matched size_bytes=24 sha256=" +
+            hashlib.sha256(b"controlled-candidate-apk").hexdigest() + "\n",
+            result.stdout,
+        )
 
     def test_unavailable_adb_pull_is_a_specific_fail_closed_preflight(self):
         result = self.invoke("unavailable")
@@ -65,6 +74,16 @@ class InstalledApkIdentityTests(unittest.TestCase):
         self.assertEqual("CHUNKS_INSTALLED_APK: adb-pull-failed\n", result.stderr)
 
     def test_changed_installed_bytes_are_never_accepted(self):
+        result = self.invoke("altered")
+        self.assertEqual(1, result.returncode)
+        self.assertEqual("CHUNKS_INSTALLED_APK: byte-mismatch\n", result.stderr)
+
+    def test_broken_cmp_success_cannot_hide_different_installed_bytes(self):
+        # Even a malfunctioning comparison must not conceal the independent
+        # pulled-file SHA mismatch or create a success receipt.
+        cmp = self.bin / "cmp"
+        cmp.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+        cmp.chmod(0o755)
         result = self.invoke("altered")
         self.assertEqual(1, result.returncode)
         self.assertEqual("CHUNKS_INSTALLED_APK: byte-mismatch\n", result.stderr)

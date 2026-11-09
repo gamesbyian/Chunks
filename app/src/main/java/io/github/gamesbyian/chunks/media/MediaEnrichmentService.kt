@@ -10,7 +10,7 @@ import io.github.gamesbyian.chunks.model.MediaMetadataReceiptState
 data class MediaPrivacySettings(
     val onlineLookupConsent: Boolean = false,
     /** Look up transfers as they become visible, without a tap. Needs [onlineLookupConsent]. */
-    val automaticLookup: Boolean = false,
+    val automaticLookup: Boolean = true,
     val disabledProviders: Set<String> = emptySet(),
     /** Providers that are off by default (e.g. AniList) and that the user explicitly turned on. */
     val enabledProviders: Set<String> = emptySet(),
@@ -105,8 +105,15 @@ class MediaEnrichmentService(
         if (!settings.onlineLookupConsent) return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT,
             message = "Online lookup is off. Turn it on in media settings to search providers.")
         if (!requestAllowed()) return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = "Lookup is no longer authorized")
-        if (origin == MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT && (!settings.automaticLookup || network.metered || network.powerSaver))
-            return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = "Automatic lookup waits for an unmetered connection")
+        if (origin == MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT &&
+            (!settings.automaticLookup || !settings.showArtwork || !settings.downloadArtwork ||
+                network.metered || network.powerSaver))
+            return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = when {
+                !settings.automaticLookup -> "Automatic identification is switched off"
+                !settings.showArtwork || !settings.downloadArtwork -> "Automatic artwork collection is switched off"
+                network.powerSaver -> "Automatic identification is paused in power saver mode"
+                else -> "Automatic identification is waiting for an unmetered connection"
+            })
         val eligible = providers.filter { settings.providerOn(it.info) && it.supports(query) && it.isConfigured() }
         if (eligible.isEmpty()) return MediaLookupResult(MediaLookupStatus.NO_PROVIDER,
             message = "No enabled provider covers ${query.kind.label.lowercase()} lookups" +
