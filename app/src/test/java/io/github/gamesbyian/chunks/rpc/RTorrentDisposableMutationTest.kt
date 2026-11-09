@@ -107,26 +107,36 @@ class RTorrentDisposableMutationTest {
         }
         assertTrue("Real rTorrent did not return to stopped state", stopped)
     }
+    /** Exact two-file metainfo on real 0.9.8/modern rTorrent, with one Add only. */
     @Test fun multifileStoppedAddPreservesItsNamedRootUnderChosenParent() = runBlocking {
         val rtorrent = temporaryRemote()
         val target = System.getenv("CHUNKS_DISPOSABLE_TARGET_DIR").orEmpty()
         require(target.startsWith("/") && target.contains("chunks-data")) {
             "No disposable data root was configured"
         }
-        val multiBytes = (
-            "d4:infod5:filesld6:lengthi5e4:pathl8:clip.txteee" +
-            "4:name13:Public Bundle12:piece lengthi16384e6:pieces20:" +
-            "01234567890123456789ee"
-        ).toByteArray(Charsets.UTF_8)
-        val hash = TorrentMetainfoReader.preview(multiBytes).infoHashV1
-        assertTrue(rtorrent.listTransfers("main").none { it.hash.equals(hash, true) })
+        val first = "first".toByteArray(Charsets.UTF_8)
+        val second = "note".toByteArray(Charsets.UTF_8)
+        val pieceHash = java.security.MessageDigest.getInstance("SHA-1")
+            .digest(first + second)
+        val multiBytes = "d4:info".toByteArray(Charsets.ISO_8859_1) +
+            ("d5:filesl" +
+                "d6:lengthi${first.size}e4:pathl8:clip.txtee" +
+                "d6:lengthi${second.size}e4:pathl8:note.txtee" +
+                "e4:name13:Public Bundle12:piece lengthi16384e6:pieces20:"
+            ).toByteArray(Charsets.ISO_8859_1) +
+            pieceHash + "ee".toByteArray(Charsets.ISO_8859_1)
+        val preview = TorrentMetainfoReader.preview(multiBytes)
+        assertEquals(2, preview.fileCount)
+        assertEquals("Public Bundle", preview.name)
+        val hash = preview.infoHashV1
+        assertNull("Fresh multi-file identity required", rtorrent.lookupName(hash))
         val outcome = rtorrent.loadStoppedTorrentBytes(multiBytes, target)
         assertTrue("Multi-file Add returned uncertain/error state: $outcome",
             outcome is RemoteAddOutcome.VerifiedStopped ||
                 outcome is RemoteAddOutcome.PendingVerification)
         val expectedRoot = target + "/Public Bundle"
         var observed: RemoteTransfer? = null
-        for (index in 1..15) {
+        for (attempt in 1..15) {
             observed = rtorrent.listTransfers("main").firstOrNull { it.hash.equals(hash, true) }
             if (observed != null) break
             Thread.sleep(400)
@@ -135,9 +145,22 @@ class RTorrentDisposableMutationTest {
         assertFalse("Multi-file Add must remain stopped", added.started)
         assertEquals("The user-selected folder is a PARENT, not a replacement torrent root",
             expectedRoot, added.directory)
-        if (outcome is RemoteAddOutcome.VerifiedStopped) {
-            assertEquals(expectedRoot, outcome.destination)
+        // Explicitly cross-check real RPC 0/1 semantics against the new strict
+        // malformed-flag readback guard; a one-entry files list is insufficient.
+        assertEquals("rTorrent must report its two-file layout", 2,
+            rtorrent.listFiles(hash).size)
+        assertEquals("Real multi-file flag must be a proper boolean", 1L,
+            rtorrent.call("d.is_multi_file", listOf(hash)))
+        assertEquals(expectedRoot, rtorrent.call("d.directory", listOf(hash)))
+        val plan = StoppedRemoteAddPlan.fromMagnet("magnet:?xt=urn:btih:$hash", target)
+        var readback: RemoteAddOutcome = outcome
+        for (attempt in 1..10) {
+            if (readback is RemoteAddOutcome.VerifiedStopped) break
+            readback = rtorrent.reconcileStoppedAdd(plan) // never loads/Starts again
+            if (readback !is RemoteAddOutcome.VerifiedStopped && attempt < 10)
+                kotlinx.coroutines.delay(250L)
         }
+        assertEquals(RemoteAddOutcome.VerifiedStopped(hash, expectedRoot), readback)
     }
 
     @Test fun exactHashSessionEraseWorksOnDisposableRealEngineWithoutDeletingPayload() = runBlocking {
