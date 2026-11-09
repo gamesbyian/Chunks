@@ -36,6 +36,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +58,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -2419,7 +2421,14 @@ internal fun LocalEngineScreen(
         // Search is a filtered destination view: unrelated settings and their
         // duplicate headings must not remain below matching shortcut cards.
         // Clearing search restores the existing controls without saving new state.
-        if (phoneOptionsSearch.isBlank()) {
+        // Keep long-lived, process-memory-only review state (notably snapshot
+        // comparisons) composed while filtering. Only the presentation and
+        // accessibility tree are hidden; searching never destroys a draft.
+        Column(
+            modifier = Modifier.fillMaxWidth().then(if (phoneOptionsSearch.isBlank()) Modifier
+                else Modifier.height(0.dp).clipToBounds().clearAndSetSemantics { }),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         if (onConnections != null) {
             Text("Clients & environments", style = MaterialTheme.typography.titleMedium)
             OutlinedButton(onClick = onConnections, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -2578,7 +2587,7 @@ internal fun LocalEngineScreen(
         )
         } // names anchor
         LocalZipInterruptedExtractions()
-        } // full Options controls, hidden while displaying search results
+        } // full Options controls retained but visually hidden while searching
         } // Options presentation
     }
     ReturnToTopControl(
