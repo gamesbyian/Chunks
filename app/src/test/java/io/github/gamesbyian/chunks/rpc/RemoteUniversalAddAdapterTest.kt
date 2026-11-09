@@ -91,12 +91,20 @@ class RemoteUniversalAddAdapterTest {
         hiddenFromMain: Boolean = false,
         observedStarted: Boolean = start,
         multiFileFlag: Long = 0,
+        metadataPending: Long = 0,
+        transientMissingNameOnce: Boolean = false,
+        transientMissingHashOnce: Boolean = false,
+        observedDirectoryAfterFirstRead: String? = null,
+        reportedHash: String = hash,
         body: suspend (
             RemoteUniversalAddAdapter, UniversalAddCoordinator.Ticket,
             MutableList<String>, () -> RTorrentRemote
         ) -> Unit
     ) = runBlocking {
         var loaded = initialPresent
+        var nameReads = 0
+        var hashReads = 0
+        var directoryReads = 0
         val methods = mutableListOf<String>()
         val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
@@ -109,7 +117,12 @@ class RemoteUniversalAddAdapterTest {
                 respond(exchange, "", 401)
                 return@createContext
             }
-            if (method == "d.name" && !loaded) {
+            if (method == "d.name") nameReads++
+            if (method == "d.hash") hashReads++
+            if ((method == "d.name" && (!loaded ||
+                    (transientMissingNameOnce && nameReads == 1))) ||
+                (method == "d.hash" && (!loaded ||
+                    (transientMissingHashOnce && hashReads == 1)))) {
                 absent(exchange)
                 return@createContext
             }
@@ -124,9 +137,14 @@ class RemoteUniversalAddAdapterTest {
                 "d.multicall2" -> if (loaded && !hiddenFromMain) row(if (observedStarted) 1 else 0, observedDirectory)
                     else "<value><array><data></data></array></value>"
                 "d.name" -> value("Sample")
-                "d.hash" -> value(hash)
-                "d.directory" -> value(observedDirectory)
+                "d.hash" -> value(reportedHash)
+                "d.directory" -> {
+                    directoryReads++
+                    value(if (directoryReads > 1) observedDirectoryAfterFirstRead ?: observedDirectory
+                        else observedDirectory)
+                }
                 "d.is_multi_file" -> number(multiFileFlag)
+                "d.is_meta" -> number(metadataPending)
                 "d.state", "d.is_active" -> number(if (observedStarted) 1 else 0)
                 "load.start", "load.verbose" -> number(0)
                 else -> throw AssertionError("Unexpected rTorrent RPC: $method")
@@ -499,6 +517,122 @@ class RemoteUniversalAddAdapterTest {
                 server.stop(0)
                 executor.shutdownNow()
             }
+        }
+
+
+    @Test fun repeatedExactUnknownHashCanRevokeOnlyTheOriginalUnacknowledgedSession() =
+        withFixture(initialPresent = false, hiddenFromMain = true) {
+                adapter, ticket, methods, _ ->
+            val observed = requireNotNull(
+                adapter.contradictoryExactSession(ticket, observedAtEpochMillis = 2400L))
+            assertEquals(ticket.intent.target.environment, observed.environment)
+            assertEquals(hash, observed.infoHash)
+            assertEquals(2400L, observed.observedAtEpochMillis)
+            assertFalse(observed.registered)
+            assertFalse(observed.reviewedPlaceVerified)
+            assertNull(observed.started)
+            assertFalse(observed.newRegistrationVerified)
+            assertEquals(2, methods.count { it == "d.name" })
+            assertEquals(2, methods.count { it == "d.hash" })
+            assertTrue("No lost command was replayed", methods.all { it.startsWith("d.") })
+        }
+
+    @Test fun stableWrongPlaceCanRevokeAcknowledgmentWithoutNewAddOrStart() =
+        withFixture(initialPresent = true, observedDirectory = "/other-server-folder",
+            hiddenFromMain = true) { adapter, ticket, methods, _ ->
+            val observed = requireNotNull(
+                adapter.contradictoryExactSession(ticket, observedAtEpochMillis = 2500L))
+            assertEquals(true, observed.registered)
+            assertEquals(false, observed.reviewedPlaceVerified)
+            assertNull(observed.started)
+            assertFalse(observed.newRegistrationVerified)
+            assertEquals(2500L, observed.observedAtEpochMillis)
+            assertEquals(2, methods.count { it == "d.directory" })
+            assertTrue("Only exact-job readbacks may contradict Place",
+                methods.all { it.startsWith("d.") })
+        }
+
+    @Test fun transientExactAbsenceCannotRevokeExistingPositive() {
+        withFixture(initialPresent = true, transientMissingNameOnce = true,
+            observedDirectory = "/wrong-parent") { adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertEquals(1, methods.count { it == "d.name" })
+            assertEquals(1, methods.count { it == "d.hash" })
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+        // Metadata promotion may hide BOTH name and hash for one coherent
+        // read round. A second independent lookup restoring the exact job
+        // vetoes the negative; no write or acknowledgment change is allowed.
+        withFixture(initialPresent = true, transientMissingNameOnce = true,
+            transientMissingHashOnce = true, observedDirectory = "/wrong-parent") {
+                adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertEquals(2, methods.count { it == "d.name" })
+            assertEquals(1, methods.count { it == "d.hash" })
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+    }
+
+    @Test fun validReviewedPlaceAndMetadataPromotionCannotContradict() {
+        withFixture(initialPresent = true) { adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+        withFixture(initialPresent = true, observedDirectory = "/wrong-parent",
+            metadataPending = 1) { adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+    }
+
+    @Test fun malformedFlagOrUnstableNameAndDirectoryCannotDisproveReviewedPlace() {
+        withFixture(initialPresent = true, observedDirectory = "/wrong-parent",
+            multiFileFlag = 2) { adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+        withFixture(initialPresent = true, observedDirectory = "/wrong-parent",
+            observedDirectoryAfterFirstRead = "/other-parent") {
+                adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertEquals(2, methods.count { it == "d.directory" })
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+        withFixture(initialPresent = true, observedDirectory = "/wrong-parent",
+            reportedHash = "cd".repeat(20)) { adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+    }
+
+    @Test fun transportAuthFailureAndInvalidRemotePlaceCannotFabricateContradiction() {
+        withFixture(initialPresent = true, unauthorized = true,
+            observedDirectory = "/wrong-parent") { adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+        withFixture(initialPresent = true, observedDirectory = "/wrong/../parent") {
+                adapter, ticket, methods, _ ->
+            assertNull(adapter.contradictoryExactSession(ticket))
+            assertTrue(methods.all { it.startsWith("d.") })
+        }
+    }
+
+    @Test fun wrongAuthenticatedRouteCannotEvenStartExactContradictionRead() =
+        withFixture(initialPresent = true, observedDirectory = "/wrong-parent") {
+                adapter, approved, methods, _ ->
+            // A different principal on the same exact endpoint is a VALID
+            // authenticated scope, but never authority for this transport.
+            val firstScope = (approved.intent.target as UniversalAddTarget.AuthenticatedServer)
+                .accountScope
+            val unrelated = ticket(firstScope + "other-principal")
+            try {
+                adapter.contradictoryExactSession(unrelated)
+                fail("Wrong account cannot provide exact-job contrary evidence")
+            } catch (_: IllegalStateException) {
+                // No RPC and no model state changed.
+            }
+            assertTrue(methods.isEmpty())
         }
 
     @Test fun priorityModeCannotBeAppliedToMagnetOrStoppedOnlyAdd() =

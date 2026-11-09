@@ -70,6 +70,13 @@ sealed class SessionEraseOutcome {
     data class Uncertain(val hash: String) : SessionEraseOutcome()
 }
 
+/**
+ * A strictly corroborated exact-session contradiction, never inferred from
+ * the main-view catalog, a generic RPC failure or a transient metadata bit.
+ * This observation is read-only and does not authorize any new Add.
+ */
+internal enum class RemoteAddContradiction { ABSENT, WRONG_PLACE }
+
 /** Read-only post-Remove evidence; only PresentMatching permits a NEW human-reviewed attempt. */
 sealed class SessionEraseRecheck {
     data object Absent : SessionEraseRecheck()
@@ -645,6 +652,70 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val reviewedPlaceVerified = readVerifiedAddDirectory(hash, plan.destination, name) != null
         guardHash()
         return reviewedPlaceVerified
+    }
+
+    /**
+     * Extra read-only proof for revoking an *unacknowledged* exact Add-session
+     * acknowledgment on a newer, original-account readback. An empty main
+     * view, failed RPC, bad flag, unknown metadata or one disappeared placeholder
+     * are inconclusive. Repeated exact-hash reads are needed because rTorrent
+     * can replace a magnet's metadata-only job with its final session entry.
+     *
+     * Null means no authoritative contrary witness. All checks issue d.* getters
+     * only. Neither result grants authorization to replay the original write.
+     */
+    internal suspend fun readExactAddContradiction(
+        plan: StoppedRemoteAddPlan
+    ): RemoteAddContradiction? {
+        val hash = plan.expectedInfoHash
+        data class DifferentPlace(val name: String, val directory: String, val multi: Long)
+
+        suspend fun stableDifferentPlace(): DifferentPlace? {
+            val name = lookupName(hash) ?: return null
+            // A malformed/partial metainfo name cannot establish a changed Place.
+            if (name.isBlank() || name.length > 255 || name == "." || name == ".." ||
+                name.any { it == '/' || it == '\\' || it.code < 32 }) return null
+            suspend fun exactHash(): Boolean =
+                (call("d.hash", listOf(hash)) as? String)?.equals(hash, true) == true
+            if (!exactHash()) return null
+            // Metadata promotion can temporarily replace the directory/name
+            // and leave the exact hash unavailable. Never revoke in that phase.
+            if (number(call("d.is_meta", listOf(hash))) != 0L) return null
+            val directory = call("d.directory", listOf(hash)) as? String ?: return null
+            val multi = number(call("d.is_multi_file", listOf(hash)))
+            if (multi !in 0L..1L) return null
+            if (!exactHash() || lookupName(hash) != name) return null
+            val expected = if (multi == 1L) plan.destination + "/" + name
+                else plan.destination
+            if (directory == expected || directory.length !in 2..4096 ||
+                !directory.startsWith("/") || directory.any { it.code < 32 || it.code == 127 } ||
+                directory.split('/').drop(1).any { it.isBlank() || it == "." || it == ".." })
+                return null
+            return DifferentPlace(name, directory, multi)
+        }
+
+        return try {
+            val initialName = lookupName(hash)
+            if (initialName == null) {
+                // d.name alone can momentarily disappear during magnet
+                // promotion. Independently check d.hash and repeat both.
+                if (sessionContainsExactHash(hash)) return null
+                kotlinx.coroutines.delay(350L)
+                if (lookupName(hash) != null || sessionContainsExactHash(hash)) null
+                else RemoteAddContradiction.ABSENT
+            } else {
+                val first = stableDifferentPlace() ?: return null
+                kotlinx.coroutines.delay(350L)
+                val second = stableDifferentPlace()
+                if (first == second) RemoteAddContradiction.WRONG_PLACE else null
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            // 401/403, unknown capability, malformed reply and transient
+            // session churn cannot revoke a previously legitimate positive.
+            null
+        }
     }
 
     /**

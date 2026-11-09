@@ -219,6 +219,32 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
         )
     }
 
+    /**
+     * An optional exact-job contradiction for the existing Recheck action.
+     * Only an authenticated, frozen account/route/hash gets a witness, and
+     * a caller-supplied read-start timestamp preserves read acquisition order.
+     * Null means no proof, never an invitation to retry a lost load command.
+     *
+     * Deliberately does not update the coordinator: navigation/shared-model
+     * owners decide whether a newer observation may revoke an acknowledgment.
+     */
+    suspend fun contradictoryExactSession(
+        ticket: UniversalAddCoordinator.Ticket,
+        observedAtEpochMillis: Long = System.currentTimeMillis()
+    ): ExactSessionObservation? {
+        val plan = planFor(ticket)
+        val contradiction = remote.readExactAddContradiction(plan) ?: return null
+        return ExactSessionObservation(
+            environment = ticket.intent.target.environment,
+            infoHash = plan.expectedInfoHash,
+            observedAtEpochMillis = observedAtEpochMillis,
+            registered = contradiction == RemoteAddContradiction.WRONG_PLACE,
+            reviewedPlaceVerified = false,
+            started = null,
+            newRegistrationVerified = false
+        )
+    }
+
     suspend fun progress(ticket: UniversalAddCoordinator.Ticket): RemoteAddProgress =
         remote.readAddProgress(planFor(ticket))
 }
