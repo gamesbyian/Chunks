@@ -15,7 +15,7 @@ from parse_installed_magnet_add_receipt import parse
 
 _INSTALLED_APK_LINE = re.compile(
     r"CHUNKS_INSTALLED_APK: matched size_bytes=([1-9][0-9]{0,11}) "
-    r"sha256=([0-9a-f]{64})\\n?\\Z"
+    r"sha256=([0-9a-f]{64})\n?\Z"
 )
 
 
@@ -198,7 +198,7 @@ def main():
     receipt["installed_apk_provenance"] = apk_identity or {"status": "not-proven"}
     if apk_identity is not None:
         (a.output / "APK-IDENTITY.json").write_text(
-            json.dumps(apk_identity, indent=2, sort_keys=True) + "\\n"
+            json.dumps(apk_identity, indent=2, sort_keys=True) + "\n"
         )
     peer_path = a.runner_temp / "chunks-real-peer/PEER-RECEIPT.json"
     peer_valid = False
