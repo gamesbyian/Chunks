@@ -7,6 +7,8 @@
 
 # chunks.
 
+**Full product name:** Chunks Torrent Client & Remote. On Android, the launcher, system app label and notification attribution use the concise **Chunks**; the in-app wordmark remains **chunks.** The source-controlled [branding contract](docs/BRANDING-AND-APP-IDENTITY.md) defines the distinct naming surfaces and keeps debug previews separately identified. A future Play Store listing uses the long title; this README does not claim an existing listing.
+
 **Your downloads have places to be.**
 
 Chunks is an Android-native BitTorrent client and first-class rTorrent remote control. It aims to make torrent management powerful without making file locations, queue controls, storage integrity or server administration needlessly complicated.
