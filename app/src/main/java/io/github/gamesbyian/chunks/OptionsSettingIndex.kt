@@ -60,7 +60,7 @@ internal enum class PhoneOptionsShortcut(val title: String, val where: String, p
         "remote server snapshot backup export inventory"),
     SPEED_LIMITS("Speed limits", "Download and upload limits for this device · in Options",
         "speed limit limits bandwidth throttle rate download upload kib mib unlimited"),
-    DHT("DHT peer discovery", "Find peers without trackers · in Add",
+    DHT("DHT peer discovery", "Find peers without trackers · in Options",
         "dht peer peers discovery trackerless magnet distributed hash table"),
     DOWNLOAD_LOCATION("Download location", "Where new downloads are saved on this device · in Add",
         "download location place folder storage save path directory downloads"),
