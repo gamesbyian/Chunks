@@ -132,18 +132,48 @@ class PhoneUniversalAddScreenGateTest {
             session.coordinator.beginSubmission(12_000L))
     }
 
-    @Test fun exactSessionRecoveryRequiresAnExplicitAcknowledgementBeforeNextReview() {
+    @Test fun newerCompleteNativeInventoryRevokesExistingSessionAcknowledgmentWithoutRetry() {
         val session = attempt(exactSessionKnown = true)
+        val ticket = requireNotNull(session.attemptedTicket)
+        assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED,
+            session.coordinator.phase)
+        // The synthetic positive fixture is contradicted by the real screen's
+        // newer complete empty phone inventory. Record that explicit accepted
+        // negative before mounting to avoid a scheduling race, just as for
+        // the peerless Start-unverified case above. The screen must never
+        // show an acknowledgement for an obsolete confirmed session.
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            session.reconcileInventory(emptyList(), 12_000L))
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+            session.coordinator.phase)
+        assertFalse(session.finishReviewedAttempt())
         show(session)
         rule.waitUntil(15_000) {
-            rule.onAllNodes(hasText("Acknowledge existing job, then review another"))
-                .fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodes(hasText("Previous phone Add: waiting for exact phone transfer verification",
+                substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Or paste a magnet or torrent link").assertIsNotEnabled()
-        rule.onNodeWithText("Acknowledge existing job, then review another")
-            .performScrollTo().performClick()
-        rule.onNodeWithText("Or paste a magnet or torrent link").assertIsEnabled()
-        assertNull(session.attemptedTicket)
+        rule.onNodeWithText("Acknowledge existing job, then review another").assertDoesNotExist()
+        rule.onNodeWithText("Review another phone Add").assertDoesNotExist()
+        assertSame("Exact attempted ticket remains fenced", ticket, session.attemptedTicket)
+        assertNull("Contrary readback never authorizes a new engine Add",
+            session.coordinator.beginSubmission(13_000L))
+    }
+
+    @Test fun positiveExistingSessionStillRequiresAnExplicitAcknowledgementWithoutContraryRead() {
+        val session = attempt(exactSessionKnown = true)
+        assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED,
+            session.coordinator.phase)
+        assertNotNull(session.attemptedTicket)
+        assertFalse(session.acknowledgeObservedJob())
+        // Positive-control contract only: do not mount LocalEngineScreen,
+        // whose real native inventory correctly supersedes this synthetic
+        // registered-job fixture. This is still an explicit read-only user
+        // acknowledgment, not a second submission.
+        assertTrue(session.finishReviewedAttempt())
         assertEquals(UniversalAddCoordinator.Phase.EMPTY, session.coordinator.phase)
+        assertNull(session.attemptedTicket)
+        assertNull("Acknowledgment does not create new write authority",
+            session.coordinator.beginSubmission(12_000L))
     }
 }
