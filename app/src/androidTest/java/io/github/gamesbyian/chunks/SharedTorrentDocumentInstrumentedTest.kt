@@ -95,6 +95,37 @@ class SharedTorrentDocumentInstrumentedTest {
             Intent(Intent.ACTION_SEND_MULTIPLE).apply { type = "application/x-bittorrent" }))
     }
 
+    @Test fun malformedStreamExtraCannotCrashOrSubstituteAClipDocumentOrMagnet() {
+        val valid = document(goodBytes)
+        val magnet = "magnet:?xt=urn:btih:" + "b".repeat(40)
+        // Both the typed Parcelable cast and the fail-closed source gate
+        // matter: modern Android may throw for a bad type or return null.
+        for (wrong in listOf<Any>("content://fixture.documents/other.torrent", 42)) {
+            val shared = Intent(Intent.ACTION_SEND).apply {
+                type = "application/x-bittorrent"
+                when (wrong) {
+                    is String -> putExtra(Intent.EXTRA_STREAM, wrong)
+                    is Int -> putExtra(Intent.EXTRA_STREAM, wrong)
+                }
+                clipData = android.content.ClipData.newUri(
+                    context.contentResolver, "valid alternate document", valid)
+                putExtra(Intent.EXTRA_TEXT, magnet)
+            }
+            assertNull("Invalid explicit EXTRA_STREAM may not choose a different ClipData URI",
+                SharedTorrentDocument.fromIntent(shared))
+            assertNull("Invalid document must not silently fall through to magnet",
+                ExternalAddSource.fromIntent(shared))
+        }
+        // A correctly typed EXTRA_STREAM retains its original exact URI
+        // identity even with an incidental magnet string present.
+        assertEquals(ExternalAddSource.TorrentDocument(valid),
+            ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
+                type = "application/x-bittorrent"
+                putExtra(Intent.EXTRA_STREAM, valid)
+                putExtra(Intent.EXTRA_TEXT, magnet)
+            }))
+    }
+
     @Test fun conflictingOrMultipleSharedUrisNeverPickAnArbitraryTorrent() {
         val first = document(goodBytes)
         val second = Uri.parse("content://fixture.documents/download/other.torrent")
