@@ -39,6 +39,46 @@ class VerifiedAddReadOnlyPollingTest {
         assertEquals("Downloading payload from peers.", fresh.summary())
     }
 
+    @Test fun transientHttp500StillAllowsFreshExactJobReadback() = runBlocking {
+        val sample = RemoteAddProgress(registered = true, metadataPending = false, started = true)
+        var attempts = 0
+        var failures = 0
+        var fresh = 0
+        pollRemoteAddReadOnlyProgress(
+            maxObservations = 2, intervalMillis = 0L,
+            read = {
+                attempts++
+                if (attempts == 1) throw io.github.gamesbyian.chunks.rpc.RpcHttpStatusException(500)
+                sample
+            },
+            onFresh = { if (it === sample) fresh++ },
+            onReadError = { failures++ }
+        )
+        assertEquals(2, attempts)
+        assertEquals(1, failures)
+        assertEquals(1, fresh)
+    }
+
+    @Test fun authAndRateLimitResponsesStopWithoutRepeatingChallenge() = runBlocking {
+        for (status in listOf(401, 403, 407, 429)) {
+            var attempts = 0
+            var failures = 0
+            var fresh = 0
+            pollRemoteAddReadOnlyProgress(
+                maxObservations = 3, intervalMillis = 0L,
+                read = {
+                    attempts++
+                    throw io.github.gamesbyian.chunks.rpc.RpcHttpStatusException(status)
+                },
+                onFresh = { fresh++ },
+                onReadError = { failures++ }
+            )
+            assertEquals("HTTP $status must stop passive polling", 1, attempts)
+            assertEquals(1, failures)
+            assertEquals(0, fresh)
+        }
+    }
+
     @Test fun cancellationPropagatesAndDoesNotLookLikeReadFailure() {
         val cancel = CancellationException("screen left; old read must not continue")
         var failedReads = 0

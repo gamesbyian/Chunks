@@ -1152,8 +1152,14 @@ internal suspend fun pollRemoteAddReadOnlyProgress(
             read()
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
             onReadError()
+            // An authentic gateway denial is not a transient poll failure.
+            // Stop this effect rather than issuing repeated credential
+            // challenges or pressuring a rate-limited account. The user can
+            // explicitly reconnect or Recheck; no Add/Start write is retried.
+            if (failure is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException &&
+                failure.status in setOf(401, 403, 407, 429)) return
             null
         }
         if (status != null) onFresh(status)
