@@ -4,6 +4,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
+import androidx.activity.ComponentActivity
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
@@ -19,7 +23,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class ClipboardUriIntakeInstrumentedTest {
-    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
     @After fun clearClipboard() {
         rule.runOnUiThread {
@@ -29,6 +33,11 @@ class ClipboardUriIntakeInstrumentedTest {
     }
 
     @Test fun singleCopiedUriPrefillsButAmbiguousOrUnrelatedUrisNeverDo() {
+        // This test owns only the Android clipboard contract, not Chunks'
+        // navigation/background initialization. A minimal foreground Activity
+        // avoids unrelated MainActivity focus/launcher races; never proceed
+        // without a genuinely focused Android window.
+        rule.setContent { Box(Modifier.fillMaxSize()) }
         rule.waitUntil(30_000) { rule.activity.hasWindowFocus() }
         val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=ClipboardUri"
         val torrentLink = "https://example.org/releases/test.torrent"
