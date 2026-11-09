@@ -206,7 +206,7 @@ class TransferMediaController(
     }
 
     private fun automaticAllowed(key: MediaTransferKey, authorized: () -> Boolean): Boolean =
-        authorized() && settings().let { it.onlineLookupConsent && it.automaticLookup } &&
+        authorized() && settings().let { it.onlineLookupConsent && it.automaticLookup && it.showArtwork && it.downloadArtwork } &&
             !automationStore.isExcluded(key)
 
     private fun maybeAutomatic(key: MediaTransferKey) {
