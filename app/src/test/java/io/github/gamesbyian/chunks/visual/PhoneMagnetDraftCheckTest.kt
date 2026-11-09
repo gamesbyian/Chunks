@@ -107,7 +107,12 @@ class PhoneMagnetDraftCheckTest {
             // The persistent opt-out belongs in Options. First prove the
             // actual Add form remains reachable, then take the direct footer.
             org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", true).commit())
+            // The OS clipboard is shared across test cases. Disabling future
+            // prefill does not erase an already admitted draft, so start with
+            // irrelevant text before entering Add and verify a blank source.
+            copy("unrelated text, not a magnet or torrent link")
             openAdd()
+            rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
             rule.onNodeWithText("Options").performClick()
             rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
                 .performScrollTo().performClick()
@@ -122,6 +127,8 @@ class PhoneMagnetDraftCheckTest {
             rule.waitForIdle()
             rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
         } finally {
+            (rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                .clearPrimaryClip()
             org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", original).commit())
         }
     }
