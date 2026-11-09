@@ -4,6 +4,7 @@
 
 | Capability / user outcome | Required acceptance | Evidence needed |
 | --- | --- | --- |
+| Android / store branding | Short normal Android app and notification attribution **Chunks**, full product title **Chunks Torrent Client & Remote**, in-app **chunks.**, separate **Chunks Preview** / **Chunks Magnet Preview**; no claim of published Play listing | Source/merged manifest and resource proof, exact-head docs/foundation/R8 and installed normal/preview label inspection; #1457 cannot borrow a red native check |
 | One Transfers list across environments | All, device and named server scopes render same compact row; tap goes to full dedicated Details; preserve filter, scroll, identity and truthful stale/locked status | Native installed parity and duplicate-hash/account cases |
 | One-row fixed footer | Transfers / + Add / Connections / Options, all four in a **single row**, navigable under IME and nested Details | 320/412dp, normal/200% font, screenshot, TalkBack/focus, keyboard and target hit tests |
 | Compact action groups | Two across by default, three if short; no unnecessary tall button banks, no missing/unsafe actions | Installed Add, files, move/copy, remote Details, Options, remove and poster correction |
