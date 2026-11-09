@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **ACTIVE FOUR-LANE HANDOFF · 2026-11-09 UTC:** Main `5a5779ad` now contains #1441 remote delete safety, #1438 remote progress, #1435 Share-magnet scheme and #1439 DHT Options. Agent1 owns Options UI (#1442 clipboard preference) and its real clipboard/footer IME/API29/peer red tests; Agent2 owns Android Share URI-list #1440 restack + focused phone intake; Agent3 owns remote contrary exact-session Recheck #1443 and exact account/Place/Start proof; Agent4 exclusively owns central docs, test/CI evidence, issue reconciliation and merges. Older #1421/#1429/#1431 are superseded stacks, not acceptance. Do not modify the other lane's production files; no new submission authority or hidden automatic mutation. Current-main APK/owner Pixel/protected account tiers still require qualification.
+
+
 > **ACTIVE LANES AFTER #1432 MERGE · 2026-11-09 UTC:** Main `89c2d9f4` includes independent Agent4 QA-only launcher-overlay capture fix; Agent4 keeps exclusive CI/central-doc integration and release evidence authority. Agent1 owns #1421/#1429 Options presentation and the real native clipboard/focus regressions; Agent2 owns #1425/#1433/#1435 Share and phone intake; Agent3 owns #1431 read-only remote progress and actual magnet evidence. Keep source, exact environment/account, Place/Start and no-blind-write-retry invariants; no cross-lane production edits or automatic merge of red/skipped heads.
 
 
