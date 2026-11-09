@@ -1,30 +1,40 @@
 # Chunks agent work allocation and file ownership
 
-**Purpose:** assign independent work, seams and merge authority. History is in [AGENT-LANES-HISTORY-2026-11-09.md](AGENT-LANES-HISTORY-2026-11-09.md). No agent has a permanent lease: check live branches, files, PRs and current owner instructions before starting.
+**Execute this five-lane contract.** Before making edits, inspect live main, all open PR heads/diffs/checks, [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md), [CI-POLICY](CI-POLICY.md) and [next-push handoff](NEXT-PUSH-HANDOFF-2026-11-08.md). Historical allocations belong in [the archive](AGENT-LANES-HISTORY-2026-11-09.md). A lane is an active file-ownership boundary, not permission to skip review or an indefinite lock.
 
-## Start every agent
+## Agent 1: navigation and user presentation
 
-1. Inspect live `main`, all open PRs/diffs/checks, [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md) and [next-push handoff](NEXT-PUSH-HANDOFF-2026-11-08.md).
-2. Take one actionable, non-overlapping slice; announce scope/ownership and coordinate a shared interface before editing another lane's production files.
-3. Maintain exact source environment/account/hash/Place/Start, one Add authority, privacy and failure fences. Test new head; submit a small PR and let Agent 4 decide merge after independent qualification.
-4. Record **what remains** in active instructions; append execution logs and receipts to the evidence ledger or archive.
+**Own:** one Combined-derived Transfers list in All/device/server scopes, dedicated full Details, single-row four-button persistent footer, accessible two/three-across action layouts, Options presentation, Compose/JVM UI regressions and visual contrast (#1454). Diagnose #1442's observed failures with Agent 5; do not waive real Android/IME/API29/peer gates. Coordinate Add-only artwork appearance with Agent 2 and poster presentation with Agent 4.
 
-## Agent 1: navigation and presentation
+**Avoid:** Universal Add submission/phone parsers, authenticated remote engines, media provider code, central docs and CI.
 
-**Own:** MainActivity route/presentation, `CombinedTransfersScreen`, `AuthenticatedTransfersFooter`, shared action layouts, Options UI, unified list and full Details UI, focused Compose/JVM tests. Finish blocked #1442 first or coordinate supersession; #1454 is the next slice. Make All/device/server one view scoped by filter; footer always one row; action group 2–3 across; maintain accessibility and all actions. **Do not touch** shared Add coordinator/phone source parser, rTorrent transport, central docs or CI workflows.
+## Agent 2: Add authority and Android source intake
 
-## Agent 2: Universal Add and Android intake
+**Own:** shared Universal Add coordinator, phone magnet/.torrent/clipboard/Share/Open With intake, exact-session preference persistence and Add-only artwork checkbox seam. Qualify or supersede #1449/#1450 first; then the Add portion of #1453. Keep the artwork checkbox default checked only when the global artwork collection/display preference is enabled, and persist a deliberate opt-out against the exact environment/hash. Never put it on active Details.
 
-**Own:** Universal Add coordinator/phone intake/session and per-job Add-time artwork preference seam, scoped tests. Clear #1449/#1450 source integrity or supersession before new Add artwork work. Ensure global feature-enabled condition and Add-only default-checked checkbox, exact-environment/hash opt-out persisted at admission; no toggle in active Details after the presentation owner removes it. **Do not touch** remote transport, navigation/Options implementation, integration docs or workflows. Agree UI seam with Agent 1.
+**Avoid:** creating a second Add executor, remote RPC, global Options shell, media providers, central docs or CI.
 
-## Agent 3: authenticated rTorrent and enrichment seam
+## Agent 3: authenticated rTorrent and remote integrity
 
-**Own:** authenticated rTorrent adapters, precise remote readback, source identity and media enrichment scheduling/provider authorization in disjoint owned files. Diagnose #1443/#1444 failure gates; preserve actual server 401, exact-account/hash/Place and no replay. Audit offscreen all-environment automatic metadata lookup and poster persistence (#1453) without new transport/executor or unauthorized outbound requests. Coordinate shared presentation with Agent 1 and Add opt-out with Agent 2. **Do not touch** central docs/CI or phone input.
+**Own:** remote transport, readback identity, authenticated challenge handling, lifecycle, priorities, Remove and job-only Move, focused remote tests. Diagnose #1444's genuine Combined contrast failure with Agent 1 and #1443's read-only Recheck test contradiction with Agent 5. Preserve exact numbered route/principal/hash/Place/Start and uncertain-write read-only reconciliation; never replay a possibly applied write.
 
-## Agent 4: independent qualification and integration
+**Avoid:** Add phone source intake, central UI, media provider/scheduler files, central docs and CI.
 
-**Own:** focused QA and installed test artifacts, CI selectors/evidence, canonical docs, issue/PR status reconciliation, independent merges and source-tree/APK-byte provenance. Reject red/skipped/stale heads, test actual peers/pieces and phone HTTPS, merge qualified compatible slices only. Publish an APK only with matching tested bytes and accurate limits. **Do not implement** the three lanes' production UI/coordinator/engine in parallel.
+## Agent 4: automatic recognition, metadata and posters
 
-## Cross-lane protocol
+**Own:** authorized media recognition, provider consent and availability, confidence matching, poster fetch/cache, persistence, background scheduling at cold launch/reconnect/inventory changes including offscreen transfers, and focused media tests (#1453). Investigate actual generic-artwork/Not identified failures before changes. Respect per-job Add opt-out from Agent 2, global default-on presentation preference and independent informed third-party request consent. Preserve exact-job manual corrections.
 
-Shared files are **single writer**. If a change spans seams, write/agree an interface contract and land in dependency order. No self-merge, no blanket agent file locks, no newly invented submission authority, no blind recovery or private metainfo leakage. Prioritize current queue, and keep evidence narrations out of these instructions.
+**Avoid:** remote adapter/auth engine files, shared Add submission, navigation/footer/Options UI, central docs and CI.
+
+## Agent 5: independent qualification, integration and documentation
+
+**Own:** independent PR review and merges, source-head/check provenance, acceptance and negative controls, APK installed-byte SHA-256 provenance, genuine disposable rTorrent and phone HTTPS tests, CI test selectors/efficiency, cross-lane coordination and all central instructional documents. Start with #1457 branding and reconcile #1442–#1450 against actual current heads. Use one test/QA fix for shared failures, not duplicative product patches. Require executed exact-head checks; identify red/skipped/unrun limits. Never claim owner Pixel, protected-host, signed release or accessibility acceptance from emulator evidence.
+
+**Avoid:** Agents 1–4's production files. No agent self-merges its own production PR.
+
+## Shared interface and merging discipline
+
+1. Check live file overlaps before edits and again before merge; own the smallest independently testable slice. Agree interface changes with the counterpart lane before shared-file changes, then serialize writes.
+2. Keep one Add submission authority and frozen source/account/environment/Place/Start. Job-only Move retains source payload bytes; destructive deletion is separately approved and observed. External provider requests require separate consent and privacy gates.
+3. Have Agent 5 independently inspect the exact final head and relevant positive/negative evidence. Do not transfer a green test from an older head, count a skipped test, or erase the first failing receipt.
+4. Keep active queue, specs, CI policy and handoffs **instructional**. Store historical PR outcomes, run receipts and failures in [QUALITY-LEDGER](QUALITY-LEDGER.md) or designated history files. No parallel progress diaries.

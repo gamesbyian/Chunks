@@ -92,18 +92,33 @@ class RemoteMagnetDraftCheckTest {
         }
     }
 
-    private fun show(initial: String) {
+    private fun show(initial: String, foreground: Boolean = false): androidx.compose.runtime.MutableState<String> {
         val magnet = mutableStateOf(initial)
         val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:9/RPC2", "", ""))
         rule.setContent {
-            ChunksTheme { Surface {
-                VerifiedAddScreen(remote, magnet = magnet.value, destination = "/srv/one-off",
-                    onMagnet = { magnet.value = it }, onDestination = {},
-                    onBack = {}, onComplete = {},
-                    onMutationStarted = { error("Review must never mutate a server") },
-                    onMutationSettled = {})
-            } }
+            val screen: @androidx.compose.runtime.Composable () -> Unit = {
+                ChunksTheme { Surface {
+                    VerifiedAddScreen(remote, magnet = magnet.value, destination = "/srv/one-off",
+                        onMagnet = { magnet.value = it }, onDestination = {},
+                        onBack = {}, onComplete = {},
+                        onMutationStarted = { error("Review must never mutate a server") },
+                        onMutationSettled = {})
+                } }
+            }
+            if (foreground) {
+                // The clipboard prefill path explicitly requires a focused
+                // window. This source test supplies that known precondition;
+                // clipboardIsReadOnlyOnceTheWindowHasFocus tests denial.
+                val info = object : androidx.compose.ui.platform.WindowInfo {
+                    override val isWindowFocused: Boolean get() = true
+                }
+                androidx.compose.runtime.CompositionLocalProvider(
+                    androidx.compose.ui.platform.LocalWindowInfo provides info) {
+                    screen()
+                }
+            } else screen()
         }
+        return magnet
     }
 
     private fun reveal(text: String) =
@@ -172,12 +187,24 @@ class RemoteMagnetDraftCheckTest {
 
     @Test fun copiedMagnetFillsAnEmptyServerAddWithItsNote() {
         val context = androidx.test.core.app.ApplicationProvider.getApplicationContext<android.content.Context>()
-        (context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager)
-            .setPrimaryClip(android.content.ClipData.newPlainText("copied",
+        val manager = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val originalClip = manager.primaryClip
+        val originalPrefill = ClipboardMagnetPrefill.enabled(context)
+        try {
+            org.junit.Assert.assertTrue(ClipboardMagnetPrefill.setEnabled(context, true))
+            manager.setPrimaryClip(android.content.ClipData.newPlainText("copied",
                 "magnet:?xt=urn:btih:" + "e".repeat(40) + "&dn=Copied"))
-        show("")
-        reveal("Magnet for: Copied")
-        rule.onNodeWithText("Filled from your clipboard. Nothing is added until you confirm.").assertExists()
+            val magnet = show("", foreground = true)
+            // Wait for the foreground-only clipboard state machine to
+            // actually admit the draft before scrolling the lazy list.
+            rule.waitUntil(10_000) { magnet.value.contains("e".repeat(40)) }
+            reveal("Magnet for: Copied")
+            rule.onNodeWithText("Filled from your clipboard. Nothing is added until you confirm.").assertExists()
+        } finally {
+            org.junit.Assert.assertTrue(ClipboardMagnetPrefill.setEnabled(context, originalPrefill))
+            if (originalClip == null) manager.clearPrimaryClip()
+            else manager.setPrimaryClip(originalClip)
+        }
     }
 
     @Test fun aTorrentLinkReplacesTheMagnetCheckWithAnExplicitFetch() {

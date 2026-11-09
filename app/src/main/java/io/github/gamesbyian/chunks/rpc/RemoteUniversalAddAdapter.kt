@@ -160,7 +160,7 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
      * In particular, do not convert AlreadyPresent, Pending or uncertain
      * outcomes into new-registration evidence.
      */
-    fun exactObservation(
+    suspend fun exactObservation(
         ticket: UniversalAddCoordinator.Ticket,
         verified: RemoteAddAndStart,
         newRegistrationVerified: Boolean,
@@ -176,8 +176,24 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
             is RemoteAddAndStart.AddedStopped -> {
                 val stopped = verified.result as? RemoteAddOutcome.VerifiedStopped ?: return null
                 if (ticket.intent.startWhenAdded ||
-                    !stopped.hash.equals(plan.expectedInfoHash, ignoreCase = true) ||
-                    stopped.destination != plan.destination) return null
+                    !stopped.hash.equals(plan.expectedInfoHash, ignoreCase = true)) return null
+                if (stopped.destination != plan.destination) {
+                    // A multi-file torrent is stored under the reviewed
+                    // parent PLUS the exact torrent-name root. The engine
+                    // already verifies this shape before returning
+                    // VerifiedStopped; a fresh read-only verification prevents
+                    // a fabricated or stale child root from settling Add.
+                    val prefix = plan.destination + "/"
+                    val child = stopped.destination.takeIf { it.startsWith(prefix) }
+                        ?.removePrefix(prefix) ?: return null
+                    if (child.isBlank() || child == "." || child == ".." ||
+                        child.length > 2048 || child.any { it == '/' || it == '\\' ||
+                            it.code < 32 || it.code == 127 }) return null
+                    val fresh = remote.reconcileStoppedAdd(plan)
+                        as? RemoteAddOutcome.VerifiedStopped ?: return null
+                    if (!fresh.hash.equals(plan.expectedInfoHash, ignoreCase = true) ||
+                        fresh.destination != stopped.destination) return null
+                }
                 false
             }
             is RemoteAddAndStart.StartNotVerified -> return null

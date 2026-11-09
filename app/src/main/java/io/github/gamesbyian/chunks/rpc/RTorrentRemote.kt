@@ -993,7 +993,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (matching.isEmpty()) {
             // A view may hide a torrent without removing it from the session.
             // The exact-hash getter is independent of view membership.
-            if (!sessionContainsExactHash(hash)) return SessionEraseOutcome.AlreadyAbsent(hash)
+            if (confirmedAbsentExactHash(hash)) return SessionEraseOutcome.AlreadyAbsent(hash)
             error("Torrent still exists outside the main view; refresh before removal")
         }
         require(matching.size == 1) { "Ambiguous torrent identity" }
@@ -1023,8 +1023,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             return SessionEraseOutcome.Uncertain(hash)
         }
         return try {
-            if (sessionContainsExactHash(hash)) SessionEraseOutcome.PendingRemoval(hash)
-            else SessionEraseOutcome.VerifiedRemoved(hash)
+            if (confirmedAbsentExactHash(hash)) SessionEraseOutcome.VerifiedRemoved(hash)
+            else SessionEraseOutcome.PendingRemoval(hash)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
@@ -1199,8 +1199,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(expectedName.isNotBlank() && expectedDirectory.startsWith("/")) {
             "Invalid reviewed transfer identity"
         }
+        // A magnet's metadata-only session can briefly disappear while
+        // rTorrent replaces it. One unknown-hash reply is not proof that a
+        // prior Remove completed. Confirm absence with a fresh exact read;
+        // never use this observation to replay an uncertain mutation.
+        suspend fun independentlyConfirmAbsence(): SessionEraseRecheck {
+            kotlinx.coroutines.delay(350L)
+            return if (sessionContainsExactHash(hash)) SessionEraseRecheck.Unavailable
+                else SessionEraseRecheck.Absent
+        }
         return try {
-            if (!sessionContainsExactHash(hash)) return SessionEraseRecheck.Absent
+            if (!sessionContainsExactHash(hash)) return independentlyConfirmAbsence()
             val currentName = lookupName(hash)
             if (currentName == null) {
                 // The job disappeared between d.hash and d.name. A different
@@ -1208,11 +1217,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 // again before calling the old review absent. A fresh positive
                 // identity is uncertain, never proof that the old one is gone.
                 return if (sessionContainsExactHash(hash)) SessionEraseRecheck.Unavailable
-                else SessionEraseRecheck.Absent
+                else independentlyConfirmAbsence()
             }
             val currentDirectory = call("d.directory", listOf(hash)) as? String
                 ?: return SessionEraseRecheck.Unavailable
-            if (!sessionContainsExactHash(hash)) return SessionEraseRecheck.Absent
+            if (!sessionContainsExactHash(hash)) return independentlyConfirmAbsence()
             if (currentName == expectedName && currentDirectory == expectedDirectory)
                 SessionEraseRecheck.PresentMatching
             else SessionEraseRecheck.Changed
@@ -1221,6 +1230,18 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (_: Exception) {
             SessionEraseRecheck.Unavailable
         }
+    }
+
+    /**
+     * An exact-hash miss can be transient during magnet metadata promotion.
+     * Two independently acquired misses are the minimum evidence for an
+     * AlreadyAbsent or VerifiedRemoved result. A reappearance is inconclusive
+     * and must never trigger another d.erase.
+     */
+    private suspend fun confirmedAbsentExactHash(hash: String): Boolean {
+        if (sessionContainsExactHash(hash)) return false
+        kotlinx.coroutines.delay(350L)
+        return !sessionContainsExactHash(hash)
     }
 
     /** Read-only session identity independent of any visible rTorrent view. */
@@ -1458,8 +1479,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun readActivity(hash: String): RemoteTransferActivity {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
-        suspend fun get(method: String): Long? = try {
-            number(call(method, listOf(hash))).takeIf { it >= 0L }
+        suspend fun get(method: String, binaryFlag: Boolean = false): Long? = try {
+            val result = number(call(method, listOf(hash)))
+            // Activity/open are engine Boolean flags, not truthy counters.
+            // Malformed responses must not fabricate a connected/active job.
+            if (binaryFlag) {
+                require(result in 0L..1L) { "Invalid rTorrent $method flag" }
+                result
+            } else result.takeIf { it >= 0L }
         } catch (fault: RpcFault) {
             // Older servers may omit optional getters. Only a recognizable
             // "method unavailable" RPC fault can become an unknown statistic.
@@ -1473,8 +1500,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // four more requests against an expired login and falsely report a
         // connected server with merely unavailable optional statistics.
         return RemoteTransferActivity(
-            active = get("d.is_active")?.let { it != 0L },
-            open = get("d.is_open")?.let { it != 0L },
+            active = get("d.is_active", binaryFlag = true)?.let { it == 1L },
+            open = get("d.is_open", binaryFlag = true)?.let { it == 1L },
             connectedPeers = get("d.peers_connected"),
             downloadBytesPerSecond = get("d.down.rate")
         )
@@ -1747,8 +1774,18 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         val challenges = connection.headerFields.entries
                             .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
                             .flatMap { it.value }
-                        authorization = HttpRpcAuthorization.fromChallenge(
-                            challenges, auth, "POST", requestTarget)
+                        // A genuine HTTP 401 with unusable Basic/Digest challenge
+                        // remains an authentication denial, never a transient
+                        // read I/O error. Writes still authorize independently
+                        // and must never be blindly replayed.
+                        authorization = try {
+                            HttpRpcAuthorization.fromChallenge(
+                                challenges, auth, "POST", requestTarget)
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            throw RpcHttpStatusException(HttpURLConnection.HTTP_UNAUTHORIZED)
+                        }
                         attemptedChallenge = true
                         continue
                     }

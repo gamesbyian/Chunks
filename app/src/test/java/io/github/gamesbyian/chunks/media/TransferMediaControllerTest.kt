@@ -56,14 +56,14 @@ class TransferMediaControllerTest {
     }
 
     @Test fun displayingNeverCallsNetworkAndShowsCategoryArt() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true) // consent alone does not auto-lookup
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false) // consent alone does not auto-lookup
         val s = controller().observe(phone, name).value
         assertTrue(http.requests.isEmpty())
         assertEquals(MediaKind.TV_EPISODE, s.displayKind); assertEquals(MediaAssignmentState.NOT_LOOKED_UP, s.state); assertNull(s.artwork)
     }
 
     @Test fun explicitLookupMatchesFetchesArtworkAndPersists() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller()
         val flow = c.observe(phone, name)
         c.lookup(phone)
@@ -88,7 +88,7 @@ class TransferMediaControllerTest {
     }
 
     @Test fun userChoiceWinsOverLaterLookupsAndResetRestoresAutomatic() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(); val flow = c.observe(phone, name)
         val other = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "57926"), MediaKind.TV_SERIES,
             "Babylon 5", attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
@@ -172,7 +172,7 @@ class TransferMediaControllerTest {
         }
 
     @Test fun manualSearchOffersButNeverAutoApplies() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(); val flow = c.observe(phone, "unknown_file")
         c.search(phone, MediaKind.TV_SERIES, "Babylon 5")
         val results = flow.value.searchResults!!
@@ -182,7 +182,7 @@ class TransferMediaControllerTest {
     }
 
     @Test fun clearAllPurgesAssignmentsCacheAndArtwork() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(); val flow = c.observe(phone, name); c.lookup(phone)
         val art = ArtworkDiskCache(File(dir, "art"))
         c.clearAllMediaData({ File(dir, "q.json").delete() }, { art.clear() })
@@ -203,7 +203,7 @@ class TransferMediaControllerTest {
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, s.state); assertTrue(s.mayShowRealArt)
         assertEquals(LOCAL_PROVIDER, s.artworkSource!!.provider); assertEquals(Color.GREEN, s.artwork!!.getPixel(192, 192))
         assertTrue(http.requests.isEmpty()) // no consent, no network: local images still work
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         c.lookup(phone)
         assertEquals(LOCAL_PROVIDER, flow.value.artworkSource!!.provider) // lookup never overrides the user's choice
         // Restart; the pinned import survives heavy cache churn.
@@ -233,7 +233,7 @@ class TransferMediaControllerTest {
     }
 
     @Test fun removingImportedImageRestoresAutomaticProvenance() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(); val flow = c.observe(phone, name)
         c.lookup(phone); assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
         c.importUserImage(phone, png(Color.GREEN)); assertEquals(MediaAssignmentState.CHOSEN_BY_USER, flow.value.state)
@@ -249,7 +249,7 @@ class TransferMediaControllerTest {
     }
 
     @Test fun replacingAChoiceUnpinsTheOldArtwork() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(); val flow = c.observe(phone, name)
         c.lookup(phone)
         val first = flow.value.match!!
@@ -262,7 +262,7 @@ class TransferMediaControllerTest {
     }
 
     @Test fun posterRoleLoadsOnRequestWithOriginalAspect() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(); val flow = c.observe(phone, name)
         c.lookup(phone)
         assertNull(flow.value.poster) // never loaded for list rows
@@ -274,7 +274,7 @@ class TransferMediaControllerTest {
 
     @Test fun applyChoiceToRelatedTransfersIsPreviewedExplicitAndKeepsEpisodes() {
         // External image download requires the same provider consent as ordinary enrichment.
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller()
         val k = { n: Int -> MediaTransferKey("phone|" + "%040x".format(n)) }
         c.observe(k(1), "Babylon.5.S02E07.Soul.Mates.mkv"); val e8 = c.observe(k(2), "Babylon 5 - S02E08 - Gropos.mkv")
@@ -311,7 +311,7 @@ class TransferMediaControllerTest {
         c.applyChoiceTo(k(1), listOf(k(2)))
         assertEquals(listOf("https://static.tvmaze.com/show.jpg"), s3.value.match!!.artwork.map { it.url })
         // An automatic match under a user image is not a user choice and does not spread.
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val src = c.observe(phone, name); val target = c.observe(MediaTransferKey("phone|" + "c".repeat(40)), "Babylon.5.S02E09.mkv")
         c.lookup(phone); c.importUserImage(phone, png(Color.BLUE))
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, src.value.state)
@@ -321,7 +321,7 @@ class TransferMediaControllerTest {
 
     @Test fun localEmbeddedTagsDriveTheLookupAndOfferTheirCover() {
         val tagged = javaClass.classLoader!!.getResource("media-fixtures/embedded/tagged.flac")!!.readBytes()
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val mbHttp = FakeMediaHttp().on("musicbrainz.org", body = fixture("mb-releasegroup-search-ok-computer.json"))
         val service = MediaEnrichmentService(listOf(io.github.gamesbyian.chunks.media.providers.MusicBrainzProvider()), mbHttp,
             InMemoryMediaQueryCache(), { clock.now }, clock::sleep)
@@ -339,6 +339,45 @@ class TransferMediaControllerTest {
         assertEquals(LOCAL_PROVIDER, flow.value.artworkSource!!.provider)
     }
 
+    @Test fun chosenMovieRuleRequiresKnownYearAndRejectsRemakeAndUndatedTransfer() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+        val c = controller()
+        val key = MediaTransferKey("phone|" + "d".repeat(40))
+        c.observe(key, "The.Thing.1080p.BluRay.mkv")
+        val chosen = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tmdb", "movie", "1091"),
+            MediaKind.MOVIE, "The Thing", 1982,
+            attribution = MediaAttribution("TMDB", "TMDB", null))
+        c.choose(key, chosen)
+        c.saveRuleFrom(key)
+        val rule = c.rules().single()
+        assertEquals(1982, rule.year)
+        assertTrue(rule.matches(MediaRecognizer.recognize("The.Thing.1982.1080p.BluRay.mkv")))
+        assertFalse(rule.matches(MediaRecognizer.recognize("The.Thing.2011.1080p.BluRay.mkv")))
+        assertFalse(rule.matches(MediaRecognizer.recognize("The.Thing.1080p.BluRay.mkv")))
+        assertFalse("Legacy yearless movie rules must fail closed",
+            rule.copy(year = null).matches(MediaRecognizer.recognize("The.Thing.2011.mkv")))
+        val sameTitleOtherServer = MediaTransferKey("rtorrent:seedbox-2|" + "d".repeat(40))
+        assertEquals(MediaAssignmentState.NOT_LOOKED_UP,
+            c.observe(sameTitleOtherServer, "The.Thing.2011.1080p.BluRay.mkv").value.state)
+    }
+
+    @Test fun contradictoryOrUnknownChosenMovieYearDoesNotSeedFutureRule() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+        val c = controller()
+        val key = MediaTransferKey("phone|" + "e".repeat(40))
+        c.observe(key, "The.Thing.2011.1080p.BluRay.mkv")
+        val film = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tmdb", "movie", "1091"),
+            MediaKind.MOVIE, "The Thing", 1982,
+            attribution = MediaAttribution("TMDB", "TMDB", null))
+        c.choose(key, film)
+        c.saveRuleFrom(key)
+        assertTrue("A contradictory filename year must not seed a movie rule", c.rules().isEmpty())
+        c.choose(key, film.copy(year = null))
+        c.saveRuleFrom(key)
+        assertTrue("An undated chosen film must not seed a title-only rule", c.rules().isEmpty())
+    }
     @Test fun futureArrivalRulesFillOnlyUnassignedMatchingTransfersAndPersist() {
         val rules = File(dir, "rules.json")
         fun ctl() = TransferMediaController(
@@ -458,7 +497,7 @@ class TransferMediaControllerTest {
     }
 
     @Test fun committedObserverLoadsAnExistingAssignmentAfterInitiallyDeniedAuthorization() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller()
         val choice = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
             MediaKind.TV_SERIES, "Babylon 5", artwork = listOf(ArtworkCandidate("tvmaze", "https://static.tvmaze.com/cover.jpg", ArtworkRole.SQUARE)),
@@ -474,7 +513,7 @@ class TransferMediaControllerTest {
     }
 
     @Test fun exclusionBeforeQueuedArtworkExecutionSendsNoImageRequest() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val tasks = java.util.ArrayDeque<Runnable>()
         val dispatcher = object : kotlinx.coroutines.CoroutineDispatcher() {
             override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) { tasks.add(block) }
@@ -621,7 +660,7 @@ class TransferMediaControllerTest {
                 return response
             }
         }
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(changing)
         val state = c.observe(phone, name, isAuthorized = { authorized })
         c.search(phone, MediaKind.TV_EPISODE, "Babylon 5", year = 1993, season = 2, episode = 7)
@@ -645,7 +684,7 @@ class TransferMediaControllerTest {
         c.observe(phone, name)
         c.choose(phone, galleryChoice()) // offline choice; no image fetched yet
         assertTrue(http.requests.isEmpty())
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val result = kotlinx.coroutines.runBlocking {
             if (posters) c.posterAlternatives(phone) else c.alternatives(phone)
         }
@@ -658,7 +697,7 @@ class TransferMediaControllerTest {
         val state = c.observe(phone, name)
         c.choose(phone, galleryChoice())
         assertTrue(c.setAutomaticLookupEnabled(phone, false))
-        settings = MediaPrivacySettings(onlineLookupConsent = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val result = kotlinx.coroutines.runBlocking { c.alternatives(phone) }
         assertEquals(2, result.size)
         assertEquals(2, http.requests.size)

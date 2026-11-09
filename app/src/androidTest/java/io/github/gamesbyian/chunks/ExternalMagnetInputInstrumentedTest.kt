@@ -59,6 +59,31 @@ class ExternalMagnetInputInstrumentedTest {
             }))
     }
 
+    @Test fun malformedExternalTextExtrasAreRefusedWithoutCrashingOrChangingSource() {
+        // Android shares originate in untrusted external apps. A Parcelable,
+        // number or other wrong type in EXTRA_TEXT is not a text magnet. It
+        // must never crash MainActivity's normal source admission.
+        val wrongParcelable = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, Uri.parse(magnet))
+        }
+        assertNull(ExternalMagnetInput.fromIntent(wrongParcelable))
+        assertNull(ExternalAddSource.fromIntent(wrongParcelable))
+        val wrongNumber = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, 42)
+        }
+        assertNull(ExternalMagnetInput.fromIntent(wrongNumber))
+        assertNull(ExternalAddSource.fromIntent(wrongNumber))
+        // The exact same input as a genuine CharSequence still reaches the
+        // regular visible review, never triggering a mutation in this test.
+        assertEquals(magnet, ExternalMagnetInput.fromIntent(
+            Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, SpannableString(magnet))
+            }))
+    }
+
     @Test fun unrelatedOrOversizedSharesNeverBecomeMagnetDrafts() {
         assertNull(ExternalMagnetInput.fromIntent(
             Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "https://example.test")))

@@ -54,8 +54,11 @@ installed_apk=${installed_apk//$'\r'/}
 milestone 'comparing installed APK bytes'
 # Keep the exact byte gate, but distinguish failed emulator pull from changed
 # installed bytes. The helper prints fixed diagnostics and deletes its temp copy.
+# Preserve the cryptographic installed-byte identity even when a later
+# network/Details/lifecycle step fails. Pipefail forbids a false green pull.
 bash tools/verify_installed_apk_bytes.sh \
-  app/build/outputs/apk/debug/app-debug.apk "$installed_apk" "$RUNNER_TEMP/chunks-installed-base.apk"
+  app/build/outputs/apk/debug/app-debug.apk "$installed_apk" "$RUNNER_TEMP/chunks-installed-base.apk" \
+  | tee "$RUNNER_TEMP/chunks-installed-apk-identity.txt"
 unset installed_apk
 if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   milestone 'running production phone HTTPS and one-time Place journey'
