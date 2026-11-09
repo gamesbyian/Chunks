@@ -1,5 +1,8 @@
 # Chunks specification coverage and acceptance map
 
+> **NEW EXACT MAIN-TREE ACCEPTANCE · 2026-11-09 UTC:** #1411's malformed `d.is_multi_file` validation merged in main `ec8e5cd9` after all ten exact-head gates. Installed genuine rTorrent Add/peer piece/restart/Remove and phone HTTPS intake on tested checkout `6c05c329` share Git tree `bbc8970a` with merged main. Side-by-side APK `chunks-https-verified-preview-6c05c329235c.apk` has separately recomputed SHA-256 `cab9d811710ac4135c4ed1b04c66aaf82ebb922c23fec3d4723ddeeb5f31d3d7`, 71,055,950 bytes and verified installed-byte receipt [42543516891](https://github.com/gamesbyian/Chunks/actions/runs/42543516891). This covers an API35 installed emulator and disposable authenticated server, **not** the unmerged fixed-footer navigation, physical Pixel, live protected account, TalkBack/Doze/OEM or publisher signing. Requalify after navigation merges.
+
+
 > **QUALIFICATION-ONLY COVERAGE · 2026-11-09 UTC:** The previously missing authentic four-row Combined count proof has passed on QA #1420 `462c3d3c` ([42541358129](https://github.com/gamesbyian/Chunks/actions/runs/42541358129)) and its exact patch is merged into unmerged navigation #1404 (`57fc60ec`), pending full assembled tests. QA #1417 safely diagnoses read-only RPC exhaustion and passed its old-stacked-source real peer/piece gate, incorporated only into #1408's QA branch (`96bb527f`), not yet into #1404 or main. New #1411 multi-file rTorrent strict readback and #1422 exact-session contradicted-acknowledgment work remain open pending exact-head scopes. Do not treat branch-tested successes as source-matched latest-main APK acceptance; owner phone, protected provider, TalkBack/OEM/Doze and publisher signing are still excluded.
 
 
