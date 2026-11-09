@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.os.SystemClock
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -50,19 +51,40 @@ class ClipboardUriIntakeInstrumentedTest {
         val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
         var dismissedLauncherAnr = false
         var nextProbeAt = 0L
-        rule.waitUntil(30_000) {
-            if (rule.activity.hasWindowFocus()) true else {
-                val now = SystemClock.elapsedRealtime()
-                if (!dismissedLauncherAnr && now >= nextProbeAt) {
-                    nextProbeAt = now + 500L
-                    if (device.findObject(By.text("Pixel Launcher isn't responding")) != null) {
-                        val wait = device.findObject(By.text("Wait"))
-                        if (wait != null)
-                            dismissedLauncherAnr = runCatching { wait.click(); true }.getOrDefault(false)
+        try {
+            rule.waitUntil(30_000) {
+                if (rule.activity.hasWindowFocus()) true else {
+                    val now = SystemClock.elapsedRealtime()
+                    if (!dismissedLauncherAnr && now >= nextProbeAt) {
+                        nextProbeAt = now + 500L
+                        if (device.findObject(By.text("Pixel Launcher isn't responding")) != null) {
+                            val wait = device.findObject(By.text("Wait"))
+                            if (wait != null)
+                                dismissedLauncherAnr = runCatching { wait.click(); true }.getOrDefault(false)
+                        }
                     }
+                    false
                 }
-                false
             }
+        } catch (failure: Throwable) {
+            // Keep the foreground assertion strict. A bounded boolean-only
+            // failure fingerprint separates a real target focus failure from
+            // the external emulator Launcher ANR without publishing UI text,
+            // clipboard contents, private torrent URIs or arbitrary packages.
+            val targetFront = runCatching {
+                device.currentPackageName == rule.activity.packageName
+            }.getOrNull()
+            val launcherAnr = runCatching {
+                device.findObject(By.text("Pixel Launcher isn't responding")) != null
+            }.getOrNull()
+            val targetAnr = runCatching {
+                device.findObject(By.text("Chunks isn't responding")) != null
+            }.getOrNull()
+            Log.e("ChunksClipboardFocus",
+                "required-focus-failed targetFocused=${rule.activity.hasWindowFocus()} " +
+                    "targetPackageForeground=$targetFront pixelLauncherAnr=$launcherAnr " +
+                    "targetAnr=$targetAnr launcherAnrDismissed=$dismissedLauncherAnr")
+            throw failure
         }
         val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=ClipboardUri"
         val torrentLink = "https://example.org/releases/test.torrent"
