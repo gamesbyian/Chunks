@@ -339,6 +339,45 @@ class TransferMediaControllerTest {
         assertEquals(LOCAL_PROVIDER, flow.value.artworkSource!!.provider)
     }
 
+    @Test fun chosenMovieRuleRequiresKnownYearAndRejectsRemakeAndUndatedTransfer() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+        val c = controller()
+        val key = MediaTransferKey("phone|" + "d".repeat(40))
+        c.observe(key, "The.Thing.1080p.BluRay.mkv")
+        val chosen = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tmdb", "movie", "1091"),
+            MediaKind.MOVIE, "The Thing", 1982,
+            attribution = MediaAttribution("TMDB", "TMDB", null))
+        c.choose(key, chosen)
+        c.saveRuleFrom(key)
+        val rule = c.rules().single()
+        assertEquals(1982, rule.year)
+        assertTrue(rule.matches(MediaRecognizer.recognize("The.Thing.1982.1080p.BluRay.mkv")))
+        assertFalse(rule.matches(MediaRecognizer.recognize("The.Thing.2011.1080p.BluRay.mkv")))
+        assertFalse(rule.matches(MediaRecognizer.recognize("The.Thing.1080p.BluRay.mkv")))
+        assertFalse("Legacy yearless movie rules must fail closed",
+            rule.copy(year = null).matches(MediaRecognizer.recognize("The.Thing.2011.mkv")))
+        val sameTitleOtherServer = MediaTransferKey("rtorrent:seedbox-2|" + "d".repeat(40))
+        assertEquals(MediaAssignmentState.NOT_LOOKED_UP,
+            controller().observe(sameTitleOtherServer, "The.Thing.2011.1080p.BluRay.mkv").value.state)
+    }
+
+    @Test fun contradictoryOrUnknownChosenMovieYearDoesNotSeedFutureRule() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+        val c = controller()
+        val key = MediaTransferKey("phone|" + "e".repeat(40))
+        c.observe(key, "The.Thing.2011.1080p.BluRay.mkv")
+        val film = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tmdb", "movie", "1091"),
+            MediaKind.MOVIE, "The Thing", 1982,
+            attribution = MediaAttribution("TMDB", "TMDB", null))
+        c.choose(key, film)
+        c.saveRuleFrom(key)
+        assertTrue("A contradictory filename year must not seed a movie rule", c.rules().isEmpty())
+        c.choose(key, film.copy(year = null))
+        c.saveRuleFrom(key)
+        assertTrue("An undated chosen film must not seed a title-only rule", c.rules().isEmpty())
+    }
     @Test fun futureArrivalRulesFillOnlyUnassignedMatchingTransfersAndPersist() {
         val rules = File(dir, "rules.json")
         fun ctl() = TransferMediaController(
