@@ -993,7 +993,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (matching.isEmpty()) {
             // A view may hide a torrent without removing it from the session.
             // The exact-hash getter is independent of view membership.
-            if (!sessionContainsExactHash(hash)) return SessionEraseOutcome.AlreadyAbsent(hash)
+            if (confirmedAbsentExactHash(hash)) return SessionEraseOutcome.AlreadyAbsent(hash)
             error("Torrent still exists outside the main view; refresh before removal")
         }
         require(matching.size == 1) { "Ambiguous torrent identity" }
@@ -1023,8 +1023,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             return SessionEraseOutcome.Uncertain(hash)
         }
         return try {
-            if (sessionContainsExactHash(hash)) SessionEraseOutcome.PendingRemoval(hash)
-            else SessionEraseOutcome.VerifiedRemoved(hash)
+            if (confirmedAbsentExactHash(hash)) SessionEraseOutcome.VerifiedRemoved(hash)
+            else SessionEraseOutcome.PendingRemoval(hash)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
@@ -1230,6 +1230,18 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (_: Exception) {
             SessionEraseRecheck.Unavailable
         }
+    }
+
+    /**
+     * An exact-hash miss can be transient during magnet metadata promotion.
+     * Two independently acquired misses are the minimum evidence for an
+     * AlreadyAbsent or VerifiedRemoved result. A reappearance is inconclusive
+     * and must never trigger another d.erase.
+     */
+    private suspend fun confirmedAbsentExactHash(hash: String): Boolean {
+        if (sessionContainsExactHash(hash)) return false
+        kotlinx.coroutines.delay(350L)
+        return !sessionContainsExactHash(hash)
     }
 
     /** Read-only session identity independent of any visible rTorrent view. */
