@@ -1,5 +1,8 @@
 # Physical handset acceptance runbook
 
+> **NEXT HANDSET UX/MEDIA TEST ADDITION · 2026-11-09:** When a qualified new APK exists, record the one-row four-root footer, All/device/server identical transfer cards/full Details, two/three-across action controls, 320/412dp and 200%-text/IME focus, conditional default-checked Add-only media checkbox and absence from active Details, and real authorized background poster persistence (with consent/offline/provider failure differentiated). Use [binding test matrix](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). A pre-alpha emulator APK or documentation PR does not count as physical handset acceptance.
+
+
 **Type:** reference/operations (how to produce evidence). It adds no requirements; the gates come from [WORK-QUEUE](WORK-QUEUE.md) 0B/0C/0D, [#5](https://github.com/gamesbyian/Chunks/issues/5) and [#865](https://github.com/gamesbyian/Chunks/issues/865), [#569](https://github.com/gamesbyian/Chunks/issues/569), [#8](https://github.com/gamesbyian/Chunks/issues/8) and [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md). Emulator runs never satisfy a handset gate. Record results in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
 ## Receipt (fill for every run)
