@@ -1067,7 +1067,14 @@ internal fun LocalEngineScreen(
                 dhtEnabled = dht,
                 applying = dhtSaving,
                 blocked = busy || inventoryStale,
-                onEnable = { if (onOpenOptions != null) onOpenOptions() else requestDhtSetting(true) },
+                onEnable = {
+                    if (onOpenOptions != null) {
+                        // Point directly to the existing DHT setting, never a
+                        // hidden screen or a second network preference owner.
+                        phoneOptionsSearch = "dht"
+                        onOpenOptions()
+                    } else requestDhtSetting(true)
+                },
                 opensOptions = onOpenOptions != null
             )
             ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
