@@ -75,4 +75,5 @@ class RTorrentDisposableNativeStartedAddTest {
                 result is RemoteAddAndStart.StartNotVerified)
         expectActive(remote, hash, parent)
     }
+
 }
