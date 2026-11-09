@@ -1,9 +1,6 @@
-# One P0 daily-use campaign: transfer journeys across environments
+# P0 daily-use journey: execution and acceptance instructions
 
-> **CURRENT OWNER EXPERIENCE ACCEPTANCE · 2026-11-09:** Extend the single A–E installed journey to prove **same** compact card/full Details in All/device/server scopes; one-row persistent four-destination footer and two/three-across button groups; conditional Add-only artwork checkbox with global default-on preference and separate provider consent; no active Details auto checkbox; real authorized auto-enrichment/poster consistency. See [binding next-push reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). Preserve exact source/Place/Start, real peer/piece and tested APK byte receipts. No second executor or duplicate acceptance campaign.
-
-
-**Status:** Execution contract; not a second feature specification, priority queue, evidence ledger, or acceptance gate. The authority for requirements remains [PRODUCT](PRODUCT.md), [UX](UX.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [DECISIONS](DECISIONS.md), and [WORK-QUEUE](WORK-QUEUE.md). The original A–E categories remain evidence labels, with A/B sharing implementation workstream **Transfer lifecycle**, C/D sharing **Environment continuity**, and E being **one** independent acceptance and exact-source APK publication.
+**Execution:** Run one source → Add → exact job → Transfers → full Details → reconnect → Stop/Start → Remove journey across supported local and authenticated rTorrent environments. Verify independently actual peers, pieces and byte provenance. Test All/device/server list parity, single-row four-root footer, Add-only artwork choice, provider consent and persisted poster/override, and no active Details checkbox, per [current owner specification](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). Keep this plan for *how* to qualify; actual run narratives belong in [QUALITY-LEDGER](QUALITY-LEDGER.md). [WORK-QUEUE](WORK-QUEUE.md) is the only task ordering authority. Never create a separate submission, engine or test campaign.
 
 ## Ownership and boundaries
 

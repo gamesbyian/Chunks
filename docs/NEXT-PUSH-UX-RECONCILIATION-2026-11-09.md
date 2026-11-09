@@ -1,6 +1,6 @@
-# Next-push product decisions, implementation order and acceptance (2026-11-09 UTC)
+# Next-push UX/media specification and execution contract
 
-**Authority:** binding owner instructions from installed Chunks screenshots and follow-up corrections, 2026-11-08 local / 2026-11-09 UTC. This document is a **current handoff and reconciliation**, not evidence that the features are implemented. It supersedes contradictory *feature placement, presentation and default* language in earlier specifications; source and test evidence remain separately governed by [QUALITY-LEDGER](QUALITY-LEDGER.md). Recheck live main/open PR exact heads before any edits: baseline observed main `0a1e7a4d2eef01cda75464bb65dd2d272ef525d1` with five open production PRs (#1442, #1443, #1444, #1449, #1450). Do not treat this baseline as a permanent live SHA.
+**Instructions:** Apply these owner-approved requirements when editing the UI and media pipeline. Check [WORK-QUEUE](WORK-QUEUE.md) for current priorities and [AGENT-LANES](AGENT-LANES.md) for ownership; confirm live main and PR heads before implementing. Do not treat the historical source audit or old PR list as acceptance. Put run histories in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
 ## Decisions that must agree everywhere
 
@@ -44,16 +44,9 @@
 
 These are responsibilities for the **next** agent activation, not evidence that any agent is currently running or has a lease.
 
-## Five existing open PRs and no-false-green gate
+## Existing PR review instruction
 
-At the above baseline:
-- **#1442** central Clipboard prefill Options: **red** on actual native clipboard/IME, real magnet and API29 Compose tests; fix root cause before merge; ownership Agent 1.
-- **#1443** explicit read-only remote Recheck contradiction: **red** native Add shard; preserve exact account/hash/Place/Start, and no replay; Agent 3 with Agent 1 presentation coordination.
-- **#1444** typed HTTP 401 for unusable read-auth: draft, genuine foundation Combined contrast failure, installed/R8 not qualified; Agent 3.
-- **#1449** fail-closed malformed Share extras: draft, native/R8 gates skipped; Agent 2.
-- **#1450** uppercase `MAGNET` Android VIEW resolver: draft, native/R8 gates skipped; Agent 2. Supersedes closed/unmerged #1445.
-
-Do **not** merge a docs PR as if it establishes feature qualification. Prior #1448 installed exact Stop/Start Place preservation passed genuine disposable peer/piece on a predecessor tested source and actual debug APK SHA-256 `506b24363b87436fe43fe1e253adf11851d3e1c4f78bb6f75ffab3395a4046a9`, **not current-main APK acceptance**. Prior red attempts remain documented. No owner Pixel/protected Seedhost/live-account, TalkBack, OEM/Doze or publisher-signed release acceptance is established.
+Inspect live open PRs and resolve source/CI dependencies before implementation. Start with #1442 (Options clipboard), #1443 (remote Recheck), #1444 (typed read-auth 401), #1449 (malformed Share extras), and #1450 (uppercase MAGNET VIEW) only if still open. Require genuinely executed exact-head gates before merge, preserve failed/skipped history in [QUALITY-LEDGER](QUALITY-LEDGER.md), and keep tested predecessor APK receipts distinct from current-tree acceptance. Do not copy a dated PR status table into this contract.
 
 ## Acceptance matrix for next push
 
