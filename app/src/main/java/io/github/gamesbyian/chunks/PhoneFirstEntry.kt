@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun PhoneFirstEntry(onOpenPhone: () -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("On this phone", style = MaterialTheme.typography.titleLarge,
+        Text("This device", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.semantics { heading() })
         ActionTile("Open phone downloads", ChunksColors.Cyan,
             onClick = onOpenPhone, modifier = Modifier.fillMaxWidth(),

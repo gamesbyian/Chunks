@@ -94,8 +94,9 @@ class RemoteDeleteDataInstalledInstrumentedTest {
         stage("ground-truth")
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("phone-first launch") { visible("On this phone (experimental)") }
-            rule.onNodeWithText("Back").performScrollTo().performClick()
+            waitFor("persistent Connections destination") { visible("Connections") }
+            rule.onNodeWithText("Connections").performClick()
+            waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             typeInto("Seedbox hostname, ruTorrent URL or RPC address", url)
             scrollTo("Connect to rTorrent")
             rule.onNodeWithText("Connect to rTorrent").performClick()

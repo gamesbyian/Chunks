@@ -84,8 +84,7 @@ class OptionsSettingSearchTest {
         val listening = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { server = it }
         Thread { while (!listening.isClosed) try { serve(listening.accept()) } catch (_: Exception) {} }
             .apply { isDaemon = true; start() }
-        rule.onNodeWithText("On this phone (experimental)").assertExists()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
             .performTextInput("http://127.0.0.1:${listening.localPort}/RPC2")
@@ -96,7 +95,7 @@ class OptionsSettingSearchTest {
         rule.waitForIdle()
     }
 
-    private val search get() = rule.onNode(hasSetTextAction() and hasText("Find a screen or tool"))
+    private val search get() = rule.onNode(hasSetTextAction() and hasText("Search options"))
 
     private val mutation = Regex("(^load\\.|\\.(start|stop|erase|close|open|pause|resume|check_hash)$|\\.set$|\\.set\\.)")
     private fun readOnly() = assertTrue("search must never mutate: $methods", methods.none { mutation.containsMatchIn(it) })
@@ -105,11 +104,11 @@ class OptionsSettingSearchTest {
         connectAndOpenOptions()
         search.performTextInput("seeding ratio")
         rule.waitForIdle()
-        rule.onNodeWithText("No matching Options screen. Clear search to see all destinations.").assertDoesNotExist()
+        rule.onNodeWithText("No matching option. Clear search to see all settings and tools.").assertDoesNotExist()
         rule.onNodeWithText("Ratio and seeding-time rules · opens Seeding rules").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("What these rules do today").performScrollTo()
-        rule.onNode(hasSetTextAction() and hasText("Find a screen or tool")).assertDoesNotExist()
+        rule.onNode(hasSetTextAction() and hasText("Search options")).assertDoesNotExist()
         readOnly()
     }
 
@@ -117,15 +116,15 @@ class OptionsSettingSearchTest {
         connectAndOpenOptions()
         search.performTextInput("speed")
         rule.waitForIdle()
-        rule.onNodeWithText("Speed limits are in phone Options; DHT and the download location are in phone Add · opens On this phone")
+        rule.onNodeWithText("Download and upload limits for this device · in Options")
             .performScrollTo()
         search.performTextReplacement("lock")
         rule.waitForIdle()
-        rule.onNodeWithText("Lock and hide transfer names · shown at the end of this Options panel")
+        rule.onNodeWithText("Lock and hide transfer names · in Options")
             .performScrollTo().performClick()
         rule.waitForIdle()
         // Tapping only clears the search; the panel stays open with Privacy at its end.
-        rule.onNode(hasSetTextAction() and hasText("Find a screen or tool")).assertExists()
+        rule.onNode(hasSetTextAction() and hasText("Search options")).assertExists()
         rule.onNodeWithText("Privacy & authentication").performScrollTo()
         readOnly()
     }
@@ -134,6 +133,6 @@ class OptionsSettingSearchTest {
         connectAndOpenOptions()
         search.performTextInput("paywall")
         rule.waitForIdle()
-        rule.onNodeWithText("No matching Options screen. Clear search to see all destinations.").performScrollTo()
+        rule.onNodeWithText("No matching option. Clear search to see all settings and tools.").performScrollTo()
     }
 }

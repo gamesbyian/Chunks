@@ -5,11 +5,13 @@ on:
     paths:
       - ".github/workflows/native-visual-atlas.yml"
       - "tools/native_visual_atlas.py"
+      - "tests/test_native_visual_atlas.py"
       - "tools/native_atlas_capture.sh"
       - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/ChunksBrandHeader.kt"
       - "app/src/main/res/font/chunks_extrabold.otf"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/PersistentRootNavigationInstrumentedTest.kt"
       - "docs/design/approved/chunks-app-icon-master.svg"
       - "app/src/main/res/drawable/chunks_launcher_artwork.xml"
       - "app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml"
@@ -35,6 +37,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Test first-launch atlas receipt validator before Android SDK/emulator setup
+        run: python3 -m unittest discover -s tests -p test_native_visual_atlas.py
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -79,10 +83,10 @@ jobs:
           disable-animations: true
           script: |
             bash tools/native_atlas_capture.sh
-            # The two independent test classes can run in one AndroidJUnitRunner
-            # session; avoid a second Gradle/UTP install/configuration cycle.
+            # Three independent test classes run in one AndroidJUnitRunner
+            # session; avoid any duplicate Gradle/UTP install/configuration.
             # reactivecircus executes script lines individually; keep this command on one line.
-            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest,io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest
+            gradle --no-daemon :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=io.github.gamesbyian.chunks.ChunksLauncherIconInstrumentedTest,io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest,io.github.gamesbyian.chunks.PersistentRootNavigationInstrumentedTest
       - name: Require actual executed Android test evidence
         if: always()
         env:
@@ -92,7 +96,7 @@ jobs:
             --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' \
             --output "$RUNNER_TEMP/chunks-native-atlas/digest.json"
           # The single AndroidJUnitRunner invocation must still exercise all
-          # three test methods previously run across the two Gradle invocations.
+          # all four named test methods, including real four-tab root navigation.
           python3 - <<'PY'
           from pathlib import Path
           import xml.etree.ElementTree as ET
@@ -104,6 +108,8 @@ jobs:
                "largeAccessibilityTypeStillExposesTheWholeHeader"),
               ("io.github.gamesbyian.chunks.ChunksBrandHeaderInstrumentedTest",
                "brandAndTaglineAreOneAccessibleHeading"),
+              ("io.github.gamesbyian.chunks.PersistentRootNavigationInstrumentedTest",
+               "fourDestinationsRemainDirectlyReachableWithoutBackHistory"),
           }
           found = []
           for report in root.glob("**/TEST-*.xml"):
@@ -115,7 +121,7 @@ jobs:
                       found.append(identity)
           if len(found) != len(expected) or set(found) != expected:
               raise SystemExit("Missing or duplicated native atlas Android test method")
-          print("CHUNKS_NATIVE_ATLAS: all 3 required installed Android tests passed")
+          print("CHUNKS_NATIVE_ATLAS: all 4 required installed Android tests passed")
           PY
       - name: Upload exact emulator screenshots and report
         if: always()

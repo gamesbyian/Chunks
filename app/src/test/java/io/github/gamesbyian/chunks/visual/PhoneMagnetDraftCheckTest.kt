@@ -36,7 +36,7 @@ class PhoneMagnetDraftCheckTest {
 
     private fun openAdd() {
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
     }
 
@@ -108,8 +108,9 @@ class PhoneMagnetDraftCheckTest {
                 .getBoolean("enabled", true).not()
         }
         copy(link)
-        // Closing and reopening Add does not read the clipboard while prefill is off.
-        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
+        // Closing and reopening Add is explicit navigation, not submission.
+        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
         rule.onNodeWithText("Paste link").performScrollTo().performClick()
@@ -122,9 +123,9 @@ class PhoneMagnetDraftCheckTest {
         val typed = "magnet:?xt=urn:btih:" + "c".repeat(40) + "&dn=typed"
         field.performScrollTo().performTextInput(typed)
         copy("magnet:?xt=urn:btih:" + "d".repeat(40) + "&dn=copied")
-        rule.onNodeWithText("All environments…").performScrollTo().performClick()
+        rule.onNodeWithText("Options").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Back").performClick()
+        rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(typed)).assertExists()
         rule.onNodeWithText("Magnet for: copied").assertDoesNotExist()

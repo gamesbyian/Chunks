@@ -39,7 +39,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             // but it is no longer authority to initiate ANOTHER review.
             scenario.recreate()
             rule.waitUntil(15_000) {
-                rule.onAllNodesWithText("On this phone (experimental)")
+                rule.onAllNodesWithText("Add on this device")
                     .fetchSemanticsNodes().isNotEmpty()
             }
             // Local navigation may legitimately restore the empty Add form;
@@ -57,7 +57,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         }
         ActivityScenario.launch<MainActivity>(intent).use {
             rule.waitUntil(15_000) {
-                rule.onAllNodesWithText("On this phone (experimental)")
+                rule.onAllNodesWithText("Add on this device")
                     .fetchSemanticsNodes().isNotEmpty()
             }
             // Reaching the native Add form is required, but merely opening
@@ -93,8 +93,8 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                 rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText("test.txt").assertExists()
-            rule.onNodeWithText("All environments…").performScrollTo().performClick()
-            rule.onNodeWithText("Back").performClick()
+            rule.onNodeWithText("Options").performClick()
+            rule.onNodeWithText("+ Add").performClick()
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
             }
@@ -105,7 +105,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             // consumed Android Share Intent or serialize potentially private metainfo.
             scenario.recreate()
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("On this phone (experimental)")
+                rule.onAllNodesWithText("Add on this device")
                     .fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText("Review download").assertDoesNotExist()
@@ -173,9 +173,9 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             }
             rule.onNodeWithText(name, substring = true).assertExists()
             stage = "combined"
-            rule.onNodeWithText("All environments…").performScrollTo().performClick()
+            rule.onNodeWithText("Options").performClick()
             stage = "return"
-            rule.onNodeWithText("Back").performClick()
+            rule.onNodeWithText("+ Add").performClick()
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText(name, substring = true).fetchSemanticsNodes().isNotEmpty()
             }

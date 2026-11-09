@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -36,6 +37,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.semantics.Role
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -57,6 +59,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -255,9 +258,14 @@ internal class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: B
             java.security.MessageDigest.getInstance("SHA-256").digest(candidate))
 }
 
+/** Presentation destinations share the same phone engine and Add coordinator. */
+internal enum class PhonePane { TRANSFERS, ADD, OPTIONS }
+
 @Composable
 internal fun LocalEngineScreen(
     onBack: (() -> Unit)? = null,
+    pane: PhonePane = PhonePane.TRANSFERS,
+    showNavigationFooter: Boolean = true,
     /** Opens Smart Seeding Rules; null hides the entry. */
     onSeedingRules: (() -> Unit)? = null,
     /** Options → Artwork & media info (app-wide presentation preferences). */
@@ -271,6 +279,14 @@ internal fun LocalEngineScreen(
     showFirstRunWelcome: Boolean = false,
     /** The central Connections route; no connection is attempted by navigating. */
     onConnections: (() -> Unit)? = null,
+    /** Existing authenticated rTorrent destinations; null when no exact current account. */
+    remoteEnvironmentLabel: String? = null,
+    onRemotePlaces: (() -> Unit)? = null,
+    onRemoteOrganize: (() -> Unit)? = null,
+    onRemoteNames: (() -> Unit)? = null,
+    onRemoteSnapshot: (() -> Unit)? = null,
+    /** Opens the existing device Add review, without submitting or choosing Place. */
+    onOpenAdd: (() -> Unit)? = null,
     initialMagnet: String? = null,
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
@@ -299,6 +315,7 @@ internal fun LocalEngineScreen(
      */
     listScroll: androidx.compose.foundation.ScrollState? = null,
     searchState: androidx.compose.runtime.MutableState<String>? = null,
+    optionsSearchState: androidx.compose.runtime.MutableState<String>? = null,
     /**
      * Typed magnet draft held by the caller in process memory, so visiting All
      * environments or Seeding rules does not discard it. Never saved to
@@ -552,11 +569,13 @@ internal fun LocalEngineScreen(
     // Android 10+ lets an app read the clipboard only while its window has input focus, and
     // ON_RESUME arrives before focus returns: reading then is silently denied. Read once focused.
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
-    LaunchedEffect(addExpanded, clipboardPrefillOn, resumeTick, windowFocused,
+    LaunchedEffect(pane, addExpanded, clipboardPrefillOn, resumeTick, windowFocused,
         phoneAddAttemptSession?.attemptedTicket) {
-        // Even automatic foreground clipboard intake is source replacement.
-        // Never alter a draft or read clipboard during an unresolved Add ticket.
-        if (!addExpanded || clipboardPrefillOn != true || !windowFocused ||
+        // The dedicated Add destination renders the form even before the
+        // legacy inline disclosure is expanded. Clipboard intake is still
+        // focus-gated, one-shot and never replaces a draft or pending review.
+        if ((pane != PhonePane.ADD && !addExpanded) ||
+            clipboardPrefillOn != true || !windowFocused ||
             busy || phoneAddAttemptSession?.attemptedTicket != null) return@LaunchedEffect
         val filled = ClipboardMagnetPrefill.decide(
             enabled = true, currentDraft = magnet,
@@ -862,7 +881,9 @@ internal fun LocalEngineScreen(
     val restoreRequester = remember { BringIntoViewRequester() }
     val exportsRequester = remember { BringIntoViewRequester() }
     val namesRequester = remember { BringIntoViewRequester() }
-    var phoneOptionsSearch by rememberSaveable { mutableStateOf("") }
+    val optionsSearchHolder = optionsSearchState ?: rememberSaveable { mutableStateOf("") }
+    var phoneOptionsSearch by optionsSearchHolder
+    var showBatchTools by rememberSaveable { mutableStateOf(false) }
     // Back from a phone tool returns keyboard focus to the button that opened it.
     val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val createFocus = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -881,8 +902,8 @@ internal fun LocalEngineScreen(
     }
     val addRequester = remember { BringIntoViewRequester() }
     var addNavigationRevision by remember { mutableIntStateOf(0) }
-    LaunchedEffect(addExpanded, addNavigationRevision) {
-        if (addExpanded) addRequester.bringIntoView()
+    LaunchedEffect(pane, addExpanded, addNavigationRevision) {
+        if (pane == PhonePane.ADD) addRequester.bringIntoView()
     }
     // The footer occupies measured space and never overlays a transfer action.
     Column(Modifier.fillMaxSize()) {
@@ -892,44 +913,29 @@ internal fun LocalEngineScreen(
             .padding(start = 18.dp, end = 18.dp, top = 12.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Compact orientation: who/where in two short rows, so the actual
-        // transfer inventory starts within the first viewport. Optional
-        // tools and settings live in "Phone options" beneath the list.
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            if (onBack != null) OutlinedButton(onClick = onBack,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Back") }
-            Text("On this phone (experimental)", style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.CenterVertically).semantics { heading() })
-        }
-        FlowRow(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            EnvironmentBadge(PHONE_ENVIRONMENT_LABEL, server = false,
-                environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE,
-                modifier = Modifier.align(Alignment.CenterVertically))
-            if (onCombined != null) OutlinedButton(onClick = onCombined,
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments…") }
-        }
-        // Make the true first-run choice visible before any setup or utility controls.
-        // The ordinary Add disclosure replaces it as soon as Add is selected.
+        // A destination must only display its own content. No Back breadcrumb,
+        // Add disclosure, or settings stack precedes the first transfer row.
         val firstRunVisible = onConnections != null && showPhoneFirstRunWelcome(
             hasConfirmedLocalInventory, inventoryStale, transfers.isEmpty(),
             !showFirstRunWelcome, transferSearch, addExpanded)
-        if (firstRunVisible) NoTransfersWelcome(
-            onAdd = { addExpanded = true; addNavigationRevision++ },
-            onConnections = onConnections!!
-        )
-        if (!firstRunVisible) PhoneIntakeDisclosure(
-            expanded = addExpanded, pendingReview = pending != null,
-            placeLabel = place?.title, onToggle = { addExpanded = !addExpanded }
-        )
+        if (pane == PhonePane.TRANSFERS) {
+            FlowRow(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                EnvironmentBadge("This device", server = false,
+                    environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE,
+                    modifier = Modifier.align(Alignment.CenterVertically))
+                if (onCombined != null) OutlinedButton(onClick = onCombined,
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments") }
+            }
+            // This screen owns Stop/Remove outcomes. A successful native
+            // deletion removes its row, but must not remove the user's
+            // independently verified confirmation with it.
+            message?.let { PhoneOutcomeNotice(it, needsAttention = problemOutcome == it) }
+        }
+        if (pane == PhonePane.ADD) {
+        Text("Add on this device", style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         phoneAddAttemptSession?.attemptedTicket?.let {
             val phase = phoneAddAttemptSession.coordinator.phase
             Text("Previous phone Add: " + when (phase) {
@@ -974,8 +980,8 @@ internal fun LocalEngineScreen(
                 }
             }
         }
-        if (addExpanded) {
-        Text("Add a download on this phone", style = MaterialTheme.typography.titleMedium,
+        if (addExpanded || pane == PhonePane.ADD) {
+        Text("Add a download on this device", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.bringIntoViewRequester(addRequester)
                 .semantics { heading() })
         ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
@@ -1647,6 +1653,8 @@ internal fun LocalEngineScreen(
             )
         }
 
+        } // Add presentation
+        if (pane == PhonePane.TRANSFERS) {
         moveServer?.let { server ->
             val digest = TransferMoveStore.scopeDigest(server.aliasScope)
             val pending = remember(transfers, moveRevision, digest) {
@@ -1699,7 +1707,7 @@ internal fun LocalEngineScreen(
         // Batch selection acts on the list itself, so it sits with the list (as on
         // rTorrent) and near the outcome/confirmation area above it. With no
         // phone transfers there is nothing to select, so it is not shown.
-        if (transfers.isNotEmpty()) LocalBatchCollectionPanel(
+        if (showBatchTools && transfers.isNotEmpty()) LocalBatchCollectionPanel(
             transfers = transfers,
             shown = displayedTransfers,
             inventoryStale = inventoryStale || busy,
@@ -1850,15 +1858,18 @@ internal fun LocalEngineScreen(
                 }
             }
         )
-        Text("Phone transfers", style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.bringIntoViewRequester(transfersRequester)
-                .semantics { heading() })
+        // Compact controls immediately precede the inventory. All batch tools
+        // stay collapsed until explicitly requested.
         ClearableTransferSearchField(
             value = transferSearch,
             onValueChange = { transferSearch = it },
-            label = "Search local names, aliases, folders or hashes"
+            label = "Search transfers on this device"
         )
+        OutlinedButton(onClick = { showBatchTools = !showBatchTools },
+            modifier = Modifier.heightIn(min = 48.dp)
+                .semantics { stateDescription = if (showBatchTools) "Expanded" else "Collapsed" }) {
+            Text(if (showBatchTools) "Hide batch tools" else "Batch tools")
+        }
         OutlinedButton(
             onClick = { showListOptions = !showListOptions },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -1925,13 +1936,19 @@ internal fun LocalEngineScreen(
         }
         // An empty phone says so once, instead of "Showing 0 of 0" above it.
         if (transfers.isNotEmpty())
-            Text("Showing ${displayedTransfers.size} of ${transfers.size} local transfers",
+            Text("Showing ${displayedTransfers.size} of ${transfers.size} transfers on this device",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
+            // Search and filters precede welcome even for an empty inventory.
+            if (firstRunVisible) NoTransfersWelcome(
+                onAdd = { if (onOpenAdd != null) onOpenAdd.invoke()
+                    else { addExpanded = true; addNavigationRevision++ } },
+                onConnections = onConnections!!
+            )
             when {
-                !hasConfirmedLocalInventory -> Text("Loading phone transfers…", style = MaterialTheme.typography.bodySmall)
-                inventoryStale -> Text("Phone transfer list is not current.", style = MaterialTheme.typography.bodySmall)
-                !firstRunVisible -> Text("No transfers on this phone yet.", style = MaterialTheme.typography.bodySmall)
+                !hasConfirmedLocalInventory -> Text("Loading transfers on this device…", style = MaterialTheme.typography.bodySmall)
+                inventoryStale -> Text("The transfer list on this device is not current.", style = MaterialTheme.typography.bodySmall)
+                !firstRunVisible -> Text("No transfers on this device yet.", style = MaterialTheme.typography.bodySmall)
             }
         } else if (displayedTransfers.isEmpty()) {
             Text("No transfers match this search or filter.",
@@ -2357,15 +2374,16 @@ internal fun LocalEngineScreen(
             if (!inventoryStale && transfer.metadataKnown && transfer.progressPpm == 1_000_000)
                 LocalLibraryCopyPanel(transfer)
         }
-        // Optional phone tools and settings. The footer Options action
-        // brings this section into view; nothing here mutates on display.
-        Text("Phone options", style = MaterialTheme.typography.titleLarge,
+        } // Transfers presentation
+        if (pane == PhonePane.OPTIONS) {
+        // App-wide settings live behind a real Options destination.
+        Text("Options · this device", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 12.dp)
                 .bringIntoViewRequester(optionsRequester)
                 .semantics { heading() })
         ClearableTransferSearchField(value = phoneOptionsSearch, onValueChange = { phoneOptionsSearch = it },
-            label = "Find a phone setting or tool")
+            label = "Search options")
         val privacyControlsHosted = io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current != null
         if (phoneOptionsSearch.isNotBlank()) {
             // Only entries whose screen or panel exists here; a result never changes a value.
@@ -2376,10 +2394,15 @@ internal fun LocalEngineScreen(
                     PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent != null
                     PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview != null
                     PhoneOptionsShortcut.PRIVACY -> privacyControlsHosted
+                    PhoneOptionsShortcut.CONNECTIONS -> onConnections != null
+                    PhoneOptionsShortcut.SERVER_PLACES -> onRemotePlaces != null
+                    PhoneOptionsShortcut.SERVER_ORGANIZE -> onRemoteOrganize != null
+                    PhoneOptionsShortcut.SERVER_NAMES -> onRemoteNames != null
+                    PhoneOptionsShortcut.SERVER_BACKUP -> onRemoteSnapshot != null
                     else -> true
                 }
             }
-            if (results.isEmpty()) Text("No matching phone setting or tool. Clear search to see everything in Phone options.",
+            if (results.isEmpty()) Text("No matching option. Clear search to see all settings and tools.",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
             results.forEach { shortcut ->
@@ -2388,14 +2411,24 @@ internal fun LocalEngineScreen(
                     when (shortcut) {
                         PhoneOptionsShortcut.SEEDING_RULES -> onSeedingRules?.invoke()
                         PhoneOptionsShortcut.MEDIA -> onMediaSettings?.invoke()
+                        PhoneOptionsShortcut.CONNECTIONS -> onConnections?.invoke()
+                        PhoneOptionsShortcut.SERVER_PLACES -> onRemotePlaces?.invoke()
+                        PhoneOptionsShortcut.SERVER_ORGANIZE -> onRemoteOrganize?.invoke()
+                        PhoneOptionsShortcut.SERVER_NAMES -> onRemoteNames?.invoke()
+                        PhoneOptionsShortcut.SERVER_BACKUP -> onRemoteSnapshot?.invoke()
                         PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent?.invoke()
                         PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview?.invoke()
-                        PhoneOptionsShortcut.DHT, PhoneOptionsShortcut.DOWNLOAD_LOCATION -> { addExpanded = true; addNavigationRevision++ }
-                        PhoneOptionsShortcut.SPEED_LIMITS -> scope.launch { speedRequester.bringIntoView() }
-                        PhoneOptionsShortcut.PRIVACY -> scope.launch { privacyRequester.bringIntoView() }
-                        PhoneOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { restoreRequester.bringIntoView() }
+                        PhoneOptionsShortcut.DHT, PhoneOptionsShortcut.DOWNLOAD_LOCATION -> {
+                            // These controls still live with the existing Add workflow.
+                            // Navigating cannot authorize or submit a transfer.
+                            if (onOpenAdd != null) onOpenAdd.invoke()
+                            else { addExpanded = true; addNavigationRevision++ }
+                        }
+                        PhoneOptionsShortcut.SPEED_LIMITS -> scope.launch { androidx.compose.runtime.withFrameNanos { }; speedRequester.bringIntoView() }
+                        PhoneOptionsShortcut.PRIVACY -> scope.launch { androidx.compose.runtime.withFrameNanos { }; privacyRequester.bringIntoView() }
+                        PhoneOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { androidx.compose.runtime.withFrameNanos { }; restoreRequester.bringIntoView() }
                         PhoneOptionsShortcut.EXPORTS -> { showPhoneTools = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; exportsRequester.bringIntoView() } }
-                        PhoneOptionsShortcut.COLLECTION_NAMES -> scope.launch { namesRequester.bringIntoView() }
+                        PhoneOptionsShortcut.COLLECTION_NAMES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; namesRequester.bringIntoView() }
                     }
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Column(Modifier.fillMaxWidth()) {
@@ -2405,6 +2438,48 @@ internal fun LocalEngineScreen(
                 }
             }
         }
+        // Search is a filtered destination view: unrelated settings and their
+        // duplicate headings must not remain below matching shortcut cards.
+        // Clearing search restores the existing controls without saving new state.
+        // Keep long-lived, process-memory-only review state (notably snapshot
+        // comparisons) composed while filtering. Only the presentation and
+        // accessibility tree are hidden; searching never destroys a draft.
+        Column(
+            modifier = Modifier.fillMaxWidth().then(if (phoneOptionsSearch.isBlank()) Modifier
+                else Modifier.height(0.dp).clipToBounds().clearAndSetSemantics { }),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+        if (onConnections != null) {
+            Text("Clients & environments", style = MaterialTheme.typography.titleMedium)
+            OutlinedButton(onClick = onConnections, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Manage connections and environments")
+            }
+        }
+        if (remoteEnvironmentLabel != null && onRemotePlaces != null &&
+            onRemoteOrganize != null && onRemoteNames != null && onRemoteSnapshot != null) {
+            // The local Options route is independently privacy-gated from
+            // remote profiles. Do not speak the server host/username here.
+            Text("Connected server tools", style = MaterialTheme.typography.titleMedium)
+            Text("These tools operate only on the currently authenticated server. Opening a tool does not submit an Add or change any torrent.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = onRemotePlaces,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Server folders & destinations")
+            }
+            OutlinedButton(onClick = onRemoteOrganize,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Server collections")
+            }
+            OutlinedButton(onClick = onRemoteNames,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Server transfer names")
+            }
+            OutlinedButton(onClick = onRemoteSnapshot,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Server inventory backup")
+            }
+        }
+        Text("Automation & media", style = MaterialTheme.typography.titleMedium)
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(seedingFocus)) {
             Text("Seeding rules…")
@@ -2413,6 +2488,7 @@ internal fun LocalEngineScreen(
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
             Text("Artwork & media info…")
         }
+        Text("Privacy, security & bandwidth", style = MaterialTheme.typography.titleMedium)
         io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.let { controls ->
             Column(Modifier.fillMaxWidth().bringIntoViewRequester(privacyRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
         }
@@ -2437,7 +2513,8 @@ internal fun LocalEngineScreen(
                     addStorage = null
                     message = "Original snapshot .torrent is ready for manual phone Add review. " +
                         "Check the destination and Start choice before confirming; no Add occurred."
-                    scope.launch { scrollState.animateScrollTo(0) }
+                    if (onOpenAdd != null) onOpenAdd.invoke()
+                    else scope.launch { scrollState.animateScrollTo(0) }
                 } catch (_: Exception) {
                     noteProblem("Snapshot definition could not populate Add review." +
                         if (pending != null) " Your previous .torrent remains selected." else "")
@@ -2530,6 +2607,8 @@ internal fun LocalEngineScreen(
         )
         } // names anchor
         LocalZipInterruptedExtractions()
+        } // full Options controls retained but visually hidden while searching
+        } // Options presentation
     }
     ReturnToTopControl(
         visible = showBackToTop,
@@ -2542,10 +2621,10 @@ internal fun LocalEngineScreen(
         }
     )
     } // scroll viewport
-    AuthenticatedTransfersFooter(
-        // Phone Options is a scroll destination, not a disclosure.
+    if (showNavigationFooter) AuthenticatedTransfersFooter(
+        // Standalone phone tests retain their footer; ChunksApp owns the global one.
         optionsOpen = null,
-        environmentLabel = "this phone",
+        environmentLabel = "this device",
         onTransfers = { scope.launch { transfersRequester.bringIntoView() } },
         onAdd = {
             addExpanded = true

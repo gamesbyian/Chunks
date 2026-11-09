@@ -19,6 +19,7 @@ import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -197,7 +198,7 @@ class InstalledMediaArtworkInstrumentedTest {
 
     @Test fun installedRemoteRowShowsUserArtworkAndOptionsSettingTurnsItOff() {
         val endpoint = startLoopback()
-        rule.onNodeWithText("Back").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)
         hideKeyboard()
@@ -225,7 +226,7 @@ class InstalledMediaArtworkInstrumentedTest {
 
         // Options → Artwork & info: turn artwork off; the visible row returns to category art.
         rule.onNode(hasClickAction() and hasText("Options")).performClick()
-        rule.onNodeWithText("Find a screen or tool").performTextInput("artwork")
+        rule.onNodeWithText("Search options").performTextInput("artwork")
         hideKeyboard()
         rule.onNodeWithText("Artwork & media info").performClick()
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Show artwork").fetchSemanticsNodes().isNotEmpty() }
@@ -234,10 +235,12 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.onNodeWithText("Show artwork").performScrollTo().performClick()
         rule.waitUntil(5_000) { !media.settingsStore.load().showArtwork }
         rule.onNodeWithText("Back").performScrollTo().performClick()
-        // Close Options so the list has its full height, then bring the exact row into composition.
-        rule.waitUntil(10_000) { rule.onAllNodes(hasClickAction() and hasText("Options")).fetchSemanticsNodes().isNotEmpty() }
-        if (rule.onAllNodesWithText("Find a screen or tool").fetchSemanticsNodes().isNotEmpty())
-            rule.onNode(hasClickAction() and hasText("Options")).performClick()
+        // Back from media settings restores central Options. Navigate through
+        // the same Combined inventory to the exact authenticated server list.
+        rule.onNodeWithText("Options · this device").assertExists()
+        rule.onNodeWithText("Transfers").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
+        rule.onNodeWithText("Open server list").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(episode))
         waitForDescription("TV episode category artwork. $format")
 

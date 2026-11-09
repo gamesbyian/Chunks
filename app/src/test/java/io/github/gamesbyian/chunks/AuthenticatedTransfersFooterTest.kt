@@ -69,6 +69,24 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(0, options)
     }
 
+    @Test fun normalPhoneWidthShowsFourDestinationsOnOnePersistentRow() {
+        rule.setContent {
+            ChunksTheme {
+                Box(Modifier.width(412.dp)) {
+                    AuthenticatedTransfersFooter(false, {}, {}, {}, onConnections = {})
+                }
+            }
+        }
+        val transfers = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
+        val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val connections = rule.onNodeWithContentDescription("Connections").getUnclippedBoundsInRoot()
+        val options = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
+        assertTrue("four destinations stay in one row",
+            transfers.top == add.top && add.top == connections.top && connections.top == options.top)
+        assertTrue("every tab remains an accessible 48dp target",
+            listOf(transfers, add, connections, options).all { it.bottom - it.top >= 48.dp })
+    }
+
     @Test fun bottomControlsPreserveExactExistingCallbacksAndTouchTargets() {
         var transfers = 0
         var adds = 0
@@ -186,7 +204,7 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(1, adds)
     }
 
-    @Test fun softKeyboardYieldsFooterSpaceAndRestoresTheSameActionsWhenClosed() {
+    @Test fun softKeyboardKeepsAllDestinationsVisibleAndActionable() {
         var ime by mutableStateOf(true)
         var adds = 0
         rule.setContent {
@@ -196,9 +214,9 @@ class AuthenticatedTransfersFooterTest {
                 }
             }
         }
-        rule.onAllNodesWithText("Transfers").assertCountEquals(0)
-        rule.onAllNodesWithText("+ Add").assertCountEquals(0)
-        rule.onAllNodesWithText("Options").assertCountEquals(0)
+        rule.onAllNodesWithText("Transfers").assertCountEquals(1)
+        rule.onAllNodesWithText("+ Add").assertCountEquals(1)
+        rule.onAllNodesWithText("Options").assertCountEquals(1)
         ime = false
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
@@ -206,7 +224,7 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(1, adds)
     }
 
-    @Test fun platformImeInsetsHideFooterThroughTheDefaultParameter() {
+    @Test fun platformImeInsetsCannotHideGlobalFooter() {
         var view: android.view.View? = null
         rule.setContent {
             view = LocalView.current
@@ -223,7 +241,7 @@ class AuthenticatedTransfersFooterTest {
                 .build())
         }
         rule.waitForIdle()
-        rule.onAllNodesWithText("+ Add").assertCountEquals(0)
+        rule.onAllNodesWithText("+ Add").assertCountEquals(1)
         rule.runOnIdle {
             ViewCompat.dispatchApplyWindowInsets(requireNotNull(view).rootView,
                 WindowInsetsCompat.Builder()

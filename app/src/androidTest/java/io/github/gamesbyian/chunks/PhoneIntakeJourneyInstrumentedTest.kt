@@ -9,6 +9,7 @@ import android.os.Environment
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -142,7 +143,11 @@ class PhoneIntakeJourneyInstrumentedTest {
                 false
             }
         }
-        rule.onNodeWithText(text).performScrollTo().assertIsEnabled().performClick()
+        val node = rule.onNodeWithText(text)
+        // Footer tabs live outside the scroll viewport. Never require a
+        // Scroll SemanticsAction for an already-visible navigation control.
+        if (runCatching { node.assertIsDisplayed() }.isFailure) node.performScrollTo()
+        node.assertIsEnabled().performClick()
     }
 
     @Test fun phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies() {
@@ -186,7 +191,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                 URLEncoder.encode(tracker.url, "UTF-8")))
 
             ActivityScenario.launch<MainActivity>(input).use {
-                waitForText("On this phone (experimental)")
+                waitForText("Add on this device")
                 waitForText("Saves to: Downloads/Chunks Downloads")
                 val target = File(publicRoot, name)
                 assertFalse("Review cannot create payload", target.exists())
@@ -257,6 +262,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                     (phone.status(hash)?.payloadDownloadedBytes ?: 0) >= payload.size &&
                         (seed.status(hash)?.payloadUploadedBytes ?: 0) >= payload.size
                 }
+                click("Transfers")
                 waitForText("100% ·", substring = true)
                 click("Stop")
                 await("UI Stop readback") { phone.status(hash)?.stopped == true }
@@ -309,11 +315,12 @@ class PhoneIntakeJourneyInstrumentedTest {
         // to Add another job or resume the existing restored transfer.
         ActivityScenario.launch<MainActivity>(intent(Intent.ACTION_VIEW,
             Uri.parse("magnet:?xt=urn:btih:$hash"))).use {
-            waitForText("On this phone (experimental)")
+            waitForText("Add on this device")
             await("exact stopped restore") { LocalEngineHolder.current()?.status(hash)?.stopped == true }
             val phone = requireNotNull(LocalEngineHolder.current())
             assertTrue(phone.restoreProblems.toString(), phone.restoreProblems.isEmpty())
             assertEquals(listOf(hash), phone.completeIdentityInventory())
+            click("Transfers")
             waitForText("Start")
             val uploadedBefore = requireNotNull(phone.status(hash)).payloadUploadedBytes
             click("Start")
@@ -479,6 +486,9 @@ class PhoneIntakeJourneyInstrumentedTest {
                     }
                     assertTrue(phone.flushCompletedForLibraryRead(hash, 30_000))
                     assertPublicBytes(target, payload, "before delete-data")
+                    // The Share review stays on Add; the verified job and
+                    // lifecycle controls live only in device Transfers.
+                    click("Transfers")
                     waitForText("100% ·", substring = true)
                     click("Stop")
                     await("UI Stop readback") { phone.status(hash)?.stopped == true }
@@ -513,6 +523,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                         assertTrue("Re-add must reuse kept bytes, not download them again: $reused",
                             reused.payloadDownloadedBytes < payload.size)
                         assertPublicBytes(target, payload, "after same-hash re-add")
+                        click("Transfers")
                         waitForText("100% ·", substring = true)
                         click("Stop")
                         await("UI Stop readback after re-add") { phone.status(hash)?.stopped == true }

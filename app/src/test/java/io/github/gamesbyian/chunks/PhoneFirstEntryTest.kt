@@ -41,7 +41,7 @@ class PhoneFirstEntryTest {
     @Test fun phonePrimaryChoiceIsAvailableAt320dpAnd200PercentWithoutStartingEngine() {
         val opened = intArrayOf(0)
         show(opened)
-        rule.onNodeWithText("On this phone").assertExists()
+        rule.onNodeWithText("This device").assertExists()
         val action = rule.onNodeWithText("Open phone downloads")
         action.assertExists()
         val bounds = action.getUnclippedBoundsInRoot()

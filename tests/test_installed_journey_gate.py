@@ -73,6 +73,20 @@ class InstalledJourneyGateTest(unittest.TestCase):
                                              True, True, journeys_verified=False)
         self.assertEqual("required-installed-journey-not-proven", diagnostic["reason"])
 
+    def test_exhausted_read_only_rpc_is_a_safe_failure_stage_not_acceptance(self):
+        diagnostic = safe_failure_diagnostic({
+            "runner": {"failed_tests": 1, "runner_finished": True},
+            "app_stage_evidence": ["place-ready", "read-only-exhausted"],
+        }, peer_valid=True, control_preserved=True)
+        self.assertEqual("android-test-failed", diagnostic["reason"])
+        self.assertEqual("read-only-exhausted", diagnostic["last_ui_stage"])
+        unsafe = safe_failure_diagnostic({
+            "runner": {"failed_tests": 1},
+            "app_stage_evidence": ["https://private/?passkey=SECRET"],
+        }, peer_valid=True, control_preserved=True)
+        self.assertEqual("none", unsafe["last_ui_stage"])
+        self.assertNotIn("SECRET", str(unsafe))
+
     def test_magnet_without_requested_extra_journeys_is_unchanged(self):
         self.assertTrue(required_journeys_verified(self.root, dict(self.env, CHUNKS_HTTPS_ADD="0", CHUNKS_REAL_MEDIA="0")))
 
