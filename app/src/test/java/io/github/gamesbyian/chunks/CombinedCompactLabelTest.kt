@@ -70,7 +70,7 @@ class CombinedCompactLabelTest {
                 savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
         } } }
         val exact = serverEnvironmentLabel(scope)
-        val details = "Expand Big Archive on $exact"
+        val details = "Details for Big Archive on $exact"
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(details))
         rule.onNodeWithContentDescription(details).assertExists()
         assertTrue("row shows the compact origin",

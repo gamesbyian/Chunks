@@ -88,35 +88,35 @@ class CombinedTransfersScreenTest {
     @Test fun detailFocusResolvesExactServerAndHashWithoutLifecycleCommands() {
         show()
         val origin = serverEnvironmentLabel(aliasScope)
-        val expand = "Expand Big Archive on " + origin
-        revealDescription(expand)
-        rule.onNodeWithContentDescription(expand).performClick()
-        rule.onNodeWithContentDescription("All details for Big Archive on " + origin).performClick()
+        val details = "Details for Big Archive on " + origin
+        revealDescription(details)
+        rule.onNodeWithContentDescription(details).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
-        rule.onNodeWithText("Environment: " + serverEnvironmentLabel(aliasScope)).assertExists()
+        rule.onNodeWithText("Environment: " + origin).assertExists()
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
         rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).performScrollTo().assertExists()
-        assertTrue("read-only details must not issue any lifecycle commands", commands.isEmpty())
+        assertTrue("read-only details must not issue lifecycle commands", commands.isEmpty())
     }
 
-    @Test fun compactRowsKeepExactScopedDetailsWhileExtraActionsNeedDisclosure() {
+    @Test fun compactRowOpensFullDetailsWithoutInlineExpansionOrMutation() {
         show()
         val label = serverEnvironmentLabel(aliasScope)
-        val expand = "Expand Big Archive on " + label
-        revealDescription(expand)
-        rule.onNodeWithContentDescription(expand).assertExists()
+        val action = "Details for Big Archive on " + label
+        revealDescription(action)
+        rule.onNodeWithContentDescription(action).assertExists()
         rule.onNodeWithText("All details").assertDoesNotExist()
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
-        // The entire transfer body expands without a Start/Stop RPC.
-        rule.onNodeWithContentDescription(expand).performClick()
-        rule.onNodeWithContentDescription("All details for Big Archive on " + label).assertExists()
-        rule.onNodeWithText("Size 900 B", substring = true).assertExists()
-        rule.onNodeWithText("Open in its list").assertExists()
-        rule.onNodeWithContentDescription("Collapse Big Archive on " + label).performClick()
-        rule.onNodeWithText("All details").assertDoesNotExist()
-        rule.onNodeWithText("Open in its list").assertDoesNotExist()
-        assertTrue("Read-only disclosure may never issue lifecycle commands", commands.isEmpty())
+        // The first tap opens the dedicated, exact-account Details destination.
+        rule.onNodeWithContentDescription(action).performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithText("Size: 900 B", substring = true).assertExists()
+        rule.onNodeWithText("Open " + label + " transfers").assertExists()
+        rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
+        revealDescription(action)
+        rule.onNodeWithContentDescription(action).assertExists()
+        rule.onNodeWithText("Transfer details").assertDoesNotExist()
+        assertTrue("Details navigation cannot issue lifecycle commands", commands.isEmpty())
     }
 
     @Test fun corruptSavedDetailIdentityCannotResolveOrGuessAnEnvironment() {

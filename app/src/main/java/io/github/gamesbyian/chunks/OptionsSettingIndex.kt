@@ -62,6 +62,8 @@ internal enum class PhoneOptionsShortcut(val title: String, val where: String, p
         "speed limit limits bandwidth throttle rate download upload kib mib unlimited"),
     DHT("DHT peer discovery", "Find peers without trackers · in Options",
         "dht peer peers discovery trackerless magnet distributed hash table"),
+    CLIPBOARD_PREFILL("Clipboard prefill", "Fill an empty Add source from the clipboard · in Options",
+        "clipboard copied copy paste magnet link links prefill auto fill empty source privacy"),
     DOWNLOAD_LOCATION("Download location", "Where new downloads are saved on this device · in Add",
         "download location place folder storage save path directory downloads"),
     SEEDING_RULES("Seeding rules", "Ratio and seeding-time rules · opens Seeding rules",

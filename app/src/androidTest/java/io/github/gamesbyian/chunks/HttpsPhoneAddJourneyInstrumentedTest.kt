@@ -391,7 +391,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // policy asynchronously; entering the screen does not mean
                 // its first full snapshot has been rendered. Wait for the
                 // actual phone row to become scrollable, not just the title.
-                val phoneRow = hasContentDescription("Expand ", substring = true) and
+                val phoneRow = hasContentDescription("Details for ", substring = true) and
                     hasContentDescription(" on On this phone", substring = true)
                 rule.waitUntil(45_000) {
                     runCatching {
@@ -400,11 +400,8 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                         true
                     }.getOrDefault(false)
                 }
+                // No intermediate expansion or All-details CTA.
                 rule.onNode(phoneRow).performClick()
-                val details = hasContentDescription("All details for ", substring = true) and
-                    hasContentDescription(" on On this phone", substring = true)
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(details)
-                rule.onNode(details).performClick()
                 rule.waitUntil(30_000) {
                     visible("Transfer details") && visible("Environment: On this phone")
                 }

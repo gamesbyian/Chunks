@@ -1161,7 +1161,6 @@ internal fun CombinedTransfersScreen(
                     source = sourcesByEnvironment[row.key.environment],
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                        onOpen = openFor(row.key),
                         onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
                 }
             }
@@ -1172,7 +1171,6 @@ internal fun CombinedTransfersScreen(
                     source = sourcesByEnvironment[row.key.environment],
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                    onOpen = openFor(row.key),
                         onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
             }
         }
@@ -1394,16 +1392,11 @@ private fun CombinedTransferRow(
     /** Null when not selecting. */
     selection: Boolean? = null,
     onSelect: (Boolean) -> Unit = {},
-    /** Null for environments only listed here (no live list to open). */
-    onOpen: (() -> Unit)? = null,
     /** Read-only details are available even for saved, unsigned-in profiles. */
     onDetails: () -> Unit
 ) {
-    // Exact source plus hash is the only valid disclosure key. A reused lazy slot
-    // must never inherit expansion from a different server or changed transfer.
-    var expanded by rememberSaveable(row.key.environment.value, row.key.infoHash) {
-        mutableStateOf(false)
-    }
+    // The row opens one full Details destination, with exact environment/hash
+    // identity. No expanding card or implicit environment switch is retained.
     val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
     val labelColour = if (hue != null && EnvironmentPalette.labelIsReadable(
         hue, ChunksColors.Surface.toArgbLong())) accent else ChunksColors.Text
@@ -1417,12 +1410,10 @@ private fun CombinedTransferRow(
             })
         Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp)
             .clickable(role = Role.Button,
-                onClickLabel = if (expanded) "Collapse transfer" else "Expand transfer",
-                onClick = { expanded = !expanded })
+                onClickLabel = "Open full transfer details",
+                onClick = onDetails)
             .semantics {
-                contentDescription = (if (expanded) "Collapse " else "Expand ") +
-                    "${row.displayName} on $environmentLabel"
-                stateDescription = if (expanded) "Expanded" else "Collapsed"
+                contentDescription = "Details for ${row.displayName} on $environmentLabel"
             },
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             // The body of the transfer is its single expansion target. No permanent
@@ -1430,7 +1421,7 @@ private fun CombinedTransferRow(
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelMedium,
                     color = labelColour, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text(if (expanded) "Less" else "More", style = MaterialTheme.typography.labelSmall,
+                Text("Details", style = MaterialTheme.typography.labelSmall,
                     color = ChunksColors.TextSecondary)
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
@@ -1438,7 +1429,7 @@ private fun CombinedTransferRow(
                 TransferRowArtwork(row.key, row.originalName,
                     hidden = source?.availability == EnvironmentAvailability.LOCKED)
                 Text(row.displayName, style = MaterialTheme.typography.titleSmall,
-                    maxLines = if (expanded) Int.MAX_VALUE else 2,
+                    maxLines = 2,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).semantics {
                         contentDescription = row.displayName
@@ -1465,31 +1456,7 @@ private fun CombinedTransferRow(
             }
             if (row.hasError) Text("Needs attention in its own list",
                 color = ChunksColors.Red, style = MaterialTheme.typography.bodySmall)
-            if (expanded) {
-                Text(
-                    listOfNotNull(
-                        row.sizeBytes?.let { "Size " + Units.bytes(it) } ?: "Size not reported",
-                        combinedTimeLeft(row).takeIf { source?.canClaimCompleteLiveInventory == true },
-                        row.peers?.let { "$it peers" }
-                    ).joinToString(" · "),
-                    style = MaterialTheme.typography.bodySmall)
-                OutlinedButton(onClick = onDetails,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                        contentDescription = "All details for ${row.displayName} on $environmentLabel"
-                    }) { Text("All details") }
-                if (row.displayName != row.originalName) Text(
-                    "Torrent name: " + row.originalName,
-                    style = MaterialTheme.typography.bodySmall)
-                if (onOpen != null) OutlinedButton(onClick = onOpen,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                        .semantics {
-                            contentDescription = "Open ${row.displayName} in $environmentLabel"
-                        }) {
-                    Text("Open in its list")
-                } else if (row.key.environment != EnvironmentSnapshots.PHONE) Text(
-                    "Listed only. Sign in to this server to open or change it.",
-                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
-            }
+
         }
     }
 }

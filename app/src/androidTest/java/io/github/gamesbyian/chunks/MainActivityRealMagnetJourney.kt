@@ -330,17 +330,15 @@ internal class MainActivityRealMagnetJourney(
             // Combined asynchronously loads its phone/remote privacy and
             // inventory. The title appearing does not prove that its exact
             // remote transfer row has been composed yet.
-            val rowMatch = hasContentDescription("Expand $displayName on", substring = true)
+            val rowMatch = hasContentDescription("Details for $displayName on", substring = true)
             rule.waitUntil(45_000) {
                 runCatching {
                     rule.onNode(hasScrollToIndexAction()).performScrollToNode(rowMatch)
                     true
                 }.getOrDefault(false)
             }
+            // First tap enters full exact authenticated Details, no second disclosure.
             rule.onNode(rowMatch).performClick()
-            val detailMatch = hasContentDescription("All details for $displayName on", substring = true)
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(detailMatch)
-            rule.onNode(detailMatch).performClick()
             rule.waitUntil(30_000) {
                 visible("Transfer details") && visible("Environment:")
             }

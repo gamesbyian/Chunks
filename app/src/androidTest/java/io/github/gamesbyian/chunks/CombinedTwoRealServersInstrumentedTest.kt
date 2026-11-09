@@ -248,14 +248,12 @@ class CombinedTwoRealServersInstrumentedTest {
             // observation, reported Place, or command authority. Use the real
             // Compose row and read-only detail screen, not a synthetic panel.
             fun inspectExactDetails(port: String, expected: io.github.gamesbyian.chunks.rpc.RemoteTransfer) {
-                val row = hasContentDescription("Expand $shared on", substring = true) and
+                // The compact row itself opens full exact-account Details.
+                // There is no expandable card or intermediate All-details CTA.
+                val row = hasContentDescription("Details for $shared on", substring = true) and
                     hasContentDescription(":$port", substring = true)
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
                 rule.onNode(row).performClick()
-                val details = hasContentDescription("All details for $shared on", substring = true) and
-                    hasContentDescription(":$port", substring = true)
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(details)
-                rule.onNode(details).performClick()
                 waitFor("exact-environment Details for $port") {
                     visible("Transfer details") && visible("Environment:") && visible(":$port")
                 }
@@ -266,7 +264,18 @@ class CombinedTwoRealServersInstrumentedTest {
                 assertTrue("Details borrowed another server's reported Place on $port",
                     visible("Save folder reported by engine: ${expected.directory}"))
                 rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
-                waitFor("Combined restored after Details for $port") { visible("Showing 4") }
+                // The catalog restores its previous scrolled viewport: the
+                // offscreen summary ("Showing 4") is not a valid visible-node
+                // gate after returning from a row near the bottom. Verify
+                // the actual lazy catalog and direct-Details rows are present;
+                // exact server/hash/Place authority is asserted above and
+                // by the subsequent same-hash second-server inspection.
+                waitFor("Combined catalog restored after Details for $port") {
+                    rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty() &&
+                        rule.onAllNodes(
+                            hasContentDescription("Details for", substring = true)
+                        ).fetchSemanticsNodes().isNotEmpty()
+                }
             }
             inspectExactDetails(portA, truthA.single { it.hash.equals(sharedHash, true) })
             inspectExactDetails(portB, truthB.single { it.hash.equals(sharedHash, true) })

@@ -87,13 +87,14 @@ class CombinedDetailIdentityInstrumentedTest {
         val capturedViewport = viewport.captureToImage()
         assertEquals(size.width, capturedViewport.width)
         assertEquals(size.height, capturedViewport.height)
-        val expand = "Expand ${row.name} on ${serverEnvironmentLabel(scope)}"
+        // The canonical compact row opens the exact full Details on its first tap.
+        val target = "Details for ${row.name} on ${serverEnvironmentLabel(scope)}"
         rule.waitUntil(10_000) {
-            runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(expand)) }.isSuccess
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(target))
+            }.isSuccess
         }
-        rule.onNodeWithContentDescription(expand).performClick()
-        val target = "All details for ${row.name} on ${serverEnvironmentLabel(scope)}"
-        rule.onNodeWithContentDescription(target).performScrollTo().performClick()
+        rule.onNodeWithContentDescription(target).performClick()
         val title = rule.onNodeWithText(row.name).performScrollTo()
         val titleLayouts = mutableListOf<TextLayoutResult>()
         title.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(titleLayouts) }

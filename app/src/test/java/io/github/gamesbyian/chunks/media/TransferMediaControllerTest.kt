@@ -171,6 +171,44 @@ class TransferMediaControllerTest {
                 FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(server)?.state)
         }
 
+    @Test fun blockedAutomaticLookupExplainsConsentAndGlobalArtworkGatesWithoutRequests() {
+        val c = controller()
+        val flow = c.observe(phone, name)
+        assertTrue(flow.value.automaticMessage!!.contains("consent"))
+        assertTrue(http.requests.isEmpty())
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true, showArtwork = false)
+        c.onSettingsChanged()
+        assertTrue(flow.value.automaticMessage!!.contains("collection switched off"))
+        assertTrue(http.requests.isEmpty())
+    }
+
+    @Test fun unavailableConfiguredProviderIsReportedWithoutPretendingANameWasVerified() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true,
+            disabledProviders = setOf("tvmaze"))
+        val flow = controller().observe(phone, name)
+        assertEquals(MediaAssignmentState.NOT_LOOKED_UP, flow.value.state)
+        assertTrue(flow.value.automaticMessage!!.contains("No enabled provider"))
+        assertTrue(http.requests.isEmpty())
+    }
+
+    @Test fun revokingFullInventoryAuthorizationDuringHttpPreventsAssignmentCommit() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val granted = java.util.concurrent.atomic.AtomicBoolean(true)
+            val guarded = object : MediaHttp by http {
+                override fun get(url: String, hosts: MediaHostPolicy,
+                                 headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                    val result = http.get(url, hosts, headers, maxBytes)
+                    granted.set(false)
+                    return result
+                }
+            }
+            val c = controller(guarded)
+            c.enrichInventory(listOf(phone to name)) { granted.get() }
+            assertTrue(http.requests.isNotEmpty())
+            assertNull(FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone))
+        }
+
     @Test fun manualSearchOffersButNeverAutoApplies() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(); val flow = c.observe(phone, "unknown_file")
