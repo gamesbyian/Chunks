@@ -188,14 +188,14 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
                                                        "arbitrary_early_metadata=1"), 0, env)["result"])
 
     def test_exhausted_read_only_rpc_marker_cannot_grant_acceptance(self):
-        raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=place-ready\\n"
-               "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=read-only-exhausted\\n"
-               "INSTRUMENTATION_STATUS_CODE: -2\\nINSTRUMENTATION_CODE: -1")
+        raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=place-ready\n"
+               "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=read-only-exhausted\n"
+               "INSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_CODE: -1")
         receipt = parse(raw, 1, self.env)
         self.assertEqual(["place-ready", "read-only-exhausted"],
                          receipt["app_stage_evidence"])
         self.assertEqual("failed-or-inconclusive", receipt["result"])
-        hostile = raw + ("\\nINSTRUMENTATION_STATUS: chunks_real_add_app_stage="
+        hostile = raw + ("\nINSTRUMENTATION_STATUS: chunks_real_add_app_stage="
                          "https://private.example/?passkey=SECRET")
         sanitized = parse(hostile, 1, self.env)
         self.assertEqual(receipt["app_stage_evidence"], sanitized["app_stage_evidence"])
