@@ -7,6 +7,8 @@ on:
       - "tools/native_visual_atlas.py"
       - "tests/test_native_visual_atlas.py"
       - "tools/native_atlas_capture.sh"
+      - "tools/native_atlas_launcher_anr.py"
+      - "tests/test_native_atlas_launcher_anr.py"
       - "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/ChunksBrandHeader.kt"
       - "app/src/main/res/font/chunks_extrabold.otf"
@@ -38,7 +40,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Test first-launch atlas receipt validator before Android SDK/emulator setup
-        run: python3 -m unittest discover -s tests -p test_native_visual_atlas.py
+        run: |
+          python3 -m unittest discover -s tests -p test_native_visual_atlas.py
+          python3 -m unittest discover -s tests -p test_native_atlas_launcher_anr.py
+          bash -n tools/native_atlas_capture.sh
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
