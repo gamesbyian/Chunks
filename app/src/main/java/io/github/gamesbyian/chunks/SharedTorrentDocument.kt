@@ -26,9 +26,21 @@ internal object SharedTorrentDocument {
                 // Android may supply EXTRA_STREAM and ClipData together to grant
                 // access to the same document. Never silently choose one of
                 // multiple or conflicting URIs: this screen reviews one torrent.
+                // An external sender may put a String, integer or a broken
+                // Parcelable into EXTRA_STREAM. Android's typed retrieval can
+                // throw while unparcelling/casting it; do not crash Add or
+                // treat incidental EXTRA_TEXT as the chosen replacement.
                 @Suppress("DEPRECATION")
-                val streamUri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
-                val clip = intent.clipData
+                val streamUri = try {
+                    intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                } catch (_: RuntimeException) {
+                    return null
+                }
+                val clip = try {
+                    intent.clipData
+                } catch (_: RuntimeException) {
+                    return null
+                }
                 if (clip != null && clip.itemCount != 1) return null
                 val clipUri = clip?.getItemAt(0)?.uri
                 if (streamUri != null && clipUri != null && streamUri != clipUri) return null
