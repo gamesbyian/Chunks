@@ -159,7 +159,7 @@ class MediaEnrichmentService(
                         confident = refined
                         if (refined.artwork.isNotEmpty() || !settings.downloadArtwork) break
                     } else if (confident.artwork.isEmpty() && refined.artwork.isNotEmpty() &&
-                        MediaText.similarity(confident.title, refined.title) >= 0.92) {
+                        safeArtworkCompletion(confident, refined)) {
                         // Metadata and artwork are independent: keep the first record, add later art.
                         confident = confident.copy(artwork = refined.artwork)
                         break
@@ -285,6 +285,21 @@ class MediaEnrichmentService(
             if (byTitle.size == 1) return byTitle.single()
         }
         return null
+    }
+
+    /** Identity match is stronger than a title match when borrowing another provider's cover.
+     * In particular, remakes with identical names must never exchange posters. */
+    private fun safeArtworkCompletion(verified: MediaCandidate, source: MediaCandidate): Boolean {
+        if (!verified.kind.compatibleWith(source.kind) ||
+            MediaText.similarity(verified.title, source.title) < MediaCandidateMatcher.CONFIDENT_TITLE_SIMILARITY)
+            return false
+        // For movies an unknown release year cannot prove the two provider records depict one work.
+        if (verified.kind == MediaKind.MOVIE || source.kind == MediaKind.MOVIE)
+            if (verified.year == null || source.year == null) return false
+        if (verified.year != null && source.year != null && verified.year != source.year) return false
+        if (verified.season != null && source.season != null && verified.season != source.season) return false
+        if (verified.episode != null && source.episode != null && verified.episode != source.episode) return false
+        return true
     }
 
     private fun providerName(id: String) = providers.firstOrNull { it.info.id == id }?.info?.displayName ?: id
