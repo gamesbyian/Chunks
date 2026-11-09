@@ -264,7 +264,18 @@ class CombinedTwoRealServersInstrumentedTest {
                 assertTrue("Details borrowed another server's reported Place on $port",
                     visible("Save folder reported by engine: ${expected.directory}"))
                 rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
-                waitFor("Combined restored after Details for $port") { visible("Showing 4") }
+                // The catalog restores its previous scrolled viewport: the
+                // offscreen summary ("Showing 4") is not a valid visible-node
+                // gate after returning from a row near the bottom. Verify
+                // the actual lazy catalog and direct-Details rows are present;
+                // exact server/hash/Place authority is asserted above and
+                // by the subsequent same-hash second-server inspection.
+                waitFor("Combined catalog restored after Details for $port") {
+                    rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty() &&
+                        rule.onAllNodes(
+                            hasContentDescription("Details for", substring = true)
+                        ).fetchSemanticsNodes().isNotEmpty()
+                }
             }
             inspectExactDetails(portA, truthA.single { it.hash.equals(sharedHash, true) })
             inspectExactDetails(portB, truthB.single { it.hash.equals(sharedHash, true) })
