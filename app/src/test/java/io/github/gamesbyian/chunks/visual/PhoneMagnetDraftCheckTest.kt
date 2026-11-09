@@ -101,21 +101,29 @@ class PhoneMagnetDraftCheckTest {
 
     @Test fun withPrefillOffPasteFillsOnlyWhenTapped() {
         val link = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=pasted"
-        openAdd()
-        rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens").performScrollTo().performClick()
-        rule.waitUntil(5_000) {
-            rule.activity.getSharedPreferences("add-clipboard-prefill", Context.MODE_PRIVATE)
-                .getBoolean("enabled", true).not()
+        val prefs = rule.activity.getSharedPreferences("add-clipboard-prefill", Context.MODE_PRIVATE)
+        val original = prefs.getBoolean("enabled", true)
+        try {
+            // The persistent opt-out belongs in Options. First prove the
+            // actual Add form remains reachable, then take the direct footer.
+            org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", true).commit())
+            openAdd()
+            rule.onNodeWithText("Options").performClick()
+            rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+                .performScrollTo().performClick()
+            rule.waitUntil(5_000) { !prefs.getBoolean("enabled", true) }
+            copy(link)
+            // Options -> Add is explicit navigation. Neither this route nor
+            // a copied source authorizes a transfer, and opt-out must persist.
+            rule.onNodeWithText("+ Add").performClick()
+            rule.waitForIdle()
+            rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
+            rule.onNodeWithText("Paste link").performScrollTo().performClick()
+            rule.waitForIdle()
+            rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
+        } finally {
+            org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", original).commit())
         }
-        copy(link)
-        // Closing and reopening Add is explicit navigation, not submission.
-        rule.onNodeWithText("Options").performClick()
-        rule.onNodeWithText("+ Add").performClick()
-        rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
-        rule.onNodeWithText("Paste link").performScrollTo().performClick()
-        rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
     }
 
     @Test fun aTypedDraftIsNeverReplacedByTheClipboard() {
