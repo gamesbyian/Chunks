@@ -18,6 +18,17 @@ internal sealed interface ExternalAddSource {
     companion object {
         fun fromIntent(intent: Intent?): ExternalAddSource? {
             SharedTorrentDocument.fromIntent(intent)?.let { return TorrentDocument(it) }
+
+            // A SEND containing an explicit document URI is one document
+            // handoff, even if its grant, MIME or URI list is unusable.
+            // Never silently substitute incidental EXTRA_TEXT (including a
+            // magnet) after the document gate rejected an ambiguous source.
+            if (intent?.action == Intent.ACTION_SEND &&
+                (intent.hasExtra(Intent.EXTRA_STREAM) ||
+                    intent.clipData?.let { clip ->
+                        (0 until clip.itemCount).any { clip.getItemAt(it).uri != null }
+                    } == true)) return null
+
             ExternalMagnetInput.fromIntent(intent)?.let { return Magnet(it) }
             return null
         }
