@@ -46,6 +46,7 @@ _SAFE_UI_STAGES = frozenset((
     "runner-ready", "connect-click-attempt", "connect-submitted", "queue",
     "add-open-requested", "add-open", "magnet-entered", "place-ready",
     "add-review", "add-submitted", "add-registered", "metadata-already-resolved",
+    "read-only-exhausted",
 ))
 _SAFE_FRAME_FILES = frozenset((
     "MainActivityRealMagnetJourney.kt", "SeedhostAndroidAddUiInstrumentedTest.kt",
