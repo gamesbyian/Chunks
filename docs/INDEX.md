@@ -2,6 +2,8 @@
 
 **Start work in this order:** [AGENTS](../AGENTS.md) → [WORK-QUEUE](WORK-QUEUE.md) → [NEXT-PUSH-HANDOFF](NEXT-PUSH-HANDOFF-2026-11-08.md) → [AGENT-LANES](AGENT-LANES.md) → [SPEC-COVERAGE](SPEC-COVERAGE.md). Consult [QUALITY-LEDGER](QUALITY-LEDGER.md) for evidence, **never as a second task queue**.
 
+**Branding:** [Android and full product naming contract](BRANDING-AND-APP-IDENTITY.md) covers the concise Android label, full store title, in-app wordmark and QA preview names.
+
 **Product instructions:** [PRODUCT](PRODUCT.md) · [UX](UX.md) · [ARCHITECTURE](ARCHITECTURE.md) · [SECURITY](SECURITY.md) · [DECISIONS](DECISIONS.md). The [owner-approved unified UX/media requirements](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) specify the single-row footer, All/device/server list parity, Add-only metadata choice and automatically applied artwork, while [OPTIONS](OPTIONS-INFORMATION-ARCHITECTURE.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) and [SMART-ROUTING](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) govern the domain specifics.
 
 **History and measurements:** [CI policy history](CI-POLICY-HISTORY-2026-11-09.md) · [artwork implementation history](MEDIA-ARTWORK-IMPLEMENTATION-HISTORY-2026-11-09.md) · [build artifact history](BUILD-HISTORY-2026-11-09.md). Active [CI policy](CI-POLICY.md), [artwork implementation instructions](MEDIA-ARTWORK-IMPLEMENTATION.md) and [build guidance](BUILD.md) state procedures rather than past run reports.

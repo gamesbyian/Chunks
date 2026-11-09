@@ -1,5 +1,7 @@
 # Chunks canonical product contract
 
+**Naming requirement:** Public/full title **Chunks Torrent Client & Remote**; installed Android label **Chunks**; in-app visual wordmark **chunks.**. Preserve explicit preview labels for side-by-side builds and do not change the app ID or system notification attribution. See [branding and app identity contract](BRANDING-AND-APP-IDENTITY.md).
+
 **Product requirements:** Deliver one shared All/device/server Transfers list, one full Details route and a single-row fixed Transfers / + Add / Connections / Options footer; use two/three-across action groups with accessible touch targets. Global automatic media collection/display preference defaults on but requires separately informed permission for third-party lookups. Show its default-checked per-job opt-out **only at Add when the global feature is enabled**; active Details permits corrections, not a checkbox. Preserve one Universal Add source/target/Place/Start authority, exact account identity, and job-only Move. See [specific implementation and acceptance](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) and [ranked work queue](WORK-QUEUE.md). Older superseded requirements must not be implemented.
 
 ## Deferred Chunks-to-Chunks artwork sharing (dependent feature)

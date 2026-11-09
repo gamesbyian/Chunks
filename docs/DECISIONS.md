@@ -1,5 +1,10 @@
 # Chunks: canonical decision ledger
 
+## D-BRANDING-NAME-SURFACES-20261109 | Owner, binding
+
+Use **Chunks Torrent Client & Remote** as the full public product and planned Google Play title, **Chunks** as the short ordinary Android launcher/application/Settings/notification attribution label, and **chunks.** as the in-app visual wordmark. Keep distinct side-by-side preview build labels and the existing package identity. Store listing publication remains an independent release operation. Binding procedures and verification: [BRANDING-AND-APP-IDENTITY](BRANDING-AND-APP-IDENTITY.md).
+
+
 ## D-UX-SINGLE-SCOPE-FOOTER-MEDIA-ADD-20261109 | Owner, binding; pending implementation
 
 The installed-app owner requires **one** Combined-derived compact transfer-list component and **one** full Details route in All/device/server scopes; no legacy expanding cards. The always-present footer is a **single horizontal row** Transfers / + Add / Connections / Options; ordinary action banks are **two or fitting three per row**, not full-width vertical stacks, with >=48dp touch targets and narrow/200%-text accessibility verified. The global automatic artwork collection/display **feature preference defaults enabled**, but online lookup requires separate informed revocable third-party consent. The per-transfer “Automatically identify and fetch artwork & metadata” choice is **only in Universal Add**, default checked and **hidden when global artwork collection/display is disabled**; selected preference is durable against exact transfer identity. Active Details has correction/image choice but **no automatic-enrichment checkbox**. Auto-identification across all eligible authorized environments and artwork cache/persistence must work without routine user action once permitted. Binding handoff: [2026-11-09 reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md); issues #1453/#1454. Supersedes contrary historical details-toggle, expanding-list, and footer fallback text. No relaxation of provider consent, privacy or verified Add/Move/Remove.
