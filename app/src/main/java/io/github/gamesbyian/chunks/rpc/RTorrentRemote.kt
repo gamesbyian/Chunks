@@ -1068,11 +1068,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         fun coversMain(main: List<RemoteTransfer>, all: List<RemoteTransfer>): Boolean {
             val byHash = all.associateBy { it.hash.uppercase(java.util.Locale.ROOT) }
             val selected = byHash[hash.uppercase(java.util.Locale.ROOT)]
-            if (selected?.name != expectedName || selected.directory != expectedDirectory)
+            if (selected == null || selected.name != expectedName ||
+                selected.directory != expectedDirectory)
                 return false
             return main.all { row ->
                 val sessionRow = byHash[row.hash.uppercase(java.util.Locale.ROOT)]
-                sessionRow?.name == row.name && sessionRow.directory == row.directory
+                sessionRow != null && sessionRow.name == row.name &&
+                    sessionRow.directory == row.directory
             }
         }
         val inventory = try { listTransfers("main") }
