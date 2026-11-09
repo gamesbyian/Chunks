@@ -153,18 +153,23 @@ fun VerifiedAddScreen(
         // before the wire. Do not probe remote job progress until the engine
         // adapter has returned a result, including an ambiguous result.
         if (outcome == null || !draft.alreadyAttempted) return@LaunchedEffect
-        repeat(60) {
-            try {
-                observedProgress = RemoteUniversalAddAdapter(remote).progress(ticket)
+        // A session-owned prior read is historical until this exact screen/account
+        // obtains another positive result. Never show cached bytes as current
+        // during the initial request or a reconnect.
+        progressReadFailed = true
+        pollRemoteAddReadOnlyProgress(
+            read = { RemoteUniversalAddAdapter(remote).progress(ticket) },
+            onFresh = { progress ->
+                observedProgress = progress
                 progressReadFailed = false
-            } catch (cancel: kotlinx.coroutines.CancellationException) {
-                throw cancel
-            } catch (_: Exception) {
+            },
+            onReadError = {
+                // A transient GET failure must not end the bounded, read-only
+                // observation loop while the independently registered job runs.
+                // Never replay Add/Start or claim current payload from a stale sample.
                 progressReadFailed = true
-                return@LaunchedEffect
             }
-            kotlinx.coroutines.delay(2_000L)
-        }
+        )
     }
     val defaultStartHolder = remember { mutableStateOf(true) }
     val startHolder = addStartState ?: defaultStartHolder
@@ -831,11 +836,15 @@ fun VerifiedAddScreen(
                         Text("Operation outcome", fontWeight = FontWeight.Bold)
                         Text(outcome.orEmpty())
                         observedProgress?.let { progress ->
-                            Text(progress.summary())
-                            val total = progress.payloadSizeBytes
-                            val verified = progress.payloadVerifiedBytes
-                            if (total != null && verified != null)
-                                Text("Payload: ${Units.bytes(verified)} verified of ${Units.bytes(total)}")
+                            if (progressReadFailed) {
+                                Text("Last observed (not current): " + progress.summary())
+                            } else {
+                                Text(progress.summary())
+                                val total = progress.payloadSizeBytes
+                                val verified = progress.payloadVerifiedBytes
+                                if (total != null && verified != null)
+                                    Text("Payload: ${Units.bytes(verified)} verified of ${Units.bytes(total)}")
+                            }
                         }
                         if (progressReadFailed) Text(
                             "Transfer status could not be refreshed. Check the server state before another action.")
@@ -1119,4 +1128,41 @@ internal fun verifiedCustomPlaceOutcome(
     is RemoteAddAndStart.StartNotVerified -> priorityBeforeStart
     is RemoteAddAndStart.AddedStopped ->
         result.result is RemoteAddOutcome.VerifiedStopped
+}
+
+/**
+ * Poll an exact remote Add ticket's read-only progress through transient failures.
+ *
+ * The caller supplies its already-frozen account, source, hash and Place read.
+ * This helper owns no mutation, retry-of-write, transport or saved state.
+ * A failed read never fabricates a negative server observation and never
+ * promotes cached payload bytes to current status.
+ */
+internal suspend fun pollRemoteAddReadOnlyProgress(
+    maxObservations: Int = 60,
+    intervalMillis: Long = 2_000L,
+    read: suspend () -> io.github.gamesbyian.chunks.rpc.RemoteAddProgress,
+    onFresh: (io.github.gamesbyian.chunks.rpc.RemoteAddProgress) -> Unit,
+    onReadError: () -> Unit
+) {
+    require(maxObservations in 1..60)
+    require(intervalMillis >= 0L)
+    repeat(maxObservations) {
+        val status = try {
+            read()
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (failure: Exception) {
+            onReadError()
+            // An authentic gateway denial is not a transient poll failure.
+            // Stop this effect rather than issuing repeated credential
+            // challenges or pressuring a rate-limited account. The user can
+            // explicitly reconnect or Recheck; no Add/Start write is retried.
+            if (failure is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException &&
+                failure.status in setOf(401, 403, 407, 429)) return
+            null
+        }
+        if (status != null) onFresh(status)
+        kotlinx.coroutines.delay(intervalMillis)
+    }
 }
