@@ -63,9 +63,12 @@ internal object ClipboardMagnetPrefill {
     }
 
     /**
-     * The clipboard's first item as text, only when it is described as text.
-     * Checking the description first does not read the clip, so unrelated
-     * images or files are never opened. Null on any refusal.
+     * One text or URI-list item only, read while Add is foregrounded.
+     * Android browsers can copy a magnet or HTTPS link as ClipData.Item.uri
+     * with no text. Use only its URI string: never coerce a content:// URI,
+     * open a provider, visit a link or fetch bytes. A multi-item clip cannot
+     * silently nominate its first source; the user can choose one explicitly.
+     * The caller's decide() still validates any candidate before prefilling.
      */
     fun readText(context: Context): String? = try {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -73,7 +76,12 @@ internal object ClipboardMagnetPrefill {
         if (description == null || !(description.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN) ||
                 description.hasMimeType(ClipDescription.MIMETYPE_TEXT_URILIST) ||
                 description.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML))) null
-        else clipboard.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.text?.toString()?.trim()
+        else clipboard.primaryClip?.takeIf { it.itemCount == 1 }?.getItemAt(0)?.let { item ->
+            item.text?.toString()?.trim() ?: item.uri?.toString()?.trim()?.takeIf {
+                it.startsWith("magnet:?", ignoreCase = true) ||
+                    it.startsWith("https://", ignoreCase = true)
+            }
+        }
     } catch (_: Exception) {
         null
     }
