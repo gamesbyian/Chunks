@@ -2,15 +2,15 @@
 
 **Execute the next unblocked task.** This file contains ranked tasks, owners, blockers, dependencies and exits, not historical progress. Put run/PR narrative in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [work-queue history](WORK-QUEUE-HISTORY-2026-11-09.md). Re-fetch live main and all PR heads before acting. Follow [AGENT-LANES](AGENT-LANES.md) for five-lane file ownership.
 
-## G0. Source and naming gate (Agent 5)
+## G0. Protect merged naming and release identity (Agent 5)
 
-**Action:** Review #1457 branding against exact head/tree and docs/foundation/R8/native checks. Preserve normal Android **Chunks**, full title **Chunks Torrent Client & Remote**, wordmark **chunks.**, and distinct debug previews. Investigate executed native failure instead of waiving it; merge only qualified current source. Record whether Play listing/installed APK actually exists.
+**Action:** Treat qualified #1457 branding as integrated; enforce Android short **Chunks**, full **Chunks Torrent Client & Remote**, visual **chunks.** and distinct preview labels in all *future* changes. Check actual merged-manifest labels on the next assembled installed APK; a source-level naming change does not create a Play listing.
 
-**Exit:** matching source, required executed checks green, no unaddressed native blocker, independent merge decision and truthful ledger receipt.
+**Exit:** normal and preview installed identities verified on assembled source with appropriate manifests/resources, and Play/public release status never inferred from the repository.
 
 ## G1. Resolve or supersede active incompatible PRs (Agents 1–3, qualified by Agent 5)
 
-**Action:** Reconcile #1442 Options clipboard, #1443 read-only Recheck, #1444 typed 401, #1449 malformed Share extras and #1450 uppercase MAGNET VIEW against *live* main, branch ancestry and source-head CI. Diagnose first genuine failures (including clipboard test foreground focus, real Combined contrast, API29/IME, magnet lifecycle). Have original lane owners fix product assertions; Agent 5 owns common QA/test isolation. Qualify Add resolver/Share on installed Android and remote auth on real disposable peers, with appropriate R8/foundation and full native verifier. Avoid merging obsolete stacks or duplicate fixes.
+**Action:** Treat qualified #1449 malformed Share and #1450 uppercase MAGNET VIEW as integrated; preserve their exact-input negative tests. Reconcile #1442 Options clipboard, #1443 read-only Recheck and #1444 typed 401 against *live* main, branch ancestry and source-head CI. Review all newly open PRs (#1458+ starting pointers), never assume any numbered head is unchanged. Diagnose first genuine failures (including clipboard test foreground focus, real Combined contrast, API29/IME, magnet lifecycle). Have original lane owners fix product assertions; Agent 5 owns common QA/test isolation. Qualify Add resolver/Share on installed Android and remote auth on real disposable peers, with appropriate R8/foundation and full native verifier. Avoid merging obsolete stacks or duplicate fixes.
 
 **Exit:** each PR independently qualified and merged in compatible order, or explicitly blocked/superseded with an owner and exact failed proof; no real red test reclassified as green.
 
