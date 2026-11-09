@@ -1,5 +1,8 @@
 # Chunks: permanent agent operating contract
 
+> **NEXT-PUSH OWNER CORRECTIONS · 2026-11-09 UTC:** Read [docs/NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md](docs/NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) **before starting**. Main baseline at audit `0a1e7a4d`, five open PRs #1442/#1443/#1444/#1449/#1450 with real reds or skipped gates, not merge-qualified. One canonical Combined-derived list and full Details for All/device/server scopes; one persistent **single-row** Transfers/+ Add/Connections/Options footer; two/three-across action grids instead of stacked full-width controls. Global artwork collection/display preference default on; one-time conditional **Add-only** checkbox default checked; no checkbox in active Details; provider requests still require informed consent. Agent 1 UI, Agent 2 Add/intake, Agent 3 authenticated remote/media integration, Agent 4 exclusive CI/integration/docs. All previous green/red evidence and byte-provenance distinctions remain binding. Historical snapshots below are not live PR counts.
+
+
 > **FAST-FOLLOW PR RECONCILIATION · 2026-11-09 UTC:** Agent 2 has now closed stale stacked draft #1445 unmerged and opened clean main-based replacement #1450 (`7e9bc2bb`, draft) for uppercase `MAGNET` Android VIEW resolver. Its native/R8 required gates are skipped while draft and API29/foundation have not yet completed; no merge acceptance. This supersedes #1445's 'open' status in the snapshot below. At this checkpoint #1450 adds one open PR after #1445 closure; always inspect live PR inventory before quoting an absolute count.
 
 
