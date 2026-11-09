@@ -36,6 +36,10 @@ internal object SharedTorrentDocument {
                 } catch (_: RuntimeException) {
                     return null
                 }
+                // A present-but-invalid EXTRA_STREAM must not quietly fall
+                // back to a different ClipData URI, even when Android's
+                // getParcelableExtra returns null instead of throwing.
+                if (intent.hasExtra(Intent.EXTRA_STREAM) && streamUri == null) return null
                 val clip = try {
                     intent.clipData
                 } catch (_: RuntimeException) {
