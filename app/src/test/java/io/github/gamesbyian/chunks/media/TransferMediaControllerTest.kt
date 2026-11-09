@@ -359,7 +359,7 @@ class TransferMediaControllerTest {
             rule.copy(year = null).matches(MediaRecognizer.recognize("The.Thing.2011.mkv")))
         val sameTitleOtherServer = MediaTransferKey("rtorrent:seedbox-2|" + "d".repeat(40))
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP,
-            controller().observe(sameTitleOtherServer, "The.Thing.2011.1080p.BluRay.mkv").value.state)
+            c.observe(sameTitleOtherServer, "The.Thing.2011.1080p.BluRay.mkv").value.state)
     }
 
     @Test fun contradictoryOrUnknownChosenMovieYearDoesNotSeedFutureRule() {
