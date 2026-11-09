@@ -84,7 +84,12 @@ class ChunksMedia private constructor(context: Context) {
     }
 
     fun setProviderKey(provider: String, value: String?) {
-        if (provider == TmdbProvider.ID) { settingsStore.setTmdbCredential(value); service.resetProviderPause(provider) }
+        if (provider == TmdbProvider.ID) {
+            settingsStore.setTmdbCredential(value)
+            service.resetProviderPause(provider)
+            // A newly configured provider can resolve already-observed titles without a manual Identify tap.
+            if (controllerLazy.isInitialized()) controller.onSettingsChanged()
+        }
     }
 
     fun clearAllMediaData() = controller.clearAllMediaData({ queryCache.clear() }, { artworkDisk.clear() })
