@@ -1768,8 +1768,18 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         val challenges = connection.headerFields.entries
                             .filter { (name, _) -> name?.equals("WWW-Authenticate", true) == true }
                             .flatMap { it.value }
-                        authorization = HttpRpcAuthorization.fromChallenge(
-                            challenges, auth, "POST", requestTarget)
+                        // A genuine HTTP 401 with unusable Basic/Digest challenge
+                        // remains an authentication denial, never a transient
+                        // read I/O error. Writes still authorize independently
+                        // and must never be blindly replayed.
+                        authorization = try {
+                            HttpRpcAuthorization.fromChallenge(
+                                challenges, auth, "POST", requestTarget)
+                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                            throw cancel
+                        } catch (_: Exception) {
+                            throw RpcHttpStatusException(HttpURLConnection.HTTP_UNAUTHORIZED)
+                        }
                         attemptedChallenge = true
                         continue
                     }
