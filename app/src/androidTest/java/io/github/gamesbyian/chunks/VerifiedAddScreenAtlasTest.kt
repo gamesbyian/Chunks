@@ -122,6 +122,10 @@ class VerifiedAddScreenAtlasTest {
             hasText("Cancel, don't add"))
         rule.onNodeWithText("Cancel, don't add").performClick()
         rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
+        // LazyColumn can keep the viewport near Cancel after the confirmation
+        // disappears. Verify that Review Add is still *reachable*, not that
+        // an offscreen lazy item happens to be composed at the old scroll.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Review Add"))
         rule.onNodeWithText("Review Add").assertExists()
     }
 
