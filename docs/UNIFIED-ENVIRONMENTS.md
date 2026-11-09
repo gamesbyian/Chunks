@@ -1,5 +1,8 @@
 # Unified local and remote experience (owner contract, 2026-10-28)
 
+> **BINDING UI PARITY CORRECTION · 2026-11-09:** [Next-push reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md): All environments, Transfers on this device and a named-server scope are **filters of the same Combined-derived compact list** and open the same full Details destination. The legacy phone and server lists/inline expanded cards must not remain separate presentations. The single-row fixed four-destination footer and two/three-across action layout apply across scopes. Exact source environment/account/infohash, capability gating, lock and stale readback remain distinct; a visual filter never grants remote authority. Implementation pending installed acceptance.
+
+
 ## Planned sharing and paired file membership across environments
 
 Use the same Details > Share affordance for local and native rTorrent transfers, with unambiguous source environment name/colour and exact torrent identity. A share operation exports metadata only and does not move files, launch a second Add or redirect a source mutation. Expository pairing separately selects one verified Chunks remote profile and one mapped Expository file root; it cannot inherit the combined-view filter as an authorization scope. [Transfer sharing](TRANSFER-SHARING.md) · [Expository file associations](EXPOSITORY-FILE-ASSOCIATIONS.md). **Both planned, not shipped.**
