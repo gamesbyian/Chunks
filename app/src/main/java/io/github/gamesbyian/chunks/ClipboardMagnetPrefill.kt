@@ -127,7 +127,7 @@ internal fun ClipboardPrefillNote(onClear: () -> Unit, enabled: Boolean) {
     }
 }
 
-/** The opt-out, beside the Add source it affects. */
+/** Persistent opt-out presented once in central Options. */
 @Composable
 internal fun ClipboardPrefillToggle(checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
