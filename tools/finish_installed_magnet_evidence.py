@@ -8,8 +8,54 @@ from pathlib import Path
 import re
 import shutil
 import stat
+import subprocess
 import xml.etree.ElementTree as ET
 from parse_installed_magnet_add_receipt import parse
+
+
+_INSTALLED_APK_LINE = re.compile(
+    r"CHUNKS_INSTALLED_APK: matched size_bytes=([1-9][0-9]{0,11}) "
+    r"sha256=([0-9a-f]{64})\\n?\\Z"
+)
+
+
+def parse_installed_apk_identity(raw, source_sha, source_tree):
+    """Accept one bounded, path-free digest produced after pulling actual Android bytes."""
+    if not isinstance(raw, str) or len(raw) > 160:
+        return None
+    if not isinstance(source_sha, str) or not re.fullmatch(r"[0-9a-f]{40}", source_sha):
+        return None
+    if not isinstance(source_tree, str) or not re.fullmatch(r"[0-9a-f]{40}", source_tree):
+        return None
+    match = _INSTALLED_APK_LINE.fullmatch(raw)
+    if match is None:
+        return None
+    size = int(match.group(1))
+    if size > 500_000_000:
+        return None
+    return {
+        "source_sha": source_sha,
+        "git_tree_sha": source_tree,
+        "installed_apk_sha256": match.group(2),
+        "installed_apk_size_bytes": size,
+        "installed_equals_built_bytes": True,
+    }
+
+
+def exact_checkout_tree(source_sha):
+    """Bind the report to checkout HEAD, not an unrelated source SHA assertion."""
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "HEAD", "HEAD^{tree}"],
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True, text=True, timeout=5, check=True,
+        )
+        lines = proc.stdout.splitlines()
+        if len(lines) == 2 and lines[0] == source_sha and re.fullmatch(r"[0-9a-f]{40}", lines[1]):
+            return lines[1]
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return None
 
 
 def precompleted_control_preserved(runner_temp, env):
@@ -54,7 +100,7 @@ _SAFE_FRAME_FILES = frozenset((
 ))
 
 
-def safe_failure_diagnostic(receipt, peer_valid, control_preserved, journeys_verified=True):
+def safe_failure_diagnostic(receipt, peer_valid, control_preserved, journeys_verified=True, apk_valid=True):
     """Bounded causal hints; never change the underlying acceptance decision."""
     runner = receipt.get("runner") if isinstance(receipt.get("runner"), dict) else {}
     failed = runner.get("failed_tests", 0)
@@ -68,6 +114,8 @@ def safe_failure_diagnostic(receipt, peer_valid, control_preserved, journeys_ver
         reason = "precompleted-control-bytes-mismatch"
     elif not journeys_verified:
         reason = "required-installed-journey-not-proven"
+    elif not apk_valid:
+        reason = "installed-apk-provenance-not-proven"
     else:
         reason = "required-case-or-phase-evidence-incomplete"
     stages = receipt.get("app_stage_evidence")
@@ -141,6 +189,17 @@ def main():
     env["CHUNKS_ACCEPTANCE_RUNTIME_SECONDS"] = runtime if runtime.isdecimal() else None
     raw = read("chunks-installed-magnets.raw")
     receipt = parse(raw, code, env)
+    # This file was written before any Android source or remote lifecycle test
+    # could fail. It records actual adb-pulled bytes; no APK is uploaded on red.
+    apk_identity = parse_installed_apk_identity(
+        read("chunks-installed-apk-identity.txt"),
+        env.get("GITHUB_SHA", ""), exact_checkout_tree(env.get("GITHUB_SHA", "")),
+    )
+    receipt["installed_apk_provenance"] = apk_identity or {"status": "not-proven"}
+    if apk_identity is not None:
+        (a.output / "APK-IDENTITY.json").write_text(
+            json.dumps(apk_identity, indent=2, sort_keys=True) + "\\n"
+        )
     peer_path = a.runner_temp / "chunks-real-peer/PEER-RECEIPT.json"
     peer_valid = False
     if peer_path.is_file():
@@ -175,11 +234,11 @@ def main():
         for path, _, _, _ in required_journey_specs(env):
             source = a.runner_temp / path
             shutil.copyfile(source, a.output / source.name)
-    if not peer_valid or control_preserved is False or not journeys_verified:
+    if not peer_valid or control_preserved is False or not journeys_verified or apk_identity is None:
         receipt["result"] = "failed-or-inconclusive"
     if receipt["result"] != "passed":
         receipt["safe_failure_diagnostic"] = safe_failure_diagnostic(
-            receipt, peer_valid, control_preserved, journeys_verified)
+            receipt, peer_valid, control_preserved, journeys_verified, apk_valid=apk_identity is not None)
     (a.output / "RECEIPT.json").write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
     # The two test identities and outcomes come from AndroidJUnitRunner, not
     # from successful RPC acknowledgements or invented "passed" XML cases.
