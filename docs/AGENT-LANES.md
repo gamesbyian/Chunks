@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **REPLACEMENT OWNERSHIP UPDATE · 2026-11-09 UTC:** Agent2 now owns clean-main draft #1450 uppercase `MAGNET` VIEW resolver rather than obsolete closed #1445, alongside #1449 invalid extra fail-closed intake. Agent4 owns merge/qualification. All other lanes as below.
+
+
 > **LIVE SIX-PR OWNERSHIP · 2026-11-09 UTC:** Agent1 Options clipboard presentation #1442; Agent2 phone source/intent boundaries #1445 and #1449; Agent3 authenticated rTorrent reader #1444 and remote exact readback coordination #1443; Agent4 QA #1448, source/API35 tests, merge decisions, APK identity and all central engineering documentation. #1447 has merged main `9435087e`; old #1421/#1429/#1431 are closed unmerged superseded, do not edit their branches. Keep central docs owned only by Agent4 and production files solely by each assigned agent.
 
 
