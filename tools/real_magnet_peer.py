@@ -23,8 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import libtorrent as lt
 from public_fixture_collector import bstr, debian_fixture, parse_bencode
-
-PREFIX_BUDGET = 32 * 1024 * 1024
+from real_peer_stage_budget import stage_prefix_lengths
 
 
 def bounded_phase_length(value):
@@ -92,28 +91,44 @@ def prepare(root):
             raise ValueError("Invalid public v1 torrent")
         target = root / label
         target.mkdir(parents=True, exist_ok=False)
-        # Whole original pieces only, so the independent native recheck can
-        # demonstrate availability before any Android/rTorrent Add is tried.
-        budget = min(total, PREFIX_BUDGET // ti.piece_length() * ti.piece_length())
+        early_target = root / (label + "-early")
+        early_target.mkdir(parents=True, exist_ok=False)
+        # Independently verified original publisher pieces are split into
+        # two real seed phases. The early seed cannot advertise all pieces
+        # available after Restart, even if the engine finishes its initial
+        # source prefix before the UI reaches Stop.
+        budget, early_budget = stage_prefix_lengths(total, ti.piece_length())
         remaining = budget
+        early_remaining = early_budget
         for index in range(fs.num_files()):
             relative = PurePosixPath(fs.file_path(index))
             if relative.is_absolute() or any(p in ("", ".", "..") for p in relative.parts):
                 raise ValueError("Unsafe source payload path")
             path = target.joinpath(*relative.parts)
+            early_path = early_target.joinpath(*relative.parts)
             path.parent.mkdir(parents=True, exist_ok=True)
+            early_path.parent.mkdir(parents=True, exist_ok=True)
             length = fs.file_size(index)
-            with path.open("xb") as out:
+            with path.open("xb") as out, early_path.open("xb") as early_out:
                 out.truncate(length)
+                early_out.truncate(length)
                 wanted = min(remaining, length)
                 if wanted:
                     url = payload_source if label in ("magnet", "magnet3") else payload_source + urllib.parse.quote(str(relative))
-                    out.write(fetch(url, wanted))
+                    source_bytes = fetch(url, wanted)
+                    out.write(source_bytes)
+                    early_wanted = min(early_remaining, wanted)
+                    if early_wanted:
+                        early_out.write(source_bytes[:early_wanted])
+                        early_remaining -= early_wanted
                     remaining -= wanted
+        if remaining != 0 or early_remaining != 0:
+            raise ValueError("Publisher source stage bytes unavailable")
         (root / (label + ".torrent")).write_bytes(raw)
         fixtures[label] = {
             "hash": str(ti.info_hashes().v1), "name": ti.name(), "size": total,
-            "prefix_bytes": budget, "source": source, "license": license_text,
+            "prefix_bytes": budget, "early_prefix_bytes": early_budget,
+            "source": source, "license": license_text,
             "torrent_url": (payload_source.replace("/iso-cd/", "/bt-cd/") + ".torrent"
                             if label in ("magnet", "magnet3") else source),
             "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
@@ -201,7 +216,10 @@ class Peer:
             session.set_peer_class_filter(classes)
             ti = lt.torrent_info(str(self.root / (label + ".torrent")))
             metadata_only = label == "magnet0" and stage == "metadata"
-            save_path = self.root / ("magnet0-metadata" if metadata_only else label)
+            save_path = self.root / (
+                "magnet0-metadata" if metadata_only else
+                (label + "-early" if stage == "payload" and label != "magnet0" else label)
+            )
             if metadata_only:
                 # Supply BEP9 metainfo from an empty directory. The test
                 # must establish precompletion by rTorrent's own disk
@@ -215,7 +233,9 @@ class Peer:
                 handle.remove_url_seed(webseed)
             handle.resume()
             if not metadata_only:
-                prefix_pieces = (item["prefix_bytes"] + ti.piece_length() - 1) // ti.piece_length()
+                stage_bytes = (item["early_prefix_bytes"] if stage == "payload" and label != "magnet0"
+                               else item["prefix_bytes"])
+                prefix_pieces = (stage_bytes + ti.piece_length() - 1) // ti.piece_length()
                 def prefix_verified(status):
                     return len(status.pieces) >= prefix_pieces and all(status.pieces[:prefix_pieces])
                 deadline = time.monotonic() + 45
@@ -233,7 +253,9 @@ class Peer:
                 # Their aggregate size must never stand in for the fetched prefix.
                 if not prefix_verified(status):
                     raise ValueError("Original source pieces are unavailable")
-                item["native_verified_bytes"] = sum(ti.piece_size(i) for i in range(prefix_pieces))
+                phase_verified = sum(ti.piece_size(i) for i in range(prefix_pieces))
+                item.setdefault("phase_native_verified_bytes", {})[stage] = phase_verified
+                item["native_verified_bytes"] = max(item["native_verified_bytes"], phase_verified)
             self.active[label] = session, handle
             item["stages"].append(stage)
             if stage != "preflight":
