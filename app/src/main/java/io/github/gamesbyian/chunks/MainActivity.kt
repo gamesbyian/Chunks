@@ -349,7 +349,10 @@ internal fun ChunksApp(
     // Production passes a configuration-retained attempt owner; test-only
     // standalone Compose callers have a process-only local fallback.
     val activePhoneAddAttempt = phoneAddAttemptSession ?: remember { PhoneAddAttemptSession() }
-    val addAutomaticArtwork = rememberSaveable { mutableStateOf(true) }
+    // A phone opt-out must not silently become an opt-out on another server
+    // (or the same server endpoint's different principal/numbered route).
+    // No raw source, account identity or private tracker enters SavedState.
+    val addArtworkChoices = remember { AddArtworkDraftChoices() }
     val combinedListState = rememberLazyListState()
     // Combined search text, like the phone's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
@@ -827,7 +830,7 @@ internal fun ChunksApp(
                     }, searchState = phoneSearch, optionsSearchState = phoneOptionsSearch,
                     magnetDraftState = addSourceDraft,
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
-                    addArtworkState = addAutomaticArtwork,
+                    addArtworkState = addArtworkChoices.onPhone(),
                     pendingAddState = phoneReviewedTorrent,
                     phoneAddAttemptSession = activePhoneAddAttempt,
                     onBack = { leavePhone() },
@@ -1185,7 +1188,7 @@ internal fun ChunksApp(
                     }, searchState = phoneSearch, optionsSearchState = phoneOptionsSearch,
                         magnetDraftState = addSourceDraft,
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
-                        addArtworkState = addAutomaticArtwork,
+                        addArtworkState = addArtworkChoices.onPhone(),
                         pendingAddState = phoneReviewedTorrent,
                         phoneAddAttemptSession = activePhoneAddAttempt,
                         onBack = { leavePhone() },
@@ -1666,7 +1669,7 @@ internal fun ChunksApp(
                         environmentLabel = serverEnvironmentLabel(aliasScope),
                         onMagnet = { magnet = it }, onDestination = { addSession.destination = it },
                         addStartState = phoneAddStart,
-                        addArtworkState = addAutomaticArtwork,
+                        addArtworkState = addArtworkChoices.onServer(aliasScope),
                         onBack = { section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->

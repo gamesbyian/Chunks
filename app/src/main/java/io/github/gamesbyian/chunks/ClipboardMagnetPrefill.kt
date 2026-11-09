@@ -70,6 +70,35 @@ internal object ClipboardMagnetPrefill {
      * silently nominate its first source; the user can choose one explicitly.
      * The caller's decide() still validates any candidate before prefilling.
      */
+    /**
+     * Both fields on one Android ClipData.Item are independently asserted
+     * representations. If they disagree, the clipboard is ambiguous. Never
+     * let a text magnet override a different URI (including content://) or
+     * silently replace a private tracker token on the same infohash.
+     * Only the case-insensitive magnet scheme is normalized for comparison.
+     * Subsequent decide() still validates the entire candidate.
+     */
+    internal fun exactClipboardSource(text: String?, uri: String?): String? {
+        val textValue = text?.trim()
+        val uriValue = uri?.trim()
+        fun schemeOnly(value: String): String =
+            if (value.startsWith("magnet:?", ignoreCase = true))
+                "magnet:?" + value.substring("magnet:?".length) else value
+        return when {
+            textValue != null && uriValue != null -> {
+                val a = schemeOnly(textValue)
+                val b = schemeOnly(uriValue)
+                a.takeIf { a == b }
+            }
+            textValue != null -> textValue
+            uriValue != null -> uriValue.takeIf {
+                it.startsWith("magnet:?", ignoreCase = true) ||
+                    it.startsWith("https://", ignoreCase = true)
+            }
+            else -> null
+        }
+    }
+
     fun readText(context: Context): String? = try {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val description = clipboard.primaryClipDescription
@@ -77,10 +106,7 @@ internal object ClipboardMagnetPrefill {
                 description.hasMimeType(ClipDescription.MIMETYPE_TEXT_URILIST) ||
                 description.hasMimeType(ClipDescription.MIMETYPE_TEXT_HTML))) null
         else clipboard.primaryClip?.takeIf { it.itemCount == 1 }?.getItemAt(0)?.let { item ->
-            item.text?.toString()?.trim() ?: item.uri?.toString()?.trim()?.takeIf {
-                it.startsWith("magnet:?", ignoreCase = true) ||
-                    it.startsWith("https://", ignoreCase = true)
-            }
+            exactClipboardSource(item.text?.toString(), item.uri?.toString())
         }
     } catch (_: Exception) {
         null

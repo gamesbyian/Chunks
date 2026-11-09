@@ -2,21 +2,23 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
 /**
- * Keeps review and navigation actions accessible at narrow widths and large
- * system text scales. The caller supplies buttons, while this component owns
- * only arrangement and minimum touch height. No action or selection state is
- * changed when it switches between row and column.
+ * Shared compact action layout. The caller still owns each action and its
+ * enabled state. Keep two buttons across on narrow phones or enlarged text,
+ * and three across where there is room. Further buttons wrap to another row
+ * rather than becoming an unnecessarily tall one-button-per-row stack.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ResponsiveActionGroup(
     modifier: Modifier = Modifier,
@@ -24,15 +26,16 @@ internal fun ResponsiveActionGroup(
 ) {
     val fontScale = LocalDensity.current.fontScale
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        val stacked = maxWidth < 380.dp || fontScale >= 1.5f
-        if (stacked) {
-            Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                content(Modifier.fillMaxWidth().heightIn(min = 48.dp))
-            }
-        } else {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                content(Modifier.heightIn(min = 48.dp))
-            }
+        val columns = if (maxWidth < 380.dp || fontScale >= 1.5f) 2 else 3
+        val gap = 8.dp
+        val buttonWidth = (maxWidth - gap * (columns - 1)) / columns
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+            verticalArrangement = Arrangement.spacedBy(gap),
+            maxItemsInEachRow = columns
+        ) {
+            content(Modifier.width(buttonWidth).heightIn(min = 48.dp))
         }
     }
 }

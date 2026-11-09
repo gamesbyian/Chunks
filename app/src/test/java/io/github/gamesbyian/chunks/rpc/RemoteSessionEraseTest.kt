@@ -78,7 +78,7 @@ class RemoteSessionEraseTest {
         withServer { remote, methods ->
             assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
                 remote.eraseFromSession(hash, name, directory))
-            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase", "d.hash"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase", "d.hash", "d.hash"), methods)
             assertEquals(SessionEraseOutcome.AlreadyAbsent(hash),
                 remote.eraseFromSession(hash, name, directory))
             assertEquals(1, methods.count { it == "d.erase" })
@@ -170,10 +170,85 @@ class RemoteSessionEraseTest {
             assertEquals(SessionEraseOutcome.AlreadyAbsent(hash),
                 client.eraseFromSession(hash, name, directory))
             assertEquals(1, eraseCalls)
-            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase", "d.multicall2", "d.hash"), methods)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory", "d.hash", "d.erase", "d.multicall2", "d.hash", "d.hash"), methods)
         } finally { server.stop(0) }
     }
 
+
+    @Test fun briefAbsentAfterAcknowledgedEraseDoesNotVerifyRemoval() = runBlocking {
+        val methods = mutableListOf<String>()
+        var eraseCalls = 0
+        var postEraseHashReads = 0
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val request = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(request)?.groupValues?.get(1).orEmpty()
+            methods += method
+            if (method == "d.erase") eraseCalls++
+            if (method == "d.hash" && eraseCalls > 0) postEraseHashReads++
+            val missing = method == "d.hash" && eraseCalls > 0 && postEraseHashReads == 1
+            val xml = if (missing) unknownHashFault()
+                else "<methodResponse><params><param>" +
+                    (when (method) {
+                        "d.multicall2" -> rows(true, name)
+                        "d.hash" -> value(hash)
+                        "d.name" -> value(name)
+                        "d.directory" -> value(directory)
+                        "d.erase" -> number(0)
+                        else -> error("Unexpected request")
+                    }) + "</param></params></methodResponse>"
+            val bytes = xml.toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
+            assertEquals(SessionEraseOutcome.PendingRemoval(hash),
+                remote.eraseFromSession(hash, name, directory))
+            assertEquals(1, eraseCalls)
+            assertEquals(listOf("d.multicall2", "d.hash", "d.name", "d.directory",
+                "d.hash", "d.erase", "d.hash", "d.hash"), methods)
+        } finally { server.stop(0) }
+    }
+
+    @Test fun transientMissingHiddenJobCannotClaimAlreadyAbsent() = runBlocking {
+        val methods = mutableListOf<String>()
+        var hashReads = 0
+        val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        server.createContext("/RPC2") { exchange ->
+            val request = exchange.requestBody.bufferedReader().use { it.readText() }
+            val method = Regex("<methodName>([^<]+)</methodName>")
+                .find(request)?.groupValues?.get(1).orEmpty()
+            methods += method
+            if (method == "d.hash") hashReads++
+            val xml = if (method == "d.hash" && hashReads == 1) unknownHashFault()
+                else "<methodResponse><params><param>" +
+                    (when (method) {
+                        "d.multicall2" -> rows(false, name)
+                        "d.hash" -> value(hash)
+                        else -> error("Unexpected request")
+                    }) + "</param></params></methodResponse>"
+            val bytes = xml.toByteArray(Charsets.UTF_8)
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        server.start()
+        try {
+            val remote = RTorrentRemote(RemoteCredentials(
+                "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
+            try {
+                remote.eraseFromSession(hash, name, directory)
+                fail("Single disappearing exact hash must not prove session absence")
+            } catch (_: IllegalStateException) { }
+            assertEquals(listOf("d.multicall2", "d.hash", "d.hash"), methods)
+            assertFalse(methods.contains("d.erase"))
+        } finally { server.stop(0) }
+    }
 
     @Test fun readOnlyRecheckOfStillPresentExactJobAllowsANewReviewButNeverErases() = runBlocking {
         withServer(applyErase = false) { remote, methods ->
@@ -205,6 +280,79 @@ class RemoteSessionEraseTest {
             assertEquals(SessionEraseRecheck.Absent,
                 remote.recheckSessionErase(hash, name, directory))
             assertEquals(writes, methods.count { it == "d.erase" })
+        }
+    }
+
+
+    @Test fun firstMissingHashNeedsSecondIndependentMissBeforeSessionAbsent() = runBlocking {
+        for (reappears in listOf(true, false)) {
+            var count = 0
+            val methods = mutableListOf<String>()
+            val server = HttpServer.create(
+                InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+            server.createContext("/RPC2") { exchange ->
+                val raw = exchange.requestBody.bufferedReader().use { it.readText() }
+                val method = Regex("<methodName>([^<]+)</methodName>")
+                    .find(raw)?.groupValues?.get(1).orEmpty()
+                methods += method
+                if (method == "d.hash") count++
+                val missing = method == "d.hash" && (count == 1 || !reappears)
+                val response = if (missing) unknownHashFault()
+                    else "<methodResponse><params><param>" + value(hash) +
+                        "</param></params></methodResponse>"
+                val bytes = response.toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            server.start()
+            try {
+                val client = RTorrentRemote(RemoteCredentials(
+                    "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
+                assertEquals(
+                    if (reappears) SessionEraseRecheck.Unavailable else SessionEraseRecheck.Absent,
+                    client.recheckSessionErase(hash, name, directory))
+                assertEquals(listOf("d.hash", "d.hash"), methods)
+                assertFalse(methods.contains("d.erase"))
+            } finally { server.stop(0) }
+        }
+    }
+
+    @Test fun disappearanceAfterDirectoryReadAlsoRequiresIndependentConfirmation() = runBlocking {
+        for (reappears in listOf(true, false)) {
+            var hashReads = 0
+            val methods = mutableListOf<String>()
+            val server = HttpServer.create(
+                InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+            server.createContext("/RPC2") { exchange ->
+                val raw = exchange.requestBody.bufferedReader().use { it.readText() }
+                val method = Regex("<methodName>([^<]+)</methodName>")
+                    .find(raw)?.groupValues?.get(1).orEmpty()
+                methods += method
+                if (method == "d.hash") hashReads++
+                val missing = method == "d.hash" &&
+                    (hashReads == 2 || (hashReads >= 3 && !reappears))
+                val response = if (missing) unknownHashFault()
+                    else "<methodResponse><params><param>" +
+                        (when (method) {
+                            "d.hash" -> value(hash)
+                            "d.name" -> value(name)
+                            "d.directory" -> value(directory)
+                            else -> error("Unexpected RPC method")
+                        }) + "</param></params></methodResponse>"
+                val bytes = response.toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            server.start()
+            try {
+                val client = RTorrentRemote(RemoteCredentials(
+                    "http://127.0.0.1:" + server.address.port + "/RPC2", "", ""))
+                assertEquals(
+                    if (reappears) SessionEraseRecheck.Unavailable else SessionEraseRecheck.Absent,
+                    client.recheckSessionErase(hash, name, directory))
+                assertEquals(listOf("d.hash", "d.name", "d.directory", "d.hash", "d.hash"), methods)
+                assertFalse(methods.contains("d.erase"))
+            } finally { server.stop(0) }
         }
     }
 
@@ -247,7 +395,9 @@ class RemoteSessionEraseTest {
                     if (reappears) SessionEraseRecheck.Unavailable else SessionEraseRecheck.Absent,
                     remote.recheckSessionErase(hash, name, directory)
                 )
-                assertEquals(listOf("d.hash", "d.name", "d.hash"), methods)
+                assertEquals(
+                    if (reappears) listOf("d.hash", "d.name", "d.hash")
+                    else listOf("d.hash", "d.name", "d.hash", "d.hash"), methods)
                 assertFalse("Read-only recheck must not mutate rTorrent",
                     methods.contains("d.erase"))
             } finally { server.stop(0) }
