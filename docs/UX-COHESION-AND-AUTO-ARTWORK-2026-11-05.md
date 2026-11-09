@@ -1,5 +1,8 @@
 # Chunks cohesive UX and automatic enrichment campaign (owner direction, 2026-11-05)
 
+> **BINDING OWNER UPDATE · 2026-11-09:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) supersedes any older allowance for expandable complete transfer cards or stacked footer. One Combined-derived compact list for all scopes, **full Details on tap**, always-one-row four-root footer, and two/three-across grouped actions. Global automatic artwork collection/display preference default enabled **without** implicit network consent; **Add-only** optional per-transfer exclusion default checked when global feature enabled; **no active Details checkbox**. Automatically enrich authorized visible inventory and apply confident provider matches; manual Identify is correction, not routine work. These are observed installed-app gaps pending source-exact implementation and tests.
+
+
 > **Implementation-status overlay, 2026-11-06:** The #1325/#1326 candidate descriptions below are historical; their unique production and tests were merged in integration #1333 along with #1328/#1329/#1330. #1321 is closed as superseded after its unique provider acceptance harness moved into merged #1336; #1322's native prefix checks are also merged. Still **not fully delivered**: universal Add UI, launch-wide enrichment, Add-time exclusion, source Keep/Archive/Delete, swipe actions, Smart Routing dispatch/editor, remaining accessibility/Pixel and live-provider acceptance. Canonical priorities are in [WORK-QUEUE](WORK-QUEUE.md). Owner-approved design direction here remains binding.
 
 
