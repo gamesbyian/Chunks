@@ -61,6 +61,8 @@ class LocalAddArtworkPreflightTest {
         assertEquals(File(root, "Season 01").canonicalFile,
             (result as LocalAddArtworkPreflight.Ready).folder.canonicalFile)
         assertEquals(1, writes)
+        assertFalse("Diagnostics must not include a private download path",
+            result.toString().contains(root.absolutePath))
     }
 
     @Test fun failedPreferenceCommitNeverReportsReadyForNativeAdd() {
