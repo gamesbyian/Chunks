@@ -248,14 +248,12 @@ class CombinedTwoRealServersInstrumentedTest {
             // observation, reported Place, or command authority. Use the real
             // Compose row and read-only detail screen, not a synthetic panel.
             fun inspectExactDetails(port: String, expected: io.github.gamesbyian.chunks.rpc.RemoteTransfer) {
-                val row = hasContentDescription("Expand $shared on", substring = true) and
+                // The compact row itself opens full exact-account Details.
+                // There is no expandable card or intermediate All-details CTA.
+                val row = hasContentDescription("Details for $shared on", substring = true) and
                     hasContentDescription(":$port", substring = true)
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
                 rule.onNode(row).performClick()
-                val details = hasContentDescription("All details for $shared on", substring = true) and
-                    hasContentDescription(":$port", substring = true)
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(details)
-                rule.onNode(details).performClick()
                 waitFor("exact-environment Details for $port") {
                     visible("Transfer details") && visible("Environment:") && visible(":$port")
                 }

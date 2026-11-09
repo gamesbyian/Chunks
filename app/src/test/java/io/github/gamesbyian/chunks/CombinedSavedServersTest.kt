@@ -5,10 +5,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.onRoot
@@ -134,11 +136,18 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
             .assertExists()
         rule.onNodeWithText("Refresh other saved servers").assertExists()
-        // A listed-only row offers its explanation on disclosure, not a live command.
+        // A saved-only row opens read-only full Details without a command
+        // or a misleading handoff to an unauthenticated owning list.
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
-        rule.onNodeWithText("More").performScrollTo().performClick()
-        rule.onNodeWithText("Listed only. Sign in to this server to open or change it.").assertExists()
-        rule.onNodeWithText("Open in its list").assertDoesNotExist()
+        val action = "Details for Linux ISO on Server · ann @ a.example/RPC2"
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            androidx.compose.ui.test.hasContentDescription(action))
+        rule.onNodeWithContentDescription(action).performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithText("This transfer is listed here for reference.", substring = true)
+            .assertExists()
+        rule.onNodeWithText("Open Server · ann @ a.example/RPC2 transfers")
+            .assertDoesNotExist()
     }
 
     @Test fun lateReadFromPreviousAccountCannotPublishIntoReconfiguredServerSlot() {

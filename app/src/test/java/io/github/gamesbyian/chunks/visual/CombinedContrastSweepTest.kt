@@ -69,9 +69,7 @@ class CombinedContrastSweepTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Small Episode"))
         sweep("combined-rows")
         val label = serverEnvironmentLabel(scope)
-        rule.onNodeWithContentDescription("Expand Big Archive on $label").performClick()
-        sweep("combined-more")
-        rule.onNodeWithContentDescription("All details for Big Archive on $label").performClick()
+        rule.onNodeWithContentDescription("Details for Big Archive on $label").performClick()
         sweep("detail")
         assertTrue("Text below 4.5:1: $failures", failures.isEmpty())
     }
