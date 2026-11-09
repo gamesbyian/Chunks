@@ -26,7 +26,9 @@ data class TransferMediaUiState(
     val busy: Boolean = false,
     val searchResults: List<MediaCandidate>? = null,
     val message: String? = null,
-    val automaticLookupEnabled: Boolean = true
+    val automaticLookupEnabled: Boolean = true,
+    /** Transient, privacy-safe background status, separate from persisted provider identity. */
+    val automaticMessage: String? = null
 ) {
     val state: MediaAssignmentState get() = assignment?.state ?: MediaAssignmentState.NOT_LOOKED_UP
     val match: MediaCandidate? get() = assignment?.displayMatch
@@ -149,7 +151,9 @@ class TransferMediaController(
             settings().let { largeListArtworkFlow.value = it.largeListArtwork; presentationFlow.value = it }
             val enabled = !automationStore.isExcluded(key)
             val a = store.get(key) ?: if (enabled) applyRuleIfAny(key, flow.value.recognition) else null
-            flow.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled) }
+            flow.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled,
+                automaticMessage = if (it.match != null || a?.displayMatch != null) null
+                    else automaticPauseReason(enabled)) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
             if (automaticDue(a)) maybeAutomatic(key)
         }
@@ -192,7 +196,9 @@ class TransferMediaController(
             val f = flow(key) ?: return@launch
             val enabled = !automationStore.isExcluded(key)
             val a = store.get(key) ?: if (enabled) applyRuleIfAny(key, f.value.recognition) else null
-            f.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled) }
+            f.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled,
+                automaticMessage = if (it.match != null || a?.displayMatch != null) null
+                    else automaticPauseReason(enabled)) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
             if (automaticDue(a)) maybeAutomatic(key)
         }
@@ -203,6 +209,22 @@ class TransferMediaController(
         if (assignment.state != MediaAssignmentState.COULDNT_IDENTIFY || assignment.lastStatus != MediaLookupStatus.NOT_FOUND) return false
         val now = clock()
         return now >= assignment.updatedAtMs && now - assignment.updatedAtMs >= MediaEnrichmentService.NOT_FOUND_TTL_MS
+    }
+
+    /** Safe status for an unresolved title. Never stores or displays a raw query or path. */
+    private fun automaticPauseReason(enabledForTransfer: Boolean): String? {
+        val s = settings()
+        val net = network()
+        return when {
+            !enabledForTransfer -> "Automatic identification excluded for this transfer"
+            !s.automaticLookup -> "Automatic identification switched off in Options"
+            !s.showArtwork || !s.downloadArtwork -> "Automatic artwork collection switched off in Options"
+            !s.onlineLookupConsent -> "Online identification needs your consent in Options"
+            !net.online -> "Offline; artwork lookup will resume with a connection"
+            net.powerSaver -> "Artwork lookup paused while power saver is on"
+            net.metered -> "Artwork lookup paused on a metered network"
+            else -> null
+        }
     }
 
     private fun automaticAllowed(key: MediaTransferKey, authorized: () -> Boolean): Boolean =
@@ -231,6 +253,10 @@ class TransferMediaController(
                 if (!permitted()) return
                 val previous = store.get(key)
                 if (!automaticDue(previous)) return
+                flow(key)?.update { cur ->
+                    if (cur.assignment == previous && cur.match == null)
+                        cur.copy(automaticMessage = "Looking up artwork and metadata") else cur
+                }
                 // Offscreen inventory and composed rows use the same saved-rule precedence.
                 val inherited = applyRuleIfAny(key, recognition, previous, permitted)
                 if (inherited != null) {
@@ -248,14 +274,21 @@ class TransferMediaController(
                     MediaLookupStatus.MATCHED -> MediaAssignmentState.AUTOMATIC
                     MediaLookupStatus.NEEDS_REVIEW -> MediaAssignmentState.SUGGESTED
                     MediaLookupStatus.NOT_FOUND -> MediaAssignmentState.COULDNT_IDENTIFY
-                    else -> return
+                    else -> {
+                        flow(key)?.update { cur ->
+                            if (cur.assignment == previous && cur.match == null)
+                                cur.copy(automaticMessage = outcome.message) else cur
+                        }
+                        return
+                    }
                 }
                 val assignment = TransferMediaAssignment(key, state, match = outcome.match,
                     suggestions = outcome.alternates, lastStatus = outcome.status,
                     lastMessage = outcome.message, attempts = outcome.attempts, updatedAtMs = clock())
                 if (!replaceIfUnchanged(key, previous, assignment, permitted)) return
                 flow(key)?.update { cur ->
-                    if (store.get(key) == assignment) cur.copy(assignment = assignment, busy = false) else cur
+                    if (store.get(key) == assignment) cur.copy(assignment = assignment, busy = false,
+                        automaticMessage = if (assignment.displayMatch != null) null else outcome.message) else cur
                 }
                 val match = assignment.displayMatch ?: return
                 if (flow(key) != null) loadArtwork(key)
@@ -282,11 +315,13 @@ class TransferMediaController(
         }
 
     /** Fresh unlocked inventory only; cancellation ends authorization, including between HTTP requests. */
-    suspend fun enrichInventory(entries: Collection<Pair<MediaTransferKey, String>>) {
+    suspend fun enrichInventory(entries: Collection<Pair<MediaTransferKey, String>>,
+                                isAuthorized: (MediaTransferKey) -> Boolean = { true }) {
         kotlinx.coroutines.withContext(backgroundDispatcher) {
             for ((key, name) in entries.distinctBy { it.first }) {
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
-                try { enrichAutomatic(key, MediaRecognizer.recognize(name)) { true } }
+                if (!isAuthorized(key)) continue
+                try { enrichAutomatic(key, MediaRecognizer.recognize(name)) { isAuthorized(key) } }
                 catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                 catch (_: Exception) { /* Retry through the provider cache/backoff on a later inventory. */ }
             }
@@ -705,7 +740,11 @@ class TransferMediaController(
             largeListArtworkFlow.value = s.largeListArtwork
             presentationFlow.value = s
             snapshot.forEach { (key, f) ->
-                if (authorization(key)() && s.onlineLookupConsent && s.automaticLookup && automaticDue(f.value.assignment)) maybeAutomatic(key)
+                val enabled = !automationStore.isExcluded(key)
+                f.update { cur -> cur.copy(automaticMessage =
+                    if (cur.match != null) null else automaticPauseReason(enabled)) }
+                if (authorization(key)() && s.onlineLookupConsent && s.automaticLookup &&
+                    s.showArtwork && s.downloadArtwork && automaticDue(f.value.assignment)) maybeAutomatic(key)
                 if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
             }
