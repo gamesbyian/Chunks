@@ -153,6 +153,10 @@ fun VerifiedAddScreen(
         // before the wire. Do not probe remote job progress until the engine
         // adapter has returned a result, including an ambiguous result.
         if (outcome == null || !draft.alreadyAttempted) return@LaunchedEffect
+        // A session-owned prior read is historical until this exact screen/account
+        // obtains another positive result. Never show cached bytes as current
+        // during the initial request or a reconnect.
+        progressReadFailed = true
         pollRemoteAddReadOnlyProgress(
             read = { RemoteUniversalAddAdapter(remote).progress(ticket) },
             onFresh = { progress ->
