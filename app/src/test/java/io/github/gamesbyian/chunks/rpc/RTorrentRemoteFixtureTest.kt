@@ -556,7 +556,10 @@ class RTorrentRemoteFixtureTest {
             val result = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
                 .eraseFromSession(hash, "Example", "/data")
             assertTrue(result is SessionEraseOutcome.AlreadyAbsent)
-            assertEquals(2, fixture.methods.size)
+            assertEquals("Main-view read plus two independent exact-hash misses", 3,
+                fixture.methods.size)
+            assertEquals(2, fixture.methods.count {
+                it.contains("<methodName>d.hash</methodName>") })
             assertFalse(fixture.methods.any { it.contains("<methodName>d.erase</methodName>") })
         }
     }

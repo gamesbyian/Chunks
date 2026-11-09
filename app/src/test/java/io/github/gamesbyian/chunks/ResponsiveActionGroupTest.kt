@@ -48,7 +48,7 @@ class ResponsiveActionGroupTest {
         }
     }
 
-    @Test fun narrowTwoHundredPercentActionsStackInsideViewportAndRemainClickable() {
+    @Test fun narrowTwoHundredPercentActionsWrapTwoAcrossAndRemainClickable() {
         val calls = mutableListOf<String>()
         show(width = 288, fontScale = 2f, calls = calls)
         val container = rule.onNodeWithTag("action-group").getUnclippedBoundsInRoot()
@@ -56,8 +56,10 @@ class ResponsiveActionGroupTest {
         val bounds = labels.map { label ->
             rule.onNodeWithText(label).assertExists().getUnclippedBoundsInRoot()
         }
-        assertTrue("buttons must stack instead of competing for horizontal pixels",
-            bounds[0].bottom < bounds[1].top && bounds[1].bottom < bounds[2].top)
+        assertTrue("two actions occupy the first row at 200% text",
+            bounds[0].top == bounds[1].top && bounds[0].right <= bounds[1].left)
+        assertTrue("the third action wraps without adding a three-row stack",
+            bounds[2].top >= bounds[0].bottom)
         bounds.forEach { b ->
             assertTrue("each target is at least 48dp high", b.bottom - b.top >= 48.dp)
             assertTrue("action clipped left", b.left >= container.left)
@@ -65,6 +67,39 @@ class ResponsiveActionGroupTest {
         }
         labels.forEach { rule.onNodeWithText(it).performClick() }
         assertEquals(labels, calls)
+    }
+
+    @Test fun longDestructiveActionsAt288dpAnd200PercentWrapWithoutOverlapping() {
+        val labels = listOf("Remove transfer and data", "Remove transfer", "Cancel")
+        val calls = mutableListOf<String>()
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                ChunksTheme {
+                    Box(Modifier.width(288.dp)) {
+                        ResponsiveActionGroup(Modifier.testTag("action-group")) { actionModifier ->
+                            labels.forEach { label ->
+                                OutlinedButton(onClick = { calls += label }, modifier = actionModifier) {
+                                    Text(label)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        val region = rule.onNodeWithTag("action-group").getUnclippedBoundsInRoot()
+        val targets = labels.map { rule.onNodeWithText(it).getUnclippedBoundsInRoot() }
+        assertEquals("first two destructive choices must share a row", targets[0].top, targets[1].top)
+        assertTrue("two destructive choices must never overlap", targets[0].right <= targets[1].left)
+        assertTrue("third choice must begin below the tallest first-row action",
+            targets[2].top >= maxOf(targets[0].bottom, targets[1].bottom))
+        targets.forEach {
+            assertTrue("even long labels retain 48dp height", it.bottom - it.top >= 48.dp)
+            assertTrue("no horizontal clipping in the shared action group",
+                it.left >= region.left && it.right <= region.right)
+        }
+        labels.forEach { rule.onNodeWithText(it).performClick() }
+        assertEquals("every operation retains its independent callback", labels, calls)
     }
 
     @Config(qualifiers = "w600dp-h700dp-mdpi")

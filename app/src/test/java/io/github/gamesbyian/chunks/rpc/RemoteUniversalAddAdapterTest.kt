@@ -252,6 +252,43 @@ class RemoteUniversalAddAdapterTest {
             assertTrue(methods.none { it == "load.start" || it == "d.start" })
         }
 
+    @Test fun multiFileStoppedAddSettlesExactCoordinatorOnlyAfterEngineRootRecheck() =
+        withFixture(start = false, hiddenFromMain = true,
+            observedDirectory = "$place/Sample", multiFileFlag = 1) {
+                adapter, approved, methods, _ ->
+            val result = adapter.submit(approved).result
+            assertEquals(RemoteAddAndStart.AddedStopped(
+                RemoteAddOutcome.VerifiedStopped(hash, "$place/Sample")), result)
+            val observed = requireNotNull(adapter.exactObservation(
+                approved, result, newRegistrationVerified = true, observedAtEpochMillis = 1200L))
+            assertTrue(observed.registered)
+            assertTrue(observed.reviewedPlaceVerified)
+            assertEquals(false, observed.started)
+            assertTrue(observed.newRegistrationVerified)
+            assertEquals(1200L, observed.observedAtEpochMillis)
+            assertEquals(1, methods.count { it == "load.verbose" })
+            assertTrue("Independent named-root witness is read-only",
+                methods.none { it == "d.start" || it == "load.start" || it == "d.erase" })
+        }
+
+    @Test fun fabricatedMultiFileChildRootCannotBecomeExactSessionEvidence() =
+        withFixture(start = false, initialPresent = true,
+            observedDirectory = "$place/Sample", multiFileFlag = 1) {
+                adapter, approved, methods, _ ->
+            val wrongChild = RemoteAddAndStart.AddedStopped(
+                RemoteAddOutcome.VerifiedStopped(hash, "$place/Imposter"))
+            assertNull("The actual verified engine name must match",
+                adapter.exactObservation(approved, wrongChild,
+                    newRegistrationVerified = true))
+            val nested = RemoteAddAndStart.AddedStopped(
+                RemoteAddOutcome.VerifiedStopped(hash, "$place/Sample/nested"))
+            assertNull("Nested or unrelated paths do not prove reviewed Place",
+                adapter.exactObservation(approved, nested,
+                    newRegistrationVerified = true))
+            assertTrue(methods.none { it.startsWith("load.") || it == "d.erase" ||
+                it == "d.start" })
+        }
+
     @Test fun malformedMultiFileHiddenJobCannotVerifyStoppedPlaceAfterLostAck() =
         withFixture(start = false, hiddenFromMain = true, lostAck = true,
             observedDirectory = "$place/Sample", multiFileFlag = 2) {

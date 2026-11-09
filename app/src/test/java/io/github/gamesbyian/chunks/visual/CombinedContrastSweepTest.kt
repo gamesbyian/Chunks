@@ -5,6 +5,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -25,8 +26,7 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi")
 /**
- * Every fully visible text node on Combined (top controls, rows, a row's
- * extra actions) and on its Transfer details measures at least 4.5:1 against
+ * Every fully visible text node on Combined (top controls and compact rows) and on its dedicated Transfer Details measures at least 4.5:1 against
  * its own rendered background. Catches theme defaults such as lavender
  * outlined text on a coloured card. Partially clipped lines at the viewport
  * edge are skipped; no control here is disabled.
@@ -69,6 +69,12 @@ class CombinedContrastSweepTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Small Episode"))
         sweep("combined-rows")
         val label = serverEnvironmentLabel(scope)
+        // Canonical compact rows open full exact-scoped Details directly.
+        // Scroll to the true target so 320dp/large-font layout is not
+        // accidentally bypassed by the initially visible viewport.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasContentDescription("Details for Big Archive on $label"))
+        sweep("combined-big-row")
         rule.onNodeWithContentDescription("Details for Big Archive on $label").performClick()
         sweep("detail")
         assertTrue("Text below 4.5:1: $failures", failures.isEmpty())

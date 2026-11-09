@@ -14,6 +14,8 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsPhoneAddJourneyInstrumentedTest.kt"
       - "tools/real_magnet_peer.py"
+      - "tools/real_peer_stage_budget.py"
+      - "tests/test_real_peer_stage_budget.py"
       - "tools/export_disposable_peer_numeric.py"
       - "tests/test_disposable_peer_numeric_export.py"
       - "tools/preload_disposable_magnet.py"
@@ -94,6 +96,7 @@ jobs:
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_preload_disposable_magnet.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_peer_stage_budget.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_real_media.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_journey_gate.py

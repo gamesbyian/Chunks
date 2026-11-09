@@ -18,7 +18,11 @@ data class MediaAssignmentRule(
     fun matches(r: MediaRecognition): Boolean {
         if (r.kind == MediaKind.ADULT || r.kind == MediaKind.UNKNOWN) return false
         val t = r.title?.let { MediaText.withoutArticle(MediaText.normalize(it)) } ?: return false
-        return t == normalizedTitle && familyOf(r.kind) == family && (year == null || r.year == null || r.year == year)
+        if (t != normalizedTitle || familyOf(r.kind) != family) return false
+        // Movie remakes can share titles. Never spread a user-chosen work by
+        // title alone; an unknown-year legacy movie rule fails closed.
+        if (family == "movie") return year != null && r.year == year
+        return year == null || r.year == null || r.year == year
     }
 
     companion object {

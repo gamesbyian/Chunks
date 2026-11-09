@@ -21,7 +21,7 @@ class MediaSettingsStore(context: Context) {
 
     fun load(): MediaPrivacySettings = MediaPrivacySettings(
         onlineLookupConsent = prefs.getBoolean(K_CONSENT, false),
-        automaticLookup = prefs.getBoolean(K_AUTO, false),
+        automaticLookup = prefs.getBoolean(K_AUTO, true),
         disabledProviders = prefs.getStringSet(K_DISABLED, emptySet())?.toSet() ?: emptySet(),
         enabledProviders = prefs.getStringSet(K_ENABLED, emptySet())?.toSet() ?: emptySet(),
         showArtwork = prefs.getBoolean(K_SHOW, true),
@@ -33,7 +33,7 @@ class MediaSettingsStore(context: Context) {
 
     fun save(s: MediaPrivacySettings) {
         prefs.edit().putBoolean(K_CONSENT, s.onlineLookupConsent)
-            .putBoolean(K_AUTO, s.automaticLookup && s.onlineLookupConsent)
+            .putBoolean(K_AUTO, s.automaticLookup)
             .putStringSet(K_DISABLED, s.disabledProviders).putStringSet(K_ENABLED, s.enabledProviders)
             .putBoolean(K_SHOW, s.showArtwork).putBoolean(K_DOWNLOAD, s.downloadArtwork)
             .putBoolean(K_METERED, s.artworkOnMeteredNetwork).putBoolean(K_LARGE_LIST, s.largeListArtwork)
