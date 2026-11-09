@@ -101,21 +101,34 @@ class PhoneMagnetDraftCheckTest {
 
     @Test fun withPrefillOffPasteFillsOnlyWhenTapped() {
         val link = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=pasted"
-        openAdd()
-        rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens").performScrollTo().performClick()
-        rule.waitUntil(5_000) {
-            rule.activity.getSharedPreferences("add-clipboard-prefill", Context.MODE_PRIVATE)
-                .getBoolean("enabled", true).not()
+        val prefs = rule.activity.getSharedPreferences("add-clipboard-prefill", Context.MODE_PRIVATE)
+        val original = prefs.getBoolean("enabled", true)
+        try {
+            // A prior test can leave this same link in the OS clipboard.
+            // Disabling future prefill must NOT discard an already admitted
+            // draft, so first ensure the Add entry starts with unrelated text.
+            org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", true).commit())
+            copy("unrelated text, not a magnet or torrent link")
+            openAdd()
+            rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
+            rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+                .performScrollTo().performClick()
+            rule.waitUntil(5_000) { !prefs.getBoolean("enabled", true) }
+            copy(link)
+            // Navigation cannot override the saved opt-out or submit Add.
+            rule.onNodeWithText("Options").performClick()
+            rule.onNodeWithText("+ Add").performClick()
+            rule.waitForIdle()
+            rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
+            // A deliberate manual Paste still works with prefill disabled.
+            rule.onNodeWithText("Paste link").performScrollTo().performClick()
+            rule.waitForIdle()
+            rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
+        } finally {
+            (rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                .clearPrimaryClip()
+            org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", original).commit())
         }
-        copy(link)
-        // Closing and reopening Add is explicit navigation, not submission.
-        rule.onNodeWithText("Options").performClick()
-        rule.onNodeWithText("+ Add").performClick()
-        rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
-        rule.onNodeWithText("Paste link").performScrollTo().performClick()
-        rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
     }
 
     @Test fun aTypedDraftIsNeverReplacedByTheClipboard() {
