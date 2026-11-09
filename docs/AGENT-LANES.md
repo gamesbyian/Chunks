@@ -1,5 +1,8 @@
 # Chunks: agent concurrency and ownership
 
+> **FOUR ACTIVE LANES · 2026-11-09 UTC:** Agent1 owns #1404 production navigation and #1421 DHT/Options changes; Agent2 owns #1422 exact-session coordinator and #1424 phone clipboard URI; Agent3's #1411 strict rTorrent flag fix is merged to main as `ec8e5cd9`; Agent4 independently owns QA tests, evidence, branch integration, final merges and this central documentation. #1408 QA suite merged into the #1404 branch as `fd94ef6f` but not into main. Agent1/2 current red test cases remain required, with no assertion bypass. No shared production edits from Agent4; do not regard an unmerged branch APK as current-main acceptance.
+
+
 > **LIVE FOUR-LANE COORDINATION · 2026-11-09 UTC:** Agent 1 owns #1404 navigation/Options production and fixture-dependent view behavior; Agent 2's #1405/#1415/#1416 phone/shared integrity are merged (no current active phone production PR); Agent 3 owns #1411 authenticated rTorrent readback; Agent 4 exclusively owns independent qualification, QA #1408/#1417 test/CI files, APK-byte and peer evidence, central engineering docs, issues and merge decisions. #1407/#1413 were superseded and closed unmerged. Merge only scoped exact-head successes, never superseded/skipped or red gates, and coordinate ownership of `CombinedTwoRealServersInstrumentedTest.kt` before a proposed QA test fix on Agent 1's evolving navigation branch. A real QA build exists from #1417 source `6a36b536` with SHA-256 receipt, but it does not qualify current main. Earlier staffing lines below are dated history.
 
 
