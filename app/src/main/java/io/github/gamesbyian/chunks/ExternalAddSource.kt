@@ -61,6 +61,5 @@ internal sealed interface ExternalAddSource {
                 !candidate.startsWith("magnet:?", ignoreCase = true)) return null
             return "magnet:?" + candidate.substring("magnet:?".length)
         }
-        }
     }
 }
