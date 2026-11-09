@@ -1,0 +1,69 @@
+# Next-push product decisions, implementation order and acceptance (2026-11-09 UTC)
+
+**Authority:** binding owner instructions from installed Chunks screenshots and follow-up corrections, 2026-11-08 local / 2026-11-09 UTC. This document is a **current handoff and reconciliation**, not evidence that the features are implemented. It supersedes contradictory *feature placement, presentation and default* language in earlier specifications; source and test evidence remain separately governed by [QUALITY-LEDGER](QUALITY-LEDGER.md). Recheck live main/open PR exact heads before any edits: baseline observed main `0a1e7a4d2eef01cda75464bb65dd2d272ef525d1` with five open production PRs (#1442, #1443, #1444, #1449, #1450). Do not treat this baseline as a permanent live SHA.
+
+## Decisions that must agree everywhere
+
+### One Transfers destination and one full Details experience
+
+- The **Combined list implementation is the starting point** for **all** list scopes. `All environments`, `Transfers on this device`, and each named server are **filters of one catalog, row component and detail navigation**; never launch the legacy phone/server list format simply because a single scope is selected.
+- Every transfer row is compact, source-labelled (name and colour), status/progress-oriented and opens the same dedicated **All Details / full Details** route using exact `environment/profile + infohash`. Do not expand entire tools, files and media editors inside the list card. Retain all existing capabilities in Details or context menus with legitimate current/authenticated mutation gates; no data or action may disappear during consolidation.
+- Preserve stable filters/scroll/restoration, accessible root-to-root navigation and genuine stale/offline/locked visibility; opening one server is a scope change, **never** an implicit command target or session switch. Duplicate hashes across profiles remain independently addressable.
+
+### Persistent navigation and horizontal space economy
+
+- One **single-row** footer always visible, including nested Details and IME/keyboard states: **Transfers | + Add | Connections | Options** in exactly this order. Replace the existing width/font based two-row fallback in `AuthenticatedTransfersFooter.kt` for ordinary phone layouts. Prefer compact icons **with** labels, not ambiguous icon-only controls. Keep effective >=48dp touch targets, accessibility names, proper focus, contrast and responsive typography. At 320dp and 200% type, prove all four are reachable and readable via an explicitly tested accessible treatment; do not silently truncate required labels or create an unreachable horizontal carousel.
+- Across all screens, replace gratuitous vertically stacked full-width action buttons with **two across by default** and **three across for naturally short labels**. Full-width is exceptional (e.g. destructive confirmation, a dominant primary action, or labels genuinely too long). Keep safe spacing between destructive and ordinary actions, natural reading/focus order and all capabilities. Use a reusable Compose action-grid/flow pattern, not dozens of bespoke layouts.
+- Measure gained usable transfer-list viewport height; do not steal the saved space with always-expanded search/status/options sections.
+
+### Automatic media/artwork without manual identification chores
+
+- **Options → Artwork & media information** holds the **global enabled-by-default feature preference** for automatic media interpretation, artwork collection and display, with clear subordinate controls as needed. A default-on preference **does not authorize outbound provider lookup**: obtain informed, revocable third-party consent once, separately, before network requests. Disabling global collection stops new requests, and disabling display hides art without destructively clearing durable user choices.
+- **Only in Universal Add**, and **only when global collection and display are enabled**, show **“Automatically identify and fetch artwork & metadata”** checked by default. This is a **one-time per-transfer Add decision**, committed against the exact environment/hash at admission. Unchecked means no future automatic lookup for that job through refresh/restart/reconnect. When globally disabled, **do not show the Add checkbox**. Do not create a second Add state owner or bypass verified source/Place/Start.
+- **Never show that checkbox in an active transfer's Details.** Details shows the resolved media/artwork and offers **Change identification or artwork** for manual correction and poster/image choice. Preserve explicit overrides, and do not silently override them on a rescan.
+- Automatically interpret the transfer name and available authorized file evidence, then, once permitted and network/provider-capable, perform bounded asynchronous lookup for all eligible visible authorized transfers (not only composed rows or opened details). **Confident** provider matches become durable assignments and posters across all lists and Details. An ambiguous/no-provider/offline/consent-blocked result remains honest and actionable without implying a verified title. A recognized filename title (“Looks like: Hackers · Movie · 1995”) does not itself constitute a provider-verified match. Never display an inexplicable “Not identified” plus a mandatory Identify workflow for routine eligible content.
+- Verify why auto-enrichment is not happening: separate **global consent**, global automation, per-Add exclusion, network metering/power-saver, provider configuration/cooldown, privacy authorization, scheduler coverage, stale inventory and artwork fetch. Do not assume one cause solely from screenshots. Never use raw private torrent names, passkeys, trackers, auth or paths in outbound requests.
+
+## Source audit: actual current defects, not merely design tastes
+
+- `MainActivity.kt` still has distinct `Section.LOCAL`, `Section.TRANSFERS` and `Section.COMBINED` paths. Old rTorrent `TransferCard` toggles `detailsOpen`; `CombinedTransfersScreen.kt` already has `EnvironmentViewScope.Only`, compact `CombinedTransferRow` and `UnifiedTransferDetailPanel`. Collapse routing onto the latter, retaining adapter-specific operations by capability.
+- `AuthenticatedTransfersFooter.kt` explicitly stacks at `maxWidth < 400.dp || fontScale >= 1.3f`. Replace with the owner-approved one-row solution, including actual narrow/large-text tests.
+- `TransferMediaDetailSection.kt` currently mounts `TransferAutomaticMetadataToggle` in active Details. Relocate that decision to Add, only under the global feature condition; keep its exact-job preference/safety semantics. The Add-path integration must be with the **single shared Universal Add coordinator**.
+- `MediaPrivacySettings` currently defaults `onlineLookupConsent=false`, `automaticLookup=false`, and background lookups can stop on metered/power-saver networks. Separate **product default-on UI preference** from **consent-gated actual networking**. Audit existing provider and scheduler before altering defaults; no automatic network transmission without consent.
+- `MediaMetadataSummary` renders local recognition “Looks like” without an accepted `match`, and the state badge still says “Not identified”. Improve accurate stage/reason display and the background processing path, not by blindly calling every filename a confirmed provider match.
+
+## Implementation slices, file boundaries and independence
+
+**Slice A (navigation/UX; Agent 1):** One-row footer + responsive shared action-grid utility and first representative screens; then unify All/phone/server list scopes onto Combined row/Details. Keep a screenshot/semantics action inventory, focus and 320/412dp/200% handling. Touch no Add coordinator or rTorrent RPC implementation.
+
+**Slice B (Universal Add/phone; Agent 2):** Add-time artwork checkbox placement and conditional availability, commit durable exact-job opt-out once (including Share/Open With/restoration), preserve review/default/explicit source semantics. Work with Agent 1 on the Add composable seam and Agent 3 on verified remote admission; do not modify both sides of a contested interface unilaterally.
+
+**Slice C (rTorrent and media plumbing; Agent 3 after active RPC PR):** Preserve authenticated exact-hash routing and readback. Audit media inventory observation across connected and saved-accessible scopes; identify which missing provider/consent/scheduler state explains the owner's screenshots before targeted fixes. Avoid adding a new executor, ad hoc request loop, network consent or mutable remote action.
+
+**Slice D (independent QA/integration; Agent 4):** Installed UX cross-scope, footer and media regression tests. Control shared test/CI and central docs, PR dependency order and merging. Qualification is source-exact, independent, all required checks actually executed; no merge from skipped native/R8, old head green, red failures, or an untested assembled tree. Recompute APK SHA-256 from **actual installed/tested bytes** only when source and peer/piece proof match.
+
+These are responsibilities for the **next** agent activation, not evidence that any agent is currently running or has a lease.
+
+## Five existing open PRs and no-false-green gate
+
+At the above baseline:
+- **#1442** central Clipboard prefill Options: **red** on actual native clipboard/IME, real magnet and API29 Compose tests; fix root cause before merge; ownership Agent 1.
+- **#1443** explicit read-only remote Recheck contradiction: **red** native Add shard; preserve exact account/hash/Place/Start, and no replay; Agent 3 with Agent 1 presentation coordination.
+- **#1444** typed HTTP 401 for unusable read-auth: draft, genuine foundation Combined contrast failure, installed/R8 not qualified; Agent 3.
+- **#1449** fail-closed malformed Share extras: draft, native/R8 gates skipped; Agent 2.
+- **#1450** uppercase `MAGNET` Android VIEW resolver: draft, native/R8 gates skipped; Agent 2. Supersedes closed/unmerged #1445.
+
+Do **not** merge a docs PR as if it establishes feature qualification. Prior #1448 installed exact Stop/Start Place preservation passed genuine disposable peer/piece on a predecessor tested source and actual debug APK SHA-256 `506b24363b87436fe43fe1e253adf11851d3e1c4f78bb6f75ffab3395a4046a9`, **not current-main APK acceptance**. Prior red attempts remain documented. No owner Pixel/protected Seedhost/live-account, TalkBack, OEM/Doze or publisher-signed release acceptance is established.
+
+## Acceptance matrix for next push
+
+1. **Navigation:** all four footer buttons in one row at 412dp and 320dp with normal/200% text, IME shown and hidden, every main/nested route; correct focus/semantics and no obscured content. Record usable viewport height.
+2. **List parity:** all/phone/server each use same compact row and full `UnifiedTransferDetailPanel`; round-trip retains scope and scroll; duplicate hash on two accounts never merges state; stale/offline source cannot mutate; legacy `detailsOpen` not reachable.
+3. **Action density:** exercise Add, remote/phone Details, Inspect files, Copy/Move transfer, Copy files, Remove, Options and Identify correction; prove two/three-across normal grouping without hidden/removed functions or dangerous adjacent destructive actions.
+4. **Media:** first install vs global preference disabled vs consent pending vs consent granted; conditional checkbox **Add only** checked by default, durable opt-out after restart; never in Details. Known movie/year and ambiguous-title fixture, provider configured/unavailable, network metered/offline, actual authorized provider+artwork response, manual poster override; consistent list/details persisted output on multiple environment scopes. Refuse blocked network calls.
+5. **Cross-engine daily use:** installed source → Add → Transfers → full Details → reconnect → Stop/Start → Remove; real disposable authenticated rTorrent peers and independently verified pieces, phone HTTPS, exact Place/name and accepted readbacks, no blind writes. Collect per-case receipts/source Git tree, actual tested APK digest and failed-attempt history.
+6. **Security and privacy:** no source replacement on Share ambiguity, consent never inferred, no data/payload delete on job-only Move, correct per-server auth and privacy locks, no expanded provider lookups on hidden scopes.
+
+## Handoff and reading order
+
+Read [AGENTS](../AGENTS.md) → [WORK-QUEUE](WORK-QUEUE.md) → [QUALITY-LEDGER](QUALITY-LEDGER.md) + [SPEC-COVERAGE](SPEC-COVERAGE.md) → this checkpoint → [PRODUCT](PRODUCT.md), [UX](UX.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [OPTIONS](OPTIONS-INFORMATION-ARCHITECTURE.md), [SMART-ROUTING](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md), and [CI-POLICY](CI-POLICY.md). For previous integration context, see [2026-11-08 next-push handoff](NEXT-PUSH-HANDOFF-2026-11-08.md). [#1453](https://github.com/gamesbyian/Chunks/issues/1453) covers media, [#1454](https://github.com/gamesbyian/Chunks/issues/1454) covers universal presentation/navigation. Recheck live facts before beginning and keep one documentation/integration owner.

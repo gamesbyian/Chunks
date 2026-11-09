@@ -1,5 +1,8 @@
 # Chunks Options: canonical information architecture and UX contract
 
+> **BINDING OPTIONS RECONCILIATION · 2026-11-09:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). **Artwork & media information** is the canonical global control; automatic recognition/collection/display preference defaults **enabled**, while outbound provider consent remains **separate, initially ungranted and revocable**. With global feature off, Universal Add hides its one-time per-transfer artwork checkbox and schedules no automatic lookup; with feature on, Add shows it initially checked. Active Details has **no per-job automatic-enrichment toggle**, only correction/artwork choice. Options is one of **four permanent same-row footer destinations** (Transfers, + Add, Connections, Options), not a stacked row or a scattered duplicate settings home. Preserve one persistent global settings authority and existing explicit choices. This supersedes conflicting older placement text; no implementation acceptance is implied.
+
+
 **Owner direction: 2026-11-05. Status: approved organization of existing/spec'd capabilities, not authorization for new scope.** This focused contract extends [UX](UX.md) and [PRODUCT](PRODUCT.md). [WORK-QUEUE](WORK-QUEUE.md) alone orders implementation; existing rTorrent daily-use reliability and cohesive UX work outrank future backend adapters and advanced controls. Related contracts remain authoritative for functional semantics.
 
 ## Goal and boundary

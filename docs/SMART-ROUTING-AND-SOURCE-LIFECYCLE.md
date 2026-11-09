@@ -1,5 +1,8 @@
 # Smart Routing, Add source lifecycle and transferable job preferences
 
+> **OWNER ADD-ONLY MEDIA OPTION CORRECTION · 2026-11-09:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). `Add > Artwork & metadata` shows the default-checked per-job auto-identification checkbox **only when global Options collection and display are enabled**. Save that selection against the exact transfer at Add; respect durable exclusion without later active-transfer toggles. **Delete/replace the old “same setting is editable from Transfer Details” requirement below:** active Details has only manual identification/art correction. Provider network requests still require separate prior consent. No changes to source Keep/Archive/Delete, Smart Routing's offline classifier, job-only Move, or frozen Add authority.
+
+
 **Status:** owner-approved product/architecture contract, 2026-11-05. Planned/incremental; not a statement that these behaviors are shipped. This extends the **single** [UX cohesion campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md), [universal navigation/Add specification](https://github.com/gamesbyian/Chunks/pull/1328), [Add source intake](ADD-SOURCE-INTAKE.md), [transfer artwork](TRANSFER-ARTWORK.md) and [job-only Copy/Move contract](CROSS-ENGINE-TRANSFER-JOBS.md). There is no new P0 release gate or parallel work queue.
 
 ## Non-negotiable: routing and movement are job-only

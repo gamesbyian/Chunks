@@ -1,5 +1,8 @@
 # Chunks specification coverage and acceptance map
 
+> **NEW OWNER UX/MEDIA ACCEPTANCE GAPS · 2026-11-09 UTC:** [Binding handoff](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). **Not yet accepted on installed Chunks:** single canonical Combined-derived compact row and dedicated Details in All/device/server; fixed **one-row** four-root footer in ordinary/narrow/IME conditions; app-wide two/three-across action groups; default-on global artwork collection/display preference **separate from network consent**; conditional checked-by-default **Add-only** artwork option and **no active Details toggle**; real consented background matching/posters across scopes and restarts. Source still has old `detailsOpen`, footer two-row branch, Details checkbox and title-only “Looks like” fallback. Issues #1453/#1454. Historical exact-head greens do not qualify these new behaviours. Live baseline `0a1e7a4d`, five PRs #1442/#1443/#1444/#1449/#1450 with red/skipped gates. Predecessor peer APK != latest-main tested bytes.
+
+
 > **CURRENT PHONE-INTENT GAP · 2026-11-09 UTC:** Uppercase Android `MAGNET` ACTION_VIEW matching is now proposed in clean-main draft #1450; obsolete #1445 is closed unmerged. Do not count #1450 as production or physically tested until actual native PackageManager resolver assertion executes on its final head.
 
 

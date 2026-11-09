@@ -1,5 +1,8 @@
 # Media artwork and metadata: implementation status and integration interface
 
+> **CURRENT IMPLEMENTATION GAP · 2026-11-09:** [Binding next-push reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). Installed screenshots show recognized “Looks like” movie titles alongside “Not identified” and generic art. `TransferMediaDetailSection.kt` currently renders `TransferAutomaticMetadataToggle` in active Details, **contrary to the owner Add-only correction**. Move checkbox to the single shared Add workflow only when global collection/display enabled; default checked; persist exact-job exclusion. Global artwork feature preference defaults enabled, distinct from initially ungranted external-provider consent. Diagnose consent/global automation/provider/network/scheduler/authorized-inventory conditions before claiming reason or auto-match. Confidence-gated background matching across eligible authorized environments and poster persistence need installed proof; older JVM provider results alone are insufficient.
+
+
 > **New implementation priority (2026-11-05):** Existing list tiles, Details Identify, Options and poster choice are already present. Next verify and build **automatic background identification/enrichment across phone and all connected rTorrent profiles** following established one-time third-party consent, at launch/reconnect/new transfer; persist overrides, reuse cache, and keep failures quiet. Integrate with the broader [cohesive UX/interaction redesign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md); do not add another global artwork-management panel or rebuild implemented controls. Installed provider proof remains independently outstanding.
 
 
