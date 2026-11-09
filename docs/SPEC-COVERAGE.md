@@ -1,5 +1,8 @@
 # Chunks specification coverage and acceptance map
 
+> **CURRENT PHONE-INTENT GAP · 2026-11-09 UTC:** Uppercase Android `MAGNET` ACTION_VIEW matching is now proposed in clean-main draft #1450; obsolete #1445 is closed unmerged. Do not count #1450 as production or physically tested until actual native PackageManager resolver assertion executes on its final head.
+
+
 > **LATEST MAIN COVERAGE · 2026-11-09 UTC:** Main `9435087e` includes exact-head seven-gate Android URI-list single-ClipData magnet recognition and PackageManager manifest acceptance #1447; it rejects conflicting sources/multi-item URI/documents, keeps tracker query bytes and never opens, submits or starts from a share alone. Original four-root navigation/DHT Options/remote read-only progress/delete-data guards remain merged. Still uncovered in current assembled release: #1442 clipboard toggle Options final behavior (native/peer/API29 red), #1443 remote exact contradiction Recheck (native red), #1444 typed read-auth 401 (draft skipped native), #1445 uppercase Android VIEW URI (draft), #1449 invalid external extra handling (draft), #1448 new exact Place/name through installed Stop/Start (failed before assertion). No current-tree peer/piece + tested APK SHA-256, owner Pixel, protected host, TalkBack/OEM/Doze/publisher signing acceptance.
 
 
