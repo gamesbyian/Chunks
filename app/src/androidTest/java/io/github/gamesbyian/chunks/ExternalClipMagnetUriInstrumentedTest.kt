@@ -82,6 +82,52 @@ class ExternalClipMagnetUriInstrumentedTest {
             ExternalAddSource.fromIntent(shared(Uri.parse("MAGNET:?xt=urn:btih:bad"))))
     }
 
+    @Test fun textClipAndExtraMustAgreeOnTheWholeMagnetIncludingPrivateTracker() {
+        val clipOnly = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            clipData = ClipData.newPlainText("magnet", magnet)
+        }
+        assertEquals(ExternalAddSource.Magnet(magnet),
+            ExternalAddSource.fromIntent(clipOnly))
+        // Byte-for-byte query preservation, including tracker token, even
+        // when Android's text carrier supplies an uppercase URI scheme.
+        val uppercase = "MAGNET:?" + magnet.substring("magnet:?".length)
+        assertEquals(ExternalAddSource.Magnet(magnet),
+            ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                clipData = ClipData.newPlainText("magnet", uppercase)
+                putExtra(Intent.EXTRA_TEXT, magnet)
+            }))
+        assertEquals(ExternalAddSource.Magnet(magnet),
+            ExternalAddSource.fromIntent(clipOnly.apply {
+                putExtra(Intent.EXTRA_TEXT, magnet)
+            }))
+
+        // Same infohash is not sufficient. A different tracker/passkey is
+        // a different reviewed source and must never win by representation.
+        val changedTracker = magnet.replace("privatefixture", "otherfixture")
+        assertNull(ExternalAddSource.fromIntent(clipOnly.apply {
+            putExtra(Intent.EXTRA_TEXT, changedTracker)
+        }))
+        assertNull(ExternalAddSource.fromIntent(clipOnly.apply {
+            putExtra(Intent.EXTRA_TEXT, other)
+        }))
+        assertNull(ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            clipData = ClipData.newPlainText("different source", "ordinary text")
+            putExtra(Intent.EXTRA_TEXT, magnet)
+        }))
+        assertNull(ExternalAddSource.fromIntent(clipOnly.apply {
+            putExtra(Intent.EXTRA_TEXT, 42)
+        }))
+        // No clip still follows the existing ordinary text Share path.
+        assertEquals(ExternalAddSource.Magnet(magnet),
+            ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, magnet)
+            }))
+    }
+
     @Test fun contradictionsMultipleItemsAndDocumentUrisStayFailClosed() {
         assertNull(ExternalAddSource.fromIntent(shared(Uri.parse(magnet), other)))
         assertNull(ExternalAddSource.fromIntent(shared(Uri.parse(magnet), "a description")))
