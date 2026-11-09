@@ -3,10 +3,11 @@ package io.github.gamesbyian.chunks
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -49,7 +50,7 @@ class AddArtworkChoiceInstrumentedTest {
             }
         }
         rule.waitUntil(5_000) {
-            rule.onNodeWithText("Artwork & metadata").fetchSemanticsNodeOrNull() != null
+            rule.onAllNodesWithText("Artwork & metadata").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Artwork & metadata").performClick()
         rule.onNodeWithText(label).assertIsOn()
