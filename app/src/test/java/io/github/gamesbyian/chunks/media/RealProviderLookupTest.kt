@@ -50,7 +50,7 @@ class RealProviderLookupTest {
     }
 
     private val http = Recording()
-    private val settings = MediaPrivacySettings(onlineLookupConsent = true)
+    private val settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
 
     private fun controller(): TransferMediaController {
         val providers = listOf(TvMazeProvider(), MusicBrainzProvider(), OpenLibraryProvider())
