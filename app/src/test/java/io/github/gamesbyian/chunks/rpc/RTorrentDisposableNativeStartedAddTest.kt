@@ -75,4 +75,54 @@ class RTorrentDisposableNativeStartedAddTest {
                 result is RemoteAddAndStart.StartNotVerified)
         expectActive(remote, hash, parent)
     }
+
+    /**
+     * Genuine rTorrent (legacy and modern), not an XML-RPC mock. A multi-file
+     * .torrent's reviewed destination is the parent, while d.directory reports
+     * the child root. No files are copied or deleted; this test only creates a
+     * disposable session job and uses read-only getters after one Add.
+     */
+    @Test fun realMultiFileBooleanAndStoppedRootAreReadBackFromEngine() = runBlocking {
+        val remote = client()
+        val parent = destination()
+        val rootName = "chunks-multifile-" + System.nanoTime()
+        val first = "first-file".toByteArray(Charsets.UTF_8)
+        val second = "second-file".toByteArray(Charsets.UTF_8)
+        val pieceHash = java.security.MessageDigest.getInstance("SHA-1")
+            .digest(first + second)
+        val infoPrefix = (
+            "d5:filesl" +
+                "d6:lengthi${first.size}e4:pathl9:alpha.txtee" +
+                "d6:lengthi${second.size}e4:pathl8:beta.txtee" +
+                "e4:name${rootName.length}:$rootName" +
+                "12:piece lengthi16384e6:pieces20:"
+        ).toByteArray(Charsets.ISO_8859_1)
+        val metainfo = (
+            "d8:announce27:http://127.0.0.1:9/announce4:info"
+        ).toByteArray(Charsets.ISO_8859_1) + infoPrefix + pieceHash +
+            byteArrayOf('e'.code.toByte(), 'e'.code.toByte())
+        val preview = TorrentMetainfoReader.preview(metainfo)
+        assertEquals(2, preview.fileCount)
+        assertEquals(rootName, preview.name)
+        val hash = preview.infoHashV1
+        assertNull("The disposable identity must be new", remote.lookupName(hash))
+
+        // The only write in this case. Never retry even if its reply is lost.
+        val firstResult = remote.loadStoppedTorrentBytes(metainfo, parent)
+        val plan = StoppedRemoteAddPlan.fromMagnet(
+            "magnet:?xt=urn:btih:$hash", parent)
+        var observed: RemoteAddOutcome = firstResult
+        for (attempt in 0 until 10) {
+            if (observed is RemoteAddOutcome.VerifiedStopped) break
+            observed = remote.reconcileStoppedAdd(plan) // read-only after uncertain Add
+            if (observed !is RemoteAddOutcome.VerifiedStopped && attempt < 9)
+                kotlinx.coroutines.delay(250L)
+        }
+        val expectedRoot = "$parent/$rootName"
+        assertEquals(RemoteAddOutcome.VerifiedStopped(hash, expectedRoot), observed)
+        assertEquals(rootName, remote.lookupName(hash))
+        assertEquals(1L, remote.call("d.is_multi_file", listOf(hash)))
+        assertEquals(expectedRoot, remote.call("d.directory", listOf(hash)))
+        assertEquals(2, remote.listFiles(hash).size)
+    }
 }
