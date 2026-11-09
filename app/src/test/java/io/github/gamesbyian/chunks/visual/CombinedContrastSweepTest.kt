@@ -26,8 +26,7 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w411dp-h891dp-xxhdpi")
 /**
- * Every fully visible text node on Combined (top controls, rows, a row's
- * extra actions) and on its Transfer details measures at least 4.5:1 against
+ * Every fully visible text node on Combined (top controls and compact rows) and on its dedicated Transfer Details measures at least 4.5:1 against
  * its own rendered background. Catches theme defaults such as lavender
  * outlined text on a coloured card. Partially clipped lines at the viewport
  * edge are skipped; no control here is disabled.
@@ -70,16 +69,13 @@ class CombinedContrastSweepTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Small Episode"))
         sweep("combined-rows")
         val label = serverEnvironmentLabel(scope)
-        // The fixed one-row footer can change how much of the lazy catalog
-        // is initially visible. Scroll to real targets rather than assuming
-        // the same initial viewport at every font scale.
+        // Canonical compact rows open full exact-scoped Details directly.
+        // Scroll to the true target so 320dp/large-font layout is not
+        // accidentally bypassed by the initially visible viewport.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasContentDescription("Expand Big Archive on $label"))
-        rule.onNodeWithContentDescription("Expand Big Archive on $label").performClick()
-        sweep("combined-more")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasContentDescription("All details for Big Archive on $label"))
-        rule.onNodeWithContentDescription("All details for Big Archive on $label").performClick()
+            hasContentDescription("Details for Big Archive on $label"))
+        sweep("combined-big-row")
+        rule.onNodeWithContentDescription("Details for Big Archive on $label").performClick()
         sweep("detail")
         assertTrue("Text below 4.5:1: $failures", failures.isEmpty())
     }
