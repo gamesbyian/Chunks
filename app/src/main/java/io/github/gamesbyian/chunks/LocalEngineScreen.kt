@@ -287,6 +287,8 @@ internal fun LocalEngineScreen(
     onRemoteSnapshot: (() -> Unit)? = null,
     /** Opens the existing device Add review, without submitting or choosing Place. */
     onOpenAdd: (() -> Unit)? = null,
+    /** Opens the app-wide Options destination without changing an Add draft. */
+    onOpenOptions: (() -> Unit)? = null,
     initialMagnet: String? = null,
     initialTorrentUri: Uri? = null,
     /** A connected, independently privacy-gated rTorrent Add screen is available. */
@@ -877,6 +879,7 @@ internal fun LocalEngineScreen(
     val optionsRequester = remember { BringIntoViewRequester() }
     // Phone options search targets: existing panels on this screen.
     val speedRequester = remember { BringIntoViewRequester() }
+    val dhtRequester = remember { BringIntoViewRequester() }
     val privacyRequester = remember { BringIntoViewRequester() }
     val restoreRequester = remember { BringIntoViewRequester() }
     val exportsRequester = remember { BringIntoViewRequester() }
@@ -1064,7 +1067,14 @@ internal fun LocalEngineScreen(
                 dhtEnabled = dht,
                 applying = dhtSaving,
                 blocked = busy || inventoryStale,
-                onEnable = { requestDhtSetting(true) }
+                onEnable = {
+                    if (onOpenOptions != null) {
+                        // Point to the existing DHT preference, not a new settings authority.
+                        phoneOptionsSearch = "dht"
+                        onOpenOptions()
+                    } else requestDhtSetting(true)
+                },
+                opensOptions = onOpenOptions != null
             )
             ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
                 ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
@@ -1267,20 +1277,6 @@ internal fun LocalEngineScreen(
                     else noteProblem("That clipboard choice could not be saved. It is unchanged.")
                 }
             })
-        }
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
-                onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Find peers without trackers (DHT)")
-                Text("Needed for most magnet links. Off by default: when on, this phone's IP address is shared with the public DHT network.",
-                    style = MaterialTheme.typography.bodySmall)
-                SettingScopeNote(PHONE_ENVIRONMENT_LABEL)
-                if (dhtSaving) Text("Applying DHT setting…", style = MaterialTheme.typography.bodySmall)
-                dhtError?.let { Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error) }
-            }
-            Switch(checked = dht, enabled = !dhtSaving, onCheckedChange = null)
         }
         if (magnet.isNotEmpty() && destination != null) {
             FinishInOrderAddChoice(
@@ -2418,7 +2414,8 @@ internal fun LocalEngineScreen(
                         PhoneOptionsShortcut.SERVER_BACKUP -> onRemoteSnapshot?.invoke()
                         PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent?.invoke()
                         PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview?.invoke()
-                        PhoneOptionsShortcut.DHT, PhoneOptionsShortcut.DOWNLOAD_LOCATION -> {
+                        PhoneOptionsShortcut.DHT -> scope.launch { androidx.compose.runtime.withFrameNanos { }; dhtRequester.bringIntoView() }
+                        PhoneOptionsShortcut.DOWNLOAD_LOCATION -> {
                             // These controls still live with the existing Add workflow.
                             // Navigating cannot authorize or submit a transfer.
                             if (onOpenAdd != null) onOpenAdd.invoke()
@@ -2494,6 +2491,21 @@ internal fun LocalEngineScreen(
         }
         // Settings first, then occasional tools: the person looking for a
         // speed limit does not have to scroll past snapshot and export panels.
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .bringIntoViewRequester(dhtRequester)
+            .toggleable(value = dht, enabled = !dhtSaving, role = Role.Switch,
+                onValueChange = ::requestDhtSetting), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Find peers without trackers (DHT)")
+                Text("Needed for most magnet links. Off by default: when on, this device's IP address is shared with the public DHT network.",
+                    style = MaterialTheme.typography.bodySmall)
+                SettingScopeNote(PHONE_ENVIRONMENT_LABEL)
+                if (dhtSaving) Text("Applying DHT setting…", style = MaterialTheme.typography.bodySmall)
+                dhtError?.let { Text(it, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error) }
+            }
+            Switch(checked = dht, enabled = !dhtSaving, onCheckedChange = null)
+        }
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(speedRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { LocalSpeedLimits() }
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(restoreRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LocalSnapshotRestorePreviewPanel(

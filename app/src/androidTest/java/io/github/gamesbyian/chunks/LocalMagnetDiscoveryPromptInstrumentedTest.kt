@@ -34,9 +34,24 @@ class LocalMagnetDiscoveryPromptInstrumentedTest {
         rule.onNodeWithText("Enable DHT to help this magnet find peers").performClick()
         assertEquals(1, enabledCalls)
         rule.onNodeWithText(
-            "Opt-in: DHT shares this phone's IP address with public DHT nodes. " +
+            "Opt-in: DHT shares this device's IP address with public DHT nodes. " +
                 "This does not guarantee peers, metadata or download progress."
         ).assertExists()
+    }
+
+    @Test fun configuredRootAddUsesOptionsRouteNotInstantDhtMutation() {
+        var settingsOpened = 0
+        rule.setContent {
+            MaterialTheme {
+                LocalMagnetDiscoveryPrompt(
+                    magnet = noTracker, dhtEnabled = false, applying = false,
+                    blocked = false, opensOptions = true,
+                    onEnable = { settingsOpened++ })
+            }
+        }
+        rule.onNodeWithText("Enable DHT to help this magnet find peers").assertDoesNotExist()
+        rule.onNodeWithText("Configure DHT in Options").performClick()
+        assertEquals(1, settingsOpened)
     }
 
     @Test fun existingDhtOrUsableTrackerNeedsNoPrivacyPrompt() {
