@@ -58,6 +58,23 @@ class TorrentIntentResolutionInstrumentedTest {
             chunksCanHandle(view))
     }
 
+    @Test fun uppercaseMagnetViewSchemeResolvesAndPreservesQueryForAddReview() {
+        // IntentFilter scheme matching on Android is case-sensitive even
+        // though URI schemes are semantically case-insensitive. Test the
+        // installed manifest, not just the source parser.
+        val mixed = "MAGNET:?XT=URN:BTIH:" + "A".repeat(40) +
+            "&tr=https%3A%2F%2Fexample.org%2Fannounce%3Ftoken%3Dtest"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(mixed))
+            .addCategory(Intent.CATEGORY_BROWSABLE)
+        assertTrue("Android did not register Chunks for uppercase magnet VIEW",
+            chunksCanHandle(intent))
+        val normalized = ExternalMagnetInput.fromIntent(intent)
+        assertTrue("Expected only lower-case URI scheme normalization",
+            normalized == "magnet:?" + mixed.substring("MAGNET:?".length))
+        assertTrue("The resolved source must retain normal explicit Add review",
+            ExternalAddSource.fromIntent(intent) == ExternalAddSource.Magnet(normalized!!))
+    }
+
     @Test fun namedTorrentGenericBinaryIsHandledButUnrelatedBinaryIsNot() {
         val named = Uri.parse("content://fixture.documents/download/sample.torrent")
         assertTrue("Android should offer Chunks for a named torrent from a generic binary provider",
