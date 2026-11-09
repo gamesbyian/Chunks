@@ -136,7 +136,7 @@ class MediaProviderFixtureTest {
         assertTrue(http.requests.single().startsWith("https://api.themoviedb.org/"))
     }
 
-
+    @Test fun httpStatusesMapToTypedOutcomes() {
         val p = TvMazeProvider(); val query = q(MediaKind.TV_SERIES, "X")
         assertEquals(MediaProviderOutcome.NotFound, p.search(query, FakeMediaHttp().on("search", status = 404)))
         assertEquals(MediaProviderOutcome.Unauthorized, p.search(query, FakeMediaHttp().on("search", status = 403)))
