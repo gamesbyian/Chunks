@@ -76,7 +76,7 @@ class MediaEnrichmentServiceTest {
     @Test fun reusedMovieTitleCanNeverBorrowWrongYearPosterAcrossProviders() {
         val wiki = """{"search":[{"id":"Q123","label":"The Thing","description":"1982 film by John Carpenter"}]}"""
         val tmdb = """{"results":[{"id":456,"title":"The Thing","release_date":"2011-10-14",
-            "poster_path":"/wrong-remake.jpg","popularity":90.0}]}"""
+            "poster_path":"/wrongremake.jpg","popularity":90.0}]}"""
         val http = FakeMediaHttp()
             .on("www.wikidata.org", body = wiki)
             .on("api.themoviedb.org/3/search/movie", body = tmdb)
@@ -90,13 +90,18 @@ class MediaEnrichmentServiceTest {
         assertEquals(MediaLookupStatus.MATCHED, result.status)
         assertEquals("wikidata", result.match!!.ref.provider)
         assertEquals(1982, result.match!!.year)
+        // Ensure a real, parseable 2011 TMDB poster was offered before asserting its rejection.
+        val candidate = TmdbProvider { "0123456789abcdef0123456789abcdef" }
+            .search(q, http) as MediaProviderOutcome.Found
+        assertEquals(2011, candidate.candidates.single().year)
+        assertTrue(candidate.candidates.single().artwork.isNotEmpty())
         assertTrue("2011 remake artwork cannot be used for the 1982 film", result.match!!.artwork.isEmpty())
     }
 
     @Test fun exactYearMovieCanBorrowArtworkWithoutReplacingVerifiedIdentity() {
         val wiki = """{"search":[{"id":"Q123","label":"The Thing","description":"1982 film by John Carpenter"}]}"""
         val tmdb = """{"results":[{"id":123,"title":"The Thing","release_date":"1982-06-25",
-            "poster_path":"/correct-poster.jpg","popularity":90.0}]}"""
+            "poster_path":"/correctposter.jpg","popularity":90.0}]}"""
         val http = FakeMediaHttp()
             .on("www.wikidata.org", body = wiki)
             .on("api.themoviedb.org/3/search/movie", body = tmdb)
@@ -108,7 +113,7 @@ class MediaEnrichmentServiceTest {
         assertEquals("wikidata", result.match!!.ref.provider)
         assertEquals(1982, result.match!!.year)
         assertEquals("tmdb", result.match!!.artwork.single().provider)
-        assertTrue(result.match!!.artwork.single().url.endsWith("correct-poster.jpg"))
+        assertTrue(result.match!!.artwork.single().url.endsWith("correctposter.jpg"))
     }
 
     @Test fun rateLimitCoolsDownProviderAndHonorsRetryAfter() {
