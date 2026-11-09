@@ -24,6 +24,12 @@ class SharedTorrentLinkIntakeInstrumentedTest {
     private val url = "https://downloads.example.org/serve?file=42&token=privateFixture"
 
     @Test fun sendHttpsLinkKeepsSignedQueryAndRequiresExplicitAddReview() {
+        org.junit.Assert.assertTrue("Phone Add must consume a shared HTTPS source",
+            reviewablePhoneExternalText(url))
+        org.junit.Assert.assertTrue("Existing magnet handoff remains supported",
+            reviewablePhoneExternalText("magnet:?xt=urn:btih:" + "a".repeat(40)))
+        org.junit.Assert.assertFalse("HTTP text cannot become an implicit fetch",
+            reviewablePhoneExternalText("http://downloads.example.org/test.torrent"))
         assertEquals(ExternalAddSource.TorrentLink(url),
             ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
