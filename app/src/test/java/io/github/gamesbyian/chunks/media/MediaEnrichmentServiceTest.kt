@@ -73,6 +73,44 @@ class MediaEnrichmentServiceTest {
         assertEquals("tmdb", r.match!!.artwork.single().provider)
     }
 
+    @Test fun reusedMovieTitleCanNeverBorrowWrongYearPosterAcrossProviders() {
+        val wiki = """{"search":[{"id":"Q123","label":"The Thing","description":"1982 film by John Carpenter"}]}"""
+        val tmdb = """{"results":[{"id":456,"title":"The Thing","release_date":"2011-10-14",
+            "poster_path":"/wrong-remake.jpg","popularity":90.0}]}"""
+        val http = FakeMediaHttp()
+            .on("www.wikidata.org", body = wiki)
+            .on("api.themoviedb.org/3/search/movie", body = tmdb)
+        // The caller does not know the year, so each provider's own same-title record
+        // is independently confident. A second confident record must not donate
+        // the 2011 remake's art to the 1982 identity.
+        val q = (MediaQuerySanitizer.manual(MediaKind.MOVIE, "The Thing") as MediaQueryDecision.Allowed).query
+        val result = service(http,
+            io.github.gamesbyian.chunks.media.providers.WikidataProvider(),
+            TmdbProvider { "0123456789abcdef0123456789abcdef" }).lookup(q, consent, online)
+        assertEquals(MediaLookupStatus.MATCHED, result.status)
+        assertEquals("wikidata", result.match!!.ref.provider)
+        assertEquals(1982, result.match!!.year)
+        assertTrue("2011 remake artwork cannot be used for the 1982 film", result.match!!.artwork.isEmpty())
+    }
+
+    @Test fun exactYearMovieCanBorrowArtworkWithoutReplacingVerifiedIdentity() {
+        val wiki = """{"search":[{"id":"Q123","label":"The Thing","description":"1982 film by John Carpenter"}]}"""
+        val tmdb = """{"results":[{"id":123,"title":"The Thing","release_date":"1982-06-25",
+            "poster_path":"/correct-poster.jpg","popularity":90.0}]}"""
+        val http = FakeMediaHttp()
+            .on("www.wikidata.org", body = wiki)
+            .on("api.themoviedb.org/3/search/movie", body = tmdb)
+        val q = (MediaQuerySanitizer.manual(MediaKind.MOVIE, "The Thing") as MediaQueryDecision.Allowed).query
+        val result = service(http,
+            io.github.gamesbyian.chunks.media.providers.WikidataProvider(),
+            TmdbProvider { "0123456789abcdef0123456789abcdef" }).lookup(q, consent, online)
+        assertEquals(MediaLookupStatus.MATCHED, result.status)
+        assertEquals("wikidata", result.match!!.ref.provider)
+        assertEquals(1982, result.match!!.year)
+        assertEquals("tmdb", result.match!!.artwork.single().provider)
+        assertTrue(result.match!!.artwork.single().url.endsWith("correct-poster.jpg"))
+    }
+
     @Test fun rateLimitCoolsDownProviderAndHonorsRetryAfter() {
         val http = FakeMediaHttp().on("musicbrainz.org", status = 503, headers = mapOf("Retry-After" to "20"))
         val s = service(http, MusicBrainzProvider())
