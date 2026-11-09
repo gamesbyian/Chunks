@@ -276,6 +276,32 @@ class PhoneUniversalAddAdapterTest {
         assertTrue(session.acknowledgeObservedJob())
     }
 
+    @Test fun newerCompletePhoneInventoryRevokesExistingSessionAcknowledgementOnDisappearance() {
+        val (session, ticket) = prepared()
+        session.bindPlace(ticket, place)
+        val original = status(nativeToken = "original")
+        val unowned = original.copy(nativeReviewToken = "pre-existing")
+        session.noteNativeResult(ticket, LocalAddResult.AddedStopped(original), place)
+        assertEquals(UniversalAddCoordinator.Readback.EXACT_SESSION_CONFIRMED,
+            session.reconcileInventory(listOf(unowned), 11_000L))
+        assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED,
+            session.coordinator.phase)
+
+        assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
+            session.reconcileInventory(emptyList(), 12_000L))
+        assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+            session.coordinator.phase)
+        assertFalse(session.finishReviewedAttempt())
+        assertSame(ticket, session.attemptedTicket)
+        assertNull("Missing session cannot authorize a second phone Add",
+            session.coordinator.beginSubmission(12_001L))
+        assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
+            session.reconcileInventory(listOf(unowned), 11_500L))
+        assertEquals(UniversalAddCoordinator.Readback.EXACT_SESSION_CONFIRMED,
+            session.reconcileInventory(listOf(unowned), 13_000L))
+        assertTrue(session.finishReviewedAttempt())
+    }
+
     @Test fun duplicateHashInNewerAcceptedInventoryRevokesPriorStartUnverifiedAcknowledgement() {
         val (session, ticket) = prepared(start = true)
         session.bindPlace(ticket, place)
