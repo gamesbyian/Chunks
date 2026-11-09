@@ -161,6 +161,17 @@ class RTorrentDisposableMutationTest {
                 kotlinx.coroutines.delay(250L)
         }
         assertEquals(RemoteAddOutcome.VerifiedStopped(hash, expectedRoot), readback)
+        // The same real daemon proves both sides of the contradiction contract:
+        // a correct reviewed Place cannot be revoked; an independently
+        // reviewed, different parent must give a stable wrong-Place witness.
+        assertNull("Matching genuine rTorrent root cannot contradict an Add",
+            rtorrent.readExactAddContradiction(plan))
+        val otherParent = target + "/not-the-reviewed-place"
+        val differentPlan = StoppedRemoteAddPlan.fromMagnet(
+            "magnet:?xt=urn:btih:$hash", otherParent)
+        assertEquals("Real multi-file directory is a stable exact-job contradiction",
+            RemoteAddContradiction.WRONG_PLACE,
+            rtorrent.readExactAddContradiction(differentPlan))
     }
 
     @Test fun exactHashSessionEraseWorksOnDisposableRealEngineWithoutDeletingPayload() = runBlocking {
@@ -218,6 +229,12 @@ class RTorrentDisposableMutationTest {
         assertEquals("After verified disappearance, duplicate erase must issue no write",
             SessionEraseOutcome.AlreadyAbsent(hash),
             rtorrent.eraseFromSession(hash, present.name, present.directory))
+        // Two corroborated exact absent hash/name getter rounds, after the
+        // already-verified job-only removal, never repeat d.erase or load.
+        val originalPlan = StoppedRemoteAddPlan.fromMagnet(
+            "magnet:?xt=urn:btih:$hash", target)
+        assertEquals(RemoteAddContradiction.ABSENT,
+            rtorrent.readExactAddContradiction(originalPlan))
         assertArrayEquals("Session removal must not delete or change the payload bytes",
             original, Files.readAllBytes(payload))
     }
