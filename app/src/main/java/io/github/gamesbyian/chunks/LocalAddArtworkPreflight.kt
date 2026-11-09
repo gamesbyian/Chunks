@@ -12,7 +12,8 @@ import java.io.File
  * write; this function never adds, starts, retries or cleans up a torrent.
  */
 internal sealed interface LocalAddArtworkPreflight {
-    data class Ready(val folder: File) : LocalAddArtworkPreflight
+    // Avoid data-class toString(): a private download Place is not diagnostic text.
+    class Ready(val folder: File) : LocalAddArtworkPreflight
     data object InvalidPlace : LocalAddArtworkPreflight
     data object PreferenceNotSaved : LocalAddArtworkPreflight
 }
