@@ -19,18 +19,48 @@ internal sealed interface ExternalAddSource {
         fun fromIntent(intent: Intent?): ExternalAddSource? {
             SharedTorrentDocument.fromIntent(intent)?.let { return TorrentDocument(it) }
 
-            // A SEND containing an explicit document URI is one document
-            // handoff, even if its grant, MIME or URI list is unusable.
-            // Never silently substitute incidental EXTRA_TEXT (including a
-            // magnet) after the document gate rejected an ambiguous source.
-            if (intent?.action == Intent.ACTION_SEND &&
-                (intent.hasExtra(Intent.EXTRA_STREAM) ||
-                    intent.clipData?.let { clip ->
-                        (0 until clip.itemCount).any { clip.getItemAt(it).uri != null }
-                    } == true)) return null
+            if (intent?.action == Intent.ACTION_SEND) {
+                // An explicit EXTRA_STREAM is a document handoff even when its
+                // grant/MIME is malformed. Never reinterpret it as a magnet.
+                if (intent.hasExtra(Intent.EXTRA_STREAM)) return null
+                val clip = intent.clipData
+                // Multiple sources are ambiguous even when their URI entries
+                // are accompanied by a plausible EXTRA_TEXT magnet.
+                if (clip != null && clip.itemCount != 1) return null
+                val item = clip?.getItemAt(0)
+                val sharedUri = item?.uri
+                if (sharedUri != null) {
+                    // Browsers may send a magnet as a URI-list ClipData item,
+                    // not EXTRA_TEXT. Accept only that scheme, never a
+                    // rejected content:// document or an HTTP(S) document URI.
+                    val magnet = schemeNormalizedMagnet(sharedUri.toString()) ?: return null
+                    // A single item may supply parallel text representations.
+                    // They must identify the *same exact source*: comparing
+                    // only btih would lose tracker/passkey and source intent.
+                    val embeddedText = item.text?.toString()?.trim()
+                    if (!embeddedText.isNullOrEmpty() &&
+                        schemeNormalizedMagnet(embeddedText) != magnet) return null
+                    if (intent.hasExtra(Intent.EXTRA_TEXT)) {
+                        val explicitText = runCatching {
+                            intent.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString()
+                        }.getOrNull() ?: return null
+                        if (schemeNormalizedMagnet(explicitText) != magnet) return null
+                    }
+                    return Magnet(magnet)
+                }
+            }
 
             ExternalMagnetInput.fromIntent(intent)?.let { return Magnet(it) }
             return null
+        }
+
+        /** Only the URI scheme is normalized; the complete private query is untouched. */
+        private fun schemeNormalizedMagnet(value: String): String? {
+            val candidate = value.trim()
+            if (candidate.length > MagnetDraftCheck.MAX_LENGTH ||
+                !candidate.startsWith("magnet:?", ignoreCase = true)) return null
+            return "magnet:?" + candidate.substring("magnet:?".length)
+        }
         }
     }
 }
