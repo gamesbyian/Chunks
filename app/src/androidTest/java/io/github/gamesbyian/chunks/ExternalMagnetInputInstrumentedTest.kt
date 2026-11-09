@@ -30,6 +30,35 @@ class ExternalMagnetInputInstrumentedTest {
             Intent(Intent.ACTION_VIEW, Uri.parse(magnet))))
     }
 
+    @Test fun mixedCaseMagnetSchemeReachesAddWithoutChangingQueryOrTrackerText() {
+        val mixed = "MAGNET:?XT=URN:BTIH:" + "A".repeat(40) +
+            "&Dn=Mixed%20case&tr=https%3A%2F%2Fexample.org%2Fannounce%3Ftoken%3Dfixture"
+        val expected = "magnet:?" + mixed.substring("magnet:?".length)
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, SpannableString(" $mixed "))
+        }
+        assertEquals(expected, ExternalMagnetInput.fromIntent(send))
+        assertEquals(expected, ExternalMagnetInput.fromIntent(
+            Intent(Intent.ACTION_VIEW, Uri.parse(mixed))))
+        assertEquals(ExternalAddSource.Magnet(expected),
+            ExternalAddSource.fromIntent(send))
+        // The handoff normalizes only the scheme: the existing Add validator
+        // still checks the real hash and other fields before user confirmation.
+        assertEquals("magnet:?", expected.take("magnet:?".length))
+        assertEquals(expected.substring("magnet:?".length),
+            mixed.substring("magnet:?".length))
+
+        // A malformed magnet still reaches the visible Add review/error state
+        // instead of being silently dropped by intake.
+        val incomplete = "MAGNET:?xt=urn:btih:abc"
+        assertEquals("magnet:?xt=urn:btih:abc",
+            ExternalMagnetInput.fromIntent(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, incomplete)
+            }))
+    }
+
     @Test fun unrelatedOrOversizedSharesNeverBecomeMagnetDrafts() {
         assertNull(ExternalMagnetInput.fromIntent(
             Intent(Intent.ACTION_SEND).putExtra(Intent.EXTRA_TEXT, "https://example.test")))
