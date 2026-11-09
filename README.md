@@ -1,4 +1,7 @@
 <p align="center">
+
+> **Current next-push product direction (2026-11-09):** A single canonical Transfers list and full Details route for All/device/server scopes, one-row always-present Transfers / + Add / Connections / Options footer, and compact two/three-across action groups. Automatic media/artwork is globally enabled by default as a **preference**, requires separate consent before online provider calls, and has an Add-only per-job checkbox (default on when global feature enabled), never an ongoing Details toggle. These are owner-approved requirements, **not shipped feature claims**. See [current next-push reconciliation](docs/NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md), [work queue](docs/WORK-QUEUE.md), and [coverage](docs/SPEC-COVERAGE.md).
+
   <img src="docs/design/approved/chunks-app-icon-readme-black.svg" alt="Chunks app icon" width="220">
 </p>
 
