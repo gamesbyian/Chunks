@@ -57,6 +57,25 @@ class VerifiedAddRecheckWitnessTest {
             .forEach { assertFalse(shouldProbeContradictoryRecheck(it)) }
     }
 
+    @Test fun incompleteReadCannotHideExistingSessionAcknowledgement() {
+        val hash = "a".repeat(40)
+        assertTrue(canCloseRemoteAddReview(UniversalAddCoordinator.Phase.SESSION_CONFIRMED,
+            verifiedHash = null, uncertain = true))
+        assertTrue(canCloseRemoteAddReview(
+            UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
+            verifiedHash = null, uncertain = true))
+        assertFalse(canCloseRemoteAddReview(UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+            verifiedHash = hash, uncertain = false))
+        assertFalse(canCloseRemoteAddReview(UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN,
+            verifiedHash = hash, uncertain = false))
+        assertFalse(canCloseRemoteAddReview(UniversalAddCoordinator.Phase.VERIFIED,
+            verifiedHash = null, uncertain = false))
+        assertTrue(canCloseRemoteAddReview(UniversalAddCoordinator.Phase.VERIFIED,
+            verifiedHash = hash, uncertain = false))
+        assertFalse(canCloseRemoteAddReview(UniversalAddCoordinator.Phase.VERIFIED,
+            verifiedHash = hash, uncertain = true))
+    }
+
     @Test fun newerExactAbsenceRevokesPreviousSessionWithoutRearmingAdd() {
         val (state, ticket) = confirmed()
         assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,

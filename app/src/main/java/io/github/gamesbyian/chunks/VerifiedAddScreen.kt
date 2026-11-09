@@ -900,9 +900,11 @@ fun VerifiedAddScreen(
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-        if (registeredStartUnverified ||
-            (verifiedHash != null &&
-                (exactSessionConfirmed || (addedByThisAttempt && !uncertain)))) item {
+        // The coordinator's proven session phase is authoritative. An
+        // inconclusive Recheck may clear the screen's navigation hash, but
+        // cannot revoke the earlier acknowledgment; only a newer accepted
+        // exact-session contradiction can do that.
+        if (canCloseRemoteAddReview(draft.coordinator.phase, verifiedHash, uncertain)) item {
             OutlinedButton(onClick = {
                 val oldSource = draft.attemptSource
                 // The single explicit click acknowledges a confirmed session
@@ -1198,3 +1200,16 @@ internal fun shouldProbeContradictoryRecheck(
     phase: UniversalAddCoordinator.Phase
 ): Boolean = phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED ||
     phase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED
+
+/** The coordinator's proven phase owns acknowledgment eligibility, even if
+ * a newer *incomplete* read cannot refresh a presentation-only navigation hash. */
+internal fun canCloseRemoteAddReview(
+    phase: UniversalAddCoordinator.Phase,
+    verifiedHash: String?,
+    uncertain: Boolean
+): Boolean = when (phase) {
+    UniversalAddCoordinator.Phase.SESSION_CONFIRMED,
+    UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> true
+    UniversalAddCoordinator.Phase.VERIFIED -> verifiedHash != null && !uncertain
+    else -> false
+}
