@@ -490,9 +490,19 @@ internal class MainActivityRealMagnetJourney(
                     combinedDetailsVerified = true
                 }
                 lifecycle(hash, false)
+                // Stop is authorized only for this verified hash. It must
+                // retain the user-reviewed remote Place and metadata name.
+                val stoppedRow = requireNotNull(row(hash))
+                assertEquals("Stop altered reviewed remote Place", payload.directory, stoppedRow.directory)
+                assertEquals("Stop altered registered transfer name", preview.name, stoppedRow.name)
                 stage(label, "stopped")
                 val stopped = readOnly { remote.readTrafficSample(hash) }
                 lifecycle(hash, true)
+                // A successful Start readback cannot justify silently moving
+                // the existing payload or replacing this exact session.
+                val restartedRow = requireNotNull(row(hash))
+                assertEquals("Restart altered reviewed remote Place", payload.directory, restartedRow.directory)
+                assertEquals("Restart altered registered transfer name", preview.name, restartedRow.name)
                 if (!publicDiscovery) controller("/$label/resume", source.listenPort)
                 val completeBeforeRestart = publicDiscovery && stopped.verifiedBytes == stopped.expectedBytes
                 if (!completeBeforeRestart) await(90, "progress before restart") {
