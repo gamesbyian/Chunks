@@ -82,7 +82,7 @@ class RealTmdbMovieArtworkTest {
             Triple(remote, "Hackers.1995.1080p.BluRay.x264-TEST.mkv", 1995))
         val first = controller()
         // This request is from the full authorized inventory, before any row or Details is composed.
-        first.enrichInventory(movies.map { it.first to it.second }) { it == local || it == remote }
+        first.enrichInventory(movies.map { it.first to it.second })
         val persisted = FileTransferMediaAssignmentStore(File(dir, "assignments.json"))
         for ((id, title, year) in movies) {
             val a = requireNotNull(persisted.get(id)) { "Expected a persisted provider assignment" }
