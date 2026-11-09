@@ -67,7 +67,7 @@ class TransferRowArtworkTest {
     @get:Rule val rule = createComposeRule()
 
     private val clock = FakeClock()
-    private var settings = MediaPrivacySettings(onlineLookupConsent = true)
+    private var settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
     private val dir: File = Files.createTempDirectory("row-media").toFile()
     private val hash = "c".repeat(40)
     private val name = "Babylon.5.S02E07.Soul.Mates.1080p.WEB-DL.mkv"
