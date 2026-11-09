@@ -30,12 +30,15 @@ internal fun CombinedAddActions(
     serverHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
     /** Never pass raw magnet, document URI or private tracker URLs into the selector. */
     pendingSharedMagnet: Boolean = false,
+    /** The shared text source is an HTTPS .torrent URL, not a magnet. */
+    pendingSharedLink: Boolean = false,
     pendingSharedTorrent: Boolean = false,
     readingSharedTorrent: Boolean = false,
     sharedTorrentError: String? = null
 ) {
     val sharedKind = when {
         pendingSharedTorrent -> ".torrent"
+        pendingSharedLink -> "torrent link"
         pendingSharedMagnet -> "magnet"
         else -> null
     }
