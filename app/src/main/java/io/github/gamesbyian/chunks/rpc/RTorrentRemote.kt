@@ -1199,8 +1199,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(expectedName.isNotBlank() && expectedDirectory.startsWith("/")) {
             "Invalid reviewed transfer identity"
         }
+        // A magnet's metadata-only session can briefly disappear while
+        // rTorrent replaces it. One unknown-hash reply is not proof that a
+        // prior Remove completed. Confirm absence with a fresh exact read;
+        // never use this observation to replay an uncertain mutation.
+        suspend fun independentlyConfirmAbsence(): SessionEraseRecheck {
+            kotlinx.coroutines.delay(350L)
+            return if (sessionContainsExactHash(hash)) SessionEraseRecheck.Unavailable
+                else SessionEraseRecheck.Absent
+        }
         return try {
-            if (!sessionContainsExactHash(hash)) return SessionEraseRecheck.Absent
+            if (!sessionContainsExactHash(hash)) return independentlyConfirmAbsence()
             val currentName = lookupName(hash)
             if (currentName == null) {
                 // The job disappeared between d.hash and d.name. A different
@@ -1208,11 +1217,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 // again before calling the old review absent. A fresh positive
                 // identity is uncertain, never proof that the old one is gone.
                 return if (sessionContainsExactHash(hash)) SessionEraseRecheck.Unavailable
-                else SessionEraseRecheck.Absent
+                else independentlyConfirmAbsence()
             }
             val currentDirectory = call("d.directory", listOf(hash)) as? String
                 ?: return SessionEraseRecheck.Unavailable
-            if (!sessionContainsExactHash(hash)) return SessionEraseRecheck.Absent
+            if (!sessionContainsExactHash(hash)) return independentlyConfirmAbsence()
             if (currentName == expectedName && currentDirectory == expectedDirectory)
                 SessionEraseRecheck.PresentMatching
             else SessionEraseRecheck.Changed
