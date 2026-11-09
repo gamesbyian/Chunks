@@ -1,57 +1,10 @@
 # Chunks documentation index
 
-> **CURRENT DOCUMENTATION AUTHORITY · 2026-11-09:** [binding 2026-11-09 next-push UX reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) records new owner decisions, the five open PRs at audited main `0a1e7a4d`, scoped implementation ownership and exact-head acceptance. It supersedes contradictory old layout and per-transfer artwork-toggle placement instructions, **not historical test evidence**. Read it alongside [WORK-QUEUE](WORK-QUEUE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md). Recheck live heads before acting.
+**Start work in this order:** [AGENTS](../AGENTS.md) → [WORK-QUEUE](WORK-QUEUE.md) → [NEXT-PUSH-HANDOFF](NEXT-PUSH-HANDOFF-2026-11-08.md) → [AGENT-LANES](AGENT-LANES.md) → [SPEC-COVERAGE](SPEC-COVERAGE.md). Consult [QUALITY-LEDGER](QUALITY-LEDGER.md) for evidence, **never as a second task queue**.
 
+**Product instructions:** [PRODUCT](PRODUCT.md) · [UX](UX.md) · [ARCHITECTURE](ARCHITECTURE.md) · [SECURITY](SECURITY.md) · [DECISIONS](DECISIONS.md). The [owner-approved unified UX/media requirements](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) specify the single-row footer, All/device/server list parity, Add-only metadata choice and automatically applied artwork, while [OPTIONS](OPTIONS-INFORMATION-ARCHITECTURE.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) and [SMART-ROUTING](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) govern the domain specifics.
 
-> **Next development push:** [2026-11-08 source-exact integration handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) provides current open-PR topology, evidence and the agent restart order. This status pointer supersedes older dated LIVE checkpoint labels; normative feature contracts below remain authoritative.
-
-
-**Live product entry point (2026-11-07, merged main `29e37bf`):** Shared Universal Add and job-only Move now include [#1395](https://github.com/gamesbyian/Chunks/pull/1395) cancellation-safe mutation leases, [#1398](https://github.com/gamesbyian/Chunks/pull/1398) exact-account alias isolation and [#1397](https://github.com/gamesbyian/Chunks/pull/1397) read-only orphaned uncertain Move recovery. Review [one executable queue](WORK-QUEUE.md), [quality ledger](QUALITY-LEDGER.md), [coverage map](SPEC-COVERAGE.md) and [source-matched debug Preview](BUILD.md) for precise SHA, test tier and remaining work; [installed real peer/piece run](https://github.com/gamesbyian/Chunks/actions/runs/42431717253) is green on a checkout whose tree equals previously qualified main `39b030b` (before #1399). [#1399](https://github.com/gamesbyian/Chunks/pull/1399) Smart Seeding private/public metadata admission has passed six checks and merged as `29e37bf`. No payload Move, automatic replay of uncertain removals, physical Pixel/TalkBack/protected provider or publisher-signed release is claimed.
-
-**Historical Universal Add entry point (2026-11-07, verified main `c263e13`):** The shared Universal Add phone Confirm and Activity-retained attempt session are integrated after [#1363](https://github.com/gamesbyian/Chunks/pull/1363) and [#1370](https://github.com/gamesbyian/Chunks/pull/1370). The assembled production tree passed seven source-bound workflows, including real installed phone and disposable authenticated rTorrent peer/piece journeys. See the [evidence ledger](QUALITY-LEDGER.md) and [coverage map](SPEC-COVERAGE.md) for exact SHA, checks, original failed attempts and limitations; the [debug Preview and checksum artifact](https://github.com/gamesbyian/Chunks/actions/runs/42346102497/artifacts/13563756936) is **not** a publisher-signed release or physical handset acceptance. Recheck live main and PRs before acting on this dated pointer.
-
-**Work from one authoritative path:** [AGENTS](../AGENTS.md) → [WORK-QUEUE](WORK-QUEUE.md) → [QUALITY-LEDGER](QUALITY-LEDGER.md) / [SPEC-COVERAGE](SPEC-COVERAGE.md) → applicable [PRODUCT](PRODUCT.md), [UX](UX.md), [ARCHITECTURE](ARCHITECTURE.md), [SECURITY](SECURITY.md) and capability contract. The next independent gates include owner Pixel/OEM/TalkBack feedback, process-death/source-intake edge cases, then verified job-only Move and Smart Routing. Do not infer active agent leases from completed handoffs or build a second Add executor, transport or data-moving Move.
-
-**Historical entrypoints:** The [November 6 reconciliation audit](RECONCILIATION-AUDIT-2026-11-06.md), [integration execution handoff](INTEGRATION-EXECUTION-HANDOFF-2026-11-06.md) and prior [UX handoff](UX-FINAL-RECONCILIATION-2026-11-05.md) preserve their dated evidence and former candidate order, not current scheduling authority. The [documentation standard](DOCUMENTATION-STANDARD.md) governs any further reconciliation. The [remote-backend adapter contract](REMOTE-BACKEND-ADAPTERS.md) and [licensing policy](LICENSING-AND-ATTRIBUTION.md) remain approved future architecture, subordinate to current rTorrent reliability and shared UX gates.
-
-**Immediate-apply preferences (owner-approved 2026-11-05):** The [Options interaction contract](OPTIONS-INFORMATION-ARCHITECTURE.md#immediate-apply-interaction-contract-owner-approved-2026-11-05) establishes one-interaction persistent choices throughout Chunks, with narrow composite remote configuration and consequential-action exceptions. Ordinary settings never require Save/Apply/Done.
-
-
-**Centralized Options (owner-approved 2026-11-05):** [Canonical Options information architecture](OPTIONS-INFORMATION-ARCHITECTURE.md) defines eight settings destinations, global versus contextual scope, settings search, local-client access protection, media/rule dependencies and staged consolidation. This is organizational UX authority, not a second priority queue or evidence of implementation.
-
-
-**Future multi-client remote control (approved, deferred):** [Canonical adapter architecture and integration plan](REMOTE-BACKEND-ADAPTERS.md) covers rTorrent-preserving extraction, protocol differences, Transmission/qBittorrent/Deluge staging, capability matrix, shared UX/rules/routing, conformance and real-host acceptance. [Free distribution and attribution policy](LICENSING-AND-ATTRIBUTION.md) records the owner's nonproprietary/public-domain intent and mandatory third-party license audit. Neither document authorizes new adapters ahead of the existing rTorrent reliability and UX architecture priorities; the sole executable work queue remains [WORK-QUEUE](WORK-QUEUE.md).
-
-
-**Owner UX direction (2026-11-05):** [Cohesive UX and automatic artwork campaign](UX-COHESION-AND-AUTO-ARTWORK-2026-11-05.md) governs the next holistic UI reorganization and automatic enrichment. Existing SVG drafts are approved for development; optical fidelity can be refined iteratively. Earlier 'next' pointers are dated status snapshots, not overrides of this owner direction.
-
-
-
-
-- [Future artwork sharing dependency](TRANSFER-SHARING.md#deferred-chunks-to-chunks-artwork-and-metadata-accompaniment-owner-direction-2026-11-04): portable custom artwork with Chunks transfers, explicitly gated on prior artwork/metadata decisions and acceptance.
-
-
-**Current UX entry point:** [Reconciled UX handoff](UX-FINAL-RECONCILIATION-2026-11-05.md) records completed HTTPS-link transfers and scoped phone destinations in merged #1301, the immutable qualified source/APK, and the remaining physical/human/provider gates. [WORK-QUEUE](WORK-QUEUE.md) is the sole executable queue; the [73-candidate trace](UX-73-CANDIDATE-TRACE-2026-11-03.md) is coverage, not a list of missing implementations. No old file leases or dated agent rosters survive.
-
-- [Recency-preserving transfer progress chunks](TRANSFER-PROGRESS-CHUNKS.md): owner-approved proportional, bounded, chronological progress segments, oldest-first coalescing, smaller rounded-rectangle corners, visual/accessibility behaviour and acceptance; source merged in #1251; installed dynamic pixel geometry verified in #1252, while owner-phone/TalkBack review remains.
-
-- [Transfer sharing](TRANSFER-SHARING.md): planned local/rTorrent magnet share/copy and conditional verified `.torrent` export, including acceptance.
-- [Expository file associations](EXPOSITORY-FILE-ASSOCIATIONS.md): planned opt-in, scoped read-only seedbox file-membership feed for Expository Transfer.
-
-
-- [Shared name/media identity and Similar Transfers](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md): normative lossless normalization, cached cross-media entity/credit graph, issue-level collections, related-transfer ranking, per-environment UX and staged test gates (pure model groundwork merged; end-user feature planned).
-- [Media metadata provider registry](MEDIA-PROVIDER-REGISTRY.md): dated research on open/free providers, real API fields, authentication, quotas, licensing, fallbacks and integration approval gates; not provider approval or implementation proof.
-
-- [External destination delivery](EXTERNAL-DESTINATION-DELIVERY.md): optional verified local-torrent delivery to Google Drive/SAF or independently authorized FTP-family storage, staged copy, recovery and no implicit cloud seeding (planned).
-
-
-The [documentation architecture and authoring standard](DOCUMENTATION-STANDARD.md) defines the authority of each document and how agents maintain it. This index is navigation, **not another specification**.
-
-- [73-item UX implementation coverage trace (2026-11-03)](UX-73-CANDIDATE-TRACE-2026-11-03.md): stable candidate numbers, observed source coverage and exact PR references; dated trace only, not a second work queue or acceptance authority.
-
-**Start UX work with [the canonical interaction contract](UX.md)**: shared philosophy and state grammar → navigation/Add/transfers/files/privacy/accessibility journeys → focused feature contracts. The [2026-10-30 UX integration audit](UX-INTEGRATION-AUDIT-2026-10-30.md) records contradictions, migration coverage and overlapping PR reconciliation; it is an audit receipt, not a second UX authority.
-
-- [Add source intake: URL, clipboard, Android handoff](ADD-SOURCE-INTAKE.md): owner-approved single Add flow for magnet/local/remote `.torrent` sources, safe HTTPS fetch and clipboard prefill; installed phone/real-rTorrent Add and piece progression qualified in #1301, with physical/provider boundaries explicit.
+**Historical reference only:** [previous Work Queue](WORK-QUEUE-HISTORY-2026-11-09.md), [previous Spec Coverage](SPEC-COVERAGE-HISTORY-2026-11-09.md), [previous Agent Lanes](AGENT-LANES-HISTORY-2026-11-09.md), [previous Next Push](NEXT-PUSH-HANDOFF-HISTORY-2026-11-08.md), [quality receipts](QUALITY-LEDGER.md). These contain dated heads and retrospectives, not current assignments. Keep implementation plans imperative and move chronological logs here or to a new dated history file.
 
 ## Agent entry points
 
