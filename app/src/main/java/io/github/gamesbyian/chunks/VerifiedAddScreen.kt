@@ -900,9 +900,11 @@ fun VerifiedAddScreen(
                 style = MaterialTheme.typography.bodyMedium
             )
         }
-        if (registeredStartUnverified ||
-            (verifiedHash != null &&
-                (exactSessionConfirmed || (addedByThisAttempt && !uncertain)))) item {
+        // The coordinator's proven session phase is authoritative. An
+        // inconclusive Recheck may clear the screen's navigation hash, but
+        // cannot revoke the earlier acknowledgment; only a newer accepted
+        // exact-session contradiction can do that.
+        if (canCloseRemoteAddReview(draft.coordinator.phase, verifiedHash, uncertain)) item {
             OutlinedButton(onClick = {
                 val oldSource = draft.attemptSource
                 // The single explicit click acknowledges a confirmed session
@@ -930,6 +932,9 @@ fun VerifiedAddScreen(
                         rechecking = true
                         progressRevision++
                         val ticket = requireNotNull(draft.attemptTicket)
+                        val priorConfirmedHash = if (draft.coordinator.phase ==
+                            UniversalAddCoordinator.Phase.SESSION_CONFIRMED)
+                            verifiedHash else null
                         scope.launch {
                             try {
                                 val adapter = RemoteUniversalAddAdapter(remote)
@@ -995,7 +1000,32 @@ fun VerifiedAddScreen(
                                         if (draft.coordinator.phase ==
                                             UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED)
                                             outcome = "The exact server job and Place are confirmed, but requested Start is unverified. You may explicitly acknowledge this incomplete result; no Add or Start was resent."
-                                    } else draft.coordinator.requireReadback(ticket)
+                                    } else {
+                                        // A newer authenticated exact-job read
+                                        // can contradict an unacknowledged
+                                        // positive CTA. Catalog absence, stale
+                                        // status and read errors cannot.
+                                        val earlier = draft.coordinator.phase
+                                        if (shouldProbeContradictoryRecheck(earlier)) {
+                                            // This timestamp precedes this
+                                            // individual RPC read, so delayed
+                                            // completions retain true read order.
+                                            val witnessReadStartedAt = System.currentTimeMillis()
+                                            val witness = adapter.contradictoryExactSession(
+                                                ticket, observedAtEpochMillis = witnessReadStartedAt)
+                                            if (witness != null) {
+                                                draft.coordinator.reconcileExactSession(ticket, witness)
+                                                if (draft.coordinator.phase != earlier) {
+                                                    verifiedHash = null
+                                                    uncertain = true
+                                                    outcome = if (!witness.registered)
+                                                        "A newer authenticated exact-job read confirms this hash is absent from the reviewed server. The earlier session acknowledgment is no longer available. No Add or Start was resent."
+                                                    else
+                                                        "A newer authenticated exact-job read found this hash at a different destination. The earlier session acknowledgment is no longer available. No Add or Start was resent."
+                                                }
+                                            } else draft.coordinator.requireReadback(ticket)
+                                        } else draft.coordinator.requireReadback(ticket)
+                                    }
                                 }
                             } catch (cancel: kotlinx.coroutines.CancellationException) {
                                 throw cancel
@@ -1005,6 +1035,20 @@ fun VerifiedAddScreen(
                                 uncertain = true
                                 outcome = "Could not read server state. The earlier Add might have applied; inspect the transfer list before retrying."
                             } finally {
+                                // A failed, stale or incomplete Recheck cannot
+                                // silently remove the previous acknowledgment.
+                                // Only the coordinator may revoke that proof
+                                // after accepting a newer exact-job witness.
+                                if (draft.attemptTicket === ticket && verifiedHash == null) {
+                                    val retained = retainedAcknowledgedHash(
+                                        verifiedHash, priorConfirmedHash, draft.coordinator.phase)
+                                    if (retained != null) {
+                                        verifiedHash = retained
+                                        outcome = outcome.orEmpty() +
+                                            " Previous exact-session confirmation is retained; " +
+                                            "you may acknowledge it without resending Add or Start."
+                                    }
+                                }
                                 rechecking = false
                                 onComplete()
                             }
@@ -1165,4 +1209,34 @@ internal suspend fun pollRemoteAddReadOnlyProgress(
         if (status != null) onFresh(status)
         kotlinx.coroutines.delay(intervalMillis)
     }
+}
+
+/** A negative exact-job witness is useful only to revoke a positive,
+ * not-yet-acknowledged session readback. No source, account or RPC state here. */
+internal fun shouldProbeContradictoryRecheck(
+    phase: UniversalAddCoordinator.Phase
+): Boolean = phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED ||
+    phase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED
+
+/** The coordinator's proven phase owns acknowledgment eligibility, even if
+ * a newer *incomplete* read cannot refresh a presentation-only navigation hash. */
+internal fun canCloseRemoteAddReview(
+    phase: UniversalAddCoordinator.Phase,
+    verifiedHash: String?,
+    uncertain: Boolean
+): Boolean = when (phase) {
+    UniversalAddCoordinator.Phase.SESSION_CONFIRMED -> verifiedHash != null
+    UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED -> true
+    UniversalAddCoordinator.Phase.VERIFIED -> verifiedHash != null && !uncertain
+    else -> false
+}
+
+/** Restores a prior confirmed exact-session hash after an inconclusive Recheck,
+ * but only if the existing coordinator STILL owns that positive confirmation. */
+internal fun retainedAcknowledgedHash(
+    current: String?,
+    previous: String?,
+    phase: UniversalAddCoordinator.Phase
+): String? = current ?: previous?.takeIf {
+    phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
 }
