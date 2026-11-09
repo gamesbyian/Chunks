@@ -44,7 +44,10 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Android intent-filter scheme matching is case-sensitive.
+                     Both spellings must reach the same normalized Add review. -->
                 <data android:scheme="magnet" />
+                <data android:scheme="MAGNET" />
             </intent-filter>
             <!-- Read-only external .torrent document handoff. The app never
                  starts a torrent until the existing Add review is confirmed. -->
