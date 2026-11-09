@@ -6,14 +6,14 @@
 
 Agent 5 must inspect current main SHA and Git tree, all open PR numbers, drafts, exact heads, merge bases, changed-file overlaps, every relevant workflow/job and its actual executed test receipts. Read the current [CI policy](CI-POLICY.md), [coverage gates](SPEC-COVERAGE.md), [QA ledger](QUALITY-LEDGER.md) and [owner UX/media contract](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). Treat #1442, #1443, #1444, #1449, #1450 and #1457 as discovery pointers, not assumed open or qualified work.
 
-## 2. Qualify #1457 before merging
+## 2. Protect merged brand identity on the assembled build
 
-Confirm four independent names: normal system/application/notifications **Chunks**; public full product **Chunks Torrent Client & Remote**; visual wordmark **chunks.**; debug labels **Chunks Preview** / **Chunks Magnet Preview**. Review source, merged manifest/resources, exact PR head and tested Git tree; require documentation, foundation, R8 and applicable real installed native evidence without red/skipped waiver. If native Add fails in unrelated QA, classify and repair/qualify it rather than treating branding as Android-accepted. Merging source metadata never publishes a Play listing or proves a tested APK.
+Use qualified #1457 source contract as the baseline: normal system/application/notifications **Chunks**; full public product **Chunks Torrent Client & Remote**; wordmark **chunks.**; debug previews **Chunks Preview** / **Chunks Magnet Preview**. Verify the **latest assembled** normal and preview APK merged manifests/resources; docs, foundation, R8 and native checks at old source heads do not verify the latest artifact bytes. Preserve historical first-red native focus receipts. Repository branding does not publish a Play listing.
 
 ## 3. Resolve the existing dependent failures without duplicate production edits
 
 - Agent 1 owns #1442 Options/IME and independent actual Combined contrast fixes, then #1454 presentation. Preserve native focus, API29 recreation, real magnet and all other executed red observations until corrected, including any applicable newly introduced regressions.
-- Agent 2 owns #1449 malformed Share extras and #1450 uppercase MAGNET VIEW resolver; keep well-typed source precedence, exact tracker query and explicit Add review. Qualify latest-head native resolver/Share identities, foundation, R8 and API29 as applicable.
+- Agent 2 treats qualified #1449 malformed Share and #1450 uppercase MAGNET VIEW as **merged**, preserves their source precedence/resolver tests and owns the still-open Add-only artwork choice #1453 and any newly observed intake defects. Qualify latest-head native resolver/Share identities, foundation, R8 and API29 as applicable.
 - Agent 3 owns #1444 typed 401/auth transport and the remote portion of #1443 read-only Recheck. Coordinate any presentation change with Agent 1; never retry remote writes or substitute accounts.
 - Agent 4 owns #1453 automatic recognition/provider/artwork. Coordinate the Add-only option with Agent 2 and poster states with Agent 1.
 - Agent 5 identifies each failure's first actual assertion and stage, investigates shared QA fixture failures once, demands exact-head repeats where necessary and merges only independent compatible qualified changes. Do not merge old stacked parents or infer green from a parent's receipt.
