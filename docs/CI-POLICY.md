@@ -10,6 +10,10 @@
 4. Preserve full native Add shard coverage and final verifier; never reduce test counts or skip a failing test to force green. Respect the case-count/receipt rules in [CI-EVIDENCE-AND-RUNTIME-CONTRACT](CI-EVIDENCE-AND-RUNTIME-CONTRACT.md).
 5. Genuine BitTorrent acceptance requires actual verified pieces/peer evidence in disposable authorized servers and installed phone clients. Server RPC ACKs, mock peers, started flags and cached size are insufficient. Protected host tests require the existing explicit authorization and secrets policy.
 
+## Shared native-focus failure diagnosis
+
+If the installed native Add shard reports `ClipboardUriIntakeInstrumentedTest.singleCopiedUriPrefillsButAmbiguousOrUnrelatedUrisNeverDo` at the **foreground window focus** precondition, preserve the executed failure. Inspect the actual focused window/activity and owning package, UI/system overlays, emulator API/startup and JUnit receipt before making a QA-only fixture change. Keep the explicit foreground requirement and all clipboard-source negative assertions; never skip the case, remove focus preconditions, or classify earlier red runs as green. Avoid separate speculative test patches in each production branch. A validated QA correction must run full native shards/verifier at the exact integrated source.
+
 ## Diagnose red CI before modifying a test
 
 - Identify exact tested SHA, workflow/run/attempt, stage, expected and executed case identity, last safe checkpoint and environmental preconditions. Distinguish checkout/build, emulator boot, fixture setup, assertions, network/auth/provider refusal and CI infrastructure faults.
