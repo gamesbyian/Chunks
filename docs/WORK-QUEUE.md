@@ -1,47 +1,55 @@
 # Chunks active work queue
 
-**Purpose:** Do the next work. This file must contain only ranked tasks, blockers, dependencies, owners, required actions, exit criteria and scope restrictions. Put PR outcomes, historical SHAs, failure narratives and test logs in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [archived work queue](WORK-QUEUE-HISTORY-2026-11-09.md). Do not prepend dated progress paragraphs. Recheck live state before acting.
+**Execute the next unblocked task.** This file contains ranked tasks, owners, blockers, dependencies and exits, not historical progress. Put run/PR narrative in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [work-queue history](WORK-QUEUE-HISTORY-2026-11-09.md). Re-fetch live main and all PR heads before acting. Follow [AGENT-LANES](AGENT-LANES.md) for five-lane file ownership.
 
-## 0. Reconcile current code and active PRs before touching production
+## G0. Source and naming gate (Agent 5)
 
-**Integrator (Agent 4):** Fetch live `main`, open PRs/heads/checks, issues and file overlaps. Record an ephemeral execution card, not an ongoing status essay. Inspect existing PRs #1442 (Options clipboard), #1443 (read-only remote contradiction Recheck), #1444 (typed 401 challenge), #1449 (malformed Share extras), #1450 (uppercase MAGNET VIEW); these numbers are **starting pointers**, not assertions that they remain open. Ask lane owners to repair observed failures and enable/execute required native and R8 checks on the new exact heads.
+**Action:** Review #1457 branding against exact head/tree and docs/foundation/R8/native checks. Preserve normal Android **Chunks**, full title **Chunks Torrent Client & Remote**, wordmark **chunks.**, and distinct debug previews. Investigate executed native failure instead of waiving it; merge only qualified current source. Record whether Play listing/installed APK actually exists.
 
-**Done when:** incompatible or obsolete stacks explicitly resolved; each merged PR has independent exact-head acceptance, no masked failed assertions and no cross-lane file conflict. Never merge because an earlier head was green. Preserve frozen Add source/environment/account/Place/Start and no blind retries.
+**Exit:** matching source, required executed checks green, no unaddressed native blocker, independent merge decision and truthful ledger receipt.
 
-## 1. Implement one canonical Transfers and full Details experience (P0, #1454)
+## G1. Resolve or supersede active incompatible PRs (Agents 1–3, qualified by Agent 5)
 
-**Agent 1, presentation/navigation:** Route All environments, Transfers on this device and any named server through one Combined-derived catalog, compact `CombinedTransferRow` and dedicated `UnifiedTransferDetailPanel`. Remove legacy inline `detailsOpen` card mechanics, retain complete advanced actions in full Details/menus. Environment selection must filter only, never grant command authority or silently switch accounts. Preserve search, list state, navigation, duplicate hashes, stale/locked status and saved-profile exact identity.
+**Action:** Reconcile #1442 Options clipboard, #1443 read-only Recheck, #1444 typed 401, #1449 malformed Share extras and #1450 uppercase MAGNET VIEW against *live* main, branch ancestry and source-head CI. Diagnose first genuine failures (including clipboard test foreground focus, real Combined contrast, API29/IME, magnet lifecycle). Have original lane owners fix product assertions; Agent 5 owns common QA/test isolation. Qualify Add resolver/Share on installed Android and remote auth on real disposable peers, with appropriate R8/foundation and full native verifier. Avoid merging obsolete stacks or duplicate fixes.
 
-**Done when:** installed All/device/server journeys use indistinguishable row mechanics, always open full Details and return preserving scope/scroll; real local and rTorrent actions remain reachable with correct auth/readback gating.
+**Exit:** each PR independently qualified and merged in compatible order, or explicitly blocked/superseded with an owner and exact failed proof; no real red test reclassified as green.
 
-## 2. Reclaim vertical space without sacrificing reachability (P0, #1454)
+## G2. Canonical transfer navigation and compact controls (Agent 1, #1454)
 
-**Agent 1, shared presentation:** Replace the stacked branch in `AuthenticatedTransfersFooter.kt` with a **single-row** persistent footer: **Transfers | + Add | Connections | Options**. Always operable from nested screens and with keyboard visible. Use compact icons **and** text labels. Group ordinary action buttons two per row, or three when short; use a shared responsive composable. Keep >=48dp-class touch targets, TalkBack and focus, readable 320/412dp and 200% text; avoid accidental destructive adjacency and hidden functions.
+**Action:** Make All/device/server scopes use one Combined-derived compact Transfers catalog, same dedicated full Details and consistent state after navigation/reconnect. Replace footer with exactly **one** four-destination row Transfers | + Add | Connections | Options and compact accessible two/three-across action groups everywhere appropriate. Preserve source/account identity, all operations, IME/TalkBack, 48dp touch targets and 320/412dp at 200% font.
 
-**Done when:** actual installed screenshots and interaction tests prove one-row navigation at normal/large type and all representative action groups have appropriate density; measured visible transfer content area increases. Do not silently clip buttons or replace labels with inaccessible icons.
+**Exit:** actual installed screenshots and actions show list/Details parity, preserved scope/scroll, one footer row, no legacy inline cards or clipped commands, and previously failed contrast/IME regressions pass.
 
-## 3. Correct automatic artwork preference placement and default (P0, #1453)
+## G3. Exact-job Add artwork preference (Agent 2, #1453)
 
-**Agent 2, shared Universal Add:** In **Options**, global collection/display preference is enabled by default. In **Add only**, show default-checked “Automatically identify and fetch artwork & metadata” when that global feature is enabled, otherwise hide it. Commit an explicit Add opt-out to the exact environment+hash using the existing coordinator and `prepareForAdd` boundary, with restart/Share/reconnect parity. Remove the toggle from active Details; leave manual `Change identification or artwork` and poster override there. Coordinate the visual seam with Agent 1 without concurrent shared-file edits.
+**Action:** Keep global automatic artwork collection/display enabled by default **as a local preference**, with separate explicit revocable third-party lookup consent. Show “Automatically identify and fetch artwork & metadata” checked by default **only on Add** while the global preference is enabled; hide otherwise and never show it in active Details. Persist user opt-out against the exact environment/hash through the existing sole Add coordinator. Preserve frozen source/Place/Start and all Share/Open With/clipboard precedence.
 
-**Done when:** checked/unchecked/hidden Add states and durable exact-job preference verified on phone and rTorrent; active Details has no checkbox, and opt-out never allows background provider requests. Global default-on is not implicit external-provider consent.
+**Exit:** installed local and remote Add show checked/unchecked/hidden states, exact-job opt-out survives restart/reconnect, negative consent requests remain zero, Details offers manual correction without checkbox.
 
-## 4. Make media recognition and artwork actually automatic (P0, #1453)
+## G4. Genuine automatic recognition and posters (Agent 4, #1453)
 
-**Agent 3, media/remote integration, coordinated with Agent 1 and 2:** Trace consent, global automation preference, metered/power-saver, provider eligibility/config, lookup cache/cooldown, observer authorization, offscreen inventory scheduling and poster fetch. Run bounded automatic enrichment for eligible authorized inventory at cold launch, connection restoration and newly observed jobs, not only on opened Details or composed list cards. Apply confident provider-backed matches, persist art and exact-instance overrides; never assert that a filename guess is provider verification. Surface informative paused/ambiguous/offline state without requiring an Identify button for normal flows.
+**Action:** Trace provider configuration, consent, confidence, network/power gates, lookup cache/cooldown, privacy and inventory observers before changing behavior. Enrich all eligible authorized local/rTorrent transfers in the background on startup/reconnect/inventory updates **including offscreen**; apply confident provider matches, real posters, persisted caches and exact-job overrides. Show pending/blocked/ambiguous/offline honestly, without forcing routine manual Identify.
 
-**Done when:** real consented lookup and artwork appear in All/device/server lists and full Details across restart/reconnect, while opt-outs, manual overrides, blocked networks and privacy-locked environments behave correctly. No private raw paths/passkeys or unsanctioned requests.
+**Exit:** actual consented provider/poster evidence appears and persists in all list scopes and full Details; exact-job exclusions and revoked consent prevent network lookup; ambiguous guesses never masquerade as verified matches.
 
-## 5. Qualify assembled daily-use APK, then integrate (P0)
+## G5. Remote integrity and exact-session lifecycle (Agent 3)
 
-**Agent 4, independent QA:** Run complete installed source → Add → Transfers → full Details → reconnect → Stop/Start → Remove with phone HTTPS and genuine disposable authenticated rTorrent. Include two-server Combined, duplicate-hash identity, exact Place/name, checked source SHA/tree, Android API29/35, narrow/large-font/IME accessibility and consented artwork. Verify actual independent peers/pieces and extracted tested APK bytes with SHA-256. Preserve red/skipped/aborted history and qualify latest merged source, not a previous preview.
+**Action:** After #1443/#1444, exercise authenticated numbered rTorrent routes, Add/readback, Start/Stop, priorities, Recheck, Remove / Remove and data, job-only Move, reconnect and uncertain write fencing on genuine disposable exact-job peers. Coordinate read-only errors with presentation. Never send blind retry, mutate a different account or delete source payload on Move.
 
-**Done when:** current integrated APK has a traceable tested-byte receipt, all required source-exact gates pass, issues and [SPEC-COVERAGE](SPEC-COVERAGE.md) are updated. Physical owner handset, protected production server, OEM/Doze, publisher signing and full manual accessibility remain distinct explicit gates.
+**Exit:** source-and-principal-exact installed/rTorrent positive and refusal/uncertainty proofs including verified pieces and controlled cleanup.
 
-## Invariants and sequencing
+## G6. Assembled daily-use acceptance and APK provenance (Agent 5)
 
-One universal Add submission authority, no competing database/executor, exact account and hash scoping, frozen source/Place/Start, read-only uncertain-write reconciliation, no blind mutation retries, explicit destructive confirmation, job-only Move never copies/deletes payload bytes, privacy locks before enrichment. Use existing reusable CI and fixtures; no broad workflow fan-out to bypass red tests. Workstreams 1–4 may overlap **only in separately owned files**, with Agent 4 controlling integration and documentation. See [agent ownership](AGENT-LANES.md), [CI policy](CI-POLICY.md), [security](SECURITY.md) and [current handoff](NEXT-PUSH-HANDOFF-2026-11-08.md).
+**Action:** Run source → Add → Transfers → Details → reconnect → Stop/Start → Remove through installed phone HTTPS and authenticated disposable real rTorrent peers, plus two-server same-hash identity. Verify independent piece/hash/source proof, exact Place, UI/IME/contrast, art consent, source SHA/Git tree and independently rehashed **actual installed APK bytes**. Keep API29/35 and owner Pixel/protected-server/signing tiers separate.
 
-## Deferred until P0 qualified
+**Exit:** all required source-exact installed gates pass and QUALITY-LEDGER records source/tree, run/case receipts, peer pieces, SHA-256/size of tested APK and known exclusions. A prior APK does not qualify updated main.
 
-Later remote backends, advanced Smart Routing, artwork sharing/export, broader media graph, specialized UI polish and publisher distribution must not displace current installed daily-use correctness. Re-rank only on an explicitly observed critical integrity/security defect.
+## G7. CI feedback efficiency and documentation (Agent 5)
+
+**Action:** Analyze repeat failure causes and runner time, reuse one build per compatible test cohort, retain the original full native shard coverage/verifier and never bypass red assertions. Keep AGENTS, work queue, lanes, spec coverage, CI policy and next-push strictly instructional; archive history separately.
+
+**Exit:** bounded measured CI savings or removed duplicate effort, no lost evidence, correct five-lane authority and instructions matching live product contracts.
+
+## Always binding
+
+One Add authority; source/account/environment/hash/Place/Start frozen through confirmation; read-only uncertain-write recovery; independent informed provider consent; explicit destructive approval; job-only Move retains payload. Shared production files have a single writer. Integrator alone makes independent merge decisions. Defer new backend/provider expansions until G0–G6 are product-qualified.
