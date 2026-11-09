@@ -71,6 +71,23 @@ class PhoneOptionsSearchTest {
         rule.onNodeWithText("Find peers without trackers · in Options").assertDoesNotExist()
     }
 
+    @Test fun clipboardPrefillLivesInCentralOptionsAndIsAbsentFromAdd() {
+        assertTrue(PhoneOptionsShortcut.CLIPBOARD_PREFILL in PhoneOptionsShortcut.search("clipboard"))
+        search("clipboard")
+        rule.onNodeWithText("Fill an empty Add source from the clipboard · in Options")
+            .performScrollTo().performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Fill in a copied magnet or torrent link when Add opens")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+            .assertIsDisplayed()
+        // Moving to Add must not repeat the durable opt-out beside its source.
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+            .assertDoesNotExist()
+    }
+
     @Test fun mediaResultOpensArtworkAndInfo() {
         search("artwork")
         rule.onNodeWithText("Artwork & media info").performScrollTo().performClick()
