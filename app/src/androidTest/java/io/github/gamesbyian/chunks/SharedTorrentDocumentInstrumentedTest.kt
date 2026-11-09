@@ -136,6 +136,47 @@ class SharedTorrentDocumentInstrumentedTest {
             }))
     }
 
+    @Test fun invalidDocumentSharesCannotSilentlyBecomeIncidentalMagnetDrafts() {
+        val first = document(goodBytes)
+        val second = Uri.parse("content://fixture.documents/download/another.torrent")
+        val magnet = "magnet:?xt=urn:btih:" + "b".repeat(40)
+        val conflicting = Intent(Intent.ACTION_SEND).apply {
+            type = "application/x-bittorrent"
+            putExtra(Intent.EXTRA_STREAM, first)
+            clipData = android.content.ClipData.newUri(
+                context.contentResolver, "other torrent", second)
+            putExtra(Intent.EXTRA_TEXT, magnet)
+        }
+        assertNull("Conflicting documents must not fall through to shared text",
+            ExternalAddSource.fromIntent(conflicting))
+
+        val multiple = android.content.ClipData.newUri(
+            context.contentResolver, "first torrent", first).apply {
+            addItem(android.content.ClipData.Item(second))
+        }
+        assertNull(ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
+            type = "application/x-bittorrent"
+            clipData = multiple
+            putExtra(Intent.EXTRA_TEXT, magnet)
+        }))
+
+        assertNull("An explicitly shared document with the wrong MIME is refused",
+            ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
+                type = "application/pdf"
+                putExtra(Intent.EXTRA_STREAM, first)
+                putExtra(Intent.EXTRA_TEXT, magnet)
+            }))
+
+        // A genuine text share must still work when Android also supplies
+        // text-only ClipData; there is no competing document URI.
+        assertEquals(ExternalAddSource.Magnet(magnet),
+            ExternalAddSource.fromIntent(Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                clipData = android.content.ClipData.newPlainText("magnet", magnet)
+                putExtra(Intent.EXTRA_TEXT, magnet)
+            }))
+    }
+
     @Test fun grantedDocumentUsesExistingStrictV1MetainfoParserOnly() {
         val uri = document(goodBytes)
         val result = SharedTorrentDocument.read(context.contentResolver, uri)
