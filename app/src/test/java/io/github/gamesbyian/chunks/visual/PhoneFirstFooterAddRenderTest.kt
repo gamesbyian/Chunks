@@ -30,7 +30,8 @@ class PhoneFirstFooterAddRenderTest {
         rule.onNodeWithText("This device").assertIsDisplayed()
         rule.onNodeWithText("Transfers")
             .assertIsDisplayed().performClick()
-        rule.onNodeWithText("Search transfers on this device").assertIsDisplayed()
+        rule.onNodeWithText("All environments").assertExists()
+        rule.onNodeWithText("Search names or hashes").assertExists()
         // The persistent footer retains direct Add without needing to scroll
         // back through secondary tools.
         rule.onNodeWithText("+ Add").assertIsDisplayed()
