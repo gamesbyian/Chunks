@@ -551,6 +551,8 @@ internal fun LocalEngineScreen(
     }
     // Foreground clipboard prefill: read once each time the Add form opens.
     var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
+    var clipboardPrefillSaving by remember { mutableStateOf(false) }
+    var clipboardPrefillError by remember { mutableStateOf<String?>(null) }
     var clipboardFilled by remember { mutableStateOf<String?>(null) }
     var linkFetching by remember { mutableStateOf(false) }
     val offeredClips = remember { HashSet<String>() }
@@ -880,6 +882,7 @@ internal fun LocalEngineScreen(
     // Phone options search targets: existing panels on this screen.
     val speedRequester = remember { BringIntoViewRequester() }
     val dhtRequester = remember { BringIntoViewRequester() }
+    val clipboardRequester = remember { BringIntoViewRequester() }
     val privacyRequester = remember { BringIntoViewRequester() }
     val restoreRequester = remember { BringIntoViewRequester() }
     val exportsRequester = remember { BringIntoViewRequester() }
@@ -1267,17 +1270,6 @@ internal fun LocalEngineScreen(
         else if (proposedAddDestination != null)
             Text("Planned local Place: " + proposedAddDestination.absolutePath,
                 style = MaterialTheme.typography.bodySmall)
-        // An Add preference, kept with the other Add settings rather than
-        // between the source field and the Start choice.
-        clipboardPrefillOn?.let { on ->
-            ClipboardPrefillToggle(checked = on, enabled = true, onChange = { next ->
-                scope.launch {
-                    val saved = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.setEnabled(context, next) }
-                    if (saved) clipboardPrefillOn = next
-                    else noteProblem("That clipboard choice could not be saved. It is unchanged.")
-                }
-            })
-        }
         if (magnet.isNotEmpty() && destination != null) {
             FinishInOrderAddChoice(
                 "Finish in Order once the file list arrives (episodes or numbered files)",
@@ -2415,6 +2407,9 @@ internal fun LocalEngineScreen(
                         PhoneOptionsShortcut.CREATE_TORRENT -> onCreateTorrent?.invoke()
                         PhoneOptionsShortcut.ZIP_REVIEW -> onZipReview?.invoke()
                         PhoneOptionsShortcut.DHT -> scope.launch { androidx.compose.runtime.withFrameNanos { }; dhtRequester.bringIntoView() }
+                        PhoneOptionsShortcut.CLIPBOARD_PREFILL -> scope.launch {
+                            androidx.compose.runtime.withFrameNanos { }; clipboardRequester.bringIntoView()
+                        }
                         PhoneOptionsShortcut.DOWNLOAD_LOCATION -> {
                             // These controls still live with the existing Add workflow.
                             // Navigating cannot authorize or submit a transfer.
@@ -2505,6 +2500,36 @@ internal fun LocalEngineScreen(
                     color = MaterialTheme.colorScheme.error) }
             }
             Switch(checked = dht, enabled = !dhtSaving, onCheckedChange = null)
+        }
+        // Clipboard suggestions can only fill an empty foreground Add draft.
+        // The durable preference is configured here in Options, not on each Add.
+        Column(Modifier.fillMaxWidth().bringIntoViewRequester(clipboardRequester)) {
+            clipboardPrefillOn?.let { current ->
+                ClipboardPrefillToggle(checked = current,
+                    enabled = !clipboardPrefillSaving, onChange = { requested ->
+                        if (!clipboardPrefillSaving) {
+                            clipboardPrefillSaving = true
+                            clipboardPrefillError = null
+                            scope.launch {
+                                val saved = withContext(Dispatchers.IO) {
+                                    runCatching { ClipboardMagnetPrefill.setEnabled(context, requested) }
+                                        .getOrDefault(false)
+                                }
+                                if (saved) clipboardPrefillOn = requested
+                                else clipboardPrefillError =
+                                    "Clipboard preference could not be saved. Your setting is unchanged."
+                                clipboardPrefillSaving = false
+                            }
+                        }
+                    })
+                Text("Only when Add opens in the foreground with an empty source. " +
+                    "A suggestion remains a draft and cannot start a transfer.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            clipboardPrefillError?.let {
+                Text(it, color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall)
+            }
         }
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(speedRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { LocalSpeedLimits() }
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(restoreRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
