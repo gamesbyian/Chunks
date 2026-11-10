@@ -97,6 +97,61 @@ class MediaInventoryEnrichmentSessionTest {
         session.close()
     }
 
+    @Test fun repeatedHeartbeatsDoNotStarveTailOfLongAuthorizedFullInventoryScan() = runBlocking {
+        val started = CompletableDeferred<Unit>()
+        val releaseSlowRequest = CompletableDeferred<Unit>()
+        val events = mutableListOf<String>()
+        var passes = 0
+        val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+        val session = MediaInventoryEnrichmentSession(scope,
+            enrich = { entries, witness ->
+                passes++
+                if (passes == 1) {
+                    events.add("first-pass-start")
+                    started.complete(Unit)
+                    // An earlier provider HTTP request may ignore cancellation
+                    // while dozens of inventory/status heartbeat ticks arrive.
+                    withContext(NonCancellable) { releaseSlowRequest.await() }
+                }
+                entries.forEach { (key, name) ->
+                    if (witness(key)) events.add("pass$passes:$name")
+                }
+            })
+        session.replace(listOf(phone to "Beginning", secondProfile to "Tail")) { true }
+        started.await()
+        repeat(100) { session.refresh() }
+        assertEquals("No heartbeat can interrupt an otherwise authorized scan", 1, passes)
+        assertEquals(listOf("first-pass-start"), events)
+        releaseSlowRequest.complete(Unit)
+        assertEquals("All rows in the original scan must finish first, then one catch-up",
+            listOf("first-pass-start", "pass1:Beginning", "pass1:Tail",
+                "pass2:Beginning", "pass2:Tail"), events)
+        assertEquals("A hundred ticks must coalesce to one bounded extra pass", 2, passes)
+        session.close()
+    }
+
+    @Test fun inventoryReplacementPreemptsQueuedHeartbeatAndNeverReplaysOldAccount() = runBlocking {
+        val started = CompletableDeferred<Unit>()
+        val releaseSlowRequest = CompletableDeferred<Unit>()
+        val seen = mutableListOf<String>()
+        val session = MediaInventoryEnrichmentSession(
+            CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+            enrich = { entries, witness ->
+                if (entries.first().first == phone) {
+                    started.complete(Unit)
+                    withContext(NonCancellable) { releaseSlowRequest.await() }
+                }
+                entries.forEach { (key, name) -> if (witness(key)) seen.add(name) }
+            })
+        session.replace(listOf(phone to "Old private account")) { true }
+        started.await()
+        repeat(4) { session.refresh() }
+        session.replace(listOf(secondProfile to "Current exact account")) { true }
+        releaseSlowRequest.complete(Unit)
+        assertEquals(listOf("Current exact account"), seen)
+        session.close()
+    }
+
     @Test fun explicitCloseRevokesInFlightWorkAndCannotBeReopened() = runBlocking {
         val ready = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
