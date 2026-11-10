@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import io.github.gamesbyian.chunks.MainActivity
 import org.junit.Rule
 import org.junit.Test
@@ -48,8 +49,11 @@ class PhoneFirstFooterAddRenderTest {
         val add = rule.onNodeWithText("+ Add")
         add.assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Add a transfer").assertIsDisplayed()
-        rule.onNodeWithText("On this device").assertIsDisplayed()
+        rule.onNodeWithText("Add a transfer").assertExists()
+        // At 320dp/200% the destination belongs to the SAME vertically
+        // scrollable source-first shell; prove the actual option is reachable
+        // rather than assuming every control must fit in the first viewport.
+        rule.onNodeWithText("On this device").performScrollTo().assertIsDisplayed()
         // The button remains actionable after opening the actual in-place form.
         rule.onNodeWithText("+ Add").assertIsDisplayed()
     }
