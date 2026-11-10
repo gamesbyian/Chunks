@@ -387,8 +387,15 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
         rule.onNodeWithText("All environments…").performClick()
         rule.onNodeWithText("All environments").assertExists()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
-        rule.onNodeWithText("Open server list").performClick()
+        // The scoped catalog routes to the authenticated owner's controls
+        // through a full Details screen, without changing connection identity.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Only connected server"))
+        rule.onNodeWithText("Only connected server").performClick()
+        val serverRow = androidx.compose.ui.test.hasContentDescription(
+            "Details for A deliberately very long test filename", substring = true)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(serverRow)
+        rule.onNode(serverRow).performClick()
+        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
         rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
         // The destination chooser requires an explicit choice, keeping the
@@ -606,8 +613,11 @@ class ChunksMainActivityAtlasTest {
         // Transfers now leads through the read-only combined inventory;
         // return to the exact authenticated server before inspecting files.
         rule.onNodeWithText("Transfers").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
-        rule.onNodeWithText("Open server list").performClick()
+        val returnRow = androidx.compose.ui.test.hasContentDescription(
+            "Details for A deliberately very long test filename", substring = true)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(returnRow)
+        rule.onNode(returnRow).performClick()
+        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
         // The filtered card remains the exact same server/infohash identity.
         // Reopen its secondary actions only if navigation recreated the row.
         if (rule.onAllNodesWithText("Inspect files").fetchSemanticsNodes().isEmpty()) {

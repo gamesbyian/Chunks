@@ -239,8 +239,12 @@ class InstalledMediaArtworkInstrumentedTest {
         // the same Combined inventory to the exact authenticated server list.
         rule.onNodeWithText("Options · this device").assertExists()
         rule.onNodeWithText("Transfers").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
-        rule.onNodeWithText("Open server list").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Only connected server"))
+        rule.onNodeWithText("Only connected server").performClick()
+        val exactRow = hasContentDescription("Details for $episode on", substring = true)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(exactRow)
+        rule.onNode(exactRow).performClick()
+        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(episode))
         waitForDescription("TV episode category artwork. $format")
 

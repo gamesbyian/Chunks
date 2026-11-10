@@ -68,11 +68,20 @@ class CombinedTwoRealServersInstrumentedTest {
         // reconnect. Wait for positive authenticated navigation; never infer
         // connection success from a saved label or silently call Connect.
         waitFor("authenticated server list entry", 90_000) {
-            connectedQueue() || visible("Open server list")
+            connectedQueue() || visible("Only connected server")
         }
         if (!connectedQueue()) {
-            scrollTo("Open server list")
-            rule.onNodeWithText("Open server list").performClick()
+            // Scope is only a view filter. For operational tests, enter the
+            // authenticated owner's management controls through full Details,
+            // never by converting a selected scope into command authority.
+            scrollTo("Only connected server")
+            rule.onNodeWithText("Only connected server").performClick()
+            val shared = decoded("chunks_combined_shared_b64")
+            val row = hasContentDescription("Details for $shared on", substring = true)
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
+            rule.onNode(row).performClick()
+            rule.onNode(hasText("Open Server ·", substring = true))
+                .performScrollTo().performClick()
         }
     }
 
