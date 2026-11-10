@@ -155,13 +155,15 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                 rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            rule.waitUntil(20_000) {
-                runCatching {
-                    rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
-                        .performScrollToNode(androidx.compose.ui.test.hasText("Torrent details"))
-                    rule.onNodeWithText("Torrent details").assertExists()
-                }.isSuccess
+            // Phone Add uses a normal verticalScroll rather than a lazy list.
+            // A require-scroll-to-index probe can never find its details item;
+            // retain the actual validated filename even while storage
+            // availability rechecks on Activity recreation.
+            rule.waitUntil(30_000) {
+                rule.onAllNodesWithText("test.txt", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
             }
+            rule.onNodeWithText("test.txt", substring = true).assertExists()
             org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
         }

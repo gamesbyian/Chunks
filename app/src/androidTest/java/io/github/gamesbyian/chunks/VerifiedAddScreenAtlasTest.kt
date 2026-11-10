@@ -202,6 +202,7 @@ class VerifiedAddScreenAtlasTest {
         // load.start *before* losing its reply to exercise the uncertain fence.
         RemoteLostAckFixture().use { fixture ->
             val remoteWithLostAck = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            val session = RemoteAddSession(remoteWithLostAck.addAccountScope())
             var magnet by mutableStateOf(validMagnet)
             var destination by mutableStateOf("/home/dev/chunks-public-test")
             var authorized = 0
@@ -209,6 +210,7 @@ class VerifiedAddScreenAtlasTest {
             rule.setContent {
                 MaterialTheme {
                     VerifiedAddScreen(remoteWithLostAck, magnet, destination,
+                        session = session,
                         onMagnet = { magnet = it },
                         onDestination = { destination = it },
                         onBack = {}, onComplete = {},
@@ -237,14 +239,28 @@ class VerifiedAddScreenAtlasTest {
                 "Acknowledge registered job; Start unverified"
             )
             var acknowledgedLabel: String? = null
-            rule.waitUntil(timeoutMillis = 20_000) {
-                acknowledgedLabel = acceptableAcks.firstOrNull { label ->
-                    runCatching {
-                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label))
-                        rule.onNodeWithText(label).assertExists()
-                    }.isSuccess
+            try {
+                rule.waitUntil(timeoutMillis = 20_000) {
+                    acknowledgedLabel = acceptableAcks.firstOrNull { label ->
+                        runCatching {
+                            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label))
+                            rule.onNodeWithText(label).assertExists()
+                        }.isSuccess
+                    }
+                    acknowledgedLabel != null
                 }
-                acknowledgedLabel != null
+            } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                // Entirely disposable fixture: report only RPC method names
+                // and local phase enums, never source bodies or credentials.
+                save("add-recheck-unconfirmed-fixture-real-compose")
+                throw AssertionError(
+                    "Read-only reconciliation did not establish a releaseable exact session. " +
+                    "phase=" + session.coordinator.phase.name +
+                    " hashPresent=" + (session.verifiedHash != null) +
+                    " methodNames=" + fixture.methods.toList().distinct().joinToString(",") +
+                    " fixtureFailureKinds=" + fixture.failures.toList().distinct().joinToString(","),
+                    failure
+                )
             }
             rule.onNodeWithText(requireNotNull(acknowledgedLabel)).performClick()
             assertTrue("Only one user-authorized attempt, not one per readback",
