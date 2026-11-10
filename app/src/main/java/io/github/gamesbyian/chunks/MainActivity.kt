@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -206,6 +207,8 @@ class MainActivity : ComponentActivity() {
 
 }
 
+private data class VerifiedConnectionNotice(val label: String, val saved: Boolean?)
+
 private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
@@ -272,6 +275,10 @@ internal fun ChunksApp(
     // verified saved login. A failed 401/timeout does not start a retry loop, and
     // Disconnect/Cancel never automatically reconnect within the same app session.
     var startupReconnectAttempted by remember { mutableStateOf(false) }
+    // Startup reconnect is one read-only probe; manual connection creation
+    // returns to Connections with an explicit verified-result acknowledgement.
+    var returnFromStartupConnectToCanonical by remember { mutableStateOf(false) }
+    var verifiedConnectionNotice by remember { mutableStateOf<VerifiedConnectionNotice?>(null) }
     var savedLoginPresent by remember {
         mutableStateOf(remembered != null || savedProfiles.isNotEmpty())
     }
@@ -301,7 +308,7 @@ internal fun ChunksApp(
     var section by rememberSaveable(saver = SectionRestoreSaver) {
         // A saved login needs the existing one-shot authenticated reconnect
         // owner to mount. Combined is a read-only list, not a reconnect executor.
-        mutableStateOf(if (remembered == null) Section.LOCAL else Section.TRANSFERS)
+        mutableStateOf(if (remembered == null) Section.LOCAL else Section.SERVER)
     }
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
@@ -896,14 +903,36 @@ internal fun ChunksApp(
                     }
                 )
             }
-        } else if (server == null) {
+        } else if (server == null || section == Section.SERVER) {
             ConnectionScreen(
+                connectedSessionName = server?.let {
+                    savedProfiles.firstOrNull { profile ->
+                        profile.id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                            .serverIdOfAliasScope(aliasScope)?.value
+                    }?.label ?: "Connected rTorrent server"
+                },
+                connectedVersion = version,
+                connectedRequestedView = requestedView,
+                onSelectConnectedView = { requestedView = it },
+                onLoadConnectedView = refresh,
+                onConnectedSeedingRules = { openTool(Section.SEEDING, Section.SERVER) },
+                onViewConnectedTransfers = {
+                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                        .serverIdOfAliasScope(aliasScope)?.value?.let { id ->
+                            savedProfileCatalogFocus = id
+                            section = Section.COMBINED
+                        }
+                },
+                onDisconnectCurrent = { disconnectCurrentRemote() },
                 startupReconnectEligible = RemoteStartupReconnectPolicy.shouldAttempt(
                     rememberingEnabled = rememberLogin,
                     hasSavedVerifiedLogin = remembered != null,
                     alreadyAttempted = startupReconnectAttempted
                 ),
-                onStartupReconnectConsumed = { startupReconnectAttempted = true },
+                onStartupReconnectConsumed = {
+                    startupReconnectAttempted = true
+                    returnFromStartupConnectToCanonical = section == Section.SERVER && server == null
+                },
                 endpoint = endpoint, username = username, password = password,
                 rpcPath = rpcPath, onRpcPath = { rpcPath = it },
                 error = error, loading = loading,
@@ -1041,7 +1070,7 @@ internal fun ChunksApp(
                             connectDiagnostics = ConnectionDiagnostics()
                             null
                         }
-                    if (!loading && target != null) {
+                    if (!loading && target != null && server == null) {
                         loading = true
                         error = null
                         val ticket = remoteFence.begin("main")
@@ -1111,8 +1140,24 @@ internal fun ChunksApp(
                                     // A phone-origin .torrent can be prepared before a
                                     // remote login. Keep its reviewed Add draft visible
                                     // after connecting, without submitting any RPC.
-                                    section = if (magnet.isNotBlank() ||
-                                        serverHandoffTorrent != null) Section.ADD else Section.TRANSFERS
+                                    val startupReturn = returnFromStartupConnectToCanonical &&
+                                        section == Section.SERVER
+                                    returnFromStartupConnectToCanonical = false
+                                    // Preserve any source draft without implicitly
+                                    // submitting it when the Connect probe finishes.
+                                    section = if (startupReturn) Section.COMBINED else Section.SERVER
+                                    val verifiedId = io.github.gamesbyian.chunks.model
+                                        .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+                                    if (startupReturn) {
+                                        // Read-only startup catalog focus. No Add target.
+                                        savedProfileCatalogFocus = verifiedId
+                                    } else {
+                                        verifiedConnectionNotice = VerifiedConnectionNotice(
+                                            savedProfiles.firstOrNull { it.id == verifiedId }?.label
+                                                ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
+                                            saved = null // persistence has not been observed yet
+                                        )
+                                    }
                                     currentView = ticket.view
                                     requestedView = ticket.view
                                     // A successful authenticated Connect is the only time
@@ -1157,6 +1202,19 @@ internal fun ChunksApp(
                                             }
                                             // Do not retain another copy in the screen field.
                                             password = ""
+                                            val verifiedId = io.github.gamesbyian.chunks.model
+                                                .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+                                            val savedName = refreshed.firstOrNull {
+                                                it.id == verifiedId
+                                            }?.label
+                                            // Never resurrect a dismissed acknowledgement,
+                                            // and never call a pending save "saved".
+                                            verifiedConnectionNotice?.let { existing ->
+                                                verifiedConnectionNotice = existing.copy(
+                                                    label = savedName ?: existing.label,
+                                                    saved = retained && saveThisLogin && savedName != null
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1164,6 +1222,7 @@ internal fun ChunksApp(
                                 throw cancel
                             } catch (failure: Exception) {
                                 if (remoteFence.current(ticket) && server == null) {
+                                    returnFromStartupConnectToCanonical = false
                                     error = readableFailure(failure)
                                     connectDiagnostics = if (failure is RemoteSmartConnect.ConnectionFailed)
                                         ConnectionDiagnostics(attempts = failure.attempts,
