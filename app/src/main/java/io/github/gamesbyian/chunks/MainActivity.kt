@@ -637,13 +637,24 @@ internal fun ChunksApp(
                         stale = false
                         currentView = "main"
                         requestedView = "main"
-                        // Keep Disconnect separate from Forget. Reload the
-                        // encrypted profile for one-tap reconnect in this session.
+                        // Disconnect returns to Connections, keeping encrypted
+                        // credentials unless the user explicitly chooses Forget.
+                        // A stale vault read may not overwrite another profile,
+                        // in-progress Connect, new draft or queued Forget.
+                        section = Section.SERVER
+                        val oldEndpoint = endpoint
+                        val oldUsername = username
+                        val oldPassword = password
+                        val credentialRevision = credentialChanges.snapshotRevision()
                         scope.launch {
                             val saved = withContext(Dispatchers.IO) {
                                 try { vault.load() } catch (_: Exception) { null }
                             }
-                            if (server == null && rememberLogin && saved != null) {
+                            if (server == null && !loading && section == Section.SERVER &&
+                                rememberLogin && saved != null &&
+                                credentialChanges.isLatest(credentialRevision) &&
+                                endpoint == oldEndpoint && username == oldUsername &&
+                                password == oldPassword) {
                                 endpoint = saved.endpoint
                                 username = saved.username
                                 password = saved.password
