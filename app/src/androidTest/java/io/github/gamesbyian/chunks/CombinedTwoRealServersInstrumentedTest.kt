@@ -332,13 +332,14 @@ class CombinedTwoRealServersInstrumentedTest {
             assertTrue(!startedOn(urlA))
             stage("combined-stop-scoped")
 
-            // A and B are both saved; B is authenticated here. A's saved
-            // credentials must NOT become an Add permission while B is live.
-            // Use the installed footer and genuine saved-profile selector.
+            // A and B are both saved; B is authenticated here. The shared
+            // footer opens source-first phone Add by default, from which A's
+            // saved credentials must NOT become an Add permission while B is
+            // live. Use the actual phone-source field before selecting A.
             rule.onNodeWithText("+ Add").performClick()
-            waitFor("source-first Add on B") { visible("Add a transfer") }
+            waitFor("source-first Universal Add") { visible("Add a transfer") }
             val preservedDraft = "magnet:?xt=urn:btih:$sharedHash"
-            typeInto("Magnet or torrent link", preservedDraft)
+            typeInto("Magnet or HTTP(S) torrent URL", preservedDraft)
             scrollTo("Other saved connections")
             rule.onNodeWithText("Other saved connections", substring = true).performClick()
             scrollTo("Connect to ")
