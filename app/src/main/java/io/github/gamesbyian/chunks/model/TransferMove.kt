@@ -207,9 +207,24 @@ internal object TransferMove {
         var i = 0
         while (i < value.length) {
             val c = value[i]
-            if (c == '\\' && i + 1 < value.length) {
-                out.append(if (value[i + 1] == 'n') '\n' else value[i + 1]); i += 2
-            } else { out.append(c); i++ }
+            if (c == '\\') {
+                // Only the encoder's newline and literal-backslash escapes
+                // exist. Accepting arbitrary \x silently DROPPED the slash,
+                // potentially making a damaged Move journal match a different
+                // original name/Place before a destructive source-job erase.
+                // Keep its ciphertext/private preference entry untouched;
+                // decode() returns null and the Move must be reconciled.
+                require(i + 1 < value.length) { "Truncated Move journal escape" }
+                out.append(when (value[i + 1]) {
+                    'n' -> '\n'
+                    '\\' -> '\\'
+                    else -> throw IllegalArgumentException("Unknown Move journal escape")
+                })
+                i += 2
+            } else {
+                out.append(c)
+                i++
+            }
         }
         return out.toString()
     }
