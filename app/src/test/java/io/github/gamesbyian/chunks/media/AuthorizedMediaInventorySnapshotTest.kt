@@ -97,6 +97,50 @@ class AuthorizedMediaInventorySnapshotTest {
                 whenRead = 9999L)), scopes, epoch = "foreground-3/policy-4"))
     }
 
+    @Test fun canceledProviderCallCannotBorrowLaterUnlockOfSameAccountAndHash() =
+        kotlinx.coroutines.runBlocking {
+            val scopes = mapOf(phone to "local-engine")
+            val inventory = listOf(snapshot(phone, "Hackers.1995"))
+            val original = build(inventory, scopes, epoch = "foreground-100/policy-4")
+            val current = java.util.concurrent.atomic.AtomicReference(original)
+            val firstEntered = kotlinx.coroutines.CompletableDeferred<Unit>()
+            val releaseOldHttp = kotlinx.coroutines.CompletableDeferred<Unit>()
+            val writes = mutableListOf<String>()
+            val attempts = java.util.concurrent.atomic.AtomicInteger()
+            val lease = MediaInventoryEnrichmentSession(
+                kotlinx.coroutines.CoroutineScope(
+                    kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Unconfined),
+                enrich = { rows, allowed ->
+                    val attempt = attempts.incrementAndGet()
+                    if (attempt == 1) {
+                        firstEntered.complete(Unit)
+                        // The old real HTTP read can complete even after a cancel.
+                        kotlinx.coroutines.withContext(kotlinx.coroutines.NonCancellable) {
+                            releaseOldHttp.await()
+                        }
+                    }
+                    if (allowed(rows.single().first)) {
+                        writes.add(if (attempt == 1) "stale-provider-write" else "fresh-provider-write")
+                    }
+                })
+            lease.replace(original.entries) { id -> original.stillAuthorizes(id, current.get()) }
+            firstEntered.await()
+            val locked = build(listOf(snapshot(phone, "Hackers.1995",
+                EnvironmentAvailability.LOCKED)), scopes, epoch = "background-101/policy-4")
+            current.set(locked)
+            lease.replace(locked.entries) { id -> locked.stillAuthorizes(id, current.get()) }
+            // The same original title and hash can return after fresh device unlock.
+            // Its new right of disclosure must not authenticate the old HTTP result.
+            val reopened = build(inventory, scopes, epoch = "foreground-102/policy-4")
+            current.set(reopened)
+            lease.replace(reopened.entries) { id -> reopened.stillAuthorizes(id, current.get()) }
+            releaseOldHttp.complete(Unit)
+            assertEquals("The prior process/generation cannot write into the new grant",
+                listOf("fresh-provider-write"), writes)
+            assertEquals("Newly authorized job is considered exactly once", 2, attempts.get())
+            lease.close()
+        }
+
     @Test fun incompleteOrAmbiguousSourcesCannotAuthorizeInventedJobs() {
         val live = snapshot(phone, "Hackers.1995")
         val duplicates = build(listOf(live, live), mapOf(phone to "local"))
