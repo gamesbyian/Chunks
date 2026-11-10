@@ -257,6 +257,23 @@ jobs:
           grep -o 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' "$report" | head -1
           grep -q 'tests="5" skipped="0" failures="0" errors="0"' "$report"
           echo "CHUNKS_INTEROP: real rTorrent <-> phone exact-byte transfers AND rTorrent magnet metadata + verified peer bytes passed" >> "$GITHUB_STEP_SUMMARY"
+      - name: Authenticated real rTorrent receives independently verified peer bytes
+        env:
+          CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/AUTHRPC
+          CHUNKS_DISPOSABLE_RT_PEER_PORT: "6890"
+          CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
+        run: |
+          # This is the same real BitTorrent wire path as the unprotected
+          # interop acceptance, but EVERY rTorrent command now passes through
+          # nginx's per-run Basic-protected exact /AUTHRPC mount. It reads a
+          # real authenticated inventory before Add/Start and demands
+          # independently verified positive downloaded + piece bytes, SHA1
+          # hash-checked complete payload and byte-for-byte source equality.
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest.realRTorrentDownloadsExactPayloadSeededByPhoneEngine'
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest.xml
+          grep -q 'tests="1" skipped="0" failures="0" errors="0"' "$report"
+          echo "CHUNKS_AUTH_PEER_BYTES: exact challenged principal acquired independently hash-verified pieces and matched original payload bytes" >> "$GITHUB_STEP_SUMMARY"
       - name: Evidence summary
         if: always()
         run: |
