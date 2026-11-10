@@ -210,4 +210,48 @@ class ArtworkRepositoryTest {
             1, wire.requests.size)
     }
 
+
+    @Test fun importedImageSurvivesAndroidCacheCleanupAndNewRepositoryInstance() {
+        val cache = Files.createTempDirectory("reclaimable-provider-art").toFile()
+        val durable = Files.createTempDirectory("durable-manual-art").toFile()
+        fun newRepository() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        val candidate = newRepository().importLocal(image(600, 800)).first!!
+        assertEquals(LOCAL_PROVIDER, candidate.provider)
+        assertTrue(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+
+        // Android is allowed to remove arbitrary cacheDir contents, even while the
+        // user's exact manual assignment still refers to the imported image.
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        val recovered = newRepository().loadOne(candidate, ArtworkRole.SQUARE, allowNetwork = false)
+        assertTrue("Manual selection must be available without network or cacheDir",
+            recovered is ArtworkLoadResult.Loaded)
+        assertTrue((recovered as ArtworkLoadResult.Loaded).fromCache)
+    }
+
+    @Test fun olderCachedImportMigratesToDurableStoreWithoutChangingIdentity() {
+        val cache = Files.createTempDirectory("legacy-import-cache").toFile()
+        val durable = Files.createTempDirectory("migrated-manual-art").toFile()
+        val existing = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze })
+        val candidate = existing.importLocal(image(600, 800)).first!!
+        assertTrue(cache.listFiles().orEmpty().any { it.name.endsWith(".img") })
+
+        fun upgraded() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        assertTrue(upgraded().loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+        assertTrue("Migration must copy an older local derivative to durable storage",
+            durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        assertTrue("A later cold restore must retain the exact legacy import",
+            upgraded().loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+
+        // Deliberate removal must delete both durable and legacy copies. A saved
+        // assignment that refers to the removed candidate must not revive from either.
+        val finished = upgraded()
+        finished.removeLocal(candidate)
+        assertTrue(finished.loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Unavailable)
+        assertFalse(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+    }
+
 }
