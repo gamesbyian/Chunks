@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -68,7 +69,10 @@ class CombinedTwoRealServersInstrumentedTest {
         // reconnect. Wait for positive authenticated navigation; never infer
         // connection success from a saved label or silently call Connect.
         waitFor("authenticated server list entry", 90_000) {
-            connectedQueue() || visible("Only connected server")
+            connectedQueue() || runCatching {
+                scrollTo("Only connected server")
+                true
+            }.getOrDefault(false)
         }
         if (!connectedQueue()) {
             // Scope is only a view filter. For operational tests, enter the
@@ -146,7 +150,20 @@ class CombinedTwoRealServersInstrumentedTest {
                 }
             }
         }
-        waitFor("server queue for the requested endpoint", 90_000) { connectedQueue() }
+        // Verified Connect acknowledges the result and returns to Connections;
+        // the legacy server queue is NOT the new landing screen.
+        waitFor("verified Connect acknowledgment", 90_000) {
+            visible("Connection verified")
+        }
+        rule.onNodeWithText("Continue to Connections").performClick()
+        waitFor("verified Connections management") {
+            visible("Connected ·") && visible("View transfers")
+        }
+        rule.onNodeWithText("View transfers").performClick()
+        // Legacy operations remain reachable from canonical exact-owner Details
+        // until the active #1534/#1566 migration preserves full capability parity.
+        enterConnectedQueueIfCombined()
+        waitFor("server queue after exact-owner handoff", 90_000) { connectedQueue() }
     }
 
     /**
@@ -200,14 +217,14 @@ class CombinedTwoRealServersInstrumentedTest {
 
         ActivityScenario.launch(MainActivity::class.java).use {
             waitFor("persistent Connections destination") { visible("Connections") }
-            rule.onNodeWithText("Connections").performClick()
+            rule.onNodeWithContentDescription("Connections").performClick()
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             connect(urlA, userA, passA)
             stage("connected-a")
             // Connections is now a persistent direct destination. The exact
             // connected server's Disconnect remains distinct from Forget.
             waitFor("Connections destination") { visible("Connections") }
-            rule.onNodeWithText("Connections").performClick()
+            rule.onNodeWithContentDescription("Connections").performClick()
             waitFor("connected server screen") { visible("Disconnect") }
             scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
