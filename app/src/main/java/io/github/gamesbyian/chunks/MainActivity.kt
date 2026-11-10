@@ -134,7 +134,13 @@ class MainActivity : ComponentActivity() {
         incomingCreate = io.github.gamesbyian.chunks.create.SharedCreateDocument.fromIntent(intent)
         val source = if (incomingCreate == null) ExternalAddSource.fromIntent(intent) else null
         incomingTorrent = (source as? ExternalAddSource.TorrentDocument)?.uri
-        incomingMagnet = (source as? ExternalAddSource.Magnet)?.value
+        // Keep only one process-memory text handoff. Both magnets and HTTPS
+        // .torrent download URLs enter existing Add review; neither auto-fetches.
+        incomingMagnet = when (source) {
+            is ExternalAddSource.Magnet -> source.value
+            is ExternalAddSource.TorrentLink -> source.value
+            else -> null
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -703,6 +709,9 @@ internal fun ChunksApp(
                     section = Section.LOCAL_ADD
                 },
                 pendingSharedMagnet = pendingSharedMagnet != null && incomingTorrent == null,
+                pendingSharedLink = pendingSharedMagnet?.let {
+                    TorrentLinkCheck.inspect(it) is TorrentLinkCheck.Fetchable
+                } == true && incomingTorrent == null,
                 pendingSharedTorrent = incomingTorrent != null,
                 readingSharedTorrent = sharedTorrentReading,
                 sharedTorrentError = sharedTorrentError,
