@@ -2137,6 +2137,7 @@ internal fun ConnectionScreen(
         if (renameNotice != null) item {
             Text(renameNotice.orEmpty(), style = MaterialTheme.typography.bodySmall)
         }
+        if (connectedSessionName == null) {
         item {
             OutlinedTextField(
                 value = endpoint, onValueChange = onEndpoint,
@@ -2194,6 +2195,7 @@ internal fun ConnectionScreen(
                 onGo = { if (!loading && endpoint.isNotBlank()) submitConnect() }
             )
         }
+        } // No mutable login inputs while an authenticated session is active.
         item {
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
@@ -2218,7 +2220,7 @@ internal fun ConnectionScreen(
         if (credentialNotice != null) item {
             Text(credentialNotice, style = MaterialTheme.typography.bodySmall)
         }
-        item {
+        if (connectedSessionName == null) item {
             Button(
                 onClick = submitConnect,
                 enabled = !loading && endpoint.isNotBlank(),
@@ -2226,8 +2228,10 @@ internal fun ConnectionScreen(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
-        item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
-        if (error != null) item { Notice("Connection unsuccessful", error) }
+        if (connectedSessionName == null) {
+            item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
+            if (error != null) item { Notice("Connection unsuccessful", error) }
+        }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
