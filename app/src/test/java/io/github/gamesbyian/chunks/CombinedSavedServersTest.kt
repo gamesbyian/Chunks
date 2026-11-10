@@ -103,6 +103,13 @@ class CombinedSavedServersTest {
             }))
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertDoesNotExist()
         discloseSourceStatus()
+        // Disclosure updates Compose state asynchronously. Wait for the actual
+        // visible status instead of depending on runner/looper timing; neither
+        // loader callback may run before the separate explicit Load action.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertExists()
         assertEquals("nothing is fetched until the user asks", 0, calls.get())
         assertEquals("no list callback may finish before the explicit tap", 0, completedReads.get())
