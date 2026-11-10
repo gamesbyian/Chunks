@@ -542,6 +542,35 @@ internal fun ChunksApp(
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
     val mutationGate = remember { RemoteMutationReadbackGate() }
+    val savedAddReconnect = remember { SavedAddProfileReconnect() }
+
+    // A profile switch is a read-only navigation/authentication choice, but
+    // it must retire the old authenticated principal before displaying the
+    // connection form. Reuse the ordinary Disconnect revocation path; do not
+    // clear any Add source, reviewed bytes, exact-job attempt or account-specific
+    // Add preferences. No remote RPC or torrent mutation is sent here.
+    fun detachAuthenticatedRemoteSession() {
+        remoteFence.invalidate()
+        connectJob?.cancel()
+        RemoteCredentialLock.invalidate()
+        inspectionFence.invalidate()
+        mutationGate.reset()
+        server = null
+        aliasScope = ""
+        aliasSessions.clear()
+        version = ""
+        transfers = emptyList()
+        transfersObservedAt = null
+        expandedHash = null
+        files = null
+        filesError = null
+        filesLoading = false
+        loading = false
+        error = null
+        stale = false
+        currentView = "main"
+        requestedView = "main"
+    }
 
     // Share/Open With only admits source data, never a phone or remote Add.
     // An occupied draft is held until the user explicitly chooses replacement.
@@ -767,13 +796,27 @@ internal fun ChunksApp(
             onAuthenticatedRemote = { selectAuthenticatedAddTarget() },
             onConnectSaved = { requested ->
                 val profile = savedProfiles.firstOrNull { it.id == requested }
-                if (profile != null) {
-                    endpoint = profile.credentials.endpoint
-                    rpcPath = ""
-                    username = profile.credentials.username
-                    password = profile.credentials.password
-                    credentialNotice = "Authenticate this saved connection before remote Add. Your Add source is retained."
-                    section = Section.SERVER
+                if (profile != null && !loading) {
+                    val requestedScope = RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials)
+                    if (server != null && aliasScope == requestedScope) {
+                        // The current authenticated profile already owns the
+                        // target; never authenticate or switch it a second time.
+                        savedAddReconnect.abandon()
+                        selectAuthenticatedAddTarget()
+                    } else {
+                        // A saved label is not an authenticated Add target. An
+                        // already connected different account must be detached,
+                        // or Section.SERVER would still display its old server
+                        // screen while the new credentials sat in text fields.
+                        savedAddReconnect.requestAuthentication(requestedScope)
+                        detachAuthenticatedRemoteSession()
+                        endpoint = profile.credentials.endpoint
+                        rpcPath = ""
+                        username = profile.credentials.username
+                        password = profile.credentials.password
+                        credentialNotice = "Authenticate this saved connection before remote Add. Your Add source is retained."
+                        section = Section.SERVER
+                    }
                 }
             }
         )
@@ -1252,11 +1295,17 @@ internal fun ChunksApp(
                                     rpcPath = ""
                                     server = candidate
                                     stale = false
-                                    // A phone-origin .torrent can be prepared before a
-                                    // remote login. Keep its reviewed Add draft visible
-                                    // after connecting, without submitting any RPC.
-                                    section = if (magnet.isNotBlank() ||
-                                        serverHandoffTorrent != null) Section.ADD else Section.TRANSFERS
+                                    // A saved-profile choice in Universal Add can
+                                    // resume only after THIS exact route/principal
+                                    // is authenticated. selectAuthenticatedAddTarget
+                                    // copies any reviewed phone metainfo into the
+                                    // existing remote Add draft without sending RPC.
+                                    if (savedAddReconnect.consumeAuthenticated(aliasScope)) {
+                                        selectAuthenticatedAddTarget()
+                                    } else {
+                                        section = if (magnet.isNotBlank() ||
+                                            serverHandoffTorrent != null) Section.ADD else Section.TRANSFERS
+                                    }
                                     currentView = ticket.view
                                     requestedView = ticket.view
                                     // A successful authenticated Connect is the only time
@@ -1774,27 +1823,8 @@ internal fun ChunksApp(
                     onSeedingRules = { openTool(Section.SEEDING, Section.SERVER) },
                     environmentLabel = serverEnvironmentLabel(aliasScope),
                     onDisconnect = {
-                        // Invalidate every in-flight read and credential save
-                        // before switching/clearing the authenticated scope.
-                        remoteFence.invalidate()
-                        RemoteCredentialLock.invalidate()
-                        inspectionFence.invalidate()
-                        mutationGate.reset()
-                        server = null
-                        aliasScope = ""
-                        aliasSessions.clear()
-                        version = ""
-                        transfers = emptyList()
-                        transfersObservedAt = null
-                        expandedHash = null
-                        files = null
-                        filesError = null
-                        filesLoading = false
-                        loading = false
-                        error = null
-                        stale = false
-                        currentView = "main"
-                        requestedView = "main"
+                        savedAddReconnect.abandon()
+                        detachAuthenticatedRemoteSession()
                         // Keep Disconnect separate from Forget. Reload the
                         // encrypted profile for one-tap reconnect in this session.
                         scope.launch {
