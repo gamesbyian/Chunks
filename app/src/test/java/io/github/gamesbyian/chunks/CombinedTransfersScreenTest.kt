@@ -140,6 +140,16 @@ class CombinedTransfersScreenTest {
         assertTrue("Review selection cannot dispatch a lifecycle RPC", commands.isEmpty())
     }
 
+    @Test fun unsignedInDetailsNeverOffersAnAuthenticatedLifecycleReview() {
+        show()
+        val action = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(action)
+        rule.onNodeWithContentDescription(action).performClick()
+        rule.onNodeWithText("Review Start / Stop").assertDoesNotExist()
+        assertTrue("A read-only saved or disconnected profile must never issue a command",
+            commands.isEmpty())
+    }
+
     @Test fun staleOrUnauthenticatedDetailsCannotOfferLifecycleReview() {
         show(stale = true, authenticatedSession = Any())
         val action = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
