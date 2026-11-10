@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/disposable-rtorrent-probe.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableAuthenticatedTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableFullJourneyTest.kt"
       - "tools/verify_disposable_rutorrent_readd_cancel.py"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableNativeStartedAddTest.kt"
@@ -72,6 +73,12 @@ jobs:
                 include /etc/nginx/scgi_params;
                 scgi_pass 127.0.0.1:5000;
               }
+              location = /AUTHRPC {
+                auth_basic "Chunks disposable rTorrent identity";
+                auth_basic_user_file /etc/nginx/chunks-disposable-auth.htpasswd;
+                include /etc/nginx/scgi_params;
+                scgi_pass 127.0.0.1:5000;
+              }
             }
           }
           EOF
@@ -81,6 +88,16 @@ jobs:
           nohup rtorrent -n -o "import=$RUNNER_TEMP/chunks-home/.rtorrent.rc" \
             > "$RUNNER_TEMP/chunks-rtorrent.log" 2>&1 < /dev/null &
           echo $! > "$RUNNER_TEMP/chunks-rtorrent.pid"
+          # Per-run synthetic Basic credentials; no user password or host
+          # secrets. The second exact location is protected while /RPC2 stays
+          # unchanged for existing disposable protocol and peer-wire tests.
+          auth_user="chunks-disposable"
+          auth_pass="$(openssl rand -hex 18)"
+          printf 'CHUNKS_DISPOSABLE_AUTH_USER=%s\nCHUNKS_DISPOSABLE_AUTH_PASS=%s\n' \
+            "$auth_user" "$auth_pass" >> "$GITHUB_ENV"
+          printf '%s:%s\n' "$auth_user" "$(openssl passwd -apr1 "$auth_pass")" \
+            | sudo tee /etc/nginx/chunks-disposable-auth.htpasswd > /dev/null
+          sudo chmod 0644 /etc/nginx/chunks-disposable-auth.htpasswd
           sudo nginx -c "$RUNNER_TEMP/chunks-nginx.conf"
       - name: Assert read-only XML-RPC readiness
         run: |
@@ -133,6 +150,16 @@ jobs:
           PY
             exit 1
           fi
+      - name: Authenticated one-shot Add, Start/Stop, priority and exact session Remove
+        env:
+          CHUNKS_DISPOSABLE_AUTH_URL: http://127.0.0.1:18080/AUTHRPC
+          CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
+        run: |
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest'
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml
+          grep -q 'tests="2" skipped="0" failures="0" errors="0"' "$report"
+          echo "CHUNKS_AUTH_REAL: disposable nginx Basic challenge accepted on real rTorrent, exact-job mutation/reconciliation and rejected wrong credentials" >> "$GITHUB_STEP_SUMMARY"
       - name: Real ruTorrent PHP erasedata collector deletes exact payload and preserves canary
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
@@ -304,9 +331,25 @@ jobs:
                 include /etc/nginx/scgi_params;
                 scgi_pass 127.0.0.1:5000;
               }
+              location = /AUTHRPC {
+                auth_basic "Chunks disposable rTorrent identity";
+                auth_basic_user_file /etc/nginx/chunks-disposable-auth.htpasswd;
+                include /etc/nginx/scgi_params;
+                scgi_pass 127.0.0.1:5000;
+              }
             }
           }
           EOF
+          # Per-run synthetic Basic credentials; no user password or host
+          # secrets. The second exact location is protected while /RPC2 stays
+          # unchanged for existing disposable protocol and peer-wire tests.
+          auth_user="chunks-disposable"
+          auth_pass="$(openssl rand -hex 18)"
+          printf 'CHUNKS_DISPOSABLE_AUTH_USER=%s\nCHUNKS_DISPOSABLE_AUTH_PASS=%s\n' \
+            "$auth_user" "$auth_pass" >> "$GITHUB_ENV"
+          printf '%s:%s\n' "$auth_user" "$(openssl passwd -apr1 "$auth_pass")" \
+            | sudo tee /etc/nginx/chunks-disposable-auth.htpasswd > /dev/null
+          sudo chmod 0644 /etc/nginx/chunks-disposable-auth.htpasswd
           sudo nginx -c "$RUNNER_TEMP/chunks-nginx.conf"
       - name: Assert XML-RPC readiness and record the version
         run: |
@@ -362,6 +405,11 @@ jobs:
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest' \
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableFullJourneyTest' || status=1
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeStartedAddTest' || status=1
+          CHUNKS_DISPOSABLE_AUTH_URL=http://127.0.0.1:18080/AUTHRPC \
+            gradle --no-daemon :app:testDebugUnitTest \
+              --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest' || status=1
+          grep -q 'tests="2" skipped="0" failures="0" errors="0"' \
+            app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml || status=1
           python3 - <<'PY'
           import pathlib, xml.etree.ElementTree as ET
           for path in sorted(pathlib.Path("app/build/test-results/testDebugUnitTest").glob("TEST-*Disposable*.xml")):
