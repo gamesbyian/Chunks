@@ -50,24 +50,31 @@ internal class MainActivityRealMagnetJourney(
         // The IME can asynchronously re-scroll and recycle a lazy button
         // after the first pre-dispatch scroll. Retry *only* read/scroll checks,
         // never an action that could have submitted Connect/Add/Remove.
-        var visiblyReady = false
-        for (attempt in 1..5) {
-            visiblyReady = runCatching {
-                if (attempt > 1) scroll(text)
+        // A focused input may reopen the IME on the next Android frame,
+        // recycling the button even after the earlier enabled-only probe.
+        // Give Compose a bounded chance to settle using *read/scroll-only*
+        // operations. Never attempt a click in this loop.
+        rule.waitUntil(30_000) {
+            runCatching {
+                scroll(text)
                 rule.onNodeWithText(text).performScrollTo()
                 rule.waitForIdle()
                 rule.onNodeWithText(text).assertIsDisplayed()
                 true
             }.getOrDefault(false)
-            if (visiblyReady) break
         }
-        check(visiblyReady) { "Installed action remained outside the visible Compose viewport: $text" }
         // Exactly one click; never retry a possibly submitted RPC mutation.
         rule.onNodeWithText(text).performClick()
     }
     private fun type(label: String, text: String) {
         scroll(label)
         rule.onNodeWithText(label).performTextReplacement(text)
+        if (label == "Magnet or torrent link" || label == "Custom server folder (optional)") {
+            // Exercise the same Done IME action available to a real phone user
+            // instead of leaving the URL editor focused under an unseen IME.
+            // Never trigger a Connect/Confirm action from the keyboard.
+            runCatching { rule.onNodeWithText(label).performImeAction() }
+        }
         rule.runOnUiThread {
             val view = rule.activity.window.decorView
             rule.activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
