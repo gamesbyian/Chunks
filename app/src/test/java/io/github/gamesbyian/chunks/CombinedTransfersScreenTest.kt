@@ -119,6 +119,76 @@ class CombinedTransfersScreenTest {
         assertTrue("Details navigation cannot issue lifecycle commands", commands.isEmpty())
     }
 
+    @Test fun deviceAndServerScopeShortcutsStayInCanonicalListAndOpenSameDetails() {
+        show()
+        revealText("Only this device")
+        rule.onNodeWithText("Only this device").performClick()
+        rule.onNodeWithText("Big Archive").assertDoesNotExist()
+        revealText("Viewing:")
+        rule.onNodeWithText("Viewing:", substring = true).assertExists()
+        revealText("Only connected server")
+        rule.onNodeWithText("Only connected server").performClick()
+        // Scope change remains visible even when the filter chips are closed.
+        revealText("Viewing:")
+        rule.onNodeWithText("Viewing:", substring = true).assertExists()
+        val action = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(action)
+        rule.onNodeWithContentDescription(action).performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        assertTrue("Switching a list scope never executes a lifecycle command", commands.isEmpty())
+    }
+
+    @Test fun phoneOnlyCatalogKeepsExplicitRecoveryWhenNativeEngineIsAbsent() {
+        // A view filter must never start the phone engine. If there are no
+        // rows, provide an explicit entry to the existing device controls.
+        var openedDevice = 0
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = null, savedProfiles = emptyList(),
+                    onOpenPhone = { openedDevice++ }, onOpenServer = null,
+                    onBack = {})
+            } }
+        }
+        if (LocalEngineHolder.current() == null) {
+            revealText("Open device transfer controls")
+            rule.onNodeWithText("Open device transfer controls").performClick()
+            assertEquals(1, openedDevice)
+        }
+        assertTrue("Scope selection or recovery navigation sent no remote commands", commands.isEmpty())
+    }
+
+    @Test fun phoneEmptyCopyRequiresAuthoritativeCurrentInventory() {
+        assertEquals("No transfers on this device yet. Review a torrent to add one.",
+            phoneOnlyEmptyInventoryMessage(true))
+        assertEquals("No verified transfer list is available yet. Saved transfers may need " +
+            "to be restored in device controls.",
+            phoneOnlyEmptyInventoryMessage(false))
+    }
+
+    @Test fun phoneOnlyEmptyCatalogOffersReviewWithoutStartingOrGuessingInventory() {
+        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+        assertNull("Fixture must not silently start the phone engine", LocalEngineHolder.current())
+        var addReviews = 0
+        var phoneControls = 0
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = null, savedProfiles = emptyList(),
+                    onOpenPhone = { phoneControls++ }, onOpenServer = null,
+                    onAddToPhone = { addReviews++ }, onBack = {})
+            } }
+        }
+        revealText("Review a new torrent on this device")
+        rule.onNodeWithText("No verified transfer list is available yet.", substring = true)
+            .assertExists()
+        rule.onNodeWithText("Review a new torrent on this device").performClick()
+        assertEquals(1, addReviews)
+        assertEquals(0, phoneControls)
+        assertNull("Review navigation does not start the native engine", LocalEngineHolder.current())
+        assertTrue("Review navigation does not issue lifecycle commands", commands.isEmpty())
+    }
+
     @Test fun corruptSavedDetailIdentityCannotResolveOrGuessAnEnvironment() {
         assertNull(restoreCombinedDetailTarget(null))
         assertNull(restoreCombinedDetailTarget(emptyList()))
