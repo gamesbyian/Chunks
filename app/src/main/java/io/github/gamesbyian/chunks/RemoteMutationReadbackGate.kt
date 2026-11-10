@@ -28,6 +28,23 @@ internal class RemoteMutationReadbackGate {
         }
     }
 
+    /**
+     * A positively observed no-op never sent an RPC mutation and therefore
+     * cannot require post-write reconciliation. Release only the request
+     * that is *still* in flight; after settled(), an uncertain write keeps
+     * its readback latch, even if this method is called accidentally.
+     *
+     * Remote Finish in Order uses this for Step.Idle alone. Unknown outcomes,
+     * exceptions and cancellation must instead settle and re-observe.
+     */
+    fun abandonKnownNoWrite() {
+        if (commandPending) {
+            commandPending = false
+            awaitingReadback = false
+            ++generation
+        }
+    }
+
     fun ticket(): Long = generation
 
     fun accepts(ticket: Long): Boolean = !commandPending && ticket == generation
