@@ -98,6 +98,76 @@ class RemoteMutationAuthorizationPreflightTest {
         }
     }
 
+    @Test fun acceptedProtectedReadPreauthorizesFirstWriteWhenVersionIsPublic() = runBlocking {
+        for (challenge in listOf(basic, digest)) {
+            val expectedPrefix = if (challenge.startsWith("Digest")) "Digest " else "Basic "
+            Gateway { exchange, method, _ ->
+                val authorization = exchange.requestHeaders.getFirst("Authorization")
+                when (method) {
+                    // A common split policy: public version, protected
+                    // inventory getters and writes, unsupported HEAD.
+                    "d.name" -> if (authorization == null)
+                        reply(exchange, 401, challenge = challenge)
+                    else reply(exchange, 200,
+                        "<methodResponse><params><param><value><string>sample</string></value>" +
+                            "</param></params></methodResponse>")
+                    "system.client_version" -> reply(exchange, 200,
+                        "<methodResponse><params><param><value><string>0.9.8</string></value>" +
+                            "</param></params></methodResponse>")
+                    "d.start" -> if (authorization?.startsWith(expectedPrefix) == true)
+                        reply(exchange, 200, ok)
+                    else reply(exchange, 401, challenge = challenge)
+                    else -> error("Unexpected method $method")
+                }
+            }.use { gateway ->
+                val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "alice", "secret"))
+                assertEquals("sample", remote.call("d.name", listOf(hash)))
+                assertEquals(RemoteReadAuthEvidence.READ_CHALLENGE_ACCEPTED,
+                    remote.readAuthenticationEvidence())
+                assertEquals(0L, remote.call("d.start", listOf(hash)))
+                assertEquals(listOf("d.name", "d.name", "system.client_version", "d.start"),
+                    gateway.sent.map { it.method })
+                assertNull("The initial protected read was anonymous", gateway.sent[0].authorization)
+                assertTrue(gateway.sent[1].authorization.orEmpty().startsWith(expectedPrefix))
+                assertNull("Preflight must stay credential-free", gateway.sent[2].authorization)
+                assertTrue("First and only write must be preauthorized",
+                    gateway.sent[3].authorization.orEmpty().startsWith(expectedPrefix))
+                assertEquals(1, gateway.sent.count { it.method == "d.start" })
+            }
+        }
+    }
+
+    @Test fun cachedChallengeNeverAuthorizesSecondWriteAfterRejectedFirstWrite() = runBlocking {
+        Gateway { exchange, method, _ ->
+            val authorization = exchange.requestHeaders.getFirst("Authorization")
+            when (method) {
+                "d.name" -> if (authorization == null)
+                    reply(exchange, 401, challenge = basic)
+                else reply(exchange, 200,
+                    "<methodResponse><params><param><value><string>sample</string></value>" +
+                        "</param></params></methodResponse>")
+                "system.client_version" -> reply(exchange, 200, ok)
+                // Simulate a broken gateway that applies a write before
+                // sending 401. The first write MUST NOT be replayed.
+                "d.start" -> reply(exchange, 401, challenge = basic)
+                else -> error("Unexpected method $method")
+            }
+        }.use { gateway ->
+            val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "alice", "secret"))
+            assertEquals("sample", remote.call("d.name", listOf(hash)))
+            try {
+                remote.call("d.start", listOf(hash))
+                fail("A 401 after the single authorized write cannot prove rollback")
+            } catch (failure: IOException) {
+                assertTrue(failure.message.orEmpty().contains("401"))
+            }
+            assertEquals(listOf("d.name", "d.name", "system.client_version", "d.start"),
+                gateway.sent.map { it.method })
+            assertTrue(gateway.sent.last().authorization.orEmpty().startsWith("Basic "))
+            assertEquals(1, gateway.sent.count { it.method == "d.start" })
+        }
+    }
+
     @Test fun anonymousPreflightCannotAuthorizeASecondWrite() = runBlocking {
         Gateway { e, method, _ -> when (method) {
             "system.client_version" -> reply(e, 200, ok)
