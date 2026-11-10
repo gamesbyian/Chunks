@@ -59,30 +59,34 @@ class CombinedTwoRealServersInstrumentedTest {
     private fun visible(text: String) =
         rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
 
-    // Compact server header: "<host> · <n> transfers" with the server's own
-    // Add action. Each disposable server holds exactly two fixtures.
-    private fun connectedQueue() = visible("127.0.0.1 · 2 transfers") && visible("+ Add torrent")
+    /** Verified session management is Connections, never a second transfer list. */
+    private fun connectedQueue() = visible("Connected ·") && visible("View transfers")
+
     private fun enterConnectedQueueIfCombined() {
-        if (connectedQueue()) return
-        // Startup may show a read-only Combined view during a saved-profile
-        // reconnect. Wait for positive authenticated navigation; never infer
-        // connection success from a saved label or silently call Connect.
-        waitFor("authenticated server list entry", 90_000) {
-            connectedQueue() || visible("Only connected server")
+        // Saved credentials may reconnect at startup. A verified connection
+        // acknowledges, then remains on Connections until the user chooses
+        // the one canonical Transfers browser. Never infer auth from a label.
+        waitFor("verified connected session", 90_000) {
+            visible("Continue to Connections") || connectedQueue()
+        }
+        if (visible("Continue to Connections")) {
+            rule.onNodeWithText("Continue to Connections").performClick()
         }
         if (!connectedQueue()) {
-            // Scope is only a view filter. For operational tests, enter the
-            // authenticated owner's management controls through full Details,
-            // never by converting a selected scope into command authority.
-            scrollTo("Only connected server")
-            rule.onNodeWithText("Only connected server").performClick()
-            val shared = decoded("chunks_combined_shared_b64")
-            val row = hasContentDescription("Details for $shared on", substring = true)
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
-            rule.onNode(row).performClick()
-            rule.onNode(hasText("Open Server ·", substring = true))
-                .performScrollTo().performClick()
+            rule.onNodeWithContentDescription("Connections").performClick()
         }
+        waitFor("Connections manages current verified account") { connectedQueue() }
+        scrollTo("View transfers")
+        rule.onNodeWithText("View transfers").performClick()
+        waitFor("canonical Transfers catalog") { visible("Filters") || visible("Batch tools") }
+    }
+
+    /** A deliberate All scope, never a second legacy list or an auth switch. */
+    private fun selectAllInCanonicalCatalog() {
+        scrollTo("Filters")
+        rule.onNodeWithText("Filters").performClick()
+        rule.onNodeWithText("All").performClick()
+        waitFor("canonical All scope") { visible("Batch tools") }
     }
 
     private fun scrollTo(text: String) =
@@ -146,7 +150,11 @@ class CombinedTwoRealServersInstrumentedTest {
                 }
             }
         }
-        waitFor("server queue for the requested endpoint", 90_000) { connectedQueue() }
+        waitFor("verified Connect acknowledgement", 90_000) {
+            visible("Continue to Connections")
+        }
+        rule.onNodeWithText("Continue to Connections").performClick()
+        waitFor("verified session shown on Connections", 90_000) { connectedQueue() }
     }
 
     /**
@@ -162,7 +170,9 @@ class CombinedTwoRealServersInstrumentedTest {
             .map { it.hash to it.started }.toSet()
         ActivityScenario.launch(MainActivity::class.java).use {
             enterConnectedQueueIfCombined()
-            waitFor("reconnect after process death", 90_000) { connectedQueue() }
+            waitFor("canonical Transfers after verified reconnect", 90_000) {
+                visible("Filters") || visible("Batch tools")
+            }
             assertTrue(!visible("Seedbox hostname, ruTorrent URL or RPC address"))
             stage("process-death-reconnected")
         }
@@ -208,9 +218,9 @@ class CombinedTwoRealServersInstrumentedTest {
             // connected server's Disconnect remains distinct from Forget.
             waitFor("Connections destination") { visible("Connections") }
             rule.onNodeWithText("Connections").performClick()
-            waitFor("connected server screen") { visible("Disconnect") }
-            scrollTo("Disconnect")
-            rule.onNodeWithText("Disconnect").performClick()
+            waitFor("connected server management") { visible("Disconnect current session") }
+            scrollTo("Disconnect current session")
+            rule.onNodeWithText("Disconnect current session").performClick()
             waitFor("connection screen after Disconnect") {
                 visible("Seedbox hostname, ruTorrent URL or RPC address") || visible("Saved servers")
             }
@@ -218,8 +228,8 @@ class CombinedTwoRealServersInstrumentedTest {
             connect(urlB)
             stage("connected-b")
 
-            rule.onAllNodesWithText("All environments…")[0].performClick()
-            waitFor("Combined view") { visible("All environments") && !visible("All environments…") }
+            enterConnectedQueueIfCombined()
+            selectAllInCanonicalCatalog()
             stage("combined-open")
             scrollTo("Load other saved servers (read-only)")
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
@@ -341,8 +351,8 @@ class CombinedTwoRealServersInstrumentedTest {
             // that server's queue directly. Accept either entry route, but the
             // queue must appear with no address or credential retyped.
             enterConnectedQueueIfCombined()
-            waitFor("automatic read-only reconnect of remembered server", 90_000) {
-                connectedQueue()
+            waitFor("automatic read-only reconnect into canonical catalog", 90_000) {
+                visible("Filters") || visible("Batch tools")
             }
             assertTrue("Relaunch must not require the Connect form",
                 !visible("Seedbox hostname, ruTorrent URL or RPC address"))
@@ -361,9 +371,7 @@ class CombinedTwoRealServersInstrumentedTest {
         // never claim A is current.
         ActivityScenario.launch(MainActivity::class.java).use {
             enterConnectedQueueIfCombined()
-            waitFor("reconnect for C2", 90_000) { connectedQueue() }
-            rule.onAllNodesWithText("All environments…")[0].performClick()
-            waitFor("Combined for C2") { visible("All environments") && !visible("All environments…") }
+            selectAllInCanonicalCatalog()
             scrollTo("Load other saved servers (read-only)")
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
             waitFor("union before fault", 60_000) { visible("Showing 4") }
