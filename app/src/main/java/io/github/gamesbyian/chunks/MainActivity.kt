@@ -387,6 +387,10 @@ internal fun ChunksApp(
     // Process-memory-only Android Share source awaiting an explicit exact destination.
     // A magnet can contain tracker passkeys: never save/log/render its raw value.
     var pendingSharedMagnet by remember { mutableStateOf<String?>(null) }
+    // Explicitly replace or retain an occupied source before reading a newly
+    // shared document. Neither URI nor metainfo is serialized to SavedState.
+    var pendingSharedDocument by remember { mutableStateOf<Uri?>(null) }
+    var incomingDocumentRead by remember { mutableStateOf<Uri?>(null) }
     // Shared content:// documents are never persisted or sent to a remote server
     // as a URI. A selected remote receives only locally validated metainfo bytes.
     var sharedTorrentReading by remember { mutableStateOf(false) }
@@ -511,27 +515,55 @@ internal fun ChunksApp(
     val inspectionFence = remember { RemoteUiRequestFence() }
     val mutationGate = remember { RemoteMutationReadbackGate() }
 
-    // An Android content document supplies a source, not an implicit Add target.
-    // With an authenticated server available, require explicit phone/server
-    // selection. The phone route retains its existing bounded read/review.
+    // Share/Open With only admits source data, never a phone or remote Add.
+    // An occupied draft is held until the user explicitly chooses replacement.
     LaunchedEffect(incomingTorrent) {
-        if (incomingTorrent != null) {
-            remoteAddSessions.clearPendingSourceSelection()
-            sharedTorrentError = null
-            pendingSharedMagnet = null
-            phoneHandoffTorrentUri = null
-            // A privacy gate may have delayed the previous handoff. A new
-            // explicit source must not revive it when that gate opens later.
-            phoneHandoffMagnet = null
-            serverHandoffTorrent = null
-            localFromCombined = false
-            // File shares enter the same source-first Add draft even with a
-            // connected server. Its actual URI is read only by the authorized
-            // phone document intake, never sent to rTorrent as a path.
-            phoneReviewedTorrent.value = null
-            phoneHandoffTorrentUri = incomingTorrent
-            onIncomingTorrentConsumed()
-            selectPhoneAddTarget()
+        val document = incomingTorrent ?: return@LaunchedEffect
+        sharedTorrentError = null
+        pendingSharedMagnet = null
+        pendingSharedDocument = null
+        if (magnet.isNotBlank() || phoneReviewedTorrent.value != null ||
+            serverHandoffTorrent != null) {
+            pendingSharedDocument = document
+        } else {
+            incomingDocumentRead = document
+        }
+        onIncomingTorrentConsumed()
+        section = Section.ADD_CHOOSE
+    }
+    // Android's granted document URI is read only in this process, validated
+    // by the existing 2 MiB/bencode intake. A failed replacement keeps the
+    // original selected draft and never reaches either Add executor.
+    LaunchedEffect(incomingDocumentRead) {
+        val document = incomingDocumentRead ?: return@LaunchedEffect
+        val sourceBeforeRead = magnet
+        sharedTorrentReading = true
+        sharedTorrentError = null
+        try {
+            val reviewed = withContext(Dispatchers.IO) {
+                SharedTorrentDocument.read(context.contentResolver, document)
+            }
+            if (incomingDocumentRead == document && magnet == sourceBeforeRead) {
+                phoneReviewedTorrent.value = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+                serverHandoffTorrent = if (addUsingAuthenticatedRemote && server != null &&
+                    RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
+                    reviewed.bytes.copyOf() else null
+                phoneHandoffTorrentUri = null
+                magnet = ""
+                remoteAddSessions.clearPendingSourceSelection()
+            } else if (incomingDocumentRead == document) {
+                sharedTorrentError = "The draft changed while reading the shared document. Your newer source was kept."
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            if (incomingDocumentRead == document) sharedTorrentError =
+                "The shared .torrent could not be verified (v1 metainfo, maximum 2 MiB). The previous draft was kept."
+        } finally {
+            if (incomingDocumentRead == document) {
+                incomingDocumentRead = null
+                sharedTorrentReading = false
+            }
         }
     }
     // A file shared to "Create torrent" opens the Create review; nothing is read yet.
@@ -553,32 +585,22 @@ internal fun ChunksApp(
         }
     }
 
-    // Android Share/Open With is source authority, never target authority. A
-    // live server must not silently make its own Add form the default: choose
-    // the exact destination first. Keep passkey-bearing source process-only;
-    // this temporary selector is replaced by the single Universal Add form.
+    // New Share text retains an existing draft until an explicit replacement.
     LaunchedEffect(sharedMagnet) {
-        if (sharedMagnet != null) {
-            remoteAddSessions.clearPendingSourceSelection()
-            // New explicit share replaces any older, unconsumed document review.
-            phoneHandoffTorrentUri = null
+        val proposed = sharedMagnet ?: return@LaunchedEffect
+        sharedTorrentError = null
+        pendingSharedDocument = null
+        if ((magnet.isNotBlank() && magnet != proposed) ||
+            phoneReviewedTorrent.value != null || serverHandoffTorrent != null) {
+            pendingSharedMagnet = proposed
+        } else {
+            pendingSharedMagnet = null
+            magnet = proposed
             phoneHandoffMagnet = null
-            serverHandoffTorrent = null
-            // A new Android Share is an explicit source proposal, never a
-            // target decision. Do not silently destroy an occupied draft.
-            if ((magnet.isNotBlank() && magnet != sharedMagnet) ||
-                phoneReviewedTorrent.value != null) {
-                pendingSharedMagnet = sharedMagnet
-                section = Section.ADD_CHOOSE
-            } else {
-                pendingSharedMagnet = null
-                magnet = sharedMagnet
-                phoneHandoffMagnet = null
-                localFromCombined = false
-                selectPhoneAddTarget()
-            }
-            onIncomingMagnetConsumed()
+            remoteAddSessions.selectMagnet(aliasScope)
         }
+        onIncomingMagnetConsumed()
+        section = Section.ADD_CHOOSE
     }
 
     val refresh: () -> Unit = {
@@ -657,7 +679,33 @@ internal fun ChunksApp(
                 eligibleUniversalAddRemote(verifiedRemoteScope,
                     RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
             }.map { UniversalAddSavedDestination(it.id, it.label + " · " + it.address) },
-            enabled = addChoicesEnabled,
+            enabled = addChoicesEnabled && !sharedTorrentReading,
+            incomingSourceWaiting = pendingSharedMagnet != null || pendingSharedDocument != null,
+            importingSource = sharedTorrentReading,
+            sourceError = sharedTorrentError,
+            onAcceptIncoming = {
+                val document = pendingSharedDocument
+                val incomingText = pendingSharedMagnet
+                pendingSharedDocument = null
+                pendingSharedMagnet = null
+                sharedTorrentError = null
+                if (document != null) {
+                    incomingDocumentRead = document
+                } else if (incomingText != null) {
+                    // User-authorized replacement, not an automatic Android
+                    // handoff. Keep the chosen target, Place and Start.
+                    phoneReviewedTorrent.value = null
+                    serverHandoffTorrent = null
+                    phoneHandoffTorrentUri = null
+                    magnet = incomingText
+                    remoteAddSessions.selectMagnet(aliasScope)
+                }
+            },
+            onKeepDraft = {
+                pendingSharedDocument = null
+                pendingSharedMagnet = null
+                sharedTorrentError = null
+            },
             onPhone = { selectPhoneAddTarget() },
             onAuthenticatedRemote = { selectAuthenticatedAddTarget() },
             onConnectSaved = { requested ->
