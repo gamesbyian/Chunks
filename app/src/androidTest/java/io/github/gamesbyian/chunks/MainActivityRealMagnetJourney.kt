@@ -295,7 +295,17 @@ internal class MainActivityRealMagnetJourney(
         // behind a read-only disclosure. Open it for the exact searched hash,
         // rather than assuming a collapsed card exposes Stop/Remove.
         fun exposeTransferActions() {
-            if (visible("More details")) click("More details")
+            // The exact hash search can leave its lazy row offscreen while
+            // Compose and the IME settle. Discover its read-only disclosure
+            // by scrolling the list, never by a visible-only opportunistic
+            // check that silently skips the required Stop/Remove controls.
+            val expanded = runCatching { scroll("Hide details") }.isSuccess
+            if (!expanded) {
+                rule.waitUntil(30_000) {
+                    runCatching { scroll("More details"); true }.getOrDefault(false)
+                }
+                click("More details")
+            }
         }
         fun lifecycle(hash: String, start: Boolean) {
             refreshAndFind(hash)
