@@ -133,6 +133,7 @@ class MediaEnrichmentService(
         var cooldown: Long? = null
         var offline = false
         var retryable = false
+        var keyRefused = false
         for (provider in eligible) {
             if (!requestAllowed()) return MediaLookupResult(MediaLookupStatus.BLOCKED_CONSENT, message = "Lookup is no longer authorized")
             val id = provider.info.id
@@ -159,6 +160,7 @@ class MediaEnrichmentService(
                         is FetchResult.Cooldown -> cooldown = minOf(cooldown ?: Long.MAX_VALUE, outcome.until)
                         FetchResult.Offline -> offline = true
                         FetchResult.Retryable -> retryable = true
+                        FetchResult.KeyRefused -> keyRefused = true
                         else -> {}
                     }
                     if (outcome !is FetchResult.Candidates) continue
@@ -221,6 +223,8 @@ class MediaEnrichmentService(
                 message = "Provider busy; try again later", retryNotBeforeMs = cooldown)
             offline -> MediaLookupResult(MediaLookupStatus.OFFLINE, attempts = attempts, message = "Offline; lookup will need a connection")
             retryable -> MediaLookupResult(MediaLookupStatus.ERROR_RETRYABLE, attempts = attempts, message = "Lookup failed; try again")
+            keyRefused -> MediaLookupResult(MediaLookupStatus.NO_PROVIDER, attempts = attempts,
+                message = "An online media provider rejected its key or access; check provider credentials in Options")
             else -> MediaLookupResult(MediaLookupStatus.NOT_FOUND, attempts = attempts, message = "No match found")
         }
     }
@@ -230,13 +234,14 @@ class MediaEnrichmentService(
         data class Cooldown(val until: Long) : FetchResult()
         object Offline : FetchResult()
         object Retryable : FetchResult()
+        object KeyRefused : FetchResult()
         object Nothing : FetchResult()
     }
 
     private fun fetch(provider: MediaMetadataProvider, query: MediaLookupQuery,
                       key: io.github.gamesbyian.chunks.model.MediaMetadataCacheKey, attempts: MutableList<ProviderAttempt>, requestHttp: MediaHttp, requestAllowed: () -> Boolean): FetchResult {
         val id = provider.info.id
-        if (id in unauthorized) { attempts.add(ProviderAttempt(id, "Paused: check provider key")); return FetchResult.Nothing }
+        if (id in unauthorized) { attempts.add(ProviderAttempt(id, "Paused: check provider key")); return FetchResult.KeyRefused }
         val until = cooldownUntil[id]
         if (until != null && clock() < until) { attempts.add(ProviderAttempt(id, "Cooling down")); return FetchResult.Cooldown(until) }
         if (!waitTurn(provider)) { attempts.add(ProviderAttempt(id, "Rate limit; deferred")); return FetchResult.Cooldown(nextAllowed(provider)) }
@@ -269,7 +274,7 @@ class MediaEnrichmentService(
                     attempts.add(ProviderAttempt(id, "Access refused; will retry later")); return FetchResult.Cooldown(retry)
                 }
                 unauthorized.add(id)
-                attempts.add(ProviderAttempt(id, "Rejected key or access")); FetchResult.Nothing
+                attempts.add(ProviderAttempt(id, "Rejected key or access")); FetchResult.KeyRefused
             }
             is MediaProviderOutcome.Failed -> {
                 if (outcome.reason == "Offline") { attempts.add(ProviderAttempt(id, "Offline")); return FetchResult.Offline }

@@ -211,11 +211,22 @@ class MediaEnrichmentServiceTest {
     @Test fun unauthorizedPausesProviderUntilReset() {
         val http = FakeMediaHttp().on("themoviedb", status = 401)
         val s = service(http, TmdbProvider { "0123456789abcdef0123456789abcdef" })
-        assertEquals(MediaLookupStatus.NOT_FOUND, s.lookup(rec("Heat.1995.1080p.mkv"), consent, online).status)
+        val first = s.lookup(rec("Heat.1995.1080p.mkv"), consent, online)
+        assertEquals(MediaLookupStatus.NO_PROVIDER, first.status)
+        assertTrue("A rejected provider key is not evidence that the title was absent", first.message.contains("key"))
         val second = s.lookup(rec("Heat.1995.1080p.BluRay.mkv"), consent, online)
-        assertEquals("Paused: check provider key", second.attempts.single().outcome); assertEquals(1, http.requests.size)
+        assertEquals(MediaLookupStatus.NO_PROVIDER, second.status)
+        assertEquals("Paused: check provider key", second.attempts.single().outcome)
+        assertEquals("Paused credentials must not generate repeated HTTP", 1, http.requests.size)
         s.resetProviderPause("tmdb")
-        s.lookup(rec("Heat.1995.720p.mkv"), consent, online)
+        http.routes.clear()
+        http.on("api.themoviedb.org/3/search/movie", body = """
+            {"results":[{"id":949,"title":"Heat","release_date":"1995-12-15","adult":false,"poster_path":"/heat.jpg"}]}
+        """.trimIndent())
+        // The SAME title can now match. No false negative receipt from the 401 may block it.
+        val recovered = s.lookup(rec("Heat.1995.1080p.mkv"), consent, online)
+        assertEquals(MediaLookupStatus.MATCHED, recovered.status)
+        assertEquals("949", recovered.match!!.ref.externalId)
         assertEquals(2, http.requests.size)
     }
 
