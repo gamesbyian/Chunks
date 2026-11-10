@@ -48,7 +48,14 @@ object MediaCandidateMatcher {
         if (qy != null && cy != null) {
             val d = abs(qy - cy)
             when (query.kind) {
-                MediaKind.MOVIE, MediaKind.GAME -> when {
+                MediaKind.MOVIE -> if (d == 0) {
+                    score += 0.15; reasons.add("Same year $cy")
+                } else {
+                    // A one-year tolerance can attach a different release's identity/poster.
+                    // The torrent's explicit movie year is a disambiguator, not a soft hint.
+                    eligible = false; reasons.add("Different movie release year ($cy)")
+                }
+                MediaKind.GAME -> when {
                     d == 0 -> { score += 0.15; reasons.add("Same year $cy") }
                     d == 1 -> { score += 0.05; reasons.add("Year within one ($cy)") }
                     else -> { eligible = false; reasons.add("Different year ($cy)") }
@@ -61,7 +68,9 @@ object MediaCandidateMatcher {
                 else -> if (d == 0) score += 0.05 // book editions and reprints rarely share the original year
             }
         } else if (qy != null && cy == null && query.kind == MediaKind.MOVIE) {
-            score -= 0.03
+            // Unknown provider year cannot establish the exact release requested.
+            eligible = false
+            reasons.add("Provider movie release year unknown")
         }
         query.creator?.let { want ->
             val best = c.creators.maxOfOrNull { MediaText.similarity(want, it) } ?: 0.0

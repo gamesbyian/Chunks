@@ -180,15 +180,26 @@ class MediaComponentsRenderTest {
     }
 
     @Test fun privacySettingsPanel() {
-        var latest = MediaPrivacySettings()
+        var latest by androidx.compose.runtime.mutableStateOf(MediaPrivacySettings())
         val providers = listOf(TvMazeProvider(), TmdbProvider { null }, MusicBrainzProvider(), OpenLibraryProvider()).map { it.info }
         rule.setContent { ChunksTheme { Surface { Column(Modifier.background(ChunksColors.Background).padding(12.dp).verticalScroll(rememberScrollState())) {
             MediaPrivacySettingsPanel(latest, providers, configured = { false }, onChange = { latest = it }, onSetProviderKey = { _, _ -> },
                 cacheSummary = "Cached: 0.0 MB artwork · 0 lookups", onClearData = {})
         } } } }
         rule.onRoot().captureRoboImage("build/chunks-visual/media-settings.png")
+        // The automatic feature can be disabled before online consent ever exists.
+        rule.onNodeWithText("Identify automatically").performClick()
+        assertEquals(false, latest.automaticLookup)
+        assertEquals(false, latest.onlineLookupConsent)
+        // Grant, revoke and regrant external lookup consent without overriding opt-out.
         rule.onNodeWithText("Online lookup").performClick()
         assertTrue(latest.onlineLookupConsent)
+        assertEquals(false, latest.automaticLookup)
+        rule.onNodeWithText("Online lookup").performClick()
+        assertEquals(false, latest.onlineLookupConsent)
+        rule.onNodeWithText("Online lookup").performClick()
+        assertTrue(latest.onlineLookupConsent)
+        assertEquals(false, latest.automaticLookup)
         rule.onNodeWithText("Add your key…").assertExists()
     }
 }
