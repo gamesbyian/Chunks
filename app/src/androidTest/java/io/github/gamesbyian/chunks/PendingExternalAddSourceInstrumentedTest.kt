@@ -56,4 +56,20 @@ class PendingExternalAddSourceInstrumentedTest {
         assertEquals(uri, restored.torrentDocument)
         assertNull(restored.text)
     }
+
+    @Test fun malformedFollowUpCannotEraseSignedHttpsTorrentLink() {
+        val signedLink = "HTTPS://downloads.example.org/fixture.torrent?token=privateFixture"
+        val queued = PendingExternalAddSource(null, null)
+            .withIncoming(ExternalAddSource.TorrentLink(signedLink))
+        assertEquals(signedLink, queued.text)
+        val malformed = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_STREAM, 17) // unsupported parcel extra type
+            putExtra(Intent.EXTRA_TEXT, "https://downloads.example.org/other.torrent")
+        }
+        assertNull(ExternalAddSource.fromIntent(malformed))
+        assertEquals(queued, queued.withIncoming(ExternalAddSource.fromIntent(malformed)))
+        org.junit.Assert.assertFalse("Signed link secrets must not appear in implicit diagnostics",
+            queued.toString().contains("privateFixture"))
+    }
 }
