@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks.visual
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -34,17 +35,17 @@ class ScreenPaneTitleTest {
         assertEquals("Seeding rules", ScreenPaneTitles.of("SEEDING", "Seeding rules", null))
     }
 
-    @Test fun movingBetweenPhoneAndAllEnvironmentsChangesThePaneTitle() {
+    @Test fun screenTitlesFollowFourCanonicalRootDestinations() {
         rule.waitForIdle()
-        pane("Transfers on this device").assertExists()
-        rule.onNodeWithText("Options").performClick()
+        pane("All environments").assertExists()
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         pane("Options").assertExists()
         rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
         pane("All environments").assertExists()
-        rule.onNodeWithText("Open device transfer controls").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Connections").performClick()
         rule.waitForIdle()
-        pane("Transfers on this device").assertExists()
+        pane("Connections").assertExists()
     }
 }

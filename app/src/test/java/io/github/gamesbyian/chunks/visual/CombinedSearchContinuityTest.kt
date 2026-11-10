@@ -7,6 +7,8 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -28,24 +30,35 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
 class CombinedSearchContinuityTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    private fun enterExplicitDeviceView() {
+        rule.runOnIdle {
+            io.github.gamesbyian.chunks.CombinedViewPreferences(rule.activity).save(
+                io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                    scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                        setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
+        }
+        rule.activityRule.scenario.recreate()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
 
     private fun pane(title: String) = rule.onNode(
         SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, title)).assertExists()
 
-    @Test fun combinedSearchSurvivesAPhoneRoundTrip() {
-        rule.waitForIdle()
-        rule.onNodeWithText("All environments").performClick()
-        rule.waitForIdle()
+    @Test fun canonicalScopedSearchSurvivesOptionsAndTransfersRoundTrip() {
+        enterExplicitDeviceView()
         pane("All environments")
         rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
             .performScrollTo().performTextInput("ubuntu")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open device transfer controls"))
-        rule.onNodeWithText("Open device transfer controls").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        pane("Transfers on this device")
-        rule.onNodeWithText("All environments").performClick()
+        pane("Options")
+        rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
         pane("All environments")
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
+
 }

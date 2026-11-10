@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -29,32 +30,34 @@ import org.robolectric.annotation.GraphicsMode
 class ChunksScreenRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
+    private fun waitForWelcome() = rule.waitUntil(20_000) {
+        rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+    }
+
     @Test fun connectScreen() {
-        rule.onNodeWithText("This device").assertExists()
+        waitForWelcome()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/connect.png")
     }
 
     @Test fun phoneScreen() {
-        rule.onNodeWithText("This device").assertExists()
+        waitForWelcome()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/phone.png")
     }
 
     @Test fun offlineScreens() {
-        rule.onNodeWithText("This device").assertExists()
-        rule.onNodeWithContentDescription("Connections").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
-        rule.onNodeWithText("More offline tools").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect a local ZIP without connecting"))
-        rule.onNodeWithText("Inspect a local ZIP without connecting").performClick()
+        waitForWelcome()
+        // Offline tools live in Options, not in remote Connections.
+        rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithText("Review ZIP archives…").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/zip-review.png")
     }
 
     @Test fun privacyScreen() {
-        rule.onNodeWithText("This device").assertExists()
+        waitForWelcome()
         rule.waitForIdle()
         // Privacy & authentication lives in Phone options, reached from the footer.
         rule.onNodeWithContentDescription("Options").performClick()
@@ -66,12 +69,9 @@ class ChunksScreenRenderTest {
     }
 
     @Test fun createScreen() {
-        rule.onNodeWithText("This device").assertExists()
-        rule.onNodeWithContentDescription("Connections").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
-        rule.onNodeWithText("More offline tools").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
-        rule.onNodeWithText("Create a torrent from phone files").performClick()
+        waitForWelcome()
+        rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithText("Create a torrent…").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/create.png")
     }
