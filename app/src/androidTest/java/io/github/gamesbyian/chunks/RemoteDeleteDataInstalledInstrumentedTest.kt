@@ -3,10 +3,12 @@ package io.github.gamesbyian.chunks
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -95,13 +97,32 @@ class RemoteDeleteDataInstalledInstrumentedTest {
 
         ActivityScenario.launch(MainActivity::class.java).use {
             waitFor("persistent Connections destination") { visible("Connections") }
-            rule.onNodeWithText("Connections").performClick()
+            rule.onNodeWithContentDescription("Connections").performClick()
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             typeInto("Seedbox hostname, ruTorrent URL or RPC address", url)
             scrollTo("Connect to rTorrent")
             rule.onNodeWithText("Connect to rTorrent").performClick()
-            waitFor("ruTorrent server queue", 90_000) {
-                // Header pluralises: "· 1 transfer", "· 2 transfers".
+            waitFor("verified Connect result", 90_000) { visible("Connection verified") }
+            rule.onNodeWithText("Continue to Connections").performClick()
+            waitFor("verified Connections management") {
+                visible("Connected ·") && visible("View transfers")
+            }
+            rule.onNodeWithText("View transfers").performClick()
+            val stagedName = before.single { it.hash.equals(hash, true) }.name
+            val exactRow = hasContentDescription("Details for $stagedName on", substring = true)
+            waitFor("canonical exact staged transfer", 90_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(exactRow)
+                    rule.onNode(exactRow).fetchSemanticsNode() != null
+                }.getOrDefault(false)
+            }
+            rule.onNode(exactRow).performClick()
+            // Until canonical Details owns reviewed destructive Remove, hand
+            // off only the exact authenticated owner. Never infer this from
+            // a saved-profile view, duplicate hash or scope-only filter.
+            rule.onNode(hasText("Open Server ·", substring = true))
+                .performScrollTo().performClick()
+            waitFor("exact-owner operational rTorrent queue", 90_000) {
                 visible("· ${before.size} transfer") && visible("+ Add torrent")
             }
             stage("connected")
