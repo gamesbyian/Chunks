@@ -1,0 +1,105 @@
+name: One-shot latest media R8 installed smoke
+
+# Runs the native-engine + Compose smoke test against the R8-shrunk
+# qaMinified build (release rules plus proguard-qa-rules.pro). Release
+# shrinking stays off until this passes; see app/proguard-rules.pro.
+on:
+  push:
+    branches:
+      - "probe/media-r8-integrated-20261110"
+    paths:
+      - ".github/workflows/probe-media-r8-integrated-once-20261110.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-one-shot-media-r8-${{ github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  minified-smoke:
+    # A skipped draft job allocates no runner; manual investigation remains possible.
+    if: github.event_name != 'pull_request' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prove the R8 JUnit receipt gate before allocating Android toolchain
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_minified_smoke_digest.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build R8-shrunk app and test APKs
+        run: |
+          # Keep the same Gradle 9.3.1 daemon warm for the connected smoke.
+          # The old --no-daemon path had to launch Gradle again after emulator boot.
+          start=$SECONDS
+          gradle --daemon -Pchunks.testBuildType=qaMinified :app:assembleQaMinified :app:assembleQaMinifiedAndroidTest
+          duration=$((SECONDS - start))
+          echo "CHUNKS_R8_BUILD_SECONDS=$duration"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            printf 'R8 app + test APK build: %ss (measured runner time)\n' "$duration" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          ls -l app/build/outputs/apk/qaMinified/*.apk
+          echo "qaMinified APK bytes: $(stat -c %s app/build/outputs/apk/qaMinified/*.apk)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Free unrelated runner toolchains before emulator startup
+        run: |
+          # Same API35 userdata disk exhaustion as native Add (41355079713).
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          df -h "$RUNNER_TEMP"
+      - name: Enable Android emulator KVM
+        run: |
+          if [ ! -c /dev/kvm ]; then
+            echo "::error::This runner does not expose /dev/kvm"
+            exit 1
+          fi
+          sudo chmod 0666 /dev/kvm
+      - name: Run the smoke test on the shrunk build
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          # A hung instrumentation fails within 15 minutes with diagnostics.
+          script: bash tools/minified_smoke.sh
+      - name: Produce source-bound JUnit evidence even if setup or emulator failed
+        if: always()
+        env:
+          CHUNKS_JOB_STATUS: ${{ job.status }}
+        run: |
+          python3 tools/ci_failure_digest.py --suite r8-qa-minified \
+            --status "$CHUNKS_JOB_STATUS" --require-executed \
+            --glob 'app/build/outputs/androidTest-results/connected/**/TEST-*.xml' \
+            --output "$RUNNER_TEMP/chunks-r8-ci-digest.json"
+      - name: Require exactly one real executed passing R8 smoke case
+        if: success()
+        run: python3 tools/require_minified_smoke_digest.py "$RUNNER_TEMP/chunks-r8-ci-digest.json"
+      - name: Upload R8 mapping and test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-one-shot-media-qaminified-r8
+          path: |
+            app/build/outputs/mapping/qaMinified/mapping.txt
+            app/build/outputs/mapping/qaMinified/usage.txt
+            app/build/outputs/androidTest-results/
+            app/build/outputs/qaminified-logcat.txt
+            app/build/outputs/qaminified-gradle.txt
+            ${{ runner.temp }}/chunks-r8-ci-digest.json
+          retention-days: 14
+          if-no-files-found: warn
