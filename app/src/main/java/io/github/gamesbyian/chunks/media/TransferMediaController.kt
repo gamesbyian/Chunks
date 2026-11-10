@@ -69,6 +69,8 @@ class TransferMediaController(
         java.util.concurrent.CopyOnWriteArraySet<() -> Boolean>>()
     private val assignmentLock = Any()
     private val pendingAutomatic = HashSet<MediaTransferKey>()
+    /** In-process restraint after a transient artless poster-provider failure. */
+    private val artlessFailureRetryAt = java.util.concurrent.ConcurrentHashMap<MediaTransferKey, Long>()
     private val providerConfigurationRevision = java.util.concurrent.atomic.AtomicLong(0L)
     private val mediaDataGeneration = java.util.concurrent.atomic.AtomicLong(0L)
     private val lastProviderAttemptRevision = java.util.concurrent.ConcurrentHashMap<MediaTransferKey, Long>()
@@ -78,6 +80,7 @@ class TransferMediaController(
         val AUDIO_TAG_EXTENSIONS = setOf("mp3", "flac", "m4a", "m4b", "mp4", "aac")
         const val MAX_STATES = 96
         const val MAX_PENDING_AUTOMATIC = 6
+        private const val ARTLESS_POSTER_RETRY_MS = 30L * 60_000
         /** Bounds one Similar Transfers index build (visible inventory, all environments). */
         const val MAX_SIMILAR_INVENTORY = 5_000
     }
@@ -231,7 +234,13 @@ class TransferMediaController(
         val match = assignment.match ?: return false
         if (assignment.state != MediaAssignmentState.AUTOMATIC ||
             assignment.userArtwork != null || match.artwork.isNotEmpty()) return false
-        return (stale || firstPassAfterRestart || providerChanged) &&
+        // The 72-hour negative-title TTL must not delay a confirmed work whose
+        // alternate poster provider failed temporarily. Foreground inventory
+        // heartbeat checks every 30 minutes; successful and negative provider
+        // receipts still have their own independent HTTP cache TTLs.
+        val anchor = maxOf(assignment.updatedAtMs, artlessFailureRetryAt[key] ?: assignment.updatedAtMs)
+        val posterRetryDue = now >= anchor && now - anchor >= ARTLESS_POSTER_RETRY_MS
+        return (posterRetryDue || firstPassAfterRestart || providerChanged) &&
             service.hasConfiguredArtworkProvider(match.kind, settings())
     }
 
@@ -350,6 +359,16 @@ class TransferMediaController(
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 // A user edit, exclusion, withdrawn consent or closed privacy scope wins over HTTP.
                 if (!permitted() || store.get(key) != previous) return
+                // A failed poster-completion lookup must not loop on every
+                // unchanged inventory refresh once its original assignment is old.
+                // OFFLINE / blocked requests deliberately do not consume this
+                // retry window, allowing immediate recovery when gates reopen.
+                if (previous?.state == MediaAssignmentState.AUTOMATIC &&
+                    previous.userArtwork == null && previous.match?.artwork?.isEmpty() == true &&
+                    outcome.status in setOf(MediaLookupStatus.ERROR_RETRYABLE, MediaLookupStatus.PROVIDER_COOLDOWN)) {
+                    artlessFailureRetryAt[key] = clock()
+                    lastProviderAttemptRevision[key] = providerRevision
+                }
                 // A previously verified work without cover art is a poster-completion request.
                 // Never replace its verified provider identity with a superficially similar work.
                 val missingArt = previous?.takeIf {
