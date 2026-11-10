@@ -1749,7 +1749,8 @@ internal fun ChunksApp(
             },
             onOptions = { section = Section.OPTIONS },
             onConnections = { section = Section.SERVER },
-            addDescription = "Choose where to add a transfer"
+            addDescription = "Choose where to add a transfer",
+            activeDestination = footerDestinationForVisibleScreen(section.name, server != null, toolOrigin)
         )
     }
 }
