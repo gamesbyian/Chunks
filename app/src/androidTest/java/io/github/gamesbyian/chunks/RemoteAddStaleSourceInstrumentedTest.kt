@@ -79,7 +79,17 @@ class RemoteAddStaleSourceInstrumentedTest {
             assertEquals("Explicit source must be the current draft", typed, source)
             release.complete(reviewed)
         }
-        rule.waitForIdle()
+        // Await a visible, non-mutating stale-source refusal from the actual
+        // Compose coroutine. Inspecting null bytes before it has resumed would
+        // be a false-positive test.
+        rule.waitUntil(10_000) {
+            runCatching {
+                list.performScrollToNode(hasText(
+                    "The draft changed while fetching. The current source was kept."))
+            }.isSuccess
+        }
+        rule.onNodeWithText("The draft changed while fetching. The current source was kept.")
+            .assertExists()
         rule.runOnIdle {
             assertEquals("A stale fetched .torrent must not clear a later magnet", typed, source)
             assertNull("A stale HTTP response cannot become selected metainfo", session.selectedBytes)
