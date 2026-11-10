@@ -1,46 +1,20 @@
-# Chunks agent work allocation and file ownership
+# Chunks dispatch and concurrency coordination
 
-**Execute this five-lane contract.** Before making edits, inspect live main, all open PR heads/diffs/checks, [AGENTS](../AGENTS.md), [WORK-QUEUE](WORK-QUEUE.md), [SPEC-COVERAGE](SPEC-COVERAGE.md), [QUALITY-LEDGER](QUALITY-LEDGER.md), [CI-POLICY](CI-POLICY.md) and [next-push handoff](NEXT-PUSH-HANDOFF-2026-11-08.md). Historical allocations belong in [the archive](AGENT-LANES-HISTORY-2026-11-09.md). A lane is an active file-ownership boundary, not permission to skip review or an indefinite lock.
+**There are no permanent agent lanes, assigned identities, fixed roster, fixed number of agents or reserved specialties in Chunks.** The filename is retained temporarily for compatibility with existing references; this document governs **dispatch-based coordination**, not lane allocation. The owner may dispatch one agent, several simultaneously, or a broad agent responsible for work spanning UI, Add, rTorrent, media, CI, integration and documentation. The **current owner dispatch** defines the agent's task and breadth. The [ranked work queue](WORK-QUEUE.md) defines priorities when the dispatch leaves choices open. Historic Agent 1–5 allocations, prompts and handoffs confer no authority over a new dispatch.
 
-## Agent 1: navigation and user presentation
+## On every dispatch
 
-**Own:** one Combined-derived Transfers list in All/device/server scopes, dedicated full Details, single-row four-button persistent footer, accessible two/three-across action layouts, Options presentation, Compose/JVM UI regressions and visual contrast (#1454). Diagnose #1442's observed failures with Agent 5; do not waive real Android/IME/API29/peer gates. Coordinate Add-only artwork appearance with Agent 2 and poster presentation with Agent 4.
+1. Read the actual owner request, [AGENTS](../AGENTS.md), live main/PRs/checks, [WORK-QUEUE](WORK-QUEUE.md), applicable product/spec/quality docs and [current handoff](NEXT-PUSH-HANDOFF-2026-11-08.md). Choose the smallest coherent work that satisfies the dispatch; if instructed to work broadly, **cross technical domains freely** and follow dependencies through to integration.
+2. Check for actively overlapping work in open PRs and concurrent dispatches. Coordinate only **real current** overlaps, especially when two agents would edit the same file, API or behavioral contract. Serialize conflicting edits or use independently composable branches; do not assume another agent exists or is responsible because of an old numbered label.
+3. A single agent can implement, document, test, coordinate and propose changes across the entire project if dispatched accordingly. A dispatch specifically limited to one task remains limited by that instruction, not by a fictitious permanent specialty.
+4. Preserve the one Universal Add submission authority, exact profile/environment/Place/Start, read-only uncertain-write recovery, informed consent, job-only Move semantics, and genuine destructive approval. No dispatch scope overrides product safety invariants.
+5. Test the exact source and record evidence honestly. For independent qualification or merging, follow explicit current dispatch and repository review/CI policy. Never treat self-authored assertions, unexecuted checks, red/skipped tests or an older APK as independent proof. Where independent review is required, arrange another reviewer or record the gap transparently instead of assigning it to a hypothetical “Agent 5”.
+6. At completion or handoff, leave a concise actionable state: actual changes/PR, tests and exact-head limits, blockers, next steps and whether work remains. Update central plans and queue only where the dispatch requires; history belongs in the QUALITY-LEDGER or archive, not active instructions.
 
-**Owner UI slices:** #1512 genuine empty Transfers welcome, #1514 purple-card Connections presentation, #1515 exact-profile deep-link to one canonical Transfers browser, #1516 footer active-root state. Coordinate #1517 source-first Add composable layout and entry routing with Agent 2, without editing its source/coordinator independently. Connections add success must acknowledge and stay on Connections, with saved profile list immediately usable.
+## Domains are work categories, not agent identities
 
-**Avoid:** Universal Add submission/phone parsers, authenticated remote engines, media provider code, central docs and CI.
+Navigation/Connections/Transfers/footer, Universal Add/source intake, authenticated remote/rTorrent, media/artwork, and qualification/CI/documentation are **technical areas** whose work can be performed by any properly dispatched agent. In a concurrent dispatch, separate or coordinate edits based on file/interface contention, not permanent title or agent number. Broadly dispatched agents may cover multiple or all areas. All current UI tasks #1512, #1514–#1517 remain discoverable through the queue, with their technical requirements defined in [UX](UX.md).
 
-## Agent 2: Add authority and Android source intake
+## Documentation rule
 
-**Own:** shared Universal Add coordinator, phone magnet/.torrent/clipboard/Share/Open With intake, exact-session preference persistence and Add-only artwork checkbox seam. Qualify or supersede #1449/#1450 first; then the Add portion of #1453. Keep the artwork checkbox default checked only when the global artwork collection/display preference is enabled, and persist a deliberate opt-out against the exact environment/hash. Never put it on active Details.
-
-**Owner Add slice:** #1517 source-first single-screen Universal Add: magnet/URL input + Open .torrent/Paste first, exact phone/remote/eligible smart target and Save to/Start underneath, conditional collapsible file/alias/source/media/rule options, single explicit submission. All footer, Share/Open With and clipboard entries reuse same draft; eliminate phone/server destination gateway. Agent 1 owns footer routing and shared shell; coordinate Add composable changes serially. Source/document handling and per-job preferences remain Agent 2's authority.
-
-**Avoid:** creating a second Add executor, remote RPC, global Options shell, media providers, central docs or CI.
-
-## Agent 3: authenticated rTorrent and remote integrity
-
-**Own:** remote transport, readback identity, authenticated challenge handling, lifecycle, priorities, Remove and job-only Move, focused remote tests. Diagnose #1444's genuine Combined contrast failure with Agent 1 and #1443's read-only Recheck test contradiction with Agent 5. Preserve exact numbered route/principal/hash/Place/Start and uncertain-write read-only reconciliation; never replay a possibly applied write.
-
-**Coordination:** For #1515/#1517, expose truthful exact-profile connection-save and existing remote Add capability/readback outcomes to Agents 1/2; no automatic server-list navigation or inferred success on an uncertain write.
-
-**Avoid:** Add phone source intake, central UI, media provider/scheduler files, central docs and CI.
-
-## Agent 4: automatic recognition, metadata and posters
-
-**Own:** authorized media recognition, provider consent and availability, confidence matching, poster fetch/cache, persistence, background scheduling at cold launch/reconnect/inventory changes including offscreen transfers, and focused media tests (#1453). Investigate actual generic-artwork/Not identified failures before changes. Respect per-job Add opt-out from Agent 2, global default-on presentation preference and independent informed third-party request consent. Preserve exact-job manual corrections.
-
-**Avoid:** remote adapter/auth engine files, shared Add submission, navigation/footer/Options UI, central docs and CI.
-
-## Agent 5: independent qualification, integration and documentation
-
-**Own:** independent PR review and merges, source-head/check provenance, acceptance and negative controls, APK installed-byte SHA-256 provenance, genuine disposable rTorrent and phone HTTPS tests, CI test selectors/efficiency, cross-lane coordination and all central instructional documents. Start with #1457 branding and reconcile #1442–#1450 against actual current heads. Use one test/QA fix for shared failures, not duplicative product patches. Require executed exact-head checks; identify red/skipped/unrun limits. Never claim owner Pixel, protected-host, signed release or accessibility acceptance from emulator evidence.
-
-**Avoid:** Agents 1–4's production files. No agent self-merges its own production PR.
-
-## Shared interface and merging discipline
-
-1. Check live file overlaps before edits and again before merge; own the smallest independently testable slice. Agree interface changes with the counterpart lane before shared-file changes, then serialize writes.
-2. Keep one Add submission authority and frozen source/account/environment/Place/Start. Job-only Move retains source payload bytes; destructive deletion is separately approved and observed. External provider requests require separate consent and privacy gates.
-3. Have Agent 5 independently inspect the exact final head and relevant positive/negative evidence. Do not transfer a green test from an older head, count a skipped test, or erase the first failing receipt.
-4. Keep active queue, specs, CI policy and handoffs **instructional**. Store historical PR outcomes, run receipts and failures in [QUALITY-LEDGER](QUALITY-LEDGER.md) or designated history files. No parallel progress diaries.
+Do not introduce “Agent 1 owns X” or “Agent 5 must merge Y” into active specifications, queues or handoffs. Describe the **work**, dependencies, actual overlap, proof requirements and applicable current dispatch instead. Previous numbered agent allocations are historical only: [archive](AGENT-LANES-HISTORY-2026-11-09.md).
