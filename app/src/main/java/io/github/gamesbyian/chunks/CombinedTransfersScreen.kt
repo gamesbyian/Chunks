@@ -807,7 +807,10 @@ internal fun CombinedTransfersScreen(
                 phonePrivacy.mayShow && phoneRunning) ||
                 (focusedKey.environment == serverId && server?.lifecycle != null &&
                     server?.authenticatedSession != null && serverPrivacy?.mayShow == true &&
-                    server?.stale == false))
+                    server?.stale == false &&
+                    // rTorrent Start/Stop only supports exact v1 hashes. Keep
+                    // unsupported remote identities read-only before review.
+                    focusedKey.infoHash.matches(Regex("[0-9a-f]{40}"))))
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
