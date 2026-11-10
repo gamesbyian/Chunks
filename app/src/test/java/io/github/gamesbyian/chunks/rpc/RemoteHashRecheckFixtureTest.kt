@@ -20,7 +20,7 @@ class RemoteHashRecheckFixtureTest {
 
     private enum class Scenario {
         OBSERVED, QUEUED, ALREADY_CHECKING,
-        WRONG_HASH, WRONG_NAME, WRONG_DIRECTORY, INVALID_FLAG,
+        WRONG_HASH, WRONG_NAME, WRONG_DIRECTORY, LATE_RENAME, LATE_MOVE, INVALID_FLAG,
         LOST_ACK_AFTER_APPLY, WRONG_HASH_AFTER_APPLY
     }
 
@@ -30,6 +30,7 @@ class RemoteHashRecheckFixtureTest {
         val methods: MutableList<String> = Collections.synchronizedList(mutableListOf())
         @Volatile var writes = 0
         private var hashReads = 0
+        @Volatile private var hashingFlagWasRead = false
         val endpoint get() = "http://127.0.0.1:${server.address.port}/RPC2"
 
         init {
@@ -45,14 +46,19 @@ class RemoteHashRecheckFixtureTest {
                             (scenario == Scenario.WRONG_HASH_AFTER_APPLY && writes > 0)
                         "<string>${if (changed) other else hash}</string>"
                     }
-                    "d.name" -> "<string>${if (scenario == Scenario.WRONG_NAME) "other.bin" else name}</string>"
-                    "d.directory" -> "<string>${if (scenario == Scenario.WRONG_DIRECTORY) "/srv/other" else directory}</string>"
-                    "d.is_hash_checking" -> "<i8>${when {
-                        scenario == Scenario.INVALID_FLAG -> 2
-                        scenario == Scenario.ALREADY_CHECKING -> 1
-                        scenario == Scenario.OBSERVED && writes > 0 -> 1
-                        else -> 0
-                    }}</i8>"
+                    "d.name" -> "<string>${if (scenario == Scenario.WRONG_NAME ||
+                        (scenario == Scenario.LATE_RENAME && hashingFlagWasRead)) "other.bin" else name}</string>"
+                    "d.directory" -> "<string>${if (scenario == Scenario.WRONG_DIRECTORY ||
+                        (scenario == Scenario.LATE_MOVE && hashingFlagWasRead)) "/srv/other" else directory}</string>"
+                    "d.is_hash_checking" -> {
+                        hashingFlagWasRead = true
+                        "<i8>${when {
+                            scenario == Scenario.INVALID_FLAG -> 2
+                            scenario == Scenario.ALREADY_CHECKING -> 1
+                            scenario == Scenario.OBSERVED && writes > 0 -> 1
+                            else -> 0
+                        }}</i8>"
+                    }
                     "d.check_hash" -> {
                         writes++
                         if (scenario == Scenario.LOST_ACK_AFTER_APPLY) {
@@ -90,6 +96,25 @@ class RemoteHashRecheckFixtureTest {
                 }
                 assertEquals(0, gateway.writes)
                 assertFalse(gateway.methods.contains("d.check_hash"))
+            }
+        }
+    }
+
+    @Test fun renameOrMoveBetweenHashingFlagAndWriteRefusesWithoutScheduling() = runBlocking {
+        for (scenario in listOf(Scenario.LATE_RENAME, Scenario.LATE_MOVE)) {
+            Gateway(scenario).use { gateway ->
+                try {
+                    remote(gateway).requestHashRecheck(hash, name, directory)
+                    fail("Recheck must not act on a renamed or moved job: $scenario")
+                } catch (_: IllegalStateException) { }
+                assertEquals("No Recheck write after reviewed identity changes", 0, gateway.writes)
+                assertFalse(gateway.methods.contains("d.check_hash"))
+                assertEquals("Fresh post-flag name must be checked", 2,
+                    gateway.methods.count { it == "d.name" })
+                if (scenario == Scenario.LATE_MOVE) {
+                    assertEquals("Fresh post-flag Place must be checked", 2,
+                        gateway.methods.count { it == "d.directory" })
+                }
             }
         }
     }

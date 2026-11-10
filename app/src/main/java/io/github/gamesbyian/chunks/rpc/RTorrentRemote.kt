@@ -1570,10 +1570,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // view row or matching infohash on a different account is inadequate.
         currentIdentity()
         val alreadyChecking = exactFlag(call("d.is_hash_checking", listOf(hash)))
-        check((call("d.hash", listOf(hash)) as? String)
-            ?.equals(hash, ignoreCase = true) == true) {
-            "Torrent vanished during Recheck review"
-        }
+        // The hash can remain unchanged while another client renames or moves
+        // its session. Recheck the entire reviewed identity AFTER the flag
+        // read, immediately before the only permitted scheduling write.
+        // Any contradiction here is known-before-mutation, never retryable.
+        currentIdentity()
         if (alreadyChecking) return RemoteHashRecheckOutcome.AlreadyChecking(hash)
 
         try {
