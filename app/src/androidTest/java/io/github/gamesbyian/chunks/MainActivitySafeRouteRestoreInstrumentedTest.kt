@@ -30,13 +30,18 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
 
     @Test fun disconnectedPhoneAndCombinedRoutesSurviveActivityRecreationWithoutCommands() {
         val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("This device").assertDoesNotExist()
+        rule.onNodeWithText("All environments").assertDoesNotExist()
         rule.onNodeWithText("+ Add").assertExists()
         rule.onNodeWithContentDescription("Connections").assertExists()
         rule.activityRule.scenario.recreate()
-        rule.onNodeWithText("This device").assertExists()
-        // Combined is read-only even if this device is the only environment.
-        rule.onNodeWithText("All environments").performClick()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        // Direct first-run Welcome has no scope management chrome.
+        rule.onNodeWithText("All environments").assertDoesNotExist()
+        // The footer enters the one canonical scoped catalog from Welcome.
+        // The old phone-only management chip is intentionally absent.
+        rule.onNodeWithText("Transfers").performClick()
         rule.onNodeWithText("All environments").assertExists()
         rule.activityRule.scenario.recreate()
         rule.onNodeWithText("All environments").assertExists()
@@ -68,7 +73,8 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         // command. The authenticated remote session remains absent.
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("This device").assertDoesNotExist()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
