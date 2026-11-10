@@ -60,15 +60,23 @@ class ClipboardPrefillInstrumentedTest {
         }
     }
 
-    /** Only an unrelated emulator launcher ANR may be dismissed here.
+    /** Recover one exact unrelated *system app* ANR, never an app failure.
      *
-     * A system-process ANR dialog takes window focus from a healthy test
-     * Activity. It is not an application Add/authorization result. Never
-     * dismiss a Chunks ANR, a permission prompt or an arbitrary overlay,
-     * and never count this recovery as a passed clipboard interaction.
+     * Run 42808797258 attempt 1 captured the full emulator window with an
+     * Android "Messages isn't responding" overlay, while the Chunks-root
+     * screenshot showed the expected healthy Transfers screen underneath.
+     * The older reproducible Pixel Launcher ANR has the same focus impact.
+     * Only these two exact observed system labels permit clicking "Wait".
+     * Never dismiss a Chunks ANR, an unknown app, permission prompt or
+     * generic overlay. Real activity focus and all clipboard/Add positive
+     * assertions are still independently required after the dismissal.
      */
-    private fun dismissExactLauncherAnr(device: UiDevice): Boolean {
-        if (device.findObject(By.text("Pixel Launcher isn't responding")) == null) return false
+    private fun dismissExactUnrelatedSystemAnr(device: UiDevice): Boolean {
+        val knownUnrelatedSystemApp = listOf(
+            "Pixel Launcher isn't responding",
+            "Messages isn't responding"
+        ).any { device.findObject(By.text(it)) != null }
+        if (!knownUnrelatedSystemApp) return false
         val wait = device.findObject(By.text("Wait")) ?: return false
         return runCatching { wait.click(); true }.getOrDefault(false)
     }
@@ -136,21 +144,21 @@ class ClipboardPrefillInstrumentedTest {
             rule.onNodeWithText("Transfers").performClick()
             rule.waitForIdle()
         }
-        // Actual API35 GHA captures on two unrelated source heads show the
-        // *system launcher* ANR overlay stealing foreground focus. Before
-        // asserting clipboard availability, permit one precise external
-        // "Wait" dismissal. Recheck real Chunks focus afterward. Never
+        // Real API35 snapshots show the unrelated system Pixel Launcher and
+        // Messages ANR overlays can steal a healthy Chunks window's focus.
+        // Allow only one *exact* system "Wait", and assert real focus before
+        // any clipboard or Add action. Every product assertion is preserved. Never
         // override the enabled/usable clipboard or positive UI assertions.
         val device = UiDevice.getInstance(
             androidx.test.platform.app.InstrumentationRegistry.getInstrumentation())
-        var launcherDialogDismissed = false
+        var unrelatedSystemDialogDismissed = false
         var nextDialogProbeAt = 0L
         waitOrExplain("foreground window focus", 15_000) {
             if (rule.activity.hasWindowFocus()) true else {
                 val now = SystemClock.elapsedRealtime()
-                if (!launcherDialogDismissed && now >= nextDialogProbeAt) {
+                if (!unrelatedSystemDialogDismissed && now >= nextDialogProbeAt) {
                     nextDialogProbeAt = now + 500L
-                    launcherDialogDismissed = dismissExactLauncherAnr(device)
+                    unrelatedSystemDialogDismissed = dismissExactUnrelatedSystemAnr(device)
                 }
                 false
             }
