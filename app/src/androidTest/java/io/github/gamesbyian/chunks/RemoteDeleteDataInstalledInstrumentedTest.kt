@@ -3,7 +3,6 @@ package io.github.gamesbyian.chunks
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
