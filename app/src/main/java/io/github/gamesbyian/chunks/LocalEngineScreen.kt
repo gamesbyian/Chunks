@@ -931,7 +931,9 @@ internal fun LocalEngineScreen(
             hasConfirmedLocalInventory, inventoryStale, transfers.isEmpty(),
             !showFirstRunWelcome, transferSearch, addExpanded)
         if (pane == PhonePane.TRANSFERS) {
-            FlowRow(Modifier.fillMaxWidth(),
+            // First-run Welcome is the entire empty catalog presentation.
+            // Scope switches are meaningful only in a configured/nonempty workspace.
+            if (!firstRunVisible) FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 EnvironmentBadge("This device", server = false,
@@ -1857,6 +1859,10 @@ internal fun LocalEngineScreen(
                 }
             }
         )
+        // Fresh, genuinely empty first launch has no jobs to search, batch,
+        // filter or sort. Preserve these controls for offline/loading/filtered
+        // states and restore them immediately when an actual job appears.
+        if (!firstRunVisible) {
         // Compact controls immediately precede the inventory. All batch tools
         // stay collapsed until explicitly requested.
         ClearableTransferSearchField(
@@ -1921,6 +1927,7 @@ internal fun LocalEngineScreen(
                 TransferSortOrdering.reversed(transferDirection)) }
         )
         }
+        } // no empty-library management tools above Welcome
         val addedHidden = remember(lastAddedHash, lastAddedView, transfers, displayedTransfers,
             transferSearch, transferFilter) {
             lastAddedView == transferSearch + "\u0000" + transferFilter.name &&
@@ -1938,7 +1945,7 @@ internal fun LocalEngineScreen(
             Text("Showing ${displayedTransfers.size} of ${transfers.size} transfers on this device",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
-            // Search and filters precede welcome even for an empty inventory.
+            // Welcome follows the common header directly, not unused management tools.
             if (firstRunVisible) NoTransfersWelcome(
                 onAdd = { if (onOpenAdd != null) onOpenAdd.invoke()
                     else { addExpanded = true; addNavigationRevision++ } },

@@ -35,10 +35,15 @@ class PhoneInventoryFirstViewportTest {
 
     @Test fun deviceInventoryOwnsTheFirstViewportWithoutSettingsAboveIt() {
         rule.waitForIdle()
-        rule.onNodeWithText("This device").assertIsDisplayed()
-        rule.onNodeWithText("Search transfers on this device").assertIsDisplayed()
+        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
+        rule.onNodeWithText("This device").assertDoesNotExist()
+        rule.onNodeWithText("All environments").assertDoesNotExist()
+        rule.onNodeWithText("Search transfers on this device").assertDoesNotExist()
+        rule.onNodeWithText("Batch tools").assertDoesNotExist()
+        rule.onNodeWithText("Choose filters & sort", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Options · this device").assertDoesNotExist()
         rule.onNodeWithText("Privacy & authentication").assertDoesNotExist()
+        rule.onRoot().captureRoboImage("build/chunks-visual/phone-first-run-no-management-chrome-412dp.png")
     }
 
     @Test fun footerOptionsBringsPhoneOptionsAndToolsIntoView() {
