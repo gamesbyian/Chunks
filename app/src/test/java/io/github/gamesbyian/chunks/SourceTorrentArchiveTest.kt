@@ -144,6 +144,19 @@ class SourceTorrentArchiveTest {
             requireNotNull(directory.listFiles()).size)
     }
 
+    @Test fun excessiveAbandonedPendingFilesFailClosedWithoutDeletingThem() {
+        val root = privateDir()
+        val directory = File(root, SourceTorrentArchive.DIRECTORY).apply { mkdirs() }
+        repeat(SourceTorrentArchive.MAX_ARCHIVED_FILES + 17) { i ->
+            File(directory, ".pending-" + i.toString(16) + ".tmp").writeBytes(byteArrayOf())
+        }
+        assertEquals(SourceArchiveOutcome.CorruptOrUnsafeArchive,
+            SourceTorrentArchive(root).apply(OriginalTorrentHandling.ARCHIVE,
+                OriginalTorrentOrigin.ANDROID_DOCUMENT, raw, proof()))
+        assertEquals(SourceTorrentArchive.MAX_ARCHIVED_FILES + 17,
+            requireNotNull(directory.listFiles()).size)
+    }
+
     @Test fun oversizedOrUnparseableInputNeverWrites() {
         val root = privateDir()
         val huge = ByteArray(TorrentMetainfoReader.MAX_BYTES + 1)

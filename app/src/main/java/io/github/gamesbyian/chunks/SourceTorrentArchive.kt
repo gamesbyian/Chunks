@@ -101,7 +101,15 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
         val name = hash + "-" + digest + ".torrent"
         val target = archive.resolve(name)
         val existing = verifyExisting(target, bytes)
-        if (existing != null) return existing
+        if (existing != null) {
+            // The previous process could have published the link but lost
+            // directory durability before returning a success receipt.
+            // Re-fsync even an exact, deduplicated copy before claiming it
+            // is safe to retain as the archive of record.
+            if (existing is SourceArchiveOutcome.ArchivedCopy && !syncDirectory(archive))
+                return SourceArchiveOutcome.NeedsReconciliation
+            return existing
+        }
 
         val inventory = try { inventory(archive) }
             catch (_: Exception) { return SourceArchiveOutcome.CorruptOrUnsafeArchive }
@@ -123,7 +131,11 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
             try {
                 Files.createLink(target, staged)
             } catch (_: FileAlreadyExistsException) {
-                return verifyExisting(target, bytes) ?: SourceArchiveOutcome.CorruptOrUnsafeArchive
+                val concurrent = verifyExisting(target, bytes)
+                    ?: return SourceArchiveOutcome.CorruptOrUnsafeArchive
+                if (concurrent is SourceArchiveOutcome.ArchivedCopy &&
+                    !syncDirectory(archive)) return SourceArchiveOutcome.NeedsReconciliation
+                return concurrent
             }
             if (!syncDirectory(archive)) return SourceArchiveOutcome.NeedsReconciliation
             Files.delete(staged)
@@ -156,9 +168,16 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
 
     private fun inventory(directory: Path): Pair<Int, Long> {
         var count = 0
+        var entries = 0
         var size = 0L
         Files.newDirectoryStream(directory).use { items ->
             for (item in items) {
+                // A crash loop can leave .pending entries. Do not let an
+                // unbounded catalog turn a 2 MiB Add into a filesystem scan.
+                entries++
+                require(entries <= MAX_ARCHIVED_FILES + 16) {
+                    "Too many incomplete private archive entries"
+                }
                 val name = item.fileName.toString()
                 val archived = Regex("[a-f0-9]{40}-[a-f0-9]{64}\\.torrent").matches(name)
                 val temporary = Regex("\\.pending-[A-Za-z0-9_-]+\\.tmp").matches(name)
