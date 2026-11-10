@@ -83,7 +83,7 @@ class ChunksMedia private constructor(context: Context) {
 
     /** Recheck offscreen inventory following settings/credentials changes without UI composition. */
     private fun refreshInventorySessions() {
-        inventorySessions.forEach { it.refresh() }
+        inventorySessions.forEach { it.refreshRevoking() }
     }
 
     /** Delegates resolve the lazily-created stores only when first used off the main thread. */
