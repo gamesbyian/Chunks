@@ -65,6 +65,9 @@ class NoTransfersWelcomeTest {
         org.junit.Assert.assertTrue(show(running = true, confirmed = true))
         org.junit.Assert.assertFalse(show(noResume = null))
         org.junit.Assert.assertFalse(show(noResume = false))
+        // A stopped engine may still have an observed nonempty frame.
+        // Durable absence alone cannot erase that frame into Welcome.
+        org.junit.Assert.assertFalse(show(noResume = true, running = false, count = 1))
         org.junit.Assert.assertFalse(show(running = true))
         org.junit.Assert.assertFalse(show(running = true, confirmed = true, count = 1))
         org.junit.Assert.assertFalse(show(stale = true))

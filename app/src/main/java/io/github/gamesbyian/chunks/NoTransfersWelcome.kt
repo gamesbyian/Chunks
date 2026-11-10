@@ -71,9 +71,10 @@ internal fun showCanonicalFirstRunWelcome(
     privacyAllowed: Boolean,
     pendingExternalSource: Boolean
 ): Boolean {
-    val genuinelyEmpty = if (nativeRunning)
-        nativeConfirmed && !nativeStale && nativeCount == 0
-    else noPersistedJobs == true && !nativeStale
+    // Even after the engine exits, a previously observed nonempty frame must
+    // never be covered by first-install chrome during a restore transition.
+    val genuinelyEmpty = nativeCount == 0 && !nativeStale &&
+        if (nativeRunning) nativeConfirmed else noPersistedJobs == true
     return genuinelyEmpty && !hasRemoteProfile && !restrictedView &&
         privacyAllowed && !pendingExternalSource
 }
