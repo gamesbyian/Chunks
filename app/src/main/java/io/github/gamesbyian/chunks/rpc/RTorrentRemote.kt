@@ -444,13 +444,23 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(completed <= size) { "Verified bytes exceed torrent size" }
         val state = number(row[4])
         require(state in 0L..1L) { "Invalid rTorrent state flag" }
+        // Names and directories later serve as optimistic-concurrency
+        // witnesses for exact-session Remove and Move. Truncating a remote
+        // value here changes that identity and falsely advertises a complete
+        // inventory. Refuse unrepresentable rows instead of manufacturing
+        // shorter paths or names. Do not trim otherwise valid literal spaces.
+        val name = row[1] as? String ?: error("Missing torrent name")
+        val directory = row[5] as? String ?: error("Missing server path")
+        require(name.length <= 2048 && directory.length <= 4096) {
+            "rTorrent returned an overlong transfer identity; refresh the account"
+        }
         return RemoteTransfer(
             hash = hash,
-            name = (row[1] as? String ?: error("Missing torrent name")).take(2048),
+            name = name,
             sizeBytes = size,
             completedBytes = completed,
             started = state == 1L,
-            directory = (row[5] as? String ?: error("Missing server path")).take(4096),
+            directory = directory,
             downBytesPerSecond = if (rich) nonNegativeNumber(row[6], "download rate") else null,
             upBytesPerSecond = if (rich) nonNegativeNumber(row[7], "upload rate") else null,
             ratioThousandths = if (rich) nonNegativeNumber(row[8], "ratio") else null
