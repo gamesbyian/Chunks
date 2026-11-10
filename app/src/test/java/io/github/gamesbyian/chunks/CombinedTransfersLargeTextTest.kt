@@ -59,6 +59,11 @@ class CombinedTransfersLargeTextTest {
                 }
             }
         }
+        // Preference IO is deliberately off-main. Never scroll an unmounted
+        // filtered control while the genuine Welcome is still being replaced.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Filters").fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test fun narrow200PercentControlsRemainScrollReachableWithNoEngineStarted() {
