@@ -27,7 +27,10 @@ class ConnectionsRemoteIntroTest {
     private fun render(
         profiles: List<RememberedRemoteProfileRoster.Profile> = emptyList(),
         onProfile: (RememberedRemoteProfileRoster.Profile) -> Unit = {},
-        onViewTransfers: ((RememberedRemoteProfileRoster.Profile) -> Unit)? = null
+        onViewTransfers: ((RememberedRemoteProfileRoster.Profile) -> Unit)? = null,
+        connected: String? = null,
+        onViewConnectedTransfers: () -> Unit = {},
+        onDisconnect: () -> Unit = {}
     ) {
         rule.setContent {
             ChunksTheme {
@@ -39,6 +42,9 @@ class ConnectionsRemoteIntroTest {
                     onRememberLogin = {},
                     onForgetLogin = {},
                     onSelectProfile = onProfile,
+                    connectedSessionName = connected,
+                    onViewConnectedTransfers = onViewConnectedTransfers,
+                    onDisconnectCurrent = onDisconnect,
                     onOpenProfileTransfers = onViewTransfers,
                     onRenameProfile = { _, _ -> false },
                     onForgetProfile = {},
@@ -99,6 +105,22 @@ class ConnectionsRemoteIntroTest {
         rule.onAllNodesWithText("Use saved login")[0].performClick()
         assertEquals(listOf(first.id), chosenLogins)
         assertEquals(listOf(second.id), viewed)
+    }
+
+    @Test fun verifiedConnectedSessionUsesConnectionsNotAnEditableLoginOrLegacyList() {
+        var view = 0
+        var disconnect = 0
+        render(connected = "Studio", onViewConnectedTransfers = { view++ },
+            onDisconnect = { disconnect++ })
+        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Connected · Studio").assertExists()
+        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertDoesNotExist()
+        rule.onNodeWithText("Connect to rTorrent").assertDoesNotExist()
+        rule.onNodeWithText("View transfers").performClick()
+        assertEquals(1, view)
+        assertEquals(0, disconnect)
+        rule.onNodeWithText("Disconnect").performClick()
+        assertEquals(1, disconnect)
     }
 
 }
