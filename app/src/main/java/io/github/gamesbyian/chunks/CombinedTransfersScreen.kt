@@ -297,6 +297,11 @@ internal fun combinedRowFreshnessLabel(source: EnvironmentTransferSnapshot?): St
 internal fun CombinedTransfersScreen(
     server: CombinedServerSource?,
     savedProfiles: List<CombinedSavedProfile>,
+    /** One-shot deep link by stable saved profile ID, never display label. */
+    scopeFocusRequest: String? = null,
+    onScopeFocusConsumed: () -> Unit = {},
+    /** Welcome always enters the existing Add destination, not a new executor. */
+    onWelcomeAdd: (() -> Unit)? = null,
     onOpenPhone: () -> Unit,
     onOpenServer: (() -> Unit)?,
     /** Opens the connected, verified server's existing Add review. Never targets a saved-only profile. */
@@ -359,12 +364,35 @@ internal fun CombinedTransfersScreen(
         // can reorder a newer choice behind a late preference read.
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
+    // A saved profile tap requests a VIEW filter of this existing catalog only.
+    // It cannot authenticate, select an Add target, or authorize a mutation.
+    LaunchedEffect(scopeFocusRequest) {
+        if (scopeFocusRequest != null) {
+            savedProfileViewScope(scopeFocusRequest, savedProfiles.map { it.id }.toSet())?.let {
+                update(query.copy(scope = it))
+            }
+            onScopeFocusConsumed()
+        }
+    }
 
     // Phone: read only an engine already running in this process. Opening this
     // view never starts the phone engine or its service (remote-only use).
     var phoneFrame by remember { mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false)) }
     var phoneConfirmed by remember { mutableStateOf(false) }
     var phoneRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
+    // Read-only durable absence evidence. A missing native engine is otherwise
+    // indistinguishable from a stopped process with restorable torrent jobs.
+    var noPersistedPhoneJobs by remember(context) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(context) {
+        noPersistedPhoneJobs = try {
+            withContext(Dispatchers.IO) {
+                !io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery.shouldAttemptRestore(
+                    java.io.File(context.filesDir, "local-engine"))
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) { false }
+    }
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Restores only a read-only detail target, never an in-flight command or batch selection.
     var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
@@ -703,6 +731,21 @@ internal fun CombinedTransfersScreen(
     }
     val addedHidden = combinedAddedTransferHidden(recentlyAddedTransfer, sources,
         result.transfers.map { it.key })
+    val firstRunVisible = showCanonicalFirstRunWelcome(
+        noPersistedJobs = noPersistedPhoneJobs,
+        nativeRunning = phoneRunning,
+        nativeConfirmed = phoneConfirmed,
+        nativeStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations(),
+        nativeCount = phoneFrame.entries.size,
+        hasRemoteProfile = server != null || savedProfiles.isNotEmpty(),
+        restrictedView = CombinedViewPreferences.narrowingActive(query),
+        privacyAllowed = phonePrivacy.mayShow,
+        pendingExternalSource = pendingSharedMagnet || pendingSharedTorrent ||
+            readingSharedTorrent || recentlyAddedTransfer != null
+    )
+    val checkingFreshPhone = noPersistedPhoneJobs == null && !phoneRunning &&
+        !phoneConfirmed && savedProfiles.isEmpty() && server == null &&
+        !CombinedViewPreferences.narrowingActive(query)
     val sourcesByEnvironment = result.sources.associateBy { it.environment }
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
@@ -924,11 +967,24 @@ internal fun CombinedTransfersScreen(
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
-        } else item {
+        } else if (!firstRunVisible) item {
             // Keep one compact, spoken view identity without a duplicate Back.
-            Text("All environments", style = MaterialTheme.typography.titleMedium,
+            Text("Transfers", style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
         }
+        if (firstRunVisible) {
+            item(key = "canonical-fresh-welcome") {
+                NoTransfersWelcome(
+                    onAdd = onWelcomeAdd ?: onAddToPhone ?: onOpenPhone,
+                    onConnections = onConnections ?: {}
+                )
+            }
+        } else if (checkingFreshPhone) {
+            item(key = "canonical-fresh-probe") {
+                Text("Checking transfers on this device…",
+                    style = MaterialTheme.typography.bodyMedium)
+            }
+        } else {
         // Add lives in its own destination when this is the app's primary list.
         // A shared source still surfaces a target choice, never auto-submits.
         if (showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent) item(key = COMBINED_ADD_ITEM_KEY) {
@@ -1349,7 +1405,7 @@ internal fun CombinedTransfersScreen(
                 Text("Open device transfer controls")
             }
         }
-        }
+        } // management controls are absent only from a genuine fresh welcome
         ReturnToTopControl(visible = showReturnToTop, onClick = {
             batchScope.launch {
                 if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
@@ -1814,3 +1870,10 @@ internal fun combinedProgressTone(row: UnifiedTransferObservation): ChunksTone =
     row.started == false -> ChunksTone.PAUSED
     else -> ChunksTone.ACTIVE
 }
+
+/** A profile label is deliberately excluded: duplicate names cannot alter scope. */
+internal fun savedProfileViewScope(
+    profileId: String,
+    knownProfileIds: Set<String>
+): EnvironmentViewScope? = profileId.takeIf { it.isNotBlank() && it in knownProfileIds }
+    ?.let { EnvironmentViewScope.Only(setOf(EnvironmentId(it))) }
