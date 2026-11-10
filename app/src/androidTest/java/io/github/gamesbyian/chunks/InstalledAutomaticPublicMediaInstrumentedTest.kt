@@ -71,11 +71,19 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
     private fun key() = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentSnapshots.PHONE, hash()))
     private fun exactAssignment() = FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json")).get(key())
     private fun displayed(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
-    private fun transfers() {
+    private fun openCanonicalTransfers() {
         rule.waitUntil(25_000) { displayed("Transfers") }
         rule.onNodeWithText("Transfers", substring = false).performClick()
-        rule.waitUntil(30_000) { displayed(originalName) }
+        rule.waitUntil(30_000) { displayed("All environments") }
     }
+    private fun search(value: String) {
+        rule.onNodeWithText("Search names or hashes").performTextReplacement(value)
+        instrumentation.runOnMainSync {
+            context.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
+                .hideSoftInputFromWindow(activity?.window?.decorView?.windowToken, 0)
+        }
+    }
+    private var activity: MainActivity? = null
     private fun pixels(phase: String) {
         val found = rule.onAllNodes(hasContentDescription("Artwork: Babylon 5", substring = true),
             useUnmergedTree = true)
@@ -114,8 +122,15 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
         val network = Observer(original, offline = false)
         ProxySelector.setDefault(network)
         try {
-            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+                scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { displayed("On this phone") }
+                // Keep the only canonical catalog mounted while filtering every
+                // fixture row OUT of LazyColumn composition. A passing identity
+                // cannot be attributed to per-row rememberTransferMedia effects.
+                openCanonicalTransfers()
+                search("qa-intentionally-no-matching-transfers")
+                assertFalse("No transfer row should exist before fixture admission", displayed(originalName))
                 // Register a stopped native transfer. It is never started or sent to
                 // a remote tracker; merely seeing the fresh inventory causes lookup.
                 val engine = LocalEngineHolder.get(context)
@@ -131,9 +146,9 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                 val torrentHash = (added as LocalAddResult.AddedStopped).status.infoHash
                 assertTrue(prefs.edit().putString("hash", torrentHash).commit())
                 assertTrue(engine.saveResumeDataFor(torrentHash, 30_000))
-                // One canonical list is the media session host. No row tap or
-                // Identify button is used before the persisted provider match.
-                transfers()
+                // No row is composed while the only backend session enriches
+                // this hidden, newly arrived exact-key native inventory.
+                assertFalse("Filter must still hide the newly observed row", displayed(originalName))
                 rule.waitUntil(90_000) {
                     runBlocking(Dispatchers.IO) {
                         exactAssignment()?.let { a ->
@@ -142,7 +157,11 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                     }
                 }
                 assertEquals("475", exactAssignment()?.match?.ref?.externalId)
-                pixels("online")
+                rule.waitUntil(60_000) {
+                    File(context.cacheDir, "media-art").listFiles().orEmpty()
+                        .any { it.name.endsWith(".img") && it.length() > 64 }
+                }
+                assertFalse("Image was fetched while row remained offscreen", displayed(originalName))
                 val requests = synchronized(network.uris) { network.uris.toList() }
                 assertTrue("Real TVmaze metadata + image-CDN HTTP required", requests.size >= 2)
                 assertTrue(requests.any { it.host == "api.tvmaze.com" })
@@ -155,11 +174,14 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                         assertFalse("Forbidden release/transfer data in provider request", decoded.contains(token, true))
                     }
                 }
-                // Details should use this same stored identity and render its
-                // poster without any manual Identify or permission escalation.
-                rule.onNodeWithText("Search local names, aliases, folders or hashes")
-                    .performTextReplacement(torrentHash)
-                rule.onNodeWithText("More details").performClick()
+                // Reveal the already cached poster only AFTER independent
+                // offscreen provider/assignment/cache assertions have passed.
+                search("")
+                rule.waitUntil(25_000) { displayed(originalName) }
+                pixels("online")
+                // Details should reuse the same match without an Identify tap.
+                search(torrentHash)
+                rule.onNodeWithText("More details").performScrollTo().performClick()
                 rule.onNodeWithText("Artwork & media information").assertExists()
                 rule.waitUntil(30_000) { media.controller.observe(key(), originalName).value.poster != null }
                 assertTrue(prefs.edit().putInt("pid", android.os.Process.myPid()).commit())
@@ -178,8 +200,10 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
         val network = Observer(original, offline = true)
         ProxySelector.setDefault(network)
         try {
-            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
-                transfers()
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+                scenario.onActivity { activity = it }
+                openCanonicalTransfers()
+                rule.waitUntil(30_000) { displayed(originalName) }
                 rule.waitUntil(40_000) {
                     runBlocking(Dispatchers.IO) { exactAssignment()?.state == MediaAssignmentState.AUTOMATIC }
                 }
