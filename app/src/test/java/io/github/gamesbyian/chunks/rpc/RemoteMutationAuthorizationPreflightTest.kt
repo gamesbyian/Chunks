@@ -22,16 +22,21 @@ class RemoteMutationAuthorizationPreflightTest {
     private data class Sent(val method: String, val authorization: String?)
 
     private class Gateway(
+        val headChallenge: String? = null,
         val answer: (com.sun.net.httpserver.HttpExchange, String, Int) -> Unit
     ) : AutoCloseable {
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         val sent: MutableList<Sent> = Collections.synchronizedList(mutableListOf())
+        @Volatile var headRequests = 0
         val endpoint get() = "http://127.0.0.1:${server.address.port}/RPC2"
         init {
             server.createContext("/RPC2") { exchange ->
                 if (exchange.requestMethod == "HEAD") {
-                    exchange.sendResponseHeaders(405, -1)
+                    headRequests++
+                    if (headChallenge != null)
+                        exchange.responseHeaders.add("WWW-Authenticate", headChallenge)
+                    exchange.sendResponseHeaders(if (headChallenge != null) 401 else 405, -1)
                     exchange.close()
                     return@createContext
                 }
@@ -134,6 +139,34 @@ class RemoteMutationAuthorizationPreflightTest {
                     gateway.sent[3].authorization.orEmpty().startsWith(expectedPrefix))
                 assertEquals(1, gateway.sent.count { it.method == "d.start" })
             }
+        }
+    }
+
+    @Test fun freshHeadChallengeTakesPrecedenceOverCachedProtectedRead() = runBlocking {
+        Gateway(headChallenge = basic) { exchange, method, _ ->
+            val authorization = exchange.requestHeaders.getFirst("Authorization")
+            when (method) {
+                "d.name" -> if (authorization == null)
+                    reply(exchange, 401, challenge = digest)
+                else if (authorization.startsWith("Digest "))
+                    reply(exchange, 200,
+                        "<methodResponse><params><param><value><string>sample</string></value>" +
+                            "</param></params></methodResponse>")
+                else reply(exchange, 401, challenge = digest)
+                "system.client_version" -> reply(exchange, 200, ok)
+                "d.start" -> if (authorization?.startsWith("Basic ") == true)
+                    reply(exchange, 200, ok)
+                else reply(exchange, 401, challenge = basic)
+                else -> error("Unexpected method $method")
+            }
+        }.use { gateway ->
+            val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "alice", "secret"))
+            assertEquals("sample", remote.call("d.name", listOf(hash)))
+            assertEquals(0L, remote.call("d.start", listOf(hash)))
+            assertEquals(1, gateway.headRequests)
+            assertTrue("A fresh, safe HEAD challenge must take precedence",
+                gateway.sent.last().authorization.orEmpty().startsWith("Basic "))
+            assertEquals(1, gateway.sent.count { it.method == "d.start" })
         }
     }
 
