@@ -444,9 +444,16 @@ internal class MainActivityRealMagnetJourney(
                 val initialMetaFlag = (readOnly { remote.call("d.is_meta", listOf(hash)) } as Number).toInt()
                 require(initialMetaFlag == 0 || initialMetaFlag == 1) { "Invalid exact metadata state" }
                 if (!publicDiscovery) {
-                    // Disposable peer-isolated Add must still exercise BEP9; the
-                    // live published trackers may already have resolved metadata.
-                    if (disposable) assertEquals(if (torrentLinks && label != "magnet0") 0 else 1, initialMetaFlag)
+                    // The disposable controlled-peer Add always submits the
+                    // isolated magnet, even after separately reviewing the
+                    // publisher's HTTPS .torrent. Its exact rTorrent session
+                    // must begin as a metadata placeholder (BEP9 still needs
+                    // the independently supplied peer). The original public
+                    // HTTPS URL is NEVER the submitted controlled source.
+                    // Live/public-discovery tests retain independent behavior.
+                    if (disposable) assertEquals(
+                        "Controlled Add must await independently served BEP9 metadata",
+                        1, initialMetaFlag)
                     if (initialMetaFlag == 0) {
                         assertEquals("Immediately resolved metadata name", preview.name, placeholder.name)
                         assertEquals("Immediately resolved metadata size", preview.sizeBytes, placeholder.sizeBytes)
