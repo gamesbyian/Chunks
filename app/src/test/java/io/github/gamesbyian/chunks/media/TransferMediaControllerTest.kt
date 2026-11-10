@@ -347,7 +347,9 @@ class TransferMediaControllerTest {
     }
 
     @Test fun posterRoleLoadsOnRequestWithOriginalAspect() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+        // Network poster loading requires both provider consent and automatic
+        // artwork collection; simply opening Details cannot override Options.
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
         val c = controller(); val flow = c.observe(phone, name)
         c.lookup(phone)
         assertNull(flow.value.poster) // never loaded for list rows
@@ -355,6 +357,16 @@ class TransferMediaControllerTest {
         val poster = flow.value.poster!!
         assertTrue(poster.height > poster.width) // 680x1000 source keeps its portrait aspect
         assertTrue(poster.height <= 720)
+    }
+
+    @Test fun posterRoleDoesNotFetchWhenAutomaticArtworkCollectionIsOff() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+        val c = controller(); val flow = c.observe(phone, name)
+        c.lookup(phone)
+        val before = http.requests.size
+        c.requestPoster(phone)
+        assertNull("A Details render must not bypass the global collection opt-out", flow.value.poster)
+        assertEquals("No poster HTTP after collection is disabled", before, http.requests.size)
     }
 
     @Test fun applyChoiceToRelatedTransfersIsPreviewedExplicitAndKeepsEpisodes() {
