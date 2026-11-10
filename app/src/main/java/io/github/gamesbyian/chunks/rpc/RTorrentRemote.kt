@@ -1445,6 +1445,23 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             ?.equals(hash, ignoreCase = true) == true) {
             "Selected rTorrent session changed; refresh files before editing"
         }
+        // The selected index and expected priority can change while another
+        // client is editing this same job. A matching infohash alone does not
+        // prove that :fINDEX still denotes the reviewed file or old priority.
+        // Re-read the file layout and bracket it with a fresh exact-hash
+        // witness immediately before the first write.
+        val currentFiles = listFiles(hash)
+        check(currentFiles.size == before.size &&
+            currentFiles.getOrNull(fileIndex)?.let {
+                it.path == expectedPath && it.sizeBytes == expectedSizeBytes &&
+                    it.priority == expectedPriority
+            } == true) {
+            "File index, size or priority changed; refresh before editing"
+        }
+        check((call("d.hash", listOf(hash)) as? String)
+            ?.equals(hash, ignoreCase = true) == true) {
+            "Selected rTorrent session changed during file review"
+        }
         try {
             call("f.priority.set", listOf(hash + ":f" + fileIndex, desiredPriority))
             call("d.update_priorities", listOf(hash))
