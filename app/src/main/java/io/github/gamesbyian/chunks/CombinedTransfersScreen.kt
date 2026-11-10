@@ -1309,15 +1309,12 @@ internal fun CombinedTransfersScreen(
                     Text("Only connected server")
                 }
             }
-            // Without a running phone engine there may be no row from which
-            // to reach its existing authenticated management/restore screen.
-            // Keep that entry explicit; changing a view scope must never
-            // implicitly start native networking or restore local jobs.
-            if (!phoneRunning) {
-                OutlinedButton(onClick = onOpenPhone,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Open device transfer controls")
-                }
+            // The phone's explicit operational/restore controls must remain
+            // reachable whether its engine is running or has not been restored.
+            // Scoping the canonical catalog never grants native command authority.
+            OutlinedButton(onClick = onOpenPhone,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                Text("Open device transfer controls")
             }
         }
         }
