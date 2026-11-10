@@ -306,6 +306,9 @@ internal fun ChunksApp(
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
+    // View-only one-shot canonical catalog focus; never a login, Add target,
+    // RPC account or authority. The browser consumes this exact stable ID.
+    var savedProfileCatalogFocus by remember { mutableStateOf<String?>(null) }
     // One safe navigation return edge only, never an Add draft or authority.
     // When entering phone from Combined, the phone's own Back returns there.
     var localFromCombined by rememberSaveable { mutableStateOf(false) }
@@ -658,6 +661,8 @@ internal fun ChunksApp(
         } else if (section == Section.COMBINED) {
             CombinedTransfersScreen(
                 showNavigationFooter = false,
+                scopeFocusRequest = savedProfileCatalogFocus,
+                onScopeFocusConsumed = { savedProfileCatalogFocus = null },
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
@@ -1015,6 +1020,12 @@ internal fun ChunksApp(
                             } else credentialNotice = "Could not erase saved login. Retry before leaving the app."
                         }
                     }
+                },
+                onOpenProfileTransfers = { profile ->
+                    // This is a view filter, never an implicit Connect or a write.
+                    // The encrypted roster's immutable ID is the only selector.
+                    savedProfileCatalogFocus = profile.id
+                    section = Section.COMBINED
                 },
                 onLocalZipReview = { openTool(Section.ARCHIVES, Section.SERVER) },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
@@ -1794,6 +1805,8 @@ internal fun ConnectionScreen(
     savedProfiles: List<RememberedRemoteProfileRoster.Profile>, credentialNotice: String?,
     onRememberLogin: (Boolean) -> Unit, onForgetLogin: () -> Unit,
     onSelectProfile: (RememberedRemoteProfileRoster.Profile) -> Unit,
+    /** Optional canonical browser deep link; login selection remains explicit. */
+    onOpenProfileTransfers: ((RememberedRemoteProfileRoster.Profile) -> Unit)? = null,
     onRenameProfile: suspend (RememberedRemoteProfileRoster.Profile, String) -> Boolean,
     onForgetProfile: (RememberedRemoteProfileRoster.Profile) -> Unit,
     onLocalZipReview: () -> Unit,
@@ -1850,18 +1863,47 @@ internal fun ConnectionScreen(
             }
             items(savedProfiles, key = { "saved-profile-" + it.id }) { profile ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    OutlinedButton(onClick = {
-                        pendingForget = null
-                        onSelectProfile(profile)
-                    }, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Column(Modifier.fillMaxWidth()) {
-                            Text("Use " + profile.label)
-                            // The exact address tells instances of one account apart.
-                            Text(profile.address, style = MaterialTheme.typography.bodySmall)
-                            Text(profile.lastVerifiedAt?.let {
-                                "Last connected " + android.text.format.DateUtils.getRelativeTimeSpanString(
-                                    it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
-                            } ?: "Last connection time not recorded", style = MaterialTheme.typography.bodySmall)
+                    if (onOpenProfileTransfers != null) {
+                        Text(profile.label, fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleMedium)
+                        // Duplicate friendly labels cannot merge or disguise accounts.
+                        Text(profile.address, style = MaterialTheme.typography.bodySmall)
+                        Text(profile.lastVerifiedAt?.let {
+                            "Last connected " + android.text.format.DateUtils.getRelativeTimeSpanString(
+                                it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
+                        } ?: "Last connection time not recorded", style = MaterialTheme.typography.bodySmall)
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = {
+                                pendingForget = null
+                                onOpenProfileTransfers(profile)
+                            }, enabled = !loading,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text("View transfers")
+                            }
+                            OutlinedButton(onClick = {
+                                pendingForget = null
+                                onSelectProfile(profile)
+                            }, enabled = !loading,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text("Use saved login")
+                            }
+                        }
+                    } else {
+                        // Legacy standalone callers retain an explicit login
+                        // selection; they never silently acquire read authority.
+                        OutlinedButton(onClick = {
+                            pendingForget = null
+                            onSelectProfile(profile)
+                        }, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Text("Use " + profile.label)
+                                Text(profile.address, style = MaterialTheme.typography.bodySmall)
+                                Text(profile.lastVerifiedAt?.let {
+                                    "Last connected " + android.text.format.DateUtils.getRelativeTimeSpanString(
+                                        it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
+                                } ?: "Last connection time not recorded", style = MaterialTheme.typography.bodySmall)
+                            }
                         }
                     }
                     if (pendingForget == profile.id) {
