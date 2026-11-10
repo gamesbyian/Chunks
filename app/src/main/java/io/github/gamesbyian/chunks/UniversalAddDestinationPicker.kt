@@ -39,12 +39,32 @@ internal fun UniversalAddDestinationPicker(
     authenticatedRemoteLabel: String?,
     savedOtherProfiles: List<UniversalAddSavedDestination>,
     enabled: Boolean,
+    incomingSourceWaiting: Boolean = false,
+    importingSource: Boolean = false,
+    sourceError: String? = null,
+    onAcceptIncoming: () -> Unit = {},
+    onKeepDraft: () -> Unit = {},
     onPhone: () -> Unit,
     onAuthenticatedRemote: () -> Unit,
     onConnectSaved: (String) -> Unit
 ) {
     var showSaved by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (incomingSourceWaiting) {
+            Text("Another torrent source was shared. Keep the current draft or explicitly replace it; neither choice adds a transfer.",
+                style = MaterialTheme.typography.bodyMedium)
+            FlowRow(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                OutlinedButton(onClick = onAcceptIncoming, enabled = enabled && !importingSource,
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Use new source") }
+                OutlinedButton(onClick = onKeepDraft, enabled = enabled && !importingSource,
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Keep current draft") }
+            }
+        }
+        if (importingSource) Text("Reading .torrent document; no transfer has been submitted.",
+            style = MaterialTheme.typography.bodySmall)
+        sourceError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Text("Add to", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() })
         FlowRow(Modifier.fillMaxWidth(),
