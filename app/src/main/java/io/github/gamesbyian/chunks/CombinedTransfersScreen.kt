@@ -686,8 +686,13 @@ internal fun CombinedTransfersScreen(
     // observation generation and transfer identity are captured with each inventory.
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
     val mediaGraph = remember(context) { io.github.gamesbyian.chunks.media.ChunksMedia.get(context) }
-    val mediaSnapshot = remember(sources, aliasScopes) {
-        io.github.gamesbyian.chunks.media.AuthorizedMediaInventorySnapshot.build(sources, aliasScopes)
+    // Privacy lifecycle/policy revisions break stale provider authority even if
+    // the same account/title later reappears after lock and unlock.
+    // Fresh inventory timestamps do not restart the unchanged ongoing work.
+    val mediaPrivacyEpoch = "$privacyRevision/$policyRevision"
+    val mediaSnapshot = remember(sources, aliasScopes, mediaPrivacyEpoch) {
+        io.github.gamesbyian.chunks.media.AuthorizedMediaInventorySnapshot.build(
+            sources, aliasScopes, mediaPrivacyEpoch)
     }
     val currentMediaSnapshot = rememberUpdatedState(mediaSnapshot)
     var mediaSession by remember(mediaGraph, mediaController) {
