@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
  * until the user proceeds through the existing authorized Add/Connect flow.
  */
 @Composable
-internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: () -> Unit) {
+internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: (() -> Unit)?) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Welcome to Chunks", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.semantics { heading() })
@@ -35,7 +35,8 @@ internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: () -> Unit) {
             TextButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Add a torrent")
             }
-            TextButton(onClick = onConnections, modifier = Modifier.heightIn(min = 48.dp)) {
+            if (onConnections != null) TextButton(onClick = onConnections,
+                modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Connections")
             }
         }
