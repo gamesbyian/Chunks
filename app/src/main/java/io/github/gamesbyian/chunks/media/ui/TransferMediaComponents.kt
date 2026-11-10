@@ -539,7 +539,7 @@ fun MediaPrivacySettingsPanel(
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (showHeading) Text("Media artwork & info", style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
         SettingSwitch("Online lookup", "Send cleaned-up titles to the providers below. Off by default.", settings.onlineLookupConsent) {
-            onChange(settings.copy(onlineLookupConsent = it, automaticLookup = it))
+            onChange(settings.copy(onlineLookupConsent = it))
         }
         SettingSwitch("Identify automatically", "Automatically identify eligible transfers after consent; you can turn this off.",
             settings.automaticLookup, enabled = settings.onlineLookupConsent) { onChange(settings.copy(automaticLookup = it)) }

@@ -87,6 +87,18 @@ class MediaEnrichmentServiceTest {
         assertEquals("tmdb", r.match!!.artwork.single().provider)
     }
 
+    @Test fun exactMovieYearCannotAutoConfirmAdjacentOrUndatedProviderRecord() {
+        val requested = (MediaQuerySanitizer.manual(MediaKind.MOVIE, "Hackers", year = 1995)
+            as MediaQueryDecision.Allowed).query
+        fun candidate(year: Int?) = MediaCandidate(
+            MediaMetadataCacheKey("tmdb", "movie", "10428"), MediaKind.MOVIE,
+            "Hackers", year, attribution = MediaAttribution("TMDB", "test", null))
+        assertTrue(MediaCandidateMatcher.match(requested, listOf(candidate(1996))) is MediaMatchDecision.NoMatch)
+        assertTrue(MediaCandidateMatcher.match(requested, listOf(candidate(null))) is MediaMatchDecision.NoMatch)
+        val exact = MediaCandidateMatcher.match(requested, listOf(candidate(1995)))
+        assertTrue(exact is MediaMatchDecision.Confident)
+    }
+
     @Test fun reusedMovieTitleCanNeverBorrowWrongYearPosterAcrossProviders() {
         val wiki = """{"search":[{"id":"Q123","label":"The Thing","description":"1982 film by John Carpenter"}]}"""
         val tmdb = """{"results":[{"id":456,"title":"The Thing","release_date":"2011-10-14",

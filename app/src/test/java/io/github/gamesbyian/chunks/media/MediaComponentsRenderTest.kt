@@ -189,6 +189,14 @@ class MediaComponentsRenderTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/media-settings.png")
         rule.onNodeWithText("Online lookup").performClick()
         assertTrue(latest.onlineLookupConsent)
+        // Third-party consent is independent of the previously chosen automation setting.
+        rule.onNodeWithText("Identify automatically").performClick()
+        assertEquals(false, latest.automaticLookup)
+        rule.onNodeWithText("Online lookup").performClick()
+        assertEquals(false, latest.onlineLookupConsent)
+        rule.onNodeWithText("Online lookup").performClick()
+        assertTrue(latest.onlineLookupConsent)
+        assertEquals(false, latest.automaticLookup)
         rule.onNodeWithText("Add your key…").assertExists()
     }
 }
