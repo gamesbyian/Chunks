@@ -55,9 +55,10 @@ class PhoneInventoryFirstViewportTest {
         rule.onNodeWithText("Search names or hashes").assertExists()
     }
 
-    @Test fun anEmptyPhoneSaysSoOnceWithoutAZeroOfZeroCount() {
+    @Test fun aGenuinelyEmptyFirstRunShowsWelcomeNotAnEmptyTransferCount() {
         rule.waitForIdle()
-        rule.onNodeWithText("Your transfers will appear here").assertIsDisplayed()
+        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
+        rule.onNodeWithText("Your transfers will appear here").assertDoesNotExist()
         rule.onNodeWithText("Add a torrent").assertIsDisplayed()
         // The shared footer may expose the same destination; match the collection safely.
         rule.onAllNodesWithText("Connections").assertAny(hasClickAction())
