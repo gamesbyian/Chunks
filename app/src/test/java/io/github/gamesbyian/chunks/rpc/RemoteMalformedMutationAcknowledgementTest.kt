@@ -100,6 +100,7 @@ class RemoteMalformedMutationAcknowledgementTest {
         for (badAck in listOf(true, false)) {
             Gateway { method, count -> when (method) {
                 "f.multicall" -> if (!badAck && count == 2) broken() else files()
+                "d.hash" -> value("<string>$hash</string>")
                 "f.priority.set" -> if (badAck) broken() else value("<i8>0</i8>")
                 "d.update_priorities" -> value("<i8>0</i8>")
                 else -> error("Unexpected: $method")
