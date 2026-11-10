@@ -327,8 +327,14 @@ class MediaEnrichmentService(
         if (!verified.kind.compatibleWith(source.kind) ||
             MediaText.similarity(verified.title, source.title) < MediaCandidateMatcher.CONFIDENT_TITLE_SIMILARITY)
             return false
-        // For movies an unknown release year cannot prove the two provider records depict one work.
-        if (verified.kind == MediaKind.MOVIE || source.kind == MediaKind.MOVIE)
+        // A same-title TV series can be a reboot, remake or unrelated work.
+        // Across *different* provider identities, require two known matching
+        // premiere years before borrowing a poster, just as for movies.
+        // The same exact provider record may legitimately acquire its own art
+        // before its premiere date becomes known (see #1586).
+        val differentRecord = verified.ref != source.ref
+        if (verified.kind == MediaKind.MOVIE || source.kind == MediaKind.MOVIE ||
+            (differentRecord && verified.kind.isTv && source.kind.isTv))
             if (verified.year == null || source.year == null) return false
         if (verified.year != null && source.year != null && verified.year != source.year) return false
         if (verified.season != null && source.season != null && verified.season != source.season) return false
