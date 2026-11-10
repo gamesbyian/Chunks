@@ -315,4 +315,13 @@ class AuthenticatedTransfersFooterTest {
             footerDestinationForRoute("SEEDING", "SERVER"))
     }
 
+    @Test fun reconnectFallbackSelectsConnectionsNotInvisibleLegacyTransfers() {
+        assertEquals(FooterDestination.CONNECTIONS,
+            footerDestinationForVisibleScreen("TRANSFERS", authenticated = false))
+        assertEquals(FooterDestination.TRANSFERS,
+            footerDestinationForVisibleScreen("TRANSFERS", authenticated = true))
+        assertEquals(FooterDestination.CONNECTIONS,
+            footerDestinationForVisibleScreen("SERVER", authenticated = true))
+    }
+
 }
