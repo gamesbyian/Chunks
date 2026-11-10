@@ -369,7 +369,7 @@ fun VerifiedAddScreen(
                 minLines = 2,
                 maxLines = 4
             )
-            if (sourceText.isBlank() && !alreadyAttempted) PasteMagnetButton(
+            if (!alreadyAttempted) PasteMagnetButton(
                 enabled = !submitting && !choosing,
                 onPaste = {
                     onMagnet(it)
