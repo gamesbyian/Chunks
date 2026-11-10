@@ -1,4 +1,4 @@
-name: One-shot real disposable authenticated rTorrent + public provider artwork
+name: One-shot real disposable rTorrent and public artwork (retry-aware probe)
 # Opt-in branch only. No private tracker, protected host, or remote mutation by Chunks.
 on:
   push:
@@ -6,6 +6,9 @@ on:
       - "probe/disposable-rtorrent-public-artwork-20261110"
     paths:
       - ".github/workflows/probe-installed-remote-media-public-20261110.yml"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledDisposableRemotePublicMediaInstrumentedTest.kt"
+      - "tools/probe_installed_remote_media_artwork.sh"
+      - "tools/preload_remote_media_two_servers.py"
 permissions:
   contents: read
 
