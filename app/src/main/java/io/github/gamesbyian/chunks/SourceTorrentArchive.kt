@@ -57,10 +57,24 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
         const val MAX_ARCHIVED_BYTES = 64L * 1024L * 1024L
         const val MAX_ARCHIVED_FILES = 256
         private val HASH_V1 = Regex("[a-f0-9]{40}")
+        // All archive instances in the Android application share one physical
+        // filesDir catalog. A per-instance @Synchronized lock permits two Adds
+        // to pass a near-full quota concurrently; serialize the complete
+        // catalog validation + no-replace publication across instances.
+        // This is a process lock, not authorization for cross-process writers.
+        private val PROCESS_ARCHIVE_LOCK = Any()
     }
 
-    @Synchronized
     fun apply(
+        handling: OriginalTorrentHandling,
+        origin: OriginalTorrentOrigin,
+        bytes: ByteArray?,
+        proof: SourceAddVerification?
+    ): SourceArchiveOutcome = synchronized(PROCESS_ARCHIVE_LOCK) {
+        applyLocked(handling, origin, bytes, proof)
+    }
+
+    private fun applyLocked(
         handling: OriginalTorrentHandling,
         origin: OriginalTorrentOrigin,
         bytes: ByteArray?,
@@ -100,6 +114,13 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
         }
         val name = hash + "-" + digest + ".torrent"
         val target = archive.resolve(name)
+        // Even a previously verified copy must not bypass the catalog's
+        // no-symlink, bounded-entry and unknown-content checks. Otherwise a
+        // malicious/unexpected sibling silently defeats the fail-closed rule.
+        // A full but otherwise valid catalog can still deduplicate an existing
+        // identity, so enforce quota only AFTER this validation and readback.
+        val inventory = try { inventory(archive) }
+            catch (_: Exception) { return SourceArchiveOutcome.CorruptOrUnsafeArchive }
         val existing = verifyExisting(target, bytes)
         if (existing != null) {
             // The previous process could have published the link but lost
@@ -110,9 +131,6 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
                 return SourceArchiveOutcome.NeedsReconciliation
             return existing
         }
-
-        val inventory = try { inventory(archive) }
-            catch (_: Exception) { return SourceArchiveOutcome.CorruptOrUnsafeArchive }
         if (inventory.first >= MAX_ARCHIVED_FILES ||
             inventory.second > MAX_ARCHIVED_BYTES - bytes.size)
             return SourceArchiveOutcome.ArchiveFull

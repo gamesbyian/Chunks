@@ -79,4 +79,23 @@ class SourceTorrentArchiveInstrumentedTest {
         assertArrayEquals(bytes, source.readBytes())
         assertFalse(File(privateFiles, SourceTorrentArchive.DIRECTORY).exists())
     }
+
+    @Test fun repeatedArchiveRefusesUnexpectedSiblingWithoutTouchingUserSource() {
+        val original = File(sandbox, "original.torrent").apply { writeBytes(bytes) }
+        val privateFiles = File(sandbox, "app-private").apply { assertTrue(mkdir()) }
+        val first = SourceTorrentArchive(privateFiles).apply(
+            OriginalTorrentHandling.ARCHIVE,
+            OriginalTorrentOrigin.ANDROID_DOCUMENT, bytes, proof())
+        assertTrue("Initial archive must be independently durable: $first",
+            first is SourceArchiveOutcome.ArchivedCopy)
+        val dir = File(privateFiles, SourceTorrentArchive.DIRECTORY)
+        val stray = File(dir, "stray-source.txt").apply { writeText("leave intact") }
+        assertEquals(SourceArchiveOutcome.CorruptOrUnsafeArchive,
+            SourceTorrentArchive(privateFiles).apply(
+                OriginalTorrentHandling.ARCHIVE,
+                OriginalTorrentOrigin.ANDROID_DOCUMENT, bytes, proof()))
+        assertEquals("leave intact", stray.readText())
+        assertArrayEquals(bytes, original.readBytes())
+    }
+
 }

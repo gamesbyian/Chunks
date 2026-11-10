@@ -3,6 +3,9 @@ package io.github.gamesbyian.chunks
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.File
 import java.nio.file.Files
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -165,4 +168,70 @@ class SourceTorrentArchiveTest {
                 OriginalTorrentOrigin.ANDROID_DOCUMENT, huge, proof()))
         assertFalse(File(root, SourceTorrentArchive.DIRECTORY).exists())
     }
+
+    @Test fun existingValidCopyCannotBypassAnUnsafeSiblingOrSymlink() {
+        val root = privateDir()
+        val archive = SourceTorrentArchive(root)
+        val confirmed = archive.apply(OriginalTorrentHandling.ARCHIVE,
+            OriginalTorrentOrigin.ANDROID_DOCUMENT, raw, proof()) as SourceArchiveOutcome.ArchivedCopy
+        val dir = File(root, SourceTorrentArchive.DIRECTORY)
+        val target = File(dir, confirmed.relativeName)
+        val unknown = File(dir, "unrelated-user-document.txt").apply { writeText("unsafe") }
+        assertEquals("Dedup must inspect the entire directory, not only the target",
+            SourceArchiveOutcome.CorruptOrUnsafeArchive,
+            SourceTorrentArchive(root).apply(OriginalTorrentHandling.ARCHIVE,
+                OriginalTorrentOrigin.ANDROID_DOCUMENT, raw, proof()))
+        assertArrayEquals(raw, target.readBytes())
+        assertEquals("unsafe", unknown.readText())
+        assertTrue(unknown.delete())
+
+        val outside = files.newFile("external-canary.txt").apply { writeText("canary") }
+        Files.createSymbolicLink(File(dir, "other-symlink.torrent").toPath(), outside.toPath())
+        assertEquals(SourceArchiveOutcome.CorruptOrUnsafeArchive,
+            archive.apply(OriginalTorrentHandling.ARCHIVE,
+                OriginalTorrentOrigin.ANDROID_DOCUMENT, raw, proof()))
+        assertArrayEquals(raw, target.readBytes())
+        assertEquals("canary", outside.readText())
+    }
+
+    @Test fun separateInstancesCannotBothConsumeTheLastArchiveSlot() {
+        val root = privateDir()
+        val dir = File(root, SourceTorrentArchive.DIRECTORY).apply { assertTrue(mkdir()) }
+        repeat(SourceTorrentArchive.MAX_ARCHIVED_FILES - 1) { i ->
+            File(dir, hash + "-" + i.toString(16).padStart(64, '0') + ".torrent")
+                .writeBytes(byteArrayOf())
+        }
+        fun distinct(name: String): ByteArray =
+            ("d4:infod6:lengthi5e4:name${name.length}:${name}" +
+                "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
+        val payloads = listOf(distinct("race-one.bin"), distinct("race-two.bin"))
+        val pool = Executors.newFixedThreadPool(2)
+        val ready = CountDownLatch(2)
+        val start = CountDownLatch(1)
+        try {
+            val attempts = payloads.map { bytes ->
+                pool.submit<SourceArchiveOutcome> {
+                    ready.countDown()
+                    check(start.await(10, TimeUnit.SECONDS))
+                    val exact = TorrentMetainfoReader.preview(bytes).infoHashV1
+                    SourceTorrentArchive(root).apply(OriginalTorrentHandling.ARCHIVE,
+                        OriginalTorrentOrigin.ANDROID_DOCUMENT, bytes,
+                        SourceAddVerification("phone", exact, verifiedNew = true))
+                }
+            }
+            assertTrue("Both independent archive instances must reach the quota race",
+                ready.await(10, TimeUnit.SECONDS))
+            start.countDown()
+            val observed = attempts.map { it.get(20, TimeUnit.SECONDS) }
+            assertEquals("Only one new identity may be admitted under a shared cap",
+                1, observed.count { it is SourceArchiveOutcome.ArchivedCopy })
+            assertEquals(1, observed.count { it == SourceArchiveOutcome.ArchiveFull })
+            assertEquals(SourceTorrentArchive.MAX_ARCHIVED_FILES,
+                requireNotNull(dir.listFiles()).size)
+        } finally {
+            start.countDown()
+            pool.shutdownNow()
+        }
+    }
+
 }
