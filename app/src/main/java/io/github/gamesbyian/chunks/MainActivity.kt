@@ -130,17 +130,25 @@ class MainActivity : ComponentActivity() {
     private var incomingCreate by mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
 
     private fun accept(intent: Intent?) {
-        // Shares to the separate "Create torrent" target never become Add drafts.
-        incomingCreate = io.github.gamesbyian.chunks.create.SharedCreateDocument.fromIntent(intent)
-        val source = if (incomingCreate == null) ExternalAddSource.fromIntent(intent) else null
-        incomingTorrent = (source as? ExternalAddSource.TorrentDocument)?.uri
-        // Keep only one process-memory text handoff. Both magnets and HTTPS
-        // .torrent download URLs enter existing Add review; neither auto-fetches.
-        incomingMagnet = when (source) {
-            is ExternalAddSource.Magnet -> source.value
-            is ExternalAddSource.TorrentLink -> source.value
-            else -> null
+        // A separately addressed Create-torrent Share stays out of Add.
+        val create = io.github.gamesbyian.chunks.create.SharedCreateDocument.fromIntent(intent)
+        if (create != null) {
+            // A different explicit Create target supersedes an unconsumed Add
+            // handoff. Never hold two competing external source authorities.
+            incomingCreate = create
+            incomingTorrent = null
+            incomingMagnet = null
+            return
         }
+        // Invalid, malformed and unrelated Intents confer no source authority.
+        // In particular, they cannot erase a valid source still awaiting the
+        // exact phone/server chooser or a privacy gate.
+        val candidate = ExternalAddSource.fromIntent(intent) ?: return
+        incomingCreate = null
+        val pending = PendingExternalAddSource(incomingMagnet, incomingTorrent)
+            .withIncoming(candidate)
+        incomingTorrent = pending.torrentDocument
+        incomingMagnet = pending.text
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
