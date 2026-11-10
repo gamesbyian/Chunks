@@ -364,6 +364,10 @@ internal fun CombinedTransfersScreen(
         // can reorder a newer choice behind a late preference read.
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
+    // Keep only the exact user-invoked read-only saved-profile request until
+    // its independent privacy evidence is available. Never preload every
+    // saved server, and never infer authorization from its friendly label.
+    var explicitSavedRead by remember { mutableStateOf<String?>(null) }
     // A saved profile tap requests a VIEW filter of this existing catalog only.
     // It cannot authenticate, select an Add target, or authorize a mutation.
     LaunchedEffect(scopeFocusRequest) {
@@ -380,6 +384,7 @@ internal fun CombinedTransfersScreen(
                 // only that defunct ID. Never fall back to another profile.
                 ?: EnvironmentViewScope.Only(setOf(EnvironmentId(scopeFocusRequest)))
             update(query.copy(scope = requested))
+            explicitSavedRead = scopeFocusRequest
             onScopeFocusConsumed()
         }
     }
@@ -570,6 +575,26 @@ internal fun CombinedTransfersScreen(
                 }
             }
         }
+    }
+
+    // The explicit tap is permission to initiate an inventory READ, not
+    // permission to mutate, bypass privacy or reuse another account. The
+    // existing loader independently fences exact saved endpoint/principal,
+    // privacy revocation, lifecycle timeouts and response publication.
+    LaunchedEffect(explicitSavedRead, activeSavedScopes, query.scope, savedProfiles, serverId) {
+        val id = explicitSavedRead ?: return@LaunchedEffect
+        if (serverId?.value == id) {
+            explicitSavedRead = null // live session is already observed above
+            return@LaunchedEffect
+        }
+        if (savedProfiles.none { it.id == id } ||
+            query.scope != EnvironmentViewScope.Only(setOf(EnvironmentId(id)))) {
+            explicitSavedRead = null // forgotten or user changed scope
+            return@LaunchedEffect
+        }
+        val selected = loadable.singleOrNull { it.id == id } ?: return@LaunchedEffect
+        explicitSavedRead = null
+        loadSavedServers(listOf(selected))
     }
 
     // A selection and its confirmation belong to an exact authenticated UI
