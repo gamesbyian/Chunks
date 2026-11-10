@@ -69,6 +69,7 @@ import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.privacy.TransferDeviceAuthenticator
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteStallEvidence
 import io.github.gamesbyian.chunks.model.LifecycleReply
@@ -876,18 +877,20 @@ internal fun CombinedTransfersScreen(
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
             exactServerOperations = if (canShowExactRemoval) ({
+                val owner = requireNotNull(server)
+                val mutation = requireNotNull(owner.lifecycle)
                 TransferSessionRemoveControl(
                     remote = requireNotNull(activeRemoteForRemoval),
                     transfer = requireNotNull(exactRemoteRow),
-                    snapshotStale = server!!.stale ||
+                    snapshotStale = owner.stale ||
                         details.readState != TransferDetailReadState.CURRENT ||
                         sourcesByEnvironment[focusedKey.environment]
                             ?.canClaimCompleteLiveInventory != true,
-                    mainView = server.fullView,
-                    onMutationStarted = { requireNotNull(server.lifecycle).begin() },
-                    onSettled = { requireNotNull(server.lifecycle).settled() },
+                    mainView = owner.fullView,
+                    onMutationStarted = mutation.begin,
+                    onSettled = mutation.settled,
                     environmentLabel = labels[focusedKey.environment],
-                    snapshotRevision = server.snapshotRevision
+                    snapshotRevision = owner.snapshotRevision
                 )
             }) else null,
             onOpenOwningList = openFor(focusedKey),
