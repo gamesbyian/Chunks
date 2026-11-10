@@ -35,8 +35,11 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
     @Test fun remoteIntroAndSelectedFooterSurviveTransfersRoundTrip() {
         // Read the actual installed Activity, not an isolated mocked composable.
         rule.waitUntil(20_000) {
-            connectionsFooter().fetchSemanticsNodeOrNull() != null &&
-                transfersFooter().fetchSemanticsNodeOrNull() != null
+            runCatching {
+                connectionsFooter().assertExists()
+                transfersFooter().assertExists()
+                true
+            }.getOrDefault(false)
         }
         connectionsFooter().performClick()
         rule.waitForIdle()
