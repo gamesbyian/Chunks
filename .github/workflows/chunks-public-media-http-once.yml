@@ -39,11 +39,11 @@ jobs:
           fi
       - name: Prefetch verified Robolectric Android 15 runtime
         run: timeout 240s python3 tools/prefetch_robolectric_sdk.py --sdk 35
-      - name: Opted-in REAL TVmaze metadata and poster CDN journey, with offline restore
+      - name: Opted-in REAL TVmaze controller identity, image CDN, and offline restored assignments
         env:
-          CHUNKS_LIVE_MEDIA: "1"
+          CHUNKS_REAL_MEDIA_LOOKUP: "1"
         run: |
-          gradle --no-daemon --console plain :app:testDebugUnitTest --tests "io.github.gamesbyian.chunks.media.MediaLiveProviderTest.tvEpisodeEndToEnd"
+          gradle --no-daemon --console plain :app:testDebugUnitTest --tests "io.github.gamesbyian.chunks.media.RealProviderLookupTest.realTvEpisodeLookupShowsRealArtworkAndRestoresOffline"
       - name: Record exact one-test JVM receipt (no secrets)
         if: always()
         env:
@@ -55,7 +55,7 @@ jobs:
           matching=[]
           for path in files:
               root=ET.parse(path).getroot()
-              if root.attrib.get("name", "").endswith("MediaLiveProviderTest"):
+              if root.attrib.get("name", "").endswith("RealProviderLookupTest"):
                   matching.append(root)
           for r in matching:
               print("REAL_PUBLIC_MEDIA_JUNIT", "name="+r.attrib.get("name",""),
