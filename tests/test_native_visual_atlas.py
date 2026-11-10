@@ -14,7 +14,9 @@ import zlib
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
-from native_visual_atlas import CASES, REQUIRED_FIRST_LAUNCH_TEXT, report
+from native_visual_atlas import (CASES, REQUIRED_FIRST_LAUNCH_TEXT,
+                                 FORBIDDEN_FIRST_LAUNCH_TEXT,
+                                 FORBIDDEN_FIRST_LAUNCH_PREFIXES, report)
 
 
 def png_chunk(kind: bytes, data: bytes) -> bytes:
@@ -52,12 +54,49 @@ class NativeAtlasFirstLaunchReceiptTest(unittest.TestCase):
         report(self.root)
         data = json.loads((self.root / "manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(4, len(data["cases"]))
-        self.assertIn("first-launch empty device Transfers", data["tested_screen"])
+        self.assertIn("first-launch evidence-gated canonical Welcome", data["tested_screen"])
         self.assertIn("physical device", data["claims_excluded"])
-        self.assertTrue(all(case["first_launch_transfer_inventory_verified"]
+        self.assertTrue(all(case["first_launch_welcome_verified"]
                             for case in data["cases"]))
         self.assertTrue(all(len(case["sha256"]) == 64 for case in data["cases"]))
         self.assertIn("screen-reader usability", (self.root / "REVIEW.md").read_text())
+
+    def test_observed_legacy_catalog_chrome_is_refused_even_beside_welcome(self):
+        # Each label was a visible control on the originally failed fresh-install
+        # atlas, not a speculative test requirement. Do not count a Welcome
+        # heading as success while the empty catalog remains above it.
+        observed = (
+            "This device", "All environments", "Search transfers on this device",
+            "Batch tools", "Choose filters & sort · All · Name · A–Z",
+        )
+        for label in observed:
+            with self.subTest(label=label):
+                (self.root / "small.xml").write_text(
+                    fixture_xml(REQUIRED_FIRST_LAUNCH_TEXT | {label}), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "forbidden_visible"):
+                    report(self.root)
+                self.assertFalse((self.root / "manifest.json").exists())
+
+    def test_every_forbidden_management_label_and_dynamic_variant_is_refused(self):
+        for label in sorted(FORBIDDEN_FIRST_LAUNCH_TEXT) + [
+            "Choose filters & sort · TV · Date · Z–A",
+            "Showing 0 of 0",
+            "Sort by oldest",
+        ]:
+            with self.subTest(label=label):
+                (self.root / "standard.xml").write_text(
+                    fixture_xml(REQUIRED_FIRST_LAUNCH_TEXT | {label}), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "forbidden_visible"):
+                    report(self.root)
+                self.assertFalse((self.root / "manifest.json").exists())
+        self.assertIn("Choose filters & sort", FORBIDDEN_FIRST_LAUNCH_PREFIXES)
+
+    def test_welcome_heading_without_functional_add_entry_is_not_accepted(self):
+        (self.root / "small.xml").write_text(
+            fixture_xml(REQUIRED_FIRST_LAUNCH_TEXT - {"Add a torrent"}), encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Add a torrent"):
+            report(self.root)
+        self.assertFalse((self.root / "manifest.json").exists())
 
     def test_missing_hierarchy_cannot_claim_first_launch(self):
         (self.root / "larger_text.xml").unlink()
