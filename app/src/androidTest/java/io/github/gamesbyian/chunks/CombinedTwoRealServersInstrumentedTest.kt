@@ -331,6 +331,65 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("server B stopped by Combined", 30_000) { !startedOn(urlB) }
             assertTrue(!startedOn(urlA))
             stage("combined-stop-scoped")
+
+            // A and B are both saved; B is authenticated here. A's saved
+            // credentials must NOT become an Add permission while B is live.
+            // Use the installed footer and genuine saved-profile selector.
+            rule.onNodeWithText("+ Add").performClick()
+            waitFor("source-first Add on B") { visible("Add a transfer") }
+            val preservedDraft = "magnet:?xt=urn:btih:$sharedHash"
+            typeInto("Magnet or torrent link", preservedDraft)
+            scrollTo("Other saved connections")
+            rule.onNodeWithText("Other saved connections", substring = true).performClick()
+            scrollTo("Connect to ")
+            rule.onNodeWithText("Connect to ", substring = true).performClick()
+            // This must show an ACTUAL login, not B's already authenticated
+            // server UI with A's address painted into editable fields.
+            waitFor("explicit A authentication rather than stale B", 30_000) {
+                visible("Seedbox hostname, ruTorrent URL or RPC address") &&
+                    visible("Connect to rTorrent")
+            }
+            assertTrue("Choosing a saved Add target must not add to A",
+                runBlocking { RTorrentRemote(credsFor(urlA)).listTransfers("main") }
+                    .map { it.hash to it.started }.toSet() ==
+                    truthA.map { it.hash to it.started }.toSet())
+            stage("saved-add-target-login")
+
+            // Reauthenticate the original exact A account through the app.
+            // Successful Connect must restore this same source-first draft,
+            // and must never silently Add or inherit B's principal.
+            typeInto("Seedbox hostname, ruTorrent URL or RPC address", urlA)
+            typeInto("Username, if required", userA)
+            typeInto("Password", passA)
+            scrollTo("Connect to rTorrent")
+            rule.onNodeWithText("Connect to rTorrent").assertIsEnabled().performClick()
+            waitFor("source-first draft resumes after exact authenticated A", 90_000) {
+                visible("Add a transfer") && visible("Magnet or torrent link")
+            }
+            scrollTo("Magnet or torrent link")
+            assertTrue("Saved-profile auth must preserve exact source text", visible(preservedDraft))
+            assertEquals("A may only be inspected, never implicitly mutated",
+                truthA.map { it.hash to it.started }.toSet(),
+                runBlocking { RTorrentRemote(credsFor(urlA)).listTransfers("main") }
+                    .map { it.hash to it.started }.toSet())
+            assertEquals("B cannot be the implicit Add recipient",
+                truthB.map { it.hash to it.started }.toSet(),
+                runBlocking { RTorrentRemote(credsFor(urlB)).listTransfers("main") }
+                    .map { it.hash to it.started }.toSet())
+            stage("saved-add-target-restored")
+
+            // Restore B as the remembered current profile so the existing
+            // process-death/relaunch and source-isolation tests are unchanged.
+            typeInto("Magnet or torrent link", "")
+            rule.onNodeWithText("Connections").performClick()
+            waitFor("A authenticated Connections management") { visible("Disconnect") }
+            scrollTo("Disconnect")
+            rule.onNodeWithText("Disconnect").performClick()
+            waitFor("B connection form") {
+                visible("Seedbox hostname, ruTorrent URL or RPC address")
+            }
+            connect(urlB)
+            stage("connected-b-restored-after-saved-add")
         }
 
         // Fresh activity in the same app process: the remembered verified
