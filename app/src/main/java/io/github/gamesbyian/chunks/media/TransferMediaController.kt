@@ -69,8 +69,8 @@ class TransferMediaController(
         java.util.concurrent.CopyOnWriteArraySet<() -> Boolean>>()
     private val assignmentLock = Any()
     private val pendingAutomatic = HashSet<MediaTransferKey>()
-    /** In-process restraint after a transient artless poster-provider failure. */
-    private val artlessFailureRetryAt = java.util.concurrent.ConcurrentHashMap<MediaTransferKey, Long>()
+    /** Bounded exact-account hints; long-lived remote inventory churn must not leak memory. */
+    private val artlessFailureRetryAt = BoundedRetryTimestamps<MediaTransferKey>()
     private val providerConfigurationRevision = java.util.concurrent.atomic.AtomicLong(0L)
     private val mediaDataGeneration = java.util.concurrent.atomic.AtomicLong(0L)
     private val lastProviderAttemptRevision = java.util.concurrent.ConcurrentHashMap<MediaTransferKey, Long>()
