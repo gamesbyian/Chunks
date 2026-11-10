@@ -147,12 +147,25 @@ class MediaComponentsRenderTest {
             MediaMetadataSummary(state(4, "random_stuff").copy(assignment = TransferMediaAssignment(key(4), MediaAssignmentState.COULDNT_IDENTIFY)), onChange = {})
         } } } }
         rule.onRoot().captureRoboImage("build/chunks-visual/media-detail-summary.png")
-        rule.onAllNodesWithText("Change match or artwork…").fetchSemanticsNodes().let { assertEquals(3, it.size) }
+        rule.onAllNodesWithText("Change identification or artwork…").fetchSemanticsNodes().let { assertEquals(5, it.size) }
         rule.onNodeWithText("Couldn't identify").assertExists()
         rule.onNodeWithText("Chosen by you").assertExists()
         rule.onNodeWithText("Suggested").assertExists()
-        rule.onAllNodesWithText("Change match or artwork…")[0].assertHeightIsAtLeast(48.dp).performClick()
+        rule.onAllNodesWithText("Change identification or artwork…")[0].assertHeightIsAtLeast(48.dp).performClick()
         assertEquals(1, changed)
+    }
+
+    @Test fun recognizedMovieWithoutConsentExplainsUnverifiedStageAndOptionalCorrection() {
+        val guessed = state(9, "Hackers.1995.1080p.BluRay.mkv")
+            .copy(automaticMessage = "Online identification needs your consent in Options")
+        rule.setContent { ChunksTheme { Surface {
+            MediaMetadataSummary(guessed, onChange = {})
+        } } }
+        rule.onNodeWithText("Looks like: Hackers", substring = true).assertExists()
+        rule.onNodeWithText("Recognized from filename · unverified").assertExists()
+        rule.onNodeWithText("Online identification needs your consent in Options").assertExists()
+        assertTrue(rule.onAllNodesWithText("Not identified").fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithText("Change identification or artwork…").assertHeightIsAtLeast(48.dp)
     }
 
     @Test fun identifyPanelConsentOffThenSuggestions() {

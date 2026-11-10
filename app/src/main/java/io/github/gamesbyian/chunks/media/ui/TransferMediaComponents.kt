@@ -166,7 +166,16 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                         Text(it, style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
                     }
             }
-            MediaStateChip(state.state)
+            if (match == null && state.recognition.title != null &&
+                state.state == MediaAssignmentState.NOT_LOOKED_UP) {
+                // Filename parsing is useful offline, but is never a verified provider identity.
+                Text("Recognized from filename · unverified",
+                    style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary)
+            } else MediaStateChip(state.state)
+            state.automaticMessage?.let { reason ->
+                Text(reason, style = MaterialTheme.typography.bodySmall,
+                    color = ChunksColors.TextSecondary)
+            }
             recognizedFacts(state)?.let {
                 Text(it, style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary)
             }
@@ -176,7 +185,7 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                     style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary)
             }
             TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text(if (match == null) "Identify…" else "Change match or artwork…")
+                Text("Change identification or artwork…")
             }
         }
     }
