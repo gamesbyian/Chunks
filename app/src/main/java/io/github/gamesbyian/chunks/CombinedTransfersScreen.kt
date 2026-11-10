@@ -328,7 +328,10 @@ internal fun CombinedTransfersScreen(
     scopeFocusRequest: String? = null,
     onScopeFocusConsumed: () -> Unit = {},
     /** Root Transfers returns from full Details without changing filters or identity. */
-    returnToCatalogRevision: Long = 0L
+    returnToCatalogRevision: Long = 0L,
+    /** Host opt-in: genuine first-run omits all inventory-management chrome. */
+    enableFirstRunWelcome: Boolean = false,
+    onWelcomeAdd: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -389,6 +392,21 @@ internal fun CombinedTransfersScreen(
     var phoneFrame by remember { mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false)) }
     var phoneConfirmed by remember { mutableStateOf(false) }
     var phoneRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
+    // No native engine can also mean saved torrents waiting for restoration.
+    // Positive absence comes from read-only durable discovery, never an empty
+    // in-memory list. Repeat after engine stop/list count change to avoid
+    // stale absence evidence from a prior Add.
+    var noPersistedPhoneJobs by remember(context) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(context, phoneRunning, phoneFrame.entries.size) {
+        noPersistedPhoneJobs = try {
+            withContext(Dispatchers.IO) {
+                !io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery.shouldAttemptRestore(
+                    java.io.File(context.filesDir, "local-engine"))
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) { false }
+    }
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Restores only a read-only detail target, never an in-flight command or batch selection.
     var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
@@ -789,6 +807,23 @@ internal fun CombinedTransfersScreen(
     val addedHidden = combinedAddedTransferHidden(recentlyAddedTransfer, sources,
         result.transfers.map { it.key })
     val sourcesByEnvironment = result.sources.associateBy { it.environment }
+    val firstRunVisible = enableFirstRunWelcome && showCanonicalFirstRunWelcome(
+        noPersistedJobs = noPersistedPhoneJobs,
+        nativeRunning = phoneRunning,
+        nativeConfirmed = phoneConfirmed,
+        nativeStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations(),
+        nativeCount = phoneFrame.entries.size,
+        hasRemoteProfile = server != null || savedProfiles.isNotEmpty(),
+        restrictedView = CombinedViewPreferences.narrowingActive(query),
+        privacyAllowed = phonePrivacy.mayShow,
+        pendingExternalSource = pendingSharedMagnet || pendingSharedLink ||
+            pendingSharedTorrent || readingSharedTorrent ||
+            sharedTorrentError != null || recentlyAddedTransfer != null
+    )
+    val checkingFreshPhone = enableFirstRunWelcome && noPersistedPhoneJobs == null &&
+        !phoneRunning && !phoneConfirmed && savedProfiles.isEmpty() && server == null &&
+        !CombinedViewPreferences.narrowingActive(query) && phonePrivacy.mayShow &&
+        !pendingSharedMagnet && !pendingSharedTorrent && !readingSharedTorrent
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
     val secure = (phonePrivacy.needsSecureWindow && phonePrivacy.mayShow) ||
@@ -1009,11 +1044,24 @@ internal fun CombinedTransfersScreen(
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
-        } else item {
+        } else if (!firstRunVisible) item {
             // Keep one compact, spoken view identity without a duplicate Back.
-            Text("All environments", style = MaterialTheme.typography.titleMedium,
+            Text("Transfers", style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
         }
+        if (firstRunVisible) {
+            item(key = "canonical-fresh-welcome") {
+                NoTransfersWelcome(
+                    onAdd = onWelcomeAdd ?: onAddToPhone ?: onOpenPhone,
+                    onConnections = onConnections
+                )
+            }
+        } else if (checkingFreshPhone) {
+            item(key = "canonical-fresh-probe") {
+                Text("Checking transfers on this device…",
+                    style = MaterialTheme.typography.bodyMedium)
+            }
+        } else {
         // Add lives in its own destination when this is the app's primary list.
         // A shared source still surfaces a target choice, never auto-submits.
         if (showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent) item(key = COMBINED_ADD_ITEM_KEY) {
@@ -1434,8 +1482,11 @@ internal fun CombinedTransfersScreen(
                 Text("Open device transfer controls")
             }
         }
+        } // genuine Welcome/probe has no management chrome or list actions
         }
-        ReturnToTopControl(visible = showReturnToTop, onClick = {
+        ReturnToTopControl(
+            visible = showReturnToTop && !firstRunVisible && !checkingFreshPhone,
+            onClick = {
             batchScope.launch {
                 if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
                 else listState.scrollToItem(0)
