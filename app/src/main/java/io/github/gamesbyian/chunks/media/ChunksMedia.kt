@@ -33,6 +33,7 @@ class ChunksMedia private constructor(context: Context) {
     @Volatile var settings: MediaPrivacySettings = MediaPrivacySettings()
         private set
     @Volatile private var settingsLoaded = false
+    private val settingsLock = Any()
 
     private val http = UrlConnectionMediaHttp()
     private val queryCache by lazy { FileMediaQueryCache(File(app.filesDir, "media/queries.json")) }
@@ -68,31 +69,51 @@ class ChunksMedia private constructor(context: Context) {
     }
     private fun lazyDisk() = artworkDisk
 
-    private fun currentSettings(): MediaPrivacySettings {
+    private fun currentSettings(): MediaPrivacySettings = synchronized(settingsLock) {
         if (!settingsLoaded) { settings = settingsStore.load(); settingsLoaded = true }
-        return settings
+        settings
     }
 
     /** Call off the main thread. */
     fun loadSettings(): MediaPrivacySettings = currentSettings()
 
     fun updateSettings(s: MediaPrivacySettings) {
-        val withdrawn = settings.onlineLookupConsent && !s.onlineLookupConsent
-        settings = s; settingsLoaded = true; settingsStore.save(s)
+        // Initial lazy disk loading and revocable-consent writes are atomic with
+        // respect to each other. A racing first reader must never restore an
+        // older, already-revoked online provider consent snapshot in memory.
+        val old = synchronized(settingsLock) {
+            val prior = if (settingsLoaded) settings else settingsStore.load()
+            settings = s
+            settingsLoaded = true
+            settingsStore.save(s)
+            prior
+        }
+        val withdrawn = old.onlineLookupConsent && !s.onlineLookupConsent
+        val newlyAvailableArtwork = (!old.downloadArtwork && s.downloadArtwork) ||
+            (!old.showArtwork && s.showArtwork)
+        val providerSetChanged = old.disabledProviders != s.disabledProviders ||
+            old.enabledProviders != s.enabledProviders
+        // Never acquire a provider/service lock while holding settingsLock:
+        // active provider requests can recheck this same settings snapshot.
         if (withdrawn) providers.forEach { service.resetProviderPause(it.info.id) }
-        if (controllerLazy.isInitialized()) controller.onSettingsChanged()
+        if (controllerLazy.isInitialized()) {
+            if (providerSetChanged || newlyAvailableArtwork)
+                controller.onProviderConfigurationChanged()
+            else controller.onSettingsChanged()
+        }
     }
 
     fun setProviderKey(provider: String, value: String?) {
         if (provider == TmdbProvider.ID) {
             settingsStore.setTmdbCredential(value)
             service.resetProviderPause(provider)
-            // A newly configured provider can resolve already-observed titles without a manual Identify tap.
-            if (controllerLazy.isInitialized()) controller.onSettingsChanged()
+            // A newly configured provider can fill artwork on already-confirmed assignments.
+            if (controllerLazy.isInitialized()) controller.onProviderConfigurationChanged()
         }
     }
 
-    fun clearAllMediaData() = controller.clearAllMediaData({ queryCache.clear() }, { artworkDisk.clear() })
+    // Metadata cache deletion shares the enrichment service lock with provider result writes.
+    fun clearAllMediaData() = controller.clearAllMediaData({ service.clearLookupHistory() }, { artworkDisk.clear() })
 
     /** Off main thread: a short, title-free summary for settings. */
     fun cacheSummary(): String {
