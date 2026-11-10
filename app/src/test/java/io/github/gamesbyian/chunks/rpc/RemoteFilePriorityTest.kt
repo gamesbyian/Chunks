@@ -60,7 +60,8 @@ class RemoteFilePriorityTest {
             assertEquals(FilePriorityOutcome.Verified(hash, 1, 2),
                 remote.setFilePriority(hash, 1, target, 42, 1, 2))
             assertEquals(listOf("f.multicall", "f.multicall", "d.hash",
-                "f.priority.set", "d.update_priorities", "f.multicall", "d.hash"), methods)
+                "f.multicall", "d.hash", "f.priority.set", "d.update_priorities",
+                "f.multicall", "d.hash"), methods)
             assertEquals(FilePriorityOutcome.Unchanged(hash, 1, 2),
                 remote.setFilePriority(hash, 1, target, 42, 2, 2))
             assertEquals(1, methods.count { it == "f.priority.set" })
@@ -100,7 +101,8 @@ class RemoteFilePriorityTest {
             assertEquals(FilePriorityOutcome.Uncertain(hash, 1),
                 remote.setFilePriority(hash, 1, target, 42, 1, 2))
             assertTrue(changed)
-            assertEquals(listOf("f.multicall", "d.hash", "f.priority.set"), methods)
+            assertEquals(listOf("f.multicall", "d.hash", "f.multicall", "d.hash",
+                "f.priority.set"), methods)
             assertEquals(2, remote.listFiles(hash)[1].priority)
             assertEquals(1, methods.count { it == "f.priority.set" })
             assertFalse(methods.contains("d.update_priorities"))
