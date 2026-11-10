@@ -206,8 +206,8 @@ class TransferMediaControllerTest {
             Dispatchers.Unconfined, { clock.now })
         val flow = c.observe(server, name)
         assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
-        assertTrue("Enabled mobile artwork is not falsely described as paused",
-            flow.value.automaticMessage!!.contains("no verified poster"))
+        assertTrue("Mobile data permits known image downloads, but not background provider searches",
+            flow.value.automaticMessage!!.contains("searching providers for a poster waits for an unmetered"))
         assertTrue("Automatic metadata discovery still waits for Wi-Fi", wire.requests.isEmpty())
         settings = settings.copy(artworkOnMeteredNetwork = false)
         c.onSettingsChanged()
