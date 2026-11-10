@@ -18,7 +18,12 @@ object RemoteEndpointHints {
         }
         require(!uri.host.isNullOrBlank() && uri.userInfo == null &&
             uri.rawQuery == null && uri.rawFragment == null) { "Invalid ruTorrent address" }
-        val path = uri.rawPath.orEmpty().trimEnd('/')
+        // Saved/direct endpoints also bypass Smart Connect discovery.
+        // Two adjacent separators can be normalized differently by nginx,
+        // application routers or upstream proxies, selecting another tenant.
+        val suppliedPath = uri.rawPath.orEmpty()
+        require("//" !in suppliedPath) { "Ambiguous ruTorrent path; use single separators" }
+        val path = suppliedPath.trimEnd('/')
         // Hosts serve additional instances as /rutorrent2/, /rutorrent3/, ...
         val mapped = if (rutorrentRoot.containsMatchIn(path))
             path + "/plugins/httprpc/action.php" else path.ifEmpty { "/" }
