@@ -2,7 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
@@ -30,7 +30,8 @@ internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: () -> Unit) {
         Text("Start a download on this device, or connect a remote BitTorrent client. " +
             "You can use Chunks with either, or both.",
             style = MaterialTheme.typography.bodyMedium)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Add a torrent")
             }
