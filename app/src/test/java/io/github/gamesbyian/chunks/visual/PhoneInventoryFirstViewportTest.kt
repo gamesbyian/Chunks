@@ -33,16 +33,20 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneInventoryFirstViewportTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
+    private fun waitForWelcome() = rule.waitUntil(20_000) {
+        rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+    }
+
     @Test fun deviceInventoryOwnsTheFirstViewportWithoutSettingsAboveIt() {
-        rule.waitForIdle()
-        rule.onNodeWithText("This device").assertIsDisplayed()
-        rule.onNodeWithText("Search transfers on this device").assertIsDisplayed()
+        waitForWelcome()
+        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
         rule.onNodeWithText("Options · this device").assertDoesNotExist()
         rule.onNodeWithText("Privacy & authentication").assertDoesNotExist()
     }
 
     @Test fun footerOptionsBringsPhoneOptionsAndToolsIntoView() {
-        rule.waitForIdle()
+        waitForWelcome()
         rule.onNodeWithContentDescription("Options").assertIsDisplayed().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Options · this device").assertIsDisplayed()
@@ -50,14 +54,14 @@ class PhoneInventoryFirstViewportTest {
         rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
         // The footer now enters the single canonical catalog in every mode.
         rule.onNodeWithText("Transfers").performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("All environments").assertExists()
-        rule.onNodeWithText("Search names or hashes").assertExists()
+        waitForWelcome()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
     }
 
     @Test fun anEmptyPhoneSaysSoOnceWithoutAZeroOfZeroCount() {
-        rule.waitForIdle()
-        rule.onNodeWithText("Your transfers will appear here").assertIsDisplayed()
+        waitForWelcome()
+        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
         rule.onNodeWithText("Add a torrent").assertIsDisplayed()
         // The shared footer may expose the same destination; match the collection safely.
         rule.onAllNodesWithText("Connections").assertAny(hasClickAction())
