@@ -1908,6 +1908,22 @@ internal fun ConnectionScreen(
                     "Checking a connection never changes its transfers; each transfer action " +
                     "requires separate review.", Lilac)
         }
+        item {
+            OutlinedTextField(
+                value = endpoint, onValueChange = onEndpoint,
+                label = { Text("Seedbox hostname, ruTorrent URL or RPC address") },
+                placeholder = { Text("server.example or https://server.example/rutorrent/") },
+                // Next moves to the following field; no autocorrect on an address.
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                    autoCorrectEnabled = false,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+                singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+            val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
+            if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
+        }
         if (connectedSessionName != null) item {
             Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
                 Column(Modifier.fillMaxWidth().padding(12.dp),
@@ -2069,22 +2085,6 @@ internal fun ConnectionScreen(
         }
         if (renameNotice != null) item {
             Text(renameNotice.orEmpty(), style = MaterialTheme.typography.bodySmall)
-        }
-        item {
-            OutlinedTextField(
-                value = endpoint, onValueChange = onEndpoint,
-                label = { Text("Seedbox hostname, ruTorrent URL or RPC address") },
-                placeholder = { Text("server.example or https://server.example/rutorrent/") },
-                // Next moves to the following field; no autocorrect on an address.
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
-                    autoCorrectEnabled = false,
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
-                singleLine = true, modifier = Modifier.fillMaxWidth()
-            )
-            val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
-            if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
         }
         item {
             var advancedOpen by rememberSaveable { mutableStateOf(rpcPath.isNotBlank()) }
