@@ -1,0 +1,60 @@
+package io.github.gamesbyian.chunks.media
+
+import io.github.gamesbyian.chunks.model.EnvironmentId
+import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
+
+/**
+ * A source-exact background-media inventory, independent of display filters and composed
+ * list rows. Every key needs a complete, fresh, LIVE read AND a currently authorized account scope.
+ *
+ * Old in-flight callbacks may only continue while the exact profile, original
+ * title and environment/hash still belong to a freshly observed current inventory.
+ * A newer LIVE read of the same account/job is continuity, not a new identity:
+ * invalidating on every fresh timestamp would starve offscreen work.
+ * Caller passes this snapshot as the expected state and compares it with the latest
+ * snapshot at the moment of *each* network or storage commit.
+ */
+class AuthorizedMediaInventorySnapshot private constructor(
+    val entries: List<Pair<MediaTransferKey, String>>,
+    private val witnesses: Map<MediaTransferKey, Witness>
+) {
+    private data class Witness(val accountScope: String, val originalName: String)
+
+    // Compose LaunchedEffect compares snapshot keys by value. Unchanged transfers
+    // must NOT restart on every periodic read of the same authenticated account.
+    override fun equals(other: Any?): Boolean =
+        other is AuthorizedMediaInventorySnapshot &&
+            entries == other.entries && witnesses == other.witnesses
+    override fun hashCode(): Int = 31 * entries.hashCode() + witnesses.hashCode()
+
+    fun stillAuthorizes(key: MediaTransferKey, current: AuthorizedMediaInventorySnapshot): Boolean =
+        witnesses[key]?.let { it == current.witnesses[key] } ?: false
+
+    companion object {
+        fun build(sources: List<EnvironmentTransferSnapshot>,
+                  ownerScopes: Map<EnvironmentId, String>): AuthorizedMediaInventorySnapshot {
+            // Multiple snapshots claiming one environment would make profile identity
+            // ambiguous. Fail the entire projection closed rather than guess.
+            if (sources.map { it.environment }.toSet().size != sources.size)
+                return AuthorizedMediaInventorySnapshot(emptyList(), emptyMap())
+            val found = LinkedHashMap<MediaTransferKey, Witness>()
+            val names = LinkedHashMap<MediaTransferKey, String>()
+            for (source in sources) {
+                // A timestamped LIVE label without a *complete* inventory is
+                // insufficient: rTorrent may have returned a filtered view, or
+                // the local/remote adapter may have dropped duplicate/invalid jobs.
+                // Neither incomplete state authorizes third-party name disclosure.
+                // Fresh read time is a precondition, not a fingerprint: continued
+                // valid reads of the same account/job should not starve lookups.
+                if (!source.canClaimCompleteLiveInventory) continue
+                val scope = ownerScopes[source.environment]?.takeIf { it.isNotBlank() } ?: continue
+                for (job in source.transfers) {
+                    val key = MediaTransferKey.of(job.key)
+                    found[key] = Witness(scope, job.originalName)
+                    names[key] = job.originalName
+                }
+            }
+            return AuthorizedMediaInventorySnapshot(names.map { it.key to it.value }, found)
+        }
+    }
+}
