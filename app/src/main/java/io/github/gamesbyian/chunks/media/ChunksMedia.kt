@@ -60,6 +60,31 @@ class ChunksMedia private constructor(context: Context) {
     }
     val controller: TransferMediaController by controllerLazy
 
+    // Retain only explicitly opened, revocable full-inventory sessions. Never
+    // infer remote/profile authority from a name, a selected scope or past data.
+    private val inventorySessions =
+        java.util.concurrent.CopyOnWriteArraySet<MediaInventoryEnrichmentSession>()
+
+    /**
+     * Host-level inventory owner: start at the canonical Transfers/activity source, not
+     * from LazyColumn rows or Details. Call replace() for fresh authorized inventory,
+     * and close() when the host/privacy scope ends. The supplied witness MUST check
+     * current exact environment/profile freshness and privacy permission dynamically.
+     */
+    fun openInventorySession(ownerScope: CoroutineScope): MediaInventoryEnrichmentSession {
+        val session = MediaInventoryEnrichmentSession(
+            ownerScope,
+            enrich = { entries, authorized -> controller.enrichInventory(entries, authorized) },
+            onClosed = { inventorySessions.remove(it) })
+        inventorySessions.add(session)
+        return session
+    }
+
+    /** Recheck offscreen inventory following settings/credentials changes without UI composition. */
+    private fun refreshInventorySessions() {
+        inventorySessions.forEach { it.refresh() }
+    }
+
     /** Delegates resolve the lazily-created stores only when first used off the main thread. */
     private fun lazyCache(): MediaQueryCache = object : MediaQueryCache {
         override fun get(key: io.github.gamesbyian.chunks.model.MediaMetadataCacheKey) = queryCache.get(key)
@@ -101,6 +126,7 @@ class ChunksMedia private constructor(context: Context) {
                 controller.onProviderConfigurationChanged()
             else controller.onSettingsChanged()
         }
+        refreshInventorySessions()
     }
 
     fun setProviderKey(provider: String, value: String?) {
@@ -109,6 +135,7 @@ class ChunksMedia private constructor(context: Context) {
             service.resetProviderPause(provider)
             // A newly configured provider can fill artwork on already-confirmed assignments.
             if (controllerLazy.isInitialized()) controller.onProviderConfigurationChanged()
+            refreshInventorySessions()
         }
     }
 

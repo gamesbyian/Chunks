@@ -14,6 +14,8 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsPhoneAddJourneyInstrumentedTest.kt"
       - "tools/real_magnet_peer.py"
+      - "tools/disposable_tracker_isolation.py"
+      - "tests/test_disposable_tracker_isolation.py"
       - "tools/real_peer_stage_budget.py"
       - "tests/test_real_peer_stage_budget.py"
       - "tools/export_disposable_peer_numeric.py"
@@ -97,11 +99,12 @@ jobs:
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_preload_disposable_magnet.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_real_peer_stage_budget.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_disposable_tracker_isolation.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_finish_installed_magnet_evidence.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_real_media.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_journey_gate.py
           bash -n tools/installed_real_media.sh tools/installed_rtorrent_with_optional_media.sh
-          python3 -m py_compile tools/real_magnet_peer.py tools/finish_installed_magnet_evidence.py
+          python3 -m py_compile tools/real_magnet_peer.py tools/disposable_tracker_isolation.py tools/finish_installed_magnet_evidence.py
           bash -n tools/installed_rtorrent_magnets.sh
           bash -n tools/verify_installed_apk_bytes.sh
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_apk_identity.py

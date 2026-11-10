@@ -104,6 +104,7 @@ def precompleted_control_preserved(runner_temp, env):
 _SAFE_UI_STAGES = frozenset((
     "runner-ready", "connect-click-attempt", "connect-submitted", "queue",
     "add-open-requested", "add-open", "magnet-entered", "place-ready",
+    "artwork-heading", "artwork-choice", "review-click", "review-open",
     "add-review", "add-submitted", "add-registered", "metadata-already-resolved",
     "read-only-exhausted",
 ))

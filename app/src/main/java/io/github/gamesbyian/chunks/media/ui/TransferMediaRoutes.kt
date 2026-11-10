@@ -108,7 +108,7 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
             // Build from the stored preferences, never from a not-yet-loaded default copy.
             scope.launch {
                 settings = withContext(Dispatchers.IO) {
-                    media.loadSettings().copy(onlineLookupConsent = true, automaticLookup = true).also { media.updateSettings(it) }
+                    media.loadSettings().copy(onlineLookupConsent = true).also { media.updateSettings(it) }
                 }
             }
         },

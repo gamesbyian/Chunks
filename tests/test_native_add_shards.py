@@ -9,7 +9,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from verify_native_add_shards import verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS
+from verify_native_add_shards import (
+    verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS,
+    HTTPS_PHONE_ID, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS,
+)
 
 
 class ShardedNativeAddTests(unittest.TestCase):
@@ -178,6 +181,45 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.assertEqual(35, self.check()["junit"]["skipped"])
         self.change(0, lambda d: d["test_cases"][34].update(id_sha256="f" * 64))
         with self.assertRaisesRegex(ValueError, "excessive skips"):
+            self.check()
+
+    def test_only_both_exact_public_media_phases_can_extend_existing_skip_ceiling(self):
+        # Real TVmaze/CDN verification is a separate *explicitly opted-in*,
+        # two-phase process-death emulator campaign. Ordinary native Add must
+        # never report these gated phases as executed.
+        expected = {
+            hashlib.sha256(("io.github.gamesbyian.chunks."
+                "InstalledAutomaticPublicMediaInstrumentedTest" + "\\0" + name).encode()).hexdigest()
+            for name in ("phaseA_liveAutomaticArtworkWithoutIdentify",
+                         "phaseB_offlineColdProcessRestoresRealArtwork")
+        }
+        self.assertEqual(expected, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS)
+        self.assertEqual(2, len(INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS))
+        media_ids = sorted(INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS)
+
+        def reviewed_skips(d):
+            for case in d["test_cases"][:37]:
+                case["outcome"] = "skipped"
+            # The 34 existing authorized skips plus one exact public HTTPS
+            # phone fixture and two exact installed-media phases are permitted.
+            d["test_cases"][34]["id_sha256"] = HTTPS_PHONE_ID
+            d["test_cases"][35]["id_sha256"] = media_ids[0]
+            d["test_cases"][36]["id_sha256"] = media_ids[1]
+            d["junit"]["executed"] = 144
+            d["junit"]["skipped"] = 37
+
+        self.change(0, reviewed_skips)
+        self.assertEqual(37, self.check()["junit"]["skipped"])
+
+        # A different test cannot borrow even one of the two exemptions.
+        self.change(0, lambda d: d["test_cases"][36].update(id_sha256="f" * 64))
+        with self.assertRaisesRegex(ValueError, "excessive skips"):
+            self.check()
+
+        # Even an exact approved identity cannot appear in both shards.
+        self.change(0, lambda d: d["test_cases"][36].update(id_sha256=media_ids[1]))
+        self.change(1, lambda d: d["test_cases"][0].update(id_sha256=media_ids[1]))
+        with self.assertRaisesRegex(ValueError, "overlapping shard identity"):
             self.check()
 
     def test_reject_shard_without_executed_evidence(self):

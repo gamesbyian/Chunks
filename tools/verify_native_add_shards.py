@@ -33,6 +33,20 @@ HTTPS_PHONE_ID = hashlib.sha256((
     "io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest" + "\\0" +
     "fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault").encode()).hexdigest()
 
+# Only these two exact public-TVmaze installed-media cases are eligible to skip
+# outside their explicitly authorized one-shot emulator workflow. The normal
+# native Add suite must still execute every unrelated case and retain the
+# original baseline. Never relax MAX_BASELINE_SKIPPED globally.
+INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS = frozenset(
+    hashlib.sha256((
+        "io.github.gamesbyian.chunks.InstalledAutomaticPublicMediaInstrumentedTest" +
+        "\\0" + name).encode()).hexdigest()
+    for name in (
+        "phaseA_liveAutomaticArtworkWithoutIdentify",
+        "phaseB_offlineColdProcessRestoresRealArtwork",
+    )
+)
+
 
 def verify(root, count, sha, screenshot_manifest=None):
     if not 1 < count <= 4:
@@ -44,6 +58,7 @@ def verify(root, count, sha, screenshot_manifest=None):
     summaries = []
     known_test_ids = set()
     https_phone_skipped = 0
+    installed_media_opt_in_skipped = 0
     for index in range(count):
         path = root / f"chunks-native-add-receipt-shard-{index}" / "digest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -71,6 +86,8 @@ def verify(root, count, sha, screenshot_manifest=None):
                 raise ValueError("failed test in accepted shard")
             if ident == HTTPS_PHONE_ID and case["outcome"] == "skipped":
                 https_phone_skipped += 1
+            if ident in INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS and case["outcome"] == "skipped":
+                installed_media_opt_in_skipped += 1
         if int(j.get("tests", -1)) != int(j["executed"]) + int(j["skipped"]):
             raise ValueError("shard inconsistent JUnit skip/execute counts")
         if sum(case["outcome"] == "skipped" for case in cases) != int(j["skipped"]):
@@ -91,7 +108,8 @@ def verify(root, count, sha, screenshot_manifest=None):
         raise ValueError('missing test-case identities')
     if (totals['tests'] < BASELINE_JUNIT_TESTS or
             totals['executed'] < BASELINE_EXECUTED_TESTS or
-            totals['skipped'] - https_phone_skipped > MAX_BASELINE_SKIPPED):
+            totals['skipped'] - https_phone_skipped -
+            installed_media_opt_in_skipped > MAX_BASELINE_SKIPPED):
         raise ValueError('below accepted complete JUnit coverage or excessive skips')
     screenshots = {}
     for name in manifest:

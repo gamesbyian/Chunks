@@ -222,6 +222,12 @@ class TransferMediaController(
         if (assignment.state == MediaAssignmentState.COULDNT_IDENTIFY &&
             assignment.lastStatus == MediaLookupStatus.NOT_FOUND)
             return stale || firstPassAfterRestart || providerChanged
+        // An ambiguous filename cannot be verified by its existing suggestions, but
+        // a newly enabled provider can break a tie. Retry once per provider revision
+        // and once on cold startup, with service query-cache TTLs guarding HTTP.
+        // Ordinary inventory notifications must not repeatedly search the same ambiguity.
+        if (assignment.state == MediaAssignmentState.SUGGESTED)
+            return firstPassAfterRestart || providerChanged
         val match = assignment.match ?: return false
         if (assignment.state != MediaAssignmentState.AUTOMATIC ||
             assignment.userArtwork != null || match.artwork.isNotEmpty()) return false
