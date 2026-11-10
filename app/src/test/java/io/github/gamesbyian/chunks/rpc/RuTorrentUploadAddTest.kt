@@ -46,6 +46,8 @@ class RuTorrentUploadAddTest {
                     "<value><array><data><value><string>${hash.uppercase()}</string></value><value><string>test.txt</string></value>" +
                     "<value><i8>5</i8></value><value><i8>0</i8></value><value><i8>0</i8></value><value><string>/home/dev/downloads</string></value>" +
                     "<value><i8>0</i8></value><value><i8>0</i8></value><value><i8>0</i8></value></data></array></value>" else "") + "</data></array>")
+                request.contains("<methodName>d.hash</methodName>") ->
+                    if (loaded) value("<string>${hash.uppercase()}</string>") else unknownHashFault()
                 request.contains("<methodName>d.directory</methodName>") -> value("<string>/home/dev/downloads</string>")
                 request.contains("<methodName>d.is_multi_file</methodName>") -> value("<i8>0</i8>")
                 request.contains("<methodName>d.state</methodName>") ||

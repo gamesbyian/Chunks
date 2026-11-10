@@ -945,14 +945,27 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 RemoteAddOutcome.PendingVerification(plan.expectedInfoHash)
             } else {
                 val item = matches.single()
-                val directory = readVerifiedAddDirectory(
-                    plan.expectedInfoHash, plan.destination, item.name)
+                val hash = plan.expectedInfoHash
+                // A matching d.multicall2 row is a view observation, not an
+                // exact-session witness for subsequent per-hash getters. Match
+                // the hidden-view Add recovery: bracket directory and stopped
+                // flags with read-only d.hash on THIS authenticated endpoint.
+                // An inconsistent gateway must not release Start after Add.
+                suspend fun guardHash() {
+                    check((call("d.hash", listOf(hash)) as? String)
+                        ?.equals(hash, ignoreCase = true) == true) {
+                        "rTorrent returned another session during visible Add readback"
+                    }
+                }
+                guardHash()
+                val directory = readVerifiedAddDirectory(hash, plan.destination, item.name)
                 // d.state=0 can coexist transiently with an active engine.
                 // The hidden-view readback already requires inactivity; the
                 // visible main-view path must uphold the same stopped promise
                 // before Add-and-Start can dispatch a second mutation.
-                val state = number(call("d.state", listOf(plan.expectedInfoHash)))
-                val active = number(call("d.is_active", listOf(plan.expectedInfoHash)))
+                val state = number(call("d.state", listOf(hash)))
+                val active = number(call("d.is_active", listOf(hash)))
+                guardHash()
                 if (!item.started && state == 0L && active == 0L && directory != null) {
                     RemoteAddOutcome.VerifiedStopped(plan.expectedInfoHash, directory)
                 } else {

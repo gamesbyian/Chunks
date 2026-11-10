@@ -82,6 +82,7 @@ class RemoteStoppedAddTest {
                 val body = when (method) {
                     "d.multicall2" -> if (loaded) rowXml()
                         else "<value><array><data></data></array></value>"
+                    "d.hash" -> value(hash)
                     "d.directory" -> value(dir)
                     "d.is_multi_file" -> num(0)
                     "d.state", "d.is_active" -> num(0)
@@ -105,7 +106,8 @@ class RemoteStoppedAddTest {
             assertEquals("Only ONE Add RPC despite a lost acknowledgement",
                 1, methods.count { it == "load.verbose" })
             assertEquals(listOf("d.multicall2", "d.name", "load.verbose", "d.multicall2",
-                "d.directory", "d.is_multi_file", "d.state", "d.is_active"), methods)
+                "d.hash", "d.directory", "d.is_multi_file", "d.state", "d.is_active",
+                "d.hash"), methods)
         } finally { server.stop(0) }
     }
 
@@ -128,6 +130,7 @@ class RemoteStoppedAddTest {
                     loaded = true
                     num(0)
                 }
+                "d.hash" -> value(hash)
                 "d.directory" -> value(dir)
                 "d.is_multi_file" -> num(0)
                 "d.state", "d.is_active" -> num(0)
@@ -146,8 +149,8 @@ class RemoteStoppedAddTest {
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertTrue(loaded)
             assertEquals(listOf("d.multicall2", "d.name", "load.verbose", "d.multicall2",
-                "d.directory", "d.is_multi_file", "d.state", "d.is_active"),
-                requests.map { it.substringBefore('|') })
+                "d.hash", "d.directory", "d.is_multi_file", "d.state", "d.is_active",
+                "d.hash"), requests.map { it.substringBefore('|') })
             val beforeDuplicate = requests.size
             assertEquals(RemoteAddOutcome.AlreadyPresent(hash), remote.loadStopped(plan))
             assertEquals(beforeDuplicate + 1, requests.size)
@@ -175,6 +178,7 @@ class RemoteStoppedAddTest {
                     loaded = true
                     num(0)
                 }
+                "d.hash" -> value(hash)
                 "d.directory" -> value(dir)
                 "d.is_multi_file" -> num(0)
                 "d.state", "d.is_active" -> num(0)
@@ -193,8 +197,8 @@ class RemoteStoppedAddTest {
             assertTrue(plan.useServerDefault)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.verbose",
-                "d.multicall2", "d.directory", "d.is_multi_file", "d.state", "d.is_active"),
-                requests.map { it.first })
+                "d.multicall2", "d.hash", "d.directory", "d.is_multi_file", "d.state",
+                "d.is_active", "d.hash"), requests.map { it.first })
             assertFalse(requests.first { it.first == "load.verbose" }.second.contains("d.directory.set"))
         } finally { server.stop(0) }
     }
@@ -254,6 +258,7 @@ class RemoteStoppedAddTest {
                     }
                 }
                 "load.verbose" -> { loaded = true; num(0) }
+                "d.hash" -> value(hash)
                 "d.directory" -> value(dir)
                 "d.is_multi_file", "d.state", "d.is_active" -> num(0)
                 else -> throw AssertionError("Unexpected RPC")
@@ -401,6 +406,52 @@ class RemoteStoppedAddTest {
         } finally { server.stop(0) }
     }
 
+    @Test fun contradictoryExactHashCannotVerifyMainViewStoppedAdd() = runBlocking {
+        // A gateway can return a plausible main-view row and 0/0 state
+        // while its direct exact-hash getter disagrees. That view row
+        // cannot release the Universal Add ticket for another Start.
+        for (badRead in listOf(1, 2)) {
+            var hashReads = 0
+            val methods = mutableListOf<String>()
+            val server = HttpServer.create(
+                InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+            server.createContext("/RPC2") { exchange ->
+                val request = exchange.requestBody.bufferedReader().use { it.readText() }
+                val method = Regex("<methodName>([^<]+)</methodName>")
+                    .find(request)?.groupValues?.get(1).orEmpty()
+                methods += method
+                val result = when (method) {
+                    "d.multicall2" -> rowXml()
+                    "d.hash" -> {
+                        hashReads++
+                        value(if (hashReads == badRead) "cd".repeat(20) else hash)
+                    }
+                    "d.directory" -> value(dir)
+                    "d.is_multi_file", "d.state", "d.is_active" -> num(0)
+                    else -> throw AssertionError("No mutation or fallback: $method")
+                }
+                val reply = ("<methodResponse><params><param>" + result +
+                    "</param></params></methodResponse>").toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, reply.size.toLong())
+                exchange.responseBody.use { it.write(reply) }
+            }
+            server.start()
+            try {
+                val remote = RTorrentRemote(RemoteCredentials(
+                    "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+                assertEquals("A main-view row is not a session witness",
+                    RemoteAddOutcome.Uncertain(hash),
+                    remote.reconcileStoppedAdd(StoppedRemoteAddPlan.fromMagnet(magnet, dir)))
+                assertEquals(badRead, hashReads)
+                assertEquals("Only read-only exact-session evidence was requested",
+                    0, methods.count { it.startsWith("load.") || it.startsWith("d.start") })
+                assertEquals("d.multicall2", methods.first())
+            } finally {
+                server.stop(0)
+            }
+        }
+    }
+
     @Test fun visibleStoppedStateWithActiveEngineRemainsPendingUntilInactive() = runBlocking {
         // The main-view row and d.state both say "stopped", but the engine
         // is still active. Prior to this regression, that discrepancy was
@@ -416,6 +467,7 @@ class RemoteStoppedAddTest {
             methods += method
             val reply = when (method) {
                 "d.multicall2" -> rowXml()
+                "d.hash" -> value(hash)
                 "d.directory" -> value(dir)
                 "d.is_multi_file", "d.state" -> num(0)
                 "d.is_active" -> num(active)
