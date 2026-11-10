@@ -1198,6 +1198,17 @@ internal fun ChunksApp(
                                     // Connections owns the post-verification destination.
                                     // An Add draft stays in RAM without implicit submission.
                                     section = Section.SERVER
+                                    // A verified session is a real success even if the
+                                    // subsequent credential/profile persistence is revoked,
+                                    // refused or slow. Acknowledge the session immediately,
+                                    // but do NOT claim it was saved until roster readback.
+                                    val verifiedId = io.github.gamesbyian.chunks.model
+                                        .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+                                    verifiedConnectionNotice = VerifiedConnectionNotice(
+                                        savedProfiles.firstOrNull { it.id == verifiedId }?.label
+                                            ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
+                                        saved = false
+                                    )
                                     currentView = ticket.view
                                     requestedView = ticket.view
                                     // A successful authenticated Connect is the only time
@@ -1246,10 +1257,15 @@ internal fun ChunksApp(
                                                 profile.id == io.github.gamesbyian.chunks.model
                                                     .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
                                             }?.label
-                                            verifiedConnectionNotice = VerifiedConnectionNotice(
-                                                savedName ?: "rTorrent server",
-                                                saved = saveThisLogin && retained && savedName != null
-                                            )
+                                            // A user may already have dismissed the verified
+                                            // session acknowledgement while save was pending.
+                                            // Never resurrect a dismissed or superseded dialog.
+                                            if (verifiedConnectionNotice != null) {
+                                                verifiedConnectionNotice = VerifiedConnectionNotice(
+                                                    savedName ?: verifiedConnectionNotice!!.label,
+                                                    saved = saveThisLogin && retained && savedName != null
+                                                )
+                                            }
                                         }
                                     }
                                 }
