@@ -1390,6 +1390,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (expectedPriority == desiredPriority) {
             return FilePriorityOutcome.Unchanged(hash, fileIndex, desiredPriority)
         }
+        // A correctly shaped file row can outlive its original session.
+        // Verify this exact hash on this exact endpoint immediately before
+        // the first write. Any refusal here is known-before-mutation.
+        check((call("d.hash", listOf(hash)) as? String)
+            ?.equals(hash, ignoreCase = true) == true) {
+            "Selected rTorrent session changed; refresh files before editing"
+        }
         try {
             call("f.priority.set", listOf(hash + ":f" + fileIndex, desiredPriority))
             call("d.update_priorities", listOf(hash))
@@ -1403,14 +1410,27 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
 
         return try {
             val after = listFiles(hash)
-            val observed = after.getOrNull(fileIndex)
-            if (observed != null &&
-                observed.path == expectedPath &&
-                observed.sizeBytes == expectedSizeBytes &&
-                observed.priority == desiredPriority) {
-                FilePriorityOutcome.Verified(hash, fileIndex, desiredPriority)
+            // A post-write file row is not sufficient if the session moved,
+            // vanished or the gateway returned a different exact hash.
+            // The prior writes may already have applied: never replay them.
+            val stillExact = try {
+                (call("d.hash", listOf(hash)) as? String)
+                    ?.equals(hash, ignoreCase = true) == true
+            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                throw cancel
+            } catch (_: Exception) { false }
+            if (!stillExact) {
+                FilePriorityOutcome.Uncertain(hash, fileIndex)
             } else {
-                FilePriorityOutcome.PendingVerification(hash, fileIndex)
+                val observed = after.getOrNull(fileIndex)
+                if (observed != null &&
+                    observed.path == expectedPath &&
+                    observed.sizeBytes == expectedSizeBytes &&
+                    observed.priority == desiredPriority) {
+                    FilePriorityOutcome.Verified(hash, fileIndex, desiredPriority)
+                } else {
+                    FilePriorityOutcome.PendingVerification(hash, fileIndex)
+                }
             }
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel

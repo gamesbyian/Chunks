@@ -32,6 +32,7 @@ class RemoteFilePriorityTest {
             methods.add(method)
             val result = when (method) {
                 "f.multicall" -> files(priority)
+                "d.hash" -> value(hash)
                 "f.priority.set" -> {
                     assertTrue(body.contains(hash + ":f1"))
                     assertFalse("Index belongs in hash:fINDEX, not a second numeric argument", body.contains("<i8>1</i8>"))
@@ -58,8 +59,8 @@ class RemoteFilePriorityTest {
             assertEquals(listOf("f.multicall"), methods)
             assertEquals(FilePriorityOutcome.Verified(hash, 1, 2),
                 remote.setFilePriority(hash, 1, target, 42, 1, 2))
-            assertEquals(listOf("f.multicall", "f.multicall", "f.priority.set",
-                "d.update_priorities", "f.multicall"), methods)
+            assertEquals(listOf("f.multicall", "f.multicall", "d.hash",
+                "f.priority.set", "d.update_priorities", "f.multicall", "d.hash"), methods)
             assertEquals(FilePriorityOutcome.Unchanged(hash, 1, 2),
                 remote.setFilePriority(hash, 1, target, 42, 2, 2))
             assertEquals(1, methods.count { it == "f.priority.set" })
@@ -81,8 +82,11 @@ class RemoteFilePriorityTest {
                 exchange.sendResponseHeaders(503, -1)
                 exchange.close()
             } else {
-                val result = if (method == "f.multicall")
-                    files(if (changed) 2 else 1) else number(0)
+                val result = when (method) {
+                    "f.multicall" -> files(if (changed) 2 else 1)
+                    "d.hash" -> value(hash)
+                    else -> number(0)
+                }
                 val xml = "<methodResponse><params><param>$result</param></params></methodResponse>"
                     .toByteArray(Charsets.UTF_8)
                 exchange.sendResponseHeaders(200, xml.size.toLong())
@@ -96,7 +100,7 @@ class RemoteFilePriorityTest {
             assertEquals(FilePriorityOutcome.Uncertain(hash, 1),
                 remote.setFilePriority(hash, 1, target, 42, 1, 2))
             assertTrue(changed)
-            assertEquals(listOf("f.multicall", "f.priority.set"), methods)
+            assertEquals(listOf("f.multicall", "d.hash", "f.priority.set"), methods)
             assertEquals(2, remote.listFiles(hash)[1].priority)
             assertEquals(1, methods.count { it == "f.priority.set" })
             assertFalse(methods.contains("d.update_priorities"))
