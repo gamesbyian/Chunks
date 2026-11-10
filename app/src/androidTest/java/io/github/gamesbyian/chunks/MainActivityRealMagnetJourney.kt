@@ -272,10 +272,22 @@ internal class MainActivityRealMagnetJourney(
             if (default == null) type("Custom server folder (optional)", parent)
             report("chunks_real_add_app_stage", "place-ready")
             if (disposable) {
+                val artworkChoice = "Automatically identify and fetch artwork & metadata"
                 report("chunks_real_add_app_stage", "artwork-heading")
-                click("Artwork & metadata")
+                // The disclosure is saveable across Add visits. A blind click
+                // can COLLAPSE an already-expanded second Add, hiding the exact
+                // opt-out. Probe only semantics/scroll before choosing whether
+                // the disclosure needs opening. Never retry the checkbox tap
+                // (it represents the user's actual source-specific choice).
+                val choiceAlreadyExpanded = runCatching {
+                    scroll(artworkChoice)
+                    rule.onNodeWithText(artworkChoice).assertIsDisplayed()
+                }.isSuccess
+                if (!choiceAlreadyExpanded) click("Artwork & metadata")
                 report("chunks_real_add_app_stage", "artwork-choice")
-                click("Automatically identify and fetch artwork & metadata")
+                // This must remain present, reachable and actionable for
+                // EVERY Add; do not silently omit an opt-out after navigation.
+                click(artworkChoice)
             }
             report("chunks_real_add_app_stage", "review-click")
             click("Review Add")
