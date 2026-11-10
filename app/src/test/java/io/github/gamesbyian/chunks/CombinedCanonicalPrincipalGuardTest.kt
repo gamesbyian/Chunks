@@ -69,7 +69,7 @@ class CombinedCanonicalPrincipalGuardTest {
             begins = 0; commands = 0; settles = 0
             val key = UnifiedTransferKey.of(aliceId, hash)
             val observation = UnifiedTransferObservation(
-                key, row.name, row.name, 10L, 5L, false, null, null, null)
+                key, row.name, row.name, 10L, 500_000, false, null, null, null)
             val snapshot = EnvironmentTransferSnapshot(aliceId,
                 EnvironmentAvailability.LIVE, true, System.currentTimeMillis(),
                 listOf(observation))
