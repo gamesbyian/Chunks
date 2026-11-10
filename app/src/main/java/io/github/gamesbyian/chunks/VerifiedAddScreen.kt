@@ -274,8 +274,11 @@ fun VerifiedAddScreen(
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
-                    fileError = "Could not open that .torrent (unsupported v1 metainfo or size limit)." +
-                        if (selectedTorrent != null) " Your previous .torrent remains selected." else ""
+                    if (!alreadyAttempted && !submitting &&
+                        sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
+                        fileError = "Could not open that .torrent (unsupported v1 metainfo or size limit)." +
+                            if (selectedTorrent != null) " Your previous .torrent remains selected." else ""
+                    }
                 } finally {
                     choosing = false
                 }
@@ -417,7 +420,15 @@ fun VerifiedAddScreen(
                                     clipboardFilled = null
                                     onMagnet("")
                                 }
-                                is TorrentLinkResult.Refused -> fileError = result.message
+                                is TorrentLinkResult.Refused -> {
+                                    // A refused old URL must not pollute a newer
+                                    // explicitly selected source with its error.
+                                    if (!alreadyAttempted && !submitting && !choosing &&
+                                        !latestExternalSourceReading.value &&
+                                        sourceWitness.stillSelected(
+                                            currentSource.value, selectedBytes, useFile))
+                                        fileError = result.message
+                                }
                             }
                         } finally {
                             linkFetching = false
