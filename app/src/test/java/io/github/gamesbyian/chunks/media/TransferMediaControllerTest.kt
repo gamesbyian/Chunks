@@ -836,7 +836,7 @@ class TransferMediaControllerTest {
                 it.contains(phone.value) })
         }
 
-    @Test fun newlyConfiguredProviderRechecksAmbiguousOffscreenSeriesWithoutManualIdentify() =
+    @Test fun newlyConfiguredProviderRechecksOffscreenAmbiguityWithoutFalseConfirmation() =
         kotlinx.coroutines.runBlocking {
             settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
             val configured = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -871,8 +871,10 @@ class TransferMediaControllerTest {
             configured.set(true)
             c.onProviderConfigurationChanged()
             c.enrichInventory(inventory)
-            assertEquals(MediaAssignmentState.AUTOMATIC, assignments.get(phone)?.state)
-            assertEquals("tmdb", assignments.get(phone)?.match?.ref?.provider)
+            assertEquals(MediaAssignmentState.SUGGESTED, assignments.get(phone)?.state)
+            assertNull("A later singleton response does not erase earlier same-title ambiguity",
+                assignments.get(phone)?.match)
+            assertTrue(assignments.get(phone)?.suggestions?.any { it.ref.provider == "tmdb" } == true)
             assertTrue(wire.requests.any { it.contains("api.themoviedb.org") })
             assertTrue(wire.requests.none { it.contains("720p") || it.contains("WEB-DL") ||
                 it.contains(phone.value) })
