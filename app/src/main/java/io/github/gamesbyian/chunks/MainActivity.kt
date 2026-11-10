@@ -1572,15 +1572,20 @@ internal fun ChunksApp(
                         val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
                         if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
                         if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) break
-                        var changed = false
+                        // A proven idle step issued no remote write. Any other
+                        // result is uncertain until independently read back.
+                        var knownNoWrite = false
                         try {
                             val step = try { stepRemoteFinishInOrder(connectedRemote, store, transfer.hash) }
                                 catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                                 catch (_: Exception) { null }
-                            changed = step !is FinishInOrderRunner.Step.Idle
+                            knownNoWrite = step is FinishInOrderRunner.Step.Idle
                         } finally {
-                            mutationGate.settled()
-                            if (changed && server === connectedRemote) { stale = true; refresh() }
+                            if (knownNoWrite) mutationGate.abandonKnownNoWrite()
+                            else {
+                                mutationGate.settled()
+                                if (server === connectedRemote) { stale = true; refresh() }
+                            }
                         }
                     }
                 }
