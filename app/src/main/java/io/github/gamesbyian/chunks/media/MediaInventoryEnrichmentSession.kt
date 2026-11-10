@@ -49,6 +49,9 @@ class MediaInventoryEnrichmentSession internal constructor(
     private var snapshot: Snapshot? = null
     private var active: Run? = null
     private var activeJob: Job? = null
+    // A heartbeat may arrive during a long authorized 5,000-job scan. Queue one
+    // catch-up pass; cancelling/restarting the current scan would starve its tail.
+    private var refreshPending = false
 
     /**
      * Replace, never append to, the last verified inventory. A replaced snapshot
@@ -62,6 +65,7 @@ class MediaInventoryEnrichmentSession internal constructor(
             if (closed) return
             snapshot?.revoked = true
             snapshot = Snapshot(rows, rows.mapTo(HashSet()) { it.first }, isStillAuthorized)
+            refreshPending = false
             scheduleLocked()
         }
     }
@@ -72,7 +76,12 @@ class MediaInventoryEnrichmentSession internal constructor(
      * receipts and exact-key automation exclusions remain enforced by the controller.
      */
     fun refresh() = synchronized(lock) {
-        if (!closed && snapshot != null) scheduleLocked()
+        if (closed || snapshot == null) return@synchronized
+        if (activeJob?.isActive == true) {
+            // Preserve already-authorized, still-running tail work. Multiple
+            // heartbeat or network ticks collapse into one later full pass.
+            refreshPending = true
+        } else scheduleLocked()
     }
 
     private fun scheduleLocked() {
@@ -87,11 +96,25 @@ class MediaInventoryEnrichmentSession internal constructor(
         val run = Run(next)
         active = run
         activeJob = ownerScope.launch {
-            executionMutex.withLock {
-                // A queued run may have been replaced while waiting for an older
-                // uninterruptible provider request. Only the newest active witness
-                // may now enter the sole controller, preserving exact-job isolation.
-                if (!run.revoked && !next.revoked) enrich(next.rows, run::allowed)
+            try {
+                executionMutex.withLock {
+                    // A queued run may have been replaced while waiting for an older
+                    // uninterruptible provider request. Only the newest active witness
+                    // may now enter the sole controller, preserving exact-job isolation.
+                    if (!run.revoked && !next.revoked) enrich(next.rows, run::allowed)
+                }
+            } finally {
+                synchronized(lock) {
+                    // Only the still-current exact inventory can consume a queued
+                    // refresh. Replacements and close revoke old work immediately.
+                    if (active === run) {
+                        activeJob = null
+                        if (!closed && refreshPending) {
+                            refreshPending = false
+                            scheduleLocked()
+                        }
+                    }
+                }
             }
         }
     }
@@ -105,6 +128,7 @@ class MediaInventoryEnrichmentSession internal constructor(
                 active?.revoked = true
                 activeJob?.cancel()
                 activeJob = null
+                refreshPending = false
                 active = null
                 snapshot = null
                 true
