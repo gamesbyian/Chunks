@@ -124,6 +124,7 @@ fun VerifiedAddScreen(
     // A newer Android share/phone edit cannot change the displayed recovery identity.
     val sourceText = draft.attemptSource ?: magnet
     val currentSource = rememberUpdatedState(magnet)
+    val latestExternalSourceReading = rememberUpdatedState(externalSourceReading)
     DisposableEffect(draft) {
         onDispose {
             if (draft.alreadyAttempted && draft.reportedVerifiedHash == null)
@@ -244,6 +245,7 @@ fun VerifiedAddScreen(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && !choosing && !submitting && !alreadyAttempted) {
             choosing = true
+            val sourceWitness = RemoteAddSourceReadWitness(currentSource.value, selectedBytes, useFile)
             // Preserve an existing reviewed .torrent until the replacement
             // has been fully read and validated. An invalid provider document
             // must not erase the user's working Add draft.
@@ -258,6 +260,11 @@ fun VerifiedAddScreen(
                         val reviewed = SharedTorrentDocument.read(
                             context.contentResolver, uri)
                         reviewed.preview to reviewed.bytes
+                    }
+                    if (alreadyAttempted || submitting ||
+                        !sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
+                        fileError = "The source changed while opening the .torrent. Your newer choice was kept."
+                        return@launch
                     }
                     selectedTorrent = result.first
                     selectedBytes = result.second
@@ -381,15 +388,20 @@ fun VerifiedAddScreen(
             if (clipboardFilled != null && sourceText == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
                 onClear = { onMagnet(""); clipboardFilled = null }, enabled = !submitting)
             if (!useFile && linkCheck !is TorrentLinkCheck.NotALink) TorrentLinkPanel(linkCheck,
-                fetching = linkFetching, enabled = !submitting && !choosing && !alreadyAttempted,
+                fetching = linkFetching,
+                enabled = !submitting && !choosing && !alreadyAttempted && !externalSourceReading,
                 onFetch = { link ->
-                    val requestedSource = magnet
+                    val sourceWitness = RemoteAddSourceReadWitness(
+                        currentSource.value, selectedBytes, useFile)
                     linkFetching = true
                     scope.launch {
                         try {
                             when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
                                 is TorrentLinkResult.Fetched -> {
-                                    if (alreadyAttempted || submitting || currentSource.value != requestedSource) {
+                                    if (alreadyAttempted || submitting || choosing ||
+                                        latestExternalSourceReading.value ||
+                                        !sourceWitness.stillSelected(
+                                            currentSource.value, selectedBytes, useFile)) {
                                         fileError = "The draft changed while fetching. The current source was kept."
                                         return@launch
                                     }
