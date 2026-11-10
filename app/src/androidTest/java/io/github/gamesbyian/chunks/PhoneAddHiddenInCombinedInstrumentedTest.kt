@@ -93,7 +93,9 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
         // Now hide the same observed row with a contradictory search.
         // This must surface a recovery action without fabricating a row,
         // changing its Add target, or sending any extra engine command.
-        rule.onNode(search).performTextReplacement("no transfer is called this")
+        // Once nonempty, the TextField semantics may expose its value instead
+        // of the placeholder. Address the only editable search field by action.
+        rule.onNode(hasSetTextAction()).performTextReplacement("no transfer is called this")
         val notice = "Your new transfer on On this phone is hidden by the current search, filter or environment view."
         waitFor(30_000) { runCatching {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(notice))
