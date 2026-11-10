@@ -71,7 +71,7 @@ import kotlinx.coroutines.withContext
  * Metainfo and attempted outcomes stay in the parent session's process memory only.
  */
 @Composable
-fun VerifiedAddScreen(
+internal fun VerifiedAddScreen(
     remote: RTorrentRemote,
     magnet: String,
     destination: String,
