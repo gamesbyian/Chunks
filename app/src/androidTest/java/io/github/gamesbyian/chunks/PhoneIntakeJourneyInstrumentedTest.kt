@@ -15,6 +15,9 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -150,6 +153,19 @@ class PhoneIntakeJourneyInstrumentedTest {
         node.assertIsEnabled().performClick()
     }
 
+    /** Footer Transfers opens the unified catalog. The explicit device
+     * entry reaches the same native Start/Stop/Remove controls as before. */
+    private fun enterDeviceControlsFromCatalog() {
+        rule.waitUntil(30_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasText("Open device transfer controls"))
+                true
+            }.getOrDefault(false)
+        }
+        click("Open device transfer controls")
+    }
+
     @Test fun phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies() {
         requirePhase("a")
         configurePermissions()
@@ -263,6 +279,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                         (seed.status(hash)?.payloadUploadedBytes ?: 0) >= payload.size
                 }
                 click("Transfers")
+                enterDeviceControlsFromCatalog()
                 waitForText("100% ·", substring = true)
                 click("Stop")
                 await("UI Stop readback") { phone.status(hash)?.stopped == true }
@@ -321,6 +338,7 @@ class PhoneIntakeJourneyInstrumentedTest {
             assertTrue(phone.restoreProblems.toString(), phone.restoreProblems.isEmpty())
             assertEquals(listOf(hash), phone.completeIdentityInventory())
             click("Transfers")
+            enterDeviceControlsFromCatalog()
             waitForText("Start")
             val uploadedBefore = requireNotNull(phone.status(hash)).payloadUploadedBytes
             click("Start")
@@ -489,6 +507,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                     // The Share review stays on Add; the verified job and
                     // lifecycle controls live only in device Transfers.
                     click("Transfers")
+                    enterDeviceControlsFromCatalog()
                     waitForText("100% ·", substring = true)
                     click("Stop")
                     await("UI Stop readback") { phone.status(hash)?.stopped == true }
@@ -524,6 +543,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                             reused.payloadDownloadedBytes < payload.size)
                         assertPublicBytes(target, payload, "after same-hash re-add")
                         click("Transfers")
+                        enterDeviceControlsFromCatalog()
                         waitForText("100% ·", substring = true)
                         click("Stop")
                         await("UI Stop readback after re-add") { phone.status(hash)?.stopped == true }
