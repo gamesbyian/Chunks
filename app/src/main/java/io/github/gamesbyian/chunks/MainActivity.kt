@@ -275,6 +275,9 @@ internal fun ChunksApp(
     // verified saved login. A failed 401/timeout does not start a retry loop, and
     // Disconnect/Cancel never automatically reconnect within the same app session.
     var startupReconnectAttempted by remember { mutableStateOf(false) }
+    // Navigation intent only, never credential or command authority. Set only
+    // when the actual one-shot startup Connect effect is consumed.
+    var returnFromStartupConnectToCanonical by remember { mutableStateOf(false) }
     var savedLoginPresent by remember {
         mutableStateOf(remembered != null || savedProfiles.isNotEmpty())
     }
@@ -304,7 +307,10 @@ internal fun ChunksApp(
     var section by rememberSaveable(saver = SectionRestoreSaver) {
         // A saved login needs the existing one-shot authenticated reconnect
         // owner to mount. Combined is a read-only list, not a reconnect executor.
-        mutableStateOf(if (remembered == null) Section.COMBINED else Section.TRANSFERS)
+        // A remembered session passes through Connections only for the
+        // existing one-shot authenticated probe, then enters canonical
+        // Transfers. Never mount the legacy remote-only list by default.
+        mutableStateOf(if (remembered == null) Section.COMBINED else Section.SERVER)
     }
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
@@ -609,6 +615,7 @@ internal fun ChunksApp(
 
     /** A UI-only Disconnect invalidates both remote data and pending credential leases. */
     fun disconnectCurrentRemote() {
+        returnFromStartupConnectToCanonical = false
                         // Invalidate every in-flight read and credential save
                         // before switching/clearing the authenticated scope.
                         remoteFence.invalidate()
@@ -994,7 +1001,10 @@ internal fun ChunksApp(
                     hasSavedVerifiedLogin = remembered != null,
                     alreadyAttempted = startupReconnectAttempted
                 ),
-                onStartupReconnectConsumed = { startupReconnectAttempted = true },
+                onStartupReconnectConsumed = {
+                    startupReconnectAttempted = true
+                    returnFromStartupConnectToCanonical = section == Section.SERVER && server == null
+                },
                 endpoint = endpoint, username = username, password = password,
                 rpcPath = rpcPath, onRpcPath = { rpcPath = it },
                 error = error, loading = loading,
@@ -1005,6 +1015,7 @@ internal fun ChunksApp(
                     remoteFence.invalidate()
                     RemoteCredentialLock.invalidate()
                     loading = false
+                    returnFromStartupConnectToCanonical = false
                     connectDiagnostics = ConnectionDiagnostics()
                     error = "Connection check cancelled. Nothing was changed on the server."
                 },
@@ -1198,18 +1209,27 @@ internal fun ChunksApp(
                                     // after connecting, without submitting any RPC.
                                     // Connections owns the post-verification destination.
                                     // An Add draft stays in RAM without implicit submission.
-                                    section = Section.SERVER
+                                    val startupCanonical = returnFromStartupConnectToCanonical &&
+                                        section == Section.SERVER
+                                    returnFromStartupConnectToCanonical = false
+                                    section = if (startupCanonical) Section.COMBINED else Section.SERVER
                                     // A verified session is a real success even if the
                                     // subsequent credential/profile persistence is revoked,
                                     // refused or slow. Acknowledge the session immediately,
                                     // but do NOT claim it was saved until roster readback.
                                     val verifiedId = io.github.gamesbyian.chunks.model
                                         .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
-                                    verifiedConnectionNotice = VerifiedConnectionNotice(
-                                        savedProfiles.firstOrNull { it.id == verifiedId }?.label
-                                            ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
-                                        saved = false
-                                    )
+                                    if (startupCanonical) {
+                                        // Verified, exact-principal startup restoration is a
+                                        // view-only scoped catalog handoff, no submission.
+                                        profileScopeRequest = verifiedId
+                                    } else {
+                                        verifiedConnectionNotice = VerifiedConnectionNotice(
+                                            savedProfiles.firstOrNull { it.id == verifiedId }?.label
+                                                ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
+                                            saved = false
+                                        )
+                                    }
                                     currentView = ticket.view
                                     requestedView = ticket.view
                                     // A successful authenticated Connect is the only time
@@ -1274,6 +1294,7 @@ internal fun ChunksApp(
                                 throw cancel
                             } catch (failure: Exception) {
                                 if (remoteFence.current(ticket) && server == null) {
+                                    returnFromStartupConnectToCanonical = false
                                     error = readableFailure(failure)
                                     connectDiagnostics = if (failure is RemoteSmartConnect.ConnectionFailed)
                                         ConnectionDiagnostics(attempts = failure.attempts,
