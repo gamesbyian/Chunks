@@ -541,8 +541,10 @@ fun MediaPrivacySettingsPanel(
         SettingSwitch("Online lookup", "Send cleaned-up titles to the providers below. Off by default.", settings.onlineLookupConsent) {
             onChange(settings.copy(onlineLookupConsent = it))
         }
-        SettingSwitch("Identify automatically", "Automatically identify eligible transfers after consent; you can turn this off.",
-            settings.automaticLookup, enabled = settings.onlineLookupConsent) { onChange(settings.copy(automaticLookup = it)) }
+        // The global feature preference is independent from third-party lookup consent.
+        // A user can disable automatic identification before ever consenting to HTTP.
+        SettingSwitch("Identify automatically", "Identify eligible transfers automatically only after separate online consent.",
+            settings.automaticLookup) { onChange(settings.copy(automaticLookup = it)) }
         SettingSwitch("Show artwork", "Off shows built-in category art everywhere.", settings.showArtwork) { onChange(settings.copy(showArtwork = it)) }
         SettingSwitch("Download artwork", "Metadata can be used without downloading images.", settings.downloadArtwork) { onChange(settings.copy(downloadArtwork = it)) }
         SettingSwitch("Artwork on mobile data", "Download images on metered networks.", settings.artworkOnMeteredNetwork,

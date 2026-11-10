@@ -187,10 +187,13 @@ class MediaComponentsRenderTest {
                 cacheSummary = "Cached: 0.0 MB artwork · 0 lookups", onClearData = {})
         } } } }
         rule.onRoot().captureRoboImage("build/chunks-visual/media-settings.png")
+        // The automatic feature can be disabled before online consent ever exists.
+        rule.onNodeWithText("Identify automatically").performClick()
+        assertEquals(false, latest.automaticLookup)
+        assertEquals(false, latest.onlineLookupConsent)
+        // Grant, revoke and regrant external lookup consent without overriding opt-out.
         rule.onNodeWithText("Online lookup").performClick()
         assertTrue(latest.onlineLookupConsent)
-        // Third-party consent is independent of the previously chosen automation setting.
-        rule.onNodeWithText("Identify automatically").performClick()
         assertEquals(false, latest.automaticLookup)
         rule.onNodeWithText("Online lookup").performClick()
         assertEquals(false, latest.onlineLookupConsent)
