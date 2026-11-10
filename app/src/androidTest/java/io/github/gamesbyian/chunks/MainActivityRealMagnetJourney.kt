@@ -363,8 +363,18 @@ internal class MainActivityRealMagnetJourney(
             // changes its target, or performs any write.
             rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
             rule.waitUntil(30_000) { visible("All environments") }
-            // Return to the exact authenticated owner, never a guessed target.
-            click("Open server list")
+            // The canonical catalog no longer has a free-floating server-list
+            // button. Re-enter this exact environment and hash through the
+            // same full Details owner route; no RPC mutation is dispatched.
+            click("Only connected server")
+            rule.waitUntil(30_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(rowMatch)
+                    true
+                }.getOrDefault(false)
+            }
+            rule.onNode(rowMatch).performClick()
+            rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
             rule.waitUntil(30_000) { visible("+ Add torrent") }
             val after = requireNotNull(row(hash))
             assertTrue("Details altered authenticated source Place", after.directory == original.directory)
