@@ -148,6 +148,28 @@ internal data class CombinedServerSource(
     val snapshotRevision: Long = 0L
 )
 
+/**
+ * Destructive Details controls require a *transport-backed* principal match.
+ * A rendered source alias and ID are independently supplied view data, so
+ * matching those to each other never proves that their RTorrentRemote adapter
+ * targets the same endpoint, username and numbered ruTorrent route.
+ *
+ * This is a pure eligibility check: it sends no RPC, creates no mutation
+ * ticket and only returns the exact live row already in the source snapshot.
+ */
+internal fun authenticatedExactRemovalRow(
+    key: UnifiedTransferKey,
+    source: CombinedServerSource?,
+    advertisedServerId: EnvironmentId?
+): RemoteTransfer? {
+    val owner = source ?: return null
+    val remote = owner.authenticatedSession as? RTorrentRemote ?: return null
+    if (remote.addAccountScope() != owner.aliasScope) return null
+    val derivedId = EnvironmentSnapshots.serverIdOfAliasScope(owner.aliasScope) ?: return null
+    if (derivedId != key.environment || derivedId != advertisedServerId) return null
+    return owner.transfers.singleOrNull { it.hash.equals(key.infoHash, ignoreCase = true) }
+}
+
 /** The connected server's lease, command and settle, exactly as its own list uses them. */
 internal class CombinedServerLifecycle(
     val begin: () -> Boolean,
@@ -897,14 +919,9 @@ internal fun CombinedTransfersScreen(
         // readback, uncertain-write latch and non-force ruTorrent data cleanup.
         // This only moves presentation: no new mutation/executor/RPC authority.
         val activeRemoteForRemoval = server?.authenticatedSession as? RTorrentRemote
-        val exactRemoteRow = server?.transfers?.singleOrNull {
-            it.hash.equals(focusedKey.infoHash, ignoreCase = true)
-        }
-        val canShowExactRemoval = activeRemoteForRemoval != null &&
-            focusedKey.environment == serverId &&
-            server?.aliasScope?.let(EnvironmentSnapshots::serverIdOfAliasScope) == serverId &&
-            serverPrivacy?.mayShow == true &&
-            exactRemoteRow != null && server.lifecycle != null
+        val exactRemoteRow = authenticatedExactRemovalRow(focusedKey, server, serverId)
+        val canShowExactRemoval = exactRemoteRow != null &&
+            serverPrivacy?.mayShow == true && server?.lifecycle != null
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
