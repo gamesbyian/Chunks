@@ -1406,6 +1406,7 @@ internal fun CombinedTransfersScreen(
             }
         }
         } // management controls are absent only from a genuine fresh welcome
+        } // LazyColumn content builder
         ReturnToTopControl(visible = showReturnToTop && !firstRunVisible && !checkingFreshPhone, onClick = {
             batchScope.launch {
                 if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
