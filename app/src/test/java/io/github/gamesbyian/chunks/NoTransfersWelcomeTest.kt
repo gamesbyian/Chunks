@@ -43,9 +43,10 @@ class NoTransfersWelcomeTest {
     @Test fun firstRunRequiresAConfirmedFreshUnfilteredEmptyInventory() {
         fun show(confirmed: Boolean = true, stale: Boolean = false, empty: Boolean = true,
                  profiles: Boolean = false, query: String = "", addOpen: Boolean = false,
-                 defaultFilter: Boolean = true) =
+                 defaultFilter: Boolean = true, restoreHealthy: Boolean = true,
+                 noIncoming: Boolean = true) =
             showPhoneFirstRunWelcome(confirmed, stale, empty, profiles, query, addOpen,
-                defaultFilter)
+                defaultFilter, restoreHealthy, noIncoming)
         org.junit.Assert.assertTrue(show())
         org.junit.Assert.assertFalse(show(confirmed = false))
         org.junit.Assert.assertFalse(show(stale = true))
@@ -56,6 +57,8 @@ class NoTransfersWelcomeTest {
         // A zero-job filtered view must keep filter controls reachable so
         // the user can return to All rather than seeing a false first launch.
         org.junit.Assert.assertFalse(show(defaultFilter = false))
+        org.junit.Assert.assertFalse(show(restoreHealthy = false))
+        org.junit.Assert.assertFalse(show(noIncoming = false))
     }
 
     @Test fun canonicalWelcomeNeverConflatesUnobservedRestoreOfflineOrFilteredZero() {

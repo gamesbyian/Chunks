@@ -52,9 +52,14 @@ internal fun showPhoneFirstRunWelcome(
     search: String,
     addOpen: Boolean,
     /** A persisted non-All filter can make a zero-job view look empty. */
-    filterIsDefault: Boolean = true
+    filterIsDefault: Boolean = true,
+    /** A failed restore cannot be mistaken for an unused installation. */
+    restoreHealthy: Boolean = true,
+    /** A share, Open With or reviewed source takes precedence over Welcome. */
+    noIncomingSource: Boolean = true
 ): Boolean = inventoryConfirmed && !inventoryStale && inventoryEmpty &&
-    !hasRemoteEnvironment && search.isBlank() && !addOpen && filterIsDefault
+    !hasRemoteEnvironment && search.isBlank() && !addOpen && filterIsDefault &&
+    restoreHealthy && noIncomingSource
 
 /**
  * Fresh-install welcome requires positive *absence* evidence. A process with

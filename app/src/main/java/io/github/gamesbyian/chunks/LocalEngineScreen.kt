@@ -930,7 +930,9 @@ internal fun LocalEngineScreen(
         val firstRunVisible = onConnections != null && showPhoneFirstRunWelcome(
             hasConfirmedLocalInventory, inventoryStale, transfers.isEmpty(),
             !showFirstRunWelcome, transferSearch, addExpanded,
-            transferFilter == LocalQueueFilter.ALL)
+            transferFilter == LocalQueueFilter.ALL,
+            restoreNotice == null,
+            initialTorrentUri == null && initialMagnet.isNullOrBlank() && pending == null)
         if (pane == PhonePane.TRANSFERS) {
             // First-run Welcome is the entire empty catalog presentation.
             // Scope switches are meaningful only in a configured/nonempty workspace.
