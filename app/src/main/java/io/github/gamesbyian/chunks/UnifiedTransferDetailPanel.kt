@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -35,9 +36,10 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Shared read-only detail surface, independent of engine navigation and command
- * executors. The caller must resolve the exact key in its owning environment;
- * this panel never switches a connection or dispatches a transfer mutation.
+ * Shared detail surface, independent of engine navigation and command executors.
+ * The caller must resolve the exact key in its owning environment. The optional
+ * Start/Stop review callback only navigates to the owning, separately confirmed
+ * action gate; this panel never switches accounts or dispatches a mutation.
  *
  * A vertical scroll and stacked 48dp-class controls keep all evidence reachable
  * on 320dp widths and with large text or keyboard/screen-reader navigation.
@@ -48,6 +50,8 @@ internal fun UnifiedTransferDetailPanel(
     environmentLabel: String,
     onBack: () -> Unit,
     onOpenOwningList: (() -> Unit)? = null,
+    /** Select this exact key for the existing confirmed lifecycle review; never dispatch on tap. */
+    onReviewStartStop: (() -> Unit)? = null,
     onRefreshOwningList: (() -> Unit)? = null,
     /** Only an authenticated, matching environment adapter may offer this read-only probe. */
     onCheckCapabilities: (() -> Unit)? = null,
@@ -68,7 +72,11 @@ internal fun UnifiedTransferDetailPanel(
         mutableStateOf(false)
     }
     Column(
-        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+        // The global root keeps its Transfers pane title, but entering
+        // dedicated Details is a distinct screen-reader window. Never put
+        // a file name, passkey or remote account in this route announcement.
+        modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
+            .semantics { paneTitle = "Transfer details" },
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -96,6 +104,18 @@ internal fun UnifiedTransferDetailPanel(
         }
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
+        if (!hidden && onReviewStartStop != null) {
+            // Start/Stop uses the already-owned review and exact-account mutation
+            // gates on the Transfers screen. This button only selects the job.
+            OutlinedButton(onClick = onReviewStartStop,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .semantics {
+                        contentDescription = "Review Start or Stop for " +
+                            "${detail.observation?.displayName ?: "this transfer"} on $environmentLabel"
+                    }) {
+                Text("Review Start / Stop")
+            }
+        }
         if (!hidden && onOpenOwningList != null) {
             Text("To manage this download, open its own environment's transfer list.",
                 style = MaterialTheme.typography.bodyMedium)
