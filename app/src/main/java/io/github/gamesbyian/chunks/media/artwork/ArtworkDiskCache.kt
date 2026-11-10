@@ -52,6 +52,32 @@ class ArtworkDiskCache(
 
     @Synchronized fun contains(key: String): Boolean { ensureLoaded(); return file(key).isFile }
 
+    /**
+     * Fast fail-closed check for a previously encoded derivative. A zero-length,
+     * truncated or non-JPEG cache file must not suppress offscreen poster retry.
+     * Chunks writes every processed derivative with JPEG SOI/EOI markers; this
+     * check reads only five bytes, without decoding thousands of offscreen images.
+     * A successful check is plausibility, not proof the middle of the image decodes:
+     * loadOne() remains the authoritative full decoder on display.
+     */
+    @Synchronized fun hasPlausibleProcessedJpeg(key: String): Boolean {
+        ensureLoaded()
+        val f = file(key)
+        if (!f.isFile || f.length() < 64L) return false
+        return runCatching {
+            java.io.RandomAccessFile(f, "r").use { input ->
+                val header = ByteArray(3)
+                input.readFully(header)
+                input.seek(input.length() - 2L)
+                val tail = ByteArray(2)
+                input.readFully(tail)
+                header[0] == 0xFF.toByte() && header[1] == 0xD8.toByte() &&
+                    header[2] == 0xFF.toByte() &&
+                    tail[0] == 0xFF.toByte() && tail[1] == 0xD9.toByte()
+            }
+        }.getOrDefault(false)
+    }
+
     @Synchronized fun put(key: String, bytes: ByteArray) {
         ensureLoaded()
         val f = file(key)
