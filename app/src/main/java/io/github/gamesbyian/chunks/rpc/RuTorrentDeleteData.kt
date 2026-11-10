@@ -4,10 +4,25 @@ import java.net.URI
 
 /** Non-force ruTorrent erasedata integration; never a recursive directory delete. */
 internal object RuTorrentDeleteData {
-    private val mount = Regex("/rutorrent[0-9]{0,3}/plugins/httprpc/action\\.php")
+    // Hosted accounts commonly mount /ACCOUNT/rutorrent2/... rather than
+    // /rutorrent2/... at the origin. The plugin must stay under the exact
+    // authenticated tenant prefix and numbered instance; never guess another
+    // mount or fall back to a primary instance for a destructive operation.
+    private val mount = Regex("^/(?:[^/]+/)*rutorrent[0-9]{0,3}/plugins/httprpc/action\\.php$")
+    private val encodedSeparatorOrControl =
+        Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
+    private val traversalSegment =
+        Regex("(?i)(?:^|/)(?:\\.|%(?:25)*2e){1,2}(?:/|$)")
+
     fun endpoint(rpc: URI): URI? {
         val raw = rpc.rawPath.orEmpty()
-        if (!mount.matches(raw) || rpc.rawQuery != null || rpc.userInfo != null) return null
+        if (raw.length !in 1..2048 || !mount.matches(raw) ||
+            rpc.host.isNullOrBlank() || rpc.rawUserInfo != null ||
+            rpc.rawQuery != null || rpc.rawFragment != null ||
+            raw.contains("//") || encodedSeparatorOrControl.containsMatchIn(raw) ||
+            traversalSegment.containsMatchIn(raw)) return null
+        // Preserve the raw spelling, including harmless encoded tenant names.
+        // Rebuilding with URI's component constructor would double-encode %20.
         val path = raw.removeSuffix("httprpc/action.php") + "erasedata/action.php"
         return URI.create("${rpc.scheme}://${rpc.rawAuthority}$path")
     }
