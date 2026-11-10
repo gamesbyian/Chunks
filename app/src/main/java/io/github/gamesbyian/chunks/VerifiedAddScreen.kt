@@ -397,9 +397,19 @@ fun VerifiedAddScreen(
             if (!useFile && linkCheck !is TorrentLinkCheck.NotALink) TorrentLinkPanel(linkCheck,
                 fetching = linkFetching,
                 enabled = !submitting && !choosing && !alreadyAttempted && !externalSourceReading,
-                onFetch = { link ->
+                onFetch = fetch@{ link ->
+                    // The button's composed URI may lag a newer text edit by
+                    // one frame. Freeze the URL actually requested, including
+                    // its signed query, and refuse the obsolete click *before*
+                    // any network access rather than binding it to new text.
                     val sourceWitness = RemoteAddSourceReadWitness(
-                        currentSource.value, selectedBytes, useFile)
+                        link.uri.toString(), selectedBytes, useFile)
+                    if (latestExternalSourceReading.value ||
+                        !sourceWitness.stillSelected(
+                            currentSource.value.trim(), selectedBytes, useFile)) {
+                        fileError = "The draft changed before fetching. Your newer source was kept."
+                        return@fetch
+                    }
                     linkFetching = true
                     scope.launch {
                         try {
@@ -408,7 +418,7 @@ fun VerifiedAddScreen(
                                     if (alreadyAttempted || submitting || choosing ||
                                         latestExternalSourceReading.value ||
                                         !sourceWitness.stillSelected(
-                                            currentSource.value, selectedBytes, useFile)) {
+                                            currentSource.value.trim(), selectedBytes, useFile)) {
                                         fileError = "The draft changed while fetching. The current source was kept."
                                         return@launch
                                     }
@@ -430,7 +440,7 @@ fun VerifiedAddScreen(
                                     if (!alreadyAttempted && !submitting && !choosing &&
                                         !latestExternalSourceReading.value &&
                                         sourceWitness.stillSelected(
-                                            currentSource.value, selectedBytes, useFile))
+                                            currentSource.value.trim(), selectedBytes, useFile))
                                         fileError = result.message
                                 }
                             }
