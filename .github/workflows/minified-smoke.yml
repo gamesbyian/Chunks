@@ -53,7 +53,15 @@ jobs:
           fi
       - name: Build R8-shrunk app and test APKs
         run: |
-          gradle --no-daemon -Pchunks.testBuildType=qaMinified :app:assembleQaMinified :app:assembleQaMinifiedAndroidTest
+          # Keep the same Gradle 9.3.1 daemon warm for the connected smoke.
+          # The old --no-daemon path had to launch Gradle again after emulator boot.
+          start=$SECONDS
+          gradle --daemon -Pchunks.testBuildType=qaMinified :app:assembleQaMinified :app:assembleQaMinifiedAndroidTest
+          duration=$((SECONDS - start))
+          echo "CHUNKS_R8_BUILD_SECONDS=$duration"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            printf 'R8 app + test APK build: %ss (measured runner time)\n' "$duration" >> "$GITHUB_STEP_SUMMARY"
+          fi
           ls -l app/build/outputs/apk/qaMinified/*.apk
           echo "qaMinified APK bytes: $(stat -c %s app/build/outputs/apk/qaMinified/*.apk)" >> "$GITHUB_STEP_SUMMARY"
       - name: Free unrelated runner toolchains before emulator startup
