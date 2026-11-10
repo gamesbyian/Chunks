@@ -137,6 +137,24 @@ class TransferMoveTest {
             cappedFolder))
     }
 
+    @Test fun noncanonicalEscapesCannotChangeReviewedMoveNameOrDirectory() {
+        val original = TransferMove.start(Direction.SERVER_TO_PHONE, hash, "Episode",
+            scope, "server", sourceDirectory = "/srv/episode")
+        val encoded = original.encode()
+        assertEquals(original, TransferMove.decode(encoded))
+        // Both corrupted journal strings used to decode into the ORIGINAL
+        // name/Place by silently removing a backslash. Neither can be used
+        // to authorize an exact-source job removal now.
+        assertNull(TransferMove.decode(encoded.replace("Episode", "Ep\\isode")))
+        assertNull(TransferMove.decode(encoded.replace("/srv/episode", "/srv/epi\\sode")))
+        assertNull("Trailing escape must not be appended as a literal path suffix",
+            TransferMove.decode(encoded + "\\"))
+        // Real literal backslashes and escaped newlines remain supported.
+        val literal = original.copy(name = "Ep\\isode\nTwo",
+            sourceDirectory = "/srv/with\\backslash")
+        assertEquals(literal, TransferMove.decode(literal.encode()))
+    }
+
     @Test fun codecRoundTripsAwkwardNamesAndRejectsMalformedRecords() {
         val move = TransferMove.start(Direction.SERVER_TO_PHONE, hash, "Line\nbreak \\ slash", scope, "host")
         assertEquals(move, TransferMove.decode(move.encode()))
