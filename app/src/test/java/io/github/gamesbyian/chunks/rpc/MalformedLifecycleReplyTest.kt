@@ -41,6 +41,7 @@ class MalformedLifecycleReplyTest {
                 }
                 val reply = when {
                     method == badMethod -> badReply
+                    method == "d.hash" -> result("<string>$hash</string>")
                     method == "d.state" || method == "d.is_active" ->
                         result("<int>${if (started) 1 else 0}</int>")
                     else -> result("<int>0</int>")
@@ -61,7 +62,8 @@ class MalformedLifecycleReplyTest {
             val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
             assertEquals("start=$start, method=$badMethod, reply=$badReply",
                 LifecycleOutcome.Uncertain(start), remote.setStarted(hash, start))
-            assertEquals("Abort at the first inconclusive reply, with no retry", expectedCalls, gateway.calls)
+            assertEquals("Exact preflight then abort at the first inconclusive reply, without retry",
+                listOf("d.hash") + expectedCalls, gateway.calls)
             assertEquals(expectedCalls.filter { it !in listOf("d.state", "d.is_active") }, gateway.applied)
             assertTrue("At least one command applied before the bad reply", gateway.applied.isNotEmpty())
         }
@@ -114,7 +116,8 @@ class MalformedLifecycleReplyTest {
                     Gateway(start, method, result("<$type>${if (start) 1 else 0}</$type>")).use { gateway ->
                         val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
                         assertEquals(LifecycleOutcome.Verified(start), remote.setStarted(hash, start))
-                        assertEquals(writes + listOf("d.state", "d.is_active"), gateway.calls)
+                        assertEquals(listOf("d.hash") + writes +
+                            listOf("d.state", "d.is_active", "d.hash"), gateway.calls)
                         assertEquals(writes, gateway.applied)
                     }
                 }
