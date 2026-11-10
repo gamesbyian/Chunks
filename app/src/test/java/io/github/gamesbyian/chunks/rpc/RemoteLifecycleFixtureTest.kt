@@ -21,6 +21,7 @@ class RemoteLifecycleFixtureTest {
             val body = when (method) {
                 "d.start" -> { started = true; "<value><int>0</int></value>" }
                 "d.stop" -> { started = false; "<value><int>0</int></value>" }
+                "d.hash" -> "<value><string>$hash</string></value>"
                 "d.state", "d.is_active" -> "<value><int>${if (started) 1 else 0}</int></value>"
                 else -> "<value><int>0</int></value>"
             }
@@ -33,8 +34,9 @@ class RemoteLifecycleFixtureTest {
             val client = RTorrentRemote(RemoteCredentials("http://127.0.0.1:${server.address.port}/RPC2", "", ""))
             assertEquals(LifecycleOutcome.Verified(true), client.setStarted(hash, true))
             assertEquals(LifecycleOutcome.Verified(false), client.setStarted(hash, false))
-            assertEquals(listOf("d.open", "d.start", "d.resume", "d.state", "d.is_active",
-                "d.stop", "d.close", "d.state", "d.is_active"), calls)
+            assertEquals(listOf("d.hash", "d.open", "d.start", "d.resume", "d.state",
+                "d.is_active", "d.hash", "d.hash", "d.stop", "d.close", "d.state",
+                "d.is_active", "d.hash"), calls)
         } finally { server.stop(0) }
     }
 
@@ -46,6 +48,13 @@ class RemoteLifecycleFixtureTest {
             val xml = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(xml)?.groupValues?.get(1) ?: ""
             calls.add(method)
+            if (method == "d.hash") {
+                val reply = ("<methodResponse><params><param><value><string>$hash</string>" +
+                    "</value></param></params></methodResponse>").toByteArray()
+                exchange.sendResponseHeaders(200, reply.size.toLong())
+                exchange.responseBody.use { it.write(reply) }
+                return@createContext
+            }
             if (method == "d.open") applied = true
             // Simulate a proxy losing the acknowledgement after the engine applied Start.
             exchange.sendResponseHeaders(502, -1)
@@ -57,7 +66,8 @@ class RemoteLifecycleFixtureTest {
                 "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
             assertEquals(LifecycleOutcome.Uncertain(true), client.setStarted(hash, true))
             assertTrue("The remote command might already be applied", applied)
-            assertEquals("No retry or speculative read after failed ACK", listOf("d.open"), calls)
+            assertEquals("No retry or speculative read after failed ACK",
+                listOf("d.hash", "d.open"), calls)
         } finally { server.stop(0) }
     }
 
@@ -73,7 +83,9 @@ class RemoteLifecycleFixtureTest {
                 "d.is_active", "d.is_open", "d.peers_connected", "d.down.rate" -> 0
                 else -> 0
             }
-            val xml = "<methodResponse><params><param><value><int>$response</int></value></param></params></methodResponse>".toByteArray()
+            val value = if (method == "d.hash") "<string>$hash</string>"
+                else "<int>$response</int>"
+            val xml = "<methodResponse><params><param><value>$value</value></param></params></methodResponse>".toByteArray()
             exchange.sendResponseHeaders(200, xml.size.toLong())
             exchange.responseBody.use { it.write(xml) }
         }
@@ -108,7 +120,10 @@ class RemoteLifecycleFixtureTest {
                 val method = Regex("<methodName>([^<]+)</methodName>")
                     .find(request)?.groupValues?.get(1).orEmpty()
                 calls.add(method)
-                val reply = if (method == faultMethod) {
+                val reply = if (method == "d.hash") {
+                    "<methodResponse><params><param><value><string>$hash</string>" +
+                        "</value></param></params></methodResponse>"
+                } else if (method == faultMethod) {
                     """<methodResponse><fault><value><struct>
                     <member><name>faultCode</name><value><int>-503</int></value></member>
                     <member><name>faultString</name><value><string>Fixture lifecycle fault</string></value></member>
@@ -127,7 +142,8 @@ class RemoteLifecycleFixtureTest {
                 assertEquals("Fault during $faultMethod must not imply refusal or success",
                     LifecycleOutcome.Uncertain(desiredStarted),
                     client.setStarted(hash, desiredStarted))
-                assertEquals("No blind replay after $faultMethod", expectedCalls, calls)
+                assertEquals("No blind replay after $faultMethod",
+                    listOf("d.hash") + expectedCalls, calls)
             } finally { server.stop(0) }
         }
     }
@@ -144,7 +160,8 @@ class RemoteLifecycleFixtureTest {
             // The server acknowledges Stop and reports state=0, but the
             // transfer engine still has active work. No success claim.
             val value = if (method == "d.is_active") 1 else 0
-            val response = "<methodResponse><params><param><value><int>$value</int>" +
+            val response = "<methodResponse><params><param><value>" +
+                (if (method == "d.hash") "<string>$hash</string>" else "<int>$value</int>") +
                 "</value></param></params></methodResponse>"
             val bytes = response.toByteArray(Charsets.UTF_8)
             exchange.sendResponseHeaders(200, bytes.size.toLong())
@@ -156,7 +173,8 @@ class RemoteLifecycleFixtureTest {
                 "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
             assertEquals(LifecycleOutcome.Pending(false, false),
                 remote.setStarted(hash, false))
-            assertEquals(listOf("d.stop", "d.close", "d.state", "d.is_active"), methods)
+            assertEquals(listOf("d.hash", "d.stop", "d.close", "d.state",
+                "d.is_active", "d.hash"), methods)
         } finally { server.stop(0) }
     }
 
@@ -169,7 +187,10 @@ class RemoteLifecycleFixtureTest {
             val method = Regex("<methodName>([^<]+)</methodName>")
                 .find(request)?.groupValues?.get(1).orEmpty()
             methods.add(method)
-            val response = if (method == "d.is_active") {
+            val response = if (method == "d.hash") {
+                "<methodResponse><params><param><value><string>$hash</string>" +
+                    "</value></param></params></methodResponse>"
+            } else if (method == "d.is_active") {
                 """<methodResponse><fault><value><struct>
                 <member><name>faultCode</name><value><int>-32601</int></value></member>
                 <member><name>faultString</name><value><string>Method unavailable</string></value></member>
@@ -186,7 +207,8 @@ class RemoteLifecycleFixtureTest {
                 "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
             assertEquals(LifecycleOutcome.Pending(false, false),
                 remote.setStarted(hash, false))
-            assertEquals(listOf("d.stop", "d.close", "d.state", "d.is_active"), methods)
+            assertEquals(listOf("d.hash", "d.stop", "d.close", "d.state",
+                "d.is_active", "d.hash"), methods)
         } finally { server.stop(0) }
     }
 
