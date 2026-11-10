@@ -273,7 +273,14 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "place-ready")
             if (disposable) {
                 report("chunks_real_add_app_stage", "artwork-heading")
-                click("Artwork & metadata")
+                // A prior Add can retain this disclosure's expanded state.
+                // Blindly clicking its heading a second time would CLOSE the
+                // checkbox and make the next exact-job opt-out unreachable.
+                // Inspect only UI semantics; never retry an Add or other write.
+                scroll("Artwork & metadata")
+                if (!visible("Automatically identify and fetch artwork & metadata")) {
+                    click("Artwork & metadata")
+                }
                 report("chunks_real_add_app_stage", "artwork-choice")
                 click("Automatically identify and fetch artwork & metadata")
             }
