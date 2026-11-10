@@ -124,7 +124,7 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
         try {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
-                rule.waitUntil(30_000) { displayed("On this phone") }
+                rule.waitUntil(30_000) { displayed("Transfers") }
                 // Keep the only canonical catalog mounted while filtering every
                 // fixture row OUT of LazyColumn composition. A passing identity
                 // cannot be attributed to per-row rememberTransferMedia effects.
