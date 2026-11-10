@@ -10,7 +10,9 @@ import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
  * Old in-flight callbacks may only continue while the exact profile, original
  * title and environment/hash still belong to a freshly observed current inventory.
  * A newer LIVE read of the same account/job is continuity, not a new identity:
- * invalidating on every fresh timestamp would starve offscreen work.
+ * invalidating on every fresh timestamp would starve offscreen work. A changed
+ * privacy lifecycle/policy generation nevertheless revokes old provider callbacks
+ * even if the identical profile and title later become unlocked again.
  * Caller passes this snapshot as the expected state and compares it with the latest
  * snapshot at the moment of *each* network or storage commit.
  */
@@ -18,7 +20,13 @@ class AuthorizedMediaInventorySnapshot private constructor(
     val entries: List<Pair<MediaTransferKey, String>>,
     private val witnesses: Map<MediaTransferKey, Witness>
 ) {
-    private data class Witness(val accountScope: String, val originalName: String)
+    // A privacy lifecycle/policy revision invalidates every old provider request.
+    // Reopening the identical account/title cannot resurrect pre-lock authority.
+    private data class Witness(
+        val accountScope: String,
+        val originalName: String,
+        val privacyEpoch: String
+    )
 
     // Compose LaunchedEffect compares snapshot keys by value. Unchanged transfers
     // must NOT restart on every periodic read of the same authenticated account.
@@ -32,7 +40,9 @@ class AuthorizedMediaInventorySnapshot private constructor(
 
     companion object {
         fun build(sources: List<EnvironmentTransferSnapshot>,
-                  ownerScopes: Map<EnvironmentId, String>): AuthorizedMediaInventorySnapshot {
+                  ownerScopes: Map<EnvironmentId, String>,
+                  privacyEpoch: String): AuthorizedMediaInventorySnapshot {
+            require(privacyEpoch.isNotBlank()) { "Privacy generation witness must be explicit" }
             // Multiple snapshots claiming one environment would make profile identity
             // ambiguous. Fail the entire projection closed rather than guess.
             if (sources.map { it.environment }.toSet().size != sources.size)
@@ -50,7 +60,7 @@ class AuthorizedMediaInventorySnapshot private constructor(
                 val scope = ownerScopes[source.environment]?.takeIf { it.isNotBlank() } ?: continue
                 for (job in source.transfers) {
                     val key = MediaTransferKey.of(job.key)
-                    found[key] = Witness(scope, job.originalName)
+                    found[key] = Witness(scope, job.originalName, privacyEpoch)
                     names[key] = job.originalName
                 }
             }
