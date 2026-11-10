@@ -118,6 +118,8 @@ class RemoteDeleteDataInstalledInstrumentedTest {
                 visible("Search names or hashes")
             }
             stage("connected")
+            rule.onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasText("Search names or hashes"))
             rule.onNodeWithText("Search names or hashes").performTextReplacement(hash)
             val selected = before.single { it.hash.equals(hash, ignoreCase = true) }
             val exactRow = hasContentDescription("Details for ${selected.name} on", substring = true)
