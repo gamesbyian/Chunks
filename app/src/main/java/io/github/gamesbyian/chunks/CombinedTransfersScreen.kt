@@ -796,12 +796,42 @@ internal fun CombinedTransfersScreen(
                 serverPrivacy?.mayShow == true && !server.stale &&
                 details.readState == TransferDetailReadState.CURRENT
         }
+        // Only a genuinely current and complete inventory may even offer
+        // lifecycle review. The *existing* batch controller owns the later
+        // authorization, exact-account lease, readback and uncertain-write
+        // refusal. Saved-only, locked, stale and disconnected rows stay read-only.
+        val canReviewLifecycle = details.observation != null &&
+            details.readState == TransferDetailReadState.CURRENT &&
+            sourcesByEnvironment[focusedKey.environment]?.canClaimCompleteLiveInventory == true &&
+            ((focusedKey.environment == EnvironmentSnapshots.PHONE &&
+                phonePrivacy.mayShow && phoneRunning) ||
+                (focusedKey.environment == serverId && server?.lifecycle != null &&
+                    server?.authenticatedSession != null && serverPrivacy?.mayShow == true &&
+                    server?.stale == false &&
+                    // rTorrent Start/Stop only supports exact v1 hashes. Keep
+                    // unsupported remote identities read-only before review.
+                    focusedKey.infoHash.matches(Regex("[0-9a-f]{40}"))))
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
             onOpenOwningList = openFor(focusedKey),
+            onReviewStartStop = if (canReviewLifecycle) ({
+                // Selection is always the one exact key just examined, not
+                // another transfer sharing its infohash on a different server.
+                selected = setOf(focusedKey)
+                selecting = true
+                showingBatchTools = true
+                savedDetailTarget = null
+                batchScope.launch {
+                    androidx.compose.runtime.withFrameNanos { }
+                    listState.scrollToItem(combinedBatchItemIndex(
+                        addVisible = showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent,
+                        filterOptionsVisible = showingViewOptions,
+                        sortOptionsVisible = showingViewOptions && showingSortOptions))
+                }
+            }) else null,
             onCheckCapabilities = readOnlyProbe?.let { probe ->
                 {
                     val ticket = capabilityGate.begin()
@@ -1344,6 +1374,17 @@ internal fun CombinedTransfersScreen(
     } // measured footer + viewport
     }
 }
+
+/** Locate the selected exact-job batch review after variable disclosure items.
+ * Changes in the leading LazyColumn item order must update this helper and test.
+ */
+internal fun combinedBatchItemIndex(
+    addVisible: Boolean,
+    filterOptionsVisible: Boolean,
+    sortOptionsVisible: Boolean
+): Int = 3 + (if (addVisible) 1 else 0) +
+    (if (filterOptionsVisible) 3 else 0) +
+    (if (sortOptionsVisible) 1 else 0)
 
 /** A confirmed empty engine is distinct from a pending or locked read. */
 internal fun phoneOnlyEmptyInventoryMessage(confirmedCurrent: Boolean): String =
