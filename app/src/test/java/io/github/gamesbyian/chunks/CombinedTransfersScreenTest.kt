@@ -25,6 +25,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.gamesbyian.chunks.model.EnvironmentViewScope
 import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 import io.github.gamesbyian.chunks.model.UnifiedSortKey
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import org.junit.Assert.*
 import org.junit.Rule
@@ -64,8 +66,15 @@ class CombinedTransfersScreenTest {
 
     private val commands = ArrayList<Pair<String, Boolean>>()
     private var settles = 0
+    // A synthetic Any() token is no longer enough to offer authenticated
+    // lifecycle controls. Use a genuinely transport-scoped adapter for the
+    // positive presentation-only Details case. No network is contacted.
+    private val verifiedRemote = RTorrentRemote(RemoteCredentials(
+        aliasScope.substringBefore('\u0000'), "ian", "dummy"))
     private val gate = CombinedServerLifecycle(begin = { true }, settled = { settles++ },
-        setStarted = { hash, on -> commands += hash to on; io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) })
+        setStarted = { hash, on -> commands += hash to on;
+            io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) },
+        ownerSession = verifiedRemote)
 
     private fun show(stale: Boolean = false, observedAtEpochMillis: Long = System.currentTimeMillis(),
         authenticatedSession: Any? = null) = rule.setContent {
@@ -124,7 +133,7 @@ class CombinedTransfersScreenTest {
     }
 
     @Test fun liveExactDetailsReviewSelectsOneJobWithoutDispatchingLifecycle() {
-        show(authenticatedSession = Any())
+        show(authenticatedSession = verifiedRemote)
         val action = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(action)
         rule.onNodeWithContentDescription(action).performClick()
@@ -502,7 +511,7 @@ class CombinedTransfersScreenTest {
         assertEquals("An expired inventory must never take the server lease", 0, settles)
     }
 
-    @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {
+    @Test fun unsignedInSyntheticBatchCannotDispatchUnderARealServerIdentity() {
         show()
         revealText("Batch tools")
         rule.onNodeWithText("Batch tools").performClick()
@@ -521,10 +530,11 @@ class CombinedTransfersScreenTest {
         assertTrue("nothing runs before confirmation", commands.isEmpty())
         revealText("Stop selected")
         rule.onNodeWithText("Stop selected").performClick()
-        rule.waitUntil(5_000) { settles == 1 }
-        revealText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.")
-        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.").assertExists()
-        assertEquals(listOf("1".repeat(40) to false), commands)
+        revealText("Authenticated rTorrent account does not match this transfer")
+        rule.onNodeWithText("Authenticated rTorrent account does not match this transfer",
+            substring = true).assertExists()
+        assertTrue("Unbound synthetic session never sends a remote Stop", commands.isEmpty())
+        assertEquals("Unbound synthetic session never acquires a lease", 0, settles)
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-batch-result.png")
     }
 
