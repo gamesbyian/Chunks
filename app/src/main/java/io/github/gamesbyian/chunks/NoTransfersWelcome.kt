@@ -25,7 +25,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: () -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Your transfers will appear here", style = MaterialTheme.typography.titleLarge,
+        Text("Welcome to Chunks", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.semantics { heading() })
         Text("Start a download on this device, or connect a remote BitTorrent client. " +
             "You can use Chunks with either, or both.",
