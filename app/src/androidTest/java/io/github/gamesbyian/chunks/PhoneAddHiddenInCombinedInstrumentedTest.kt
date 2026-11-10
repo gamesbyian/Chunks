@@ -55,16 +55,16 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
         reachPhone()
         rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
-        val field = hasSetTextAction() and hasText("Or paste a magnet or torrent link")
+        val field = hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL")
         waitFor { rule.onAllNodes(field).fetchSemanticsNodes().isNotEmpty() }
         rule.onNode(field).performScrollTo().performTextInput(
             "magnet:?xt=urn:btih:$hash&dn=" + name.replace(" ", "%20"))
         // Metadata only: nothing would download even if a peer appeared.
-        val start = hasText("Start downloading after Add (recommended)") and hasClickAction()
+        val start = hasText("Start when added") and hasClickAction()
         if (rule.onNode(start).fetchSemanticsNode().config
                 .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name == "On")
             rule.onNode(start).performScrollTo().performClick()
-        val addTile = hasText("Add magnet (metadata only)") and hasClickAction()
+        val addTile = hasText("Add transfer") and hasClickAction()
         waitFor { rule.onAllNodes(addTile).fetchSemanticsNodes().isNotEmpty() }
         rule.onNode(addTile).performScrollTo().performClick()
         // The engine acknowledged and read back the Add.

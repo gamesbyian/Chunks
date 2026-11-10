@@ -39,12 +39,12 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             // but it is no longer authority to initiate ANOTHER review.
             scenario.recreate()
             rule.waitUntil(15_000) {
-                rule.onAllNodesWithText("Add on this device")
+                rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            // Local navigation may legitimately restore the empty Add form;
-            // the consumed magnet must not be injected into it again.
-            rule.onNodeWithText(magnet).assertDoesNotExist()
+            // The private Add draft survives configuration recreation in ViewModel RAM;
+            // Android's old Intent is not processed again and no Add is sent.
+            rule.onNodeWithText(magnet).assertExists()
         }
     }
 
@@ -57,12 +57,12 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         }
         ActivityScenario.launch<MainActivity>(intent).use {
             rule.waitUntil(15_000) {
-                rule.onAllNodesWithText("Add on this device")
+                rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
             // Reaching the native Add form is required, but merely opening
             // this external link must not execute any native Add or Start.
-            rule.onNodeWithText("Start downloading after Add (recommended)").assertExists()
+            rule.onNodeWithText("Start when added").assertExists()
             rule.onNodeWithText(magnet).assertExists()
             assertTrue(rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty())
         }
@@ -135,25 +135,26 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
         ActivityScenario.launch<MainActivity>(intent).use { scenario ->
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Torrent details").fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText("test.txt").assertExists()
             rule.onNodeWithText("Options").performClick()
             rule.onNodeWithText("+ Add").performClick()
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Torrent details").fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText("test.txt").assertExists()
             org.junit.Assert.assertEquals("Browsing cannot authorize a phone Add",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
-            // Source bytes are process-only. Activity recreation must not replay the
-            // consumed Android Share Intent or serialize potentially private metainfo.
+            // Reviewed source bytes survive configuration changes in ViewModel RAM.
+            // The old Android Share Intent must never replay, and no private
+            // metainfo enters persisted instance state.
             scenario.recreate()
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("Add on this device")
+                rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithText("Review download").assertDoesNotExist()
+            rule.onNodeWithText("Torrent details").assertExists()
             org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
         }

@@ -220,7 +220,7 @@ internal class MainActivityRealMagnetJourney(
         fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}) {
             report("chunks_real_add_app_stage", "add-open-requested")
             click("+ Add torrent")
-            rule.waitUntil(30_000) { visible("Add a download to this server") }
+            rule.waitUntil(30_000) { visible("Add a transfer") }
             report("chunks_real_add_app_stage", "add-open")
             // A verified previous Add remains a result on return; only this
             // explicit action starts a fresh source review, without an RPC.
@@ -253,8 +253,8 @@ internal class MainActivityRealMagnetJourney(
                 click("Artwork & metadata")
                 click("Automatically identify and fetch artwork & metadata")
             }
-            click("Review Add")
-            scroll("Confirm one server operation")
+            scroll("Infohash: $hash")
+            scroll("Infohash: $hash")
             assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
             if (torrentLinks && label != null && label != "magnet0") {
                 InstrumentationRegistry.getInstrumentation().sendStatus(2,
@@ -264,7 +264,7 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "add-review")
             onSubmit()
             report("chunks_real_add_app_stage", "add-submitted")
-            click("Confirm: add then start")
+            click("Add transfer")
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
             assertTrue("Actual app did not verify Add+Start", visible("Verified: added and started on rTorrent."))
             if (disposable) {
@@ -283,7 +283,7 @@ internal class MainActivityRealMagnetJourney(
             scroll("View verified transfer in rTorrent")
             rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
-                runCatching { scroll("Review Add") }.isFailure)
+                runCatching { scroll("Add transfer") }.isFailure)
             assertNotNull("Navigation must retain the independently registered exact job", row(hash))
             report("chunks_real_add_app_stage", "add-registered")
         }

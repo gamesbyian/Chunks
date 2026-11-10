@@ -211,13 +211,11 @@ class SeedhostAndroidRealTransferAddInstrumentedTest {
                 runCatching { scroll("Custom server folder (optional)") }
                 visible("Using custom Place.")
             }
-            scroll("Review Add")
-            rule.onNodeWithText("Review Add").performClick()
-            scroll("Confirm: add then start")
+            scroll("Add transfer")
             assertTrue("Review must show exact public fixture hash", visible("Infohash: $hash"))
             report("$stage-review")
             submitted = true
-            rule.onNodeWithText("Confirm: add then start").performClick()
+            rule.onNodeWithText("Add transfer").performClick()
             rule.waitUntil(120_000) {
                 runCatching { scroll("Operation outcome") }
                 visible("Operation outcome")

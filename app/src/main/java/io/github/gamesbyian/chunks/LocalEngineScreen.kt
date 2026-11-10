@@ -2772,7 +2772,7 @@ internal fun LocalAddReview(
 ) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Review download", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+            Text("Torrent details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() })
             Text(preview.name, fontWeight = FontWeight.Bold)
             Text(preview.fileCount.toString() + (if (preview.fileCount == 1) " file, " else " files, ") +
@@ -2835,7 +2835,7 @@ internal fun LocalAddReview(
             if (preview.trackerCount == 0) Text("This torrent lists no tracker, so peers can only be found through DHT (if turned on) or its web sources.",
                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text(if (startAfterAdd) "Add and start downloading" else "Add stopped")
+                Text("Add transfer")
             }
             OutlinedButton(onClick = onCancel, enabled = cancelEnabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Cancel") }
         }
