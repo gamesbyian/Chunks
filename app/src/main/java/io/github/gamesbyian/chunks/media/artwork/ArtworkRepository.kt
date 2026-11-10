@@ -94,11 +94,25 @@ class ArtworkRepository(
         fun defaultMemoryBytes(): Int = (Runtime.getRuntime().maxMemory() / 16).coerceAtMost(24L * 1024 * 1024).toInt()
     }
 
+    /** Serializes a user purge with downloaded derivative and failure-marker writes. */
+    private val mutationLock = Any()
+
     private val memory = object : LruCache<String, Bitmap>(memoryBytes) {
         override fun sizeOf(key: String, value: Bitmap) = value.byteCount
     }
 
     fun memoryCached(source: ArtworkCandidate, role: ArtworkRole): Bitmap? = memory.get(key(source, role))
+
+    /**
+     * Cheap disk presence check for offscreen prefetch decisions. Invoke off the main thread.
+     * A cached derivative is already available to future rows; don't re-decode it on every
+     * inventory notification. Negative cache deadlines still govern failed image URLs.
+     */
+    fun hasCachedSquare(candidates: List<ArtworkCandidate>): Boolean =
+        ArtworkSelector.order(candidates, ArtworkRole.SQUARE).any { c ->
+            val k = key(c, ArtworkRole.SQUARE)
+            memory.get(k) != null || disk.contains(k)
+        }
 
     private fun key(source: ArtworkCandidate, role: ArtworkRole) =
         ArtworkBytesPolicy.cacheKey(source.url, role, if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE)
@@ -175,9 +189,14 @@ class ArtworkRepository(
         val local = c.provider == io.github.gamesbyian.chunks.media.LOCAL_PROVIDER
         val k = key(c, if (local) ArtworkRole.SQUARE else role)
         memory.get(k)?.let { return ArtworkLoadResult.Loaded(it, c, true) }
-        disk.get(k)?.let { bytes ->
-            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { memory.put(k, it); return ArtworkLoadResult.Loaded(it, c, true) }
-            if (!local) disk.remove(k)
+        synchronized(mutationLock) {
+            disk.get(k)?.let { bytes ->
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let {
+                    memory.put(k, it)
+                    return ArtworkLoadResult.Loaded(it, c, true)
+                }
+                if (!local) disk.remove(k)
+            }
         }
         if (local) return ArtworkLoadResult.Unavailable(listOf("Your image is no longer stored"))
         if (disk.isNegative(k)) return ArtworkLoadResult.Unavailable(listOf("Recently failed; will retry later"))
@@ -188,23 +207,41 @@ class ArtworkRepository(
         } catch (e: MediaHttpException) {
             // Revocation is not a provider/image failure and must not poison the shared cache.
             if (!requestAllowed()) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
-            if (e.failure != MediaHttpFailure.OFFLINE) disk.markFailed(k, NEGATIVE_TTL_MS)
+            if (e.failure != MediaHttpFailure.OFFLINE) markFailedIfAllowed(k, NEGATIVE_TTL_MS, requestAllowed)
             return ArtworkLoadResult.Unavailable(listOf(e.message ?: "Download failed"))
         }
         if (!requestAllowed()) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
-        if (resp.status == 404) { disk.markFailed(k, NOT_FOUND_TTL_MS); return ArtworkLoadResult.Unavailable(listOf("No image at source")) }
-        if (resp.status != 200) { disk.markFailed(k, NEGATIVE_TTL_MS); return ArtworkLoadResult.Unavailable(listOf("Image source error ${resp.status}")) }
+        if (resp.status == 404) { markFailedIfAllowed(k, NOT_FOUND_TTL_MS, requestAllowed); return ArtworkLoadResult.Unavailable(listOf("No image at source")) }
+        if (resp.status != 200) { markFailedIfAllowed(k, NEGATIVE_TTL_MS, requestAllowed); return ArtworkLoadResult.Unavailable(listOf("Image source error ${resp.status}")) }
         val check = ArtworkBytesPolicy.check(resp.body, resp.header("Content-Type"))
-        if (check is ArtworkBytesCheck.Rejected) { disk.markFailed(k, NOT_FOUND_TTL_MS); return ArtworkLoadResult.Unavailable(listOf(check.reason)) }
+        if (check is ArtworkBytesCheck.Rejected) { markFailedIfAllowed(k, NOT_FOUND_TTL_MS, requestAllowed); return ArtworkLoadResult.Unavailable(listOf(check.reason)) }
         val target = if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE
         val (decoded, err) = ArtworkComposer.decodeBounded(resp.body, target)
-        if (decoded == null) { disk.markFailed(k, NOT_FOUND_TTL_MS); return ArtworkLoadResult.Unavailable(listOf(err ?: "Decode failed")) }
+        if (decoded == null) { markFailedIfAllowed(k, NOT_FOUND_TTL_MS, requestAllowed); return ArtworkLoadResult.Unavailable(listOf(err ?: "Decode failed")) }
         val processed = if (role == ArtworkRole.SQUARE) ArtworkComposer.square(decoded, SQUARE_SIZE) else ArtworkComposer.fit(decoded, POSTER_EDGE)
         if (processed !== decoded) decoded.recycle()
-        disk.put(k, ArtworkComposer.encode(processed))
-        memory.put(k, processed)
+        val encoded = ArtworkComposer.encode(processed)
+        synchronized(mutationLock) {
+            // The same lock protects Clear-all. If revocation wins first, no image or
+            // negative-cache side effect may reappear on disk or in memory.
+            if (!requestAllowed()) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
+            disk.put(k, encoded)
+            memory.put(k, processed)
+        }
         return ArtworkLoadResult.Loaded(processed, c, false)
     }
 
-    fun clearMemory() = memory.evictAll()
+    /** Called by Clear-all after the controller has synchronously revoked in-flight generations. */
+    fun clearSafely(clearDisk: () -> Unit) = synchronized(mutationLock) {
+        clearDisk()
+        memory.evictAll()
+    }
+
+    fun clearMemory() = synchronized(mutationLock) { memory.evictAll() }
+
+    private fun markFailedIfAllowed(key: String, ttlMs: Long, requestAllowed: () -> Boolean) {
+        synchronized(mutationLock) {
+            if (requestAllowed()) disk.markFailed(key, ttlMs)
+        }
+    }
 }
