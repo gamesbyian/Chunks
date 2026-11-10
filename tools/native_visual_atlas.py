@@ -19,13 +19,29 @@ REQUIRED_FIRST_LAUNCH_TEXT = frozenset({
     "Welcome to Chunks", "Add a torrent",
     "Transfers", "+ Add", "Connections", "Options",
 })
+# Exact labels observed in the original failed 320dp screenshot must remain
+# disqualifying even when a Welcome heading is also visible. A heading alone
+# does not prove that the unused first-launch catalog chrome is gone.
 FORBIDDEN_FIRST_LAUNCH_TEXT = frozenset({
     "Your transfers will appear here",
+    "This device",
+    "All environments",
     "Search transfers on this device",
     "Search names or hashes",
     "Group by environment",
+    "Batch tools",
     "Batch & tools",
+    "Filter transfers",
+    "Sort by",
 })
+# The filter/sort control includes mutable settings in its spoken label.
+# Do not hard-code one state and accidentally accept another variation.
+FORBIDDEN_FIRST_LAUNCH_PREFIXES = (
+    "Choose filters & sort",
+    "Showing ",
+    "Filter transfers",
+    "Sort by ",
+)
 
 CASES = {
     "small": {"pixels": [1080, 2400], "density": 480, "font_scale": 1.0},
@@ -74,7 +90,10 @@ def report(folder):
         nodes = tree.findall(".//node")
         texts = {node.get("text", "") for node in nodes}
         missing = REQUIRED_FIRST_LAUNCH_TEXT - texts
-        unexpected = FORBIDDEN_FIRST_LAUNCH_TEXT & texts
+        unexpected = (FORBIDDEN_FIRST_LAUNCH_TEXT & texts) | {
+            label for label in texts
+            if any(label.startswith(prefix) for prefix in FORBIDDEN_FIRST_LAUNCH_PREFIXES)
+        }
         if missing or unexpected:
             raise ValueError(
                 f"First-launch canonical Welcome/footer not verified in {case}: "
