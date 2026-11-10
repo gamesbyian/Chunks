@@ -281,7 +281,7 @@ jobs:
           cat > "$RUNNER_TEMP/chunks-rc/start-rtorrent.sh" <<'EOF'
           #!/bin/sh
           set -eu
-          printf '%s\\n' 'Server = https://archive.archlinux.org/repos/2026/10/24/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+          printf '%s\n' 'Server = https://archive.archlinux.org/repos/2026/10/24/$repo/os/$arch' > /etc/pacman.d/mirrorlist
           pacman -Syyuu --noconfirm rtorrent
           mkdir -p /session
           echo "CHUNKS_ARCH_SNAPSHOT=2026-10-24"
