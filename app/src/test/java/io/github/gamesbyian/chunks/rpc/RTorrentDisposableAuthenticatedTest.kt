@@ -202,6 +202,19 @@ class RTorrentDisposableAuthenticatedTest {
             remote.eraseFromSession(absentHash, target.name, target.directory))
         assertEquals("Refused erasures changed the real selected job", target.name,
             remote.lookupName(hash))
+
+        // The same real job must be inaccessible to a differently
+        // authenticated principal, even when the caller already knows its
+        // exact hash/name/Place. A rejected preflight cannot reach d.erase.
+        val wrongAccount = RTorrentRemote(RemoteCredentials(f.url, f.user + "-foreign", f.pass))
+        try {
+            wrongAccount.eraseFromSession(hash, target.name, target.directory)
+            fail("Foreign Basic-auth principal erased a known exact session")
+        } catch (rejection: RpcHttpStatusException) {
+            assertEquals("Foreign principal must receive HTTP 401", 401, rejection.status)
+        }
+        assertEquals("Foreign principal modified selected session", target.name,
+            remote.lookupName(hash))
         assertEquals("Refused erasures changed unrelated session identities",
             before + hash.uppercase(),
             remote.listTransfers("main").map { it.hash.uppercase() }.toSet())
