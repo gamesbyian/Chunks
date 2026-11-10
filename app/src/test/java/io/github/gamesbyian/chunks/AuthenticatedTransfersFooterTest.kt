@@ -7,6 +7,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.core.graphics.Insets
@@ -263,4 +265,35 @@ class AuthenticatedTransfersFooterTest {
         rule.waitForIdle()
         rule.onAllNodesWithText("+ Add").assertCountEquals(1)
     }
+
+    @Test fun activeDestinationMovesIndependentlyOfPurpleAddEmphasis() {
+        var active by mutableStateOf(FooterDestination.TRANSFERS)
+        rule.setContent {
+            ChunksTheme {
+                AuthenticatedTransfersFooter(
+                    optionsOpen = null,
+                    onTransfers = { active = FooterDestination.TRANSFERS },
+                    onAdd = { active = FooterDestination.ADD },
+                    onOptions = { active = FooterDestination.OPTIONS },
+                    onConnections = { active = FooterDestination.CONNECTIONS },
+                    activeDestination = active
+                )
+            }
+        }
+        rule.onNodeWithText("Transfers").assertIsSelected()
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
+        rule.onNodeWithContentDescription("Connections").performClick()
+        rule.onNodeWithContentDescription("Connections").assertIsSelected()
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
+        rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithContentDescription("Options").assertIsSelected()
+        rule.onNodeWithContentDescription("Connections").assertIsNotSelected()
+        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("+ Add").assertIsSelected()
+        rule.onNodeWithText("Transfers").assertIsNotSelected()
+        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithText("Transfers").assertIsSelected()
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
+    }
+
 }
