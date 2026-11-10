@@ -525,17 +525,13 @@ internal fun ChunksApp(
             phoneHandoffMagnet = null
             serverHandoffTorrent = null
             localFromCombined = false
-            if (server == null) {
-                // Phone is the only currently verified target; still require
-                // its normal explicit Add confirmation, never start here.
-                phoneHandoffTorrentUri = incomingTorrent
-                onIncomingTorrentConsumed()
-                section = Section.LOCAL_ADD
-            } else {
-                // Connected remote can be chosen, but saved/offline profiles
-                // confer no execution authority until authenticated.
-                section = Section.COMBINED
-            }
+            // File shares enter the same source-first Add draft even with a
+            // connected server. Its actual URI is read only by the authorized
+            // phone document intake, never sent to rTorrent as a path.
+            phoneReviewedTorrent.value = null
+            phoneHandoffTorrentUri = incomingTorrent
+            onIncomingTorrentConsumed()
+            selectPhoneAddTarget()
         }
     }
     // A file shared to "Create torrent" opens the Create review; nothing is read yet.
@@ -568,14 +564,18 @@ internal fun ChunksApp(
             phoneHandoffTorrentUri = null
             phoneHandoffMagnet = null
             serverHandoffTorrent = null
-            if (server == null) {
-                pendingSharedMagnet = null
-                phoneHandoffMagnet = sharedMagnet
-                localFromCombined = false
-                section = Section.LOCAL_ADD
-            } else {
+            // A new Android Share is an explicit source proposal, never a
+            // target decision. Do not silently destroy an occupied draft.
+            if ((magnet.isNotBlank() && magnet != sharedMagnet) ||
+                phoneReviewedTorrent.value != null) {
                 pendingSharedMagnet = sharedMagnet
-                section = Section.COMBINED
+                section = Section.ADD_CHOOSE
+            } else {
+                pendingSharedMagnet = null
+                magnet = sharedMagnet
+                phoneHandoffMagnet = null
+                localFromCombined = false
+                selectPhoneAddTarget()
             }
             onIncomingMagnetConsumed()
         }
@@ -762,7 +762,7 @@ internal fun ChunksApp(
                     // The existing phone review reads only an explicitly
                     // selected URI, under its own independent privacy gate.
                     localFromCombined = true
-                    section = Section.LOCAL_ADD
+                    selectPhoneAddTarget()
                 },
                 pendingSharedMagnet = pendingSharedMagnet != null && incomingTorrent == null,
                 pendingSharedLink = pendingSharedMagnet?.let {
@@ -796,7 +796,7 @@ internal fun ChunksApp(
                                     remoteAddSessions.clearPendingSourceSelection()
                                     serverHandoffTorrent = reviewed.bytes
                                     onIncomingTorrentConsumed()
-                                    section = Section.ADD
+                                    selectAuthenticatedAddTarget()
                                 } else {
                                     sharedTorrentError =
                                         "The shared source or signed-in server changed. Choose again; nothing was added."
@@ -818,7 +818,7 @@ internal fun ChunksApp(
                             prepareRemoteMagnet(source)
                             pendingSharedMagnet = null
                         }
-                        section = Section.ADD
+                        selectAuthenticatedAddTarget()
                     }
                 }) else null,
                 onOpenTransfer = { key ->
@@ -902,7 +902,7 @@ internal fun ChunksApp(
                     onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
                     onConnections = { section = Section.SERVER },
-                    onOpenAdd = { section = Section.LOCAL_ADD },
+                    onOpenAdd = { selectPhoneAddTarget() },
                     onOpenOptions = { section = Section.OPTIONS },
                     remoteEnvironmentLabel = aliasScope.takeIf {
                         server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
@@ -1260,7 +1260,7 @@ internal fun ChunksApp(
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                         onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
                         onConnections = { section = Section.SERVER },
-                        onOpenAdd = { section = Section.LOCAL_ADD },
+                        onOpenAdd = { selectPhoneAddTarget() },
                         onOpenOptions = { section = Section.OPTIONS },
                         remoteEnvironmentLabel = aliasScope.takeIf {
                             RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
@@ -1296,12 +1296,12 @@ internal fun ChunksApp(
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
                             prepareRemoteMagnet(draft)
-                            section = Section.ADD
+                            selectAuthenticatedAddTarget()
                         },
                         onPrepareRemoteTorrent = { document ->
                             remoteAddSessions.clearPendingSourceSelection()
                             serverHandoffTorrent = document
-                            section = Section.ADD
+                            selectAuthenticatedAddTarget()
                         }
                     )
                 }
@@ -1493,7 +1493,7 @@ internal fun ChunksApp(
                         sortEnvironment?.let { sortStore.set(it, key, direction) }
                     },
                     onCombined = { combinedFromPhone = false; section = Section.COMBINED },
-                    onRefresh = refresh, onAdd = { section = Section.ADD },
+                    onRefresh = refresh, onAdd = { selectAuthenticatedAddTarget() },
                     onConnections = { section = Section.SERVER },
                     showNavigationFooter = false,
                     optionsOpen = optionsOpen,
@@ -1584,11 +1584,11 @@ internal fun ChunksApp(
                             onPrepareAdd = { document ->
                                 remoteAddSessions.clearPendingSourceSelection()
                                 serverHandoffTorrent = document
-                                section = Section.ADD
+                                selectAuthenticatedAddTarget()
                             },
                             onPrepareMagnet = { link ->
                                 prepareRemoteMagnet(link)
-                                section = Section.ADD
+                                selectAuthenticatedAddTarget()
                             }
                         )
                     }
@@ -1616,7 +1616,7 @@ internal fun ChunksApp(
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     remoteAddSessions.forAccount(aliasScope)
                         .takeUnless { it.alreadyAttempted }?.destination = path
-                    section = Section.ADD
+                    selectAuthenticatedAddTarget()
                 }
                 Section.NAMES -> AliasBatchReviewScreen(
                     transfers = transfers, aliasStore = aliasStore,
@@ -1781,16 +1781,10 @@ internal fun ChunksApp(
                 // filter, exact environment selection or any Add draft.
                 scope.launch { combinedListState.scrollToItem(0) }
             },
-            onAdd = {
-                section = when {
-                    pendingSharedMagnet != null || incomingTorrent != null -> Section.COMBINED
-                    server != null || savedProfiles.isNotEmpty() -> Section.ADD_CHOOSE
-                    else -> Section.LOCAL_ADD
-                }
-            },
+            onAdd = { section = Section.ADD_CHOOSE },
             onOptions = { section = Section.OPTIONS },
             onConnections = { section = Section.SERVER },
-            addDescription = "Choose where to add a transfer"
+            addDescription = "Add a torrent"
         )
     }
 }
