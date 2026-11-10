@@ -240,6 +240,9 @@ class PhoneDocumentReplacementTest {
         // was under review, forcing the user to discard A before trying B.
         requestHttpsReplacement("https://example.org/not-available.torrent?private=token")
         waitFor(TorrentLinkResult.OFFLINE)
+        // The older validated bytes remain recoverable, but an unresolved
+        // newer typed URL cannot silently leave them as a live Add source.
+        rule.onNodeWithText("A newer torrent source is entered", substring = true).assertExists()
         assertArrayEquals(metainfo("kept.txt"), draft.value?.bytes)
         rule.onNodeWithText("kept.txt", substring = true).performScrollTo().assertExists()
         handoff()

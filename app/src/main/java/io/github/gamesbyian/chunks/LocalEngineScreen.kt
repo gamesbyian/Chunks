@@ -469,6 +469,10 @@ internal fun LocalEngineScreen(
         problemOutcome = text
     }
     var busy by remember { mutableStateOf(false) }
+    // Parent-owned private source is available to all intake callbacks, including
+    // the asynchronous picker. Keep it in RAM rather than Android SavedState.
+    val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
+    var magnet by magnetHolder
     // One cancellable source-read owner, shared by picker, Android handoff and
     // HTTPS intake. Cancellation is read-only; it never consumes a queued URI.
     var sourceReadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
@@ -493,6 +497,9 @@ internal fun LocalEngineScreen(
             val reviewed = withContext(Dispatchers.IO) { SharedTorrentDocument.read(context.contentResolver, uri) }
             if (sourceReadJob !== read) return null
             pending = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+            // The independently validated user-selected document supersedes
+            // a previously typed URL/magnet only after a successful read.
+            magnet = ""
             message = if (shared) "Shared torrent reviewed locally. Confirm its destination and Add below."
                 else "Torrent reviewed locally. Confirm its destination and Add below."
             return true
@@ -536,8 +543,6 @@ internal fun LocalEngineScreen(
     }
     val addKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val addFocus = androidx.compose.ui.platform.LocalFocusManager.current
-    val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
-    var magnet by magnetHolder
     fun selectTextSource(value: String) {
         cancelSourceRead()
         initialTorrentUri?.let(onTorrentConsumed)
@@ -1412,6 +1417,10 @@ internal fun LocalEngineScreen(
         }
 
         val add = pending
+        if (add != null && magnet.isNotBlank()) {
+            Text("A newer torrent source is entered. Resolve or clear it before adding the previously selected .torrent.",
+                style = MaterialTheme.typography.bodySmall)
+        }
         if (add != null && destination == null) {
             Text("Selected .torrent: " + add.preview.name, fontWeight = FontWeight.Bold)
         }
@@ -1448,14 +1457,15 @@ internal fun LocalEngineScreen(
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
-            busy = busy || sourceReading || !addInventoryReady || placeSaving || proposedAddDestination == null ||
+            busy = busy || !phoneReviewedMetainfoIsCurrent(magnet, sourceReading) ||
+                !addInventoryReady || placeSaving || proposedAddDestination == null ||
                 phoneAddAttemptSession?.attemptedTicket != null,
             startAfterAdd = startAfterAdd,
             cancelEnabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             seeding = seedingPreview,
             onConfirm = confirm@{
-                if (sourceReadJob != null || pending !== add) return@confirm
+                if (!phoneReviewedMetainfoIsCurrent(magnet, sourceReading) || pending !== add) return@confirm
                 if (PhoneUniversalAddAdapter.alreadyPresentInFreshInventory(
                         add.preview.infoHashV1, transfers, hasConfirmedLocalInventory && !inventoryStale)) {
                     noteProblem("This exact torrent already exists on this phone. No second Add was sent. Open its transfer card instead.")
