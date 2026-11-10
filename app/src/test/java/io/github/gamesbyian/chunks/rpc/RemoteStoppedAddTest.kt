@@ -82,6 +82,7 @@ class RemoteStoppedAddTest {
                 val body = when (method) {
                     "d.multicall2" -> if (loaded) rowXml()
                         else "<value><array><data></data></array></value>"
+                    "d.hash" -> value(hash)
                     "d.directory" -> value(dir)
                     "d.is_multi_file" -> num(0)
                     "d.state", "d.is_active" -> num(0)
@@ -105,7 +106,8 @@ class RemoteStoppedAddTest {
             assertEquals("Only ONE Add RPC despite a lost acknowledgement",
                 1, methods.count { it == "load.verbose" })
             assertEquals(listOf("d.multicall2", "d.name", "load.verbose", "d.multicall2",
-                "d.directory", "d.is_multi_file", "d.state", "d.is_active"), methods)
+                "d.hash", "d.directory", "d.is_multi_file", "d.state", "d.is_active",
+                "d.hash"), methods)
         } finally { server.stop(0) }
     }
 
@@ -128,6 +130,7 @@ class RemoteStoppedAddTest {
                     loaded = true
                     num(0)
                 }
+                "d.hash" -> value(hash)
                 "d.directory" -> value(dir)
                 "d.is_multi_file" -> num(0)
                 "d.state", "d.is_active" -> num(0)
@@ -146,8 +149,8 @@ class RemoteStoppedAddTest {
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertTrue(loaded)
             assertEquals(listOf("d.multicall2", "d.name", "load.verbose", "d.multicall2",
-                "d.directory", "d.is_multi_file", "d.state", "d.is_active"),
-                requests.map { it.substringBefore('|') })
+                "d.hash", "d.directory", "d.is_multi_file", "d.state", "d.is_active",
+                "d.hash"), requests.map { it.substringBefore('|') })
             val beforeDuplicate = requests.size
             assertEquals(RemoteAddOutcome.AlreadyPresent(hash), remote.loadStopped(plan))
             assertEquals(beforeDuplicate + 1, requests.size)
@@ -175,6 +178,7 @@ class RemoteStoppedAddTest {
                     loaded = true
                     num(0)
                 }
+                "d.hash" -> value(hash)
                 "d.directory" -> value(dir)
                 "d.is_multi_file" -> num(0)
                 "d.state", "d.is_active" -> num(0)
@@ -193,8 +197,8 @@ class RemoteStoppedAddTest {
             assertTrue(plan.useServerDefault)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, dir), remote.loadStopped(plan))
             assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.verbose",
-                "d.multicall2", "d.directory", "d.is_multi_file", "d.state", "d.is_active"),
-                requests.map { it.first })
+                "d.multicall2", "d.hash", "d.directory", "d.is_multi_file", "d.state",
+                "d.is_active", "d.hash"), requests.map { it.first })
             assertFalse(requests.first { it.first == "load.verbose" }.second.contains("d.directory.set"))
         } finally { server.stop(0) }
     }
@@ -254,6 +258,7 @@ class RemoteStoppedAddTest {
                     }
                 }
                 "load.verbose" -> { loaded = true; num(0) }
+                "d.hash" -> value(hash)
                 "d.directory" -> value(dir)
                 "d.is_multi_file", "d.state", "d.is_active" -> num(0)
                 else -> throw AssertionError("Unexpected RPC")
@@ -416,6 +421,7 @@ class RemoteStoppedAddTest {
             methods += method
             val reply = when (method) {
                 "d.multicall2" -> rowXml()
+                "d.hash" -> value(hash)
                 "d.directory" -> value(dir)
                 "d.is_multi_file", "d.state" -> num(0)
                 "d.is_active" -> num(active)
