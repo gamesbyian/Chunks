@@ -136,7 +136,7 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
     // as well as identity, or already-open Details never requests that new image.
     val posterUrls = match?.artwork
         ?.filter { it.role == io.github.gamesbyian.chunks.media.ArtworkRole.POSTER &&
-            (it.season == null || it.season == match.season) }
+            (it.season == null || it.season == match?.season) }
         ?.map { it.url } ?: emptyList()
     if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(
             match?.ref, posterUrls, state.userArtwork, state.poster == null, showArtwork) {
