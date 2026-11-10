@@ -256,7 +256,7 @@ class TransferMediaController(
             !s.downloadArtwork -> "Identified; artwork download is off in Options"
             !network().online -> "Identified; artwork retrieval is paused while offline"
             network().powerSaver -> "Identified; artwork retrieval is paused in power saver mode"
-            network().metered -> "Identified; artwork retrieval is paused on a metered network"
+            network().metered && !s.artworkOnMeteredNetwork -> "Identified; artwork retrieval is paused on a metered network"
             !service.hasConfiguredArtworkProvider(match.kind, s) ->
                 "Identified; no artwork provider is configured for this media"
             else -> "Identified; no verified poster or cover was returned"
