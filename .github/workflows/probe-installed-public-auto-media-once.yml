@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Exact source and scope preflight
         run: |
-          test "$GITHUB_REF_NAME" = "probe/installed-public-automatic-media-20261110"
+          test "$GITHUB_REF_NAME" = "probe/installed-media-complete-inventory-20261110"
           echo "SOURCE_SHA=$GITHUB_SHA"
           echo "SOURCE_TREE=$(git rev-parse HEAD^{tree})"
           python3 -m unittest discover -s tests -p test_installed_real_media.py
