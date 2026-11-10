@@ -37,7 +37,7 @@ class PhoneNavigationContinuityTest {
         rule.onNodeWithText("All environments").assertExists()
         // Return through the device management entry without losing the
         // original phone search. Scope filtering never changes that draft.
-        rule.onNodeWithText("Open transfers on this device").performScrollTo().performClick()
+        rule.onNodeWithText("Open device transfer controls").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
