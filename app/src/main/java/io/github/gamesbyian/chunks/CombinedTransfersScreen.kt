@@ -939,6 +939,15 @@ internal fun CombinedTransfersScreen(
                     Text(if (showingBatchTools) "Hide batch tools" else "Batch tools")
                 }
             }
+            // A scoped Transfers list retains the same catalog and heading.
+            // State the effective environment and filter even when the chip
+            // panel is collapsed, so phone/server-only views are not mistaken
+            // for an incomplete global inventory. All/default stays compact.
+            if (query.scope != EnvironmentViewScope.All ||
+                query.filter != UnifiedTransferFilter.ALL) {
+                Text("Viewing: $scopeName · $filterName",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             // Search has its own clear affordance; do not insert a second button
             // above the text field as the user types and shift its focus/position.
             if (!addedHidden && !showingViewOptions && result.transfers.isNotEmpty() &&
@@ -1114,6 +1123,27 @@ internal fun CombinedTransfersScreen(
                 if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
                 style = MaterialTheme.typography.bodySmall)
         }
+        // A phone-only cold launch can have no running native engine, even
+        // when saved jobs await explicit restoration. Never call that state
+        // "zero transfers". Offer the existing source review without starting
+        // an engine, choosing a Place or authorizing an Add.
+        if (server == null && savedProfiles.isEmpty() && onAddToPhone != null &&
+            result.transfers.isEmpty() && !CombinedViewPreferences.narrowingActive(query)) {
+            item(key = "combined-first-phone-intake") {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Transfers on this device",
+                        style = MaterialTheme.typography.titleMedium)
+                    Text(phoneOnlyEmptyInventoryMessage(
+                        sourcesByEnvironment[EnvironmentSnapshots.PHONE]
+                            ?.canClaimCompleteLiveInventory == true),
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = onAddToPhone,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Review a new torrent on this device")
+                    }
+                }
+            }
+        }
         // Even when a saved subset or a filter hides every row, the way back
         // remains visible without finding an offscreen chip or opening Settings.
         // This changes presentation only, never an Add destination or command target.
@@ -1263,13 +1293,31 @@ internal fun CombinedTransfersScreen(
                     }
                 })
         }
+        // Switch view scopes here, never silently enter a different
+        // environment-specific list or change the authenticated account.
         item {
             ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
-                OutlinedButton(onClick = onOpenPhone, modifier = actionModifier) {
-                    Text("Open transfers on this device")
+                OutlinedButton(onClick = {
+                    update(query.copy(scope = EnvironmentViewScope.Only(
+                        setOf(EnvironmentSnapshots.PHONE))))
+                }, modifier = actionModifier) {
+                    Text("Only this device")
                 }
-                if (onOpenServer != null) OutlinedButton(onClick = onOpenServer,
-                    modifier = actionModifier) { Text("Open server list") }
+                if (onOpenServer != null && serverId != null) OutlinedButton(onClick = {
+                    update(query.copy(scope = EnvironmentViewScope.Only(setOf(serverId))))
+                }, modifier = actionModifier) {
+                    Text("Only connected server")
+                }
+            }
+            // Without a running phone engine there may be no row from which
+            // to reach its existing authenticated management/restore screen.
+            // Keep that entry explicit; changing a view scope must never
+            // implicitly start native networking or restore local jobs.
+            if (!phoneRunning) {
+                OutlinedButton(onClick = onOpenPhone,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Open device transfer controls")
+                }
             }
         }
         }
@@ -1299,6 +1347,12 @@ internal fun CombinedTransfersScreen(
     } // measured footer + viewport
     }
 }
+
+/** A confirmed empty engine is distinct from a pending or locked read. */
+internal fun phoneOnlyEmptyInventoryMessage(confirmedCurrent: Boolean): String =
+    if (confirmedCurrent) "No transfers on this device yet. Review a torrent to add one."
+    else "No verified transfer list is available yet. Saved transfers may need " +
+        "to be restored in device controls."
 
 /** Unconditional leading items: header (0), Add destinations (1), batch (2), view (3). */
 private const val COMBINED_ADD_ITEM_KEY = "combined-add-destinations"
