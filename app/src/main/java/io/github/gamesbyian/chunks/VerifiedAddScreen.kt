@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
@@ -65,8 +66,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * An optional Place override and a two-step confirmation gate
- * any RPC write; unexpected or uncertain outcomes never auto-retry.
+ * One explicit Add transfer click acquires the existing frozen coordinator ticket
+ * before any RPC write; unexpected or uncertain outcomes never auto-retry.
  * Metainfo and attempted outcomes stay in the parent session's process memory only.
  */
 @Composable
@@ -343,7 +344,7 @@ fun VerifiedAddScreen(
     ) {
         item {
             Text("Add a transfer", style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.semantics { androidx.compose.ui.semantics.heading() })
+                modifier = Modifier.semantics { heading() })
         }
         item {
             OutlinedTextField(
