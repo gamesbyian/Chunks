@@ -61,16 +61,36 @@ class RTorrentLibtorrentInteropTest {
         assumeTrue("Interop runs only inside the disposable rTorrent rig",
             address.isNotBlank() && port != null)
         val uri = URI(address)
+        val authenticated = uri.rawPath == "/AUTHRPC"
         require(uri.scheme == "http" && uri.host == "127.0.0.1" && uri.port == 18080 &&
-            uri.path == "/RPC2" && uri.rawQuery == null && uri.userInfo == null) {
-            "Refusing to run interop outside the disposable loopback rig"
+            uri.rawPath in setOf("/RPC2", "/AUTHRPC") && uri.rawQuery == null &&
+            uri.rawFragment == null && uri.userInfo == null) {
+            "Refusing to run interop outside the exact disposable loopback rig"
         }
         val target = File(System.getenv("CHUNKS_DISPOSABLE_TARGET_DIR").orEmpty())
         require(target.isAbsolute && target.path.contains("chunks-data") && target.isDirectory) {
             "No disposable data root was configured"
         }
-        return Rig(RTorrentRemote(RemoteCredentials(address, "", "")), target,
-            InetSocketAddress("127.0.0.1", requireNotNull(port)))
+        val user = if (authenticated) System.getenv("CHUNKS_DISPOSABLE_AUTH_USER").orEmpty() else ""
+        val pass = if (authenticated) System.getenv("CHUNKS_DISPOSABLE_AUTH_PASS").orEmpty() else ""
+        if (authenticated) require(user == "chunks-disposable" && pass.length >= 32) {
+            "Missing per-run synthetic authentication identity"
+        }
+        val credentials = RemoteCredentials(address, user, pass)
+        val remote = RTorrentRemote(credentials)
+        if (authenticated) {
+            // The peer-wire phase must use the accepted challenged principal,
+            // not an anonymously readable sibling RPC2 path. Version alone
+            // does not establish authentication; require both an inventory
+            // read and the transport's accepted challenge evidence first.
+            runBlocking {
+                require(remote.version().isNotBlank()) { "Real rTorrent version missing" }
+                remote.listTransfers("main")
+                io.github.gamesbyian.chunks.rpc.requireRemoteConnectIdentityEvidence(
+                    credentials, remote)
+            }
+        }
+        return Rig(remote, target, InetSocketAddress("127.0.0.1", requireNotNull(port)))
     }
 
     private fun engine() = LocalTorrentEngine(LocalEngineConfig(
