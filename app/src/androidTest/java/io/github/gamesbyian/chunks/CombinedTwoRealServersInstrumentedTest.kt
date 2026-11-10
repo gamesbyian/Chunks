@@ -210,6 +210,13 @@ class CombinedTwoRealServersInstrumentedTest {
         assertEquals(setOf(shared, onlyB), truthB.map { it.name }.toSet())
         assertEquals(sharedHash, truthA.single { it.name == shared }.hash.lowercase())
         assertEquals(sharedHash, truthB.single { it.name == shared }.hash.lowercase())
+        // Read-only independent witness for the canonical file panel on B.
+        // A has the same hash but is saved-only, so its UI must offer NO
+        // authenticated file/priority operations under B's session.
+        val filesOnB = runBlocking {
+            RTorrentRemote(RemoteCredentials(urlB, "", "")).listFiles(sharedHash)
+        }
+        assertTrue("Disposable authenticated B must report real file rows", filesOnB.isNotEmpty())
         stage("ground-truth")
 
         ActivityScenario.launch(MainActivity::class.java).use {
@@ -286,6 +293,19 @@ class CombinedTwoRealServersInstrumentedTest {
                     visible("Exact infohash: $sharedHash"))
                 assertTrue("Details borrowed another server's reported Place on $port",
                     visible("Save folder reported by engine: ${expected.directory}"))
+                if (port == portB) {
+                    // The remote file/policy panel has migrated into the SAME
+                    // canonical Details; opening it may only READ, not mutate.
+                    rule.onNodeWithText("Files & priorities…").performScrollTo().performClick()
+                    waitFor("exact authenticated B file inventory inside full Details", 45_000) {
+                        visible("${filesOnB.size} server-reported files")
+                    }
+                    rule.onNodeWithText(filesOnB.first().path, substring = true)
+                        .performScrollTo().assertExists()
+                } else {
+                    assertTrue("Saved-only A cannot borrow B's mutation/file authority",
+                        !visible("Files & priorities…"))
+                }
                 rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
                 // The catalog restores its previous scrolled viewport: the
                 // offscreen summary ("Showing 4") is not a valid visible-node
