@@ -249,7 +249,6 @@ jobs:
         include:
           - label: arch-latest
             image: archlinux:latest
-            install: pacman -Sy --noconfirm rtorrent
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -274,11 +273,25 @@ jobs:
           # SCGI failure is separately tracked in issue #151.
           system.daemon.set = false
           EOF
+          # One historical official repository snapshot for both rTorrent and
+          # rakshasa libtorrent. The moving Arch mirror served rtorrent 0.16.26
+          # without libtorrent=0.16.26 twice (runs 42811077338, attempts 1/2).
+          # Never mix this repository snapshot with the image's ordinary mirrors.
+          # This is *only* the disposable modern-engine acceptance fixture.
+          cat > "$RUNNER_TEMP/chunks-rc/start-rtorrent.sh" <<'EOF'
+          #!/bin/sh
+          set -eu
+          printf '%s\\n' 'Server = https://archive.archlinux.org/repos/2026/10/24/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+          pacman -Syyuu --noconfirm rtorrent
+          mkdir -p /session
+          echo "CHUNKS_ARCH_SNAPSHOT=2026-10-24"
+          rtorrent -h 2>&1 | head -n 1
+          exec rtorrent -n -o import=/chunks-rc/rtorrent.rc
+          EOF
           docker run -dit --name chunks-rtorrent -p 127.0.0.1:5000:5000 \
             -v "$RUNNER_TEMP/chunks-data:$RUNNER_TEMP/chunks-data" \
             -v "$RUNNER_TEMP/chunks-rc:/chunks-rc:ro" \
-            "${{ matrix.image }}" sh -c "${{ matrix.install }} >/dev/null && mkdir -p /session && \
-              rtorrent -h 2>&1 | head -n 1; exec rtorrent -n -o import=/chunks-rc/rtorrent.rc"
+            "${{ matrix.image }}" sh /chunks-rc/start-rtorrent.sh
           cat > "$RUNNER_TEMP/chunks-nginx.conf" <<EOF
           worker_processes 1;
           pid $RUNNER_TEMP/chunks-nginx.pid;
@@ -308,6 +321,13 @@ jobs:
                grep -q '<methodResponse>' "$RUNNER_TEMP/response.xml"; then
               echo "CHUNKS_MODERN_RTORRENT ${{ matrix.label }} version: $(grep -o '<string>[^<]*</string>' "$RUNNER_TEMP/response.xml" | head -n 1)"
               exit 0
+            fi
+            # An unsatisfied signed package dependency is terminal. A downed
+            # fixture should fail explicitly, not hammer nginx with 120 HTTP 502s.
+            if [ "$(docker inspect -f '{{.State.Running}}' chunks-rtorrent)" != true ]; then
+              echo "::error::Modern rTorrent fixture exited before read-only XML-RPC readiness"
+              docker logs chunks-rtorrent 2>&1 | tail -n 60
+              exit 1
             fi
             sleep 2
           done
