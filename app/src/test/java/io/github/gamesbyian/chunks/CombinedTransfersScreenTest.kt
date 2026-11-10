@@ -4,6 +4,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -65,11 +67,13 @@ class CombinedTransfersScreenTest {
     private val gate = CombinedServerLifecycle(begin = { true }, settled = { settles++ },
         setStarted = { hash, on -> commands += hash to on; io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) })
 
-    private fun show(stale: Boolean = false, observedAtEpochMillis: Long = System.currentTimeMillis()) = rule.setContent {
+    private fun show(stale: Boolean = false, observedAtEpochMillis: Long = System.currentTimeMillis(),
+        authenticatedSession: Any? = null) = rule.setContent {
         ChunksTheme { Surface(color = ChunksColors.Background) {
             CombinedTransfersScreen(
                 server = CombinedServerSource(aliasScope, rows, stale = stale, fullView = true,
-                    observedAtEpochMillis = observedAtEpochMillis, lifecycle = gate),
+                    observedAtEpochMillis = observedAtEpochMillis, lifecycle = gate,
+                    authenticatedSession = authenticatedSession),
                 savedProfiles = listOf(other), onOpenPhone = {}, onOpenServer = {}, onBack = {})
         } }
     }
@@ -117,6 +121,40 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithContentDescription(action).assertExists()
         rule.onNodeWithText("Transfer details").assertDoesNotExist()
         assertTrue("Details navigation cannot issue lifecycle commands", commands.isEmpty())
+    }
+
+    @Test fun liveExactDetailsReviewSelectsOneJobWithoutDispatchingLifecycle() {
+        show(authenticatedSession = Any())
+        val action = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(action)
+        rule.onNodeWithContentDescription(action).performClick()
+        rule.onNode(SemanticsMatcher.expectValue(
+            SemanticsProperties.PaneTitle, "Transfer details")).assertExists()
+        rule.onNodeWithText("Review Start / Stop").assertExists()
+        assertTrue("Details remains read-only until the user's explicit review", commands.isEmpty())
+        rule.onNodeWithText("Review Start / Stop").performScrollTo().performClick()
+        revealText("1 selected")
+        rule.onNodeWithText("1 selected").assertExists()
+        revealText("Start…")
+        rule.onNodeWithText("Start…").assertExists()
+        assertTrue("Review selection cannot dispatch a lifecycle RPC", commands.isEmpty())
+    }
+
+    @Test fun staleOrUnauthenticatedDetailsCannotOfferLifecycleReview() {
+        show(stale = true, authenticatedSession = Any())
+        val action = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(action)
+        rule.onNodeWithContentDescription(action).performClick()
+        rule.onNodeWithText("Review Start / Stop").assertDoesNotExist()
+        assertTrue(commands.isEmpty())
+    }
+
+    @Test fun lifecycleReviewScrollIndexTracksEachOptionalDisclosure() {
+        assertEquals(3, combinedBatchItemIndex(false, false, false))
+        assertEquals(4, combinedBatchItemIndex(true, false, false))
+        assertEquals(6, combinedBatchItemIndex(false, true, false))
+        assertEquals(7, combinedBatchItemIndex(false, true, true))
+        assertEquals(8, combinedBatchItemIndex(true, true, true))
     }
 
     @Test fun deviceAndServerScopeShortcutsStayInCanonicalListAndOpenSameDetails() {
