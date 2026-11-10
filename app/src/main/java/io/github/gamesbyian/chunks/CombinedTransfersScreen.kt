@@ -142,7 +142,9 @@ internal data class CombinedServerSource(
     /** Start/Stop through the server screen's own mutation gate; null when not offered. */
     val lifecycle: CombinedServerLifecycle? = null,
     /** Live authenticated RTorrentRemote identity, never a saved profile string. */
-    val authenticatedSession: Any? = null
+    val authenticatedSession: Any? = null,
+    /** Parent's accepted inventory revision, required for destructive review identity. */
+    val snapshotRevision: Long = 0L
 )
 
 /** The connected server's lease, command and settle, exactly as its own list uses them. */
@@ -855,11 +857,39 @@ internal fun CombinedTransfersScreen(
                     // rTorrent Start/Stop only supports exact v1 hashes. Keep
                     // unsupported remote identities read-only before review.
                     focusedKey.infoHash.matches(Regex("[0-9a-f]{40}"))))
+        // Reuse the existing exact-account rTorrent Remove control inside
+        // canonical Details. It owns separate destructive approval, session
+        // readback, uncertain-write latch and non-force ruTorrent data cleanup.
+        // This only moves presentation: no new mutation/executor/RPC authority.
+        val activeRemoteForRemoval = server?.authenticatedSession as? RTorrentRemote
+        val exactRemoteRow = server?.transfers?.singleOrNull {
+            it.hash.equals(focusedKey.infoHash, ignoreCase = true)
+        }
+        val canShowExactRemoval = activeRemoteForRemoval != null &&
+            focusedKey.environment == serverId &&
+            server?.aliasScope?.let(EnvironmentSnapshots::serverIdOfAliasScope) == serverId &&
+            serverPrivacy?.mayShow == true &&
+            exactRemoteRow != null && server.lifecycle != null
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
+            exactServerOperations = if (canShowExactRemoval) ({
+                TransferSessionRemoveControl(
+                    remote = requireNotNull(activeRemoteForRemoval),
+                    transfer = requireNotNull(exactRemoteRow),
+                    snapshotStale = server!!.stale ||
+                        details.readState != TransferDetailReadState.CURRENT ||
+                        sourcesByEnvironment[focusedKey.environment]
+                            ?.canClaimCompleteLiveInventory != true,
+                    mainView = server.fullView,
+                    onMutationStarted = { requireNotNull(server.lifecycle).begin() },
+                    onSettled = { requireNotNull(server.lifecycle).settled() },
+                    environmentLabel = labels[focusedKey.environment],
+                    snapshotRevision = server.snapshotRevision
+                )
+            }) else null,
             onOpenOwningList = openFor(focusedKey),
             onReviewStartStop = if (canReviewLifecycle) ({
                 // Selection is always the one exact key just examined, not
