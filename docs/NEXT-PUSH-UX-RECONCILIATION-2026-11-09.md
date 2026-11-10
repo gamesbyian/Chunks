@@ -1,6 +1,6 @@
 # Next-push UX/media specification and execution contract
 
-**Instructions:** Apply these owner-approved requirements when editing the UI and media pipeline. Check [WORK-QUEUE](WORK-QUEUE.md) for current priorities and [AGENT-LANES](AGENT-LANES.md) for ownership; confirm live main and PR heads before implementing. Do not treat the historical source audit or old PR list as acceptance. Put run histories in [QUALITY-LEDGER](QUALITY-LEDGER.md).
+**Instructions:** Apply these owner-approved requirements when editing the UI and media pipeline. Check [WORK-QUEUE](WORK-QUEUE.md) for current priorities and the current owner dispatch plus [concurrency guidance](AGENT-LANES.md); confirm live main and PR heads before implementing. Do not treat the historical source audit or old PR list as acceptance. Put run histories in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
 ## Decisions that must agree everywhere
 
@@ -41,15 +41,15 @@
 
 ## Implementation slices, file boundaries and independence
 
-**Slice A (navigation/UX; Agent 1):** One-row footer + responsive shared action-grid utility and first representative screens; then unify All/phone/server list scopes onto Combined row/Details. Keep a screenshot/semantics action inventory, focus and 320/412dp/200% handling. Touch no Add coordinator or rTorrent RPC implementation.
+**Slice A (navigation/UX):** One-row footer + responsive shared action-grid utility and first representative screens; then unify All/phone/server list scopes onto Combined row/Details. Keep a screenshot/semantics action inventory, focus and 320/412dp/200% handling. Touch no Add coordinator or rTorrent RPC implementation.
 
-**Slice B (Universal Add/phone; Agent 2):** Add-time artwork checkbox placement and conditional availability, commit durable exact-job opt-out once (including Share/Open With/restoration), preserve review/default/explicit source semantics. Work with Agent 1 on the Add composable seam and Agent 3 on verified remote admission; do not modify both sides of a contested interface unilaterally.
+**Slice B (Universal Add/phone):** Add-time artwork checkbox placement and conditional availability, commit durable exact-job opt-out once (including Share/Open With/restoration), preserve review/default/explicit source semantics. Coordinate concurrent Add composable and verified remote admission edits; do not modify both sides of a contested interface unilaterally.
 
-**Slice C (authenticated rTorrent; Agent 3 after active RPC PR):** Preserve authenticated exact-hash routing and readback. Provide authenticated exact-profile connection-save and remote Add/readback contracts for Agents 1/2; never route automatically to legacy server lists after setup. Avoid adding a new executor, ad hoc request loop, network consent or mutable remote action.
+**Slice C (authenticated rTorrent after active RPC PR):** Preserve authenticated exact-hash routing and readback. Provide authenticated exact-profile connection-save and remote Add/readback contracts for the current navigation/Add implementer; never route automatically to legacy server lists after setup. Avoid adding a new executor, ad hoc request loop, network consent or mutable remote action.
 
-**Slice D (independent QA/integration; Agent 5):** Installed UX cross-scope, footer and media regression tests. Control shared test/CI and central docs, PR dependency order and merging. Qualification is source-exact, independent, all required checks actually executed; no merge from skipped native/R8, old head green, red failures, or an untested assembled tree. Recompute APK SHA-256 from **actual installed/tested bytes** only when source and peer/piece proof match.
+**Slice D (independent QA/integration):** Installed UX cross-scope, footer and media regression tests. Control shared test/CI and central docs, PR dependency order and merging. Qualification is source-exact, independent, all required checks actually executed; no merge from skipped native/R8, old head green, red failures, or an untested assembled tree. Recompute APK SHA-256 from **actual installed/tested bytes** only when source and peer/piece proof match.
 
-**Agent 4** independently owns recognition, providers and poster scheduling per [AGENT-LANES](AGENT-LANES.md), not integration/CI. These are responsibilities for the **next** agent activation, not evidence that any agent is currently running or has a lease.
+**Media/artwork work:** Recognition, providers and poster scheduling form a separate technical slice, not an agent role. Any dispatched agent may undertake one or multiple slices. These are work categories only, not assumptions about currently active agents, specialties or leases.
 
 ## Existing PR review instruction
 
