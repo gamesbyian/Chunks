@@ -181,7 +181,8 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                 pixels("online")
                 // Details should reuse the same match without an Identify tap.
                 search(torrentHash)
-                rule.onNodeWithText("More details").performScrollTo().performClick()
+                rule.onNode(hasContentDescription("Details for $originalName", substring = true))
+                    .performScrollTo().performClick()
                 rule.onNodeWithText("Artwork & media information").assertExists()
                 rule.waitUntil(30_000) { media.controller.observe(key(), originalName).value.poster != null }
                 assertTrue(prefs.edit().putInt("pid", android.os.Process.myPid()).commit())
@@ -196,6 +197,8 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
         assertNotEquals("A new Android process is required", prefs.getInt("pid", 0), android.os.Process.myPid())
         val cm = context.getSystemService(android.net.ConnectivityManager::class.java)
         rule.waitUntil(20_000) { cm.activeNetwork == null }
+        assertEquals("A provider-backed match must already exist on disk before opening any row",
+            MediaAssignmentState.AUTOMATIC, exactAssignment()?.state)
         val original = ProxySelector.getDefault()
         val network = Observer(original, offline = true)
         ProxySelector.setDefault(network)
@@ -209,7 +212,12 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                 }
                 pixels("offline")
                 assertEquals("475", exactAssignment()?.match?.ref?.externalId)
-                assertTrue("Offline restore must make zero outgoing HTTPS requests", network.uris.isEmpty())
+                search(hash())
+                rule.onNode(hasContentDescription("Details for $originalName", substring = true))
+                    .performScrollTo().performClick()
+                rule.onNodeWithText("Artwork & media information").assertExists()
+                rule.waitUntil(30_000) { media.controller.observe(key(), originalName).value.poster != null }
+                assertTrue("Offline list + full Details must make zero HTTPS requests", network.uris.isEmpty())
                 android.util.Log.i("ChunksAutoMedia", "CHUNKS_AUTO_PUBLIC phase=offline new_process=true persisted=true row_pixels=true requests=0")
             }
         } finally {
