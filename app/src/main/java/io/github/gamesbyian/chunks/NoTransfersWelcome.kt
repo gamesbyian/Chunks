@@ -51,3 +51,27 @@ internal fun showPhoneFirstRunWelcome(
     addOpen: Boolean
 ): Boolean = inventoryConfirmed && !inventoryStale && inventoryEmpty &&
     !hasRemoteEnvironment && search.isBlank() && !addOpen
+
+/**
+ * Fresh-install welcome requires positive *absence* evidence. A process with
+ * no running native engine cannot call its unobserved empty list "confirmed":
+ * durable resume discovery must first prove that there are no jobs to restore.
+ * Conversely, a currently observed empty engine is sufficient when fresh.
+ */
+internal fun showCanonicalFirstRunWelcome(
+    noPersistedJobs: Boolean?,
+    nativeRunning: Boolean,
+    nativeConfirmed: Boolean,
+    nativeStale: Boolean,
+    nativeCount: Int,
+    hasRemoteProfile: Boolean,
+    restrictedView: Boolean,
+    privacyAllowed: Boolean,
+    pendingExternalSource: Boolean
+): Boolean {
+    val genuinelyEmpty = if (nativeRunning)
+        nativeConfirmed && !nativeStale && nativeCount == 0
+    else noPersistedJobs == true && !nativeStale
+    return genuinelyEmpty && !hasRemoteProfile && !restrictedView &&
+        privacyAllowed && !pendingExternalSource
+}
