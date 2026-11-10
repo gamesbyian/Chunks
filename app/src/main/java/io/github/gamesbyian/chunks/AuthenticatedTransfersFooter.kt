@@ -93,6 +93,12 @@ internal fun AuthenticatedTransfersFooter(
     }
 }
 
+/** When a saved login is reconnecting, TRANSFERS temporarily renders Connections. */
+internal fun footerDestinationForVisibleScreen(
+    section: String, authenticated: Boolean, origin: String? = null
+): FooterDestination = if (section == "TRANSFERS" && !authenticated)
+    FooterDestination.CONNECTIONS else footerDestinationForRoute(section, origin)
+
 private fun Modifier.currentDestination(isCurrent: Boolean): Modifier =
     this.then(if (isCurrent) Modifier.border(2.dp, ChunksColors.Text,
         RoundedCornerShape(16.dp)) else Modifier)
