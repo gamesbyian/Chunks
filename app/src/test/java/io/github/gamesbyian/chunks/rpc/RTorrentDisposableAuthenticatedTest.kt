@@ -145,6 +145,67 @@ class RTorrentDisposableAuthenticatedTest {
         assertEquals("Real rTorrent did not apply protected file priority", desired,
             remote.listFiles(hash).single().priority)
 
+        // Negative controls run against the SAME challenged principal and
+        // real registered job. A changed reviewed path or old priority must
+        // never clobber another client's newer choice.
+        try {
+            remote.setFilePriority(hash, 0, "stale-name.bin", file.sizeBytes, desired,
+                if (desired == 2) 0 else 2)
+            fail("Stale reviewed file name unexpectedly granted a priority write")
+        } catch (_: IllegalArgumentException) { }
+        try {
+            remote.setFilePriority(hash, 0, file.path, file.sizeBytes, file.priority,
+                if (desired == 2) 0 else 2)
+            fail("Stale reviewed old priority unexpectedly granted a priority write")
+        } catch (_: IllegalArgumentException) { }
+        assertEquals("Stale priority review changed the real registered file", desired,
+            remote.listFiles(hash).single().priority)
+
+        // Recheck is an explicitly reviewed, one-shot d.check_hash request.
+        // A different name or Place must fail before any scheduling write.
+        for ((reviewedName, reviewedPlace) in listOf(
+            (target.name + "-stale") to target.directory,
+            target.name to (target.directory.trimEnd('/') + "/wrong-parent")
+        )) {
+            try {
+                remote.requestHashRecheck(hash, reviewedName, reviewedPlace)
+                fail("Stale Recheck target unexpectedly scheduled a hash check")
+            } catch (_: IllegalStateException) { }
+            assertEquals("Wrong-target Recheck changed the session name", target.name,
+                remote.lookupName(hash))
+            assertEquals("Wrong-target Recheck changed the session directory",
+                target.directory, remote.listTransfers("main")
+                    .single { it.hash.equals(hash, true) }.directory)
+        }
+        val recheck = remote.requestHashRecheck(hash, target.name, target.directory)
+        assertTrue("Authenticated real Recheck was refused or ambiguous: $recheck",
+            recheck is RemoteHashRecheckOutcome.HashingObserved ||
+                recheck is RemoteHashRecheckOutcome.SubmittedUnobserved ||
+                recheck is RemoteHashRecheckOutcome.AlreadyChecking)
+        // A quickly cleared hashing flag, even after an accepted command,
+        // does not prove that all pieces passed a hash check.
+        assertEquals("Authenticated Recheck changed exact source name", target.name,
+            remote.lookupName(hash))
+
+        // Refuse stale deletion consent and an absent foreign infohash before
+        // the ONE permitted session-only d.erase. Neither refusal may change
+        // this session or any other original disposable job.
+        try {
+            remote.eraseFromSession(hash, target.name + "-stale", target.directory)
+            fail("Old reviewed Remove name unexpectedly authorized a real erase")
+        } catch (_: IllegalArgumentException) { }
+        val absentHash = "f".repeat(40)
+        assertNull("Foreign test hash unexpectedly exists in disposable rTorrent",
+            remote.lookupName(absentHash))
+        assertEquals("Absent foreign hash must never authorize d.erase",
+            SessionEraseOutcome.AlreadyAbsent(absentHash),
+            remote.eraseFromSession(absentHash, target.name, target.directory))
+        assertEquals("Refused erasures changed the real selected job", target.name,
+            remote.lookupName(hash))
+        assertEquals("Refused erasures changed unrelated session identities",
+            before + hash.uppercase(),
+            remote.listTransfers("main").map { it.hash.uppercase() }.toSet())
+
         // Session-only d.erase; never invoke ruTorrent erasedata or touch the
         // fixture payload. Independently check every unrelated original hash.
         val removal = remote.eraseFromSession(hash, target.name, target.directory)
