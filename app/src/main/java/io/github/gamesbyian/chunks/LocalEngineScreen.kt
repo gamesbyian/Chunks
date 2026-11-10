@@ -1059,6 +1059,79 @@ internal fun LocalEngineScreen(
                 "arrives (its trackers and private flag are known then); otherwise the phone default applies.",
             style = MaterialTheme.typography.bodySmall)
         addDestinationPicker?.invoke()
+        // Save to is a primary Add choice, above Start and submission.
+        // Keep both intake methods discoverable before optional storage, seeding
+        // and engine explanations. Existing Place and safety gates remain authoritative.
+        LocalDownloadPlacePicker(
+            resolution = addPlaceResolution,
+            enabled = !busy && !inventoryStale && !placeSaving &&
+                phoneAddAttemptSession?.attemptedTicket == null,
+            currentAdd = true,
+            defaultResolution = placeResolution,
+            onChoose = { choice -> currentAddPlaceId = LocalAddPlacePolicy.identity(choice.place) },
+            onUseDefault = { currentAddPlaceId = null },
+            onSaveDefault = { choice ->
+                placeSaving = true
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        try {
+                            // Recheck the exact root, including removable-volume identity.
+                            LocalDownloadPlaces.choices(context).singleOrNull {
+                                LocalAddPlacePolicy.identity(it.place) == LocalAddPlacePolicy.identity(choice.place) && it.verified
+                            }?.let { LocalDownloadPlaces.remember(context, it) } == true
+                        } catch (_: Exception) { false }
+                    }
+                    if (saved) {
+                        placeCheck++
+                        message = "Phone default saved for future Adds. Existing transfers keep their files where they are."
+                    } else noteProblem("That download location could not be saved. Check phone download locations before trying again.")
+                    placeSaving = false
+                }
+            },
+            onUseAutomatic = {
+                placeSaving = true
+                scope.launch {
+                    val forgotten = withContext(Dispatchers.IO) {
+                        try { LocalDownloadPlaces.forget(context) } catch (_: Exception) { false }
+                    }
+                    if (forgotten) {
+                        placeCheck++
+                        message = "New phone downloads use the automatic location. Existing transfers keep their files where they are."
+                    } else noteProblem("The saved download location could not be cleared. Check phone download locations before trying again.")
+                    placeSaving = false
+                }
+            },
+            onRequestStoragePermission = {
+                storagePermission.launch(LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS)
+            }
+        )
+        OutlinedTextField(
+            value = addFolderDraft,
+            onValueChange = { addFolderDraft = it },
+            label = { Text("Optional phone download subfolder") },
+            placeholder = { Text("Leave blank for Chunks default") },
+            singleLine = true,
+            // A folder name is typed exactly: no autocorrect or auto-capitalisation.
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+            // Only the typed name can be wrong; an unresolved download location is
+            // reported separately ("Checking where this phone can save…").
+            isError = addFolderNameInvalid,
+            enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text("Optional. Leave blank to save directly in the download location above. " +
+            "A nonempty folder is refused; nothing is created until Add is confirmed.",
+            style = MaterialTheme.typography.bodySmall)
+        if (addFolderNameInvalid)
+            Text("Use one plain folder name, without slashes, dot-prefixed names, " +
+                "control characters or path traversal.",
+                color = MaterialTheme.colorScheme.error)
+        else if (proposedAddDestination != null)
+            Text("Planned local Place: " + proposedAddDestination.absolutePath,
+                style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = startAfterAdd,
                 enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
@@ -1209,79 +1282,8 @@ internal fun LocalEngineScreen(
                 phoneAddAttemptSession?.attemptedTicket == null,
                 modifier = Modifier.fillMaxWidth())
         }
-        // Keep both intake methods discoverable before optional storage, seeding
-        // and engine explanations. Existing Place and safety gates remain authoritative.
+        // Engine/network explanation is optional, after actual Add selections.
         PhoneEngineAbout()
-        LocalDownloadPlacePicker(
-            resolution = addPlaceResolution,
-            enabled = !busy && !inventoryStale && !placeSaving &&
-                phoneAddAttemptSession?.attemptedTicket == null,
-            currentAdd = true,
-            defaultResolution = placeResolution,
-            onChoose = { choice -> currentAddPlaceId = LocalAddPlacePolicy.identity(choice.place) },
-            onUseDefault = { currentAddPlaceId = null },
-            onSaveDefault = { choice ->
-                placeSaving = true
-                scope.launch {
-                    val saved = withContext(Dispatchers.IO) {
-                        try {
-                            // Recheck the exact root, including removable-volume identity.
-                            LocalDownloadPlaces.choices(context).singleOrNull {
-                                LocalAddPlacePolicy.identity(it.place) == LocalAddPlacePolicy.identity(choice.place) && it.verified
-                            }?.let { LocalDownloadPlaces.remember(context, it) } == true
-                        } catch (_: Exception) { false }
-                    }
-                    if (saved) {
-                        placeCheck++
-                        message = "Phone default saved for future Adds. Existing transfers keep their files where they are."
-                    } else noteProblem("That download location could not be saved. Check phone download locations before trying again.")
-                    placeSaving = false
-                }
-            },
-            onUseAutomatic = {
-                placeSaving = true
-                scope.launch {
-                    val forgotten = withContext(Dispatchers.IO) {
-                        try { LocalDownloadPlaces.forget(context) } catch (_: Exception) { false }
-                    }
-                    if (forgotten) {
-                        placeCheck++
-                        message = "New phone downloads use the automatic location. Existing transfers keep their files where they are."
-                    } else noteProblem("The saved download location could not be cleared. Check phone download locations before trying again.")
-                    placeSaving = false
-                }
-            },
-            onRequestStoragePermission = {
-                storagePermission.launch(LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS)
-            }
-        )
-        OutlinedTextField(
-            value = addFolderDraft,
-            onValueChange = { addFolderDraft = it },
-            label = { Text("Optional phone download subfolder") },
-            placeholder = { Text("Leave blank for Chunks default") },
-            singleLine = true,
-            // A folder name is typed exactly: no autocorrect or auto-capitalisation.
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
-                autoCorrectEnabled = false,
-                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-            // Only the typed name can be wrong; an unresolved download location is
-            // reported separately ("Checking where this phone can save…").
-            isError = addFolderNameInvalid,
-            enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text("Optional. Leave blank to save directly in the download location above. " +
-            "A nonempty folder is refused; nothing is created until Add is confirmed.",
-            style = MaterialTheme.typography.bodySmall)
-        if (addFolderNameInvalid)
-            Text("Use one plain folder name, without slashes, dot-prefixed names, " +
-                "control characters or path traversal.",
-                color = MaterialTheme.colorScheme.error)
-        else if (proposedAddDestination != null)
-            Text("Planned local Place: " + proposedAddDestination.absolutePath,
-                style = MaterialTheme.typography.bodySmall)
         if (magnet.isNotEmpty() && destination != null) {
             FinishInOrderAddChoice(
                 "Finish in Order once the file list arrives (episodes or numbered files)",
