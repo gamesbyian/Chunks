@@ -1981,7 +1981,8 @@ internal fun ConnectionScreen(
                         style = MaterialTheme.typography.bodySmall)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = onViewConnectedTransfers,
-                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                .semantics { contentDescription = "View transfers on current verified server" }) {
                             Text("View transfers")
                         }
                         OutlinedButton(onClick = onDisconnectCurrent, enabled = !loading,
@@ -2048,7 +2049,11 @@ internal fun ConnectionScreen(
                                 pendingForget = null
                                 onOpenProfileTransfers(profile)
                             }, enabled = !loading,
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                    .semantics {
+                                        contentDescription =
+                                            "View transfers for saved " + profile.label + " on " + profile.address
+                                    }) {
                                 Text("View transfers")
                             }
                             OutlinedButton(onClick = {
