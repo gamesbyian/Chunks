@@ -104,7 +104,11 @@ fun VerifiedAddScreen(
     session: RemoteAddSession? = null,
     /** Inline shared Add-to selector; never grants remote admission. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
-    externalSourceReading: Boolean = false
+    externalSourceReading: Boolean = false,
+    /** Read-only injectable HTTPS intake for deterministic stalled-request UI tests. */
+    fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
+        withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
+    }
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -399,7 +403,7 @@ fun VerifiedAddScreen(
                     linkFetching = true
                     scope.launch {
                         try {
-                            when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
+                            when (val result = fetchTorrentLink(link)) {
                                 is TorrentLinkResult.Fetched -> {
                                     if (alreadyAttempted || submitting || choosing ||
                                         latestExternalSourceReading.value ||
