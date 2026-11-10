@@ -81,6 +81,49 @@ class RemoteNumericInventoryIntegrityTest {
         }
     }
 
+    @Test fun overlongTorrentNameOrDirectoryRefusesEntireRemoteInventory() = runBlocking {
+        // The same string fields are later used for exact destructive
+        // identity reviews. A silently truncated value is not a snapshot.
+        for (field in listOf(1, 5)) {
+            val tooLong = if (field == 1) "n".repeat(2049) else "/" + "p".repeat(4096)
+            val row = validTransfer().toMutableList().also { it[field] = text(tooLong) }
+            for (metadata in listOf(false, true)) {
+                Gateway { method ->
+                    assertEquals("No fallback, partial read or mutation", "d.multicall2", method)
+                    rpc(arrayRow(if (metadata) row + integer(0) else row))
+                }.use { gateway ->
+                    val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
+                    try {
+                        if (metadata) remote.listTransfersWithMetadata("main")
+                        else remote.listTransfers("main")
+                        fail("The remote's overlong identity must not be truncated")
+                    } catch (_: IllegalArgumentException) {
+                        assertEquals(listOf("d.multicall2"), gateway.methods)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test fun maximumRepresentableNamesAndPathsRetainEveryLiteralCharacter() = runBlocking {
+        val exactName = "n".repeat(2047) + " "
+        val exactDirectory = "/" + "p".repeat(4094) + " "
+        val row = validTransfer().toMutableList().also {
+            it[1] = text(exactName)
+            it[5] = text(exactDirectory)
+        }
+        Gateway { method ->
+            assertEquals("d.multicall2", method)
+            rpc(arrayRow(row + integer(0)))
+        }.use { gateway ->
+            val snapshot = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
+                .listTransfersWithMetadata("main").single()
+            assertEquals(exactName, snapshot.name)
+            assertEquals(exactDirectory, snapshot.directory)
+            assertEquals(listOf("d.multicall2"), gateway.methods)
+        }
+    }
+
     @Test fun fileInventoryRefusesTruncationAndOverflowBeforeAnyPriorityWrite() = runBlocking {
         val mutations = listOf(
             0 to text(""),
