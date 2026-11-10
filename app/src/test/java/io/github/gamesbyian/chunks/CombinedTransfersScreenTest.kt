@@ -187,6 +187,12 @@ class CombinedTransfersScreenTest {
     }
 
     @Test fun phoneOnlyCatalogKeepsExplicitRecoveryWhenNativeEngineIsAbsent() {
+        // A user-selected phone-only filter must stay manageable even with
+        // zero native jobs: it is not a pristine first-install state.
+        CombinedViewPreferences(context).save(
+            io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                scope = EnvironmentViewScope.Only(
+                    setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
         // A view filter must never start the phone engine. If there are no
         // rows, provide an explicit entry to the existing device controls.
         var openedDevice = 0
@@ -215,7 +221,11 @@ class CombinedTransfersScreenTest {
     }
 
     @Test fun phoneOnlyEmptyCatalogOffersReviewWithoutStartingOrGuessingInventory() {
-        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+        // Explicitly narrowed scope preserves recovery and pending-restore
+        // warnings rather than showing the unrelated fresh-install Welcome.
+        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+            scope = EnvironmentViewScope.Only(
+                setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
         assertNull("Fixture must not silently start the phone engine", LocalEngineHolder.current())
         var addReviews = 0
         var phoneControls = 0
