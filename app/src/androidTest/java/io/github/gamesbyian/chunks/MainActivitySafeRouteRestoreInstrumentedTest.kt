@@ -9,6 +9,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.onLast
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
@@ -30,19 +32,22 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
 
     @Test fun disconnectedPhoneAndCombinedRoutesSurviveActivityRecreationWithoutCommands() {
         val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("This device").assertDoesNotExist()
         rule.onNodeWithText("+ Add").assertExists()
         rule.onNodeWithContentDescription("Connections").assertExists()
         rule.activityRule.scenario.recreate()
-        rule.onNodeWithText("This device").assertExists()
-        // Combined is read-only even if this device is the only environment.
-        rule.onNodeWithText("All environments").performClick()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        // A genuinely empty first-run view has no scope chip to tap.
+        // The persistent Transfers footer reaches the existing canonical
+        // catalog without an authenticated session or any job mutation.
+        rule.onNodeWithText("All environments").assertDoesNotExist()
+        rule.onAllNodes(hasText("Transfers") and hasClickAction()).onLast().performClick()
         rule.onNodeWithText("All environments").assertExists()
         rule.activityRule.scenario.recreate()
         rule.onNodeWithText("All environments").assertExists()
-        // Footer Transfers no longer falls into a distinct legacy phone list.
-        // It always returns to the canonical scope-filtered catalog.
-        rule.onNodeWithText("Transfers").performClick()
+        // Root navigation remains canonical across another recreation.
+        rule.onAllNodes(hasText("Transfers") and hasClickAction()).onLast().performClick()
         rule.onNodeWithText("All environments").assertExists()
         // A local Add shell can survive rotation, never its source or approval.
         rule.onNodeWithText("+ Add").performClick()
@@ -68,7 +73,8 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         // command. The authenticated remote session remains absent.
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("This device").assertDoesNotExist()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
