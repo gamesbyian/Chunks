@@ -123,10 +123,17 @@ class RTorrentTypedReadAuthDenialTest {
     @Test fun unusableChallengeInWritePreflightNeverDispatchesMutation() =
         withHttp("Digest realm=\"private\", nonce=\"abc\", algorithm=SHA-512") {
                 remote, requests ->
-            val outcome = remote.setStarted("ab".repeat(20), true)
-            assertEquals(LifecycleOutcome.Uncertain(true), outcome)
-            assertEquals("Only the credential-free read preflight may reach the wire",
-                listOf("system.client_version"), requests.map { it.method })
+            // This is a new *exact-hash read* rejection, before any mutation.
+            // Typed HTTP 401 must be retained; Uncertain is reserved for an
+            // operation which may actually have written to the engine.
+            try {
+                remote.setStarted("ab".repeat(20), true)
+                fail("A rejected exact session hash cannot authorize Start")
+            } catch (denied: RpcHttpStatusException) {
+                assertEquals(401, denied.status)
+            }
+            assertEquals("Only the read-only exact-hash preflight may reach the wire",
+                listOf("d.hash"), requests.map { it.method })
             assertTrue(requests.none { it.authorized })
         }
 }
