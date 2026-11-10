@@ -1421,6 +1421,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     suspend fun setStarted(hash: String, desiredStarted: Boolean): LifecycleOutcome {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun requireExactSessionHash() {
+            // The UI-selected hash is not proof that the connected account
+            // still owns that session. A stale, missing or contradictory
+            // exact-hash getter must refuse BEFORE d.open/d.stop can run.
+            // A failed initial read sends no mutation and is not an
+            // ambiguous write eligible for retry.
+            check((call("d.hash", listOf(hash)) as? String)
+                ?.equals(hash, ignoreCase = true) == true) {
+                "Selected rTorrent infohash could not be verified; refresh this account"
+            }
+        }
         fun lifecycleFlag(value: Any?): Boolean {
             // XML-RPC int/i4/i8 all decode to Long. Engine flags must be
             // exactly 0 or 1: Number.toLong() would turn NaN/0.5 into stopped
@@ -1428,6 +1439,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             require(value is Long && value in 0L..1L) { "Invalid rTorrent lifecycle flag" }
             return value == 1L
         }
+        // Do not allow an obsolete list selection to issue even the first
+        // non-idempotent RPC against an unknown/replaced job.
+        requireExactSessionHash()
         try {
             // Mirror ruTorrent's proven lifecycle commands. d.start alone
             // can leave state=1 yet paused/inactive; the server UI sends
@@ -1447,19 +1461,20 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         return try {
             val observed = lifecycleFlag(call("d.state", listOf(hash)))
-            if (observed != desiredStarted) {
-                LifecycleOutcome.Pending(desiredStarted, observed)
-            } else {
-                // d.state by itself is not proof the engine has finished
-                // starting/stopping. Acknowledged commands may settle later.
-                // Unknown activity does not become a verified postcondition.
-                val active = try {
-                    lifecycleFlag(call("d.is_active", listOf(hash)))
-                } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                  catch (_: RpcFault) { null }
-                if (active == desiredStarted) LifecycleOutcome.Verified(desiredStarted)
-                else LifecycleOutcome.Pending(desiredStarted, observed)
-            }
+            // d.state is not itself proof of actual peer/piece activity. The
+            // active bit is a separate engine-level postcondition, and both
+            // remain scoped to the exact selected infohash.
+            val active = if (observed == desiredStarted) try {
+                lifecycleFlag(call("d.is_active", listOf(hash)))
+            } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+              catch (_: RpcFault) { null } else null
+            // A second independent exact-hash witness brackets the
+            // asynchronous observation. Failure after a write stays
+            // uncertain, never success or permission to replay it.
+            requireExactSessionHash()
+            if (observed == desiredStarted && active == desiredStarted)
+                LifecycleOutcome.Verified(desiredStarted)
+            else LifecycleOutcome.Pending(desiredStarted, observed)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
