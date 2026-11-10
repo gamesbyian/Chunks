@@ -9,7 +9,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
-from verify_native_add_shards import verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS
+from verify_native_add_shards import (verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS,
+    HTTPS_PHONE_ID, PUBLIC_AUTO_POSTER_OPTIN_IDS, MAX_BASELINE_SKIPPED)
 
 
 class ShardedNativeAddTests(unittest.TestCase):
@@ -177,6 +178,42 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.change(0, skip_with_dedicated_case)
         self.assertEqual(35, self.check()["junit"]["skipped"])
         self.change(0, lambda d: d["test_cases"][34].update(id_sha256="f" * 64))
+        with self.assertRaisesRegex(ValueError, "excessive skips"):
+            self.check()
+
+
+    def test_only_exact_public_poster_optin_cases_allow_two_more_skips(self):
+        # These two real network/Android process-restart tests have their own
+        # expressly authorized installed provider campaign. They must never
+        # masquerade as executed in ordinary no-consent native Add shards.
+        self.assertEqual(2, len(PUBLIC_AUTO_POSTER_OPTIN_IDS))
+        self.assertEqual(34, MAX_BASELINE_SKIPPED)
+        exact = [HTTPS_PHONE_ID] + sorted(PUBLIC_AUTO_POSTER_OPTIN_IDS)
+
+        def make_reviewed_skips(d):
+            for case in d["test_cases"][:37]:
+                case["outcome"] = "skipped"
+            for index, identity in zip((34, 35, 36), exact):
+                d["test_cases"][index]["id_sha256"] = identity
+            d["junit"]["executed"] = 144
+            d["junit"]["skipped"] = 37
+        self.change(0, make_reviewed_skips)
+        result = self.check()
+        self.assertEqual(37, result["junit"]["skipped"])
+        self.assertEqual(325, result["junit"]["executed"])
+        self.assertEqual(0, result["junit"]["failed"])
+
+        # Identity spoofing cannot create a generic extra skip slot.
+        self.change(0, lambda d: d["test_cases"][35].update(id_sha256="f" * 64))
+        with self.assertRaisesRegex(ValueError, "excessive skips"):
+            self.check()
+        # A skipped mandatory ordinary case cannot ride along with BOTH
+        # precisely authorized opt-in exemptions.
+        self.change(0, lambda d: d["test_cases"][35].update(id_sha256=exact[1]))
+        self.change(0, lambda d: (
+            d["test_cases"][37].update(outcome="skipped"),
+            d["junit"].update(executed=143, skipped=38),
+        ))
         with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
 
