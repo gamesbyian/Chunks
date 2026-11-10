@@ -107,7 +107,7 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             waitFor("verified Connections management") {
                 visible("Connected ·") && visible("View transfers")
             }
-            rule.onNodeWithText("View transfers").performClick()
+            rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
             val stagedName = before.single { it.hash.equals(hash, true) }.name
             val exactRow = hasContentDescription("Details for $stagedName on", substring = true)
             waitFor("canonical exact staged transfer", 90_000) {
