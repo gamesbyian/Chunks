@@ -368,9 +368,18 @@ internal fun CombinedTransfersScreen(
     // It cannot authenticate, select an Add target, or authorize a mutation.
     LaunchedEffect(scopeFocusRequest) {
         if (scopeFocusRequest != null) {
-            savedProfileViewScope(scopeFocusRequest, savedProfiles.map { it.id }.toSet())?.let {
-                update(query.copy(scope = it))
-            }
+            // The newly verified live session may not yet have completed
+            // encrypted roster persistence. Include its exact account identity
+            // now; otherwise the first View transfers tap could silently show
+            // All or reuse a previous account's scope.
+            val eligible = savedProfiles.map { it.id }.toSet() +
+                listOfNotNull(server?.aliasScope?.let(
+                    EnvironmentSnapshots::serverIdOfAliasScope)?.value)
+            val requested = savedProfileViewScope(scopeFocusRequest, eligible)
+                // A profile forgotten between tap and composition still names
+                // only that defunct ID. Never fall back to another profile.
+                ?: EnvironmentViewScope.Only(setOf(EnvironmentId(scopeFocusRequest)))
+            update(query.copy(scope = requested))
             onScopeFocusConsumed()
         }
     }
