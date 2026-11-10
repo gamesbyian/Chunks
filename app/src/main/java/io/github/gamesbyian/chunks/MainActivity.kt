@@ -1839,11 +1839,11 @@ internal fun ChunksApp(
                 scope.launch { combinedListState.scrollToItem(0) }
             },
             onAdd = {
-                section = when {
-                    pendingSharedMagnet != null || incomingTorrent != null -> Section.COMBINED
-                    server != null || savedProfiles.isNotEmpty() -> Section.ADD_CHOOSE
-                    else -> Section.LOCAL_ADD
-                }
+                // Every Add entry opens the same source-first shell and preserves
+                // its in-memory draft. Phone-only users must never be rerouted
+                // into a second phone-specific Add route by the footer.
+                // Admission and submission remain exclusively owned by Add.
+                section = Section.ADD_CHOOSE
             },
             onOptions = { section = Section.OPTIONS },
             onConnections = { section = Section.SERVER },
