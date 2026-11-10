@@ -641,4 +641,39 @@ class CombinedTransfersScreenTest {
         rule.waitUntil(5_000) { stored.load().hueOf(serverId) == automatic }
         assertEquals(automatic, stored.load().hueOf(serverId))
     }
+    @Test fun rootTransfersReturnClosesDetailsWithoutLosingExactScopeOrViewPreferences() {
+        val id = requireNotNull(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
+        val selected = EnvironmentViewScope.Only(setOf(id))
+        CombinedViewPreferences(context).save(
+            io.github.gamesbyian.chunks.model.UnifiedTransferQuery(scope = selected))
+        var returnRevision by androidx.compose.runtime.mutableLongStateOf(0L)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, rows, stale = false,
+                        fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
+                        lifecycle = gate),
+                    savedProfiles = listOf(other),
+                    showNavigationFooter = false,
+                    returnToCatalogRevision = returnRevision,
+                    onOpenPhone = {}, onOpenServer = null, onBack = {})
+            } }
+        }
+        val details = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(details)
+        rule.onNodeWithContentDescription(details).performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        // The parent root footer sends only a navigation revision. No Add,
+        // Start/Stop, remote read or scope reset belongs to this action.
+        rule.runOnIdle { returnRevision++ }
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isEmpty()
+        }
+        revealText("Viewing:")
+        rule.onNodeWithText("Viewing:", substring = true).assertExists()
+        assertEquals(selected, CombinedViewPreferences(context).load().scope)
+        assertTrue("Root navigation issued no mutation", commands.isEmpty())
+    }
+
 }
