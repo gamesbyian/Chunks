@@ -131,9 +131,17 @@ internal fun candidateSubtitle(c: MediaCandidate): String = listOfNotNull(
 fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modifier: Modifier = Modifier,
                          showArtwork: Boolean = true, onRequestPoster: (() -> Unit)? = null) {
     val match = state.match
-    // Re-request whenever the poster could be needed again (match change, user image removed, poster cleared).
-    if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(match?.ref, state.userArtwork, state.poster == null) {
-        if (match != null && state.userArtwork == null && state.poster == null) onRequestPoster()
+    // A verified work can gain a same-identity poster later (e.g. another provider
+    // recovered after a cooldown). Key the effect by the eligible poster sources
+    // as well as identity, or already-open Details never requests that new image.
+    val posterUrls = match?.artwork
+        ?.filter { it.role == io.github.gamesbyian.chunks.media.ArtworkRole.POSTER &&
+            (it.season == null || it.season == match.season) }
+        ?.map { it.url } ?: emptyList()
+    if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(
+            match?.ref, posterUrls, state.userArtwork, state.poster == null, showArtwork) {
+        if (showArtwork && state.mayShowRealArt && posterUrls.isNotEmpty() &&
+            state.userArtwork == null && state.poster == null) onRequestPoster()
     }
     // Narrow screen with large text: art above the words, so the title is not squeezed beside it.
     androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
