@@ -401,6 +401,16 @@ class TransferMediaController(
                         return
                     }
                 }
+                // An entirely cached negative recheck is not a new finding.
+                // Leave the persisted assignment and original retry anchor
+                // untouched; updating it, even only for status, can postpone
+                // a legitimate automatic retry after the provider TTL.
+                if (previous?.state == MediaAssignmentState.COULDNT_IDENTIFY &&
+                    outcome.status == MediaLookupStatus.NOT_FOUND &&
+                    outcome.attempts.all { it.fromCache }) {
+                    lastProviderAttemptRevision[key] = providerConfigurationRevision.get()
+                    return
+                }
                 val assignment = TransferMediaAssignment(key, state, match = outcome.match,
                     suggestions = outcome.alternates, lastStatus = outcome.status,
                     lastMessage = outcome.message, attempts = outcome.attempts,
