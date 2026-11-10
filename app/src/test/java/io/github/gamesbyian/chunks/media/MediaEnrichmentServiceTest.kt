@@ -104,6 +104,50 @@ class MediaEnrichmentServiceTest {
         assertEquals("tmdb", r.match!!.artwork.single().provider)
     }
 
+    @Test fun undatedSameTitleTvAcrossProvidersCannotBorrowAnotherSeriesPoster() {
+        // Provider A verifies its own TV show but publishes no premiered year or art.
+        // Provider B also offers an identically named record with an enticing
+        // poster but no year. There is no cross-provider ID bridge or date proof.
+        val a = """[{"score":1,"show":{"id":9,"name":"Quiet Show",
+            "premiered":null,"weight":80,"image":null}}]"""
+        val b = """{"results":[{"id":77,"name":"Quiet Show",
+            "first_air_date":null,"poster_path":"/unrelated-series.jpg"}]}"""
+        val http = FakeMediaHttp().on("api.tvmaze.com/search", body = a)
+            .on("api.themoviedb.org/3/search/tv", body = b)
+        val result = service(http, TvMazeProvider(),
+            TmdbProvider { "0123456789abcdef0123456789abcdef" })
+            .lookup(rec("Quiet.Show.S01.1080p"), consent, online)
+        assertEquals(MediaLookupStatus.MATCHED, result.status)
+        assertEquals(MediaMetadataCacheKey("tvmaze", "show", "9"), result.match!!.ref)
+        assertNull(result.match!!.year)
+        // Confirm the alternate genuinely offered valid art before refusing it.
+        val query = (MediaQuerySanitizer.manual(MediaKind.TV_SERIES, "Quiet Show")
+            as MediaQueryDecision.Allowed).query
+        val other = TmdbProvider { "0123456789abcdef0123456789abcdef" }
+            .search(query, http) as MediaProviderOutcome.Found
+        assertTrue(other.candidates.single().artwork.isNotEmpty())
+        assertTrue("Same title with no year on either side is insufficient for cross-provider TV artwork",
+            result.match!!.artwork.isEmpty())
+        assertTrue(http.requests.none { it.contains("1080p") || it.contains(".mkv") })
+    }
+
+    @Test fun oneUnknownTvPremiereYearCannotBorrowKnownYearDifferentProviderPoster() {
+        val a = """[{"score":1,"show":{"id":9,"name":"Quiet Show",
+            "premiered":null,"weight":80,"image":null}}]"""
+        val b = """{"results":[{"id":77,"name":"Quiet Show",
+            "first_air_date":"2011-03-01","poster_path":"/other-show.jpg"}]}"""
+        val http = FakeMediaHttp().on("api.tvmaze.com/search", body = a)
+            .on("api.themoviedb.org/3/search/tv", body = b)
+        val result = service(http, TvMazeProvider(),
+            TmdbProvider { "0123456789abcdef0123456789abcdef" })
+            .lookup(rec("Quiet.Show.S01.1080p"), consent, online)
+        assertEquals(MediaLookupStatus.MATCHED, result.status)
+        assertEquals("tvmaze", result.match!!.ref.provider)
+        assertNull(result.match!!.year)
+        assertTrue("A known year only on the donating provider is insufficient",
+            result.match!!.artwork.isEmpty())
+    }
+
     @Test fun exactMovieYearCannotAutoConfirmAdjacentOrUndatedProviderRecord() {
         val requested = (MediaQuerySanitizer.manual(MediaKind.MOVIE, "Hackers", year = 1995)
             as MediaQueryDecision.Allowed).query
