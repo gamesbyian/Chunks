@@ -92,12 +92,16 @@ internal object TorrentLinkAddressPolicy {
                 val wellKnownNat64 = b[0] == 0x00 && b[1] == 0x64 &&
                     b[2] == 0xFF && b[3] == 0x9B &&
                     b.subList(4, 12).all { it == 0 }
+                // Java exposes deprecated IPv4-compatible ::a.b.c.d as an
+                // Inet6Address (unlike ::ffff:a.b.c.d, which may become v4).
+                // Those literal private targets must not bypass the policy.
+                val ipv4Compatible = b.subList(0, 12).all { it == 0 }
                 val ipv4Tail = { offset: Int ->
                     InetAddress.getByAddress(b.subList(offset, offset + 4)
                         .map { it.toByte() }.toByteArray())
                 }
                 when {
-                    mapped || wellKnownNat64 -> allowed(ipv4Tail(12))
+                    mapped || wellKnownNat64 || ipv4Compatible -> allowed(ipv4Tail(12))
                     // Local-use NAT64 (/48), 6to4 and Teredo may route through
                     // translation/tunnel infrastructure. Their private target
                     // cannot be reliably established from the visible host
