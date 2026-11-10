@@ -1783,7 +1783,7 @@ internal fun isLoginRefused(failure: Exception): Boolean =
         (failure.status == 401 || failure.status == 403)
 
 @Composable
-private fun ConnectionScreen(
+internal fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
     rpcPath: String = "", onRpcPath: (String) -> Unit = {},
     diagnostics: ConnectionDiagnostics = ConnectionDiagnostics(),
@@ -1834,18 +1834,12 @@ private fun ConnectionScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            ColoredPanel("Your downloads",
-                "Use this phone without a server account, or connect to an rTorrent server below. " +
-                    "Opening either option never moves existing downloads.", Lilac)
-        }
-        item { PhoneFirstEntry(onOpenPhone = onLocalEngine) }
-        item {
-            Text("Connect to another computer or server (optional)",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() })
-            Text("Manage a seedbox here. Connecting checks a secure endpoint without changing " +
-                "its downloads; each transfer action is reviewed separately.",
-                style = MaterialTheme.typography.bodySmall)
+            // Connections manages rTorrent clients. Local transfers live in
+            // the canonical Transfers browser, even before remote setup.
+            ColoredPanel("Connect to another computer or server (optional)",
+                "Manage a seedbox or other rTorrent client from a secure endpoint. " +
+                    "Checking a connection never changes its transfers; each transfer action " +
+                    "requires separate review.", Lilac, titleAsHeading = true)
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {
             item {
@@ -3108,11 +3102,15 @@ private fun ServerScreen(
 }
 
 @Composable
-private fun ColoredPanel(title: String, message: String, color: Color) {
+private fun ColoredPanel(
+    title: String, message: String, color: Color, titleAsHeading: Boolean = false
+) {
     Card(shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = color)) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Ink)
+            Text(title, style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black, color = Ink,
+                modifier = Modifier.semantics { if (titleAsHeading) heading() })
             Text(message, style = MaterialTheme.typography.bodyMedium, color = Ink)
         }
     }

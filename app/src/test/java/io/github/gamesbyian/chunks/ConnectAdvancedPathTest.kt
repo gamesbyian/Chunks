@@ -28,7 +28,7 @@ class ConnectAdvancedPathTest {
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(text, substring = true))
 
     private fun enter(address: String, path: String) {
-        // Phone-first startup retains server Connect via the ordinary Back route.
+        // Every Transfers scope can reach remote Connect via the persistent footer.
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         scrollTo("Seedbox hostname")
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname", substring = true))
@@ -43,14 +43,20 @@ class ConnectAdvancedPathTest {
         rule.waitForIdle()
     }
 
-    @Test fun freshPhoneEntryKeepsServerConnectionOptionalAndAvailable() {
+    @Test fun remoteConnectionsIsOptionalAndDeviceTransfersStayAccessible() {
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
-        rule.onNodeWithText("Your downloads").assertExists()
-        // The connection form is lazy and must be scroll-reachable.
+        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        // Phone management belongs in Transfers, not the remote-only intro.
+        rule.onNodeWithText("Your downloads").assertDoesNotExist()
+        // The connection form is lazy and must still be scroll-reachable.
         scrollTo("Seedbox hostname")
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
-        // Navigating here alone never authenticates or submits a transfer.
+        // Visiting Connections alone never authenticates or submits a transfer.
         rule.onNodeWithText("Connection unsuccessful").assertDoesNotExist()
+        // The persistent footer returns to one Combined-derived catalog without
+        // requiring remote credentials or an alternate local list shortcut.
+        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithText("All environments").assertExists()
     }
 
     @Test fun anAddressWithAPathAndAnAdvancedPathIsRefusedBeforeConnecting() {
