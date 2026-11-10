@@ -335,6 +335,8 @@ internal fun LocalEngineScreen(
     addFolderState: androidx.compose.runtime.MutableState<String>? = null,
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    /** Shared source-first Add target selector, embedded without creating a second route. */
+    addDestinationPicker: (@Composable () -> Unit)? = null,
     /** Reviewed .torrent bytes outlive phone screen navigation, never Activity/process recreation. */
     pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null,
     /** App-owned process-only attempt/reconciliation authority, injected by Agent 5. */
@@ -946,7 +948,7 @@ internal fun LocalEngineScreen(
             message?.let { PhoneOutcomeNotice(it, needsAttention = problemOutcome == it) }
         }
         if (pane == PhonePane.ADD) {
-        Text("Add on this device", style = MaterialTheme.typography.titleLarge,
+        Text("Add a transfer", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         phoneAddAttemptSession?.attemptedTicket?.let {
             val phase = phoneAddAttemptSession.coordinator.phase
@@ -993,19 +995,16 @@ internal fun LocalEngineScreen(
             }
         }
         if (addExpanded || pane == PhonePane.ADD) {
-        Text("Add a download on this device", style = MaterialTheme.typography.titleMedium,
+        Text("Torrent source", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.bringIntoViewRequester(addRequester)
                 .semantics { heading() })
-        ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
-            enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null,
-            modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
         val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
         // A web link is a different source: fetched only on request, then reviewed as a .torrent.
         val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
         val isLink = linkCheck !is TorrentLinkCheck.NotALink
         OutlinedTextField(value = magnet, onValueChange = { selectTextSource(it.trim()) },
             enabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
-            label = { Text("Or paste a magnet or torrent link") }, singleLine = true,
+            label = { Text("Magnet or HTTP(S) torrent URL") }, singleLine = true,
             isError = if (isLink) linkCheck is TorrentLinkCheck.Problem else magnetCheck is MagnetDraftCheck.Problem,
             // Autocorrect must never rewrite a magnet's hash or trackers.
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -1013,7 +1012,10 @@ internal fun LocalEngineScreen(
                 autoCorrectEnabled = false,
                 imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             modifier = Modifier.fillMaxWidth())
-        if (magnet.isEmpty()) PasteMagnetButton(
+        ActionTile("Open .torrent", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
+            enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null,
+            modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
+        PasteMagnetButton(
             enabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
             onPaste = { selectTextSource(it) },
             onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
@@ -1056,6 +1058,7 @@ internal fun LocalEngineScreen(
             "Seeding: your phone Seeding rules choose a policy when this magnet's metadata " +
                 "arrives (its trackers and private flag are known then); otherwise the phone default applies.",
             style = MaterialTheme.typography.bodySmall)
+        addDestinationPicker?.invoke()
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = startAfterAdd,
                 enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
@@ -1064,7 +1067,7 @@ internal fun LocalEngineScreen(
             Checkbox(checked = startAfterAdd,
                 enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
                 onCheckedChange = null)
-            Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
+            Text("Start when added", modifier = Modifier.padding(start = 8.dp))
         }
         AddArtworkChoice(automaticArtwork,
             enabled = !busy && phoneAddAttemptSession?.attemptedTicket == null) { automaticArtwork = it }
@@ -1085,7 +1088,7 @@ internal fun LocalEngineScreen(
                 },
                 opensOptions = onOpenOptions != null
             )
-            ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
+            ActionTile("Add transfer",
                 ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
                 if (sourceReadJob != null) return@ActionTile
                 // Submitting closes the keyboard, so the form's collapse is not
