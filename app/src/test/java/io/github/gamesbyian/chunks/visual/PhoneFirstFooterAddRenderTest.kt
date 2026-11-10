@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -24,25 +25,30 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneFirstFooterAddRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
+    private fun waitForWelcome() = rule.waitUntil(20_000) {
+        rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+    }
+
     @Test fun freshPhoneLaunchKeepsOrientationAndReachesInventoryInOneTap() {
-        rule.waitForIdle()
+        waitForWelcome()
         // Launch does not scroll away from where-am-I and Back, even here.
-        rule.onNodeWithText("This device").assertIsDisplayed()
+        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
         rule.onNodeWithText("Transfers")
             .assertIsDisplayed().performClick()
-        rule.onNodeWithText("All environments").assertExists()
-        rule.onNodeWithText("Search names or hashes").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
         // The persistent footer retains direct Add without needing to scroll
         // back through secondary tools.
         rule.onNodeWithText("+ Add").assertIsDisplayed()
     }
 
     @Test fun footerAddRevealsActualPhoneAddFormAboveFooter() {
-        rule.onNodeWithText("This device").assertExists()
+        waitForWelcome()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         val add = rule.onNodeWithText("+ Add")
         add.assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Add a download on this device").assertIsDisplayed()
+        rule.onNodeWithText("Add on this device").assertIsDisplayed()
         // The button remains actionable after opening the actual in-place form.
         rule.onNodeWithText("+ Add").assertIsDisplayed()
     }
