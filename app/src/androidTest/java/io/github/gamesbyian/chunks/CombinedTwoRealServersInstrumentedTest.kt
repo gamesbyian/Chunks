@@ -403,7 +403,15 @@ class CombinedTwoRealServersInstrumentedTest {
             scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
             waitFor("B connection form") {
-                visible("Seedbox hostname, ruTorrent URL or RPC address")
+                runCatching {
+                    // Two saved profiles push the ordinary login fields below
+                    // the first lazy viewport. Require the actual editable
+                    // input instead of inferring it from a visible summary.
+                    scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
+                    rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
+                        .assertIsEnabled()
+                    true
+                }.getOrDefault(false)
             }
             connect(urlB)
             stage("connected-b-restored-after-saved-add")
