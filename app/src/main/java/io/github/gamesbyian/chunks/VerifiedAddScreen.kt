@@ -597,9 +597,7 @@ fun VerifiedAddScreen(
             }
         }
         if (plan != null && !alreadyAttempted) {
-            item {
-            }
-            // Only a .torrent shows its file list before Add; magnets are excluded.
+            // Finish-in-order is eligible only for multi-file .torrent sources.
             val fioStore = finishInOrderStore
             if (fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2) item {
                 FinishInOrderAddChoice(
@@ -614,7 +612,7 @@ fun VerifiedAddScreen(
                     Button(
                         onClick = {
                             // Both authorization and the one-shot ticket are acquired
-                            // synchronously on this explicit Confirm click, before any
+                            // synchronously on the explicit Add click, before any
                             // suspending source, metadata or network operation.
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val requestedStart = startAfterAdd
