@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
@@ -22,7 +23,8 @@ class LocalZipOfflineNavigationInstrumentedTest {
         // New installations correctly start in phone Transfers instead.
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Connections").performClick()
-        rule.onNodeWithText("Your downloads").assertExists()
+        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Your downloads").assertDoesNotExist()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect a local ZIP without connecting"))
@@ -31,6 +33,9 @@ class LocalZipOfflineNavigationInstrumentedTest {
         rule.onNodeWithText("Choose local ZIP").assertExists()
         rule.onNodeWithText("Read-only limits:", substring = true).assertExists()
         rule.onNodeWithText("Back").performClick()
-        rule.onNodeWithText("Your downloads").assertExists()
+        // Return to the approved Connections card, not the removed phone promo.
+        rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
+        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Your downloads").assertDoesNotExist()
     }
 }
