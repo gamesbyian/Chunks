@@ -32,6 +32,12 @@
 
 **Exit:** installed authenticated Add connection → confirmation → Connections list → tap profile → exact scoped canonical Transfers → multi/all scope switching → full Details, including restart, duplicate names, failed/offline setup, Back/IME accessibility and no legacy list route.
 
+## G2c. Accurate footer active destination (Agent 1)
+
+**Action:** Implement [UX footer selection contract](UX.md): selected state follows actual Transfers/Connections/Options/Add destination, including Back, full Details, connection-scope deep links and post-add acknowledgement. Keep + Add's purple primary-action emphasis if desired, but distinguish it from current-route selection with a consistent accessible non-colour-only cue. Preserve one row, 48dp targets, contrast and correct TalkBack selected semantics. Coordinate with #1515 Connections navigation so its destination transitions use the same canonical footer state.
+
+**Exit:** installed navigation sequence and screenshots show exactly the correct selected root in all routes, never a permanently selected + Add, while preserving prominent Add action and accessibility.
+
 ## G3. Exact-job Add artwork preference (Agent 2, #1453)
 
 **Action:** Preserve qualified and merged #1460's default-enabled local automatic artwork preference, separately revocable third-party lookup consent initially ungranted, and global show/download gates. Show “Automatically identify and fetch artwork & metadata” checked by default **only on Add** while the global preference is enabled; hide otherwise and never show it in active Details. Persist user opt-out against the exact environment/hash through the existing sole Add coordinator. Preserve frozen source/Place/Start and all Share/Open With/clipboard precedence.
