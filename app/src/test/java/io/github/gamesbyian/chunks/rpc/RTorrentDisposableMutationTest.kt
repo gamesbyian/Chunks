@@ -113,6 +113,45 @@ class RTorrentDisposableMutationTest {
         }
         assertTrue("Real rTorrent did not return to stopped state", stopped)
     }
+    @Test fun exactHashRecheckSchedulesOnlyThisDisposableRealSession() = runBlocking {
+        val rtorrent = temporaryRemote()
+        val target = System.getenv("CHUNKS_DISPOSABLE_TARGET_DIR").orEmpty()
+        require(target.startsWith("/") && target.contains("chunks-data")) {
+            "Refusing Recheck outside disposable data root"
+        }
+        // Different hash from every other fixture in this shared ephemeral
+        // engine. No protected server, no user payload or forced cleanup.
+        val metainfo = (
+            "d4:info" +
+            "d6:lengthi5e4:name10:verify.bin12:piece lengthi16384e6:pieces20:" +
+            "01234567890123456789e" + "e"
+        ).toByteArray(Charsets.UTF_8)
+        val hash = TorrentMetainfoReader.preview(metainfo).infoHashV1
+        assertNull("Expected a fresh disposable Recheck job", rtorrent.lookupName(hash))
+        val submitted = rtorrent.loadStoppedTorrentBytes(metainfo, target)
+        assertTrue("Recheck fixture must first be an actual registered torrent: $submitted",
+            submitted is RemoteAddOutcome.VerifiedStopped ||
+                submitted is RemoteAddOutcome.PendingVerification)
+        var observed: RemoteTransfer? = null
+        for (attempt in 1..15) {
+            observed = rtorrent.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
+            if (observed != null) break
+            kotlinx.coroutines.delay(400)
+        }
+        val item = requireNotNull(observed) { "Disposable Recheck job never appeared" }
+        assertEquals("verify.bin", item.name)
+        assertEquals(target, item.directory)
+        val result = rtorrent.requestHashRecheck(hash, item.name, item.directory)
+        assertTrue("One real d.check_hash must be accepted or already in progress: $result",
+            result is RemoteHashRecheckOutcome.HashingObserved ||
+                result is RemoteHashRecheckOutcome.SubmittedUnobserved ||
+                result is RemoteHashRecheckOutcome.AlreadyChecking)
+        assertEquals("Recheck must preserve exact session identity", item.name,
+            rtorrent.lookupName(hash))
+        // The acknowledged scheduling request deliberately does NOT prove
+        // any verified pieces, completed hashing or uninterrupted seeding.
+    }
+
     /** Exact two-file metainfo on real 0.9.8/modern rTorrent, with one Add only. */
     @Test fun multifileStoppedAddPreservesItsNamedRootUnderChosenParent() = runBlocking {
         val rtorrent = temporaryRemote()
