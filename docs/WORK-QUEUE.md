@@ -38,6 +38,18 @@
 
 **Exit:** installed navigation sequence and screenshots show exactly the correct selected root in all routes, never a permanently selected + Add, while preserving prominent Add action and accessibility.
 
+## G2d. Connections layout and destination management (Agent 1, #1514)
+
+**Action:** Keep the Connections screen's existing purple introductory card but replace its contents with **Connect to another computer or server (optional)** and the concise remote management/secure endpoint explanation; remove Your downloads, This device, Open phone downloads and the phone verification disclaimer from Connections. Keep hostname/ruTorrent setup and saved connection list directly below; do not show transfer rows. Coordinate with #1515 success acknowledgement and exact-profile deep links. Preserve the four-root footer and authenticated remote setup authority.
+
+**Exit:** Installed fresh and configured Connections screens show purple remote intro + add/configure form + saved profiles, no phone-only promotional blocks or transfer list, accessible IME/scroll and footer.
+
+## G2e. Source-first Universal Add (Agent 2, #1517; coordinate Agent 1/3)
+
+**Action:** Replace footer + Add's two-button phone/server destination gateway with **one source-first Universal Add form** per [UX](UX.md) and [Add intake](ADD-SOURCE-INTAKE.md). First field accepts magnet/torrent URL with Open .torrent and Paste; below it select exact phone/remote/eligible Smart Routing target, effective Save to/Change, Start when added, collapsible file priorities/alias, document-conditional Keep/Archive/Delete, conditional default-checked Add-only artwork checkbox and relevant seeding/routing options. Reuse existing Add coordinator and source precedence, preserve draft across target/Place changes, avoid compulsory Review Add or accidental submission. Agent 1 owns footer/route entry and assists composable layout; Agent 3 owns remote capability/readback seam; Agent 5 independently qualifies assembled navigation and actual Add. Do not duplicate either executor or Add screen.
+
+**Exit:** Installed footer, welcome CTA, Share/Open With and clipboard all reach same source-first draft; local + genuine remote positive pieces/readback, negative consent/duplicate/uncertain outcomes, process death, keyboard and scoped preferences pass at exact source head.
+
 ## G3. Exact-job Add artwork preference (Agent 2, #1453)
 
 **Action:** Preserve qualified and merged #1460's default-enabled local automatic artwork preference, separately revocable third-party lookup consent initially ungranted, and global show/download gates. Show “Automatically identify and fetch artwork & metadata” checked by default **only on Add** while the global preference is enabled; hide otherwise and never show it in active Details. Persist user opt-out against the exact environment/hash through the existing sole Add coordinator. Preserve frozen source/Place/Start and all Share/Open With/clipboard precedence.
