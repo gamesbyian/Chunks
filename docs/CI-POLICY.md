@@ -35,6 +35,8 @@ A source-matched installable debug APK may be identified as a tested pre-alpha o
 
 Reuse genuine fixtures, cached Gradle and signed-off source artifacts only where compatible. Prefer narrow ordered feedback to parallel full-suite fan-out; measure actual runner minutes, attempts, source heads and failure cause before proposing costly changes. Keep always-emitted merge status and safety gates intact. Do not turn optional workflow skips into a passing acceptance claim.
 
+For **Chunks R8 minified smoke**, keep the exact-source qaMinified app and instrumentation APK build, executed installed API35 case, strict source/run/JUnit receipt and mapping output. Keep the Gradle daemon warm between build and connected test as implemented in merged #1510; inspect the emitted build and installed-test seconds. Target normal job execution under 10 minutes, investigate sustained executions over 15 minutes, and treat sustained executions over 20 minutes as CI performance regressions. Differentiate GitHub runner queueing from execution and compare like-for-like exact-head runs; do not change acceptance assertions or skip emulator proofs to meet a duration target.
+
 ## Mandatory next-push UI/media scenarios
 
 Follow [next-push acceptance](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md): same compact list/full Details in All/device/server scopes, single-row four-root footer at 320/412dp and 200%/IME, two/three-across action groups, conditional Add-only art option (global enabled-by-default preference and separate provider consent), no active Details toggle, actual background art and persistence, and live phone/rTorrent source → Add → Transfer → Details → reconnect → Stop/Start → Remove with independently verified pieces. Do not claim a docs update satisfies these tests.
