@@ -99,7 +99,11 @@ class RemoteMalformedMutationAcknowledgementTest {
     @Test fun malformedPriorityAckOrReadbackDoesNotReplay() = runBlocking {
         for (badAck in listOf(true, false)) {
             Gateway { method, count -> when (method) {
-                "f.multicall" -> if (!badAck && count == 2) broken() else files()
+                // Two intact prewrite inventory reads now bracket the
+                // current file identity. Only the THIRD, post-write readback
+                // may be malformed; otherwise this would not test uncertain
+                // acknowledgment handling after an actual mutation.
+                "f.multicall" -> if (!badAck && count == 3) broken() else files()
                 "d.hash" -> value("<string>$hash</string>")
                 "f.priority.set" -> if (badAck) broken() else value("<i8>0</i8>")
                 "d.update_priorities" -> value("<i8>0</i8>")
@@ -107,7 +111,12 @@ class RemoteMalformedMutationAcknowledgementTest {
             } }.use { g ->
                 assertEquals(FilePriorityOutcome.Uncertain(hash, 0),
                     remote(g).setFilePriority(hash, 0, "sample.bin", 5, 1, 2))
-                assertEquals(1, g.calls.count { it == "f.priority.set" })
+                assertEquals("Malformed post-write response cannot erase the prewrite witnesses",
+                    if (badAck) 2 else 3, g.calls.count { it == "f.multicall" })
+                assertEquals(2, if (badAck) g.calls.count { it == "d.hash" }
+                    else g.calls.count { it == "d.hash" } - 1)
+                assertEquals("One setter only, regardless of response corruption", 1,
+                    g.calls.count { it == "f.priority.set" })
                 assertEquals(if (badAck) 0 else 1,
                     g.calls.count { it == "d.update_priorities" })
             }
