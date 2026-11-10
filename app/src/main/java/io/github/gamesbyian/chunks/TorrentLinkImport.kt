@@ -85,10 +85,37 @@ internal object TorrentLinkAddressPolicy {
                 (b[0] == 198 && b[1] in 18..19) || b[0] >= 224)
             is Inet6Address -> {
                 val mapped = b.subList(0, 10).all { it == 0 } && b[10] == 0xFF && b[11] == 0xFF
-                if (mapped) allowed(InetAddress.getByAddress(b.subList(12, 16).map { it.toByte() }.toByteArray()))
-                else !((b[0] and 0xFE) == 0xFC ||                // unique local fc00::/7
-                    (b[0] == 0xFE && (b[1] and 0xC0) == 0x80) || // link local fe80::/10
-                    (b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x0D && b[3] == 0xB8)) // documentation
+                // Well-known DNS64/NAT64 IPv6 answers encode an IPv4
+                // destination in their final 32 bits. Without unwrapping it,
+                // 64:ff9b::10.0.0.1 would bypass the IPv4 private-address
+                // guard. Retain IPv6-only access to *public* NAT64 peers.
+                val wellKnownNat64 = b[0] == 0x00 && b[1] == 0x64 &&
+                    b[2] == 0xFF && b[3] == 0x9B &&
+                    b.subList(4, 12).all { it == 0 }
+                // Java exposes deprecated IPv4-compatible ::a.b.c.d as an
+                // Inet6Address (unlike ::ffff:a.b.c.d, which may become v4).
+                // Those literal private targets must not bypass the policy.
+                val ipv4Compatible = b.subList(0, 12).all { it == 0 }
+                val ipv4Tail = { offset: Int ->
+                    InetAddress.getByAddress(b.subList(offset, offset + 4)
+                        .map { it.toByte() }.toByteArray())
+                }
+                when {
+                    mapped || wellKnownNat64 || ipv4Compatible -> allowed(ipv4Tail(12))
+                    // Local-use NAT64 (/48), 6to4 and Teredo may route through
+                    // translation/tunnel infrastructure. Their private target
+                    // cannot be reliably established from the visible host
+                    // address, so refuse instead of treating them as public.
+                    b[0] == 0x00 && b[1] == 0x64 && b[2] == 0xFF &&
+                        b[3] == 0x9B && b[4] == 0x00 && b[5] == 0x01 -> false
+                    b[0] == 0x20 && b[1] == 0x02 -> false // 6to4 2002::/16
+                    b[0] == 0x20 && b[1] == 0x01 && b[2] == 0x00 &&
+                        b[3] == 0x00 -> false // Teredo 2001::/32
+                    else -> !((b[0] and 0xFE) == 0xFC || // unique local fc00::/7
+                        (b[0] == 0xFE && (b[1] and 0xC0) == 0x80) || // fe80::/10
+                        (b[0] == 0x20 && b[1] == 0x01 &&
+                            b[2] == 0x0D && b[3] == 0xB8)) // documentation
+                }
             }
             else -> false
         }

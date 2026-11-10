@@ -69,6 +69,41 @@ class TorrentLinkImportTest {
             assertTrue(ip, TorrentLinkAddressPolicy.allowed(InetAddress.getByName(ip)))
     }
 
+    @Test fun ipv6TranslationAndTunnelsCannotSmugglePrivateIpv4Sources() {
+        // NAT64/DNS64 can reach public IPv4 origins on IPv6-only phones.
+        // Embedded loopback/private IPv4 must still fail the same policy.
+        for (ip in listOf(
+                "64:ff9b::a00:1",        // NAT64 -> 10.0.0.1
+                "64:ff9b::c0a8:101",    // NAT64 -> 192.168.1.1
+                "64:ff9b::7f00:1",      // NAT64 -> 127.0.0.1
+                "::192.168.1.1",       // IPv4-compatible /96, not mapped on Java
+                "::a00:1",             // IPv4-compatible -> 10.0.0.1
+                "::7f00:1",            // IPv4-compatible -> loopback
+                "64:ff9b:1::a00:1",     // local-use NAT64
+                "2002:c0a8:101::1",     // 6to4 tunnel
+                "2001:0:1234::1"       // Teredo tunnel
+            ))
+            assertFalse("Refuse translated/tunneled target: $ip",
+                TorrentLinkAddressPolicy.allowed(InetAddress.getByName(ip)))
+
+        assertTrue("Keep IPv6-only access to public IPv4 torrent hosts",
+            TorrentLinkAddressPolicy.allowed(
+                InetAddress.getByName("64:ff9b::cff1:e002"))) // 207.241.224.2
+        assertTrue("Public IPv4-compatible literal remains allowed",
+            TorrentLinkAddressPolicy.allowed(
+                InetAddress.getByName("::cff1:e002")))
+
+        opened.clear()
+        val url = "https://dns64.example/fixture.torrent?passkey=PRIVATE"
+        val denied = fetcher(
+            emptyMap(),
+            dns = mapOf("dns64.example" to
+                listOf(InetAddress.getByName("64:ff9b::c0a8:101")))
+        ).fetch(link(url))
+        assertEquals(TorrentLinkResult.Refused(TorrentLinkResult.LOCAL_NETWORK), denied)
+        assertTrue("The translated private address must fail before HTTP opens", opened.isEmpty())
+    }
+
     @Test fun extensionlessLinkReturnsTheTorrentForReview() {
         val url = "https://linuxtracker.org/torrents/abc/download/"
         val result = fetcher(mapOf(url to { u -> FakeConnection(u, 200, mapOf("Content-Type" to "application/x-bittorrent"), torrent) }))
