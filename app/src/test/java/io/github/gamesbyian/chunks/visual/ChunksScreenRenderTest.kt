@@ -30,20 +30,20 @@ class ChunksScreenRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     @Test fun connectScreen() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/connect.png")
     }
 
     @Test fun phoneScreen() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/phone.png")
     }
 
     @Test fun offlineScreens() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
@@ -54,7 +54,7 @@ class ChunksScreenRenderTest {
     }
 
     @Test fun privacyScreen() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.waitForIdle()
         // Privacy & authentication lives in Phone options, reached from the footer.
         rule.onNodeWithContentDescription("Options").performClick()
@@ -66,7 +66,7 @@ class ChunksScreenRenderTest {
     }
 
     @Test fun createScreen() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
