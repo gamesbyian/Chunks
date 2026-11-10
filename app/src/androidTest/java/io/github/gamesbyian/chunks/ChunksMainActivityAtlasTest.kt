@@ -613,8 +613,11 @@ class ChunksMainActivityAtlasTest {
         // Transfers now leads through the read-only combined inventory;
         // return to the exact authenticated server before inspecting files.
         rule.onNodeWithText("Transfers").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
-        rule.onNodeWithText("Open server list").performClick()
+        val returnRow = androidx.compose.ui.test.hasContentDescription(
+            "Details for A deliberately very long test filename", substring = true)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(returnRow)
+        rule.onNode(returnRow).performClick()
+        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
         // The filtered card remains the exact same server/infohash identity.
         // Reopen its secondary actions only if navigation recreated the row.
         if (rule.onAllNodesWithText("Inspect files").fetchSemanticsNodes().isEmpty()) {
