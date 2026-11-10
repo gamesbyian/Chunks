@@ -33,6 +33,28 @@ class BoundedRetryTimestampsTest {
             stamps["rtorrent:profile-${last % 7}|" + last.toString(16).padStart(40, '0')])
     }
 
+    @Test fun providerRevisionHintsAreBoundedAndKeepProfileHashIdentityDistinct() {
+        fun key(profile: String, hash: String) = MediaTransferKey.of(
+            io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+                io.github.gamesbyian.chunks.model.EnvironmentId(profile), hash))
+        val sameHash = "a".repeat(40)
+        val serverA = key("rtorrent:server-a", sameHash)
+        val serverB = key("rtorrent:server-b", sameHash)
+        val phone = key("phone", sameHash)
+        val hints = BoundedRetryTimestamps<MediaTransferKey>(3)
+        hints[serverA] = 1L
+        hints[serverB] = 2L
+        hints[phone] = 3L
+        assertEquals(1L, hints[serverA]) // Touch A; exact account B remains independent.
+        hints[key("rtorrent:other", "b".repeat(40))] = 4L
+        assertNull("Evict only the least-recently-seen exact profile/hash hint", hints[serverB])
+        assertEquals(1L, hints[serverA])
+        assertEquals(3L, hints[phone])
+        assertEquals(3, hints.size())
+        // On eviction, no durable metadata or opt-out is touched. An evicted
+        // hint simply behaves as a process-first provider revision attempt.
+    }
+
     @Test fun invalidBoundsAreRejectedBeforeUse() {
         assertThrows(IllegalArgumentException::class.java) { BoundedRetryTimestamps<String>(0) }
     }
