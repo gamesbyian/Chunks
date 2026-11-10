@@ -81,9 +81,18 @@ internal object ClipboardMagnetPrefill {
     internal fun exactClipboardSource(text: String?, uri: String?): String? {
         val textValue = text?.trim()
         val uriValue = uri?.trim()
-        fun schemeOnly(value: String): String =
-            if (value.startsWith("magnet:?", ignoreCase = true))
-                "magnet:?" + value.substring("magnet:?".length) else value
+        // Android can supply the same signed HTTPS URL in both the text and
+        // URI representations with different *scheme* capitalization. Compare
+        // those as one source while keeping the exact path, query, token and
+        // fragment bytes. Never normalize the host/path or weaken the
+        // conflicting-private-source refusal.
+        fun schemeOnly(value: String): String = when {
+            value.startsWith("magnet:?", ignoreCase = true) ->
+                "magnet:?" + value.substring("magnet:?".length)
+            value.startsWith("https://", ignoreCase = true) ->
+                "https://" + value.substring("https://".length)
+            else -> value
+        }
         return when {
             textValue != null && uriValue != null -> {
                 val a = schemeOnly(textValue)
