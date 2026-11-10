@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -73,6 +74,16 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
             rule.onAllNodes(hasText("Magnet added in metadata-only mode", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
 
+        // This is a read-only, exact-hash native confirmation. A metadata-only
+        // magnet may carry a placeholder display name until BEP9 completes,
+        // but it must still own a single real engine job before Combined
+        // can claim that it was newly added.
+        waitFor(30_000) {
+            runCatching {
+                LocalEngineHolder.current()?.list().orEmpty()
+                    .count { it.infoHash.equals(hash, ignoreCase = true) } == 1
+            }.getOrDefault(false)
+        }
         rule.onNodeWithText("Transfers").performClick()
         rule.onNodeWithText("All environments").performScrollTo().performClick()
         // First demand a fresh, exact-hash phone row in the canonical
@@ -85,10 +96,10 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
             true
         }.getOrDefault(false) }
         rule.onNode(search).performTextReplacement(hash)
+        val exactRow = hasContentDescription("Details for", substring = true) and hasClickAction()
         waitFor(30_000) { runCatching {
-            rule.onNode(hasScrollToIndexAction())
-                .performScrollToNode(hasText(name, substring = true))
-            true
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(exactRow)
+            rule.onAllNodes(exactRow).fetchSemanticsNodes().isNotEmpty()
         }.getOrDefault(false) }
         // Now hide the same observed row with a contradictory search.
         // This must surface a recovery action without fabricating a row,
@@ -102,7 +113,13 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
             true
         }.getOrDefault(false) }
         rule.onNode(hasText("Show all transfers") and hasClickAction()).performScrollTo().performClick()
-        waitFor { runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(name, substring = true)) }.isSuccess }
         waitFor(5_000) { rule.onAllNodes(hasText(notice)).fetchSemanticsNodes().isEmpty() }
+        // A second exact-hash search after Show All proves the original job
+        // remains accessible. Search/recovery itself never touches its data.
+        rule.onNode(hasSetTextAction()).performTextReplacement(hash)
+        waitFor(30_000) { runCatching {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(exactRow)
+            rule.onAllNodes(exactRow).fetchSemanticsNodes().isNotEmpty()
+        }.getOrDefault(false) }
     }
 }

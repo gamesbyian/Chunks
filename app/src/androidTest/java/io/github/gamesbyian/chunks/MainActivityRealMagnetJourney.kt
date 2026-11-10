@@ -217,14 +217,29 @@ internal class MainActivityRealMagnetJourney(
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
+        var priorSubmittedAdd = false
         fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}) {
             report("chunks_real_add_app_stage", "add-open-requested")
             click("+ Add torrent")
             rule.waitUntil(30_000) { visible("Add a transfer") }
             report("chunks_real_add_app_stage", "add-open")
-            // A verified previous Add remains a result on return; only this
-            // explicit action starts a fresh source review, without an RPC.
-            if (runCatching { scroll("Start another Add") }.isSuccess) click("Start another Add")
+            // After a previous submission, the old frozen ticket must be
+            // explicitly acknowledged before reviewing another source. The
+            // former one-shot best-effort lookup could miss the asynchronous
+            // result and then type into a still-locked draft, timing out on
+            // Add transfer without proving a product engine defect.
+            if (priorSubmittedAdd) {
+                rule.waitUntil(45_000) {
+                    runCatching {
+                        rule.onNode(hasScrollToIndexAction())
+                            .performScrollToNode(hasText("Start another Add"))
+                        rule.onNodeWithText("Start another Add").assertIsEnabled()
+                        true
+                    }.getOrDefault(false)
+                }
+                click("Start another Add")
+                rule.waitUntil(30_000) { visible("Magnet or torrent link") }
+            }
             // The real Seedhost must receive the actual publisher magnet, including
             // its original tracker list. The disposable controlled test keeps
             // the deliberate dead tracker to isolate the supplied peer.
@@ -275,6 +290,7 @@ internal class MainActivityRealMagnetJourney(
             onSubmit()
             report("chunks_real_add_app_stage", "add-submitted")
             click("Add transfer")
+            priorSubmittedAdd = true
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
             assertTrue("Actual app did not verify Add+Start", visible("Verified: added and started on rTorrent."))
             if (disposable) {
