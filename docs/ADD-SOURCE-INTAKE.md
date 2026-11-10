@@ -9,6 +9,10 @@
 
 
 
+## Universal Add presentation and entry-point contract
+
+**Source is first, regardless of target.** Every + Add, Share, Open With or clipboard entry opens the one Universal Add form with torrent-source text entry and **Open .torrent / Paste** controls at the top; do not first show **On this device / On the connected server** routing buttons or fork into separate target-specific Add screens. Under source, select the exact phone or configured remote profile (and eligible Smart Routing where available), then effective **Save to** with Change, **Start when added**, and relevant collapsible source-handling, file/priority, artwork and rule choices. Selecting or changing the environment is a draft edit, never authorization to Add, and never clears a valid source. One explicit **Add transfer** action dispatches through the existing shared coordinator. Preserve source precedence and transport constraints below. Detailed layout and conditional controls: [UX](UX.md), [SMART-ROUTING-AND-SOURCE-LIFECYCLE](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md).
+
 ## Ordinary journey and priority
 
 The single existing **Add torrent** sheet accepts: (1) a user-selected local `.torrent` URI from Android's document provider, (2) a typed/pasted HTTP(S) URL serving valid `.torrent` metainfo, including URLs without a `.torrent` suffix, and (3) a valid `magnet:` URI. Opening/receiving a shared item through Android `ACTION_VIEW`, `ACTION_SEND`, or a suitable document/content URI enters the same Add draft, with no compulsory intermediate Review Add. Preserve source text, selected target environment, effective Save to destination, optional file priorities and Start when added. A local file path typed as text must be treated as a provider URI only where actually supported and authorized; do not infer filesystem permission from an absolute path.
