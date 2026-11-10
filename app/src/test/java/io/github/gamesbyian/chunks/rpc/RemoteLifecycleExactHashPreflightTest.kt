@@ -17,7 +17,7 @@ class RemoteLifecycleExactHashPreflightTest {
     private val hash = "a".repeat(40)
     private val otherHash = "b".repeat(40)
 
-    private enum class Scenario { MATCH, MISSING, WRONG_FIRST, WRONG_AFTER_WRITE }
+    private enum class Scenario { MATCH, MATCH_STOP, MISSING, WRONG_FIRST, WRONG_AFTER_WRITE, WRONG_AFTER_STOP }
 
     private inner class Gateway(private val scenario: Scenario) : AutoCloseable {
         private val server = HttpServer.create(
@@ -39,9 +39,9 @@ class RemoteLifecycleExactHashPreflightTest {
                         when (scenario) {
                             Scenario.MISSING -> null
                             Scenario.WRONG_FIRST -> "<string>$otherHash</string>"
-                            Scenario.WRONG_AFTER_WRITE ->
+                            Scenario.WRONG_AFTER_WRITE, Scenario.WRONG_AFTER_STOP ->
                                 "<string>${if (hashReads > 1) otherHash else hash}</string>"
-                            Scenario.MATCH -> "<string>$hash</string>"
+                            Scenario.MATCH, Scenario.MATCH_STOP -> "<string>$hash</string>"
                         }
                     }
                     "d.open", "d.resume", "d.close" -> {
@@ -52,7 +52,9 @@ class RemoteLifecycleExactHashPreflightTest {
                         mutations++
                         "<int>0</int>"
                     }
-                    "d.state", "d.is_active" -> "<int>1</int>"
+                    "d.state", "d.is_active" ->
+                        if (scenario == Scenario.MATCH_STOP || scenario == Scenario.WRONG_AFTER_STOP)
+                            "<int>0</int>" else "<int>1</int>"
                     else -> error("Unexpected RPC method $method")
                 }
                 val reply = if (value == null) {
@@ -107,6 +109,42 @@ class RemoteLifecycleExactHashPreflightTest {
                 listOf("d.hash", "d.open", "d.start", "d.resume", "d.state",
                     "d.is_active", "d.hash"), gateway.methods)
             assertEquals("No second write after contradictory readback", 3, gateway.mutations)
+        }
+    }
+
+    @Test fun absentOrContradictoryHashCannotSendStopEither() = runBlocking {
+        for (scenario in listOf(Scenario.MISSING, Scenario.WRONG_FIRST)) {
+            Gateway(scenario).use { gateway ->
+                val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
+                try {
+                    remote.setStarted(hash, false)
+                    fail("A stopped command must not target an unverified job")
+                } catch (expected: Exception) {
+                    assertTrue(expected is RpcFault || expected is IllegalStateException)
+                }
+                assertEquals(listOf("d.hash"), gateway.methods)
+                assertEquals("Never send d.stop/d.close for missing or wrong hash", 0, gateway.mutations)
+            }
+        }
+    }
+
+    @Test fun verifiedStopAlsoNeedsBothExactHashWitnesses() = runBlocking {
+        Gateway(Scenario.MATCH_STOP).use { gateway ->
+            val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
+            assertEquals(LifecycleOutcome.Verified(false), remote.setStarted(hash, false))
+            assertEquals(listOf("d.hash", "d.stop", "d.close", "d.state",
+                "d.is_active", "d.hash"), gateway.methods)
+            assertEquals(2, gateway.mutations)
+        }
+    }
+
+    @Test fun postWriteHashChangeLeavesStopUncertainWithoutReplay() = runBlocking {
+        Gateway(Scenario.WRONG_AFTER_STOP).use { gateway ->
+            val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "", ""))
+            assertEquals(LifecycleOutcome.Uncertain(false), remote.setStarted(hash, false))
+            assertEquals(listOf("d.hash", "d.stop", "d.close", "d.state",
+                "d.is_active", "d.hash"), gateway.methods)
+            assertEquals("Ambiguous Stop cannot issue a second command", 2, gateway.mutations)
         }
     }
 }
