@@ -111,7 +111,7 @@ class ArtworkRepository(
     fun hasCachedSquare(candidates: List<ArtworkCandidate>): Boolean =
         ArtworkSelector.order(candidates, ArtworkRole.SQUARE).any { c ->
             val k = key(c, ArtworkRole.SQUARE)
-            memory.get(k) != null || disk.contains(k)
+            memory.get(k) != null || disk.hasPlausibleProcessedJpeg(k)
         }
 
     private fun key(source: ArtworkCandidate, role: ArtworkRole) =

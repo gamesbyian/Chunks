@@ -50,6 +50,30 @@ class ArtworkRepositoryTest {
         assertTrue(again.fromCache); assertEquals(1, http.requests.size)
     }
 
+    @Test fun corruptProcessedDiskDerivativeCannotSuppressOffscreenRetryAfterRestart() {
+        val http = FakeMediaHttp().onBytes("p.jpg", image(680, 1000),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        val dir = Files.createTempDirectory("damaged-offscreen-art").toFile()
+        val first = repo(http, dir)
+        assertTrue(first.load(listOf(poster), ArtworkRole.SQUARE, true) is ArtworkLoadResult.Loaded)
+        assertTrue(first.hasCachedSquare(listOf(poster)))
+        // Simulate storage corruption after a successful download and before
+        // a new process restores the offscreen inventory. No UI row is composed.
+        val cached = dir.listFiles().orEmpty().single { it.name.endsWith(".img") }
+        cached.writeBytes(byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte()) +
+            ByteArray(500) { 0x41 })
+        val fresh = repo(http, dir)
+        assertFalse("A damaged derivative must be eligible for offscreen refetch",
+            fresh.hasCachedSquare(listOf(poster)))
+        val before = http.requests.size
+        assertTrue(fresh.load(listOf(poster), ArtworkRole.SQUARE, true) is ArtworkLoadResult.Loaded)
+        assertEquals(before + 1, http.requests.size)
+        assertTrue("Repaired derivative must remain reusable without a second fetch",
+            repo(FakeMediaHttp(), dir).hasCachedSquare(listOf(poster)))
+        assertTrue(repo(FakeMediaHttp(), dir)
+            .load(listOf(poster), ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+    }
+
     @Test fun squarePngIsKeptAndMemoryCacheAvoidsDisk() {
         val sq = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/s.png", ArtworkRole.SQUARE)
         val http = FakeMediaHttp().onBytes("s.png", image(500, 500, Bitmap.CompressFormat.PNG))
