@@ -308,7 +308,7 @@ internal fun ChunksApp(
     var section by rememberSaveable(saver = SectionRestoreSaver) {
         // A saved login needs the existing one-shot authenticated reconnect
         // owner to mount. Combined is a read-only list, not a reconnect executor.
-        mutableStateOf(if (remembered == null) Section.LOCAL else Section.SERVER)
+        mutableStateOf(if (remembered == null) Section.COMBINED else Section.SERVER)
     }
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
@@ -741,6 +741,10 @@ internal fun ChunksApp(
                 scopeFocusRequest = savedProfileCatalogFocus,
                 onScopeFocusConsumed = { savedProfileCatalogFocus = null },
                 returnToCatalogRevision = returnToCatalogRevision,
+                enableFirstRunWelcome = true,
+                // The existing Add destination remains the sole admission
+                // coordinator until source-first Universal Add is integrated.
+                onWelcomeAdd = { section = Section.ADD_CHOOSE },
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
