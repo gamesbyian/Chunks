@@ -323,7 +323,12 @@ internal fun CombinedTransfersScreen(
     pendingSharedLink: Boolean = false,
     pendingSharedTorrent: Boolean = false,
     readingSharedTorrent: Boolean = false,
-    sharedTorrentError: String? = null
+    sharedTorrentError: String? = null,
+    /** A one-shot view-only request keyed to immutable saved profile ID. */
+    scopeFocusRequest: String? = null,
+    onScopeFocusConsumed: () -> Unit = {},
+    /** Root Transfers returns from full Details without changing filters or identity. */
+    returnToCatalogRevision: Long = 0L
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -360,6 +365,25 @@ internal fun CombinedTransfersScreen(
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
 
+    // A saved-connection tap changes only the existing canonical browser's scope.
+    // Never interpret a friendly label as identity and never fall back to All
+    // when a profile is forgotten between tap and composition.
+    var explicitSavedRead by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(scopeFocusRequest) {
+        val id = scopeFocusRequest ?: return@LaunchedEffect
+        val eligible = savedProfiles.map { it.id }.toSet() +
+            listOfNotNull(server?.aliasScope?.let(
+                EnvironmentSnapshots::serverIdOfAliasScope)?.value)
+        val requested = savedProfileViewScope(id, eligible)
+            ?: runCatching { EnvironmentViewScope.Only(setOf(EnvironmentId(id))) }.getOrNull()
+        if (requested != null) {
+            update(query.copy(scope = requested))
+            explicitSavedRead = id
+        }
+        // A refused/invalid view request never changes Add or remote session state.
+        onScopeFocusConsumed()
+    }
+
     // Phone: read only an engine already running in this process. Opening this
     // view never starts the phone engine or its service (remote-only use).
     var phoneFrame by remember { mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false)) }
@@ -368,6 +392,9 @@ internal fun CombinedTransfersScreen(
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Restores only a read-only detail target, never an in-flight command or batch selection.
     var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
+    LaunchedEffect(returnToCatalogRevision) {
+        if (returnToCatalogRevision > 0L) savedDetailTarget = null
+    }
     val detailKey = restoreCombinedDetailTarget(savedDetailTarget)
     val batchScope = rememberCoroutineScope()
     var listings by remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
@@ -533,6 +560,26 @@ internal fun CombinedTransfersScreen(
                 }
             }
         }
+    }
+
+    // A saved profile requested explicitly from Connections may initiate one
+    // bounded, fenced READ only once its independent privacy gate permits it.
+    // Changing scope, forgetting the profile, or a live authenticated session
+    // all retire the request without any RPC mutation or cross-account fallback.
+    LaunchedEffect(explicitSavedRead, activeSavedScopes, query.scope, savedProfiles, serverId) {
+        val id = explicitSavedRead ?: return@LaunchedEffect
+        if (serverId?.value == id) {
+            explicitSavedRead = null
+            return@LaunchedEffect
+        }
+        if (savedProfiles.none { it.id == id } ||
+            query.scope != EnvironmentViewScope.Only(setOf(EnvironmentId(id)))) {
+            explicitSavedRead = null
+            return@LaunchedEffect
+        }
+        val selected = loadable.singleOrNull { it.id == id } ?: return@LaunchedEffect
+        explicitSavedRead = null
+        loadSavedServers(listOf(selected))
     }
 
     // A selection and its confirmation belong to an exact authenticated UI
@@ -1852,3 +1899,13 @@ internal fun combinedProgressTone(row: UnifiedTransferObservation): ChunksTone =
     row.started == false -> ChunksTone.PAUSED
     else -> ChunksTone.ACTIVE
 }
+
+/**
+ * Exact view-only profile selection. Friendly display names never participate
+ * in the scope key, so two servers with the same label remain independent.
+ */
+internal fun savedProfileViewScope(
+    profileId: String,
+    knownProfileIds: Set<String>
+): EnvironmentViewScope? = profileId.takeIf { it.isNotBlank() && it in knownProfileIds }
+    ?.let { EnvironmentViewScope.Only(setOf(EnvironmentId(it))) }
