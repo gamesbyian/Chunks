@@ -64,7 +64,9 @@ internal fun UnifiedTransferDetailPanel(
     /** Exact owning environment's existing palette choice; its name remains the identity. */
     environmentHue: EnvironmentHue? = null,
     /** Optional Similar Transfers over authorized inventory; null hides the section. */
-    similar: (@Composable (UnifiedTransferObservation) -> Unit)? = null
+    similar: (@Composable (UnifiedTransferObservation) -> Unit)? = null,
+    /** The authenticated owning adapter supplies operations without another list route. */
+    exactServerOperations: (@Composable () -> Unit)? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
     // Presentation state only. Never retain a mutation authority or stale command review.
@@ -116,6 +118,7 @@ internal fun UnifiedTransferDetailPanel(
                 Text("Review Start / Stop")
             }
         }
+        if (!hidden) exactServerOperations?.invoke()
         if (!hidden && onOpenOwningList != null) {
             Text("To manage this download, open its own environment's transfer list.",
                 style = MaterialTheme.typography.bodyMedium)
