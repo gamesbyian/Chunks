@@ -20,6 +20,12 @@
 
 **Exit:** actual installed screenshots and actions show list/Details parity, preserved scope/scroll, one footer row, no legacy inline cards or clipped commands, and previously failed contrast/IME regressions pass.
 
+## G2a. First-install Welcome to Chunks empty state (Agent 1, #1512)
+
+**Action:** In the genuinely empty first-install Transfers view keep the `chunks.` header and one-row persistent footer, omit scope selectors, search, Batch tools and filters/sort, and replace “Your transfers will appear here” with **Welcome to Chunks** plus concise phone/remote explanation and working Add a torrent / Connections actions. Implement the conditional empty-state contract in [UX](UX.md), preserving canonical controls and saved scopes for actual inventory; never misclassify offline/loading/filtered-zero as fresh install. Coordinate independent Agent 5 qualification; do not fork Add/navigation.
+
+**Exit:** installed Android fresh-install and first-add transition screenshots/tests, local/remote/combined regressions including offline/reconnecting and filter-empty, footer and accessibility preserved; exact-head evidence recorded separately.
+
 ## G3. Exact-job Add artwork preference (Agent 2, #1453)
 
 **Action:** Preserve qualified and merged #1460's default-enabled local automatic artwork preference, separately revocable third-party lookup consent initially ungranted, and global show/download gates. Show “Automatically identify and fetch artwork & metadata” checked by default **only on Add** while the global preference is enabled; hide otherwise and never show it in active Details. Persist user opt-out against the exact environment/hash through the existing sole Add coordinator. Preserve frozen source/Place/Start and all Share/Open With/clipboard precedence.
