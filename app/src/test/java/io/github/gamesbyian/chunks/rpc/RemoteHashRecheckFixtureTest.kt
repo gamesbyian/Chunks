@@ -130,6 +130,36 @@ class RemoteHashRecheckFixtureTest {
         }
     }
 
+    @Test fun readOnlyReconciliationNeverClaimsCompletionOrSchedulesAWrite() = runBlocking {
+        val expected = listOf(
+            Scenario.QUEUED to RemoteHashRecheckObservation.NotChecking,
+            Scenario.ALREADY_CHECKING to RemoteHashRecheckObservation.Checking,
+            Scenario.WRONG_HASH to RemoteHashRecheckObservation.Changed,
+            Scenario.WRONG_NAME to RemoteHashRecheckObservation.Changed,
+            Scenario.WRONG_DIRECTORY to RemoteHashRecheckObservation.Changed,
+            Scenario.INVALID_FLAG to RemoteHashRecheckObservation.Unavailable
+        )
+        for ((scenario, observation) in expected) {
+            Gateway(scenario).use { gateway ->
+                assertEquals(observation,
+                    remote(gateway).observeHashRecheck(hash, name, directory))
+                assertEquals("No read-only reconciliation may start Recheck", 0, gateway.writes)
+                assertFalse(gateway.methods.contains("d.check_hash"))
+            }
+        }
+    }
+
+    @Test fun appliedButLostAcknowledgementCannotBeProvedByIdleObservation() = runBlocking {
+        Gateway(Scenario.LOST_ACK_AFTER_APPLY).use { gateway ->
+            val client = remote(gateway)
+            assertEquals(RemoteHashRecheckOutcome.Uncertain(hash),
+                client.requestHashRecheck(hash, name, directory))
+            assertEquals(RemoteHashRecheckObservation.NotChecking,
+                client.observeHashRecheck(hash, name, directory))
+            assertEquals("Even an idle readback cannot authorize blind retry", 1, gateway.writes)
+        }
+    }
+
     @Test fun lostAckOrContradictoryPostWriteSessionNeverRetriesRecheck() = runBlocking {
         for (scenario in listOf(Scenario.LOST_ACK_AFTER_APPLY,
                 Scenario.WRONG_HASH_AFTER_APPLY)) {
