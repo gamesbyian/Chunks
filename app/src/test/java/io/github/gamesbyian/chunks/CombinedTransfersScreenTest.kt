@@ -89,6 +89,30 @@ class CombinedTransfersScreenTest {
         assertTrue(commands.isEmpty())
     }
 
+    @Test fun rootTransfersTapClosesFullDetailsWithoutIssuingLifecycleCommand() {
+        var catalogRevision by mutableStateOf(0L)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, rows, stale = false,
+                        fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
+                        lifecycle = gate),
+                    savedProfiles = listOf(other),
+                    onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                    returnToCatalogRevision = catalogRevision
+                )
+            } }
+        }
+        val details = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(details)
+        rule.onNodeWithContentDescription(details).performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        rule.runOnIdle { catalogRevision++ }
+        rule.waitForIdle()
+        rule.onNodeWithText("Transfer details").assertDoesNotExist()
+        assertTrue("returning to Transfers is read-only", commands.isEmpty())
+    }
+
     @Test fun detailFocusResolvesExactServerAndHashWithoutLifecycleCommands() {
         show()
         val origin = serverEnvironmentLabel(aliasScope)
