@@ -320,6 +320,7 @@ internal fun CombinedTransfersScreen(
     onAddToPhone: (() -> Unit)? = null,
     /** Source content remains in MainActivity process memory; only presence/status reach this list. */
     pendingSharedMagnet: Boolean = false,
+    pendingSharedLink: Boolean = false,
     pendingSharedTorrent: Boolean = false,
     readingSharedTorrent: Boolean = false,
     sharedTorrentError: String? = null
@@ -937,6 +938,7 @@ internal fun CombinedTransfersScreen(
                 onOpenPhone = onAddToPhone ?: onOpenPhone,
                 onAddToServer = onAddToServer,
                 pendingSharedMagnet = pendingSharedMagnet,
+                pendingSharedLink = pendingSharedLink,
                 pendingSharedTorrent = pendingSharedTorrent,
                 readingSharedTorrent = readingSharedTorrent,
                 sharedTorrentError = sharedTorrentError,
