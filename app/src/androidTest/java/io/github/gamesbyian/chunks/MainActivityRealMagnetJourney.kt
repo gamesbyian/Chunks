@@ -241,6 +241,23 @@ internal class MainActivityRealMagnetJourney(
                 click("Get torrent from link")
                 rule.waitUntil(45_000) { visible(fixtures.getValue(label).name) }
                 assertNull("Fetch/review must not register a job", readOnly { remote.lookupName(hash) })
+                if (disposable && !publicDiscovery) {
+                    // An ordinary publisher HTTPS .torrent necessarily includes
+                    // public trackers. Keep the genuine link *preview* and
+                    // zero-write assertion, then explicitly switch this draft
+                    // to the same-infohash, inert-tracker magnet before Add.
+                    // Otherwise rTorrent can fetch from unobserved public peers
+                    // and fake a successful controlled-source test even when
+                    // the supplied local libtorrent seeder uploaded zero bytes.
+                    // Changing the source must revoke the fetched .torrent
+                    // selection; the actual Add still uses the production UI.
+                    type("Magnet or torrent link", link)
+                    rule.waitUntil(30_000) {
+                        visible("Only 40-character v1 info hashes supported") == false
+                    }
+                    assertNull("Changing source cannot implicitly add the reviewed URL",
+                        readOnly { remote.lookupName(hash) })
+                }
             } else type("Magnet or torrent link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
