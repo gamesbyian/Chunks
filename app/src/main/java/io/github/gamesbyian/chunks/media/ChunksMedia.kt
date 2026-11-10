@@ -47,7 +47,11 @@ class ChunksMedia private constructor(context: Context) {
         val byId = providers.associateBy { it.info.id }
         TransferMediaController(
             service = service,
-            artwork = ArtworkRepository(http, lazyDisk(), hostPolicyFor = { id: String -> byId[id]?.info?.artworkHostPolicy }),
+            artwork = ArtworkRepository(http, lazyDisk(), hostPolicyFor = { id: String ->
+                // Provider disable is a network revocation, including stored matches. Cached
+                // derivatives still load offline because ArtworkRepository checks disk first.
+                byId[id]?.info?.takeIf { currentSettings().providerOn(it) }?.artworkHostPolicy
+            }),
             storeFactory = { FileTransferMediaAssignmentStore(File(app.filesDir, "media/assignments.json")) },
             settings = { currentSettings() },
             network = { networkState() },
