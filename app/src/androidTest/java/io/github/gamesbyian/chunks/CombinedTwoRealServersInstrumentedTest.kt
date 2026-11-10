@@ -85,8 +85,15 @@ class CombinedTwoRealServersInstrumentedTest {
         }
     }
 
-    private fun scrollTo(text: String) =
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
+    private fun scrollTo(text: String) {
+        val match = hasText(text, substring = true)
+        // Combined and remote Add are lazy lists; phone-first Universal Add is
+        // an eagerly composed, vertically scrolling form. A LazyColumn-only
+        // locator falsely fails before testing any source or session behavior.
+        if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(match)
+        else rule.onNode(match).performScrollTo()
+    }
 
     private fun waitFor(what: String, timeoutMs: Long = 60_000, condition: () -> Boolean) {
         try {
