@@ -26,6 +26,12 @@
 
 **Exit:** installed Android fresh-install and first-add transition screenshots/tests, local/remote/combined regressions including offline/reconnecting and filter-empty, footer and accessibility preserved; exact-head evidence recorded separately.
 
+## G2b. Canonical Transfers routing from Connections (Agent 1; coordinate remote setup with Agent 3)
+
+**Action:** Apply [UX canonical navigation contract](UX.md): Connections is always a remote-profile management/list/add destination, never a transfer browser. After successfully adding a verified connection, show an accessible success acknowledgement and remain on Connections when dismissed, with new profile listed. Opening a saved connection routes to the same Combined-derived Transfers screen, scoped to that exact saved profile ID. Transfers independently selects device, one, multiple or all environments within that one browser; never use a legacy server-only list or conflate display labels with stable profile IDs. Preserve false-success/uncertain-result fences, exact profile, full Details, back/navigation, search/filter, footer and offline/locked semantics. Coordinate any connection-save callback with Agent 3; UI owner Agent 1; independently qualify through Agent 5.
+
+**Exit:** installed authenticated Add connection → confirmation → Connections list → tap profile → exact scoped canonical Transfers → multi/all scope switching → full Details, including restart, duplicate names, failed/offline setup, Back/IME accessibility and no legacy list route.
+
 ## G3. Exact-job Add artwork preference (Agent 2, #1453)
 
 **Action:** Preserve qualified and merged #1460's default-enabled local automatic artwork preference, separately revocable third-party lookup consent initially ungranted, and global show/download gates. Show “Automatically identify and fetch artwork & metadata” checked by default **only on Add** while the global preference is enabled; hide otherwise and never show it in active Details. Persist user opt-out against the exact environment/hash through the existing sole Add coordinator. Preserve frozen source/Place/Start and all Share/Open With/clipboard precedence.
