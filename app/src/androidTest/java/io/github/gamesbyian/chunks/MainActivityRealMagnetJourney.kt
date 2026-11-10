@@ -274,6 +274,17 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "review-open")
             scroll("Confirm one server operation")
             assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
+            if (disposable && !publicDiscovery && torrentLinks && label != null && label != "magnet0") {
+                // The earlier HTTPS fetch is a read-only preview. Require the
+                // *production confirmation card* to say the pending source is
+                // the isolated magnet, never the original public .torrent.
+                // This is independently corroborated after Add by the engine's
+                // exact tracker list and missing-metadata/BEP9 witness.
+                assertTrue("Publisher HTTPS preview was retained as the submitted source",
+                    visible("Source: Magnet link"))
+                assertFalse("A fetched publisher .torrent must not remain the chosen source",
+                    visible("Source: Selected .torrent file"))
+            }
             if (torrentLinks && label != null && label != "magnet0") {
                 InstrumentationRegistry.getInstrumentation().sendStatus(2,
                     Bundle().apply { putString("chunks_https_review", label) })
