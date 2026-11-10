@@ -84,7 +84,9 @@ class ArtworkRepository(
     private val disk: ArtworkDiskCache,
     /** Provider id → artwork host policy (from MediaProviderInfo.artworkHosts). */
     private val hostPolicyFor: (String) -> MediaHostPolicy?,
-    memoryBytes: Int = defaultMemoryBytes()
+    memoryBytes: Int = defaultMemoryBytes(),
+    /** Durable app-private storage for explicit imported images, distinct from reclaimable poster cache. */
+    private val importedDisk: ArtworkDiskCache = disk
 ) {
     companion object {
         const val SQUARE_SIZE = 384
@@ -117,8 +119,10 @@ class ArtworkRepository(
     private fun key(source: ArtworkCandidate, role: ArtworkRole) =
         ArtworkBytesPolicy.cacheKey(source.url, role, if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE)
 
-    fun pin(source: ArtworkCandidate, role: ArtworkRole) = disk.pin(key(source, role))
-    fun unpin(source: ArtworkCandidate, role: ArtworkRole) = disk.unpin(key(source, role))
+    fun pin(source: ArtworkCandidate, role: ArtworkRole) =
+        (if (source.provider == io.github.gamesbyian.chunks.media.LOCAL_PROVIDER) importedDisk else disk).pin(key(source, role))
+    fun unpin(source: ArtworkCandidate, role: ArtworkRole) =
+        (if (source.provider == io.github.gamesbyian.chunks.media.LOCAL_PROVIDER) importedDisk else disk).unpin(key(source, role))
 
     /** Try candidates in deterministic order; the first usable one wins. */
     fun load(candidates: List<ArtworkCandidate>, role: ArtworkRole, allowNetwork: Boolean, providerOrder: List<String> = emptyList(), requestAllowed: () -> Boolean = { true }): ArtworkLoadResult {
@@ -149,7 +153,11 @@ class ArtworkRepository(
         val candidate = ArtworkCandidate(io.github.gamesbyian.chunks.media.LOCAL_PROVIDER, "local:$digest", ArtworkRole.SQUARE,
             square.width, square.height)
         val k = key(candidate, ArtworkRole.SQUARE)
-        disk.put(k, encoded); disk.pin(k); memory.put(k, square)
+        synchronized(mutationLock) {
+            importedDisk.put(k, encoded)
+            importedDisk.pin(k)
+            memory.put(k, square)
+        }
         return candidate to null
     }
 
@@ -182,7 +190,13 @@ class ArtworkRepository(
     /** Forget a user import (caller has verified no other assignment references it). */
     fun removeLocal(c: ArtworkCandidate) {
         if (c.provider != io.github.gamesbyian.chunks.media.LOCAL_PROVIDER) return
-        val k = key(c, ArtworkRole.SQUARE); memory.remove(k); disk.remove(k)
+        val k = key(c, ArtworkRole.SQUARE)
+        synchronized(mutationLock) {
+            memory.remove(k)
+            importedDisk.remove(k)
+            // Remove a legacy cached import as well, avoiding resurrection from the migration path.
+            if (importedDisk !== disk) disk.remove(k)
+        }
     }
 
     fun loadOne(c: ArtworkCandidate, role: ArtworkRole, allowNetwork: Boolean, requestAllowed: () -> Boolean = { true }): ArtworkLoadResult {
@@ -190,12 +204,22 @@ class ArtworkRepository(
         val k = key(c, if (local) ArtworkRole.SQUARE else role)
         memory.get(k)?.let { return ArtworkLoadResult.Loaded(it, c, true) }
         synchronized(mutationLock) {
-            disk.get(k)?.let { bytes ->
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let {
-                    memory.put(k, it)
-                    return ArtworkLoadResult.Loaded(it, c, true)
+            // User-imported images are durable presentation choices. Earlier app versions kept
+            // them in cacheDir; migrate such an image on its first successful read without
+            // changing its digest/assignment identity or exposing the original imported URI.
+            val stores = if (local && importedDisk !== disk) listOf(importedDisk, disk) else listOf(disk)
+            for (store in stores) {
+                val bytes = store.get(k) ?: continue
+                val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (decoded != null) {
+                    if (local && store !== importedDisk) {
+                        importedDisk.put(k, bytes)
+                        importedDisk.pin(k)
+                    }
+                    memory.put(k, decoded)
+                    return ArtworkLoadResult.Loaded(decoded, c, true)
                 }
-                if (!local) disk.remove(k)
+                if (!local || store === importedDisk) store.remove(k)
             }
         }
         if (local) return ArtworkLoadResult.Unavailable(listOf("Your image is no longer stored"))
