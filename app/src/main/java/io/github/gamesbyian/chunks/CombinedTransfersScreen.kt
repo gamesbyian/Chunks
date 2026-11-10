@@ -714,17 +714,24 @@ internal fun CombinedTransfersScreen(
             mediaSnapshot.stillAuthorizes(key, currentMediaSnapshot.value)
         }
     }
-    // Reuse the existing 10s source-status ticker to detect connectivity, metering
-    // and power-saver transitions. A successful fresh inventory read alone does not
-    // change when Wi-Fi returns, so unchanged offscreen jobs otherwise remain blocked
-    // until the user revisits a row. Only actual gate transitions reschedule work.
+    // Reuse the existing 10s source-status ticker, without creating a second
+    // inventory worker. Connectivity/metering/power changes retry immediately;
+    // a sparse 30-minute heartbeat also notices expired provider negative-cache
+    // and image-failure TTLs when all transfers remain otherwise unchanged.
     val mediaNetworkChanges = remember(mediaSession) {
         io.github.gamesbyian.chunks.media.MediaNetworkChangeTracker()
+    }
+    val mediaRetryHeartbeat = remember(mediaSession) {
+        io.github.gamesbyian.chunks.media.MediaInventoryRetryHeartbeat()
     }
     LaunchedEffect(mediaSession, now) {
         val active = mediaSession ?: return@LaunchedEffect
         val net = withContext(Dispatchers.IO) { mediaGraph.currentNetworkState() }
-        if (mediaNetworkChanges.changedAfterFirstObservation(net)) active.refresh()
+        val networkChanged = mediaNetworkChanges.changedAfterFirstObservation(net)
+        val retryDue = mediaRetryHeartbeat.shouldRefresh(android.os.SystemClock.elapsedRealtime())
+        // The controller remains the one lookup engine; it rechecks exact-key
+        // exclusion, third-party consent, source authorization and retry TTL.
+        if (networkChanged || retryDue) active.refresh()
     }
     val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
     val result = remember(sources, query, mediaTitles) {
