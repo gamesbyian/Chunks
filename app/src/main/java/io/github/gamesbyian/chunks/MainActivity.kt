@@ -1843,7 +1843,7 @@ internal fun isLoginRefused(failure: Exception): Boolean =
         (failure.status == 401 || failure.status == 403)
 
 @Composable
-private fun ConnectionScreen(
+internal fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
     rpcPath: String = "", onRpcPath: (String) -> Unit = {},
     diagnostics: ConnectionDiagnostics = ConnectionDiagnostics(),
