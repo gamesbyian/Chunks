@@ -387,8 +387,15 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
         rule.onNodeWithText("All environments…").performClick()
         rule.onNodeWithText("All environments").assertExists()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open server list"))
-        rule.onNodeWithText("Open server list").performClick()
+        // The scoped catalog routes to the authenticated owner's controls
+        // through a full Details screen, without changing connection identity.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Only connected server"))
+        rule.onNodeWithText("Only connected server").performClick()
+        val serverRow = androidx.compose.ui.test.hasContentDescription(
+            "Details for A deliberately very long test filename", substring = true)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(serverRow)
+        rule.onNode(serverRow).performClick()
+        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
         rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
         // The destination chooser requires an explicit choice, keeping the
