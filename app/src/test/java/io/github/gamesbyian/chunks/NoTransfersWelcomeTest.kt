@@ -65,6 +65,9 @@ class NoTransfersWelcomeTest {
         org.junit.Assert.assertTrue(show(running = true, confirmed = true))
         org.junit.Assert.assertFalse(show(noResume = null))
         org.junit.Assert.assertFalse(show(noResume = false))
+        // Saved local jobs cannot be erased by an early, incomplete empty
+        // native poll while a restore is still pending.
+        org.junit.Assert.assertFalse(show(noResume = false, running = true, confirmed = true))
         // A stopped engine may still have an observed nonempty frame.
         // Durable absence alone cannot erase that frame into Welcome.
         org.junit.Assert.assertFalse(show(noResume = true, running = false, count = 1))

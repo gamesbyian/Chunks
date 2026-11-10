@@ -73,8 +73,11 @@ internal fun showCanonicalFirstRunWelcome(
 ): Boolean {
     // Even after the engine exits, a previously observed nonempty frame must
     // never be covered by first-install chrome during a restore transition.
+    // A current empty engine poll cannot erase known durable resume work.
+    // Unknown disk state may be bypassed only by a confirmed live inventory.
     val genuinelyEmpty = nativeCount == 0 && !nativeStale &&
-        if (nativeRunning) nativeConfirmed else noPersistedJobs == true
+        noPersistedJobs != false &&
+        (if (nativeRunning) nativeConfirmed else noPersistedJobs == true)
     return genuinelyEmpty && !hasRemoteProfile && !restrictedView &&
         privacyAllowed && !pendingExternalSource
 }
