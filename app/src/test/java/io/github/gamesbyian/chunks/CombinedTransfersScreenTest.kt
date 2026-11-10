@@ -237,10 +237,18 @@ class CombinedTransfersScreenTest {
                     onAddToPhone = { addReviews++ }, onBack = {})
             } }
         }
-        revealText("Review a new torrent on this device")
-        rule.onNodeWithText("No verified transfer list is available yet.", substring = true)
-            .assertExists()
-        rule.onNodeWithText("Review a new torrent on this device").performClick()
+        // A deliberately narrowed empty view is neither fresh-install proof
+        // nor permission to infer a current native inventory. Recover scope
+        // explicitly, then use the same Welcome/Add callback as all entries.
+        revealText("No transfers are visible with these view choices.")
+        rule.onNodeWithText("No transfers are visible with these view choices.",
+            substring = true).assertExists()
+        revealText("Show all transfers")
+        rule.onNodeWithText("Show all transfers").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Add a torrent").performClick()
         assertEquals(1, addReviews)
         assertEquals(0, phoneControls)
         assertNull("Review navigation does not start the native engine", LocalEngineHolder.current())
