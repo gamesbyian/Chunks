@@ -193,6 +193,20 @@ class MediaEnrichmentService(
         }
         val found = confident
         if (found != null) {
+            // A later provider returning only one record cannot erase an earlier
+            // provider's *known* same-title ambiguity. If two strong, eligible
+            // alternatives remained unresolved, an automatic poster would risk
+            // assigning the wrong series/release. Keep the later result as an
+            // explicit candidate rather than silently elevating it to verified.
+            val competingWorks = review.filter { it.eligible &&
+                it.titleSimilarity >= MediaCandidateMatcher.CONFIDENT_TITLE_SIMILARITY }
+                .map { it.candidate }.distinctBy { it.ref }
+            if (competingWorks.size >= 2) {
+                return MediaLookupResult(MediaLookupStatus.NEEDS_REVIEW, null,
+                    (listOf(found) + competingWorks).distinctBy { it.ref }.take(12),
+                    attempts = attempts,
+                    message = "Several works share this title across providers; choose the correct one.")
+            }
             return MediaLookupResult(MediaLookupStatus.MATCHED, found,
                 alternates = review.map { it.candidate }.filter { it.ref != found.ref }.take(12),
                 attempts = attempts, message = "Matched with ${providerName(found.ref.provider)}")
