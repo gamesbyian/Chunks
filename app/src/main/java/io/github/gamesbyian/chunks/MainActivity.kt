@@ -1437,15 +1437,25 @@ internal fun ChunksApp(
                         val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
                         if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
                         if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) break
-                        var changed = false
+                        // Only a positively Idle step is known to have sent
+                        // no remote priority write. It must not consume the
+                        // readback latch and block every later lifecycle action.
+                        var confirmedNoWrite = false
                         try {
                             val step = try { stepRemoteFinishInOrder(connectedRemote, store, transfer.hash) }
                                 catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
                                 catch (_: Exception) { null }
-                            changed = step !is FinishInOrderRunner.Step.Idle
+                            confirmedNoWrite = step is FinishInOrderRunner.Step.Idle
                         } finally {
-                            mutationGate.settled()
-                            if (changed && server === connectedRemote) { stale = true; refresh() }
+                            if (confirmedNoWrite) {
+                                mutationGate.abandonKnownNoWrite()
+                            } else {
+                                // Null/fault/cancellation may follow an applied
+                                // priority write: retain the gate until a fresh
+                                // read, without blindly dispatching another RPC.
+                                mutationGate.settled()
+                                if (server === connectedRemote) { stale = true; refresh() }
+                            }
                         }
                     }
                 }
