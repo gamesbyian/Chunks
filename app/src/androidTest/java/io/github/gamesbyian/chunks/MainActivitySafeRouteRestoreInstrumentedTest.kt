@@ -46,10 +46,10 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.onNodeWithText("All environments").assertExists()
         // A local Add shell can survive rotation, never its source or approval.
         rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("Add a download on this device").assertExists()
+        rule.onNodeWithText("Torrent source").assertExists()
         rule.activityRule.scenario.recreate()
-        rule.onNodeWithText("Add a download on this device").assertExists()
-        rule.onNodeWithText("Or paste a magnet or torrent link").assertExists()
+        rule.onNodeWithText("Torrent source").assertExists()
+        rule.onNodeWithText("Magnet or HTTP(S) torrent URL").assertExists()
         rule.onNodeWithText("Start selected").assertDoesNotExist()
         org.junit.Assert.assertEquals("Navigation cannot create torrent jobs", before,
             LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())

@@ -398,18 +398,15 @@ class ChunksMainActivityAtlasTest {
         rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
         rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
-        // The destination chooser requires an explicit choice, keeping the
-        // phone and authenticated server's Add reviews distinct.
+        // The source-first Add route is shared across footer entries.
+        // Changing target is a draft edit, never an RPC mutation.
         rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("On this device").performClick()
         assertPhoneAddEntryIsReachable()
         rule.onNodeWithText("Options").performClick()
         rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("On this device").performClick()
         assertPhoneAddEntryIsReachable()
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("On the connected server").performClick()
-        rule.onNodeWithText("Add a download to this server").assertExists()
+        rule.onNodeWithText("On ", substring = true).performClick()
+        rule.onNodeWithText("Add a transfer").assertExists()
         rule.onNodeWithText("Magnet or torrent link").assertExists()
         // Exercise the production Add screen, including the parent-owned draft.
         // Reset must invalidate the custom-folder review before a default-folder
@@ -420,21 +417,12 @@ class ChunksMainActivityAtlasTest {
             "magnet:?xt=urn:btih:" + "ab".repeat(20))
         replaceTextInLazyField("Custom server folder (optional)", "/srv/one-off")
         dismissSearchKeyboard()
-        // The Add list is lazy and its editable folder field recomposes after
-        // keyboard dismissal. Demand an *enabled, displayed* Review target
-        // before dispatching its single read-only click. Do not retry an
-        // action after it may have run; a timeout is a genuine red test.
-        rule.waitUntil(15_000) {
-            runCatching {
-                addList.performScrollToNode(hasText("Review Add"))
-                rule.onNodeWithText("Review Add").assertIsEnabled().assertIsDisplayed()
-            }.isSuccess
-        }
-        rule.onNodeWithText("Review Add").performClick()
+        // Inline source/Place proof is read-only. Never click Add transfer
+        // in a synthetic inventory-only fixture.
         addList.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
         rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()
-        addList.performScrollToNode(hasText("Confirm: add then start"))
-        rule.onNodeWithText("Confirm: add then start").assertExists()
+        addList.performScrollToNode(hasText("Add transfer"))
+        rule.onNodeWithText("Add transfer").assertExists()
 
         val reset = androidx.compose.ui.test.hasContentDescription(
             "Use rTorrent default save folder for this Add")
@@ -446,21 +434,14 @@ class ChunksMainActivityAtlasTest {
         }
         addList.performScrollToNode(reset)
         rule.onNode(reset).performClick()
-        // Scrolling to Review Add proves the old confirmation was invalidated;
-        // merely finding no offscreen confirmation node would be insufficient.
-        rule.waitUntil(15_000) {
-            runCatching {
-                addList.performScrollToNode(hasText("Review Add"))
-                rule.onNodeWithText("Review Add").assertIsEnabled().assertIsDisplayed()
-            }.isSuccess
-        }
-        rule.onNodeWithText("Review Add").performClick()
+        // Place changes replace the inline effective destination without
+        // authorizing Add or making a second Review screen.
         addList.performScrollToNode(hasText(
             "Destination: /downloads (server default; no directory override)"))
         rule.onNodeWithText("Destination: /downloads (server default; no directory override)")
             .assertExists()
-        addList.performScrollToNode(hasText("Cancel, don't add"))
-        rule.onNodeWithText("Cancel, don't add").performClick()
+        addList.performScrollToNode(hasText("Add transfer"))
+        rule.onNodeWithText("Add transfer").assertExists()
         assertTrue("Editing and re-reviewing the destination must send no mutation",
             receivedMethods.toList().all {
                 it in setOf("system.client_version", "d.multicall2", "f.multicall", "directory.default")

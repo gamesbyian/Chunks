@@ -154,7 +154,13 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                 rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithText("Torrent details").assertExists()
+            rule.waitUntil(20_000) {
+                runCatching {
+                    rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
+                        .performScrollToNode(androidx.compose.ui.test.hasText("Torrent details"))
+                    rule.onNodeWithText("Torrent details").assertExists()
+                }.isSuccess
+            }
             org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
         }
@@ -212,9 +218,17 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             }
             stage = "replacement-intent"
             opened.onActivity { it.startActivity(sourceIntent(refused)) }
+            stage = "replace-offer"
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("Use new source").fetchSemanticsNodes().isNotEmpty()
+            }
+            // An occupied draft requires explicit replacement before touching
+            // the Android provider. The malformed replacement cannot erase
+            // previously validated bytes, nor submit a transfer.
+            rule.onNodeWithText("Use new source").performClick()
             stage = "refusal"
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("Your previous .torrent remains selected.", substring = true)
+                rule.onAllNodesWithText("The shared .torrent could not be verified", substring = true)
                     .fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText(name, substring = true).assertExists()
