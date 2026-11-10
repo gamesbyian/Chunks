@@ -121,6 +121,14 @@ sealed class RemoteHashRecheckOutcome {
     data class Uncertain(val hash: String) : RemoteHashRecheckOutcome()
 }
 
+/** Read-only recheck reconciliation: NotChecking NEVER proves completion. */
+sealed class RemoteHashRecheckObservation {
+    data object Checking : RemoteHashRecheckObservation()
+    data object NotChecking : RemoteHashRecheckObservation()
+    data object Changed : RemoteHashRecheckObservation()
+    data object Unavailable : RemoteHashRecheckObservation()
+}
+
 
 /**
  * rTorrent XML-RPC adapter with strictly named, hash-scoped operations.\n * No automatic retries after a mutation and no raw arbitrary command surface.
@@ -1443,6 +1451,46 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * own uncertainty latch. An accepted RPC is NOT proof that the check
      * completed or that any piece passed its hash. No retry on missing ACK.
      */
+    /**
+     * One strictly read-only status reconciliation after a queued or uncertain
+     * Recheck. A finished-fast hash pass and a never-scheduled hash pass both
+     * report NotChecking; neither licenses a new write without fresh review.
+     */
+    suspend fun observeHashRecheck(
+        hash: String, expectedName: String, expectedDirectory: String
+    ): RemoteHashRecheckObservation {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash) &&
+            expectedName.isNotBlank() && expectedName.length <= 2048 &&
+            expectedDirectory.startsWith("/") && expectedDirectory.length <= 4096) {
+            "Invalid exact Recheck observation target"
+        }
+        return try {
+            val first = call("d.hash", listOf(hash)) as? String
+                ?: return RemoteHashRecheckObservation.Unavailable
+            if (!first.equals(hash, ignoreCase = true))
+                return RemoteHashRecheckObservation.Changed
+            val name = call("d.name", listOf(hash)) as? String
+                ?: return RemoteHashRecheckObservation.Unavailable
+            val directory = call("d.directory", listOf(hash)) as? String
+                ?: return RemoteHashRecheckObservation.Unavailable
+            if (name != expectedName || directory != expectedDirectory)
+                return RemoteHashRecheckObservation.Changed
+            val checking = call("d.is_hash_checking", listOf(hash)) as? Long
+                ?: return RemoteHashRecheckObservation.Unavailable
+            if (checking !in 0L..1L) return RemoteHashRecheckObservation.Unavailable
+            val last = call("d.hash", listOf(hash)) as? String
+                ?: return RemoteHashRecheckObservation.Unavailable
+            if (!last.equals(hash, ignoreCase = true))
+                RemoteHashRecheckObservation.Changed
+            else if (checking == 1L) RemoteHashRecheckObservation.Checking
+            else RemoteHashRecheckObservation.NotChecking
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) {
+            RemoteHashRecheckObservation.Unavailable
+        }
+    }
+
     suspend fun requestHashRecheck(
         hash: String, expectedName: String, expectedDirectory: String
     ): RemoteHashRecheckOutcome {
@@ -1490,19 +1538,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         } catch (_: Exception) {
             return RemoteHashRecheckOutcome.Uncertain(hash)
         }
-        return try {
-            currentIdentity()
-            val inProgress = exactFlag(call("d.is_hash_checking", listOf(hash)))
-            check((call("d.hash", listOf(hash)) as? String)
-                ?.equals(hash, ignoreCase = true) == true) {
-                "Torrent vanished after Recheck request"
-            }
-            if (inProgress) RemoteHashRecheckOutcome.HashingObserved(hash)
-            else RemoteHashRecheckOutcome.SubmittedUnobserved(hash)
-        } catch (cancel: kotlinx.coroutines.CancellationException) {
-            throw cancel
-        } catch (_: Exception) {
-            RemoteHashRecheckOutcome.Uncertain(hash)
+        return when (observeHashRecheck(hash, expectedName, expectedDirectory)) {
+            RemoteHashRecheckObservation.Checking -> RemoteHashRecheckOutcome.HashingObserved(hash)
+            RemoteHashRecheckObservation.NotChecking ->
+                RemoteHashRecheckOutcome.SubmittedUnobserved(hash)
+            RemoteHashRecheckObservation.Changed, RemoteHashRecheckObservation.Unavailable ->
+                RemoteHashRecheckOutcome.Uncertain(hash)
         }
     }
 
