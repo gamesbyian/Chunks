@@ -1,0 +1,67 @@
+name: One-shot installed media privacy epoch proof
+on:
+  push:
+    branches:
+      - "probe/installed-media-privacy-epoch-20261110"
+    paths:
+      - ".github/workflows/probe-installed-media-privacy-epoch-20261110.yml"
+permissions:
+  contents: read
+concurrency:
+  group: chunks-installed-media-privacy-epoch-20261110
+  cancel-in-progress: true
+jobs:
+  installed-media-privacy-epoch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Record exact source/tree
+        run: |
+          test "$GITHUB_REF_NAME" = "probe/installed-media-privacy-epoch-20261110"
+          echo "CHUNKS_PRIVACY_EPOCH_SOURCE=$GITHUB_SHA"
+          echo "CHUNKS_PRIVACY_EPOCH_TREE=$(git rev-parse HEAD^{tree})"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build production APK and Android instrumentation for this source
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Prepare disposable emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Android native onStop, locked callback refusal and new foreground authorization
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/probe_installed_media_privacy_epoch.sh
+      - name: Retain bounded installed receipt
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-one-shot-media-privacy-epoch
+          path: |
+            ${{ runner.temp }}/chunks-media-privacy-epoch/*.xml
+            ${{ runner.temp }}/chunks-media-privacy-epoch/installed-apk-receipt.txt
+            ${{ runner.temp }}/chunks-media-privacy-epoch/safe-run-receipt.txt
+          retention-days: 14
+          if-no-files-found: warn
