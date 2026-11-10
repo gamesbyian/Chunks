@@ -3,6 +3,7 @@ package io.github.gamesbyian.chunks
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.onAllNodes
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -99,7 +100,7 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             // The Welcome shortcut and persistent footer both say Connections:
             // only the footer's exact accessibility identifier is the root route.
             waitFor("persistent Connections destination") {
-                rule.onAllNodesWithContentDescription("Connections").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodes(hasContentDescription("Connections")).fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithContentDescription("Connections").performClick()
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
