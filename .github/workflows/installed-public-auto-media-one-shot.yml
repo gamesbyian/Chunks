@@ -1,0 +1,79 @@
+name: Chunks one-shot installed public TVmaze artwork
+
+# Scope is intentionally the exact owner-authorized QA branch; do not turn
+# third-party HTTP into a default pull-request job. No user keys or servers.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/installed-public-auto-media-one-shot.yml"
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-one-shot-public-media-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  live-public-tvmaze-offline-restart:
+    if: github.event.pull_request.head.repo.full_name == 'gamesbyian/Chunks' && github.head_ref == 'qa/media-public-installed-20261110'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      CHUNKS_PUBLIC_MEDIA_AUTHORIZED: one-shot-20261110
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify one-shot script and safe installed-byte test contract before toolchain allocation
+        run: |
+          bash -n tools/installed_public_auto_media.sh tools/verify_installed_apk_bytes.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_apk_identity.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_instrumentation_stream.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android compile toolchain
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build immutable debug APK and instrumentation APK from this exact source
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Free unrelated runner toolchains
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+      - name: Require hardware-accelerated disposable emulator
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed public provider request, real CDN JPEG, cold offline restore and canonical pixels
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/installed_public_auto_media.sh
+      - name: Retain public-only proof (no APKs, URLs, trackers, raw instrumentation or tokens)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-one-shot-real-auto-media
+          path: |
+            ${{ runner.temp }}/chunks-public-auto-media/source.txt
+            ${{ runner.temp }}/chunks-public-auto-media/package.txt
+            ${{ runner.temp }}/chunks-public-auto-media/installed-sha256.txt
+            ${{ runner.temp }}/chunks-public-auto-media/public-witness.txt
+            ${{ runner.temp }}/chunks-public-auto-media/*.xml
+            ${{ runner.temp }}/chunks-public-auto-media/*-digest.json
+            ${{ runner.temp }}/chunks-public-auto-media/*.png
+          retention-days: 14
+          if-no-files-found: warn
