@@ -540,6 +540,10 @@ internal fun LocalEngineScreen(
     fun selectTextSource(value: String) {
         cancelSourceRead()
         initialTorrentUri?.let(onTorrentConsumed)
+        // A complete, explicitly entered magnet outranks a previously
+        // reviewed document. For a typed URL, keep the validated document
+        // until a new fetched candidate independently validates.
+        if (MagnetDraftCheck.inspect(value) is MagnetDraftCheck.Valid) pending = null
         magnet = value
     }
     // A kept draft reopens its form on return, rather than hiding it.
