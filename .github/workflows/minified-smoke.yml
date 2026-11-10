@@ -60,7 +60,7 @@ jobs:
           duration=$((SECONDS - start))
           echo "CHUNKS_R8_BUILD_SECONDS=$duration"
           if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-            printf 'R8 app + test APK build: %ss (measured runner time)\\n' "$duration" >> "$GITHUB_STEP_SUMMARY"
+            printf 'R8 app + test APK build: %ss (measured runner time)\n' "$duration" >> "$GITHUB_STEP_SUMMARY"
           fi
           ls -l app/build/outputs/apk/qaMinified/*.apk
           echo "qaMinified APK bytes: $(stat -c %s app/build/outputs/apk/qaMinified/*.apk)" >> "$GITHUB_STEP_SUMMARY"
