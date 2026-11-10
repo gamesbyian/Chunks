@@ -296,4 +296,23 @@ class AuthenticatedTransfersFooterTest {
         rule.onNodeWithText("+ Add").assertIsNotSelected()
     }
 
+    @Test fun sectionMappingPreservesActualSelectedRootIncludingNestedDetails() {
+        assertEquals(FooterDestination.TRANSFERS,
+            footerDestinationForRoute("COMBINED"))
+        assertEquals(FooterDestination.TRANSFERS,
+            footerDestinationForRoute("LOCAL"))
+        assertEquals(FooterDestination.TRANSFERS,
+            footerDestinationForRoute("TRANSFERS"))
+        assertEquals(FooterDestination.CONNECTIONS,
+            footerDestinationForRoute("SERVER"))
+        assertEquals(FooterDestination.ADD,
+            footerDestinationForRoute("ADD_CHOOSE"))
+        assertEquals(FooterDestination.ADD,
+            footerDestinationForRoute("LOCAL_ADD"))
+        assertEquals(FooterDestination.OPTIONS,
+            footerDestinationForRoute("OPTIONS"))
+        assertEquals(FooterDestination.CONNECTIONS,
+            footerDestinationForRoute("SEEDING", "SERVER"))
+    }
+
 }
