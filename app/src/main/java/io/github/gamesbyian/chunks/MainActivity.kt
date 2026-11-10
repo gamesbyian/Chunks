@@ -809,6 +809,11 @@ internal fun ChunksApp(
                         // or Section.SERVER would still display its old server
                         // screen while the new credentials sat in text fields.
                         savedAddReconnect.requestAuthentication(requestedScope)
+                        // The one-shot cold-start reconnect may still be
+                        // eligible after a manual login. This explicit saved
+                        // profile choice must not silently reconnect the
+                        // previously remembered (possibly different) account.
+                        startupReconnectAttempted = true
                         detachAuthenticatedRemoteSession()
                         endpoint = profile.credentials.endpoint
                         rpcPath = ""
@@ -1102,6 +1107,9 @@ internal fun ChunksApp(
                 error = error, loading = loading,
                 diagnostics = connectDiagnostics,
                 onCancelConnect = {
+                    // A cancelled explicit Add-target login cannot route a
+                    // future unrelated successful Connect back into Add.
+                    savedAddReconnect.abandon()
                     // Discovery is read-only, so abandoning it changes nothing.
                     connectJob?.cancel()
                     remoteFence.invalidate()
