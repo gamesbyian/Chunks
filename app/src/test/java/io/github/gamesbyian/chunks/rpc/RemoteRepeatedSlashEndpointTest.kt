@@ -54,6 +54,14 @@ class RemoteRepeatedSlashEndpointTest {
             } catch (_: IllegalArgumentException) { }
             assertEquals("Unsafe mount reached credential-bearing probe", 0, attempts)
         }
+        // The advanced-path field must not strip a pasted duplicate-slash
+        // host URL and then appear to validate a different canonical target.
+        for (host in listOf("https://box.test//", "https://box.test///")) {
+            try {
+                RemoteSmartConnect.withExactPath(host, "/RPC2")
+                fail("Advanced path normalized an ambiguous host into /RPC2")
+            } catch (_: IllegalArgumentException) { }
+        }
     }
 
     @Test fun explicitNumberedAndEncodedTenantRoutesRemainStable() {
