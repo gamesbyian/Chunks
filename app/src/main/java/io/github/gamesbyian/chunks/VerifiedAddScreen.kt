@@ -104,6 +104,9 @@ fun VerifiedAddScreen(
     /** Enables deterministic delayed-preference tests without touching external Add or RPC. */
     clipboardEnabledReader: suspend (android.content.Context) -> Boolean = { context ->
         withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
+    },
+    clipboardTextReader: (android.content.Context) -> String? = { context ->
+        ClipboardMagnetPrefill.readText(context)
     }
 ) {
     val context = LocalContext.current
@@ -299,7 +302,7 @@ fun VerifiedAddScreen(
         if (!on || latestClipboardBlocked.value) return@LaunchedEffect
         val filled = ClipboardMagnetPrefill.decide(true, latestClipboardSource.value,
             otherSourcePresent = latestClipboardBlocked.value,
-            clipText = ClipboardMagnetPrefill.readText(context))
+            clipText = clipboardTextReader(context))
         if (filled != null && latestClipboardSource.value.isBlank() &&
             !latestClipboardBlocked.value) {
             onMagnet(filled)
