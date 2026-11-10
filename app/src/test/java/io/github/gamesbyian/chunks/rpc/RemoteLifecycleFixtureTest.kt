@@ -120,7 +120,7 @@ class RemoteLifecycleFixtureTest {
                 val method = Regex("<methodName>([^<]+)</methodName>")
                     .find(request)?.groupValues?.get(1).orEmpty()
                 calls.add(method)
-                val reply = if (method == "d.hash") {
+                val reply = (if (method == "d.hash") {
                     "<methodResponse><params><param><value><string>$hash</string>" +
                         "</value></param></params></methodResponse>"
                 } else if (method == faultMethod) {
@@ -131,7 +131,7 @@ class RemoteLifecycleFixtureTest {
                 } else {
                     "<methodResponse><params><param><value><int>0</int></value>" +
                         "</param></params></methodResponse>"
-                }.toByteArray(Charsets.UTF_8)
+                }).toByteArray(Charsets.UTF_8)
                 exchange.sendResponseHeaders(200, reply.size.toLong())
                 exchange.responseBody.use { it.write(reply) }
             }
