@@ -55,6 +55,7 @@ class RemoteBinaryStoppedAddTest {
                     loaded = true
                     integer(0)
                 }
+                "d.hash" -> str(expected)
                 "d.directory" -> str(destination)
                 "d.is_multi_file" -> integer(0)
                 "d.state", "d.is_active" -> integer(0)
@@ -73,7 +74,8 @@ class RemoteBinaryStoppedAddTest {
                 remote.loadStoppedTorrentBytes(bytes, destination))
             assertArrayEquals(bytes, returnedBytes)
             assertEquals(listOf("d.multicall2", "d.name", "load.raw_verbose", "d.multicall2",
-                "d.directory", "d.is_multi_file", "d.state", "d.is_active"), methods)
+                "d.hash", "d.directory", "d.is_multi_file", "d.state", "d.is_active",
+                "d.hash"), methods)
             assertEquals(RemoteAddOutcome.AlreadyPresent(expected),
                 remote.loadStoppedTorrentBytes(bytes, destination))
             assertEquals(1, methods.count { it == "load.raw_verbose" })
@@ -113,6 +115,7 @@ class RemoteBinaryStoppedAddTest {
                     loaded = true
                     integer(0)
                 }
+                "d.hash" -> str(expected)
                 "d.directory" -> str(destination)
                 "d.is_multi_file" -> integer(0)
                 "d.state", "d.is_active" -> integer(0)
@@ -131,7 +134,8 @@ class RemoteBinaryStoppedAddTest {
                 remote.loadStoppedTorrentBytes(bytes, destination, useServerDefault = true))
             assertArrayEquals(bytes, inspectedBinary)
             assertEquals(listOf("d.multicall2", "d.name", "directory.default", "load.raw_verbose",
-                "d.multicall2", "d.directory", "d.is_multi_file", "d.state", "d.is_active"), commands)
+                "d.multicall2", "d.hash", "d.directory", "d.is_multi_file", "d.state",
+                "d.is_active", "d.hash"), commands)
         } finally { server.stop(0) }
     }
 
