@@ -108,7 +108,7 @@ class InstalledRealMediaInstrumentedTest {
     private fun openRow(index: Int) {
         type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
         click("More details")
-        click(if (state(index).match == null) "Identify…" else "Change match or artwork…")
+        click("Change identification or artwork…")
         rule.waitUntil(10_000) { visible("Identify this transfer") }
     }
     private fun closeRow() {
