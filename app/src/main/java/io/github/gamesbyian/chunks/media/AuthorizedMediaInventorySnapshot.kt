@@ -47,7 +47,19 @@ class AuthorizedMediaInventorySnapshot private constructor(
                 if (source.observedAtEpochMillis == null) continue
                 val scope = ownerScopes[source.environment]?.takeIf { it.isNotBlank() } ?: continue
                 for (job in source.transfers) {
+                    // The source's authenticated account and each row must agree
+                    // about environment identity. Otherwise a malformed or
+                    // mixed-account inventory can borrow this source's scope to
+                    // authorize a completely different environment/hash.
+                    // Duplicate keys are ambiguous too: last-write-wins would
+                    // silently replace the frozen title/authorization witness.
+                    // Reject the entire projection instead of sending any
+                    // third-party lookup for an uncertain account boundary.
+                    if (job.key.environment != source.environment)
+                        return AuthorizedMediaInventorySnapshot(emptyList(), emptyMap())
                     val key = MediaTransferKey.of(job.key)
+                    if (key in found)
+                        return AuthorizedMediaInventorySnapshot(emptyList(), emptyMap())
                     found[key] = Witness(scope, job.originalName)
                     names[key] = job.originalName
                 }
