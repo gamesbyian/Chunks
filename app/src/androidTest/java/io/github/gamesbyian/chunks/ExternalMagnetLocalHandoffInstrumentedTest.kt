@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -39,12 +40,12 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             // but it is no longer authority to initiate ANOTHER review.
             scenario.recreate()
             rule.waitUntil(15_000) {
-                rule.onAllNodesWithText("Add on this device")
+                rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            // Local navigation may legitimately restore the empty Add form;
-            // the consumed magnet must not be injected into it again.
-            rule.onNodeWithText(magnet).assertDoesNotExist()
+            // The private Add draft survives configuration recreation in ViewModel RAM;
+            // Android's old Intent is not processed again and no Add is sent.
+            rule.onNodeWithText(magnet).assertExists()
         }
     }
 
@@ -57,12 +58,12 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         }
         ActivityScenario.launch<MainActivity>(intent).use {
             rule.waitUntil(15_000) {
-                rule.onAllNodesWithText("Add on this device")
+                rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
             // Reaching the native Add form is required, but merely opening
             // this external link must not execute any native Add or Start.
-            rule.onNodeWithText("Start downloading after Add (recommended)").assertExists()
+            rule.onNodeWithText("Start when added").assertExists()
             rule.onNodeWithText(magnet).assertExists()
             assertTrue(rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty())
         }
@@ -135,25 +136,34 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
         ActivityScenario.launch<MainActivity>(intent).use { scenario ->
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Torrent details").fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText("test.txt").assertExists()
             rule.onNodeWithText("Options").performClick()
             rule.onNodeWithText("+ Add").performClick()
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("Review download").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Torrent details").fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText("test.txt").assertExists()
             org.junit.Assert.assertEquals("Browsing cannot authorize a phone Add",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
-            // Source bytes are process-only. Activity recreation must not replay the
-            // consumed Android Share Intent or serialize potentially private metainfo.
+            // Reviewed source bytes survive configuration changes in ViewModel RAM.
+            // The old Android Share Intent must never replay, and no private
+            // metainfo enters persisted instance state.
             scenario.recreate()
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("Add on this device")
+                rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithText("Review download").assertDoesNotExist()
+            // Phone Add uses a normal verticalScroll rather than a lazy list.
+            // A require-scroll-to-index probe can never find its details item;
+            // retain the actual validated filename even while storage
+            // availability rechecks on Activity recreation.
+            rule.waitUntil(30_000) {
+                rule.onAllNodesWithText("test.txt", substring = true)
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("test.txt", substring = true).assertExists()
             org.junit.Assert.assertEquals("Recreation must not Add from old Intent",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
         }
@@ -177,7 +187,10 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         fun sourceIntent(uri: Uri) = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             setDataAndType(uri, "application/x-bittorrent")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            // Deliver the second document to the already-running Add draft,
+            // even if another Android task has briefly gained the foreground.
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         // Establish the real engine inventory independently before the UI's
         // normal read-only restore/observation can run. Never confirm an Add.
@@ -211,9 +224,17 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             }
             stage = "replacement-intent"
             opened.onActivity { it.startActivity(sourceIntent(refused)) }
+            stage = "replace-offer"
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("Use new source").fetchSemanticsNodes().isNotEmpty()
+            }
+            // An occupied draft requires explicit replacement before touching
+            // the Android provider. The malformed replacement cannot erase
+            // previously validated bytes, nor submit a transfer.
+            rule.onNodeWithText("Use new source").performClick()
             stage = "refusal"
             rule.waitUntil(20_000) {
-                rule.onAllNodesWithText("Your previous .torrent remains selected.", substring = true)
+                rule.onAllNodesWithText("The shared .torrent could not be verified", substring = true)
                     .fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText(name, substring = true).assertExists()

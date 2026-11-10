@@ -90,7 +90,11 @@ class OptionsSettingSearchTest {
             .performTextInput("http://127.0.0.1:${listening.localPort}/RPC2")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
         rule.onNodeWithText("Connect to rTorrent").performClick()
-        rule.waitUntil(20_000) { rule.onAllNodesWithText("1 transfer", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("Continue to Connections").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Continue to Connections").performClick()
+        // Options is app-wide and independent from a legacy server-only list.
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
     }

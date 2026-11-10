@@ -37,7 +37,7 @@ class ExternalSourceReplacementTest {
 
     @After fun cleanup() { policy(TransferLockMode.NEVER) }
 
-    @Test fun aNewDocumentCannotReviveAnUnconsumedMagnetBehindThePhoneLock() {
+    @Test fun invalidNewDocumentDoesNotSilentlyOverwriteLockedMagnetDraft() {
         val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=Superseded"
         val incomingMagnet = mutableStateOf<String?>(null)
         val incomingDocument = mutableStateOf<Uri?>(null)
@@ -66,11 +66,13 @@ class ExternalSourceReplacementTest {
         rule.onNodeWithText("Connections").performClick()
         rule.runOnIdle { policy(TransferLockMode.NEVER) }
         rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("Use new source").performClick()
         rule.waitUntil(15_000) {
-            rule.onAllNodes(hasText("The shared file was unavailable", substring = true))
+            rule.onAllNodes(hasText("The shared .torrent could not be verified", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNode(hasSetTextAction() and hasText(magnet)).assertDoesNotExist()
-        rule.onNodeWithText("Magnet for: Superseded").assertDoesNotExist()
+        // A refused new document has no authority to erase a valid previous draft.
+        rule.onNode(hasSetTextAction() and hasText(magnet)).assertExists()
+        rule.onNodeWithText("Magnet for: Superseded").assertExists()
     }
 }

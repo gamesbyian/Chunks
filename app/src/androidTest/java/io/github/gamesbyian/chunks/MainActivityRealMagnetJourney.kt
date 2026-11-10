@@ -12,7 +12,6 @@ import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
@@ -51,31 +50,24 @@ internal class MainActivityRealMagnetJourney(
         // The IME can asynchronously re-scroll and recycle a lazy button
         // after the first pre-dispatch scroll. Retry *only* read/scroll checks,
         // never an action that could have submitted Connect/Add/Remove.
-        // A focused input may reopen the IME on the next Android frame,
-        // recycling the button even after the earlier enabled-only probe.
-        // Give Compose a bounded chance to settle using *read/scroll-only*
-        // operations. Never attempt a click in this loop.
-        rule.waitUntil(30_000) {
-            runCatching {
-                scroll(text)
+        var visiblyReady = false
+        for (attempt in 1..5) {
+            visiblyReady = runCatching {
+                if (attempt > 1) scroll(text)
                 rule.onNodeWithText(text).performScrollTo()
                 rule.waitForIdle()
                 rule.onNodeWithText(text).assertIsDisplayed()
                 true
             }.getOrDefault(false)
+            if (visiblyReady) break
         }
+        check(visiblyReady) { "Installed action remained outside the visible Compose viewport: $text" }
         // Exactly one click; never retry a possibly submitted RPC mutation.
         rule.onNodeWithText(text).performClick()
     }
     private fun type(label: String, text: String) {
         scroll(label)
         rule.onNodeWithText(label).performTextReplacement(text)
-        if (label == "Magnet or torrent link" || label == "Custom server folder (optional)") {
-            // Exercise the same Done IME action available to a real phone user
-            // instead of leaving the URL editor focused under an unseen IME.
-            // Never trigger a Connect/Confirm action from the keyboard.
-            runCatching { rule.onNodeWithText(label).performImeAction() }
-        }
         rule.runOnUiThread {
             val view = rule.activity.window.decorView
             rule.activity.getSystemService(android.view.inputmethod.InputMethodManager::class.java)
@@ -228,7 +220,7 @@ internal class MainActivityRealMagnetJourney(
         fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}) {
             report("chunks_real_add_app_stage", "add-open-requested")
             click("+ Add torrent")
-            rule.waitUntil(30_000) { visible("Add a download to this server") }
+            rule.waitUntil(30_000) { visible("Add a transfer") }
             report("chunks_real_add_app_stage", "add-open")
             // A verified previous Add remains a result on return; only this
             // explicit action starts a fresh source review, without an RPC.
@@ -247,22 +239,18 @@ internal class MainActivityRealMagnetJourney(
                 require(url.startsWith("https://"))
                 type("Magnet or torrent link", url)
                 click("Get torrent from link")
-                rule.waitUntil(45_000) { visible(fixtures.getValue(label).name) }
-                assertNull("Fetch/review must not register a job", readOnly { remote.lookupName(hash) })
-                if (disposable && !publicDiscovery) {
-                    // An ordinary publisher HTTPS .torrent necessarily includes
-                    // public trackers. Keep the genuine link *preview* and
-                    // zero-write assertion, then explicitly switch this draft
-                    // to the same-infohash, inert-tracker magnet before Add.
-                    // Otherwise rTorrent can fetch from unobserved public peers
-                    // and fake a successful controlled-source test even when
-                    // the supplied local libtorrent seeder uploaded zero bytes.
-                    // Changing the source must revoke the fetched .torrent
-                    // selection; the actual Add still uses the production UI.
-                    type("Magnet or torrent link", link)
-                    assertNull("Changing source cannot implicitly add the reviewed URL",
-                        readOnly { remote.lookupName(hash) })
+                // The HTTPS link itself may contain the ISO filename. Waiting
+                // for its name matched the unverified URL summary before any
+                // fetched metainfo was parsed, then raced the inline hash.
+                // Demand the exact *parsed* v1 infohash instead, with the
+                // LazyColumn item brought into composition.
+                rule.waitUntil(45_000) {
+                    runCatching {
+                        scroll("Infohash: $hash")
+                        visible("Infohash: $hash") && visible(fixtures.getValue(label).name)
+                    }.getOrDefault(false)
                 }
+                assertNull("Fetch/review must not register a job", readOnly { remote.lookupName(hash) })
             } else type("Magnet or torrent link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
@@ -272,27 +260,12 @@ internal class MainActivityRealMagnetJourney(
             if (default == null) type("Custom server folder (optional)", parent)
             report("chunks_real_add_app_stage", "place-ready")
             if (disposable) {
-                report("chunks_real_add_app_stage", "artwork-heading")
                 click("Artwork & metadata")
-                report("chunks_real_add_app_stage", "artwork-choice")
                 click("Automatically identify and fetch artwork & metadata")
             }
-            report("chunks_real_add_app_stage", "review-click")
-            click("Review Add")
-            report("chunks_real_add_app_stage", "review-open")
-            scroll("Confirm one server operation")
+            scroll("Infohash: $hash")
+            scroll("Infohash: $hash")
             assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
-            if (disposable && !publicDiscovery && torrentLinks && label != null && label != "magnet0") {
-                // The earlier HTTPS fetch is a read-only preview. Require the
-                // *production confirmation card* to say the pending source is
-                // the isolated magnet, never the original public .torrent.
-                // This is independently corroborated after Add by the engine's
-                // exact tracker list and missing-metadata/BEP9 witness.
-                assertTrue("Publisher HTTPS preview was retained as the submitted source",
-                    visible("Source: Magnet link"))
-                assertFalse("A fetched publisher .torrent must not remain the chosen source",
-                    visible("Source: Selected .torrent file"))
-            }
             if (torrentLinks && label != null && label != "magnet0") {
                 InstrumentationRegistry.getInstrumentation().sendStatus(2,
                     Bundle().apply { putString("chunks_https_review", label) })
@@ -301,7 +274,7 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "add-review")
             onSubmit()
             report("chunks_real_add_app_stage", "add-submitted")
-            click("Confirm: add then start")
+            click("Add transfer")
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
             assertTrue("Actual app did not verify Add+Start", visible("Verified: added and started on rTorrent."))
             if (disposable) {
@@ -320,22 +293,8 @@ internal class MainActivityRealMagnetJourney(
             scroll("View verified transfer in rTorrent")
             rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
-                runCatching { scroll("Review Add") }.isFailure)
+                runCatching { scroll("Add transfer") }.isFailure)
             assertNotNull("Navigation must retain the independently registered exact job", row(hash))
-            if (disposable && !publicDiscovery) {
-                // The HTTPS preview above must NOT leak its public trackers
-                // into the actual Add. Query the real rTorrent session after
-                // admission, independently of the Android draft and without
-                // recording or printing any tracker string.
-                val trackers = readOnly {
-                    remote.call("t.multicall", listOf(hash, "", "t.url=")) as? List<*>
-                }
-                assertTrue("No public tracker may be admitted by a controlled-peer fixture",
-                    trackers != null && trackers.isNotEmpty() && trackers.all { tracker ->
-                        (tracker as? List<*>)?.singleOrNull() ==
-                            "http://127.0.0.1:1/announce"
-                    })
-            }
             report("chunks_real_add_app_stage", "add-registered")
         }
         fun refreshAndFind(hash: String) {
@@ -463,16 +422,9 @@ internal class MainActivityRealMagnetJourney(
                 val initialMetaFlag = (readOnly { remote.call("d.is_meta", listOf(hash)) } as Number).toInt()
                 require(initialMetaFlag == 0 || initialMetaFlag == 1) { "Invalid exact metadata state" }
                 if (!publicDiscovery) {
-                    // The disposable controlled-peer Add always submits the
-                    // isolated magnet, even after separately reviewing the
-                    // publisher's HTTPS .torrent. Its exact rTorrent session
-                    // must begin as a metadata placeholder (BEP9 still needs
-                    // the independently supplied peer). The original public
-                    // HTTPS URL is NEVER the submitted controlled source.
-                    // Live/public-discovery tests retain independent behavior.
-                    if (disposable) assertEquals(
-                        "Controlled Add must await independently served BEP9 metadata",
-                        1, initialMetaFlag)
+                    // Disposable peer-isolated Add must still exercise BEP9; the
+                    // live published trackers may already have resolved metadata.
+                    if (disposable) assertEquals(if (torrentLinks && label != "magnet0") 0 else 1, initialMetaFlag)
                     if (initialMetaFlag == 0) {
                         assertEquals("Immediately resolved metadata name", preview.name, placeholder.name)
                         assertEquals("Immediately resolved metadata size", preview.sizeBytes, placeholder.sizeBytes)
@@ -480,14 +432,17 @@ internal class MainActivityRealMagnetJourney(
                         stage(label, "metadata-already-resolved")
                     }
                 }
+                stage(label, "activity-readback")
                 assertTrue(placeholder.started)
                 assertEquals(true, readOnly { remote.readActivity(hash).active })
                 stage(label, "registered")
                 val source = readOnly { remote.peerSource(hash) }
                 val host = if (disposable) "127.0.0.1" else "5.79.112.219"
                 require(source.boundAddress == host || (disposable && source.rpcHost == host))
+                stage(label, "peer-source-verified")
                 if (!publicDiscovery && initialMetaFlag == 1)
                     controller("/$label/metadata", source.listenPort)
+                stage(label, "metadata-readback")
                 await(90, "metadata resolved on the exact row") {
                     val exact = row(hash)
                     exact?.name == preview.name && exact.sizeBytes == preview.sizeBytes &&

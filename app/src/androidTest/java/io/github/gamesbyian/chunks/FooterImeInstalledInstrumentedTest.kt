@@ -24,16 +24,16 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Installed phone-first app on a real emulator soft keyboard: the persistent
- * footer yields while the IME is shown and returns when the keyboard's Search
- * key closes it, with the typed search kept. Then the phone search survives
- * Activity recreation. Navigation and view state only; nothing is added.
+ * Installed canonical Transfers on a real emulator: an explicitly selected
+ * device-only empty filter keeps search visible (unlike the fresh Welcome).
+ * The persistent footer remains usable with IME; search survives Activity
+ * recreation. Navigation and view preferences only, no torrent is added.
  */
 @RunWith(AndroidJUnit4::class)
 class FooterImeInstalledInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val searchLabel = "Search transfers on this device"
+    private val searchLabel = "Search names or hashes"
 
     private fun footerShown() =
         rule.onAllNodesWithContentDescription("Options").fetchSemanticsNodes().isNotEmpty()
@@ -47,12 +47,23 @@ class FooterImeInstalledInstrumentedTest {
         return shown
     }
 
-    private fun waitForPhone() = rule.waitUntil(20_000) {
-        rule.onAllNodesWithText("This device").fetchSemanticsNodes().isNotEmpty()
+    private fun enterFilteredCanonicalTransfers() {
+        // Seed only a VIEW preference, never a torrent. An explicitly chosen
+        // device scope must retain management/search even when its list is empty.
+        rule.runOnIdle {
+            CombinedViewPreferences(rule.activity).save(
+                io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                    scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                        setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
+        }
+        rule.activityRule.scenario.recreate()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText(searchLabel).fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test fun footerRemainsAvailableThroughSoftKeyboardAndAfterSearchKey() {
-        waitForPhone()
+        enterFilteredCanonicalTransfers()
         rule.waitUntil(10_000) { footerShown() }
         val field = rule.onNode(hasSetTextAction() and hasText(searchLabel))
         // Accessibility actions can reach an unfocused Activity. A real tap
@@ -90,10 +101,12 @@ class FooterImeInstalledInstrumentedTest {
     }
 
     @Test fun phoneSearchSurvivesActivityRecreation() {
-        waitForPhone()
+        enterFilteredCanonicalTransfers()
         rule.onNode(hasSetTextAction() and hasText(searchLabel)).performScrollTo().performTextInput("debian")
         rule.activityRule.scenario.recreate()
-        waitForPhone()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText(searchLabel).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("debian", substring = true).fetchSemanticsNodes().isNotEmpty()
         }

@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
@@ -65,8 +66,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * An optional Place override and a two-step confirmation gate
- * any RPC write; unexpected or uncertain outcomes never auto-retry.
+ * One explicit Add transfer click acquires the existing frozen coordinator ticket
+ * before any RPC write; unexpected or uncertain outcomes never auto-retry.
  * Metainfo and attempted outcomes stay in the parent session's process memory only.
  */
 @Composable
@@ -100,7 +101,10 @@ fun VerifiedAddScreen(
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
     /** Parent-owned exact-account review; remounting must not revive Add authority. */
-    session: RemoteAddSession? = null
+    session: RemoteAddSession? = null,
+    /** Inline shared Add-to selector; never grants remote admission. */
+    addDestinationPicker: (@Composable () -> Unit)? = null,
+    externalSourceReading: Boolean = false
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -340,11 +344,8 @@ fun VerifiedAddScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
-                }
-            }
+            Text("Add a transfer", style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() })
         }
         item {
             OutlinedTextField(
@@ -369,7 +370,7 @@ fun VerifiedAddScreen(
                 minLines = 2,
                 maxLines = 4
             )
-            if (sourceText.isBlank() && !alreadyAttempted) PasteMagnetButton(
+            if (!alreadyAttempted) PasteMagnetButton(
                 enabled = !submitting && !choosing,
                 onPaste = {
                     onMagnet(it)
@@ -427,7 +428,7 @@ fun VerifiedAddScreen(
                 enabled = !choosing && !submitting && !alreadyAttempted,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
             ) {
-                Text(if (choosing) "Reading torrent…" else "Choose a .torrent from Android Files")
+                Text(if (choosing) "Reading torrent…" else "Open .torrent")
             }
         }
         if (selectedTorrent != null) {
@@ -466,6 +467,12 @@ fun VerifiedAddScreen(
                 }
             }
         }
+        if (!alreadyAttempted && addDestinationPicker != null) item {
+            addDestinationPicker()
+        }
+        item {
+            RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
+        }
         item {
             OutlinedTextField(
                 value = destination,
@@ -503,6 +510,25 @@ fun VerifiedAddScreen(
                     awaitingConfirmation = false
                 }
             )
+        }
+
+        if (!alreadyAttempted && plan != null) item {
+            Text("Infohash: " + plan.expectedInfoHash, style = MaterialTheme.typography.bodySmall)
+            Text("Destination: " + plan.destination +
+                if (plan.useServerDefault) " (server default; no directory override)"
+                else " (custom parent folder)", style = MaterialTheme.typography.bodySmall)
+        }
+        if (!alreadyAttempted) item {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                    value = startAfterAdd, enabled = !submitting && !choosing,
+                    role = Role.Checkbox,
+                    onValueChange = { startAfterAdd = it; awaitingConfirmation = false }),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(checked = startAfterAdd, onCheckedChange = null)
+                Text("Start when added", modifier = Modifier.padding(start = 8.dp))
+            }
         }
         // Existing choices are suggestions, never permission/write probes. Keep
         // the effective default and manually editable custom Place above.
@@ -579,20 +605,7 @@ fun VerifiedAddScreen(
             }
         }
         if (plan != null && !alreadyAttempted) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth().toggleable(
-                        value = startAfterAdd, enabled = !submitting, role = Role.Checkbox,
-                        onValueChange = { startAfterAdd = it; awaitingConfirmation = false }
-                    ).padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(checked = startAfterAdd, onCheckedChange = null)
-                    Text("Start downloading after verified Add (recommended)",
-                        modifier = Modifier.padding(start = 8.dp))
-                }
-            }
-            // Only a .torrent shows its file list before Add; magnets are excluded.
+            // Finish-in-order is eligible only for multi-file .torrent sources.
             val fioStore = finishInOrderStore
             if (fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2) item {
                 FinishInOrderAddChoice(
@@ -603,53 +616,12 @@ fun VerifiedAddScreen(
                     defaultOn = finishInOrderDefault,
                     onDefault = { on -> if (fioStore.setDefaultForNewAdds(on)) finishInOrderDefault = on })
             }
-            if (!awaitingConfirmation) {
                 item {
                     Button(
-                        onClick = {
-                            // The review replaces the form; close the keyboard first.
-                            reviewKeyboard?.hide()
-                            reviewFocus.clearFocus()
-                            awaitingConfirmation = true
-                        },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                        enabled = !submitting && !choosing
-                    ) { Text("Review Add") }
-                }
-            } else {
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
-                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Confirm one server operation", fontWeight = FontWeight.Bold)
-                            environmentLabel?.let { EnvironmentBadge("Adding to: $it", server = true,
-                                // finishInOrderScope is the authenticated endpoint + NUL + username.
-                                environment = finishInOrderScope?.let {
-                                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
-                                }) }
-                            Text("Source: " + if (useFile) "Selected .torrent file" else "Magnet link")
-                            Text("Infohash: " + plan.expectedInfoHash)
-                            Text("Destination: " + plan.destination + if (plan.useServerDefault)
-                                " (server default; no directory override)" else " (custom parent folder)")
-                            Text(if (startAfterAdd && !(useFile && finishInOrderAfterAdd &&
-                                    (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null))
-                                "Use rTorrent's native add-and-start command once, then verify the exact torrent identity, destination and active engine state. An uncertain response is never retried automatically."
-                            else if (startAfterAdd)
-                                "Add stopped, apply reviewed file priorities, then Start once. Verify each outcome; never retry an uncertain command automatically."
-                            else "Add stopped only; use Start later from Transfers. No file move or download is implied.")
-                            val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
-                                else TorrentMetainfoReader.magnetTrackerCount(sourceText)
-                            if (trackers == 0) {
-                                // Red text on this green card measured 1.74:1; a dark inset banner keeps it readable.
-                                ChunksBanner("No tracker", trackerlessWarning(useFile), ChunksTone.ERROR)
-                            }
-                        }
-                    }
-                }
-                item {
-                    Button(
-                        onClick = {
+                        onClick = addClick@{
+                            if (externalSourceReading) return@addClick
                             // Both authorization and the one-shot ticket are acquired
-                            // synchronously on this explicit Confirm click, before any
+                            // synchronously on the explicit Add click, before any
                             // suspending source, metadata or network operation.
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val requestedStart = startAfterAdd
@@ -814,18 +786,10 @@ fun VerifiedAddScreen(
                                 outcome = "Add could not be authorized for this exact server. Refresh the connection and review again; nothing was submitted."
                             }
                         },
-                        enabled = !submitting && !choosing,
+                        enabled = !submitting && !choosing && !externalSourceReading,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                    ) { Text(if (startAfterAdd) "Confirm: add then start" else "Confirm: add stopped") }
+                    ) { Text("Add transfer") }
                 }
-                item {
-                    OutlinedButton(
-                        onClick = { awaitingConfirmation = false },
-                        enabled = !submitting,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                    ) { Text("Cancel, don't add") }
-                }
-            }
         }
         if (outcome != null) {
             item {

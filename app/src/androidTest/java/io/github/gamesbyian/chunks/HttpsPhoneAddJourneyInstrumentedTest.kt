@@ -100,7 +100,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
 
     private fun awaitSourceReview() {
         try {
-            rule.waitUntil(45_000) { visible("Review download") }
+            rule.waitUntil(45_000) { visible("Torrent details") }
         } catch (failure: Throwable) {
             // Fixed labels only: source text, tracker tokens and provider errors
             // must never enter the public acceptance artifact.
@@ -182,7 +182,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 click("Change download location")
                 click("Chunks app folder")
                 type("Optional phone download subfolder", folder)
-                type("Or paste a magnet or torrent link", url)
+                type("Magnet or HTTP(S) torrent URL", url)
                 // Leaving the phone screen must not turn an explicit one-time root
                 // into the saved default when the same draft returns.
                 stage("override-set")
@@ -209,7 +209,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertNull("Activity recreation cannot authorize a phone Add",
                     LocalEngineHolder.current()?.status(preview.infoHashV1))
                 // Exercise a real refused retrieval and recover the same scoped draft.
-                type("Or paste a magnet or torrent link", "https://127.0.0.1/blocked.torrent")
+                type("Magnet or HTTP(S) torrent URL", "https://127.0.0.1/blocked.torrent")
                 click("Get torrent from link")
                 // A refused URL's notice may be below the currently composed
                 // LazyColumn viewport after recreation. Actually scroll to it:
@@ -227,7 +227,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
                 stage("refusal-recovered")
                 // Source URLs stay out of instance state by the existing privacy contract.
-                type("Or paste a magnet or torrent link", url)
+                type("Magnet or HTTP(S) torrent URL", url)
                 stage("before-fetch")
                 click("Get torrent from link")
                 awaitSourceReview()
@@ -248,11 +248,11 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 click("Change download location")
                 click("Chunks app folder")
                 type("Optional phone download subfolder", folder)
-                type("Or paste a magnet or torrent link", url)
+                type("Magnet or HTTP(S) torrent URL", url)
                 click("Get torrent from link")
                 awaitSourceReview()
                 stage("cancel-recovered")
-                click("Start downloading after Add (recommended)")
+                click("Start when added")
                 val mediaKey = io.github.gamesbyian.chunks.media.MediaTransferKey.of(
                     requireNotNull(phoneAddedKey(preview.infoHashV1)))
                 fun excluded() = io.github.gamesbyian.chunks.media.FileMediaAutomationPreferences(
@@ -261,7 +261,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 click("Artwork & metadata")
                 click("Automatically identify and fetch artwork & metadata")
                 assertFalse("The draft choice alone is not Add admission", excluded())
-                click("Add stopped")
+                click("Add transfer")
                 awaitUi("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
                 assertTrue("Phone Add must persist the exclusion before exposing the job", excluded())
                 val phone = requireNotNull(LocalEngineHolder.current())

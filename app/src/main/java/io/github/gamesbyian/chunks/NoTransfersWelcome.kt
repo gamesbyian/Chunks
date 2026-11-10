@@ -2,7 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.MaterialTheme
@@ -23,18 +23,20 @@ import androidx.compose.ui.unit.dp
  * until the user proceeds through the existing authorized Add/Connect flow.
  */
 @Composable
-internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: () -> Unit) {
+internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: (() -> Unit)?) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Your transfers will appear here", style = MaterialTheme.typography.titleLarge,
+        Text("Welcome to Chunks", style = MaterialTheme.typography.titleLarge,
             modifier = Modifier.semantics { heading() })
         Text("Start a download on this device, or connect a remote BitTorrent client. " +
             "You can use Chunks with either, or both.",
             style = MaterialTheme.typography.bodyMedium)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
             TextButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Add a torrent")
             }
-            TextButton(onClick = onConnections, modifier = Modifier.heightIn(min = 48.dp)) {
+            if (onConnections != null) TextButton(onClick = onConnections,
+                modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Connections")
             }
         }
@@ -51,3 +53,27 @@ internal fun showPhoneFirstRunWelcome(
     addOpen: Boolean
 ): Boolean = inventoryConfirmed && !inventoryStale && inventoryEmpty &&
     !hasRemoteEnvironment && search.isBlank() && !addOpen
+
+/**
+ * Fresh-install welcome requires positive *absence* evidence. A process with
+ * no running native engine cannot call its unobserved empty list "confirmed":
+ * durable resume discovery must first prove that there are no jobs to restore.
+ * Conversely, a currently observed empty engine is sufficient when fresh.
+ */
+internal fun showCanonicalFirstRunWelcome(
+    noPersistedJobs: Boolean?,
+    nativeRunning: Boolean,
+    nativeConfirmed: Boolean,
+    nativeStale: Boolean,
+    nativeCount: Int,
+    hasRemoteProfile: Boolean,
+    restrictedView: Boolean,
+    privacyAllowed: Boolean,
+    pendingExternalSource: Boolean
+): Boolean {
+    val genuinelyEmpty = if (nativeRunning)
+        nativeConfirmed && !nativeStale && nativeCount == 0
+    else noPersistedJobs == true && !nativeStale
+    return genuinelyEmpty && !hasRemoteProfile && !restrictedView &&
+        privacyAllowed && !pendingExternalSource
+}

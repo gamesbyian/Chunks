@@ -17,7 +17,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Tools opened from Phone options return to the phone, not to the
+ * Tools opened from app Options return to Options, not to the
  * server-connection entry. Navigation only; nothing is created or saved.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -31,7 +31,6 @@ class PhoneToolReturnTest {
 
     private fun openAndReturn(button: String, paneTitle: String) {
         rule.waitForIdle()
-        onPhone()
         rule.onNodeWithText("Options").performClick()
         rule.onNodeWithText(button).performScrollTo().performClick()
         rule.waitForIdle()

@@ -1,24 +1,19 @@
 package io.github.gamesbyian.chunks
 
 /**
- * Restore only navigation-safe destinations after Activity or process
- * recreation. The device Add destination may reopen as an empty shell, but
- * source bytes, private magnet links, selections, approvals and remote
- * session authority are never restored. All operational routes fall back
- * to device Transfers.
+ * Restore only non-mutating root destinations. Prior local and remote list
+ * routes migrate to the one canonical Combined-derived Transfers catalog.
+ * Neither a selected profile scope nor an authenticated session nor any
+ * source/Place/Start/command approval is restored by this policy.
  *
- * A restored route never authenticates a server, starts an engine, fetches a
- * transfer, or replays a pending command. A new Android share is admitted
- * only on a fresh launch or onNewIntent; the original Intent must not be
- * replayed when the Activity is recreated after a consumed source.
+ * The Universal Add shell is safe to reopen with an EMPTY source and no
+ * execution ticket. A fresh Android Share is admitted only on a new Intent.
  */
 internal object NavigationRestorePolicy {
     fun restorableSection(name: String?): String = when (name) {
-        // Media settings hold no transfer data, server session or command.
-        // Restore only the Add shell: private sources and approvals never replay.
-        "LOCAL", "LOCAL_ADD", "COMBINED", "MEDIA", "OPTIONS" -> name
-        // A remote-only route without an authenticated server would otherwise
-        // reopen the connection form instead of the requested transfer list.
-        else -> "LOCAL"
+        "SERVER", "COMBINED", "MEDIA", "OPTIONS", "ADD_CHOOSE" -> name
+        "LOCAL_ADD" -> "ADD_CHOOSE"
+        "LOCAL", "TRANSFERS" -> "COMBINED"
+        else -> "COMBINED"
     }
 }

@@ -32,7 +32,7 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneMagnetDraftCheckTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val field get() = rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
+    private val field get() = rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
 
     private fun openAdd() {
         rule.waitForIdle()
@@ -41,7 +41,7 @@ class PhoneMagnetDraftCheckTest {
     }
 
     private fun addTile() = rule.onNode(hasClickAction() and
-        (hasText("Add magnet and start") or hasText("Add magnet (metadata only)")))
+        hasText("Add transfer"))
 
     @Test fun mistypedHashIsExplainedAndAddIsUnavailable() {
         openAdd()

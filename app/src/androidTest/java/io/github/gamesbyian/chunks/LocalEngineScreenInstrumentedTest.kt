@@ -81,7 +81,7 @@ class LocalEngineScreenInstrumentedTest {
         rule.onNodeWithText("Saves into:", substring = true).assertExists()
         rule.onNodeWithText("Nothing downloads until you press Start.", substring = true).assertExists()
         capture("local-engine-add-review-real-compose")
-        rule.onNodeWithText("Add stopped").performClick()
+        rule.onNodeWithText("Add transfer").performClick()
         assertEquals(1, confirmed)
     }
 
@@ -101,7 +101,7 @@ class LocalEngineScreenInstrumentedTest {
             }
         }
         rule.onNodeWithText("Retained after an uncertain Add").assertExists()
-        rule.onNodeWithText("Add stopped").assertIsNotEnabled()
+        rule.onNodeWithText("Add transfer").assertIsNotEnabled()
         rule.onNodeWithText("Cancel").assertIsEnabled().performClick()
         assertEquals(0, confirmed)
         assertEquals(1, cancelled)
