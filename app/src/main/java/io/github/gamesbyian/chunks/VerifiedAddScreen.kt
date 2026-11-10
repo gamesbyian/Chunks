@@ -100,7 +100,11 @@ fun VerifiedAddScreen(
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
     /** Parent-owned exact-account review; remounting must not revive Add authority. */
-    session: RemoteAddSession? = null
+    session: RemoteAddSession? = null,
+    /** Enables deterministic delayed-preference tests without touching external Add or RPC. */
+    clipboardEnabledReader: suspend (android.content.Context) -> Boolean = { context ->
+        withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
+    }
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -278,19 +282,26 @@ fun VerifiedAddScreen(
     // Foreground clipboard prefill, once when this Add screen opens.
     var clipboardPrefillOn by remember { mutableStateOf<Boolean?>(null) }
     var clipboardFilled by remember { mutableStateOf<String?>(null) }
-    // Android 10+ denies clipboard reads until the window has input focus; read once focused.
+    // Android 10+ denies clipboard reads until the window has input focus.
+    // Preference loading suspends: a newer typed/shared source or selected
+    // document must cancel the stale clipboard suggestion before it can write.
     val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
+    val clipboardBlocked = sourceText.isNotBlank() || initialTorrent != null ||
+        selectedTorrent != null || useFile || alreadyAttempted || submitting || choosing
+    val latestClipboardSource = rememberUpdatedState(sourceText)
+    val latestClipboardBlocked = rememberUpdatedState(clipboardBlocked)
     var clipboardChecked by remember { mutableStateOf(false) }
-    LaunchedEffect(windowFocused) {
+    LaunchedEffect(windowFocused, sourceText, clipboardBlocked) {
         if (!windowFocused || clipboardChecked) return@LaunchedEffect
         clipboardChecked = true
-        val on = withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
+        val on = clipboardEnabledReader(context)
         clipboardPrefillOn = on
-        if (!on) return@LaunchedEffect
-        val filled = ClipboardMagnetPrefill.decide(true, sourceText,
-            otherSourcePresent = initialTorrent != null || selectedTorrent != null || alreadyAttempted,
+        if (!on || latestClipboardBlocked.value) return@LaunchedEffect
+        val filled = ClipboardMagnetPrefill.decide(true, latestClipboardSource.value,
+            otherSourcePresent = latestClipboardBlocked.value,
             clipText = ClipboardMagnetPrefill.readText(context))
-        if (filled != null) {
+        if (filled != null && latestClipboardSource.value.isBlank() &&
+            !latestClipboardBlocked.value) {
             onMagnet(filled)
             clipboardFilled = filled
         }
