@@ -52,13 +52,13 @@ class RealProviderLookupTest {
     private val http = Recording()
     private val settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
 
-    private fun controller(): TransferMediaController {
+    private fun controller(automatic: Boolean = false): TransferMediaController {
         val providers = listOf(TvMazeProvider(), MusicBrainzProvider(), OpenLibraryProvider())
         val byId = providers.associateBy { it.info.id }
         val service = MediaEnrichmentService(providers, http, FileMediaQueryCache(File(dir, "q.json")))
         return TransferMediaController(service,
             ArtworkRepository(http, ArtworkDiskCache(File(dir, "art")), hostPolicyFor = { byId[it]?.info?.artworkHostPolicy }),
-            { FileTransferMediaAssignmentStore(File(dir, "assign.json")) }, { settings }, { MediaNetworkState(!offline, false) },
+            { FileTransferMediaAssignmentStore(File(dir, "assign.json")) }, { settings.copy(automaticLookup = automatic) }, { MediaNetworkState(!offline, false) },
             CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined)
     }
 
@@ -96,6 +96,41 @@ class RealProviderLookupTest {
         assertNotNull("Artwork restored from the local cache", restored.artwork)
         assertEquals("Offline restart makes no request", before, http.urls.size)
     }
+
+    @Test fun realOffscreenInventoryAutomaticallyFetchesAndRestoresArtworkForTwoEnvironments() =
+        kotlinx.coroutines.runBlocking {
+            val name = "Babylon.5.S02E07.Soul.Mates.1080p.WEB-DL.x264-GRP.mkv"
+            val phoneKey = key(4)
+            val serverKey = MediaTransferKey.of(UnifiedTransferKey.of(
+                EnvironmentId("rtorrent:public-fixture"), "5".repeat(40)))
+            val inventory = listOf(phoneKey to name, serverKey to name)
+            // A full-inventory pass happens before either key has been observed
+            // by a transfer row or Details. Only public synthetic titles are used.
+            controller(automatic = true).enrichInventory(inventory)
+            val persisted = FileTransferMediaAssignmentStore(File(dir, "assign.json"))
+            for ((id, _) in inventory) {
+                val a = requireNotNull(persisted.get(id))
+                assertEquals(MediaAssignmentState.AUTOMATIC, a.state)
+                assertEquals("Babylon 5", a.displayMatch?.title)
+                assertTrue(a.displayMatch?.artwork?.isNotEmpty() == true)
+            }
+            assertTrue("Actual provider and CDN traffic must have occurred", http.urls.size >= 3)
+            assertNoPrivateNameParts(listOf("1080p", "WEB-DL", "x264", "GRP",
+                ".mkv", phoneKey.value.substringAfter('|'), serverKey.value.substringAfter('|'),
+                "rtorrent"))
+            val afterOnline = http.urls.size
+            offline = true
+            // Recreate the controller, assignment store and artwork repository;
+            // the synthetic second account remains an independent exact key.
+            val restored = controller(automatic = true)
+            for ((id, _) in inventory) {
+                val state = restored.observe(id, name).value
+                assertEquals(MediaAssignmentState.AUTOMATIC, state.state)
+                assertEquals("Babylon 5", state.match?.title)
+                assertNotNull("Offline restart must use a previously fetched real JPEG", state.artwork)
+            }
+            assertEquals("Offline restored assignments/artwork issue no HTTP", afterOnline, http.urls.size)
+        }
 
     @Test fun realMusicAndBookLookupsMatchWithoutLeakingNames() {
         val c = controller()
