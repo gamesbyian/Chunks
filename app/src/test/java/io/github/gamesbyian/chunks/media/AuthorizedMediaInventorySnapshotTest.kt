@@ -71,6 +71,41 @@ class AuthorizedMediaInventorySnapshotTest {
         assertTrue(initial.stillAuthorizes(key(phone), initial))
     }
 
+    @Test fun mixedEnvironmentRowsCannotBorrowTheSourceAccountsAuthorization() {
+        val scopes = mapOf(phone to "authenticated-phone")
+        val authorized = AuthorizedMediaInventorySnapshot.build(
+            listOf(snapshot(phone, "Hackers.1995")), scopes)
+        // Source declares itself to be phone, but its second row is a
+        // different rTorrent profile with the same infohash. No part of this
+        // untrustworthy inventory can authorize external provider HTTP.
+        val mixed = EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 1235L,
+            listOf(
+                UnifiedTransferObservation(UnifiedTransferKey.of(phone, hash),
+                    "Hackers.1995", "Hackers.1995", null, null, null, null, null, null),
+                UnifiedTransferObservation(UnifiedTransferKey.of(remote, hash),
+                    "Private.Remote.Transfer", "Private.Remote.Transfer",
+                    null, null, null, null, null, null)))
+        val projection = AuthorizedMediaInventorySnapshot.build(listOf(mixed), scopes)
+        assertTrue("Mixed source/profile must fail the whole projection closed",
+            projection.entries.isEmpty())
+        assertFalse(authorized.stillAuthorizes(key(phone), projection))
+        assertFalse(projection.stillAuthorizes(key(remote), projection))
+    }
+
+    @Test fun duplicateSameEnvironmentHashCannotSilentlyReplaceTheTitleWitness() {
+        val duplicated = EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 1235L,
+            listOf(
+                UnifiedTransferObservation(UnifiedTransferKey.of(phone, hash),
+                    "First.Title", "First.Title", null, null, null, null, null, null),
+                UnifiedTransferObservation(UnifiedTransferKey.of(phone, hash),
+                    "Second.Title", "Second.Title", null, null, null, null, null, null)))
+        val projection = AuthorizedMediaInventorySnapshot.build(
+            listOf(duplicated), mapOf(phone to "local"))
+        assertTrue("Conflicting rows must not overwrite the account/title witness",
+            projection.entries.isEmpty())
+        assertFalse(projection.stillAuthorizes(key(phone), projection))
+    }
+
     @Test fun incompleteOrAmbiguousSourcesCannotAuthorizeInventedJobs() {
         val live = snapshot(phone, "Hackers.1995")
         val duplicates = AuthorizedMediaInventorySnapshot.build(listOf(live, live), mapOf(phone to "local"))
