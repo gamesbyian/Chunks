@@ -772,8 +772,11 @@ class TransferMediaControllerTest {
             http.on("/search/shows", status = 404)
             val original = controller()
             original.enrichInventory(listOf(phone to name))
-            val store = FileTransferMediaAssignmentStore(File(dir, "assign.json"))
-            val first = requireNotNull(store.get(phone))
+            // Controllers re-open the app-private file on restart. A previously
+            // constructed FileTransferMediaAssignmentStore keeps an in-memory
+            // snapshot and cannot witness writes by the new controller.
+            fun persisted() = FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone)
+            val first = requireNotNull(persisted())
             assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, first.state)
             val requestsBefore = http.requests.size
             http.routes.removeAll { it.contains == "/search/shows" }
@@ -783,10 +786,10 @@ class TransferMediaControllerTest {
             restarted.enrichInventory(listOf(phone to name))
             assertEquals(requestsBefore, http.requests.size)
             assertEquals("Cached negative rechecks cannot extend the original TTL",
-                first.updatedAtMs, requireNotNull(store.get(phone)).updatedAtMs)
+                first.updatedAtMs, requireNotNull(persisted()).updatedAtMs)
             clock.now += 2
             restarted.enrichInventory(listOf(phone to name))
-            assertEquals(MediaAssignmentState.AUTOMATIC, store.get(phone)?.state)
+            assertEquals(MediaAssignmentState.AUTOMATIC, persisted()?.state)
             assertTrue(http.requests.size > requestsBefore)
         }
 
