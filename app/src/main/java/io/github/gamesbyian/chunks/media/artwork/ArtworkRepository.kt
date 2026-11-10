@@ -126,7 +126,10 @@ class ArtworkRepository(
     fun pin(source: ArtworkCandidate, role: ArtworkRole) = synchronized(mutationLock) {
         val k = key(source, role)
         if (source.provider != io.github.gamesbyian.chunks.media.LOCAL_PROVIDER && importedDisk !== disk) {
-            disk.get(k)?.let { importedDisk.put(k, it) }
+            // A chosen image may still exist only in decoded memory after Android
+            // reclaimed cacheDir. Encode that already-processed bitmap if necessary.
+            val bytes = disk.get(k) ?: memory.get(k)?.let(ArtworkComposer::encode)
+            if (bytes != null) importedDisk.putPinned(k, bytes)
             disk.unpin(k) // Legacy provider pin moves to the durable store.
         }
         importedDisk.pin(k)
@@ -173,8 +176,7 @@ class ArtworkRepository(
             square.width, square.height)
         val k = key(candidate, ArtworkRole.SQUARE)
         synchronized(mutationLock) {
-            importedDisk.put(k, encoded)
-            importedDisk.pin(k)
+            importedDisk.putPinned(k, encoded)
             memory.put(k, square)
         }
         return candidate to null
@@ -233,8 +235,7 @@ class ArtworkRepository(
                 val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
                 if (decoded != null) {
                     if (store !== importedDisk && retainPin) {
-                        importedDisk.put(k, bytes)
-                        importedDisk.pin(k)
+                        importedDisk.putPinned(k, bytes)
                         if (importedDisk !== disk) disk.unpin(k)
                     }
                     memory.put(k, decoded)
@@ -242,6 +243,9 @@ class ArtworkRepository(
                 }
                 if (!local || store === importedDisk) store.remove(k)
             }
+            // Preserve a chosen image's intent even if its previous durable
+            // derivative was corrupt: a later permitted fetch can repair it.
+            if (retainPin && !importedDisk.isPinned(k)) importedDisk.pin(k)
         }
         if (local) return ArtworkLoadResult.Unavailable(listOf("Your image is no longer stored"))
         if (disk.isNegative(k)) return ArtworkLoadResult.Unavailable(listOf("Recently failed; will retry later"))
@@ -274,8 +278,7 @@ class ArtworkRepository(
             if (importedDisk !== disk && (importedDisk.isPinned(k) || disk.isPinned(k))) {
                 // Choosing a poster can precede its first HTTP response.
                 // Keep a durable processed derivative only for that explicit selection.
-                importedDisk.put(k, encoded)
-                importedDisk.pin(k)
+                importedDisk.putPinned(k, encoded)
                 disk.unpin(k)
             }
             memory.put(k, processed)
