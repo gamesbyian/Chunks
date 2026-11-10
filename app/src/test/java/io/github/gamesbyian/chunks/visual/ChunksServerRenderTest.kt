@@ -109,7 +109,19 @@ open class ChunksServerRenderTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
         rule.onNodeWithText("Connect to rTorrent").performClick()
         try {
-            rule.waitUntil(20_000) { rule.onAllNodesWithText("3 transfers", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            // Connect now returns a verified acknowledgement on Connections.
+            // The only transfer browser is canonical Combined, scoped by the
+            // exact newly authenticated account, not a second server queue.
+            rule.waitUntil(30_000) {
+                rule.onAllNodesWithText("Continue to Connections").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("Continue to Connections").performClick()
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("View transfers"))
+            rule.onNodeWithText("View transfers").performClick()
+            rule.waitUntil(30_000) {
+                rule.onAllNodesWithText("Filters").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Showing 3"))
         } catch (timeout: Throwable) {
             rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-timeout.png")
             throw timeout
@@ -181,18 +193,17 @@ open class ChunksServerRenderTest {
         small += rule.smallTouchTargets(density)
         org.junit.Assert.assertTrue("rTorrent touch targets under 48dp: ${small.distinct()}", small.isEmpty())
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-cards.png")
-        // Batch selection is a local disclosure on the owning server list.
-        // Options now owns app settings and exact-account server destinations.
-        // This disclosure is above the current transfer in the lazy list.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Batch & tools"))
-        rule.onNodeWithText("Batch & tools").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select transfers for a batch"))
-        rule.onNodeWithText("Select transfers for a batch").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Collection name for selected transfers"))
+        // Batch tools remain a disclosure within the canonical catalog. They
+        // do not change account, start a transfer or grant command authority
+        // until a distinct exact-job review and confirmation.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Batch tools"))
+        rule.onNodeWithText("Batch tools").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select…"))
+        rule.onNodeWithText("Select…").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-batch.png")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Exit batch selection"))
-        rule.onNodeWithText("Exit batch selection").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Done selecting"))
+        rule.onNodeWithText("Done selecting").performClick()
         rule.waitForIdle()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sci Fi Pack (2024)"))
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-scrolled.png")
