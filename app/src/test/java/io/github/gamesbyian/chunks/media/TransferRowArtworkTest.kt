@@ -95,6 +95,45 @@ class TransferRowArtworkTest {
 
     private val format = "Name suggests .mkv; actual file type not verified"
 
+    @Test fun openDetailsRequestsPosterWhenSameVerifiedWorkLaterGainsArt() {
+        val mediaKey = MediaTransferKey.of(server)
+        val verified = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("wikidata", "item", "Q12345"),
+            MediaKind.MOVIE, "Hackers", 1995,
+            attribution = MediaAttribution("Wikidata", "CC0", null))
+        val poster = ArtworkCandidate("tmdb", "https://image.tmdb.org/t/p/w500/hackers.jpg", ArtworkRole.POSTER)
+        var state by androidx.compose.runtime.mutableStateOf(
+            TransferMediaUiState(mediaKey, MediaRecognizer.recognize("Hackers.1995.mkv"),
+                assignment = TransferMediaAssignment(mediaKey, MediaAssignmentState.AUTOMATIC, match = verified)))
+        var requested = 0
+        rule.setContent {
+            ChunksTheme {
+                Surface {
+                    io.github.gamesbyian.chunks.media.ui.MediaMetadataSummary(
+                        state, onChange = {}, onRequestPoster = { requested++ })
+                }
+            }
+        }
+        rule.waitForIdle()
+        assertEquals("No poster candidate: don't perform a redundant Details request", 0, requested)
+        rule.runOnUiThread {
+            state = state.copy(assignment = state.assignment!!.copy(
+                match = verified.copy(artwork = listOf(poster))))
+        }
+        rule.waitForIdle()
+        assertEquals("Same verified identity with newly arrived poster must wake open Details", 1, requested)
+        rule.runOnUiThread {
+            state = state.copy(automaticMessage = "Artwork found for verified identity")
+        }
+        rule.waitForIdle()
+        assertEquals("Unrelated status changes must not repeatedly fetch art", 1, requested)
+        rule.runOnUiThread {
+            state = state.copy(poster = Bitmap.createBitmap(40, 60, Bitmap.Config.ARGB_8888))
+        }
+        rule.waitForIdle()
+        assertEquals("Painting the loaded poster must not re-fetch it", 1, requested)
+    }
+
     @Test fun rowsShowTheExactEnvironmentsAssignmentWithoutAnyNetworkFromDisplay() {
         val c = controller()
         c.observe(MediaTransferKey.of(phone), name); c.lookup(MediaTransferKey.of(phone))
