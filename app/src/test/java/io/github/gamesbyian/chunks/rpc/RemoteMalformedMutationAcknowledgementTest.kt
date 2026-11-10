@@ -113,8 +113,8 @@ class RemoteMalformedMutationAcknowledgementTest {
                     remote(g).setFilePriority(hash, 0, "sample.bin", 5, 1, 2))
                 assertEquals("Malformed post-write response cannot erase the prewrite witnesses",
                     if (badAck) 2 else 3, g.calls.count { it == "f.multicall" })
-                assertEquals(2, if (badAck) g.calls.count { it == "d.hash" }
-                    else g.calls.count { it == "d.hash" } - 1)
+                assertEquals("Both exact-session prewrite checks must complete", 2,
+                    g.calls.count { it == "d.hash" })
                 assertEquals("One setter only, regardless of response corruption", 1,
                     g.calls.count { it == "f.priority.set" })
                 assertEquals(if (badAck) 0 else 1,
