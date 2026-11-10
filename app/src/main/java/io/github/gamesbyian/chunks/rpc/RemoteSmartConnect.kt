@@ -173,7 +173,12 @@ object RemoteSmartConnect {
             "Enter a host/URL without embedded credentials, query or fragment"
         }
         val origin = "${uri.scheme.lowercase()}://${uri.rawAuthority}"
-        val rawPath = uri.rawPath.orEmpty().trimEnd('/')
+        // Never collapse a pasted // path into hostname-only discovery or
+        // trust inconsistent reverse-proxy normalization of tenant mounts.
+        // Literal repeated separators have no single stable account route.
+        val suppliedPath = uri.rawPath.orEmpty()
+        require("//" !in suppliedPath) { "Ambiguous server path; use one slash between path segments" }
+        val rawPath = suppliedPath.trimEnd('/')
         // Avoid URI normalization/path traversal changing the intended tenant
         // or accidentally selecting a different backend mount.
         require(!dotTraversalSegment.containsMatchIn(rawPath) &&
