@@ -254,4 +254,72 @@ class ArtworkRepositoryTest {
         assertFalse(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
     }
 
+
+    @Test fun deliberatelySelectedProviderArtworkSurvivesCacheCleanupOffline() {
+        val cache = Files.createTempDirectory("provider-auto-cache").toFile()
+        val durable = Files.createTempDirectory("selected-poster-storage").toFile()
+        val wire = FakeMediaHttp().onBytes("p.jpg", image(680, 1000),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        fun newRepository(http: FakeMediaHttp = wire) =
+            ArtworkRepository(http, ArtworkDiskCache(cache),
+                hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+
+        val first = newRepository()
+        assertTrue(first.loadOne(poster, ArtworkRole.SQUARE, true) is ArtworkLoadResult.Loaded)
+        assertFalse("Ordinary automatic downloaded artwork is still reclaimable",
+            durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        first.pin(poster, ArtworkRole.SQUARE)
+        assertTrue("Choosing an image promotes its processed derivative to durable storage",
+            durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        val offline = FakeMediaHttp()
+        assertTrue(newRepository(offline).loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+        assertTrue(offline.requests.isEmpty())
+
+        val released = newRepository(offline)
+        released.unpin(poster, ArtworkRole.SQUARE)
+        assertFalse(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        assertTrue(newRepository(offline).loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Unavailable)
+        assertTrue(offline.requests.isEmpty())
+    }
+
+    @Test fun choosingPosterBeforeFirstDownloadStoresThatRoleDurably() {
+        val cache = Files.createTempDirectory("poster-cache").toFile()
+        val durable = Files.createTempDirectory("chosen-poster-storage").toFile()
+        val wire = FakeMediaHttp().onBytes("p.jpg", image(680, 1000),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        val first = ArtworkRepository(wire, ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        first.pin(poster, ArtworkRole.POSTER)
+        assertTrue(first.loadOne(poster, ArtworkRole.POSTER, true) is ArtworkLoadResult.Loaded)
+        assertTrue(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        assertEquals(1, wire.requests.size)
+
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        val noNetwork = FakeMediaHttp()
+        val restored = ArtworkRepository(noNetwork, ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        assertTrue(restored.loadOne(poster, ArtworkRole.POSTER, false) is ArtworkLoadResult.Loaded)
+        assertTrue(noNetwork.requests.isEmpty())
+    }
+
+    @Test fun formerlyPinnedProviderArtworkMigratesAfterUpgradeWithoutAnIdentityChange() {
+        val cache = Files.createTempDirectory("old-pinned-cache").toFile()
+        val durable = Files.createTempDirectory("new-pinned-storage").toFile()
+        val wire = FakeMediaHttp().onBytes("p.jpg", image(680, 1000))
+        val legacy = ArtworkRepository(wire, ArtworkDiskCache(cache), hostPolicyFor = { tvmaze })
+        assertTrue(legacy.loadOne(poster, ArtworkRole.SQUARE, true) is ArtworkLoadResult.Loaded)
+        legacy.pin(poster, ArtworkRole.SQUARE)
+        assertTrue(ArtworkDiskCache(cache).isPinned(
+            io.github.gamesbyian.chunks.media.artwork.ArtworkBytesPolicy.cacheKey(
+                poster.url, ArtworkRole.SQUARE, ArtworkRepository.SQUARE_SIZE)))
+
+        fun upgraded() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        assertTrue(upgraded().loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        assertTrue(upgraded().loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+    }
+
 }
