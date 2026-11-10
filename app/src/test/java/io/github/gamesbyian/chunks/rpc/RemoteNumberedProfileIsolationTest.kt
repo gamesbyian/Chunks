@@ -18,6 +18,7 @@ class RemoteNumberedProfileIsolationTest {
     private val hash = "aB".repeat(20)
 
     private class Fixture : AutoCloseable {
+        private val expectedHash = "aB".repeat(20)
         private val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         val mutations2: MutableList<String> = Collections.synchronizedList(mutableListOf())
@@ -65,7 +66,9 @@ class RemoteNumberedProfileIsolationTest {
                         "d.state", "d.is_active" -> if (started()) 1 else 0
                         else -> -1
                     }
-                    val body = ("<methodResponse><params><param><value><int>$result</int>" +
+                    val payload = if (method == "d.hash")
+                        "<string>$expectedHash</string>" else "<int>$result</int>"
+                    val body = ("<methodResponse><params><param><value>$payload" +
                         "</value></param></params></methodResponse>").toByteArray(Charsets.UTF_8)
                     exchange.sendResponseHeaders(200, body.size.toLong())
                     exchange.responseBody.use { it.write(body) }
@@ -74,6 +77,40 @@ class RemoteNumberedProfileIsolationTest {
         }
 
         override fun close() = server.stop(0)
+    }
+
+    @Test fun wrongHashIsRefusedBeforeAnyWriteOnTheAuthenticatedInstance() = runBlocking {
+        Fixture().use { fixture ->
+            val remote = RTorrentRemote(RemoteCredentials(
+                fixture.root + "rutorrent2/", "tenant2", "secret2"))
+            try {
+                remote.setStarted("c".repeat(40), true)
+                fail("A valid-looking but different hash must not reach d.open")
+            } catch (_: IllegalStateException) { }
+            assertEquals(listOf("d.hash"), fixture.authorized2)
+            assertTrue(fixture.authorized3.isEmpty())
+            assertTrue(fixture.mutations2.isEmpty())
+            assertTrue(fixture.mutations3.isEmpty())
+            assertFalse(fixture.started2)
+            assertFalse(fixture.started3)
+        }
+    }
+
+    @Test fun rejectedAccountCannotProbeOrMutateSiblingNumberedInstance() = runBlocking {
+        Fixture().use { fixture ->
+            val wrong = RTorrentRemote(RemoteCredentials(
+                fixture.root + "rutorrent3/", "tenant2", "secret2"))
+            try {
+                wrong.setStarted(hash, true)
+                fail("The wrong principal must never mutate the same hash")
+            } catch (_: io.github.gamesbyian.chunks.rpc.RpcHttpStatusException) { }
+            assertTrue("No authenticated method should reach the wrong instance",
+                fixture.authorized3.isEmpty())
+            assertTrue("There must be no fallback to the sibling account",
+                fixture.authorized2.isEmpty())
+            assertTrue(fixture.mutations2.isEmpty())
+            assertTrue(fixture.mutations3.isEmpty())
+        }
     }
 
     @Test fun sameInfohashRemainsIsolatedAcrossNumberedRpcMounts() = runBlocking {
@@ -96,17 +133,18 @@ class RemoteNumberedProfileIsolationTest {
             assertTrue(fixture.started2)
             assertFalse(fixture.started3)
 
-            assertEquals(listOf("d.open", "d.start", "d.resume", "d.state", "d.is_active"),
-                fixture.authorized2)
+            assertEquals(listOf("d.hash", "d.open", "d.start", "d.resume",
+                "d.state", "d.is_active", "d.hash"), fixture.authorized2)
             // A stopped server may read both the persistent and active flags.
             // Keep every readback on profile 3, even when profile 2 holds the same hash.
-            assertEquals(listOf("d.stop", "d.close", "d.state", "d.is_active"), fixture.authorized3)
+            assertEquals(listOf("d.hash", "d.stop", "d.close", "d.state",
+                "d.is_active", "d.hash"), fixture.authorized3)
             assertTrue("second profile must never receive first profile credentials",
                 fixture.unauthorized3.all { it == null })
             assertTrue("first profile must never receive second profile credentials",
                 fixture.unauthorized2.all { it == null })
-            assertEquals(5, fixture.unauthorized2.size)
-            assertEquals(4, fixture.unauthorized3.size)
+            assertEquals(7, fixture.unauthorized2.size)
+            assertEquals(6, fixture.unauthorized3.size)
         }
     }
 }
