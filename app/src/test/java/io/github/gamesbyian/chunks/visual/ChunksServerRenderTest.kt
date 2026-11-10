@@ -139,9 +139,11 @@ open class ChunksServerRenderTest {
         rule.onNodeWithText("+ Add").performClick()
         // Source fields lead the one shared Add form. Its remote choice is
         // underneath them, not an obsolete compulsory destination gateway.
-        val sourceList = rule.onNode(hasScrollToIndexAction())
-        sourceList.performScrollToNode(hasText("On Server ·", substring = true))
-        rule.onNodeWithText("On Server ·", substring = true).performClick()
+        // The phone source-first form is a ScrollState-backed Column; only
+        // the subsequently selected remote form is a LazyColumn. Requiring
+        // ScrollToIndex here falsely fails before checking the actual picker.
+        rule.onNodeWithText("On Server ·", substring = true)
+            .performScrollTo().performClick()
         rule.waitUntil(20_000) {
             runCatching {
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(
