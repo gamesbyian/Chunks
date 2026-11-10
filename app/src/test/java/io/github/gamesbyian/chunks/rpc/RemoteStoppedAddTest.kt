@@ -406,6 +406,52 @@ class RemoteStoppedAddTest {
         } finally { server.stop(0) }
     }
 
+    @Test fun contradictoryExactHashCannotVerifyMainViewStoppedAdd() = runBlocking {
+        // A gateway can return a plausible main-view row and 0/0 state
+        // while its direct exact-hash getter disagrees. That view row
+        // cannot release the Universal Add ticket for another Start.
+        for (badRead in listOf(1, 2)) {
+            var hashReads = 0
+            val methods = mutableListOf<String>()
+            val server = HttpServer.create(
+                InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+            server.createContext("/RPC2") { exchange ->
+                val request = exchange.requestBody.bufferedReader().use { it.readText() }
+                val method = Regex("<methodName>([^<]+)</methodName>")
+                    .find(request)?.groupValues?.get(1).orEmpty()
+                methods += method
+                val result = when (method) {
+                    "d.multicall2" -> rowXml()
+                    "d.hash" -> {
+                        hashReads++
+                        value(if (hashReads == badRead) "cd".repeat(20) else hash)
+                    }
+                    "d.directory" -> value(dir)
+                    "d.is_multi_file", "d.state", "d.is_active" -> num(0)
+                    else -> throw AssertionError("No mutation or fallback: $method")
+                }
+                val reply = ("<methodResponse><params><param>" + result +
+                    "</param></params></methodResponse>").toByteArray(Charsets.UTF_8)
+                exchange.sendResponseHeaders(200, reply.size.toLong())
+                exchange.responseBody.use { it.write(reply) }
+            }
+            server.start()
+            try {
+                val remote = RTorrentRemote(RemoteCredentials(
+                    "http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+                assertEquals("A main-view row is not a session witness",
+                    RemoteAddOutcome.Uncertain(hash),
+                    remote.reconcileStoppedAdd(StoppedRemoteAddPlan.fromMagnet(magnet, dir)))
+                assertEquals(badRead, hashReads)
+                assertEquals("Only read-only exact-session evidence was requested",
+                    0, methods.count { it.startsWith("load.") || it.startsWith("d.start") })
+                assertEquals("d.multicall2", methods.first())
+            } finally {
+                server.stop(0)
+            }
+        }
+    }
+
     @Test fun visibleStoppedStateWithActiveEngineRemainsPendingUntilInactive() = runBlocking {
         // The main-view row and d.state both say "stopped", but the engine
         // is still active. Prior to this regression, that discrepancy was
