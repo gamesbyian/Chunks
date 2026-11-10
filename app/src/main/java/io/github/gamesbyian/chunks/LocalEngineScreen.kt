@@ -337,6 +337,7 @@ internal fun LocalEngineScreen(
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
     /** Shared source-first Add target selector, embedded without creating a second route. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
+    externalSourceReading: Boolean = false,
     /** Reviewed .torrent bytes outlive phone screen navigation, never Activity/process recreation. */
     pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null,
     /** App-owned process-only attempt/reconciliation authority, injected by Agent 5. */
@@ -471,7 +472,7 @@ internal fun LocalEngineScreen(
     // One cancellable source-read owner, shared by picker, Android handoff and
     // HTTPS intake. Cancellation is read-only; it never consumes a queued URI.
     var sourceReadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    val sourceReading = sourceReadJob != null
+    val sourceReading = sourceReadJob != null || externalSourceReading
     fun cancelSourceRead() {
         val obsolete = sourceReadJob
         sourceReadJob = null

@@ -78,7 +78,7 @@ class VerifiedAddScreenAtlasTest {
 
     /** Installed Compose at a 320dp content constraint and 200% text.
      * Navigation and Cancel are local-only; no authenticated remote write is attempted. */
-    @Test fun remoteAddReviewAndCancelStayReachableAtNarrowLargeText() {
+    @Test fun remoteSourceFirstAddActionStaysReachableAtNarrowLargeText() {
         var magnet by mutableStateOf(validMagnet)
         var destination by mutableStateOf("/home/dev/chunks-public-test")
         rule.setContent {
@@ -97,8 +97,8 @@ class VerifiedAddScreenAtlasTest {
             }
         }
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Choose a .torrent from Android Files"))
-        val chooser = rule.onNodeWithText("Choose a .torrent from Android Files")
+            hasText("Open .torrent"))
+        val chooser = rule.onNodeWithText("Open .torrent")
         assertTrue("Open-document control must retain at least 54dp", 
             (chooser.getUnclippedBoundsInRoot().bottom - chooser.getUnclippedBoundsInRoot().top) >= 54.dp)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Artwork & metadata"))
@@ -110,23 +110,17 @@ class VerifiedAddScreenAtlasTest {
         assertTrue("The artwork choice must retain a 48dp touch target",
             (artworkToggle.getUnclippedBoundsInRoot().bottom - artworkToggle.getUnclippedBoundsInRoot().top) >= 48.dp)
         save("add-artwork-exclusion-320dp-200pct-real-compose")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").performClick()
+
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Confirm: add then start"))
-        assertTrue("Confirm control must retain at least 56dp",
-            (rule.onNodeWithText("Confirm: add then start")
-                .getUnclippedBoundsInRoot().bottom - rule.onNodeWithText("Confirm: add then start")
+            hasText("Add transfer"))
+        assertTrue("Add control must retain at least 56dp",
+            (rule.onNodeWithText("Add transfer")
+                .getUnclippedBoundsInRoot().bottom - rule.onNodeWithText("Add transfer")
                 .getUnclippedBoundsInRoot().top) >= 56.dp)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Cancel, don't add"))
-        rule.onNodeWithText("Cancel, don't add").performClick()
-        rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
-        // LazyColumn can keep the viewport near Cancel after the confirmation
-        // disappears. Verify that Review Add is still *reachable*, not that
-        // an offscreen lazy item happens to be composed at the old scroll.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").assertExists()
+        // No compulsory review/Cancel screen: Add is the one explicit write action.
+        // This test does not click it on the unauthenticated fixture.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Add transfer"))
+        rule.onNodeWithText("Add transfer").assertExists()
     }
 
     @Test fun folderShortcutsAreOptionalAndChoosingOnlyEditsTheReviewDraft() {
@@ -175,7 +169,7 @@ class VerifiedAddScreenAtlasTest {
         rule.onNodeWithText("Confirm one server operation").assertDoesNotExist()
     }
 
-    @Test fun reviewedStoppedAddShowsExactHashAndDestination() {
+    @Test fun unsubmittedAddShowsExactHashAndEffectiveDestination() {
         var magnet by mutableStateOf(validMagnet)
         var destination by mutableStateOf("/home/dev/chunks-public-test")
         rule.setContent {
@@ -187,12 +181,11 @@ class VerifiedAddScreenAtlasTest {
                     onMutationStarted = { true }, onMutationSettled = {})
             }
         }
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").performClick()
-        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add then start"))
-        rule.onNodeWithText("Confirm: add then start").assertExists()
+
+        rule.onNode(hasScrollAction()).performScrollToNode(hasText("Add transfer"))
+        rule.onNodeWithText("Add transfer").assertExists()
         rule.onNodeWithText("Infohash: " + "ab".repeat(20)).assertExists()
-        save("add-confirmation-real-compose")
+        save("add-source-and-destination-real-compose")
     }
 
     @Test fun uncertainAddOffersReadOnlyReconciliationInsteadOfRepeatSubmit() {
@@ -215,14 +208,13 @@ class VerifiedAddScreenAtlasTest {
                         onMutationSettled = { settled++ })
                 }
             }
-            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Review Add"))
-            rule.onNodeWithText("Review Add").performClick()
-            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Confirm: add then start"))
-            rule.onNodeWithText("Confirm: add then start").performClick()
+
+            rule.onNode(hasScrollAction()).performScrollToNode(hasText("Add transfer"))
+            rule.onNodeWithText("Add transfer").performClick()
             rule.waitUntil(timeoutMillis = 15_000) { settled == 1 }
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(
                 hasText("Check server state (read only)"))
-            rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
+            rule.onNodeWithText("Add transfer").assertDoesNotExist()
             rule.onNodeWithText("Check server state (read only)").assertExists()
             assertTrue("The fixture must receive the original one-time load",
                 fixture.methods.count { it == "load.start" } == 1)
@@ -351,7 +343,7 @@ class VerifiedAddScreenAtlasTest {
                     onMutationStarted = { true }, onMutationSettled = {})
             }
         }
-        rule.onNodeWithText("Review Add").assertDoesNotExist()
+        rule.onNodeWithText("Add transfer").assertDoesNotExist()
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(
             "Invalid destination: remove repeated slashes, '.' and '..' path segments."
         ))

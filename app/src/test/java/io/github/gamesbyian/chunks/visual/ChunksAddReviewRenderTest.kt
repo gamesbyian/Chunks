@@ -31,7 +31,7 @@ import org.robolectric.annotation.GraphicsMode
 class ChunksAddReviewRenderTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun addReview() {
+    @Test fun sourceFirstAddShowsSourceAndEffectiveDestinationWithoutSubmitting() {
         var magnet by mutableStateOf("magnet:?xt=urn:btih:" + "ab".repeat(20) + "&dn=Public%20test")
         var destination by mutableStateOf("/home/dev/chunks-public-test")
         rule.setContent {
@@ -44,10 +44,11 @@ class ChunksAddReviewRenderTest {
         }
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/add-form.png")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Confirm: add then start"))
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Add transfer"))
+        rule.onNodeWithText("Add transfer").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(
+            "Destination: /home/dev/chunks-public-test (custom parent folder)"))
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/chunks-visual/add-review.png")
+        rule.onRoot().captureRoboImage("build/chunks-visual/add-ready.png")
     }
 }

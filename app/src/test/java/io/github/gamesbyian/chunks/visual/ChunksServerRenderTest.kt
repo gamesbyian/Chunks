@@ -126,9 +126,9 @@ open class ChunksServerRenderTest {
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
         // The chooser scrolls vertically at 320dp / 200% text.
-        rule.onNodeWithText("On the connected server").performScrollTo().performClick()
+        rule.onNodeWithText("On ", substring = true).performScrollTo().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Add a download to this server").assertExists()
+        rule.onNodeWithText("Add a transfer").assertExists()
         val addList = rule.onNode(hasScrollToIndexAction())
         addList.performScrollToNode(hasText("Magnet or torrent link"))
         rule.onNodeWithText("Magnet or torrent link").performTextReplacement("magnet:?xt=urn:btih:" + "ab".repeat(20))
@@ -136,8 +136,8 @@ open class ChunksServerRenderTest {
         rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/srv/one-off")
         rule.onNode(hasText("/srv/one-off")).assertExists()
         // The same next steps as the installed atlas: review the one-off folder.
-        addList.performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").performClick()
+        
+        
         rule.waitForIdle()
         addList.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
         rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()

@@ -7,6 +7,8 @@ package io.github.gamesbyian.chunks
  * session authority are never restored. All operational routes fall back
  * to device Transfers.
  *
+ * Configuration changes may retain private draft content in ViewModel RAM,
+ * but process death never restores private sources or authenticated authority.
  * A restored route never authenticates a server, starts an engine, fetches a
  * transfer, or replays a pending command. A new Android share is admitted
  * only on a fresh launch or onNewIntent; the original Intent must not be
@@ -16,7 +18,7 @@ internal object NavigationRestorePolicy {
     fun restorableSection(name: String?): String = when (name) {
         // Media settings hold no transfer data, server session or command.
         // Restore only the Add shell: private sources and approvals never replay.
-        "LOCAL", "LOCAL_ADD", "COMBINED", "MEDIA", "OPTIONS" -> name
+        "LOCAL", "LOCAL_ADD", "ADD_CHOOSE", "COMBINED", "MEDIA", "OPTIONS" -> name
         // A remote-only route without an authenticated server would otherwise
         // reopen the connection form instead of the requested transfer list.
         else -> "LOCAL"

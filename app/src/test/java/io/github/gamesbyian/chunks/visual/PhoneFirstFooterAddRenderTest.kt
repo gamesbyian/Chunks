@@ -42,7 +42,7 @@ class PhoneFirstFooterAddRenderTest {
         val add = rule.onNodeWithText("+ Add")
         add.assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Add a download on this device").assertIsDisplayed()
+        rule.onNodeWithText("Add a transfer").assertIsDisplayed()
         // The button remains actionable after opening the actual in-place form.
         rule.onNodeWithText("+ Add").assertIsDisplayed()
     }

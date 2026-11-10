@@ -33,7 +33,7 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneAddLargeTextAuditTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val field get() = rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
+    private val field get() = rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
 
     private fun assertFitsAndTargets(where: String) {
         val density = rule.activity.resources.displayMetrics.density

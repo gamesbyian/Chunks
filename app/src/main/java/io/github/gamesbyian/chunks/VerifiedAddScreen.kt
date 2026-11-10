@@ -103,7 +103,8 @@ fun VerifiedAddScreen(
     /** Parent-owned exact-account review; remounting must not revive Add authority. */
     session: RemoteAddSession? = null,
     /** Inline shared Add-to selector; never grants remote admission. */
-    addDestinationPicker: (@Composable () -> Unit)? = null
+    addDestinationPicker: (@Composable () -> Unit)? = null,
+    externalSourceReading: Boolean = false
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -472,18 +473,6 @@ fun VerifiedAddScreen(
         item {
             RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
         }
-        if (!alreadyAttempted) item {
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
-                    value = startAfterAdd, enabled = !submitting && !choosing,
-                    role = Role.Checkbox,
-                    onValueChange = { startAfterAdd = it; awaitingConfirmation = false }),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Checkbox(checked = startAfterAdd, onCheckedChange = null)
-                Text("Start when added", modifier = Modifier.padding(start = 8.dp))
-            }
-        }
         item {
             OutlinedTextField(
                 value = destination,
@@ -521,6 +510,25 @@ fun VerifiedAddScreen(
                     awaitingConfirmation = false
                 }
             )
+        }
+
+        if (!alreadyAttempted && plan != null) item {
+            Text("Infohash: " + plan.expectedInfoHash, style = MaterialTheme.typography.bodySmall)
+            Text("Destination: " + plan.destination +
+                if (plan.useServerDefault) " (server default; no directory override)"
+                else " (custom parent folder)", style = MaterialTheme.typography.bodySmall)
+        }
+        if (!alreadyAttempted) item {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                    value = startAfterAdd, enabled = !submitting && !choosing,
+                    role = Role.Checkbox,
+                    onValueChange = { startAfterAdd = it; awaitingConfirmation = false }),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(checked = startAfterAdd, onCheckedChange = null)
+                Text("Start when added", modifier = Modifier.padding(start = 8.dp))
+            }
         }
         // Existing choices are suggestions, never permission/write probes. Keep
         // the effective default and manually editable custom Place above.
@@ -610,7 +618,8 @@ fun VerifiedAddScreen(
             }
                 item {
                     Button(
-                        onClick = {
+                        onClick = addClick@{
+                            if (externalSourceReading) return@addClick
                             // Both authorization and the one-shot ticket are acquired
                             // synchronously on the explicit Add click, before any
                             // suspending source, metadata or network operation.
@@ -777,7 +786,7 @@ fun VerifiedAddScreen(
                                 outcome = "Add could not be authorized for this exact server. Refresh the connection and review again; nothing was submitted."
                             }
                         },
-                        enabled = !submitting && !choosing,
+                        enabled = !submitting && !choosing && !externalSourceReading,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                     ) { Text("Add transfer") }
                 }

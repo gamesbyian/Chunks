@@ -57,7 +57,7 @@ class PhoneAddDraftContinuityTest {
 
     @Test fun artworkOptOutSurvivesAllEnvironmentsRoundTripWithoutAdding() {
         rule.onNodeWithText("+ Add").performClick()
-        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
+        rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
             .performScrollTo().performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40))
         openArtworkChoice()
         val choice = "Automatically identify and fetch artwork & metadata"
@@ -73,7 +73,7 @@ class PhoneAddDraftContinuityTest {
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
+        rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
             .performScrollTo().performTextInput(draft)
         rule.onNodeWithText("Options").performClick()
         rule.waitForIdle()
