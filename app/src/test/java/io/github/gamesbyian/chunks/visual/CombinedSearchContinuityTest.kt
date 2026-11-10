@@ -34,7 +34,8 @@ class CombinedSearchContinuityTest {
 
     @Test fun combinedSearchSurvivesAPhoneRoundTrip() {
         rule.waitForIdle()
-        rule.onNodeWithText("All environments").performClick()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
         pane("All environments")
         rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
@@ -43,7 +44,10 @@ class CombinedSearchContinuityTest {
         rule.onNodeWithText("Open device transfer controls").performClick()
         rule.waitForIdle()
         pane("Transfers on this device")
-        rule.onNodeWithText("All environments").performClick()
+        // The empty phone Welcome keeps search/scope hidden; persistent Transfers
+        // still opens the same canonical catalog with its saved query.
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
         pane("All environments")
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
