@@ -24,6 +24,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import libtorrent as lt
 from public_fixture_collector import bstr, debian_fixture, parse_bencode
 from real_peer_stage_budget import stage_prefix_lengths
+from disposable_tracker_isolation import isolated_public_v1_metainfo
 
 
 def bounded_phase_length(value):
@@ -77,6 +78,19 @@ def prepare(root):
                           "Blender Foundation, CC BY 3.0, " + license_url)
     fixtures = {}
     for label, (raw, payload_source, source, license_text) in sources.items():
+        source_meta_sha256 = hashlib.sha256(raw).hexdigest()
+        isolate_discovery = (os.getenv("CHUNKS_DISPOSABLE") == "1" and
+                             os.getenv("CHUNKS_PUBLIC_DISCOVERY") != "1")
+        if isolate_discovery:
+            # Exact publisher v1 info/piece hashes remain byte-identical, but
+            # an inert local tracker prevents rTorrent discovering OTHER public
+            # peers. Otherwise genuine bytes from an uncontrolled swarm can
+            # look like a success while our supplied peer uploaded zero bytes
+            # (run 42779030457). Live/public-discovery inputs stay untouched.
+            original_hash = lt.torrent_info(raw).info_hashes().v1
+            raw = isolated_public_v1_metainfo(raw)
+            if lt.torrent_info(raw).info_hashes().v1 != original_hash:
+                raise ValueError("Original public publisher infohash changed")
         ti = lt.torrent_info(raw)
         if ti.priv():
             raise ValueError("Only the fixed non-private public fixtures may be used")
@@ -132,6 +146,8 @@ def prepare(root):
             "torrent_url": (payload_source.replace("/iso-cd/", "/bt-cd/") + ".torrent"
                             if label in ("magnet", "magnet3") else source),
             "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
+            "original_source_metainfo_sha256": source_meta_sha256,
+            "tracker_scope": "disposable-loopback" if isolate_discovery else "original-public",
             "peer_connections": 0, "peer_disconnects": 0,
             "peer_error_alerts": 0, "max_active_peers": 0, "payload_uploaded_bytes": 0,
             "stages": [], "native_verified_bytes": 0,
