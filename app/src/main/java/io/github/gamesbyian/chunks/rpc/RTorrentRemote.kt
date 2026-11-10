@@ -196,7 +196,15 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             if (!fault.isUnsupportedOptionalGetter()) throw fault
             return null
         }
-        val path = (value as? String)?.trim()?.takeIf { it.startsWith("/") && it.length <= 4096 } ?: return null
+        // Unix directory names may end in spaces. Trimming the RPC value
+        // silently changes the exact Place, making a valid server-default
+        // Add appear to target a different directory at readback. Preserve
+        // the server's literal path; refuse malformed leading whitespace or
+        // control-tainted replies rather than inventing a "clean" location.
+        val path = (value as? String)?.takeIf {
+            it.startsWith("/") && it.length <= 4096 &&
+                it.none { ch -> ch.code < 32 || ch.code == 127 }
+        } ?: return null
         return path.trimEnd('/').ifEmpty { "/" }
     }
 
