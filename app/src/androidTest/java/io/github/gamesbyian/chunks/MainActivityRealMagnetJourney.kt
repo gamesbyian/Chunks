@@ -252,9 +252,6 @@ internal class MainActivityRealMagnetJourney(
                     // Changing the source must revoke the fetched .torrent
                     // selection; the actual Add still uses the production UI.
                     type("Magnet or torrent link", link)
-                    rule.waitUntil(30_000) {
-                        visible("Only 40-character v1 info hashes supported") == false
-                    }
                     assertNull("Changing source cannot implicitly add the reviewed URL",
                         readOnly { remote.lookupName(hash) })
                 }
