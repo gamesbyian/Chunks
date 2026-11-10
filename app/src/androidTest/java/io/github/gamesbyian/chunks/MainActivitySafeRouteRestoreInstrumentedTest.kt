@@ -40,8 +40,10 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.onNodeWithText("All environments").assertExists()
         rule.activityRule.scenario.recreate()
         rule.onNodeWithText("All environments").assertExists()
+        // Footer Transfers no longer falls into a distinct legacy phone list.
+        // It always returns to the canonical scope-filtered catalog.
         rule.onNodeWithText("Transfers").performClick()
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("All environments").assertExists()
         // A local Add shell can survive rotation, never its source or approval.
         rule.onNodeWithText("+ Add").performClick()
         rule.onNodeWithText("Add a download on this device").assertExists()

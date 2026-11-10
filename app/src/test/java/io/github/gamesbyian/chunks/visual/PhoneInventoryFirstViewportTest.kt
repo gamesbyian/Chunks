@@ -48,10 +48,11 @@ class PhoneInventoryFirstViewportTest {
         rule.onNodeWithText("Options · this device").assertIsDisplayed()
         // Privacy settings are an Option on this screen, not a pinned top row.
         rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
-        // Returning to the list is one tap from the same persistent footer.
+        // The footer now enters the single canonical catalog in every mode.
         rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Search transfers on this device").assertIsDisplayed()
+        rule.onNodeWithText("All environments").assertExists()
+        rule.onNodeWithText("Search names or hashes").assertExists()
     }
 
     @Test fun anEmptyPhoneSaysSoOnceWithoutAZeroOfZeroCount() {

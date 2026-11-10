@@ -1704,9 +1704,14 @@ internal fun ChunksApp(
         AuthenticatedTransfersFooter(
             optionsOpen = null,
             onTransfers = {
-                // One predictable home: selected environments if any are saved,
-                // otherwise the device's own inventory. Never selects a write target.
-                section = if (savedProfiles.isEmpty() && server == null) Section.LOCAL else Section.COMBINED
+                // One canonical catalog in phone-only, remote-only and mixed
+                // modes. Its chips change view scopes only; this route grants
+                // no engine, server or per-job mutation authority.
+                section = Section.COMBINED
+                // Re-tapping Transfers is useful even when already on this
+                // list: return to its first row without resetting search,
+                // filter, exact environment selection or any Add draft.
+                scope.launch { combinedListState.scrollToItem(0) }
             },
             onAdd = {
                 section = when {
