@@ -1,0 +1,133 @@
+name: One-shot installed disposable remote consent and canonical artwork
+# Opt-in branch only. No private tracker, protected host, or remote mutation by Chunks.
+on:
+  push:
+    branches:
+      - "probe/installed-remote-negative-consent-20261110"
+    paths:
+      - ".github/workflows/probe-installed-remote-consent-20261110.yml"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledDisposableRemotePublicMediaInstrumentedTest.kt"
+      - "tools/probe_installed_remote_consent.sh"
+      - "tools/preload_remote_media_two_servers.py"
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-one-shot-remote-media-consent-20261110
+  cancel-in-progress: true
+
+jobs:
+  installed-remote-media:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source and tree receipt
+        run: |
+          test "$GITHUB_REF_NAME" = "probe/installed-remote-negative-consent-20261110"
+          echo "CHUNKS_REMOTE_MEDIA_SOURCE_SHA=$GITHUB_SHA"
+          echo "CHUNKS_REMOTE_MEDIA_SOURCE_TREE=$(git rev-parse HEAD^{tree})"
+          python3 -m unittest discover -s tests -p test_installed_real_media.py
+      - name: Start two disposable real rTorrent daemons behind SCGI proxies
+        run: |
+          sudo timeout 180s apt-get update -qq
+          sudo timeout 180s env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rtorrent nginx
+          root="$RUNNER_TEMP/chunks-combined"
+          for s in a b; do
+            mkdir -p "$root/$s/data" "$root/$s/session"
+          done
+          start() {
+            name=$1 scgi=$2 peer=$3
+            cat > "$root/$name/rtorrent.rc" <<EOF
+          directory.default.set = $root/$name/data
+          session.path.set = $root/$name/session
+          network.scgi.open_port = 127.0.0.1:$scgi
+          network.port_range.set = $peer-$peer
+          network.port_random.set = no
+          protocol.pex.set = no
+          dht.mode.set = disable
+          system.daemon.set = true
+          EOF
+            nohup rtorrent -n -o "import=$root/$name/rtorrent.rc" > "$root/$name/rtorrent.log" 2>&1 < /dev/null &
+            echo $! > "$root/$name/rtorrent.pid"
+          }
+          start a 5000 6890
+          start b 5001 6891
+          cat > "$root/nginx.conf" <<EOF
+          worker_processes 1;
+          pid $root/nginx.pid;
+          error_log $root/nginx.error notice;
+          events { worker_connections 64; }
+          http {
+            server { listen 127.0.0.1:18080; location /RPC2 { auth_basic "chunks-a"; auth_basic_user_file /tmp/chunks-combined-a.htpasswd; include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5000; } }
+            server { listen 127.0.0.1:18082; location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5001; } }
+          }
+          EOF
+          # Disposable basic-auth login for server A only (C2 sign-in rejection).
+          printf 'chunks:%s\n' "$(openssl passwd -apr1 chunks-one)" > /tmp/chunks-combined-a.htpasswd && chmod 644 /tmp/chunks-combined-a.htpasswd
+          sudo nginx -c "$root/nginx.conf"
+          for port in 18080 18082; do
+            for i in $(seq 1 40); do
+              curl -fsS -u chunks:chunks-one -H 'Content-Type: text/xml' --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
+                "http://127.0.0.1:$port/RPC2" >/dev/null && break
+              sleep 0.5
+            done
+          done
+      - name: Preload identical public TV episode and distinct stopped fixtures on both servers
+        run: |
+          python3 tools/preload_remote_media_two_servers.py \
+            --a http://127.0.0.1:18080/RPC2 --a-user chunks --a-pass chunks-one --b http://127.0.0.1:18082/RPC2 \
+            --dir-a "$RUNNER_TEMP/chunks-combined/a/data" --dir-b "$RUNNER_TEMP/chunks-combined/b/data" \
+            --run "$GITHUB_RUN_ID" --receipt "$RUNNER_TEMP/chunks-combined/receipt.json"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build app and instrumentation APKs
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Prepare emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed real authenticated rTorrent inventory, public TVmaze/CDN and offline cache
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/probe_installed_remote_consent.sh
+      - name: Stop disposable daemons
+        if: always()
+        run: |
+          for s in a b; do
+            f="$RUNNER_TEMP/chunks-combined/$s/rtorrent.pid"
+            [ -f "$f" ] && kill -TERM "$(cat "$f")" 2>/dev/null || true
+          done
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-one-shot-installed-remote-consent-media
+          path: |
+            ${{ runner.temp }}/chunks-combined/receipt.json
+            ${{ runner.temp }}/chunks-remote-media-consent/*.xml
+            ${{ runner.temp }}/chunks-remote-media-consent/WITNESS.txt
+            ${{ runner.temp }}/chunks-remote-media-consent/installed-apk-receipt.txt
+          retention-days: 14
+          if-no-files-found: warn
