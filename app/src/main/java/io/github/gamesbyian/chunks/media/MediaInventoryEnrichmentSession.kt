@@ -75,6 +75,7 @@ class MediaInventoryEnrichmentSession internal constructor(
      * offscreen rows even when the displayed inventory has not changed. Cache
      * receipts and exact-key automation exclusions remain enforced by the controller.
      */
+    /** Routine heartbeat: do not starve the tail of an already authorized scan. */
     fun refresh() = synchronized(lock) {
         if (closed || snapshot == null) return@synchronized
         if (activeJob?.isActive == true) {
@@ -82,6 +83,15 @@ class MediaInventoryEnrichmentSession internal constructor(
             // heartbeat or network ticks collapse into one later full pass.
             refreshPending = true
         } else scheduleLocked()
+    }
+
+    /** Settings, consent and credential transitions must revoke old in-flight work
+     * immediately, even if permission is briefly withdrawn and then restored. */
+    fun refreshRevoking() = synchronized(lock) {
+        if (!closed && snapshot != null) {
+            refreshPending = false
+            scheduleLocked()
+        }
     }
 
     private fun scheduleLocked() {
