@@ -313,6 +313,8 @@ internal fun ChunksApp(
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
+    var combinedFromConnections by rememberSaveable { mutableStateOf(false) }
+    var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
     // View-only one-shot canonical catalog focus; never a login, Add target,
     // RPC account or authority. The browser consumes this exact stable ID.
     var savedProfileCatalogFocus by remember { mutableStateOf<String?>(null) }
@@ -738,6 +740,7 @@ internal fun ChunksApp(
                 showNavigationFooter = false,
                 scopeFocusRequest = savedProfileCatalogFocus,
                 onScopeFocusConsumed = { savedProfileCatalogFocus = null },
+                returnToCatalogRevision = returnToCatalogRevision,
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
@@ -884,11 +887,17 @@ internal fun ChunksApp(
                     }
                 },
                 onBack = {
-                    // Respect the launching surface, even if the server disconnected
-                    // while browsing. Never infer any mutation authority from this origin.
+                    // An explicit saved-profile deep link must return to
+                    // Connections, not the old phone/server-specific lists.
+                    val returnToConnections = combinedFromConnections
+                    combinedFromConnections = false
                     val returnToPhone = combinedFromPhone || server == null
                     localFromCombined = false
-                    section = if (returnToPhone) Section.LOCAL else Section.TRANSFERS
+                    section = when {
+                        returnToConnections -> Section.SERVER
+                        returnToPhone -> Section.LOCAL
+                        else -> Section.TRANSFERS
+                    }
                 }
             )
         } else if (section == Section.SEEDING) {
@@ -988,6 +997,7 @@ internal fun ChunksApp(
                     io.github.gamesbyian.chunks.model.EnvironmentSnapshots
                         .serverIdOfAliasScope(aliasScope)?.value?.let { id ->
                             savedProfileCatalogFocus = id
+                            combinedFromConnections = true
                             section = Section.COMBINED
                         }
                 },
@@ -1010,6 +1020,7 @@ internal fun ChunksApp(
                     connectJob?.cancel()
                     remoteFence.invalidate()
                     RemoteCredentialLock.invalidate()
+                    returnFromStartupConnectToCanonical = false
                     loading = false
                     connectDiagnostics = ConnectionDiagnostics()
                     error = "Connection check cancelled. Nothing was changed on the server."
@@ -1122,6 +1133,7 @@ internal fun ChunksApp(
                     // This is a view filter, never an implicit Connect or a write.
                     // The encrypted roster's immutable ID is the only selector.
                     savedProfileCatalogFocus = profile.id
+                    combinedFromConnections = true
                     section = Section.COMBINED
                 },
                 onLocalZipReview = { openTool(Section.ARCHIVES, Section.SERVER) },
@@ -1219,6 +1231,7 @@ internal fun ChunksApp(
                                     if (startupReturn) {
                                         // Read-only startup catalog focus. No Add target.
                                         savedProfileCatalogFocus = verifiedId
+                                        combinedFromConnections = true
                                     } else {
                                         verifiedConnectionNotice = VerifiedConnectionNotice(
                                             savedProfiles.firstOrNull { it.id == verifiedId }?.label
@@ -1839,6 +1852,8 @@ internal fun ChunksApp(
                 // modes. Its chips change view scopes only; this route grants
                 // no engine, server or per-job mutation authority.
                 section = Section.COMBINED
+                combinedFromConnections = false
+                returnToCatalogRevision++
                 // Re-tapping Transfers is useful even when already on this
                 // list: return to its first row without resetting search,
                 // filter, exact environment selection or any Add draft.
