@@ -322,4 +322,20 @@ class ArtworkRepositoryTest {
         assertTrue(upgraded().loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
     }
 
+
+    @Test fun newManualImageIsNeverEvictedBeforeItsFirstPinUnderStoragePressure() {
+        val cache = Files.createTempDirectory("ordinary-art-cache").toFile()
+        val durable = Files.createTempDirectory("one-byte-limit-user-art").toFile()
+        fun newRepository() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze },
+            // This deliberately cannot fit any JPEG. The user's explicit choice is
+            // protected even when existing pins already exceed the target budget.
+            importedDisk = ArtworkDiskCache(durable, maxBytes = 1))
+        val candidate = newRepository().importLocal(image(600, 800)).first!!
+        assertTrue("New manual art must be pinned before trim sees its bytes",
+            durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        assertTrue("A cold instance must decode the exact manual image offline",
+            newRepository().loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+    }
+
 }
