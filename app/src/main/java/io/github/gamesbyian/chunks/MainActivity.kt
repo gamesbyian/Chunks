@@ -1907,7 +1907,15 @@ internal fun ConnectionScreen(
     onLocalEngine: () -> Unit,
     onCreateTorrent: () -> Unit = {},
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
-    onPassword: (String) -> Unit, onConnect: () -> Unit
+    onPassword: (String) -> Unit, onConnect: () -> Unit,
+    connectedSessionName: String? = null,
+    connectedVersion: String = "",
+    connectedRequestedView: String = "main",
+    onSelectConnectedView: (String) -> Unit = {},
+    onLoadConnectedView: () -> Unit = {},
+    onConnectedSeedingRules: () -> Unit = {},
+    onViewConnectedTransfers: () -> Unit = {},
+    onDisconnectCurrent: () -> Unit = {}
 ) {
     // Submitting the form closes the keyboard, as forms conventionally do,
     // so the next screen's persistent footer is not waiting on an IME hide.
@@ -1916,10 +1924,11 @@ internal fun ConnectionScreen(
     val submitConnect: () -> Unit = {
         connectKeyboard?.hide()
         connectFocus.clearFocus()
-        onConnect()
+        if (connectedSessionName == null) onConnect()
     }
     var pendingForget by remember { mutableStateOf<String?>(null) }
     var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
+    var currentServerToolsOpen by rememberSaveable { mutableStateOf(false) }
     var renameProfileId by remember { mutableStateOf<String?>(null) }
     var renameDraft by remember { mutableStateOf("") }
     var renameBusy by remember { mutableStateOf(false) }
@@ -1946,6 +1955,59 @@ internal fun ConnectionScreen(
                 "Manage a seedbox or other rTorrent client from a secure endpoint. " +
                     "Checking a connection never changes its transfers; each transfer action " +
                     "requires separate review.", Lilac, titleAsHeading = true)
+        }
+        if (connectedSessionName != null) item {
+            Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Connected · " + connectedSessionName,
+                        style = MaterialTheme.typography.titleMedium)
+                    Text("This verified session is available in Transfers. Browsing does not change its torrents.",
+                        style = MaterialTheme.typography.bodySmall)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = onViewConnectedTransfers,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            Text("View transfers")
+                        }
+                        OutlinedButton(onClick = onDisconnectCurrent, enabled = !loading,
+                            modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                            Text("Disconnect")
+                        }
+                    }
+                    OutlinedButton(onClick = { currentServerToolsOpen = !currentServerToolsOpen },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .semantics {
+                                stateDescription = if (currentServerToolsOpen) "Expanded" else "Collapsed"
+                            }) {
+                        Text(if (currentServerToolsOpen) "Hide current server tools" else "Current server tools")
+                    }
+                    if (currentServerToolsOpen) {
+                        Text("rTorrent " + connectedVersion + " · selected view " + connectedRequestedView,
+                            style = MaterialTheme.typography.bodySmall)
+                        Text("A filtered rTorrent view is not proof of a complete account inventory.",
+                            style = MaterialTheme.typography.bodySmall)
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf("main", "default", "started", "stopped").forEach { view ->
+                                FilterChip(selected = connectedRequestedView == view,
+                                    onClick = { onSelectConnectedView(view) }, label = { Text(view) },
+                                    modifier = Modifier.heightIn(min = 48.dp))
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = onLoadConnectedView, enabled = !loading,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text(if (loading) "Refreshing…" else "Load view")
+                            }
+                            OutlinedButton(onClick = onConnectedSeedingRules,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text("Seeding rules")
+                            }
+                        }
+                    }
+                }
+            }
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {
             item {
@@ -1977,7 +2039,7 @@ internal fun ConnectionScreen(
                             OutlinedButton(onClick = {
                                 pendingForget = null
                                 onSelectProfile(profile)
-                            }, enabled = !loading,
+                            }, enabled = !loading && connectedSessionName == null,
                                 modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                                 Text("Use saved login")
                             }
