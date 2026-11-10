@@ -1749,10 +1749,14 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                     // Build fresh authorization for the write's method/target,
                     // before sending it ONCE. For an unrelated upload endpoint
                     // we take the independent HEAD path above, never this cache.
-                    val accepted = acceptedReadAuthHeaders
-                    if (accepted != null)
-                        HttpRpcAuthorization.fromChallenge(accepted, auth, "POST", requestTarget)
-                    else challengeWriteEndpoint(writeEndpoint, requestTarget)
+                    // Prefer the fresh same-write-resource HEAD challenge
+                    // when available; its 407/429/5xx must remain terminal.
+                    // Only an uninformative allowed HEAD may fall back to
+                    // this transport's previously accepted RPC read challenge.
+                    challengeWriteEndpoint(writeEndpoint, requestTarget)
+                        ?: acceptedReadAuthHeaders?.let {
+                            HttpRpcAuthorization.fromChallenge(it, auth, "POST", requestTarget)
+                        }
                 }
                 else -> throw IOException("rTorrent authentication preflight returned HTTP $status")
             }
