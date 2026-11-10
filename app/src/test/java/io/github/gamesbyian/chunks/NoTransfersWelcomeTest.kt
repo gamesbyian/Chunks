@@ -74,4 +74,19 @@ class NoTransfersWelcomeTest {
         org.junit.Assert.assertFalse(show(incoming = true))
     }
 
+    @Test fun selectedProfileScopeUsesImmutableIdNotDisplayName() {
+        val known = setOf("rtorrent:account-a", "rtorrent:account-b")
+        val one = savedProfileViewScope("rtorrent:account-a", known)
+        val two = savedProfileViewScope("rtorrent:account-b", known)
+        org.junit.Assert.assertNotNull(one)
+        org.junit.Assert.assertNotEquals(one, two)
+        org.junit.Assert.assertNull(savedProfileViewScope("rtorrent:other", known))
+        org.junit.Assert.assertNull(savedProfileViewScope("", known))
+        org.junit.Assert.assertEquals(
+            io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                setOf(io.github.gamesbyian.chunks.model.EnvironmentId("rtorrent:account-b"))),
+            two
+        )
+    }
+
 }
