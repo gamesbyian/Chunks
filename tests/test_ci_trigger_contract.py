@@ -210,6 +210,23 @@ class AndroidCiTriggerContract(unittest.TestCase):
             self.assertIn(name, source)
         self.assertIn("Missing or duplicated native atlas Android test method", source)
 
+    def test_r8_reuses_warm_gradle_and_preserves_installed_case_proof(self):
+        # The two invocations run in one job; a cold daemon costs an extra
+        # JVM/Gradle configuration cycle after the Android emulator boots.
+        # Both still execute real qaMinified APK and connected Android cases.
+        workflow = (ROOT / ".github/workflows/minified-smoke.yml").read_text()
+        smoke = (ROOT / "tools/minified_smoke.sh").read_text()
+        self.assertIn(
+            "gradle --daemon -Pchunks.testBuildType=qaMinified "
+            ":app:assembleQaMinified :app:assembleQaMinifiedAndroidTest", workflow)
+        self.assertIn("timeout 900 gradle --daemon --info", smoke)
+        self.assertIn(":app:connectedQaMinifiedAndroidTest", smoke)
+        self.assertIn("CHUNKS_R8_BUILD_SECONDS=", workflow)
+        self.assertIn("CHUNKS_R8_INSTALLED_SMOKE_SECONDS=", smoke)
+        self.assertIn("require_minified_smoke_digest.py", workflow)
+        self.assertIn("--require-executed", workflow)
+        self.assertIn("MinifiedBuildSmokeInstrumentedTest", smoke)
+
     def test_r8_offline_gate_tests_only_run_in_existing_docs_job(self):
         docs = (ROOT / ".github/workflows/documentation-validation.yml").read_text()
         r8 = (ROOT / ".github/workflows/minified-smoke.yml").read_text()
