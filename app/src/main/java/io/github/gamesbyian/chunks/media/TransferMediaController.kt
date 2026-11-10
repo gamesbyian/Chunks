@@ -259,7 +259,8 @@ class TransferMediaController(
             network().metered && !s.artworkOnMeteredNetwork -> "Identified; artwork retrieval is paused on a metered network"
             // Mobile-data image permission never authorizes a new automatic metadata search.
             // An artless verified work must still wait for unmetered provider discovery.
-            network().metered -> "Identified; searching providers for a poster waits for an unmetered connection"
+            network().metered && service.hasConfiguredArtworkProvider(match.kind, s) ->
+                "Identified; searching providers for a poster waits for an unmetered connection"
             !service.hasConfiguredArtworkProvider(match.kind, s) ->
                 "Identified; no artwork provider is configured for this media"
             else -> "Identified; no verified poster or cover was returned"
