@@ -33,6 +33,23 @@ HTTPS_PHONE_ID = hashlib.sha256((
     "io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest" + "\\0" +
     "fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault").encode()).hexdigest()
 
+# These two opt-in installed API35 cases execute only in the independently
+# authorized real-TVmaze/CDN campaign, including new-process offline recovery.
+# The normal native Add workflow MUST NOT supply provider consent or claim them
+# executed. Its verifier may discount ONLY these exact skip identities, never
+# another skipped case or a failed/missing JUnit result.
+PUBLIC_AUTO_POSTER_OPTIN_IDS = frozenset(
+    hashlib.sha256((
+        "io.github.gamesbyian.chunks.InstalledAutomaticPublicMediaInstrumentedTest"
+        + "\\0" + name
+    ).encode()).hexdigest()
+    for name in (
+        "phaseA_liveAutomaticArtworkWithoutIdentify",
+        "phaseB_offlineColdProcessRestoresRealArtwork",
+    )
+)
+REVIEWED_DEDICATED_OPTIN_IDS = PUBLIC_AUTO_POSTER_OPTIN_IDS | {HTTPS_PHONE_ID}
+
 
 def verify(root, count, sha, screenshot_manifest=None):
     if not 1 < count <= 4:
@@ -43,7 +60,7 @@ def verify(root, count, sha, screenshot_manifest=None):
     totals = {"tests": 0, "executed": 0, "failed": 0, "skipped": 0, "reports": 0}
     summaries = []
     known_test_ids = set()
-    https_phone_skipped = 0
+    reviewed_dedicated_optin_skipped = 0
     for index in range(count):
         path = root / f"chunks-native-add-receipt-shard-{index}" / "digest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -69,8 +86,8 @@ def verify(root, count, sha, screenshot_manifest=None):
             known_test_ids.add(ident)
             if case.get("outcome") not in ("passed", "skipped"):
                 raise ValueError("failed test in accepted shard")
-            if ident == HTTPS_PHONE_ID and case["outcome"] == "skipped":
-                https_phone_skipped += 1
+            if ident in REVIEWED_DEDICATED_OPTIN_IDS and case["outcome"] == "skipped":
+                reviewed_dedicated_optin_skipped += 1
         if int(j.get("tests", -1)) != int(j["executed"]) + int(j["skipped"]):
             raise ValueError("shard inconsistent JUnit skip/execute counts")
         if sum(case["outcome"] == "skipped" for case in cases) != int(j["skipped"]):
@@ -91,7 +108,7 @@ def verify(root, count, sha, screenshot_manifest=None):
         raise ValueError('missing test-case identities')
     if (totals['tests'] < BASELINE_JUNIT_TESTS or
             totals['executed'] < BASELINE_EXECUTED_TESTS or
-            totals['skipped'] - https_phone_skipped > MAX_BASELINE_SKIPPED):
+            totals['skipped'] - reviewed_dedicated_optin_skipped > MAX_BASELINE_SKIPPED):
         raise ValueError('below accepted complete JUnit coverage or excessive skips')
     screenshots = {}
     for name in manifest:
