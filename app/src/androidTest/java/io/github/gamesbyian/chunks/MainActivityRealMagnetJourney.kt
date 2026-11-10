@@ -299,6 +299,20 @@ internal class MainActivityRealMagnetJourney(
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
                 runCatching { scroll("Review Add") }.isFailure)
             assertNotNull("Navigation must retain the independently registered exact job", row(hash))
+            if (disposable && !publicDiscovery) {
+                // The HTTPS preview above must NOT leak its public trackers
+                // into the actual Add. Query the real rTorrent session after
+                // admission, independently of the Android draft and without
+                // recording or printing any tracker string.
+                val trackers = readOnly {
+                    remote.call("t.multicall", listOf(hash, "", "t.url=")) as? List<*>
+                }
+                assertTrue("No public tracker may be admitted by a controlled-peer fixture",
+                    trackers != null && trackers.isNotEmpty() && trackers.all { tracker ->
+                        (tracker as? List<*>)?.singleOrNull() ==
+                            "http://127.0.0.1:1/announce"
+                    })
+            }
             report("chunks_real_add_app_stage", "add-registered")
         }
         fun refreshAndFind(hash: String) {
