@@ -68,6 +68,51 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         }
     }
 
+    @Test fun malformedSecondIntentCannotEraseQueuedFirstShareBeforeReview() {
+        val context = ApplicationProvider.getApplicationContext<android.content.Context>()
+        val initial = Intent(context, MainActivity::class.java).apply {
+            action = Intent.ACTION_MAIN
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
+        ActivityScenario.launch<MainActivity>(initial).use { scenario ->
+            // Deliver real Android singleTop Intents, back-to-back from
+            // one UI dispatch. Calling Activity.onNewIntent directly would
+            // bypass the framework and is protected on MainActivity.
+            scenario.onActivity { activity ->
+                fun share(text: String) = Intent(activity, MainActivity::class.java).apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, text)
+                    addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                }
+                activity.startActivity(share(magnet))
+                activity.startActivity(share("magnet:?xt=urn:btih:" + "b".repeat(40)).apply {
+                    putExtra(Intent.EXTRA_STREAM, 42) // malformed, not a granted document
+                })
+            }
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty() ||
+                    rule.onAllNodesWithText("Review on this phone").fetchSemanticsNodes().isNotEmpty()
+            }
+            // A connected server requires choosing an exact Add destination.
+            // The fallback route with no server already opens device Add.
+            if (rule.onAllNodesWithText("Review on this phone").fetchSemanticsNodes().isNotEmpty()) {
+                rule.onNodeWithText("Review on this phone").performClick()
+            }
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText(magnet).assertExists()
+            org.junit.Assert.assertEquals("Android Share intake cannot issue a phone Add",
+                before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
+            // ActivityScenario tracks its original launch identity; a genuine
+            // onNewIntent has replaced it. Restore only the test monitor's
+            // identity after all UI assertions, never redispatch the source.
+            scenario.onActivity { it.intent = initial }
+        }
+    }
+
     @Test fun reviewedTorrentSurvivesPhoneNavigationWithoutAddingOrPersistingItsPrivateSource() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val bytes = ("d8:announce14:http://ignored4:info" +
