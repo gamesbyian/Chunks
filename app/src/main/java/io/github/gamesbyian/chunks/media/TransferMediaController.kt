@@ -408,7 +408,9 @@ class TransferMediaController(
                     // the original expiry anchor instead of postponing retries.
                     updatedAtMs = if (previous?.state == MediaAssignmentState.COULDNT_IDENTIFY &&
                         outcome.status == MediaLookupStatus.NOT_FOUND &&
-                        outcome.attempts.isNotEmpty() && outcome.attempts.all { it.fromCache })
+                        // No provider attempts also means no new network evidence.
+                        // Keep the original negative-cache expiry anchor.
+                        outcome.attempts.all { it.fromCache })
                         previous.updatedAtMs else clock())
                 if (!replaceIfUnchanged(key, previous, assignment, permitted)) return
                 lastProviderAttemptRevision[key] = providerConfigurationRevision.get()
