@@ -66,6 +66,25 @@ internal class TransferAliasStore(context: Context) {
         committed
     }
 
+    /** A new Add may preselect a Chunks-only display name. It may *never*
+     * overwrite an existing manual alias, even if that alias was edited while
+     * the torrent's network readback was pending. No torrent/backend mutation.
+     * Caller supplies an independently verified NEW registration exact hash
+     * from the existing phone/remote coordinator. */
+    fun saveVerifiedNewAddAlias(scope: String, hash: String, input: String): Boolean =
+        synchronized(aliasWriteLock) {
+            if (scope.isBlank() || !Regex("[0-9a-fA-F]{40}").matches(hash)) return@synchronized false
+            val normalized = runCatching {
+                io.github.gamesbyian.chunks.model.TransferDisplayNames.validateAlias(input)
+            }.getOrNull() ?: return@synchronized false
+            val storageKey = runCatching { key(scope, hash) }.getOrNull()
+                ?: return@synchronized false
+            if (preferences.contains(storageKey)) return@synchronized false
+            val saved = preferences.edit().putString(storageKey, normalized).commit()
+            if (saved) changed()
+            saved
+        }
+
     /** Chunks-only display label carried after independent destination Add readback.
      * Caller must already have checked the exact Move journal, target hash and
      * explicit original Move review. Never reads/metainfo, calls engines, alters

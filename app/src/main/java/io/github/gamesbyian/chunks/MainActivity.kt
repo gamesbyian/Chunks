@@ -123,6 +123,8 @@ internal class PhoneAddAttemptOwner : androidx.lifecycle.ViewModel() {
     // Retain private Add drafts through configuration changes in RAM only.
     // Never serialize magnet passkeys, document bytes or account scope.
     val sourceDraft = mutableStateOf("")
+    // The optional Chunks-only label belongs to the single in-RAM Add draft.
+    val aliasDraft = mutableStateOf("")
     val reviewedTorrent = mutableStateOf<PendingLocalAdd?>(null)
     val pendingSharedMagnet = mutableStateOf<String?>(null)
     val pendingSharedDocument = mutableStateOf<Uri?>(null)
@@ -369,6 +371,8 @@ internal fun ChunksApp(
     // neither browsing filters nor opening a screen silently authorizes Add.
     // Process memory only, never SavedState/preferences: links can hold passkeys.
     val addSourceDraft = retainedAddOwner?.sourceDraft ?: remember { mutableStateOf("") }
+    val addAliasDraft = retainedAddOwner?.aliasDraft ?: remember { mutableStateOf("") }
+    val verifiedAliasStore = remember(context) { TransferAliasStore(context) }
     val phoneAddPlace = rememberSaveable { mutableStateOf<String?>(null) }
     val phoneAddFolder = rememberSaveable { mutableStateOf("") }
     val phoneAddStart = rememberSaveable { mutableStateOf(true) }
@@ -726,6 +730,8 @@ internal fun ChunksApp(
                     RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
             }.map { UniversalAddSavedDestination(it.id, it.label + " · " + it.address) },
             enabled = addChoicesEnabled && !sharedTorrentReading,
+            aliasDraft = addAliasDraft.value,
+            onAliasChange = { addAliasDraft.value = it },
             incomingSourceWaiting = pendingSharedMagnet != null || pendingSharedDocument != null,
             importingSource = sharedTorrentReading,
             sourceError = sharedTorrentError,
@@ -983,6 +989,7 @@ internal fun ChunksApp(
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     addArtworkState = addArtworkChoices.onPhone(),
                     addDestinationPicker = if (presentationSection == Section.LOCAL_ADD) addDestinationPicker else null,
+                    addAliasState = addAliasDraft,
                     externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                     pendingAddState = phoneReviewedTorrent,
                     phoneAddAttemptSession = activePhoneAddAttempt,
@@ -1343,6 +1350,7 @@ internal fun ChunksApp(
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         addArtworkState = addArtworkChoices.onPhone(),
                     addDestinationPicker = if (presentationSection == Section.LOCAL_ADD) addDestinationPicker else null,
+                    addAliasState = addAliasDraft,
                     externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                         pendingAddState = phoneReviewedTorrent,
                         phoneAddAttemptSession = activePhoneAddAttempt,
@@ -1827,6 +1835,16 @@ internal fun ChunksApp(
                         addArtworkState = addArtworkChoices.onServer(aliasScope),
                         addDestinationPicker = addDestinationPicker,
                         externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
+                        addAliasState = addAliasDraft,
+                        onVerifiedAlias = { hash, value ->
+                            // The frozen coordinator confirms a new exact job,
+                            // and a stale account/route cannot receive its label.
+                            val ticket = addSession.attemptTicket
+                            if (server !== connectedRemote ||
+                                aliasScope != addSession.accountScope ||
+                                ticket?.intent?.source?.expectedInfoHash?.equals(hash, true) != true) false
+                            else verifiedAliasStore.saveVerifiedNewAddAlias(aliasScope, hash, value)
+                        },
                         onBack = { section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->

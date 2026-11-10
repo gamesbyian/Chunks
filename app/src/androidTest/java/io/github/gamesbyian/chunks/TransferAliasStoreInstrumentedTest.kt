@@ -39,6 +39,34 @@ class TransferAliasStoreInstrumentedTest {
         }
     }
 
+    @Test fun verifiedAddOnlySetsAbsentExactScopedAliasAndNeverOverwritesManualChoice() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val store = TransferAliasStore(context)
+        val hash = "8".repeat(40)
+        val other = "7".repeat(40)
+        val alice = "https://alias-add.example.test/rutorrent2/plugins/httprpc/action.php\u0000alice"
+        val bob = "https://alias-add.example.test/rutorrent2/plugins/httprpc/action.php\u0000bob"
+        try {
+            assertFalse(store.saveVerifiedNewAddAlias(alice, "not-a-hash", "Label"))
+            assertFalse(store.saveVerifiedNewAddAlias(alice, hash, "a\u202Eb"))
+            assertTrue(store.saveVerifiedNewAddAlias(alice, hash, "New job label"))
+            assertEquals("New job label", store.get(alice, hash))
+            assertFalse("A second Add or a concurrent manual edit cannot be overwritten",
+                store.saveVerifiedNewAddAlias(alice, hash, "Clobber"))
+            assertTrue(store.save(alice, hash, "Manual edit"))
+            assertFalse(store.saveVerifiedNewAddAlias(alice, hash, "Stale Add label"))
+            assertEquals("Manual edit", store.get(alice, hash))
+            assertNull(store.get(bob, hash))
+            assertNull(store.get(alice, other))
+            assertTrue(store.saveVerifiedNewAddAlias(bob, hash, "Bob separate label"))
+            assertEquals("Bob separate label", store.get(bob, hash))
+        } finally {
+            store.save(alice, hash, null)
+            store.save(bob, hash, null)
+            store.save(alice, other, null)
+        }
+    }
+
     @Test fun aliasesAreLocalAndScopedToServerAndInfoHash() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val store = TransferAliasStore(context)

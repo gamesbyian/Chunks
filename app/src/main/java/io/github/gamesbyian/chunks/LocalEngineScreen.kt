@@ -337,6 +337,8 @@ internal fun LocalEngineScreen(
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
     /** Shared source-first Add target selector, embedded without creating a second route. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
+    /** One parent-owned optional Chunks list label across phone/server draft switches. */
+    addAliasState: androidx.compose.runtime.MutableState<String>? = null,
     externalSourceReading: Boolean = false,
     /** Reviewed .torrent bytes outlive phone screen navigation, never Activity/process recreation. */
     pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null,
@@ -1181,6 +1183,12 @@ internal fun LocalEngineScreen(
                 val selectedDraft = addFolderDraft
                 val selectedPlace = place
                 val checkedMagnet = magnetCheck as? MagnetDraftCheck.Valid ?: return@ActionTile
+                val frozenAlias = runCatching {
+                    normalizedUniversalAddAlias(addAliasState?.value.orEmpty())
+                }.getOrElse {
+                    noteProblem("That display name contains unsupported characters or exceeds 160 characters. Nothing was added.")
+                    return@ActionTile
+                }
                 if (PhoneUniversalAddAdapter.alreadyPresentInFreshInventory(
                         checkedMagnet.infoHash, transfers, hasConfirmedLocalInventory && !inventoryStale)) {
                     noteProblem("This exact torrent already exists on this phone. No second Add was sent. Open its transfer card instead.")
@@ -1264,8 +1272,21 @@ internal fun LocalEngineScreen(
                             is LocalAddResult.Refused -> null
                         }
                         if (registeredHash != null && (session == null ||
-                            (ticket != null && session.announceNativeRegistrationOnce(ticket))))
+                            (ticket != null && session.announceNativeRegistrationOnce(ticket)))) {
+                            val verifiedAlias = exactNewAddAlias(
+                                frozenAlias, checkedMagnet.infoHash, registeredHash)
+                            if (verifiedAlias != null) {
+                                if (aliasStore.saveVerifiedNewAddAlias(
+                                        TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                                        registeredHash, verifiedAlias)) {
+                                    aliasRevision++
+                                    if (addAliasState?.value == frozenAlias)
+                                        addAliasState.value = ""
+                                } else message = message.orEmpty() +
+                                    " Magnet registered but its Chunks display name was not saved."
+                            }
                             rememberAdded(registeredHash, message)
+                        }
                         if (result !is LocalAddResult.Refused) {
                             automaticArtwork = true
                             if (autoStart) {
@@ -1289,6 +1310,7 @@ internal fun LocalEngineScreen(
                 }
             }, enabled = !busy && !sourceReading && addInventoryReady && !dhtSaving && !placeSaving && proposedAddDestination != null &&
                 magnetCheck is MagnetDraftCheck.Valid &&
+                validUniversalAddAlias(addAliasState?.value.orEmpty()) &&
                 phoneAddAttemptSession?.attemptedTicket == null,
                 modifier = Modifier.fillMaxWidth())
         }
@@ -1458,7 +1480,7 @@ internal fun LocalEngineScreen(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
             busy = busy || !phoneReviewedMetainfoIsCurrent(magnet, sourceReading) ||
-                !addInventoryReady || placeSaving || proposedAddDestination == null ||
+                !validUniversalAddAlias(addAliasState?.value.orEmpty()) || !addInventoryReady || placeSaving || proposedAddDestination == null ||
                 phoneAddAttemptSession?.attemptedTicket != null,
             startAfterAdd = startAfterAdd,
             cancelEnabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
@@ -1466,6 +1488,15 @@ internal fun LocalEngineScreen(
             seeding = seedingPreview,
             onConfirm = confirm@{
                 if (!phoneReviewedMetainfoIsCurrent(magnet, sourceReading) || pending !== add) return@confirm
+                // Freeze on the explicit Add click before native admission or
+                // any suspension. Editing a different draft cannot redirect a
+                // previously verified job's Chunks-only list name.
+                val frozenAlias = runCatching {
+                    normalizedUniversalAddAlias(addAliasState?.value.orEmpty())
+                }.getOrElse {
+                    noteProblem("That display name contains unsupported characters or exceeds 160 characters. Nothing was added.")
+                    return@confirm
+                }
                 if (PhoneUniversalAddAdapter.alreadyPresentInFreshInventory(
                         add.preview.infoHashV1, transfers, hasConfirmedLocalInventory && !inventoryStale)) {
                     noteProblem("This exact torrent already exists on this phone. No second Add was sent. Open its transfer card instead.")
@@ -1574,8 +1605,21 @@ internal fun LocalEngineScreen(
                                 started != null && started.outcome != LocalCommandOutcome.VERIFIED))
                             problemOutcome = message
                         if (added is LocalAddResult.AddedStopped && (session == null ||
-                            (ticket != null && session.announceNativeRegistrationOnce(ticket))))
+                            (ticket != null && session.announceNativeRegistrationOnce(ticket)))) {
+                            val verifiedAlias = exactNewAddAlias(frozenAlias,
+                                add.preview.infoHashV1, added.status.infoHash)
+                            if (verifiedAlias != null) {
+                                if (aliasStore.saveVerifiedNewAddAlias(
+                                        TransferCollectionStore.LOCAL_ENGINE_SCOPE,
+                                        added.status.infoHash, verifiedAlias)) {
+                                    aliasRevision++
+                                    if (addAliasState?.value == frozenAlias)
+                                        addAliasState.value = ""
+                                } else message = message.orEmpty() +
+                                    " The transfer was added but its Chunks display name was not saved."
+                            }
                             rememberAdded(added.status.infoHash, message)
+                        }
                         if (added !is LocalAddResult.Refused) {
                             automaticArtwork = true
                             pending = null
