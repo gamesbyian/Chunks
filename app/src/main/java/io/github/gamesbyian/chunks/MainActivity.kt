@@ -1905,6 +1905,13 @@ internal fun ConnectionScreen(
     var renameBusy by remember { mutableStateOf(false) }
     var renameNotice by remember { mutableStateOf<String?>(null) }
     val renameScope = rememberCoroutineScope()
+    val connectionsListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Completing authentication replaces the form with a verified session
+    // management state. Keep that result and its View transfers action visible
+    // even if the user was scrolled down to the Connect button beforehand.
+    LaunchedEffect(connectedSessionName) {
+        if (connectedSessionName != null) connectionsListState.scrollToItem(0)
+    }
     // Reuse the exact existing verified Connect operation. No saved password or
     // endpoint is broadcast to an unverified profile, and no torrent mutation
     // occurs merely because the app opened. Consume before invoking the action
@@ -1915,6 +1922,7 @@ internal fun ConnectionScreen(
         onConnect = onConnect
     )
     LazyColumn(
+        state = connectionsListState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
