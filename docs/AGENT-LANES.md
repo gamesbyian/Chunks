@@ -6,17 +6,23 @@
 
 **Own:** one Combined-derived Transfers list in All/device/server scopes, dedicated full Details, single-row four-button persistent footer, accessible two/three-across action layouts, Options presentation, Compose/JVM UI regressions and visual contrast (#1454). Diagnose #1442's observed failures with Agent 5; do not waive real Android/IME/API29/peer gates. Coordinate Add-only artwork appearance with Agent 2 and poster presentation with Agent 4.
 
+**Owner UI slices:** #1512 genuine empty Transfers welcome, #1514 purple-card Connections presentation, #1515 exact-profile deep-link to one canonical Transfers browser, #1516 footer active-root state. Coordinate #1517 source-first Add composable layout and entry routing with Agent 2, without editing its source/coordinator independently. Connections add success must acknowledge and stay on Connections, with saved profile list immediately usable.
+
 **Avoid:** Universal Add submission/phone parsers, authenticated remote engines, media provider code, central docs and CI.
 
 ## Agent 2: Add authority and Android source intake
 
 **Own:** shared Universal Add coordinator, phone magnet/.torrent/clipboard/Share/Open With intake, exact-session preference persistence and Add-only artwork checkbox seam. Qualify or supersede #1449/#1450 first; then the Add portion of #1453. Keep the artwork checkbox default checked only when the global artwork collection/display preference is enabled, and persist a deliberate opt-out against the exact environment/hash. Never put it on active Details.
 
+**Owner Add slice:** #1517 source-first single-screen Universal Add: magnet/URL input + Open .torrent/Paste first, exact phone/remote/eligible smart target and Save to/Start underneath, conditional collapsible file/alias/source/media/rule options, single explicit submission. All footer, Share/Open With and clipboard entries reuse same draft; eliminate phone/server destination gateway. Agent 1 owns footer routing and shared shell; coordinate Add composable changes serially. Source/document handling and per-job preferences remain Agent 2's authority.
+
 **Avoid:** creating a second Add executor, remote RPC, global Options shell, media providers, central docs or CI.
 
 ## Agent 3: authenticated rTorrent and remote integrity
 
 **Own:** remote transport, readback identity, authenticated challenge handling, lifecycle, priorities, Remove and job-only Move, focused remote tests. Diagnose #1444's genuine Combined contrast failure with Agent 1 and #1443's read-only Recheck test contradiction with Agent 5. Preserve exact numbered route/principal/hash/Place/Start and uncertain-write read-only reconciliation; never replay a possibly applied write.
+
+**Coordination:** For #1515/#1517, expose truthful exact-profile connection-save and existing remote Add capability/readback outcomes to Agents 1/2; no automatic server-list navigation or inferred success on an uncertain write.
 
 **Avoid:** Add phone source intake, central UI, media provider/scheduler files, central docs and CI.
 
