@@ -53,4 +53,25 @@ class NoTransfersWelcomeTest {
         org.junit.Assert.assertFalse(show(addOpen = true))
     }
 
+    @Test fun canonicalWelcomeNeverConflatesUnobservedRestoreOfflineOrFilteredZero() {
+        fun show(
+            noResume: Boolean? = true, running: Boolean = false,
+            confirmed: Boolean = false, stale: Boolean = false, count: Int = 0,
+            remote: Boolean = false, narrow: Boolean = false,
+            unlocked: Boolean = true, incoming: Boolean = false
+        ) = showCanonicalFirstRunWelcome(noResume, running, confirmed, stale,
+            count, remote, narrow, unlocked, incoming)
+        org.junit.Assert.assertTrue(show())
+        org.junit.Assert.assertTrue(show(running = true, confirmed = true))
+        org.junit.Assert.assertFalse(show(noResume = null))
+        org.junit.Assert.assertFalse(show(noResume = false))
+        org.junit.Assert.assertFalse(show(running = true))
+        org.junit.Assert.assertFalse(show(running = true, confirmed = true, count = 1))
+        org.junit.Assert.assertFalse(show(stale = true))
+        org.junit.Assert.assertFalse(show(remote = true))
+        org.junit.Assert.assertFalse(show(narrow = true))
+        org.junit.Assert.assertFalse(show(unlocked = false))
+        org.junit.Assert.assertFalse(show(incoming = true))
+    }
+
 }
