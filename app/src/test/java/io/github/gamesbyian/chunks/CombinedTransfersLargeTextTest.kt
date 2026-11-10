@@ -10,6 +10,7 @@ import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -39,7 +40,12 @@ class CombinedTransfersLargeTextTest {
 
     private fun show(openPhone: IntArray, back: IntArray) {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        CombinedViewPreferences(context).save(UnifiedTransferQuery())
+        // Explicit phone-only scope is a real filtered view, so the full
+        // catalog controls remain reachable even with zero native jobs.
+        // Only genuinely unfiltered, unconfigured installs show Welcome.
+        CombinedViewPreferences(context).save(UnifiedTransferQuery(
+            scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme {
@@ -53,13 +59,20 @@ class CombinedTransfersLargeTextTest {
                 }
             }
         }
+        // Preference IO is deliberately off-main. Never scroll an unmounted
+        // filtered control while the genuine Welcome is still being replaced.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Filters").fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test fun narrow200PercentControlsRemainScrollReachableWithNoEngineStarted() {
         val opened = intArrayOf(0)
         val backed = intArrayOf(0)
         show(opened, backed)
-        rule.onNodeWithText("All environments").assertExists()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Viewing:", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText("Filters"))
         rule.onNodeWithText("Filters").performClick()

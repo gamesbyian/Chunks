@@ -28,7 +28,7 @@ class NoTransfersWelcomeTest {
                 }
             }
         }
-        rule.onNodeWithText("Your transfers will appear here").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.onNodeWithText("Start a download on this device, or connect a remote BitTorrent client. " +
             "You can use Chunks with either, or both.").assertExists()
         assertEquals(0, add)
@@ -51,6 +51,42 @@ class NoTransfersWelcomeTest {
         org.junit.Assert.assertFalse(show(profiles = true))
         org.junit.Assert.assertFalse(show(query = "hidden"))
         org.junit.Assert.assertFalse(show(addOpen = true))
+    }
+
+    @Test fun canonicalWelcomeNeverConflatesUnobservedRestoreOfflineOrFilteredZero() {
+        fun show(
+            noResume: Boolean? = true, running: Boolean = false,
+            confirmed: Boolean = false, stale: Boolean = false, count: Int = 0,
+            remote: Boolean = false, narrow: Boolean = false,
+            unlocked: Boolean = true, incoming: Boolean = false
+        ) = showCanonicalFirstRunWelcome(noResume, running, confirmed, stale,
+            count, remote, narrow, unlocked, incoming)
+        org.junit.Assert.assertTrue(show())
+        org.junit.Assert.assertTrue(show(running = true, confirmed = true))
+        org.junit.Assert.assertFalse(show(noResume = null))
+        org.junit.Assert.assertFalse(show(noResume = false))
+        org.junit.Assert.assertFalse(show(running = true))
+        org.junit.Assert.assertFalse(show(running = true, confirmed = true, count = 1))
+        org.junit.Assert.assertFalse(show(stale = true))
+        org.junit.Assert.assertFalse(show(remote = true))
+        org.junit.Assert.assertFalse(show(narrow = true))
+        org.junit.Assert.assertFalse(show(unlocked = false))
+        org.junit.Assert.assertFalse(show(incoming = true))
+    }
+
+    @Test fun selectedProfileScopeUsesImmutableIdNotDisplayName() {
+        val known = setOf("rtorrent:account-a", "rtorrent:account-b")
+        val one = savedProfileViewScope("rtorrent:account-a", known)
+        val two = savedProfileViewScope("rtorrent:account-b", known)
+        org.junit.Assert.assertNotNull(one)
+        org.junit.Assert.assertNotEquals(one, two)
+        org.junit.Assert.assertNull(savedProfileViewScope("rtorrent:other", known))
+        org.junit.Assert.assertNull(savedProfileViewScope("", known))
+        org.junit.Assert.assertEquals(
+            io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                setOf(io.github.gamesbyian.chunks.model.EnvironmentId("rtorrent:account-b"))),
+            two
+        )
     }
 
 }

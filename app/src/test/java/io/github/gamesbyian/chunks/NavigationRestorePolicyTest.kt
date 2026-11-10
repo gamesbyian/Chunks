@@ -4,17 +4,23 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class NavigationRestorePolicyTest {
-    @Test fun onlyPrivacyGatedPhoneAndReadOnlyCombinedCanReopenAfterProcessDeath() {
-        for (safe in listOf("LOCAL", "LOCAL_ADD", "ADD_CHOOSE", "COMBINED", "MEDIA", "OPTIONS")) {
+    @Test fun canonicalTransfersAndConnectionsAreSafeRootsToRestore() {
+        for (safe in listOf("SERVER", "COMBINED", "MEDIA", "OPTIONS", "ADD_CHOOSE")) {
             assertEquals(safe, NavigationRestorePolicy.restorableSection(safe))
         }
     }
 
-    @Test fun connectionAndMutationDraftRoutesNeverRestoreAsActions() {
+    @Test fun oldOwningListsMigrateToCanonicalTransfersAndPhoneAddToUniversalShell() {
+        assertEquals("COMBINED", NavigationRestorePolicy.restorableSection("LOCAL"))
+        assertEquals("COMBINED", NavigationRestorePolicy.restorableSection("TRANSFERS"))
+        assertEquals("ADD_CHOOSE", NavigationRestorePolicy.restorableSection("LOCAL_ADD"))
+    }
+
+    @Test fun commandAndUnrecognizedRoutesNeverRestoreAuthority() {
         for (unsafe in listOf("ADD", "CREATE", "SEEDING", "NAMES", "SNAPSHOT",
-            "SNAPSHOT_INSPECT", "PLACES", "ORGANIZE", "SERVER", "ARCHIVES",
-            "TRANSFERS", "", "NOT_A_ROUTE", "LOCAL;ADD", null)) {
-            assertEquals("LOCAL", NavigationRestorePolicy.restorableSection(unsafe))
+            "SNAPSHOT_INSPECT", "PLACES", "ORGANIZE", "ARCHIVES",
+            "", "NOT_A_ROUTE", "LOCAL;ADD", null)) {
+            assertEquals("COMBINED", NavigationRestorePolicy.restorableSection(unsafe))
         }
     }
 }
