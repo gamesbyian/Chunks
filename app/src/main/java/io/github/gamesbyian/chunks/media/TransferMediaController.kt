@@ -80,6 +80,7 @@ class TransferMediaController(
         val AUDIO_TAG_EXTENSIONS = setOf("mp3", "flac", "m4a", "m4b", "mp4", "aac")
         const val MAX_STATES = 96
         const val MAX_PENDING_AUTOMATIC = 6
+        private const val ARTLESS_POSTER_RETRY_MS = 30L * 60_000
         /** Bounds one Similar Transfers index build (visible inventory, all environments). */
         const val MAX_SIMILAR_INVENTORY = 5_000
     }
@@ -241,10 +242,6 @@ class TransferMediaController(
         val posterRetryDue = now >= anchor && now - anchor >= ARTLESS_POSTER_RETRY_MS
         return (posterRetryDue || firstPassAfterRestart || providerChanged) &&
             service.hasConfiguredArtworkProvider(match.kind, settings())
-    }
-
-    private companion object {
-        const val ARTLESS_POSTER_RETRY_MS = 30L * 60_000
     }
 
     /** Verified identity can coexist with missing artwork: disclose the gap without inventing a poster. */
