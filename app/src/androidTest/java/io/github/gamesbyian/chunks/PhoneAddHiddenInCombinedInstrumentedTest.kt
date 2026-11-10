@@ -16,6 +16,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -36,6 +37,9 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
 
     @After fun cleanup() {
         LocalEngineHolder.current()?.removeKeepingData(hash)
+        // Other installed tests can persist a narrow Combined filter. Do not
+        // contaminate later exact-hash Add tests with this scenario either.
+        CombinedViewPreferences(rule.activity).save(UnifiedTransferQuery())
     }
 
     private fun waitFor(ms: Long = 20_000, condition: () -> Boolean) = rule.waitUntil(ms, condition)
@@ -54,6 +58,11 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
     }
 
     @Test fun anAcknowledgedPhoneAddHiddenByTheCombinedSearchIsExplained() {
+        // Test the ordinary All/All baseline before deliberately narrowing by
+        // search. A previous test may have persisted STARTED while this test
+        // intentionally adds a stopped (metadata-only) phone torrent.
+        // Merely tapping All environments never resets the transfer filter.
+        CombinedViewPreferences(rule.activity).save(UnifiedTransferQuery())
         reachPhone()
         rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
