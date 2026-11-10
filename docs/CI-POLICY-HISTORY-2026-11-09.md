@@ -1,5 +1,9 @@
 # Lean CI and evidence economy (historical snapshot)
 
+## R8 warm-daemon integration and measured run (2026-11-10)
+
+PR [#1510](https://github.com/gamesbyian/Chunks/pull/1510) merged at `c0b23b9c56688092a819ff8f254101dcadaba6ed`, after exact-head [R8 run 42745108241](https://github.com/gamesbyian/Chunks/actions/runs/42745108241) passed its one executed installed qaMinified smoke case and source-bound JUnit verifier. The job took approximately 7 minutes 10 seconds of runner time; the full app + test APK build measured 282 seconds and the warmed connected Gradle smoke invocation measured 36 seconds. Three earlier successful full jobs were approximately 8 minutes 6 seconds, 8 minutes 58 seconds, and 9 minutes. This single run is an observed improvement, not a statistically proven speedup or permission to waive the installed gate.
+
 > **NEW UI/MEDIA TEST SELECTOR GUIDANCE · 2026-11-09:** [Binding next-push acceptance matrix](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) requires actual 320/412dp/200%-font + IME single-row footer, two/three-across actions, one full Details across All/device/server, and conditional Add-only artwork choice plus actual consented provider/artwork visibility. Run focused JVM/Compose controls first, then existing appropriate installed Android API29/API35/real authenticated peer/phone HTTPS gates and final verifier **on the final source**. No test skipping to get green or unnecessary new workflow fan-out. Distinguish screenshot-level/layout checks, real-provider lookup, peer/piece and physical handset tiers. Keep source/PNG/APK receipts traceable and historical failed attempts intact.
 
 
