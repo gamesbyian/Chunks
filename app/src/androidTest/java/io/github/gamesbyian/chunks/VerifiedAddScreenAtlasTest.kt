@@ -211,6 +211,7 @@ class VerifiedAddScreenAtlasTest {
                 MaterialTheme {
                     VerifiedAddScreen(remoteWithLostAck, magnet, destination,
                         session = session,
+                        finishInOrderScope = remoteWithLostAck.addAccountScope(),
                         onMagnet = { magnet = it },
                         onDestination = { destination = it },
                         onBack = {}, onComplete = {},
