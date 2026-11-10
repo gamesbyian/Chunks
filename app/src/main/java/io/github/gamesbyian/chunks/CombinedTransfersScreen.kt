@@ -297,11 +297,6 @@ internal fun combinedRowFreshnessLabel(source: EnvironmentTransferSnapshot?): St
 internal fun CombinedTransfersScreen(
     server: CombinedServerSource?,
     savedProfiles: List<CombinedSavedProfile>,
-    /** One-shot deep link by stable saved profile ID, never display label. */
-    scopeFocusRequest: String? = null,
-    onScopeFocusConsumed: () -> Unit = {},
-    /** Welcome always enters the existing Add destination, not a new executor. */
-    onWelcomeAdd: (() -> Unit)? = null,
     onOpenPhone: () -> Unit,
     onOpenServer: (() -> Unit)?,
     /** Opens the connected, verified server's existing Add review. Never targets a saved-only profile. */
@@ -328,7 +323,12 @@ internal fun CombinedTransfersScreen(
     pendingSharedLink: Boolean = false,
     pendingSharedTorrent: Boolean = false,
     readingSharedTorrent: Boolean = false,
-    sharedTorrentError: String? = null
+    sharedTorrentError: String? = null,
+    /** One-shot deep link by stable saved profile ID, never display label. */
+    scopeFocusRequest: String? = null,
+    onScopeFocusConsumed: () -> Unit = {},
+    /** Welcome always enters the existing Add destination, not a new executor. */
+    onWelcomeAdd: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -1406,7 +1406,7 @@ internal fun CombinedTransfersScreen(
             }
         }
         } // management controls are absent only from a genuine fresh welcome
-        ReturnToTopControl(visible = showReturnToTop, onClick = {
+        ReturnToTopControl(visible = showReturnToTop && !firstRunVisible && !checkingFreshPhone, onClick = {
             batchScope.launch {
                 if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
                 else listState.scrollToItem(0)
