@@ -33,6 +33,24 @@ import androidx.compose.ui.unit.sp
 internal enum class FooterDestination { TRANSFERS, ADD, CONNECTIONS, OPTIONS }
 
 /**
+ * The root destination is a navigation fact, never a deduction from the Add
+ * button's permanent accent. Detail and filtered-scope routes remain Transfers.
+ */
+internal fun footerDestinationForRoute(section: String, origin: String? = null): FooterDestination = when (section) {
+    "SERVER" -> FooterDestination.CONNECTIONS
+    "ADD_CHOOSE", "LOCAL_ADD", "ADD" -> FooterDestination.ADD
+    "OPTIONS" -> FooterDestination.OPTIONS
+    "MEDIA", "SEEDING", "ARCHIVES", "CREATE", "SNAPSHOT", "SNAPSHOT_INSPECT",
+    "PLACES", "ORGANIZE", "NAMES" -> when (origin) {
+        "SERVER" -> FooterDestination.CONNECTIONS
+        "ADD", "ADD_CHOOSE", "LOCAL_ADD" -> FooterDestination.ADD
+        else -> FooterDestination.OPTIONS
+    }
+    else -> FooterDestination.TRANSFERS
+}
+
+
+/**
  * Persistent, measured navigation beneath the authenticated server inventory.
  * The parent owns the actual Transfers/Add/Connections/Options callbacks; this UI
  * cannot change a server or torrent. All destinations occupy one stable row
