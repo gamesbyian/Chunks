@@ -976,7 +976,7 @@ internal fun CombinedTransfersScreen(
             item(key = "canonical-fresh-welcome") {
                 NoTransfersWelcome(
                     onAdd = onWelcomeAdd ?: onAddToPhone ?: onOpenPhone,
-                    onConnections = onConnections ?: {}
+                    onConnections = onConnections
                 )
             }
         } else if (checkingFreshPhone) {
