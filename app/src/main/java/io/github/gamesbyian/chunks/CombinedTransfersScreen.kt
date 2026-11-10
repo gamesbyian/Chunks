@@ -681,19 +681,45 @@ internal fun CombinedTransfersScreen(
     val sources = remember(rawSources, aliasScopes, currentAliases) {
         CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
-    // Full authorized inventory, not just composed LazyColumn rows. This catches external
-    // additions and reconnects to any accessible saved rTorrent environment.
-    // Locked/stale/offline sources are never used for third-party identification.
+    // All currently observed, unlocked phone + remote jobs enter one backend, independent
+    // of the chosen tab, search/filter or composed LazyColumn rows. Exact owner scope,
+    // observation generation and transfer identity are captured with each inventory.
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
-    val mediaInventory = remember(sources) {
-        sources.filter { it.availability == EnvironmentAvailability.LIVE &&
-            it.observedAtEpochMillis != null }
-            .flatMap { source -> source.transfers.map { row ->
-                io.github.gamesbyian.chunks.media.MediaTransferKey.of(row.key) to row.originalName
-            } }
+    val mediaGraph = remember(context) { io.github.gamesbyian.chunks.media.ChunksMedia.get(context) }
+    val mediaSnapshot = remember(sources, aliasScopes) {
+        io.github.gamesbyian.chunks.media.AuthorizedMediaInventorySnapshot.build(sources, aliasScopes)
     }
-    LaunchedEffect(mediaController, mediaInventory) {
-        mediaController?.enrichInventory(mediaInventory)
+    val currentMediaSnapshot = rememberUpdatedState(mediaSnapshot)
+    var mediaSession by remember(mediaGraph, mediaController) {
+        mutableStateOf<io.github.gamesbyian.chunks.media.MediaInventoryEnrichmentSession?>(null)
+    }
+    // Creating/closing the session is an effect; composition itself does no I/O.
+    DisposableEffect(mediaGraph, mediaController, batchScope) {
+        val owned = mediaController?.let { mediaGraph.openInventorySession(batchScope, it) }
+        mediaSession = owned
+        onDispose {
+            owned?.close()
+            if (mediaSession === owned) mediaSession = null
+        }
+    }
+    LaunchedEffect(mediaSession, mediaSnapshot) {
+        mediaSession?.replace(mediaSnapshot.entries) { key ->
+            // Never accept the historical lookup's cached authorization: compare against
+            // the current privacy/profile scope, fresh source and exact job membership.
+            mediaSnapshot.stillAuthorizes(key, currentMediaSnapshot.value)
+        }
+    }
+    // Reuse the existing 10s source-status ticker to detect connectivity, metering
+    // and power-saver transitions. A successful fresh inventory read alone does not
+    // change when Wi-Fi returns, so unchanged offscreen jobs otherwise remain blocked
+    // until the user revisits a row. Only actual gate transitions reschedule work.
+    val mediaNetworkChanges = remember(mediaSession) {
+        io.github.gamesbyian.chunks.media.MediaNetworkChangeTracker()
+    }
+    LaunchedEffect(mediaSession, now) {
+        val active = mediaSession ?: return@LaunchedEffect
+        val net = withContext(Dispatchers.IO) { mediaGraph.currentNetworkState() }
+        if (mediaNetworkChanges.changedAfterFirstObservation(net)) active.refresh()
     }
     val mediaTitles by io.github.gamesbyian.chunks.media.rememberMediaSearchTitles()
     val result = remember(sources, query, mediaTitles) {

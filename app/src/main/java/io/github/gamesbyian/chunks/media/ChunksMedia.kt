@@ -71,10 +71,11 @@ class ChunksMedia private constructor(context: Context) {
      * and close() when the host/privacy scope ends. The supplied witness MUST check
      * current exact environment/profile freshness and privacy permission dynamically.
      */
-    fun openInventorySession(ownerScope: CoroutineScope): MediaInventoryEnrichmentSession {
+    fun openInventorySession(ownerScope: CoroutineScope,
+                             forController: TransferMediaController = controller): MediaInventoryEnrichmentSession {
         val session = MediaInventoryEnrichmentSession(
             ownerScope,
-            enrich = { entries, authorized -> controller.enrichInventory(entries, authorized) },
+            enrich = { entries, authorized -> forController.enrichInventory(entries, authorized) },
             onClosed = { inventorySessions.remove(it) })
         inventorySessions.add(session)
         return session
@@ -149,6 +150,12 @@ class ChunksMedia private constructor(context: Context) {
         val diag = controller.diagnostics()
         return "Cached: %.1f MB artwork · %d lookups\n".format(mb, queryCache.size) + diag.summary { names[it] ?: it }
     }
+
+    /**
+     * Pure platform reachability/power snapshot for lifecycle-owned media refresh.
+     * No provider calls, torrent/network mutation or preference writes.
+     */
+    fun currentNetworkState(): MediaNetworkState = networkState()
 
     private fun networkState(): MediaNetworkState {
         val cm = app.getSystemService(ConnectivityManager::class.java)
