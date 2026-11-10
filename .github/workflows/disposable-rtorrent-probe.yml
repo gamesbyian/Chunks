@@ -249,7 +249,12 @@ jobs:
         include:
           - label: arch-latest
             image: archlinux:latest
-            install: pacman -Sy --noconfirm rtorrent
+            # Arch is rolling. Refreshing the package index without upgrading
+            # its installed libraries is a partial upgrade and can make
+            # rTorrent's exact libtorrent dependency unresolvable.
+            # Full synchronized upgrade is required before asserting modern
+            # SCGI/RPC behavior, never a fallback to the legacy engine.
+            install: pacman -Syu --noconfirm --needed rtorrent
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
