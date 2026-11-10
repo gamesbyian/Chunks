@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks.media
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * A lifecycle-owned, revocable full-inventory witness. Not a second lookup engine or
@@ -39,6 +41,10 @@ class MediaInventoryEnrichmentSession internal constructor(
     }
 
     private val lock = Any()
+    // Cancellation of a blocking HTTP request is advisory until that request exits.
+    // Never start a replacement pass while the controller still owns its per-key
+    // pendingAutomatic latch; otherwise the only authorized retry gets dropped.
+    private val executionMutex = Mutex()
     private var closed = false
     private var snapshot: Snapshot? = null
     private var active: Run? = null
@@ -81,7 +87,12 @@ class MediaInventoryEnrichmentSession internal constructor(
         val run = Run(next)
         active = run
         activeJob = ownerScope.launch {
-            enrich(next.rows, run::allowed)
+            executionMutex.withLock {
+                // A queued run may have been replaced while waiting for an older
+                // uninterruptible provider request. Only the newest active witness
+                // may now enter the sole controller, preserving exact-job isolation.
+                if (!run.revoked && !next.revoked) enrich(next.rows, run::allowed)
+            }
         }
     }
 
