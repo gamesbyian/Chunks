@@ -27,10 +27,10 @@ Show a **Source file handling** collapsible section when a genuine user-provided
 ## Add screen disclosure and actions
 
 One universal Add screen with an always-reachable **Add transfer** submit action (not a compulsory review step), and collapsible sections whose expansion state may persist without remembering secrets:
-1. **Source & destination**, expanded: local .torrent picker, URL/magnet and clipboard-aware text, exact environment (including Automatic / Smart Routing), destination Place/default with Change.
-2. **Transfer options**: Start after Add, displayed alias versus real name, file selection/priorities only where supported.
+1. **Torrent source first, expanded**: prominent magnet/HTTP(S) URL text field, **Open .torrent** picker and manual **Paste** (eligible clipboard prefill); then exact environment selector (phone, each eligible saved remote, Automatic / Smart Routing only when supported), effective **Save to** Place/default with Change and recent Places. Changing target edits the same draft; no destination-gateway screen.
+2. **Transfer options**: visible **Start when added**, displayed alias versus real name, file selection/priorities only where supported, optional finish-order and effective seeded rule settings.
 3. **Source file handling**: Keep / Archive / Delete where an original document exists.
-4. **Artwork & metadata**: per-transfer auto-identification opt-out; defaults and external consent still controlled centrally in Options.
+4. **Artwork & metadata**: the Add-only default-checked per-transfer auto-identification option is visible only while global collection/display is enabled; provider requests still require separate consent; manual corrections belong to Details.
 5. **Seeding & advanced**: ratio/seed rules, bandwidth limits, tracker preferences and capability-specific controls. Advanced options never turn unsupported settings into false promises.
 
 Source, target and Start stay immediately accessible. Keep the submit action reachable with long forms, IME and large text while preserving measured accessibility targets and Android insets. Add consent/authorization is not inferred from expanding a section.
