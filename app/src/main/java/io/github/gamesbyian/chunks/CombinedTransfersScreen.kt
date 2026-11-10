@@ -69,6 +69,7 @@ import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.privacy.TransferDeviceAuthenticator
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteStallEvidence
 import io.github.gamesbyian.chunks.model.LifecycleReply
@@ -142,8 +143,32 @@ internal data class CombinedServerSource(
     /** Start/Stop through the server screen's own mutation gate; null when not offered. */
     val lifecycle: CombinedServerLifecycle? = null,
     /** Live authenticated RTorrentRemote identity, never a saved profile string. */
-    val authenticatedSession: Any? = null
+    val authenticatedSession: Any? = null,
+    /** Parent's accepted inventory revision, required for destructive review identity. */
+    val snapshotRevision: Long = 0L
 )
+
+/**
+ * Destructive Details controls require a *transport-backed* principal match.
+ * A rendered source alias and ID are independently supplied view data, so
+ * matching those to each other never proves that their RTorrentRemote adapter
+ * targets the same endpoint, username and numbered ruTorrent route.
+ *
+ * This is a pure eligibility check: it sends no RPC, creates no mutation
+ * ticket and only returns the exact live row already in the source snapshot.
+ */
+internal fun authenticatedExactRemovalRow(
+    key: UnifiedTransferKey,
+    source: CombinedServerSource?,
+    advertisedServerId: EnvironmentId?
+): RemoteTransfer? {
+    val owner = source ?: return null
+    val remote = owner.authenticatedSession as? RTorrentRemote ?: return null
+    if (remote.addAccountScope() != owner.aliasScope) return null
+    val derivedId = EnvironmentSnapshots.serverIdOfAliasScope(owner.aliasScope) ?: return null
+    if (derivedId != key.environment || derivedId != advertisedServerId) return null
+    return owner.transfers.singleOrNull { it.hash.equals(key.infoHash, ignoreCase = true) }
+}
 
 /** The connected server's lease, command and settle, exactly as its own list uses them. */
 internal class CombinedServerLifecycle(
@@ -894,11 +919,36 @@ internal fun CombinedTransfersScreen(
                     // rTorrent Start/Stop only supports exact v1 hashes. Keep
                     // unsupported remote identities read-only before review.
                     focusedKey.infoHash.matches(Regex("[0-9a-f]{40}"))))
+        // Reuse the existing exact-account rTorrent Remove control inside
+        // canonical Details. It owns separate destructive approval, session
+        // readback, uncertain-write latch and non-force ruTorrent data cleanup.
+        // This only moves presentation: no new mutation/executor/RPC authority.
+        val activeRemoteForRemoval = server?.authenticatedSession as? RTorrentRemote
+        val exactRemoteRow = authenticatedExactRemovalRow(focusedKey, server, serverId)
+        val canShowExactRemoval = exactRemoteRow != null &&
+            serverPrivacy?.mayShow == true && server?.lifecycle != null
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
+            exactServerOperations = if (canShowExactRemoval) ({
+                val owner = requireNotNull(server)
+                val mutation = requireNotNull(owner.lifecycle)
+                TransferSessionRemoveControl(
+                    remote = requireNotNull(activeRemoteForRemoval),
+                    transfer = requireNotNull(exactRemoteRow),
+                    snapshotStale = owner.stale ||
+                        details.readState != TransferDetailReadState.CURRENT ||
+                        sourcesByEnvironment[focusedKey.environment]
+                            ?.canClaimCompleteLiveInventory != true,
+                    mainView = owner.fullView,
+                    onMutationStarted = mutation.begin,
+                    onSettled = mutation.settled,
+                    environmentLabel = labels[focusedKey.environment],
+                    snapshotRevision = owner.snapshotRevision
+                )
+            }) else null,
             onOpenOwningList = openFor(focusedKey),
             onReviewStartStop = if (canReviewLifecycle) ({
                 // Selection is always the one exact key just examined, not
