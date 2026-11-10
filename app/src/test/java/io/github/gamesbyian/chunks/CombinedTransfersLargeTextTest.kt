@@ -83,10 +83,10 @@ class CombinedTransfersLargeTextTest {
         rule.onNodeWithText("Done selecting").assertExists()
         rule.onNodeWithText("Done selecting").performClick()
 
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open transfers on this device"))
-        val open = rule.onNodeWithText("Open transfers on this device")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open device transfer controls"))
+        val open = rule.onNodeWithText("Open device transfer controls")
         val openBounds = open.getUnclippedBoundsInRoot()
-        assertTrue("Phone navigation keeps a 48dp touch target", openBounds.bottom - openBounds.top >= 48.dp)
+        assertTrue("Device recovery entry keeps a 48dp touch target", openBounds.bottom - openBounds.top >= 48.dp)
         open.performClick()
         assertEquals(1, opened[0])
         assertEquals(0, backed[0])
