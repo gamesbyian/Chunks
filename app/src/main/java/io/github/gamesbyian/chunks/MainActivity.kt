@@ -610,6 +610,74 @@ internal fun ChunksApp(
         }
     }
 
+    /** Disconnect does not forget credentials, transfer bytes or Add draft. */
+    fun disconnectCurrentRemote() {
+        remoteFence.invalidate()
+        RemoteCredentialLock.invalidate()
+        inspectionFence.invalidate()
+        mutationGate.reset()
+        server = null
+        aliasScope = ""
+        aliasSessions.clear()
+        version = ""
+        transfers = emptyList()
+        transfersObservedAt = null
+        expandedHash = null
+        files = null
+        filesError = null
+        filesLoading = false
+        loading = false
+        error = null
+        stale = false
+        currentView = "main"
+        requestedView = "main"
+        verifiedConnectionNotice = null
+        returnFromStartupConnectToCanonical = false
+        section = Section.SERVER
+        val oldEndpoint = endpoint
+        val oldUsername = username
+        val oldPassword = password
+        val credentialRevision = credentialChanges.snapshotRevision()
+        scope.launch {
+            val saved = withContext(Dispatchers.IO) {
+                try { vault.load() } catch (_: Exception) { null }
+            }
+            // A stale vault read must never replace a new connection, Forget,
+            // updated login draft or a newer authenticated principal.
+            if (server == null && !loading && section == Section.SERVER &&
+                rememberLogin && saved != null &&
+                credentialChanges.isLatest(credentialRevision) &&
+                endpoint == oldEndpoint && username == oldUsername && password == oldPassword) {
+                endpoint = saved.endpoint
+                username = saved.username
+                password = saved.password
+            }
+        }
+    }
+
+    verifiedConnectionNotice?.let { notice ->
+        AlertDialog(
+            onDismissRequest = {
+                verifiedConnectionNotice = null
+                section = Section.SERVER
+            },
+            title = { Text("Connection verified") },
+            text = {
+                Text(when (notice.saved) {
+                    true -> "${notice.label} is connected and saved. Open its transfers from Connections."
+                    false -> "${notice.label} is connected, but a saved profile was not confirmed. Check the Remember setting before restarting."
+                    null -> "${notice.label} is connected. Credential storage is still being confirmed; you can continue to Connections."
+                })
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    verifiedConnectionNotice = null
+                    section = Section.SERVER
+                }) { Text("Continue to Connections") }
+            }
+        )
+    }
+
     val paneTitle = ScreenPaneTitles.of(section.name, section.label,
         if (server != null && aliasScope.isNotBlank()) serverEnvironmentLabel(aliasScope) else null)
     Column(
@@ -1696,41 +1764,7 @@ internal fun ChunksApp(
                     onRefresh = refresh,
                     onSeedingRules = { openTool(Section.SEEDING, Section.SERVER) },
                     environmentLabel = serverEnvironmentLabel(aliasScope),
-                    onDisconnect = {
-                        // Invalidate every in-flight read and credential save
-                        // before switching/clearing the authenticated scope.
-                        remoteFence.invalidate()
-                        RemoteCredentialLock.invalidate()
-                        inspectionFence.invalidate()
-                        mutationGate.reset()
-                        server = null
-                        aliasScope = ""
-                        aliasSessions.clear()
-                        version = ""
-                        transfers = emptyList()
-                        transfersObservedAt = null
-                        expandedHash = null
-                        files = null
-                        filesError = null
-                        filesLoading = false
-                        loading = false
-                        error = null
-                        stale = false
-                        currentView = "main"
-                        requestedView = "main"
-                        // Keep Disconnect separate from Forget. Reload the
-                        // encrypted profile for one-tap reconnect in this session.
-                        scope.launch {
-                            val saved = withContext(Dispatchers.IO) {
-                                try { vault.load() } catch (_: Exception) { null }
-                            }
-                            if (server == null && rememberLogin && saved != null) {
-                                endpoint = saved.endpoint
-                                username = saved.username
-                                password = saved.password
-                            }
-                        }
-                    }
+                    onDisconnect = { disconnectCurrentRemote() }
                 )
                 Section.ADD -> {
                     val addSession = remember(aliasScope) {
