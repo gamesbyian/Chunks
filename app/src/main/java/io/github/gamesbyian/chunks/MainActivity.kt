@@ -605,6 +605,43 @@ internal fun ChunksApp(
         }
     }
 
+    /** A UI-only Disconnect invalidates both remote data and pending credential leases. */
+    fun disconnectCurrentRemote() {
+                        // Invalidate every in-flight read and credential save
+                        // before switching/clearing the authenticated scope.
+                        remoteFence.invalidate()
+                        RemoteCredentialLock.invalidate()
+                        inspectionFence.invalidate()
+                        mutationGate.reset()
+                        server = null
+                        aliasScope = ""
+                        aliasSessions.clear()
+                        version = ""
+                        transfers = emptyList()
+                        transfersObservedAt = null
+                        expandedHash = null
+                        files = null
+                        filesError = null
+                        filesLoading = false
+                        loading = false
+                        error = null
+                        stale = false
+                        currentView = "main"
+                        requestedView = "main"
+                        // Keep Disconnect separate from Forget. Reload the
+                        // encrypted profile for one-tap reconnect in this session.
+                        scope.launch {
+                            val saved = withContext(Dispatchers.IO) {
+                                try { vault.load() } catch (_: Exception) { null }
+                            }
+                            if (server == null && rememberLogin && saved != null) {
+                                endpoint = saved.endpoint
+                                username = saved.username
+                                password = saved.password
+                            }
+                        }
+    }
+
     val paneTitle = ScreenPaneTitles.of(section.name, section.label,
         if (server != null && aliasScope.isNotBlank()) serverEnvironmentLabel(aliasScope) else null)
     Column(
@@ -1654,41 +1691,7 @@ internal fun ChunksApp(
                     onRefresh = refresh,
                     onSeedingRules = { openTool(Section.SEEDING, Section.SERVER) },
                     environmentLabel = serverEnvironmentLabel(aliasScope),
-                    onDisconnect = {
-                        // Invalidate every in-flight read and credential save
-                        // before switching/clearing the authenticated scope.
-                        remoteFence.invalidate()
-                        RemoteCredentialLock.invalidate()
-                        inspectionFence.invalidate()
-                        mutationGate.reset()
-                        server = null
-                        aliasScope = ""
-                        aliasSessions.clear()
-                        version = ""
-                        transfers = emptyList()
-                        transfersObservedAt = null
-                        expandedHash = null
-                        files = null
-                        filesError = null
-                        filesLoading = false
-                        loading = false
-                        error = null
-                        stale = false
-                        currentView = "main"
-                        requestedView = "main"
-                        // Keep Disconnect separate from Forget. Reload the
-                        // encrypted profile for one-tap reconnect in this session.
-                        scope.launch {
-                            val saved = withContext(Dispatchers.IO) {
-                                try { vault.load() } catch (_: Exception) { null }
-                            }
-                            if (server == null && rememberLogin && saved != null) {
-                                endpoint = saved.endpoint
-                                username = saved.username
-                                password = saved.password
-                            }
-                        }
-                    }
+                    onDisconnect = { disconnectCurrentRemote() }
                 )
                 Section.ADD -> {
                     val addSession = remember(aliasScope) {
