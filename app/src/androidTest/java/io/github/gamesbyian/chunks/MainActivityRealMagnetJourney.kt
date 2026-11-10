@@ -264,10 +264,14 @@ internal class MainActivityRealMagnetJourney(
             if (default == null) type("Custom server folder (optional)", parent)
             report("chunks_real_add_app_stage", "place-ready")
             if (disposable) {
+                report("chunks_real_add_app_stage", "artwork-heading")
                 click("Artwork & metadata")
+                report("chunks_real_add_app_stage", "artwork-choice")
                 click("Automatically identify and fetch artwork & metadata")
             }
+            report("chunks_real_add_app_stage", "review-click")
             click("Review Add")
+            report("chunks_real_add_app_stage", "review-open")
             scroll("Confirm one server operation")
             assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
             if (torrentLinks && label != null && label != "magnet0") {
