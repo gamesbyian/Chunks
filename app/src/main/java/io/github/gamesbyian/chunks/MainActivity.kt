@@ -375,6 +375,7 @@ internal fun ChunksApp(
     // No raw source, account identity or private tracker enters SavedState.
     val addArtworkChoices = remember { AddArtworkDraftChoices() }
     val combinedListState = rememberLazyListState()
+    var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
     // Combined search text, like the phone's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
     // Per exact rTorrent account: list position and search survive route
@@ -745,6 +746,7 @@ internal fun ChunksApp(
                 scopeFocusRequest = profileScopeRequest,
                 onScopeFocusConsumed = { profileScopeRequest = null },
                 onWelcomeAdd = { section = Section.ADD_CHOOSE },
+                returnToCatalogRevision = returnToCatalogRevision,
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
@@ -1854,8 +1856,9 @@ internal fun ChunksApp(
                 // modes. Its chips change view scopes only; this route grants
                 // no engine, server or per-job mutation authority.
                 section = Section.COMBINED
-                // Re-tapping Transfers is useful even when already on this
-                // list: return to its first row without resetting search,
+                returnToCatalogRevision++
+                // Re-tapping Transfers closes full Details and returns to its
+                // first row without resetting search,
                 // filter, exact environment selection or any Add draft.
                 scope.launch { combinedListState.scrollToItem(0) }
             },
