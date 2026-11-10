@@ -293,6 +293,13 @@ class CombinedSavedServersTest {
             calls.incrementAndGet(); emptyList()
         }))
         discloseSourceStatus()
+        // Disclosure updates Compose state asynchronously. Wait for the same
+        // required locked status to appear, without opening or fetching an
+        // unverifiable profile. This remains a negative authorization test.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers").assertExists()
         rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
         assertEquals(0, calls.get())

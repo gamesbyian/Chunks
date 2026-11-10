@@ -836,6 +836,50 @@ class TransferMediaControllerTest {
                 it.contains(phone.value) })
         }
 
+    @Test fun newlyConfiguredProviderRechecksOffscreenAmbiguityWithoutFalseConfirmation() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val configured = java.util.concurrent.atomic.AtomicBoolean(false)
+            val tvmaze = TvMazeProvider()
+            val tmdb = io.github.gamesbyian.chunks.media.providers.TmdbProvider {
+                if (configured.get()) "0123456789abcdef0123456789abcdef" else null
+            }
+            val wire = FakeMediaHttp()
+                .on("api.tvmaze.com/search", body = fixture("tvmaze-search-the-office.json"))
+                .on("api.themoviedb.org/3/search/tv", body = """
+                    {"results":[{"id":2316,"name":"The Office",
+                        "first_air_date":"2005-03-24","poster_path":null}]}
+                """.trimIndent())
+            val providers = listOf(tvmaze, tmdb)
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            val c = TransferMediaController(
+                MediaEnrichmentService(providers, wire, InMemoryMediaQueryCache(),
+                    { clock.now }, clock::sleep),
+                ArtworkRepository(wire, ArtworkDiskCache(File(dir, "ambiguous-provider")),
+                    hostPolicyFor = { id -> providers.firstOrNull { it.info.id == id }?.info?.artworkHostPolicy }),
+                { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
+                { clock.now })
+            val inventory = listOf(phone to "The.Office.S03.720p.WEB-DL")
+            c.enrichInventory(inventory)
+            assertEquals(MediaAssignmentState.SUGGESTED, assignments.get(phone)?.state)
+            assertTrue(wire.requests.none { it.contains("api.themoviedb.org") })
+            val initialCalls = wire.requests.size
+            c.enrichInventory(inventory)
+            assertEquals("Repeated inventory should not search an unchanged ambiguity",
+                initialCalls, wire.requests.size)
+            configured.set(true)
+            c.onProviderConfigurationChanged()
+            c.enrichInventory(inventory)
+            assertEquals(MediaAssignmentState.SUGGESTED, assignments.get(phone)?.state)
+            assertNull("A later singleton response does not erase earlier same-title ambiguity",
+                assignments.get(phone)?.match)
+            assertTrue(assignments.get(phone)?.suggestions?.any { it.ref.provider == "tmdb" } == true)
+            assertTrue(wire.requests.any { it.contains("api.themoviedb.org") })
+            assertTrue(wire.requests.none { it.contains("720p") || it.contains("WEB-DL") ||
+                it.contains(phone.value) })
+        }
+
     @Test fun futureArrivalRuleCannotOverwriteAnAlreadyVerifiedArtlessAssignmentDuringPosterRetry() =
         kotlinx.coroutines.runBlocking {
             settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)

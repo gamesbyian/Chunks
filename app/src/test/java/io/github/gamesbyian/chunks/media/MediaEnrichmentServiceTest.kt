@@ -75,6 +75,23 @@ class MediaEnrichmentServiceTest {
         assertEquals(MediaLookupStatus.MATCHED, uk.status); assertEquals("1292", uk.match!!.ref.externalId)
     }
 
+    @Test fun laterSingletonProviderCannotSilentlyResolveEarlierSameTitleAmbiguity() {
+        val http = FakeMediaHttp()
+            .on("api.tvmaze.com/search", body = fixture("tvmaze-search-the-office.json"))
+            .on("api.themoviedb.org/3/search/tv", body = """
+                {"results":[{"id":2316,"name":"The Office",
+                    "first_air_date":"2005-03-24","poster_path":"/usoffice.jpg"}]}
+            """.trimIndent())
+        val r = service(http, TvMazeProvider(),
+            TmdbProvider { "0123456789abcdef0123456789abcdef" })
+            .lookup(rec("The.Office.S03.720p.WEB-DL"), consent, online)
+        assertEquals(MediaLookupStatus.NEEDS_REVIEW, r.status)
+        assertNull("One later provider cannot confirm which same-title series was requested", r.match)
+        assertTrue(r.alternates.any { it.ref.provider == "tmdb" })
+        assertTrue(r.alternates.mapNotNull { it.year }.containsAll(listOf(2001, 2005)))
+        assertTrue(http.requests.any { it.contains("api.themoviedb.org") })
+    }
+
     @Test fun missThenNextProviderAndArtworkCompletedByLaterProvider() {
         // A: TVmaze record without image; B: TMDB with poster. Metadata from A, artwork from B.
         val tvmaze = """[{"score":1,"show":{"id":9,"name":"Quiet Show","premiered":"2010-01-01","weight":80,"image":null}}]"""
@@ -85,6 +102,18 @@ class MediaEnrichmentServiceTest {
         assertEquals(MediaLookupStatus.MATCHED, r.status)
         assertEquals(MediaMetadataCacheKey("tvmaze", "show", "9"), r.match!!.ref)
         assertEquals("tmdb", r.match!!.artwork.single().provider)
+    }
+
+    @Test fun exactMovieYearCannotAutoConfirmAdjacentOrUndatedProviderRecord() {
+        val requested = (MediaQuerySanitizer.manual(MediaKind.MOVIE, "Hackers", year = 1995)
+            as MediaQueryDecision.Allowed).query
+        fun candidate(year: Int?) = MediaCandidate(
+            MediaMetadataCacheKey("tmdb", "movie", "10428"), MediaKind.MOVIE,
+            "Hackers", year, attribution = MediaAttribution("TMDB", "test", null))
+        assertTrue(MediaCandidateMatcher.match(requested, listOf(candidate(1996))) is MediaMatchDecision.NoMatch)
+        assertTrue(MediaCandidateMatcher.match(requested, listOf(candidate(null))) is MediaMatchDecision.NoMatch)
+        val exact = MediaCandidateMatcher.match(requested, listOf(candidate(1995)))
+        assertTrue(exact is MediaMatchDecision.Confident)
     }
 
     @Test fun reusedMovieTitleCanNeverBorrowWrongYearPosterAcrossProviders() {
