@@ -5,6 +5,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
@@ -24,16 +25,16 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Installed phone-first app on a real emulator soft keyboard: the persistent
- * footer yields while the IME is shown and returns when the keyboard's Search
- * key closes it, with the typed search kept. Then the phone search survives
- * Activity recreation. Navigation and view state only; nothing is added.
+ * Installed first-run Welcome → canonical Transfers on a real emulator soft
+ * keyboard. The footer yields while IME is shown and returns when Search closes
+ * it; typed catalog search survives Activity recreation. Navigation/view state
+ * only; no torrent admission or server connection is attempted.
  */
 @RunWith(AndroidJUnit4::class)
 class FooterImeInstalledInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val searchLabel = "Search transfers on this device"
+    private val searchLabel = "Search names or hashes"
 
     private fun footerShown() =
         rule.onAllNodesWithContentDescription("Options").fetchSemanticsNodes().isNotEmpty()
@@ -47,12 +48,18 @@ class FooterImeInstalledInstrumentedTest {
         return shown
     }
 
-    private fun waitForPhone() = rule.waitUntil(20_000) {
-        rule.onAllNodesWithText("This device").fetchSemanticsNodes().isNotEmpty()
+    private fun waitForCatalog() = rule.waitUntil(20_000) {
+        rule.onAllNodesWithText("All environments").fetchSemanticsNodes().isNotEmpty()
+    }
+
+    private fun enterCatalogFromWelcome() {
+        rule.waitUntil(20_000) { footerShown() }
+        rule.onAllNodesWithText("Transfers").onLast().performClick()
+        waitForCatalog()
     }
 
     @Test fun footerRemainsAvailableThroughSoftKeyboardAndAfterSearchKey() {
-        waitForPhone()
+        enterCatalogFromWelcome()
         rule.waitUntil(10_000) { footerShown() }
         val field = rule.onNode(hasSetTextAction() and hasText(searchLabel))
         // Accessibility actions can reach an unfocused Activity. A real tap
@@ -89,11 +96,11 @@ class FooterImeInstalledInstrumentedTest {
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
 
-    @Test fun phoneSearchSurvivesActivityRecreation() {
-        waitForPhone()
+    @Test fun catalogSearchSurvivesActivityRecreation() {
+        enterCatalogFromWelcome()
         rule.onNode(hasSetTextAction() and hasText(searchLabel)).performScrollTo().performTextInput("debian")
         rule.activityRule.scenario.recreate()
-        waitForPhone()
+        waitForCatalog()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("debian", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
