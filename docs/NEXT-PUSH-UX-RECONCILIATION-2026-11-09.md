@@ -16,6 +16,13 @@
 - Across all screens, replace gratuitous vertically stacked full-width action buttons with **two across by default** and **three across for naturally short labels**. Full-width is exceptional (e.g. destructive confirmation, a dominant primary action, or labels genuinely too long). Keep safe spacing between destructive and ordinary actions, natural reading/focus order and all capabilities. Use a reusable Compose action-grid/flow pattern, not dozens of bespoke layouts.
 - Measure gained usable transfer-list viewport height; do not steal the saved space with always-expanded search/status/options sections.
 
+### First-install, Connections, footer state and Universal Add
+
+- **First install / truly empty Transfers (#1512):** Header, persistent footer, **Welcome to Chunks**, concise local-or-remote explanation, Add and Connections actions. Suppress unused scope/search/batch/filter chrome only for genuinely no-transfer empty state; loading/offline/stale/filtered-zero are separate truthful states.
+- **Connections (#1514/#1515):** Keep purple introductory card but populate it with **Connect to another computer or server (optional)** and the concise remote explanation; remove local-download promo and device section. Always show saved/available remote connections with management and Add tools. On verified connection creation, acknowledge then remain on Connections. Tapping a saved profile opens the **same Combined-derived Transfers** browser filtered by exact stable profile ID; never use an independent server-transfer page.
+- **Footer (#1516):** Four destinations always in one row. Actual selected root indicator changes on Transfers, + Add, Connections and Options, including Back and deep links. Purple Add may remain a visually strong primary action but its persistent accent is not selected-state styling or TalkBack selection.
+- **Universal Add (#1517):** Replace the two-target gateway with one source-first form: magnet/HTTP(S) URL input, Open .torrent and Paste at top, then exact phone/remote/eligible Smart Routing target, Save to/Change, Start when added and contextual collapsible files/priorities, alias, Keep/Archive/Delete local source, artwork choice and seeding/rule controls. Preserve source/target/Place/Start draft state and sole coordinator. Never require destination preselection, duplicate local/remote screens or review-before-submission. Follow [source intake](ADD-SOURCE-INTAKE.md), [source lifecycle/routing](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) and [UX](UX.md).
+
 ### Automatic media/artwork without manual identification chores
 
 - **Options → Artwork & media information** holds the **global enabled-by-default feature preference** for automatic media interpretation, artwork collection and display, with clear subordinate controls as needed. A default-on preference **does not authorize outbound provider lookup**: obtain informed, revocable third-party consent once, separately, before network requests. Disabling global collection stops new requests, and disabling display hides art without destructively clearing durable user choices.
@@ -38,11 +45,11 @@
 
 **Slice B (Universal Add/phone; Agent 2):** Add-time artwork checkbox placement and conditional availability, commit durable exact-job opt-out once (including Share/Open With/restoration), preserve review/default/explicit source semantics. Work with Agent 1 on the Add composable seam and Agent 3 on verified remote admission; do not modify both sides of a contested interface unilaterally.
 
-**Slice C (rTorrent and media plumbing; Agent 3 after active RPC PR):** Preserve authenticated exact-hash routing and readback. Audit media inventory observation across connected and saved-accessible scopes; identify which missing provider/consent/scheduler state explains the owner's screenshots before targeted fixes. Avoid adding a new executor, ad hoc request loop, network consent or mutable remote action.
+**Slice C (authenticated rTorrent; Agent 3 after active RPC PR):** Preserve authenticated exact-hash routing and readback. Provide authenticated exact-profile connection-save and remote Add/readback contracts for Agents 1/2; never route automatically to legacy server lists after setup. Avoid adding a new executor, ad hoc request loop, network consent or mutable remote action.
 
-**Slice D (independent QA/integration; Agent 4):** Installed UX cross-scope, footer and media regression tests. Control shared test/CI and central docs, PR dependency order and merging. Qualification is source-exact, independent, all required checks actually executed; no merge from skipped native/R8, old head green, red failures, or an untested assembled tree. Recompute APK SHA-256 from **actual installed/tested bytes** only when source and peer/piece proof match.
+**Slice D (independent QA/integration; Agent 5):** Installed UX cross-scope, footer and media regression tests. Control shared test/CI and central docs, PR dependency order and merging. Qualification is source-exact, independent, all required checks actually executed; no merge from skipped native/R8, old head green, red failures, or an untested assembled tree. Recompute APK SHA-256 from **actual installed/tested bytes** only when source and peer/piece proof match.
 
-These are responsibilities for the **next** agent activation, not evidence that any agent is currently running or has a lease.
+**Agent 4** independently owns recognition, providers and poster scheduling per [AGENT-LANES](AGENT-LANES.md), not integration/CI. These are responsibilities for the **next** agent activation, not evidence that any agent is currently running or has a lease.
 
 ## Existing PR review instruction
 
