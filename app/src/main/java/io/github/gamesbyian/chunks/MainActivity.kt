@@ -36,6 +36,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -301,11 +302,15 @@ internal fun ChunksApp(
     var section by rememberSaveable(saver = SectionRestoreSaver) {
         // A saved login needs the existing one-shot authenticated reconnect
         // owner to mount. Combined is a read-only list, not a reconnect executor.
-        mutableStateOf(if (remembered == null) Section.LOCAL else Section.TRANSFERS)
+        mutableStateOf(if (remembered == null) Section.COMBINED else Section.TRANSFERS)
     }
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
+    // A one-shot view-only request, keyed by immutable saved-profile ID.
+    // Never a remote Add target, RPC principal or mutation authorization.
+    var profileScopeRequest by remember { mutableStateOf<String?>(null) }
+    var verifiedConnectionNotice by remember { mutableStateOf<VerifiedConnectionNotice?>(null) }
     // One safe navigation return edge only, never an Add draft or authority.
     // When entering phone from Combined, the phone's own Back returns there.
     var localFromCombined by rememberSaveable { mutableStateOf(false) }
@@ -658,6 +663,9 @@ internal fun ChunksApp(
         } else if (section == Section.COMBINED) {
             CombinedTransfersScreen(
                 showNavigationFooter = false,
+                scopeFocusRequest = profileScopeRequest,
+                onScopeFocusConsumed = { profileScopeRequest = null },
+                onWelcomeAdd = { section = Section.ADD_CHOOSE },
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
@@ -724,7 +732,9 @@ internal fun ChunksApp(
                 readingSharedTorrent = sharedTorrentReading,
                 sharedTorrentError = sharedTorrentError,
                 onConnections = { section = Section.SERVER },
-                onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
+                // The scoped chips are the sole server-list navigation.
+                // No legacy server-only transfers route is opened here.
+                onOpenServer = null,
                 onAddToServer = if (server != null) ({
                     val sharedDocument = incomingTorrent
                     if (sharedDocument != null && !sharedTorrentReading &&
@@ -891,9 +901,28 @@ internal fun ChunksApp(
                     }
                 )
             }
-        } else if (server == null) {
+        } else if (server == null || section == Section.SERVER) {
             ConnectionScreen(
-                startupReconnectEligible = RemoteStartupReconnectPolicy.shouldAttempt(
+                connectedSessionName = server?.let {
+                    savedProfiles.firstOrNull { profile ->
+                        profile.id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                            .serverIdOfAliasScope(aliasScope)?.value
+                    }?.label ?: "Connected rTorrent server"
+                },
+                onViewConnectedTransfers = {
+                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                        .serverIdOfAliasScope(aliasScope)?.value?.let { id ->
+                            profileScopeRequest = id
+                            section = Section.COMBINED
+                        }
+                },
+                onDisconnectCurrent = { disconnectCurrentRemote() },
+                onOpenProfileTransfers = { profile ->
+                    // Persisted ID is the only scope authority, independent of labels.
+                    profileScopeRequest = profile.id
+                    section = Section.COMBINED
+                },
+                startupReconnectEligible = server == null && RemoteStartupReconnectPolicy.shouldAttempt(
                     rememberingEnabled = rememberLogin,
                     hasSavedVerifiedLogin = remembered != null,
                     alreadyAttempted = startupReconnectAttempted
@@ -1100,8 +1129,9 @@ internal fun ChunksApp(
                                     // A phone-origin .torrent can be prepared before a
                                     // remote login. Keep its reviewed Add draft visible
                                     // after connecting, without submitting any RPC.
-                                    section = if (magnet.isNotBlank() ||
-                                        serverHandoffTorrent != null) Section.ADD else Section.TRANSFERS
+                                    // Connections owns the post-verification destination.
+                                    // An Add draft stays in RAM without implicit submission.
+                                    section = Section.SERVER
                                     currentView = ticket.view
                                     requestedView = ticket.view
                                     // A successful authenticated Connect is the only time
@@ -1146,6 +1176,14 @@ internal fun ChunksApp(
                                             }
                                             // Do not retain another copy in the screen field.
                                             password = ""
+                                            val savedName = refreshed.firstOrNull { profile ->
+                                                profile.id == io.github.gamesbyian.chunks.model
+                                                    .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+                                            }?.label
+                                            verifiedConnectionNotice = VerifiedConnectionNotice(
+                                                savedName ?: "rTorrent server",
+                                                saved = saveThisLogin && retained && savedName != null
+                                            )
                                         }
                                     }
                                 }
@@ -1739,7 +1777,8 @@ internal fun ChunksApp(
             },
             onOptions = { section = Section.OPTIONS },
             onConnections = { section = Section.SERVER },
-            addDescription = "Choose where to add a transfer"
+            addDescription = "Choose where to add a transfer",
+            activeDestination = footerDestinationForRoute(section.name, toolOrigin)
         )
     }
 }
