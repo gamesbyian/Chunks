@@ -159,7 +159,7 @@ class CombinedTwoRealServersInstrumentedTest {
         waitFor("verified Connections management") {
             visible("Connected ·") && visible("View transfers")
         }
-        rule.onNodeWithText("View transfers").performClick()
+        rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
         // Legacy operations remain reachable from canonical exact-owner Details
         // until the active #1534/#1566 migration preserves full capability parity.
         enterConnectedQueueIfCombined()
