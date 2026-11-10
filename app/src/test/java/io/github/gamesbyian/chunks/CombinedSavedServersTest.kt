@@ -104,6 +104,10 @@ class CombinedSavedServersTest {
             }))
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertDoesNotExist()
         discloseSourceStatus()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertExists()
         assertEquals("nothing is fetched until the user asks", 0, calls.get())
         assertEquals("no list callback may finish before the explicit tap", 0, completedReads.get())
@@ -287,6 +291,12 @@ class CombinedSavedServersTest {
             calls.incrementAndGet(); emptyList()
         }))
         discloseSourceStatus()
+        rule.waitUntil(10_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers"))
+            }.isSuccess
+        }
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers").assertExists()
         rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
         assertEquals(0, calls.get())

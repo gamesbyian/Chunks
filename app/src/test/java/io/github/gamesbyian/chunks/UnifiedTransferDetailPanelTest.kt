@@ -75,7 +75,7 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Environment: Server two / rutorrent2").assertExists()
         rule.onNodeWithText("Accessible selected transfer").assertExists()
         rule.onNodeWithText("Artwork & media information").assertExists()
-        rule.onNodeWithText("Identify…").performScrollTo().performClick()
+        rule.onNodeWithText("Change identification or artwork…").performScrollTo().performClick()
         rule.onNodeWithText("Close media identification").performScrollTo().performClick()
         rule.onNodeWithText("Needs attention: an error was reported.").assertExists()
         rule.onNodeWithText("Start state set; peer activity has not been verified.").assertExists()

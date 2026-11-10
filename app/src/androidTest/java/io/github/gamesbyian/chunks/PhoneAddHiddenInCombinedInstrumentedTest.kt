@@ -13,6 +13,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.After
 import org.junit.Rule
@@ -74,12 +75,32 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
 
         rule.onNodeWithText("Transfers").performClick()
         rule.onNodeWithText("All environments").performScrollTo().performClick()
-        // Search remains visible in the compact combined inventory.
+        // First demand a fresh, exact-hash phone row in the canonical
+        // Combined inventory. A mere native Add receipt is NOT sufficient to
+        // claim that a new transfer is hidden; the notice is only allowed
+        // after a complete current source observation contains that job.
         val search = hasSetTextAction() and hasText("Search names or hashes")
-        waitFor { runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(search) }.isSuccess }
-        rule.onNode(search).performTextInput("no transfer is called this")
+        waitFor { runCatching {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(search)
+            true
+        }.getOrDefault(false) }
+        rule.onNode(search).performTextReplacement(hash)
+        waitFor(30_000) { runCatching {
+            rule.onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasText(name, substring = true))
+            true
+        }.getOrDefault(false) }
+        // Now hide the same observed row with a contradictory search.
+        // This must surface a recovery action without fabricating a row,
+        // changing its Add target, or sending any extra engine command.
+        // Once nonempty, the TextField semantics may expose its value instead
+        // of the placeholder. Address the only editable search field by action.
+        rule.onNode(hasSetTextAction()).performTextReplacement("no transfer is called this")
         val notice = "Your new transfer on On this phone is hidden by the current search, filter or environment view."
-        waitFor { runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(notice)) }.isSuccess }
+        waitFor(30_000) { runCatching {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(notice))
+            true
+        }.getOrDefault(false) }
         rule.onNode(hasText("Show all transfers") and hasClickAction()).performScrollTo().performClick()
         waitFor { runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(name, substring = true)) }.isSuccess }
         waitFor(5_000) { rule.onAllNodes(hasText(notice)).fetchSemanticsNodes().isEmpty() }

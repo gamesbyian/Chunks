@@ -155,8 +155,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
     }
 
-    suspend fun version(): String =
-        call("system.client_version") as? String ?: error("Unexpected rTorrent version reply")
+    /** Fresh Connect and saved-profile reauthentication must accept the same
+     * bounded server identity evidence, before displaying a live inventory. */
+    suspend fun version(): String {
+        val reported = call("system.client_version") as? String
+            ?: error("Unexpected rTorrent version reply")
+        check(reported.isNotBlank() && reported.length <= 120 &&
+            reported.none { it.isISOControl() }) {
+            "Invalid rTorrent version response"
+        }
+        return reported
+    }
 
     suspend fun probe(): RemoteProbe {
         val serverVersion = version()

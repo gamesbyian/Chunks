@@ -43,6 +43,7 @@ class RuTorrentFullSessionDeleteGuardTest {
     private fun fixture(
         defaultFirst: List<Torrent>,
         defaultLater: List<Torrent> = defaultFirst,
+        mount: String = "/rutorrent",
         check: suspend (RTorrentRemote, AtomicInteger, AtomicInteger, AtomicInteger) -> Unit
     ) = runBlocking {
         val defaultReads = AtomicInteger()
@@ -53,7 +54,7 @@ class RuTorrentFullSessionDeleteGuardTest {
         val pluginPosts = AtomicInteger()
         val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
-        server.createContext("/rutorrent/plugins/httprpc/action.php") { exchange ->
+        server.createContext("$mount/plugins/httprpc/action.php") { exchange ->
             val request = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>")
                 .find(request)?.groupValues?.get(1).orEmpty()
@@ -82,7 +83,7 @@ class RuTorrentFullSessionDeleteGuardTest {
             }
             respond(exchange, value)
         }
-        server.createContext("/rutorrent/plugins/erasedata/action.php") { exchange ->
+        server.createContext("$mount/plugins/erasedata/action.php") { exchange ->
             pluginPosts.incrementAndGet()
             exchange.requestBody.use { it.readBytes() }
             val bytes = "[0,0,0]".toByteArray(Charsets.UTF_8)
@@ -92,13 +93,24 @@ class RuTorrentFullSessionDeleteGuardTest {
         server.start()
         try {
             val endpoint = "http://127.0.0.1:" + server.address.port +
-                "/rutorrent/plugins/httprpc/action.php"
+                "$mount/plugins/httprpc/action.php"
             val remote = RTorrentRemote(RemoteCredentials(endpoint, "", ""))
             check(remote, defaultReads, hiddenFileReads, pluginPosts)
         } finally {
             server.stop(0)
         }
     }
+
+    @Test fun hostedNumberedTenantUsesOnlyItsOwnPluginForApprovedCleanup() =
+        fixture(defaultFirst = listOf(selected), mount = "/tenant2/rutorrent3") {
+                remote, defaultReads, _, posts ->
+            val outcome = remote.removeWithDataViaRuTorrent(
+                selected.hash, selected.name, selected.directory)
+            assertTrue("Plugin ACK only queues cleanup, never proves deletion",
+                outcome is RemoteDeleteDataOutcome.Uncertain)
+            assertEquals("Both complete session views must still be checked", 2, defaultReads.get())
+            assertEquals("Only the tenant2/rutorrent3 erase endpoint is available", 1, posts.get())
+        }
 
     @Test fun hiddenJobSharingSelectedPayloadRefusesBeforeAnyPluginPost() =
         fixture(defaultFirst = listOf(selected, hidden)) {

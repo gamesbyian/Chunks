@@ -53,7 +53,7 @@ class PhoneFirstFooterAddRenderTest {
         // At 320dp/200% the destination belongs to the SAME vertically
         // scrollable source-first shell; prove the actual option is reachable
         // rather than assuming every control must fit in the first viewport.
-        rule.onNodeWithText("On this device").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("This device").performScrollTo().assertIsDisplayed()
         // The button remains actionable after opening the actual in-place form.
         rule.onNodeWithText("+ Add").assertIsDisplayed()
     }

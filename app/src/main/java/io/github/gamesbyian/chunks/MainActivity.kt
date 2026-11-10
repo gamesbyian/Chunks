@@ -1958,7 +1958,7 @@ internal fun ChunksApp(
                         addArtworkState = addArtworkChoices.onServer(aliasScope),
                         addDestinationPicker = addDestinationPicker,
                         externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
-                        onBack = { section = Section.TRANSFERS },
+                        onBack = { section = Section.COMBINED },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->
                             if (server === connectedRemote) {
@@ -1968,15 +1968,20 @@ internal fun ChunksApp(
                             }
                         },
                         onViewVerifiedTransfer = { hash ->
-                            // The Add result came from this exact authenticated
-                            // server; switching accounts must never redirect it.
-                            if (server === connectedRemote) {
-                                setRemoteQuery(hash)
-                                filter = TransferFilter.ALL
-                                remoteFilterStore.save(sortEnvironment, TransferFilter.ALL)
+                            // A verified Add result opens the SAME canonical
+                            // catalog, scoped to the exact current account and
+                            // infohash. Never hand off to the legacy server
+                            // queue or inherit another account's matching hash.
+                            val verifiedKey = if (server === connectedRemote)
+                                remoteAdded?.combinedKey(aliasScope)?.takeIf {
+                                    it.infoHash.equals(hash, ignoreCase = true)
+                                } else null
+                            if (verifiedKey != null) {
+                                profileScopeRequest = verifiedKey.environment.value
+                                combinedSearch.value = verifiedKey.infoHash
                                 requestedView = "main"
-                                section = Section.TRANSFERS
-                                refresh()
+                                section = Section.COMBINED
+                                refresh() // independently fenced read only
                             }
                         },
                         onMutationStarted = beginRemoteMutation,

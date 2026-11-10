@@ -137,28 +137,35 @@ open class ChunksServerRenderTest {
         connectToFixture()
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
-        // The chooser scrolls vertically at 320dp / 200% text.
-        rule.onNodeWithText("On the connected server").performScrollTo().performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("Add a download to this server").assertExists()
+        // Source fields lead the one shared Add form. Its remote choice is
+        // underneath them, not an obsolete compulsory destination gateway.
+        val sourceList = rule.onNode(hasScrollToIndexAction())
+        sourceList.performScrollToNode(hasText("On Server ·", substring = true))
+        rule.onNodeWithText("On Server ·", substring = true).performClick()
+        rule.waitUntil(20_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasText("Custom server folder (optional)"))
+            }.isSuccess
+        }
         val addList = rule.onNode(hasScrollToIndexAction())
         addList.performScrollToNode(hasText("Magnet or torrent link"))
-        rule.onNodeWithText("Magnet or torrent link").performTextReplacement("magnet:?xt=urn:btih:" + "ab".repeat(20))
+        rule.onNodeWithText("Magnet or torrent link")
+            .performTextReplacement("magnet:?xt=urn:btih:" + "ab".repeat(20))
         addList.performScrollToNode(hasText("Custom server folder (optional)"))
-        rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/srv/one-off")
-        rule.onNode(hasText("/srv/one-off")).assertExists()
-        // The same next steps as the installed atlas: review the one-off folder.
-        addList.performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").performClick()
-        rule.waitForIdle()
+        rule.onNodeWithText("Custom server folder (optional)")
+            .performTextReplacement("/srv/one-off")
         addList.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
         rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()
-        // The destination strip must not take over the Add screen.
+        addList.performScrollToNode(hasText("Start when added"))
+        rule.onNodeWithText("Start when added").assertExists()
+        // This screenshot test does not press Add transfer. A source/Place
+        // choice or rendering a button never submits an RPC mutation.
         val list = addList.getUnclippedBoundsInRoot()
         val root = rule.onRoot().getUnclippedBoundsInRoot()
         val listHeight = list.bottom - list.top
         val rootHeight = root.bottom - root.top
-        org.junit.Assert.assertTrue("Add list height $listHeight vs screen $rootHeight",
+        org.junit.Assert.assertTrue("Source-first Add viewport $listHeight vs screen $rootHeight",
             listHeight >= rootHeight * 0.5f)
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-add.png")
     }

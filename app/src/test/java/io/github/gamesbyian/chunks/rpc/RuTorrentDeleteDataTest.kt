@@ -21,6 +21,44 @@ class RuTorrentDeleteDataTest {
         }
     }
 
+    @Test fun hostedTenantPrefixesKeepTheExactNumberedDestructiveRoute() {
+        val routes = mapOf(
+            "/account/rutorrent2/plugins/httprpc/action.php" to
+                "/account/rutorrent2/plugins/erasedata/action.php",
+            "/slot/deploy/rutorrent3/plugins/httprpc/action.php" to
+                "/slot/deploy/rutorrent3/plugins/erasedata/action.php",
+            "/my%20account/rutorrent4/plugins/httprpc/action.php" to
+                "/my%20account/rutorrent4/plugins/erasedata/action.php",
+            "/%25members/rutorrent2/plugins/httprpc/action.php" to
+                "/%25members/rutorrent2/plugins/erasedata/action.php"
+        )
+        for ((source, expected) in routes) {
+            val destination = RuTorrentDeleteData.endpoint(URI("https://host.example$source"))
+            assertEquals("The same authenticated account and instance must be retained",
+                expected, destination?.rawPath)
+            assertEquals("host.example", destination?.host)
+        }
+    }
+
+    @Test fun hostileOrAmbiguousTenantPrefixesCannotReachTheDeletePlugin() {
+        val bad = listOf(
+            "/account/../other/rutorrent2/plugins/httprpc/action.php",
+            "/account/%2e%2e/other/rutorrent2/plugins/httprpc/action.php",
+            "/account/%25252e%25252e/rutorrent2/plugins/httprpc/action.php",
+            "/account%2fother/rutorrent2/plugins/httprpc/action.php",
+            "/account%252fother/rutorrent2/plugins/httprpc/action.php",
+            "/account%255cother/rutorrent2/plugins/httprpc/action.php",
+            "/account//rutorrent2/plugins/httprpc/action.php",
+            "/account/rutorrent4/plugins/httprpc/action.php/other",
+            "/account/rutorrent9999/plugins/httprpc/action.php"
+        )
+        for (path in bad) {
+            assertNull(path, RuTorrentDeleteData.endpoint(URI("https://host.example$path")))
+        }
+        assertNull(RuTorrentDeleteData.endpoint(
+            URI("https://host.example/tenant/rutorrent2/plugins/httprpc/action.php#fragment")))
+    }
+
     @Test fun rejectsUnsafePathsBeforeAnyDestructivePost() {
         assertTrue(RuTorrentDeleteData.safeFilePaths(listOf(
             RemoteFile("My Show/episode.mkv", 100, 1))))
