@@ -688,6 +688,58 @@ class TransferMediaControllerTest {
             assertNull("Another environment with the same hash is independent", assignments.get(phone))
         }
 
+    @Test fun undatedVerifiedTvRecordCanAcquireOwnPosterButNeverBorrowDifferentRecord() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val tv = TvMazeProvider()
+            val identical = MediaCandidate(
+                io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+                MediaKind.TV_EPISODE, "Babylon 5", year = null, season = 2, episode = 7,
+                attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
+            val unrelated = identical.copy(
+                ref = io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "different"))
+            val assignments = FileTransferMediaAssignmentStore(File(dir, "yearless-assign.json"))
+            assignments.put(TransferMediaAssignment(server, MediaAssignmentState.AUTOMATIC,
+                match = identical, updatedAtMs = clock.now))
+            assignments.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+                match = unrelated, updatedAtMs = clock.now))
+            val wire = FakeMediaHttp()
+                .on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
+                .on("/shows/475/episodebynumber?season=2&number=7",
+                    body = fixture("tvmaze-episode-475-s02e07.json"))
+                .on("/shows/57926/episodebynumber", status = 404)
+                .onBytes("static.tvmaze.com", jpeg(), headers = mapOf("Content-Type" to "image/jpeg"))
+            fun fresh() = TransferMediaController(
+                MediaEnrichmentService(listOf(tv), wire,
+                    FileMediaQueryCache(File(dir, "yearless-cache.json")),
+                    { clock.now }, clock::sleep),
+                ArtworkRepository(wire, ArtworkDiskCache(File(dir, "yearless-art")),
+                    hostPolicyFor = { tv.info.artworkHostPolicy }),
+                { FileTransferMediaAssignmentStore(File(dir, "yearless-assign.json")) },
+                { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
+                Dispatchers.Unconfined, { clock.now })
+            val c = fresh()
+            c.enrichInventory(listOf(server to name, phone to name))
+            val own = requireNotNull(FileTransferMediaAssignmentStore(File(dir, "yearless-assign.json")).get(server))
+            assertEquals("Only the original provider record is verified", identical.ref, own.match?.ref)
+            assertNull("Do not invent a release year on an already verified identity", own.match?.year)
+            assertTrue("An undated verified show can gain artwork from its exact provider ID",
+                own.match?.artwork?.isNotEmpty() == true)
+            val other = requireNotNull(FileTransferMediaAssignmentStore(File(dir, "yearless-assign.json")).get(phone))
+            assertEquals("Same title is insufficient for a different provider record", unrelated.ref, other.match?.ref)
+            assertTrue("Unknown-year cross-record art must still be refused",
+                other.match?.artwork?.isEmpty() == true)
+            val before = wire.requests.size
+            wire.offline = true
+            val restored = fresh().observe(server, name)
+            assertEquals(MediaAssignmentState.AUTOMATIC, restored.value.state)
+            assertNotNull("The filled poster must remain available from disk offline", restored.value.artwork)
+            assertEquals(before, wire.requests.size)
+            assertTrue(wire.requests.none { it.contains("WEB-DL") || it.contains("1080p") ||
+                it.contains(server.value) || it.contains(phone.value) })
+        }
+
     @Test fun offscreenVerifiedIdentityBackfillsEvictedSquareArtAndRestoresOffline() =
         kotlinx.coroutines.runBlocking {
             settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)

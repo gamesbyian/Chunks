@@ -380,8 +380,15 @@ class TransferMediaController(
                             MediaLookupStatus.NOT_FOUND)) return
                     val original = missingArt.match!!
                     val proposed = outcome.match
+                    // The same stable provider record may originally have no release
+                    // year (e.g. an undated TV series) and gain its own poster later.
+                    // Cross-provider artwork still requires BOTH known matching years;
+                    // even an exact provider ID cannot override contradictory years.
+                    val exactProviderRecord = proposed?.ref == original.ref &&
+                        (original.year == null || proposed.year == null || original.year == proposed.year)
+                    val sameKnownYear = original.year != null && original.year == proposed?.year
                     val sameWork = proposed != null && original.kind.compatibleWith(proposed.kind) &&
-                        original.year != null && original.year == proposed.year &&
+                        (exactProviderRecord || sameKnownYear) &&
                         MediaText.similarity(original.title, proposed.title) >= MediaCandidateMatcher.CONFIDENT_TITLE_SIMILARITY
                     val verifiedArt = proposed?.artwork?.takeIf { sameWork && it.isNotEmpty() }
                     val updated = missingArt.copy(
