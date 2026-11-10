@@ -29,7 +29,7 @@ class RemoteCombinedAuthenticatedActionsTest {
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         val two = Account("tenant2", "secret2", "Second Server", "/srv/tenant2")
         val three = Account("tenant3", "secret3", "Third Server", "/srv/tenant3")
-        val root get() = "http://127.0.0.1:\${server.address.port}"
+        val root get() = "http://127.0.0.1:${server.address.port}"
 
         inner class Account(
             user: String, password: String,
