@@ -209,6 +209,53 @@ class TransferMediaControllerTest {
             assertNull(FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone))
         }
 
+    @Test fun settingTmdbKeyCompletesMissingWikidataMovieArtworkWithoutChangingIdentity() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        val keyReady = java.util.concurrent.atomic.AtomicBoolean(false)
+        val tmdb = io.github.gamesbyian.chunks.media.providers.TmdbProvider {
+            if (keyReady.get()) "0123456789abcdef0123456789abcdef" else null
+        }
+        val wiki = io.github.gamesbyian.chunks.media.providers.WikidataProvider()
+        val wire = FakeMediaHttp()
+            .on("api.themoviedb.org/3/search/movie", body = """
+                {"results":[{"id":123,"title":"Hackers","release_date":"1995-09-15",
+                    "adult":false,"poster_path":"/abc123.jpg"}]}
+            """.trimIndent())
+            .on("www.wikidata.org", body = """
+                {"search":[{"id":"Q12345","label":"Hackers",
+                    "description":"1995 film by Iain Softley"}]}
+            """.trimIndent())
+            .onBytes("image.tmdb.org", jpeg(), headers = mapOf("Content-Type" to "image/jpeg"))
+        val providers = listOf(tmdb, wiki)
+        val service = MediaEnrichmentService(providers, wire, FileMediaQueryCache(File(dir, "movie-q.json")),
+            { clock.now }, clock::sleep)
+        val c = TransferMediaController(service,
+            ArtworkRepository(wire, ArtworkDiskCache(File(dir, "movie-art")),
+                hostPolicyFor = { id -> providers.firstOrNull { it.info.id == id }?.info?.artworkHostPolicy },
+                memoryBytes = 4_000_000),
+            { FileTransferMediaAssignmentStore(File(dir, "movie-assign.json")) },
+            { settings }, { MediaNetworkState(true, false) }, CoroutineScope(Dispatchers.Unconfined),
+            Dispatchers.Unconfined, Dispatchers.Unconfined, { clock.now },
+            automationStoreFactory = { FileMediaAutomationPreferences(File(dir, "movie-automation.json")) })
+        val flow = c.observe(phone, "Hackers.1995.1080p.BluRay.mkv")
+        assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
+        assertEquals("wikidata", flow.value.match?.ref?.provider)
+        assertEquals(1995, flow.value.match?.year)
+        assertNull(flow.value.artwork)
+        assertTrue(flow.value.automaticMessage!!.contains("no artwork provider"))
+        val before = wire.requests.size
+        keyReady.set(true)
+        c.onProviderConfigurationChanged()
+        assertEquals("wikidata", flow.value.match?.ref?.provider)
+        assertEquals("Q12345", flow.value.match?.ref?.externalId)
+        assertNotNull("Poster fetched after TMDB setup without an Identify tap", flow.value.artwork)
+        assertEquals("tmdb", flow.value.artworkSource?.provider)
+        assertNull(flow.value.automaticMessage)
+        assertTrue(wire.requests.size > before)
+        assertTrue(wire.requests.none { it.contains("1080p") || it.contains("BluRay") ||
+            it.contains("rtorrent") || it.contains(phone.value) })
+    }
+
     @Test fun manualSearchOffersButNeverAutoApplies() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(); val flow = c.observe(phone, "unknown_file")
@@ -356,6 +403,463 @@ class TransferMediaControllerTest {
         c.applyChoiceTo(phone, listOf(target.value.key))
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, target.value.state)
     }
+
+    @Test fun manualArtOnExcludedTransferRespectsConsentButNotAutomaticExclusion() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        val c = controller()
+        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        val local = c.observe(phone, name)
+        assertTrue(http.requests.isEmpty())
+        val chosen = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_EPISODE, "Babylon 5", 1993, season = 2, episode = 7,
+            artwork = listOf(ArtworkCandidate("tvmaze",
+                "https://static.tvmaze.com/manual-poster.jpg", ArtworkRole.POSTER)),
+            attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
+        c.choose(phone, chosen)
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, local.value.state)
+        assertNotNull("Manual selection may download artwork despite Add-time opt-out", local.value.artwork)
+        c.requestPoster(phone)
+        assertNotNull("Explicit chosen poster can load for Details", local.value.poster)
+        assertTrue(http.requests.any { it.contains("static.tvmaze.com") })
+
+        settings = settings.copy(onlineLookupConsent = false)
+        assertTrue(c.setAutomaticLookupEnabled(server, false))
+        val remote = c.observe(server, name)
+        val before = http.requests.size
+        c.choose(server, chosen.copy(artwork = listOf(ArtworkCandidate("tvmaze",
+            "https://static.tvmaze.com/uncached-poster.jpg", ArtworkRole.POSTER))))
+        assertEquals(before, http.requests.size)
+        assertNull("No new provider artwork request after consent revocation", remote.value.artwork)
+        assertTrue(remote.value.automaticMessage!!.contains("consent"))
+    }
+
+    @Test fun disablingProviderDuringHttpRevokesUncommittedBackgroundIdentityAndCache() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            val tv = TvMazeProvider()
+            lateinit var c: TransferMediaController
+            var disableOnce = true
+            val liveHttp = object : MediaHttp by http {
+                override fun get(url: String, hosts: MediaHostPolicy,
+                                 headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                    val response = http.get(url, hosts, headers, maxBytes)
+                    if (disableOnce && url.contains("api.tvmaze.com/search")) {
+                        disableOnce = false
+                        settings = settings.copy(disabledProviders = setOf("tvmaze"))
+                        c.onProviderConfigurationChanged()
+                    }
+                    return response
+                }
+            }
+            c = TransferMediaController(
+                MediaEnrichmentService(listOf(tv), liveHttp, InMemoryMediaQueryCache(),
+                    { clock.now }, clock::sleep),
+                ArtworkRepository(liveHttp, ArtworkDiskCache(File(dir, "provider-revoked-artwork")),
+                    hostPolicyFor = { tv.info.artworkHostPolicy }),
+                { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
+                { clock.now })
+            c.enrichInventory(listOf(phone to name))
+            assertTrue(http.requests.any { it.contains("api.tvmaze.com/search") })
+            assertNull("Revoked provider may not commit identity or cached metadata",
+                assignments.get(phone))
+            val queriedBefore = http.requests.size
+            settings = settings.copy(disabledProviders = emptySet())
+            c.onProviderConfigurationChanged()
+            c.enrichInventory(listOf(phone to name))
+            assertEquals(MediaAssignmentState.AUTOMATIC, assignments.get(phone)?.state)
+            assertTrue("Freshly reenabled provider is queried rather than reusing revoked response",
+                http.requests.size > queriedBefore)
+        }
+
+    @Test fun automaticImageFetchRespectsGlobalOffAndPowerSaverButManualChoiceStillWorks() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+        val net = java.util.concurrent.atomic.AtomicReference(MediaNetworkState(true, false, powerSaver = true))
+        val tv = TvMazeProvider()
+        val wire = FakeMediaHttp().onBytes("static.tvmaze.com", jpeg(),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        val stored = InMemoryTransferMediaAssignmentStore()
+        val auto = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_EPISODE, "Babylon 5", 1993, season = 2, episode = 7,
+            artwork = listOf(ArtworkCandidate("tvmaze",
+                "https://static.tvmaze.com/auto-withheld.jpg", ArtworkRole.POSTER)),
+            attribution = MediaAttribution("TVmaze", "CC", null))
+        stored.put(TransferMediaAssignment(server, MediaAssignmentState.AUTOMATIC, match = auto))
+        val c = TransferMediaController(
+            MediaEnrichmentService(listOf(tv), wire, InMemoryMediaQueryCache(),
+                { clock.now }, clock::sleep),
+            ArtworkRepository(wire, ArtworkDiskCache(File(dir, "global-gated-posters")),
+                hostPolicyFor = { tv.info.artworkHostPolicy }),
+            { stored }, { settings }, { net.get() },
+            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
+            Dispatchers.Unconfined, { clock.now })
+        val observed = c.observe(server, name)
+        assertEquals(MediaAssignmentState.AUTOMATIC, observed.value.state)
+        assertTrue("Globally disabled automation must not download a stored match's poster",
+            wire.requests.isEmpty())
+        settings = settings.copy(automaticLookup = true)
+        c.onSettingsChanged()
+        assertTrue("Power saver must block automatic image downloads", wire.requests.isEmpty())
+        net.set(MediaNetworkState(true, false, powerSaver = false))
+        c.onSettingsChanged()
+        assertNotNull("When enabled on unmetered Wi-Fi, cached identity can fill its poster",
+            observed.value.artwork)
+        assertEquals(1, wire.requests.size)
+
+        // A deliberate correction is distinct from automatic enrichment. It may
+        // retrieve another official-provider image only with independent consent.
+        settings = settings.copy(automaticLookup = false)
+        net.set(MediaNetworkState(true, false, powerSaver = true))
+        val manual = auto.copy(artwork = listOf(ArtworkCandidate("tvmaze",
+            "https://static.tvmaze.com/manual-chosen.jpg", ArtworkRole.POSTER)))
+        val chosen = c.observe(phone, name)
+        c.choose(phone, manual)
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, chosen.value.state)
+        assertNotNull(chosen.value.artwork)
+        assertEquals(2, wire.requests.size)
+        assertTrue(wire.requests.none { it.contains("rtorrent") || it.contains("seedbox") })
+    }
+
+    @Test fun clearingMediaDataDuringProviderHttpCannotRecreateAssignmentOrQueryCache() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            val queryCache = InMemoryMediaQueryCache()
+            val artCache = ArtworkDiskCache(File(dir, "clear-query-artwork"))
+            val tv = TvMazeProvider()
+            lateinit var service: MediaEnrichmentService
+            lateinit var c: TransferMediaController
+            var cleared = false
+            val guardedHttp = object : MediaHttp by http {
+                override fun get(url: String, hosts: MediaHostPolicy,
+                                 headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                    val response = http.get(url, hosts, headers, maxBytes)
+                    if (!cleared) {
+                        cleared = true
+                        c.clearAllMediaData({ service.clearLookupHistory() }, { artCache.clear() })
+                    }
+                    return response
+                }
+            }
+            service = MediaEnrichmentService(listOf(tv), guardedHttp, queryCache,
+                { clock.now }, clock::sleep)
+            c = TransferMediaController(service,
+                ArtworkRepository(guardedHttp, artCache, hostPolicyFor = { tv.info.artworkHostPolicy }),
+                { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
+                { clock.now })
+            c.enrichInventory(listOf(phone to name))
+            assertTrue(cleared)
+            assertTrue("A late lookup after Clear may not repopulate assignments", assignments.all().isEmpty())
+            assertEquals("A late lookup after Clear may not repopulate query cache", 0, queryCache.size)
+        }
+
+    @Test fun clearingMediaDataDuringOffscreenPosterDownloadCannotRecreateArtworkCache() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val tv = TvMazeProvider()
+            val match = MediaCandidate(
+                io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+                MediaKind.TV_EPISODE, "Babylon 5", 1993,
+                artwork = listOf(ArtworkCandidate("tvmaze",
+                    "https://static.tvmaze.com/clearposter.jpg", ArtworkRole.POSTER)),
+                attribution = MediaAttribution("TVmaze", "CC", null))
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            assignments.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+                match = match, updatedAtMs = clock.now))
+            val artCache = ArtworkDiskCache(File(dir, "clear-poster-artwork"))
+            val queryCache = InMemoryMediaQueryCache()
+            lateinit var service: MediaEnrichmentService
+            lateinit var c: TransferMediaController
+            var cleared = false
+            val guardedHttp = object : MediaHttp by http {
+                override fun get(url: String, hosts: MediaHostPolicy,
+                                 headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                    val response = http.get(url, hosts, headers, maxBytes)
+                    if (!cleared && url.contains("static.tvmaze.com")) {
+                        cleared = true
+                        c.clearAllMediaData({ queryCache.clear() }, { artCache.clear() })
+                    }
+                    return response
+                }
+            }
+            val artworkRepository = ArtworkRepository(guardedHttp, artCache,
+                hostPolicyFor = { tv.info.artworkHostPolicy })
+            service = MediaEnrichmentService(listOf(tv), guardedHttp, queryCache,
+                { clock.now }, clock::sleep)
+            c = TransferMediaController(service,
+                artworkRepository, { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
+                { clock.now })
+            c.enrichInventory(listOf(phone to name))
+            assertTrue(cleared)
+            assertTrue(assignments.all().isEmpty())
+            assertFalse("A late image response after Clear may not recreate cached derivatives",
+                artworkRepository.hasCachedSquare(match.artwork))
+        }
+
+    @Test fun savedLocalRulesApplyToAuthorizedUnrenderedTransferWithoutOnlineConsent() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings()
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            val rules = InMemoryMediaRuleStore()
+            val candidate = MediaCandidate(
+                io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+                MediaKind.TV_EPISODE, "Babylon 5", 1993,
+                attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
+            rules.put(MediaAssignmentRule("future-b5",
+                MediaText.withoutArticle(MediaText.normalize("Babylon 5")),
+                MediaAssignmentRule.familyOf(MediaKind.TV_EPISODE),
+                null, candidate, clock.now))
+            val wire = FakeMediaHttp()
+            val c = TransferMediaController(
+                MediaEnrichmentService(listOf(TvMazeProvider()), wire, InMemoryMediaQueryCache(),
+                    { clock.now }, clock::sleep),
+                ArtworkRepository(wire, ArtworkDiskCache(File(dir, "offline-rules")),
+                    hostPolicyFor = { TvMazeProvider().info.artworkHostPolicy }),
+                { assignments }, { settings }, { MediaNetworkState(false, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
+                { clock.now }, ruleStoreFactory = { rules },
+                automationStoreFactory = { InMemoryMediaAutomationPreferences() })
+            c.enrichInventory(listOf(server to name)) { false }
+            assertNull("Locked inventory can never inherit the rule", assignments.get(server))
+            assertTrue(c.setAutomaticLookupEnabled(server, false))
+            c.enrichInventory(listOf(server to name))
+            assertNull("Exact job opt-out blocks even local automatic rule application", assignments.get(server))
+            assertTrue(c.setAutomaticLookupEnabled(server, true))
+            settings = settings.copy(showArtwork = false)
+            c.enrichInventory(listOf(server to name))
+            assertNull("Global disabled artwork blocks even local automatic rule application", assignments.get(server))
+            settings = settings.copy(showArtwork = true)
+            c.enrichInventory(listOf(server to name))
+            assertEquals(MediaAssignmentState.CHOSEN_BY_USER, assignments.get(server)?.state)
+            assertEquals("475", assignments.get(server)?.match?.ref?.externalId)
+            assertTrue("Offline local rule matching never starts a provider request", wire.requests.isEmpty())
+            assertNull("Another environment with the same hash is independent", assignments.get(phone))
+        }
+
+    @Test fun offscreenVerifiedIdentityBackfillsEvictedSquareArtAndRestoresOffline() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val record = FileTransferMediaAssignmentStore(File(dir, "assign.json"))
+            val match = MediaCandidate(
+                io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+                MediaKind.TV_EPISODE, "Babylon 5", 1993, season = 2, episode = 7,
+                artwork = listOf(ArtworkCandidate("tvmaze",
+                    "https://static.tvmaze.com/verify-poster.jpg", ArtworkRole.POSTER)),
+                attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
+            record.put(TransferMediaAssignment(server, MediaAssignmentState.AUTOMATIC,
+                match = match, lastStatus = MediaLookupStatus.MATCHED, updatedAtMs = clock.now))
+            val c = controller()
+            // Neither a row nor Details has been composed. Only image bytes should be fetched.
+            c.enrichInventory(listOf(server to name))
+            assertEquals(1, http.requests.size)
+            assertTrue(http.requests.single().contains("static.tvmaze.com"))
+            c.enrichInventory(listOf(server to name))
+            assertEquals("Cached artwork must not be redownloaded", 1, http.requests.size)
+            val beforeOffline = http.requests.size
+            http.offline = true
+            val restored = controller().observe(server, name)
+            assertEquals(MediaAssignmentState.AUTOMATIC, restored.value.state)
+            assertNotNull("An offscreen background fetch must survive offline restart", restored.value.artwork)
+            assertEquals(beforeOffline, http.requests.size)
+        }
+
+    @Test fun offscreenArtworkPrefetchHonorsConsentExclusionAndRevokedSession() =
+        kotlinx.coroutines.runBlocking {
+            val original = MediaCandidate(
+                io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+                MediaKind.TV_EPISODE, "Babylon 5", 1993, season = 2, episode = 7,
+                artwork = listOf(ArtworkCandidate("tvmaze",
+                    "https://static.tvmaze.com/uncachedposter.jpg", ArtworkRole.POSTER)),
+                attribution = MediaAttribution("TVmaze", "CC", null))
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            assignments.put(TransferMediaAssignment(server, MediaAssignmentState.AUTOMATIC,
+                match = original, updatedAtMs = clock.now))
+            val tv = TvMazeProvider()
+            val wire = FakeMediaHttp().onBytes("static.tvmaze.com", jpeg(),
+                headers = mapOf("Content-Type" to "image/jpeg"))
+            val permitted = java.util.concurrent.atomic.AtomicBoolean(true)
+            val actualHttp = object : MediaHttp by wire {
+                override fun get(url: String, hosts: MediaHostPolicy,
+                                 headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                    val response = wire.get(url, hosts, headers, maxBytes)
+                    permitted.set(false)
+                    return response
+                }
+            }
+            val disk = ArtworkDiskCache(File(dir, "session-prefetch-art"))
+            val art = ArtworkRepository(actualHttp, disk, hostPolicyFor = { tv.info.artworkHostPolicy })
+            val c = TransferMediaController(
+                MediaEnrichmentService(listOf(tv), actualHttp, InMemoryMediaQueryCache(),
+                    { clock.now }, clock::sleep),
+                art, { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
+                { clock.now }, automationStoreFactory = { InMemoryMediaAutomationPreferences() })
+            settings = MediaPrivacySettings(onlineLookupConsent = false, automaticLookup = true)
+            c.enrichInventory(listOf(server to name)) { permitted.get() }
+            assertTrue(wire.requests.isEmpty())
+            settings = settings.copy(onlineLookupConsent = true)
+            assertTrue(c.setAutomaticLookupEnabled(server, false))
+            c.enrichInventory(listOf(server to name)) { permitted.get() }
+            assertTrue(wire.requests.isEmpty())
+            assertTrue(c.setAutomaticLookupEnabled(server, true))
+            c.enrichInventory(listOf(server to name)) { permitted.get() }
+            assertEquals("One authorized request is attempted", 1, wire.requests.size)
+            assertEquals("The revoked session must not cache the received bytes",
+                false, art.hasCachedSquare(original.artwork))
+        }
+
+    @Test fun coldStartRecoversPersistedArtlessWikidataMovieWithoutSettingsTap() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val previous = MediaCandidate(
+                io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("wikidata", "item", "Q54321"),
+                MediaKind.MOVIE, "Hackers", 1995,
+                attribution = MediaAttribution("Wikidata", "CC0", null))
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            assignments.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+                match = previous, updatedAtMs = clock.now))
+            val tmdb = io.github.gamesbyian.chunks.media.providers.TmdbProvider {
+                "0123456789abcdef0123456789abcdef"
+            }
+            val wire = FakeMediaHttp().on("api.themoviedb.org/3/search/movie", body = """
+                {"results":[{"id":174,"title":"Hackers","release_date":"1995-09-15",
+                    "poster_path":"/hackers1995.jpg"}]}
+            """.trimIndent()).onBytes("image.tmdb.org", jpeg(),
+                headers = mapOf("Content-Type" to "image/jpeg"))
+            val c = TransferMediaController(
+                MediaEnrichmentService(listOf(tmdb), wire, InMemoryMediaQueryCache(),
+                    { clock.now }, clock::sleep),
+                ArtworkRepository(wire, ArtworkDiskCache(File(dir, "cold-provider-art")),
+                    hostPolicyFor = { tmdb.info.artworkHostPolicy }),
+                { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
+                Dispatchers.Unconfined, { clock.now })
+            // Simulates first-ever authorized inventory pass after a process restart.
+            // No controller.onProviderConfigurationChanged() or Details composition.
+            c.enrichInventory(listOf(phone to "Hackers.1995.1080p.BluRay.mkv"))
+            val got = requireNotNull(assignments.get(phone))
+            assertEquals(MediaAssignmentState.AUTOMATIC, got.state)
+            assertEquals("wikidata", got.match?.ref?.provider)
+            assertEquals("Q54321", got.match?.ref?.externalId)
+            assertEquals(1995, got.match?.year)
+            assertTrue(got.match?.artwork?.any { it.provider == "tmdb" } == true)
+            assertTrue(wire.requests.any { it.contains("api.themoviedb.org") })
+            assertTrue(wire.requests.none { it.contains("1080p") || it.contains("BluRay") ||
+                it.contains(phone.value) })
+        }
+
+    @Test fun cachedNegativeRestartCheckDoesNotPostponeOriginalRetryDeadline() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            http.routes.removeAll { it.contains == "/search/shows" }
+            http.on("/search/shows", status = 404)
+            val original = controller()
+            original.enrichInventory(listOf(phone to name))
+            val store = FileTransferMediaAssignmentStore(File(dir, "assign.json"))
+            val first = requireNotNull(store.get(phone))
+            assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, first.state)
+            val requestsBefore = http.requests.size
+            http.routes.removeAll { it.contains == "/search/shows" }
+            http.on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
+            clock.now += MediaEnrichmentService.NOT_FOUND_TTL_MS - 1
+            val restarted = controller()
+            restarted.enrichInventory(listOf(phone to name))
+            assertEquals(requestsBefore, http.requests.size)
+            assertEquals("Cached negative rechecks cannot extend the original TTL",
+                first.updatedAtMs, requireNotNull(store.get(phone)).updatedAtMs)
+            clock.now += 2
+            restarted.enrichInventory(listOf(phone to name))
+            assertEquals(MediaAssignmentState.AUTOMATIC, store.get(phone)?.state)
+            assertTrue(http.requests.size > requestsBefore)
+        }
+
+    @Test fun newlyConfiguredTmdbImmediatelyRetriesRecentWikidataNotFoundOnUnrenderedInventory() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val configured = java.util.concurrent.atomic.AtomicBoolean(false)
+            val tmdb = io.github.gamesbyian.chunks.media.providers.TmdbProvider {
+                if (configured.get()) "0123456789abcdef0123456789abcdef" else null
+            }
+            val wiki = io.github.gamesbyian.chunks.media.providers.WikidataProvider()
+            val wire = FakeMediaHttp()
+                .on("www.wikidata.org", body = """{"search":[]}""")
+                .on("api.themoviedb.org/3/search/movie", body = """
+                    {"results":[{"id":123,"title":"Hackers","release_date":"1995-09-15",
+                        "poster_path":"/hackersposter.jpg"}]}
+                """.trimIndent())
+                .onBytes("image.tmdb.org", jpeg(), headers = mapOf("Content-Type" to "image/jpeg"))
+            val providers = listOf(wiki, tmdb)
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            val c = TransferMediaController(
+                MediaEnrichmentService(providers, wire, InMemoryMediaQueryCache(),
+                    { clock.now }, clock::sleep),
+                ArtworkRepository(wire, ArtworkDiskCache(File(dir, "unrendered-artwork")),
+                    hostPolicyFor = { id -> providers.firstOrNull { it.info.id == id }?.info?.artworkHostPolicy }),
+                { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
+                { clock.now })
+            val inventory = listOf(phone to "Hackers.1995.1080p.BluRay.mkv")
+            c.enrichInventory(inventory)
+            assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, assignments.get(phone)?.state)
+            assertEquals(MediaLookupStatus.NOT_FOUND, assignments.get(phone)?.lastStatus)
+            assertTrue(wire.requests.none { it.contains("api.themoviedb.org") })
+            configured.set(true)
+            c.onProviderConfigurationChanged()
+            // The negative Wikidata receipt is still fresh, but a newly available TMDB
+            // provider must be queried now without composing any transfer row or opening Details.
+            c.enrichInventory(inventory)
+            assertEquals(MediaAssignmentState.AUTOMATIC, assignments.get(phone)?.state)
+            assertEquals("tmdb", assignments.get(phone)?.match?.ref?.provider)
+            assertTrue(assignments.get(phone)?.match?.artwork?.isNotEmpty() == true)
+            assertTrue(wire.requests.any { it.contains("api.themoviedb.org") })
+            assertTrue(wire.requests.none { it.contains("1080p") || it.contains("BluRay") ||
+                it.contains(phone.value) })
+        }
+
+    @Test fun futureArrivalRuleCannotOverwriteAnAlreadyVerifiedArtlessAssignmentDuringPosterRetry() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            val rules = InMemoryMediaRuleStore()
+            val verified = MediaCandidate(
+                io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("wikidata", "item", "Q9876"),
+                MediaKind.MOVIE, "Hackers", 1995,
+                attribution = MediaAttribution("Wikidata", "CC0", null))
+            val unrelatedChoice = verified.copy(
+                ref = io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("other", "movie", "wrong"))
+            assignments.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+                match = verified, lastStatus = MediaLookupStatus.MATCHED, updatedAtMs = clock.now))
+            rules.put(MediaAssignmentRule("future-rule",
+                MediaText.withoutArticle(MediaText.normalize("Hackers")),
+                MediaAssignmentRule.familyOf(MediaKind.MOVIE), 1995,
+                unrelatedChoice, clock.now))
+            val tmdb = io.github.gamesbyian.chunks.media.providers.TmdbProvider {
+                "0123456789abcdef0123456789abcdef"
+            }
+            val network = FakeMediaHttp().on("api.themoviedb.org/3/search/movie",
+                body = """{"results":[]}""")
+            val c = TransferMediaController(
+                MediaEnrichmentService(listOf(tmdb), network, InMemoryMediaQueryCache(),
+                    { clock.now }, clock::sleep),
+                ArtworkRepository(network, ArtworkDiskCache(File(dir, "rule-artwork")),
+                    hostPolicyFor = { tmdb.info.artworkHostPolicy }),
+                { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
+                { clock.now }, ruleStoreFactory = { rules })
+            c.onProviderConfigurationChanged()
+            c.enrichInventory(listOf(phone to "Hackers.1995.1080p.BluRay.mkv"))
+            val actual = assignments.get(phone)
+            assertEquals(MediaAssignmentState.AUTOMATIC, actual?.state)
+            assertEquals("Q9876", actual?.match?.ref?.externalId)
+            assertTrue("Artwork retry must never inherit a newly saved future-arrival rule",
+                actual?.match?.artwork?.isEmpty() == true)
+            assertTrue(network.requests.none { it.contains("1080p") || it.contains("BluRay") })
+        }
 
     @Test fun localEmbeddedTagsDriveTheLookupAndOfferTheirCover() {
         val tagged = javaClass.classLoader!!.getResource("media-fixtures/embedded/tagged.flac")!!.readBytes()
@@ -550,21 +1054,24 @@ class TransferMediaControllerTest {
         assertEquals(1, http.requests.size)
     }
 
-    @Test fun exclusionBeforeQueuedArtworkExecutionSendsNoImageRequest() {
-        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+    @Test fun exclusionBeforeQueuedAutomaticArtworkExecutionSendsNoImageRequest() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
         val tasks = java.util.ArrayDeque<Runnable>()
         val dispatcher = object : kotlinx.coroutines.CoroutineDispatcher() {
             override fun dispatch(context: kotlin.coroutines.CoroutineContext, block: Runnable) { tasks.add(block) }
         }
         val c = controller(artDispatcher = dispatcher)
+        // A consented automatic match can finish metadata lookup before its image is dispatched.
+        // A later exact-job exclusion must fence the queued automatic image request.
         val state = c.observe(phone, name)
-        c.choose(phone, MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
-            MediaKind.TV_SERIES, "Babylon 5", artwork = listOf(ArtworkCandidate("tvmaze", "https://static.tvmaze.com/cover.jpg", ArtworkRole.SQUARE)),
-            attribution = MediaAttribution("TVmaze", "CC", null)))
+        assertEquals(MediaAssignmentState.AUTOMATIC, state.value.state)
         assertTrue(tasks.isNotEmpty())
+        val metadataRequests = http.requests.size
+        assertTrue(metadataRequests > 0)
         assertTrue(c.setAutomaticLookupEnabled(phone, false))
         while (tasks.isNotEmpty()) tasks.removeFirst().run()
-        assertTrue(http.requests.isEmpty())
+        assertEquals("Queued automatic artwork request was fenced", metadataRequests, http.requests.size)
+        assertTrue(http.requests.none { it.contains("static.tvmaze.com") })
         assertNull(state.value.artwork)
     }
 
