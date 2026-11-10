@@ -114,15 +114,15 @@ class ClipboardPrefillInstrumentedTest {
             rule.onNode(entry).performClick()
             waitOrExplain("device or combined transfer list", 15_000) {
                 rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() ||
-                    rule.onAllNodesWithText("Open transfers on this device").fetchSemanticsNodes().isNotEmpty() ||
+                    rule.onAllNodesWithText("Open device transfer controls").fetchSemanticsNodes().isNotEmpty() ||
                     rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()
             }
             if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
                 // A remembered server makes Transfers show the combined list.
                 // Explicitly open the device inventory, without changing login.
                 rule.onNode(hasScrollToIndexAction())
-                    .performScrollToNode(hasText("Open transfers on this device"))
-                rule.onNodeWithText("Open transfers on this device").performClick()
+                    .performScrollToNode(hasText("Open device transfer controls"))
+                rule.onNodeWithText("Open device transfer controls").performClick()
             }
             waitOrExplain("the phone screen", 15_000) {
                 rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty()
