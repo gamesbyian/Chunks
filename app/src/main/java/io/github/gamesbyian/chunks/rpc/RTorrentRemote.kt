@@ -121,6 +121,11 @@ internal enum class RemoteReadAuthEvidence {
 
 class RTorrentRemote(private val auth: RemoteCredentials) {
     @Volatile private var acceptedReadChallenge = false
+    // A successfully authenticated READ may have received the only challenge
+    // available on a method-aware gateway. Retain bounded challenge headers in
+    // this exact transport instance, never credentials/Authorization or a
+    // cross-endpoint/process-global auth cache. A rejected read saves nothing.
+    @Volatile private var acceptedReadAuthHeaders: List<String>? = null
 
     /**
      * A public HTTP 200 version/inventory does not authenticate the supplied
@@ -1736,7 +1741,19 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 // Some gateways allow anonymous XML-RPC reads but protect the
                 // write resource. A credential-free HEAD can reveal that
                 // resource's challenge without dispatching a mutation.
-                status in 200..299 -> challengeWriteEndpoint(writeEndpoint, requestTarget)
+                status in 200..299 -> {
+                    // Some gateways expose version publicly but challenge
+                    // inventory getters and all writes, while HEAD returns
+                    // 405. A prior successful challenged READ on this exact
+                    // RPC endpoint supplies a usable Basic/Digest challenge.
+                    // Build fresh authorization for the write's method/target,
+                    // before sending it ONCE. For an unrelated upload endpoint
+                    // we take the independent HEAD path above, never this cache.
+                    val accepted = acceptedReadAuthHeaders
+                    if (accepted != null)
+                        HttpRpcAuthorization.fromChallenge(accepted, auth, "POST", requestTarget)
+                    else challengeWriteEndpoint(writeEndpoint, requestTarget)
+                }
                 else -> throw IOException("rTorrent authentication preflight returned HTTP $status")
             }
         } finally {
@@ -1787,6 +1804,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             // Read-only RPCs retain their one challenge retry. For writes,
             // even a 401 with WWW-Authenticate proves nothing about rollback.
             var attemptedChallenge = mutation
+            var readChallengeHeaders: List<String>? = null
             while (true) {
                 val connection = endpoint.toURL().openConnection() as HttpURLConnection
                 connection.connectTimeout = 8_000
@@ -1818,6 +1836,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         } catch (_: Exception) {
                             throw RpcHttpStatusException(HttpURLConnection.HTTP_UNAUTHORIZED)
                         }
+                        if (!mutation && challenges.size in 1..8 &&
+                            challenges.sumOf { it.length } <= 16_384)
+                            readChallengeHeaders = challenges.toList()
                         attemptedChallenge = true
                         continue
                     }
@@ -1848,8 +1869,13 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         // challenge provides read-authentication evidence.
                         // An anonymous 200, failed 401, malformed XML or write
                         // preflight does not prove a supplied username.
-                        if (!mutation && attemptedChallenge && authorization != null)
+                        if (!mutation && attemptedChallenge && authorization != null) {
+                            // Only a fully parsed successful response after
+                            // that same endpoint's 401 may authorize future
+                            // first-attempt writes. Never trust a bare 401.
+                            readChallengeHeaders?.let { acceptedReadAuthHeaders = it }
                             acceptedReadChallenge = true
+                        }
                         decoded
                     } catch (tooWide: XmlRpcSizeLimitExceeded) {
                         throw RpcReplyTooLarge(tooWide.message.orEmpty())
