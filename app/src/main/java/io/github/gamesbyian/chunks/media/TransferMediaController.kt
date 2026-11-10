@@ -73,7 +73,9 @@ class TransferMediaController(
     private val artlessFailureRetryAt = BoundedRetryTimestamps<MediaTransferKey>()
     private val providerConfigurationRevision = java.util.concurrent.atomic.AtomicLong(0L)
     private val mediaDataGeneration = java.util.concurrent.atomic.AtomicLong(0L)
-    private val lastProviderAttemptRevision = java.util.concurrent.ConcurrentHashMap<MediaTransferKey, Long>()
+    /** Ephemeral provider-configuration attempts are hints, not identity or authorization.
+     * Bound historical exact-hash churn without evicting any durable assignment or opt-out. */
+    private val lastProviderAttemptRevision = BoundedRetryTimestamps<MediaTransferKey>()
     private val ruleStoreLazy = lazy(ruleStoreFactory)
     private val ruleStore by ruleStoreLazy
     companion object {
