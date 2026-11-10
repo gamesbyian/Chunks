@@ -300,7 +300,10 @@ class CombinedTwoRealServersInstrumentedTest {
                     waitFor("exact authenticated B file inventory inside full Details", 45_000) {
                         visible("${filesOnB.size} server-reported files")
                     }
-                    rule.onNodeWithText(filesOnB.first().path, substring = true)
+                    // The same exact filename also appears in the Details
+                    // heading and the tentative media summary. Select the
+                    // numbered file row, not an arbitrary matching title.
+                    rule.onNodeWithText("1. ${filesOnB.first().path} ·", substring = true)
                         .performScrollTo().assertExists()
                 } else {
                     assertTrue("Saved-only A cannot borrow B's mutation/file authority",
