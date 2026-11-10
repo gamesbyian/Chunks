@@ -277,6 +277,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // Add review never exposes a competing lifecycle executor.
                 // Start the positively registered job from Transfers.
                 click("Transfers")
+                // The persistent footer now opens the canonical catalog.
+                // Enter this exact device's existing lifecycle controls.
+                click("Open device transfer controls")
                 click("Start")
                 rule.waitForIdle() // Dispatch queued Start before checking the OS permission prompt.
                 // Connect the verified piece-0 publisher immediately when Start is dispatched.
@@ -384,8 +387,6 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     setOf(preview.infoHashV1.lowercase()),
                     phone.list().map { it.infoHash.lowercase() }.toSet())
                 click("Transfers")
-                rule.waitUntil(30_000) { visible("This device") }
-                click("All environments")
                 rule.waitUntil(30_000) { visible("All environments") }
                 // The Combined list reads phone inventory and its privacy
                 // policy asynchronously; entering the screen does not mean
@@ -414,7 +415,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     phone.status(preview.infoHashV1)?.stopped == true)
                 click("Back to transfers")
                 rule.waitUntil(30_000) { visible("All environments") }
-                click("Transfers")
+                click("Open device transfer controls")
                 rule.waitUntil(30_000) { visible("This device") }
                 stage("phone-details-verified")
                 stage("phone-open")
@@ -429,6 +430,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     "pieces_bytes=${status.doneBytes} complete=false default_preserved=true " +
                     "piece_sha256=" + MessageDigest.getInstance("SHA-256").digest(piece).joinToString("") { "%02x".format(it) })
                 click("Transfers")
+                click("Open device transfer controls")
                 stage("next-default-verified")
                 click("Remove…")
                 click("Remove transfer, keep data")
