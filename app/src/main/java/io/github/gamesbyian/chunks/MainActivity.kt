@@ -216,6 +216,13 @@ class MainActivity : ComponentActivity() {
 
 }
 
+// A cancelled composition cannot erase a document still owned by the
+// configuration-retained source review. Only the live completed reader consumes it.
+internal fun shouldConsumeReviewedSourceOnExit(
+    isCurrentDocument: Boolean,
+    lifecycleCancelled: Boolean
+): Boolean = isCurrentDocument && !lifecycleCancelled
+
 private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
@@ -566,6 +573,7 @@ internal fun ChunksApp(
         val sourceBeforeRead = magnet
         sharedTorrentReading = true
         sharedTorrentError = null
+        var cancelledByLifecycle = false
         try {
             val reviewed = withContext(Dispatchers.IO) {
                 SharedTorrentDocument.read(context.contentResolver, document)
@@ -582,12 +590,18 @@ internal fun ChunksApp(
                 sharedTorrentError = "The draft changed while reading the shared document. Your newer source was kept."
             }
         } catch (cancel: kotlinx.coroutines.CancellationException) {
+            // Rotation cancels the old composition's coroutine. The new
+            // Activity still owns this RAM-only URI and must get a chance
+            // to validate it; cancellation cannot consume that handoff.
+            cancelledByLifecycle = true
             throw cancel
         } catch (_: Exception) {
             if (incomingDocumentRead == document) sharedTorrentError =
                 "The shared .torrent could not be verified (v1 metainfo, maximum 2 MiB). The previous draft was kept."
         } finally {
-            if (incomingDocumentRead == document) {
+            if (shouldConsumeReviewedSourceOnExit(
+                    isCurrentDocument = incomingDocumentRead == document,
+                    lifecycleCancelled = cancelledByLifecycle)) {
                 incomingDocumentRead = null
                 sharedTorrentReading = false
             }

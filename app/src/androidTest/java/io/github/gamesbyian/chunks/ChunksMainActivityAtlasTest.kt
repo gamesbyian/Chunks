@@ -67,8 +67,8 @@ class ChunksMainActivityAtlasTest {
 
     /** The dedicated Add destination retains the original review without submitting. */
     private fun assertPhoneAddEntryIsReachable() {
-        rule.onNodeWithText("Add on this device").assertExists()
-        rule.onNodeWithText("Add a download on this device").assertExists()
+        rule.onNodeWithText("Torrent source").assertExists()
+        rule.onNodeWithText("Magnet or HTTP(S) torrent URL").assertExists()
     }
 
     private fun str(s: String) = "<value><string>" + s.replace("&", "&amp;")

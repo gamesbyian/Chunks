@@ -228,13 +228,25 @@ class VerifiedAddScreenAtlasTest {
                 fixture.methods.count { it == "load.start" } == 1)
             save("add-uncertain-recheck-real-compose")
             rule.onNodeWithText("Check server state (read only)").performClick()
-            rule.waitUntil(timeoutMillis = 15_000) {
-                rule.onAllNodesWithText("Acknowledge session and start another Add")
-                    .fetchSemanticsNodes().isNotEmpty()
+            // The fixture proves a registered exact job and Place, but has
+            // zero payload bytes. rTorrent may therefore confirm Start or
+            // honestly report it unverified. Either requires one explicit
+            // acknowledgment; neither may replay a lost-reply mutation.
+            val acceptableAcks = listOf(
+                "Acknowledge session and start another Add",
+                "Acknowledge registered job; Start unverified"
+            )
+            var acknowledgedLabel: String? = null
+            rule.waitUntil(timeoutMillis = 20_000) {
+                acknowledgedLabel = acceptableAcks.firstOrNull { label ->
+                    runCatching {
+                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label))
+                        rule.onNodeWithText(label).assertExists()
+                    }.isSuccess
+                }
+                acknowledgedLabel != null
             }
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-                hasText("Acknowledge session and start another Add"))
-            rule.onNodeWithText("Acknowledge session and start another Add").performClick()
+            rule.onNodeWithText(requireNotNull(acknowledgedLabel)).performClick()
             assertTrue("Only one user-authorized attempt, not one per readback",
                 authorized == 1)
             assertTrue("The ambiguous load may never replay",

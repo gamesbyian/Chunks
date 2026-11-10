@@ -432,14 +432,17 @@ internal class MainActivityRealMagnetJourney(
                         stage(label, "metadata-already-resolved")
                     }
                 }
+                stage(label, "activity-readback")
                 assertTrue(placeholder.started)
                 assertEquals(true, readOnly { remote.readActivity(hash).active })
                 stage(label, "registered")
                 val source = readOnly { remote.peerSource(hash) }
                 val host = if (disposable) "127.0.0.1" else "5.79.112.219"
                 require(source.boundAddress == host || (disposable && source.rpcHost == host))
+                stage(label, "peer-source-verified")
                 if (!publicDiscovery && initialMetaFlag == 1)
                     controller("/$label/metadata", source.listenPort)
+                stage(label, "metadata-readback")
                 await(90, "metadata resolved on the exact row") {
                     val exact = row(hash)
                     exact?.name == preview.name && exact.sizeBytes == preview.sizeBytes &&

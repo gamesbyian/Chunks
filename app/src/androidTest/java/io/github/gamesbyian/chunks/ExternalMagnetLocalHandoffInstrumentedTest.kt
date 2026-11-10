@@ -185,7 +185,10 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         fun sourceIntent(uri: Uri) = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
             setDataAndType(uri, "application/x-bittorrent")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            // Deliver the second document to the already-running Add draft,
+            // even if another Android task has briefly gained the foreground.
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP)
         }
         // Establish the real engine inventory independently before the UI's
         // normal read-only restore/observation can run. Never confirm an Add.
