@@ -184,7 +184,15 @@ class VerifiedAddScreenAtlasTest {
 
         rule.onNode(hasScrollAction()).performScrollToNode(hasText("Add transfer"))
         rule.onNodeWithText("Add transfer").assertExists()
+        // Source and effective Place are inline before Add, not a second
+        // confirmation screen. Scroll each LazyColumn item into composition.
+        rule.onNode(hasScrollAction()).performScrollToNode(
+            hasText("Infohash: " + "ab".repeat(20)))
         rule.onNodeWithText("Infohash: " + "ab".repeat(20)).assertExists()
+        rule.onNode(hasScrollAction()).performScrollToNode(
+            hasText("Destination: /home/dev/chunks-public-test (custom parent folder)"))
+        rule.onNodeWithText("Destination: /home/dev/chunks-public-test (custom parent folder)")
+            .assertExists()
         save("add-source-and-destination-real-compose")
     }
 

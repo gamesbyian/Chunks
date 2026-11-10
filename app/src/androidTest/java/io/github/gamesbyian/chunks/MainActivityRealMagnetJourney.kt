@@ -239,7 +239,17 @@ internal class MainActivityRealMagnetJourney(
                 require(url.startsWith("https://"))
                 type("Magnet or torrent link", url)
                 click("Get torrent from link")
-                rule.waitUntil(45_000) { visible(fixtures.getValue(label).name) }
+                // The HTTPS link itself may contain the ISO filename. Waiting
+                // for its name matched the unverified URL summary before any
+                // fetched metainfo was parsed, then raced the inline hash.
+                // Demand the exact *parsed* v1 infohash instead, with the
+                // LazyColumn item brought into composition.
+                rule.waitUntil(45_000) {
+                    runCatching {
+                        scroll("Infohash: $hash")
+                        visible("Infohash: $hash") && visible(fixtures.getValue(label).name)
+                    }.getOrDefault(false)
+                }
                 assertNull("Fetch/review must not register a job", readOnly { remote.lookupName(hash) })
             } else type("Magnet or torrent link", link)
             report("chunks_real_add_app_stage", "magnet-entered")
