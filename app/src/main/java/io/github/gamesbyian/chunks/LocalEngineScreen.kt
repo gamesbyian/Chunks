@@ -929,7 +929,8 @@ internal fun LocalEngineScreen(
         // Add disclosure, or settings stack precedes the first transfer row.
         val firstRunVisible = onConnections != null && showPhoneFirstRunWelcome(
             hasConfirmedLocalInventory, inventoryStale, transfers.isEmpty(),
-            !showFirstRunWelcome, transferSearch, addExpanded)
+            !showFirstRunWelcome, transferSearch, addExpanded,
+            transferFilter == LocalQueueFilter.ALL)
         if (pane == PhonePane.TRANSFERS) {
             // First-run Welcome is the entire empty catalog presentation.
             // Scope switches are meaningful only in a configured/nonempty workspace.

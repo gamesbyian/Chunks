@@ -50,9 +50,11 @@ internal fun showPhoneFirstRunWelcome(
     inventoryEmpty: Boolean,
     hasRemoteEnvironment: Boolean,
     search: String,
-    addOpen: Boolean
+    addOpen: Boolean,
+    /** A persisted non-All filter can make a zero-job view look empty. */
+    filterIsDefault: Boolean = true
 ): Boolean = inventoryConfirmed && !inventoryStale && inventoryEmpty &&
-    !hasRemoteEnvironment && search.isBlank() && !addOpen
+    !hasRemoteEnvironment && search.isBlank() && !addOpen && filterIsDefault
 
 /**
  * Fresh-install welcome requires positive *absence* evidence. A process with
