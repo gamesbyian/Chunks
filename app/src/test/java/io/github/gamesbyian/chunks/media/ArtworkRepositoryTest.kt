@@ -178,4 +178,36 @@ class ArtworkRepositoryTest {
         assertEquals(1, http.requests.size)
     }
 
+
+    @Test fun disabledArtworkProviderCannotFetchButItsProcessedImageRemainsOfflineCapable() {
+        val wire = FakeMediaHttp().onBytes("p.jpg", image(680, 1000),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        val dir = Files.createTempDirectory("provider-disabling-art").toFile()
+        var enabled = false
+        fun currentRepository() = ArtworkRepository(wire, ArtworkDiskCache(dir),
+            hostPolicyFor = { id -> if (enabled && id == "tvmaze") tvmaze else null })
+
+        val blocked = currentRepository().load(listOf(poster), ArtworkRole.SQUARE, allowNetwork = true)
+        assertTrue("A disabled provider must not receive an image request",
+            blocked is ArtworkLoadResult.Unavailable)
+        assertTrue(wire.requests.isEmpty())
+
+        enabled = true
+        val downloaded = currentRepository().load(listOf(poster), ArtworkRole.SQUARE, allowNetwork = true)
+        assertTrue(downloaded is ArtworkLoadResult.Loaded)
+        assertEquals(1, wire.requests.size)
+
+        // Revocation stops NEW HTTP, but does not erase previously consented artwork.
+        // A separate repository instance proves disk persistence across process restart.
+        enabled = false
+        val restored = currentRepository().load(listOf(poster), ArtworkRole.SQUARE, allowNetwork = false)
+        assertTrue(restored is ArtworkLoadResult.Loaded)
+        assertTrue((restored as ArtworkLoadResult.Loaded).fromCache)
+        val neverCached = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/never-cached.jpg", ArtworkRole.POSTER)
+        assertTrue(currentRepository().load(listOf(neverCached), ArtworkRole.SQUARE, allowNetwork = true)
+            is ArtworkLoadResult.Unavailable)
+        assertEquals("Disabled provider must receive no further outbound image requests",
+            1, wire.requests.size)
+    }
+
 }
