@@ -78,11 +78,20 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
         // magnet may carry a placeholder display name until BEP9 completes,
         // but it must still own a single real engine job before Combined
         // can claim that it was newly added.
+        var lastNativeSampleAt = 0L
+        var exactNativeJobSeen = false
         waitFor(30_000) {
-            runCatching {
-                LocalEngineHolder.current()?.list().orEmpty()
-                    .count { it.infoHash.equals(hash, ignoreCase = true) } == 1
-            }.getOrDefault(false)
+            // JNI inventory reads are not free. Do not hot-loop them on
+            // Compose's short test-condition polling interval.
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (!exactNativeJobSeen && now - lastNativeSampleAt >= 250L) {
+                lastNativeSampleAt = now
+                exactNativeJobSeen = runCatching {
+                    LocalEngineHolder.current()?.list().orEmpty()
+                        .count { it.infoHash.equals(hash, ignoreCase = true) } == 1
+                }.getOrDefault(false)
+            }
+            exactNativeJobSeen
         }
         rule.onNodeWithText("Transfers").performClick()
         rule.onNodeWithText("All environments").performScrollTo().performClick()
