@@ -2170,7 +2170,6 @@ private fun ConnectionScreen(
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
-        }
     }
 }
 
