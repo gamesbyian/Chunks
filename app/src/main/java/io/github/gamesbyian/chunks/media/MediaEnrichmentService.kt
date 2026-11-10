@@ -75,7 +75,15 @@ class MediaEnrichmentService(
 
     fun providerInfos(): List<MediaProviderInfo> = providers.map { it.info }
 
+    /** Returns configuration only; this does not trigger an outbound provider request. */
+    fun hasConfiguredArtworkProvider(kind: MediaKind, preferences: MediaPrivacySettings): Boolean =
+        providers.any { it.info.providesArtwork && it.info.kinds.any(kind::compatibleWith) &&
+            preferences.providerOn(it.info) && it.isConfigured() }
+
     @Synchronized fun resetProviderPause(provider: String) { unauthorized.remove(provider); cooldownUntil.remove(provider) }
+
+    /** Serializes a privacy purge with in-flight lookups and their response-cache commits. */
+    @Synchronized fun clearLookupHistory() { cache.clear() }
 
     fun lookup(recognition: MediaRecognition, settings: MediaPrivacySettings, network: MediaNetworkState,
                origin: MediaLookupOrigin = MediaLookupOrigin.USER_REQUEST,
