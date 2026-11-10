@@ -12,6 +12,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import io.github.gamesbyian.chunks.rpc.LifecycleOutcome
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteProbe
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import java.util.concurrent.atomic.AtomicBoolean
@@ -39,14 +41,11 @@ class CombinedDetailSessionCapabilityTest {
     private val transfer = RemoteTransfer(hash, "A single download", 4096, 1024,
         true, "/remote", downBytesPerSecond = 0, upBytesPerSecond = null)
 
-    private class Session(val name: String) {
-        override fun equals(other: Any?): Boolean =
-            other is Session && name == other.name
-        override fun hashCode(): Int = name.hashCode()
-    }
+    private fun session() = RTorrentRemote(RemoteCredentials(
+        aliasScope.substringBefore('\u0000'), aliasScope.substringAfter('\u0000'), "test-secret"))
 
     private fun source(
-        session: Any,
+        session: RTorrentRemote,
         remoteProbe: suspend () -> RemoteProbe
     ) = CombinedServerSource(
         aliasScope, listOf(transfer), stale = false, fullView = true,
@@ -55,15 +54,18 @@ class CombinedDetailSessionCapabilityTest {
             begin = { error("Details must never lease a mutation") },
             settled = { error("No mutation should settle") },
             setStarted = { _, _ -> error("Details must never send Start/Stop") },
-            probe = remoteProbe
+            probe = remoteProbe,
+            ownerSession = session
         ),
         authenticatedSession = session
     )
 
     @Test fun oldProbeCannotPopulateNewAuthenticatedSessionWithSameProfile() {
-        val first = Session("same remembered endpoint and login")
-        val second = Session("same remembered endpoint and login")
-        assertEquals(first, second)
+        // Same credentials and exact numbered route, two distinct authenticated
+        // transport sessions. Value equality alone cannot confer old authority.
+        val first = session()
+        val second = session()
+        assertEquals(first.addAccountScope(), second.addAccountScope())
         assertFalse(first === second)
         val firstReply = CompletableDeferred<RemoteProbe>()
         val secondReply = CompletableDeferred<RemoteProbe>()
