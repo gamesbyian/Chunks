@@ -353,7 +353,9 @@ internal fun CombinedTransfersScreen(
     scopeFocusRequest: String? = null,
     onScopeFocusConsumed: () -> Unit = {},
     /** Welcome always enters the existing Add destination, not a new executor. */
-    onWelcomeAdd: (() -> Unit)? = null
+    onWelcomeAdd: (() -> Unit)? = null,
+    /** Explicit root Transfers tap clears Details without resetting scope/search. */
+    returnToCatalogRevision: Long = 0L
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -435,6 +437,9 @@ internal fun CombinedTransfersScreen(
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Restores only a read-only detail target, never an in-flight command or batch selection.
     var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
+    LaunchedEffect(returnToCatalogRevision) {
+        if (returnToCatalogRevision > 0L) savedDetailTarget = null
+    }
     val detailKey = restoreCombinedDetailTarget(savedDetailTarget)
     val batchScope = rememberCoroutineScope()
     var listings by remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
