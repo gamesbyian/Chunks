@@ -1838,7 +1838,7 @@ internal fun ConnectionScreen(
             ColoredPanel("Connect to another computer or server (optional)",
                 "Manage a seedbox or other rTorrent client from a secure endpoint. " +
                     "Checking a connection never changes its transfers; each transfer action " +
-                    "requires separate review.", Lilac)
+                    "requires separate review.", Lilac, titleAsHeading = true)
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {
             item {
@@ -3101,11 +3101,15 @@ private fun ServerScreen(
 }
 
 @Composable
-private fun ColoredPanel(title: String, message: String, color: Color) {
+private fun ColoredPanel(
+    title: String, message: String, color: Color, titleAsHeading: Boolean = false
+) {
     Card(shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = color)) {
         Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Ink)
+            Text(title, style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black, color = Ink,
+                modifier = Modifier.semantics { if (titleAsHeading) heading() })
             Text(message, style = MaterialTheme.typography.bodyMedium, color = Ink)
         }
     }
