@@ -18,9 +18,11 @@ internal object NavigationRestorePolicy {
     fun restorableSection(name: String?): String = when (name) {
         // Media settings hold no transfer data, server session or command.
         // Restore only the Add shell: private sources and approvals never replay.
-        "LOCAL", "LOCAL_ADD", "ADD_CHOOSE", "COMBINED", "MEDIA", "OPTIONS" -> name
-        // A remote-only route without an authenticated server would otherwise
-        // reopen the connection form instead of the requested transfer list.
-        else -> "LOCAL"
+        "COMBINED", "SERVER", "MEDIA", "OPTIONS", "ADD_CHOOSE" -> name
+        // Legacy owning-list routes cannot restore command authority.
+        "LOCAL", "TRANSFERS" -> "COMBINED"
+        // Universal Add reopens only the empty shell, never source or review.
+        "LOCAL_ADD", "ADD" -> "ADD_CHOOSE"
+        else -> "COMBINED"
     }
 }
