@@ -182,6 +182,41 @@ class TransferMediaControllerTest {
         assertTrue(http.requests.isEmpty())
     }
 
+    @Test fun verifiedArtlessMatchDescribesMeteredArtworkPolicyTruthfully() {
+        val network = MediaNetworkState(online = true, metered = true)
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true,
+            artworkOnMeteredNetwork = true)
+        val previous = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_EPISODE, "Babylon 5", 1993, season = 2, episode = 7,
+            attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
+        val assignments = InMemoryTransferMediaAssignmentStore().apply {
+            put(TransferMediaAssignment(server, MediaAssignmentState.AUTOMATIC, match = previous,
+                updatedAtMs = clock.now))
+        }
+        val wire = FakeMediaHttp()
+        val tv = TvMazeProvider()
+        val c = TransferMediaController(
+            MediaEnrichmentService(listOf(tv), wire, InMemoryMediaQueryCache(),
+                { clock.now }, clock::sleep),
+            ArtworkRepository(wire, ArtworkDiskCache(File(dir, "metered-status")),
+                hostPolicyFor = { tv.info.artworkHostPolicy }),
+            { assignments }, { settings }, { network },
+            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
+            Dispatchers.Unconfined, { clock.now })
+        val flow = c.observe(server, name)
+        assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
+        assertTrue("Enabled mobile artwork is not falsely described as paused",
+            flow.value.automaticMessage!!.contains("no verified poster"))
+        assertTrue("Automatic metadata discovery still waits for Wi-Fi", wire.requests.isEmpty())
+        settings = settings.copy(artworkOnMeteredNetwork = false)
+        c.onSettingsChanged()
+        assertTrue("Disabled mobile artwork must be described as paused",
+            flow.value.automaticMessage!!.contains("metered network"))
+        assertTrue(wire.requests.isEmpty())
+        assertEquals(previous.ref, assignments.get(server)?.match?.ref)
+    }
+
     @Test fun unavailableConfiguredProviderIsReportedWithoutPretendingANameWasVerified() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true,
             disabledProviders = setOf("tvmaze"))
