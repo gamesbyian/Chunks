@@ -757,7 +757,8 @@ internal fun ChunksApp(
                             inspectStall = { hash ->
                                 io.github.gamesbyian.chunks.rpc.RemoteStallInspector.inspect(remote, hash)
                             }),
-                        authenticatedSession = remote)
+                        authenticatedSession = remote,
+                        snapshotRevision = snapshotRevision)
                 },
                 savedProfiles = savedProfiles.map { profile ->
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
