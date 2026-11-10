@@ -46,6 +46,17 @@ class ClipboardMagnetPrefillTest {
 
         val url = "https://example.org/download/item.torrent?token=privateA"
         assertEquals(url, ClipboardMagnetPrefill.exactClipboardSource(url, url))
+        assertEquals(url, ClipboardMagnetPrefill.exactClipboardSource(
+            "HTTPS://" + url.substring("https://".length), url))
+        assertEquals(url, ClipboardMagnetPrefill.exactClipboardSource(
+            url, "HTTPS://" + url.substring("https://".length)))
+        assertEquals(url, ClipboardMagnetPrefill.decide(true, "", false,
+            ClipboardMagnetPrefill.exactClipboardSource(
+                "HTTPS://" + url.substring("https://".length), url)))
+        // Scheme casing cannot mask a changed signed-token source.
+        assertNull(ClipboardMagnetPrefill.exactClipboardSource(
+            "HTTPS://" + url.substring("https://".length),
+            url.replace("privateA", "privateB")))
         assertNull(ClipboardMagnetPrefill.exactClipboardSource(url,
             "https://example.org/download/item.torrent?token=privateB"))
         assertEquals(text, ClipboardMagnetPrefill.exactClipboardSource(text, null))
