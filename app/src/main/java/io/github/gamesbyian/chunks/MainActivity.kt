@@ -1121,6 +1121,11 @@ internal fun ChunksApp(
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
                 savedProfiles = savedProfiles, credentialNotice = credentialNotice,
                 onSelectProfile = { profile ->
+                    // Explicitly choosing another saved account abandons an
+                    // older Add-return promise. Re-selecting the same account
+                    // while editing its login leaves that draft intact.
+                    savedAddReconnect.abandonIfDifferent(
+                        RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
                     endpoint = profile.credentials.endpoint
                     rpcPath = ""
                     username = profile.credentials.username
@@ -1224,7 +1229,11 @@ internal fun ChunksApp(
                 },
                 onLocalZipReview = { openTool(Section.ARCHIVES, Section.SERVER) },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
-                onLocalEngine = { localFromCombined = false; section = Section.LOCAL },
+                onLocalEngine = {
+                    savedAddReconnect.abandon()
+                    localFromCombined = false
+                    section = Section.LOCAL
+                },
                 onCreateTorrent = { openTool(Section.CREATE, Section.SERVER) },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
@@ -1918,6 +1927,7 @@ internal fun ChunksApp(
         AuthenticatedTransfersFooter(
             optionsOpen = null,
             onTransfers = {
+                savedAddReconnect.abandon()
                 // One canonical catalog in phone-only, remote-only and mixed
                 // modes. Its chips change view scopes only; this route grants
                 // no engine, server or per-job mutation authority.
@@ -1927,8 +1937,14 @@ internal fun ChunksApp(
                 // filter, exact environment selection or any Add draft.
                 scope.launch { combinedListState.scrollToItem(0) }
             },
-            onAdd = { section = Section.ADD_CHOOSE },
-            onOptions = { section = Section.OPTIONS },
+            onAdd = {
+                savedAddReconnect.abandon()
+                section = Section.ADD_CHOOSE
+            },
+            onOptions = {
+                savedAddReconnect.abandon()
+                section = Section.OPTIONS
+            },
             onConnections = { section = Section.SERVER },
             addDescription = "Add a torrent"
         )

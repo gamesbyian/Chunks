@@ -354,9 +354,18 @@ class CombinedTwoRealServersInstrumentedTest {
             // This must show an ACTUAL login, not B's already authenticated
             // server UI with A's address painted into editable fields.
             waitFor("explicit A authentication rather than stale B", 30_000) {
-                visible("Seedbox hostname, ruTorrent URL or RPC address") &&
-                    visible("Connect to rTorrent")
+                // ConnectionScreen uses LazyColumn. Its login fields are
+                // below the saved-profile list, so require actual scrolling
+                // to the input rather than simultaneous viewport visibility.
+                runCatching {
+                    scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
+                    rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
+                        .assertIsEnabled()
+                    true
+                }.getOrDefault(false)
             }
+            scrollTo("Connect to rTorrent")
+            rule.onNodeWithText("Connect to rTorrent").assertIsEnabled()
             assertTrue("Choosing a saved Add target must not add to A",
                 runBlocking { RTorrentRemote(credsFor(urlA)).listTransfers("main") }
                     .map { it.hash to it.started }.toSet() ==

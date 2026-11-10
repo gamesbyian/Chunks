@@ -26,6 +26,16 @@ internal class SavedAddProfileReconnect {
             requested == exactAuthenticatedScope
     }
 
+    /**
+     * Selecting the same saved profile to edit its credentials is harmless.
+     * Switching to a different endpoint, numbered route or principal cancels
+     * the earlier Add navigation request without discarding its source draft.
+     */
+    fun abandonIfDifferent(exactCandidateScope: String) {
+        if (requestedAccountScope != null && requestedAccountScope != exactCandidateScope)
+            requestedAccountScope = null
+    }
+
     /** Cancelled Add/navigation must not redirect a later unrelated login. */
     fun abandon() {
         requestedAccountScope = null

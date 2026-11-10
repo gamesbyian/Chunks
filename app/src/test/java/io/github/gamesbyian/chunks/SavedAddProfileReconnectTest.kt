@@ -47,6 +47,19 @@ class SavedAddProfileReconnectTest {
         assertFalse(request.consumeAuthenticated(account3))
     }
 
+    @Test fun savedProfileReselectionPreservesOnlySameAccountPromise() {
+        val request = SavedAddProfileReconnect()
+        request.requestAuthentication(account2)
+        request.abandonIfDifferent(account2)
+        assertTrue(request.consumeAuthenticated(account2))
+        request.requestAuthentication(account2)
+        request.abandonIfDifferent(account3)
+        assertFalse(request.consumeAuthenticated(account2))
+        request.requestAuthentication(account2)
+        request.abandonIfDifferent(otherPrincipal)
+        assertFalse(request.consumeAuthenticated(account2))
+    }
+
     @Test fun emptyScopeCannotBeOfferedAsAuthenticatedTarget() {
         val request = SavedAddProfileReconnect()
         assertThrows(IllegalArgumentException::class.java) {
