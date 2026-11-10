@@ -138,9 +138,15 @@ class InstalledDisposableRemotePublicMediaInstrumentedTest {
             }
             assertNull("Same hash on deliberately excluded other profile must stay untouched",
                 saved().get(keyB()))
-            val bitmap = media.controller.observe(keyA(), fixtureName).value.artwork
-            assertNotNull("Real remote metadata must yield real square artwork", bitmap)
-            assertTrue(bitmap!!.width >= 100 && bitmap.height >= 100)
+            // A composed row subscribes before the asynchronous cached-art
+            // read completes. Observe the same state flow and await its bitmap;
+            // the preceding disk assertion independently proves CDN acquisition.
+            media.controller.observe(keyA(), fixtureName)
+            await("remote row bitmap loaded asynchronously from saved derivative") {
+                media.controller.observe(keyA(), fixtureName).value.artwork != null
+            }
+            val bitmap = requireNotNull(media.controller.observe(keyA(), fixtureName).value.artwork)
+            assertTrue(bitmap.width >= 100 && bitmap.height >= 100)
             val urls = synchronized(witness.requested) { witness.requested.toList() }
             assertTrue("Real public metadata HTTPS expected", urls.any { it.host == "api.tvmaze.com" })
             assertTrue("Real CDN HTTPS expected", urls.any { it.host == "static.tvmaze.com" })
