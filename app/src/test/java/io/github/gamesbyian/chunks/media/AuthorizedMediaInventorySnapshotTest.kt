@@ -15,8 +15,8 @@ class AuthorizedMediaInventorySnapshotTest {
     private val remote = EnvironmentId("rtorrent:profile-2")
     private val hash = "a".repeat(40)
     private fun snapshot(env: EnvironmentId, name: String, status: EnvironmentAvailability =
-        EnvironmentAvailability.LIVE, whenRead: Long? = 1234L) =
-        EnvironmentTransferSnapshot(env, status, true, whenRead,
+        EnvironmentAvailability.LIVE, whenRead: Long? = 1234L, complete: Boolean = true) =
+        EnvironmentTransferSnapshot(env, status, complete, whenRead,
             listOf(UnifiedTransferObservation(UnifiedTransferKey.of(env, hash), name, name,
                 null, null, null, null, null, null)))
     private fun key(env: EnvironmentId) =
@@ -82,5 +82,20 @@ class AuthorizedMediaInventorySnapshotTest {
         val noRemote = AuthorizedMediaInventorySnapshot.build(
             listOf(snapshot(remote, "Away.We.Go.2009")), mapOf(phone to "local"))
         assertTrue(noRemote.entries.isEmpty())
+        // A LIVE, timestamped but filtered or identity-corrupt rTorrent inventory
+        // cannot prove the underlying exact job roster for provider transmission.
+        val full = AuthorizedMediaInventorySnapshot.build(
+            listOf(snapshot(remote, "The.Office.S03")), mapOf(remote to "account-2"))
+        val partial = AuthorizedMediaInventorySnapshot.build(
+            listOf(snapshot(remote, "The.Office.S03", complete = false)),
+            mapOf(remote to "account-2"))
+        assertEquals(1, full.entries.size)
+        assertTrue("An incomplete live source must not disclose an offscreen title",
+            partial.entries.isEmpty())
+        assertFalse("Becoming incomplete revokes already queued provider requests",
+            full.stillAuthorizes(key(remote), partial))
+        val partialPhone = AuthorizedMediaInventorySnapshot.build(
+            listOf(snapshot(phone, "Hackers.1995", complete = false)), mapOf(phone to "local"))
+        assertTrue(partialPhone.entries.isEmpty())
     }
 }

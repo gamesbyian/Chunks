@@ -1,12 +1,11 @@
 package io.github.gamesbyian.chunks.media
 
-import io.github.gamesbyian.chunks.model.EnvironmentAvailability
 import io.github.gamesbyian.chunks.model.EnvironmentId
 import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
 
 /**
  * A source-exact background-media inventory, independent of display filters and composed
- * list rows. Every key needs both a LIVE read AND a currently authorized account scope.
+ * list rows. Every key needs a complete, fresh, LIVE read AND a currently authorized account scope.
  *
  * Old in-flight callbacks may only continue while the exact profile, original
  * title and environment/hash still belong to a freshly observed current inventory.
@@ -41,10 +40,13 @@ class AuthorizedMediaInventorySnapshot private constructor(
             val found = LinkedHashMap<MediaTransferKey, Witness>()
             val names = LinkedHashMap<MediaTransferKey, String>()
             for (source in sources) {
-                if (source.availability != EnvironmentAvailability.LIVE) continue
-                // Timestamp proves this is a freshly observed source; it is
-                // deliberately not part of the session identity fingerprint.
-                if (source.observedAtEpochMillis == null) continue
+                // A timestamped LIVE label without a *complete* inventory is
+                // insufficient: rTorrent may have returned a filtered view, or
+                // the local/remote adapter may have dropped duplicate/invalid jobs.
+                // Neither incomplete state authorizes third-party name disclosure.
+                // Fresh read time is a precondition, not a fingerprint: continued
+                // valid reads of the same account/job should not starve lookups.
+                if (!source.canClaimCompleteLiveInventory) continue
                 val scope = ownerScopes[source.environment]?.takeIf { it.isNotBlank() } ?: continue
                 for (job in source.transfers) {
                     val key = MediaTransferKey.of(job.key)
