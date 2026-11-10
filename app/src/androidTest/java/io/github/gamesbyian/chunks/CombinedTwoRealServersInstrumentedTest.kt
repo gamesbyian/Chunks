@@ -64,12 +64,15 @@ class CombinedTwoRealServersInstrumentedTest {
     private fun connectedQueue() = visible("Connected ·") && visible("View transfers")
 
     private fun enterConnectedQueueIfCombined() {
-        // Saved credentials may reconnect at startup. A verified connection
-        // acknowledges, then remains on Connections until the user chooses
-        // the one canonical Transfers browser. Never infer auth from a label.
-        waitFor("verified connected session", 90_000) {
-            visible("Continue to Connections") || connectedQueue()
+        // Automatic remembered-login restoration remains in the canonical
+        // browser with exact profile scope; manual Connect acknowledges and
+        // stays on Connections until explicitly entering that same browser.
+        // Neither case is allowed to open the retired server-only list.
+        waitFor("verified restored session or Connect acknowledgement", 90_000) {
+            visible("Filters") || visible("Batch tools") ||
+                visible("Continue to Connections") || connectedQueue()
         }
+        if (visible("Filters") || visible("Batch tools")) return
         if (visible("Continue to Connections")) {
             rule.onNodeWithText("Continue to Connections").performClick()
         }
