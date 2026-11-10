@@ -79,10 +79,14 @@ internal class TransferAliasStore(context: Context) {
             }.getOrNull() ?: return@synchronized false
             val storageKey = runCatching { key(scope, hash) }.getOrNull()
                 ?: return@synchronized false
-            if (preferences.contains(storageKey)) return@synchronized false
-            val saved = preferences.edit().putString(storageKey, normalized).commit()
-            if (saved) changed()
-            saved
+            try {
+                if (preferences.contains(storageKey)) return@synchronized false
+                val saved = preferences.edit().putString(storageKey, normalized).commit()
+                if (saved) changed()
+                saved
+            } catch (_: RuntimeException) {
+                false
+            }
         }
 
     /** Chunks-only display label carried after independent destination Add readback.

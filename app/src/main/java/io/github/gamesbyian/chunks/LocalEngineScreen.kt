@@ -1280,8 +1280,9 @@ internal fun LocalEngineScreen(
                                         TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                                         registeredHash, verifiedAlias)) {
                                     aliasRevision++
-                                    if (addAliasState?.value == frozenAlias)
-                                        addAliasState.value = ""
+                                    addAliasState?.let { aliasDraft ->
+                                        if (aliasDraft.value == frozenAlias) aliasDraft.value = ""
+                                    }
                                 } else message = message.orEmpty() +
                                     " Magnet registered but its Chunks display name was not saved."
                             }
@@ -1613,8 +1614,9 @@ internal fun LocalEngineScreen(
                                         TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                                         added.status.infoHash, verifiedAlias)) {
                                     aliasRevision++
-                                    if (addAliasState?.value == frozenAlias)
-                                        addAliasState.value = ""
+                                    addAliasState?.let { aliasDraft ->
+                                        if (aliasDraft.value == frozenAlias) aliasDraft.value = ""
+                                    }
                                 } else message = message.orEmpty() +
                                     " The transfer was added but its Chunks display name was not saved."
                             }

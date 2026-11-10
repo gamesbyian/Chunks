@@ -196,10 +196,12 @@ fun VerifiedAddScreen(
                 val verifiedAlias = exactNewAddAlias(
                     draft.frozenAlias, submittedHash.orEmpty(), it)
                 if (verifiedAlias != null) {
-                    if (!onVerifiedAlias(it, verifiedAlias)) outcome = outcome.orEmpty() +
+                    if (!runCatching { onVerifiedAlias(it, verifiedAlias) }.getOrDefault(false))
+                        outcome = outcome.orEmpty() +
                         " The transfer was verified, but its Chunks display name could not be saved."
-                    else if (addAliasState?.value == verifiedAlias)
-                        addAliasState.value = ""
+                    else addAliasState?.let { aliasDraft ->
+                        if (aliasDraft.value == verifiedAlias) aliasDraft.value = ""
+                    }
                 }
                 onVerifiedAdd(it)
                 if (draft.resetArtworkAfterVerification && magnet == draft.attemptSource && initialTorrent == null)
