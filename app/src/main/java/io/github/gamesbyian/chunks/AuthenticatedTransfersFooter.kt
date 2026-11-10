@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
@@ -20,11 +22,34 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+internal enum class FooterDestination { TRANSFERS, ADD, CONNECTIONS, OPTIONS }
+
+/**
+ * The root destination is a navigation fact, never a deduction from the Add
+ * button's permanent accent. Detail and filtered-scope routes remain Transfers.
+ */
+internal fun footerDestinationForRoute(section: String, origin: String? = null): FooterDestination = when (section) {
+    "SERVER" -> FooterDestination.CONNECTIONS
+    "ADD_CHOOSE", "LOCAL_ADD", "ADD" -> FooterDestination.ADD
+    "OPTIONS" -> FooterDestination.OPTIONS
+    "MEDIA", "SEEDING", "ARCHIVES", "CREATE", "SNAPSHOT", "SNAPSHOT_INSPECT",
+    "PLACES", "ORGANIZE", "NAMES" -> when (origin) {
+        "SERVER" -> FooterDestination.CONNECTIONS
+        "ADD", "ADD_CHOOSE", "LOCAL_ADD" -> FooterDestination.ADD
+        "LOCAL", "TRANSFERS", "COMBINED" -> FooterDestination.TRANSFERS
+        else -> FooterDestination.OPTIONS
+    }
+    else -> FooterDestination.TRANSFERS
+}
+
 
 /**
  * Persistent, measured navigation beneath the authenticated server inventory.
@@ -47,7 +72,8 @@ internal fun AuthenticatedTransfersFooter(
     /** Spoken name for Add where no single environment owns it (Combined). */
     addDescription: String? = null,
     /** Retained for independent keyboard regression tests; never hides navigation. */
-    imeVisible: Boolean = false
+    imeVisible: Boolean = false,
+    activeDestination: FooterDestination = FooterDestination.TRANSFERS
 ) {
     Surface(color = ChunksColors.Surface) {
         Row(
@@ -55,17 +81,29 @@ internal fun AuthenticatedTransfersFooter(
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             FooterTransfers(onTransfers, Modifier.weight(1f), environmentLabel,
-                FourItemPadding, compact = true)
+                FourItemPadding, compact = true, isCurrent = activeDestination == FooterDestination.TRANSFERS)
             FooterAdd(onAdd, Modifier.weight(1f), environmentLabel, addDescription,
-                FourItemPadding, compact = true)
+                FourItemPadding, compact = true, isCurrent = activeDestination == FooterDestination.ADD)
             if (onConnections != null) {
-                FooterConnections(onConnections, Modifier.weight(1f), FourItemPadding, compact = true)
+                FooterConnections(onConnections, Modifier.weight(1f), FourItemPadding, compact = true,
+                    isCurrent = activeDestination == FooterDestination.CONNECTIONS)
             }
             FooterOptions(optionsOpen, onOptions, Modifier.weight(1f), environmentLabel,
-                FourItemPadding, compact = true)
+                FourItemPadding, compact = true, isCurrent = activeDestination == FooterDestination.OPTIONS)
         }
     }
 }
+
+/** When a saved login is reconnecting, TRANSFERS temporarily renders Connections. */
+internal fun footerDestinationForVisibleScreen(
+    section: String, authenticated: Boolean, origin: String? = null
+): FooterDestination = if (section == "TRANSFERS" && !authenticated)
+    FooterDestination.CONNECTIONS else footerDestinationForRoute(section, origin)
+
+private fun Modifier.currentDestination(isCurrent: Boolean): Modifier =
+    this.then(if (isCurrent) Modifier.border(2.dp, ChunksColors.Text,
+        RoundedCornerShape(16.dp)) else Modifier)
+        .semantics { selected = isCurrent }
 
 private val FourItemPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 1.dp, vertical = 6.dp)
 
@@ -112,15 +150,18 @@ private fun FooterGlyph(kind: FooterGlyphType) {
 private fun FooterTransfers(
     onClick: () -> Unit, modifier: Modifier, environmentLabel: String?,
     contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
-    compact: Boolean = false
+    compact: Boolean = false,
+    isCurrent: Boolean = false
 ) {
     OutlinedButton(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
+        .currentDestination(isCurrent)
         .then(if (environmentLabel == null) Modifier else Modifier.semantics {
             contentDescription = "Show transfers on $environmentLabel"
         })) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             FooterGlyph(FooterGlyphType.TRANSFERS)
-            Text("Transfers", fontSize = if (compact) 11.sp else 14.sp,
+            Text("Transfers", fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                fontSize = if (compact) 11.sp else 14.sp,
                 maxLines = 3, textAlign = TextAlign.Center, overflow = TextOverflow.Clip)
         }
     }
@@ -130,16 +171,19 @@ private fun FooterTransfers(
 private fun FooterAdd(
     onClick: () -> Unit, modifier: Modifier, environmentLabel: String?, description: String?,
     contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
-    compact: Boolean = false
+    compact: Boolean = false,
+    isCurrent: Boolean = false
 ) {
     val spoken = description ?: environmentLabel?.let { "Add torrent on $it" }
     Button(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
+        .currentDestination(isCurrent)
         .then(if (spoken == null) Modifier else Modifier.semantics {
             contentDescription = spoken
         })) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             FooterGlyph(FooterGlyphType.ADD)
-            Text("+ Add", fontSize = if (compact) 11.sp else 14.sp,
+            Text("+ Add", fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                fontSize = if (compact) 11.sp else 14.sp,
                 maxLines = 3, textAlign = TextAlign.Center, overflow = TextOverflow.Clip)
         }
     }
@@ -148,13 +192,16 @@ private fun FooterAdd(
 @Composable
 private fun FooterConnections(onClick: () -> Unit, modifier: Modifier,
     contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
-    compact: Boolean = false) {
+    compact: Boolean = false,
+    isCurrent: Boolean = false) {
     OutlinedButton(onClick = onClick, contentPadding = contentPadding,
         modifier = modifier.heightIn(min = 48.dp)
+        .currentDestination(isCurrent)
         .semantics { contentDescription = "Connections" }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             FooterGlyph(FooterGlyphType.CONNECTIONS)
-            Text("Connections", fontSize = if (compact) 11.sp else 14.sp,
+            Text("Connections", fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                fontSize = if (compact) 11.sp else 14.sp,
                 maxLines = 3, textAlign = TextAlign.Center, overflow = TextOverflow.Clip)
         }
     }
@@ -164,12 +211,14 @@ private fun FooterConnections(onClick: () -> Unit, modifier: Modifier,
 private fun FooterOptions(
     open: Boolean?, onClick: () -> Unit, modifier: Modifier, environmentLabel: String?,
     contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
-    compact: Boolean = false
+    compact: Boolean = false,
+    isCurrent: Boolean = false
 ) {
     OutlinedButton(
         contentPadding = contentPadding,
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp)
+            .currentDestination(isCurrent)
             .semantics {
                 contentDescription = if (environmentLabel == null) "Options"
                     else "Options on $environmentLabel"
@@ -178,7 +227,8 @@ private fun FooterOptions(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             FooterGlyph(FooterGlyphType.OPTIONS)
-            Text("Options", fontSize = if (compact) 11.sp else 14.sp,
+            Text("Options", fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                fontSize = if (compact) 11.sp else 14.sp,
                 maxLines = 3, textAlign = TextAlign.Center, overflow = TextOverflow.Clip)
         }
     }
