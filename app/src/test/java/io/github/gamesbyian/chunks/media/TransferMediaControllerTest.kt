@@ -725,6 +725,68 @@ class TransferMediaControllerTest {
                 false, art.hasCachedSquare(original.artwork))
         }
 
+    @Test fun offscreenArtlessMovieRetriesFailedPosterProviderAfterShortCooldownWithoutChangingIdentity() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+            val wiki = io.github.gamesbyian.chunks.media.providers.WikidataProvider()
+            val tmdb = io.github.gamesbyian.chunks.media.providers.TmdbProvider {
+                "0123456789abcdef0123456789abcdef"
+            }
+            val wire = FakeMediaHttp()
+                .on("www.wikidata.org", body = """
+                    {"search":[{"id":"Q12345","label":"Hackers","description":"1995 film by Iain Softley"}]}
+                """.trimIndent())
+                .on("api.themoviedb.org/3/search/movie", status = 500)
+                .onBytes("image.tmdb.org", jpeg(), headers = mapOf("Content-Type" to "image/jpeg"))
+            val providers = listOf(wiki, tmdb)
+            val assignments = InMemoryTransferMediaAssignmentStore()
+            val c = TransferMediaController(
+                MediaEnrichmentService(providers, wire, InMemoryMediaQueryCache(),
+                    { clock.now }, clock::sleep),
+                ArtworkRepository(wire, ArtworkDiskCache(File(dir, "artless-retry")),
+                    hostPolicyFor = { id -> providers.firstOrNull { it.info.id == id }?.info?.artworkHostPolicy }),
+                { assignments }, { settings }, { MediaNetworkState(true, false) },
+                CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
+                Dispatchers.Unconfined, { clock.now })
+            val inventory = listOf(server to "Hackers.1995.1080p.BluRay.mkv")
+            // No row or Details composed: Wikidata verifies the film but TMDB fails.
+            c.enrichInventory(inventory)
+            val original = requireNotNull(assignments.get(server))
+            assertEquals(MediaAssignmentState.AUTOMATIC, original.state)
+            assertEquals("wikidata", original.match?.ref?.provider)
+            assertTrue(original.match?.artwork?.isEmpty() == true)
+            fun posterRequests() = wire.requests.count { it.contains("api.themoviedb.org") }
+            assertEquals(1, posterRequests())
+            clock.now += 29 * 60_000L
+            c.enrichInventory(inventory)
+            assertEquals("Artless inventory must not hammer a temporarily failing provider",
+                1, posterRequests())
+            clock.now += 2 * 60_000L
+            c.enrichInventory(inventory)
+            assertEquals(2, posterRequests())
+            c.enrichInventory(inventory)
+            assertEquals("Unchanged inventory after failure must not immediately repeat",
+                2, posterRequests())
+            wire.routes.removeAll { it.contains == "api.themoviedb.org/3/search/movie" }
+            wire.on("api.themoviedb.org/3/search/movie", body = """
+                {"results":[{"id":123,"title":"Hackers","release_date":"1995-09-15",
+                    "adult":false,"poster_path":"/hackers1995.jpg"}]}
+            """.trimIndent())
+            clock.now += 31 * 60_000L
+            c.enrichInventory(inventory)
+            val recovered = requireNotNull(assignments.get(server))
+            assertEquals("Identity must survive poster completion", original.match?.ref, recovered.match?.ref)
+            assertEquals(1995, recovered.match?.year)
+            assertEquals("tmdb", recovered.match?.artwork?.singleOrNull()?.provider)
+            assertEquals(3, posterRequests())
+            assertTrue("Offscreen artwork should be cached for Details/list after restart",
+                ArtworkRepository(wire, ArtworkDiskCache(File(dir, "artless-retry")),
+                    hostPolicyFor = { id -> providers.firstOrNull { it.info.id == id }?.info?.artworkHostPolicy })
+                    .hasCachedSquare(recovered.match!!.artwork))
+            assertTrue(wire.requests.none { it.contains("BluRay") || it.contains("1080p") ||
+                it.contains(server.value) })
+        }
+
     @Test fun coldStartRecoversPersistedArtlessWikidataMovieWithoutSettingsTap() =
         kotlinx.coroutines.runBlocking {
             settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
