@@ -115,6 +115,13 @@ class RTorrentDisposableAuthenticatedTest {
             delay(400)
         }
         assertTrue("Real authenticated job did not enter started state", started)
+        var active = false
+        for (attempt in 1..15) {
+            active = remote.readActivity(hash).active == true
+            if (active) break
+            delay(400)
+        }
+        assertTrue("d.state=1 is insufficient: actual rTorrent activity must be observed", active)
 
         val stop = remote.setStarted(hash, false)
         assertTrue("Authenticated Stop must not lose ACK: $stop",
@@ -146,11 +153,14 @@ class RTorrentDisposableAuthenticatedTest {
                 removal is SessionEraseOutcome.PendingRemoval)
         var absent = false
         for (attempt in 1..15) {
-            absent = observed() == null
+            // A missing row in the main view is NOT an erased session.
+            // Only the independent exact-hash getter's unknown-infohash fault
+            // proves the original job was removed.
+            absent = remote.lookupName(hash) == null
             if (absent) break
             delay(400)
         }
-        assertTrue("Original job remains in real session's main view", absent)
+        assertTrue("Exact original rTorrent session still exists after Remove", absent)
         assertEquals("Do not drop or modify any unrelated disposable job identity",
             before, remote.listTransfers("main").map { it.hash.uppercase() }.toSet())
     }
