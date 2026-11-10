@@ -15,7 +15,7 @@ status=$?
 smoke_seconds=$((SECONDS - smoke_started))
 echo "CHUNKS_R8_INSTALLED_SMOKE_SECONDS=$smoke_seconds"
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
-  printf 'Installed R8 Android smoke: %ss (result: %s)\\n' "$smoke_seconds" "$status" >> "$GITHUB_STEP_SUMMARY"
+  printf 'Installed R8 Android smoke: %ss (result: %s)\n' "$smoke_seconds" "$status" >> "$GITHUB_STEP_SUMMARY"
 fi
 grep -E -i "install|instrument|Starting|tests on|FAIL|exception|timed out" "$out/qaminified-gradle.txt" | tail -80
 if [ "$status" -ne 0 ]; then
