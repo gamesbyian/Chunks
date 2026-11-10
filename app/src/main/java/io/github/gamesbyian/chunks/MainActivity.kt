@@ -36,6 +36,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -223,6 +224,8 @@ internal fun shouldConsumeReviewedSourceOnExit(
     lifecycleCancelled: Boolean
 ): Boolean = isCurrentDocument && !lifecycleCancelled
 
+private data class VerifiedConnectionNotice(val label: String, val saved: Boolean)
+
 private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
@@ -290,6 +293,7 @@ internal fun ChunksApp(
     // verified saved login. A failed 401/timeout does not start a retry loop, and
     // Disconnect/Cancel never automatically reconnect within the same app session.
     var startupReconnectAttempted by remember { mutableStateOf(false) }
+    var returnFromStartupConnectToCanonical by remember { mutableStateOf(false) }
     var savedLoginPresent by remember {
         mutableStateOf(remembered != null || savedProfiles.isNotEmpty())
     }
@@ -319,7 +323,7 @@ internal fun ChunksApp(
     var section by rememberSaveable(saver = SectionRestoreSaver) {
         // A saved login needs the existing one-shot authenticated reconnect
         // owner to mount. Combined is a read-only list, not a reconnect executor.
-        mutableStateOf(if (remembered == null) Section.LOCAL else Section.TRANSFERS)
+        mutableStateOf(if (remembered == null) Section.COMBINED else Section.SERVER)
     }
     // This chooses the visible Universal Add target in the *same* Add route.
     // Never restore account authority, a private source, or an attempted write.
@@ -327,6 +331,8 @@ internal fun ChunksApp(
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
+    var profileScopeRequest by remember { mutableStateOf<String?>(null) }
+    var verifiedConnectionNotice by remember { mutableStateOf<VerifiedConnectionNotice?>(null) }
     // One safe navigation return edge only, never an Add draft or authority.
     // When entering phone from Combined, the phone's own Back returns there.
     var localFromCombined by rememberSaveable { mutableStateOf(false) }
@@ -384,6 +390,7 @@ internal fun ChunksApp(
     // No raw source, account identity or private tracker enters SavedState.
     val addArtworkChoices = retainedAddOwner?.artworkChoices ?: remember { AddArtworkDraftChoices() }
     val combinedListState = rememberLazyListState()
+    var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
     // Combined search text, like the phone's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
     // Per exact rTorrent account: list position and search survive route
@@ -768,6 +775,69 @@ internal fun ChunksApp(
             }
         )
     }
+    fun disconnectCurrentRemote() {
+        returnFromStartupConnectToCanonical = false
+                        // Invalidate every in-flight read and credential save
+                        // before switching/clearing the authenticated scope.
+                        remoteFence.invalidate()
+                        RemoteCredentialLock.invalidate()
+                        inspectionFence.invalidate()
+                        mutationGate.reset()
+                        server = null
+                        aliasScope = ""
+                        aliasSessions.clear()
+                        version = ""
+                        transfers = emptyList()
+                        transfersObservedAt = null
+                        expandedHash = null
+                        files = null
+                        filesError = null
+                        filesLoading = false
+                        loading = false
+                        error = null
+                        stale = false
+                        currentView = "main"
+                        requestedView = "main"
+                        // Disconnect returns to Connections, keeping encrypted
+                        // credentials unless the user explicitly chooses Forget.
+                        // A stale vault read may not overwrite another profile,
+                        // in-progress Connect, new draft or queued Forget.
+                        section = Section.SERVER
+                        val oldEndpoint = endpoint
+                        val oldUsername = username
+                        val oldPassword = password
+                        val credentialRevision = credentialChanges.snapshotRevision()
+                        scope.launch {
+                            val saved = withContext(Dispatchers.IO) {
+                                try { vault.load() } catch (_: Exception) { null }
+                            }
+                            if (server == null && !loading && section == Section.SERVER &&
+                                rememberLogin && saved != null &&
+                                credentialChanges.isLatest(credentialRevision) &&
+                                endpoint == oldEndpoint && username == oldUsername &&
+                                password == oldPassword) {
+                                endpoint = saved.endpoint
+                                username = saved.username
+                                password = saved.password
+                            }
+                        }
+    }
+
+    verifiedConnectionNotice?.let { notice ->
+        AlertDialog(
+            onDismissRequest = { verifiedConnectionNotice = null; section = Section.SERVER },
+            title = { Text("Connection verified") },
+            text = {
+                Text(if (notice.saved)
+                    "${notice.label} is connected and saved. You can open its transfers from Connections."
+                else "The rTorrent connection is verified for this session. A saved profile was not confirmed; check your Remember setting before restarting.")
+            },
+            confirmButton = { TextButton(onClick = {
+                verifiedConnectionNotice = null; section = Section.SERVER
+            }) { Text("Continue to Connections") } }
+        )
+    }
+
     val paneTitle = ScreenPaneTitles.of(section.name, section.label,
         if (server != null && aliasScope.isNotBlank()) serverEnvironmentLabel(aliasScope) else null)
     Column(
@@ -801,6 +871,10 @@ internal fun ChunksApp(
         } else if (presentationSection == Section.COMBINED) {
             CombinedTransfersScreen(
                 showNavigationFooter = false,
+                scopeFocusRequest = profileScopeRequest,
+                onScopeFocusConsumed = { profileScopeRequest = null },
+                onWelcomeAdd = { section = Section.ADD_CHOOSE },
+                returnToCatalogRevision = returnToCatalogRevision,
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
@@ -831,7 +905,8 @@ internal fun ChunksApp(
                             inspectStall = { hash ->
                                 io.github.gamesbyian.chunks.rpc.RemoteStallInspector.inspect(remote, hash)
                             }),
-                        authenticatedSession = remote)
+                        authenticatedSession = remote,
+                        snapshotRevision = snapshotRevision)
                 },
                 savedProfiles = savedProfiles.map { profile ->
                     CombinedSavedProfile(profile.id, profile.label + " · " + profile.address,
@@ -840,7 +915,10 @@ internal fun ChunksApp(
                         listOnly = { verifiedSavedProfileMainInventory(profile.credentials) },
                         shortLabel = profile.label)
                 },
-                onOpenPhone = { localFromCombined = true; section = Section.LOCAL },
+                onOpenPhone = {
+                    profileScopeRequest = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE.value
+                    section = Section.COMBINED
+                },
                 // Opening the phone inventory is non-mutating. Only the explicit
                 // Add action hands off the pending magnet to its review.
                 onAddToPhone = {
@@ -867,7 +945,7 @@ internal fun ChunksApp(
                 readingSharedTorrent = sharedTorrentReading,
                 sharedTorrentError = sharedTorrentError,
                 onConnections = { section = Section.SERVER },
-                onOpenServer = if (server != null) ({ section = Section.TRANSFERS }) else null,
+                onOpenServer = null,
                 onAddToServer = if (server != null) ({
                     val sharedDocument = incomingTorrent
                     if (sharedDocument != null && !sharedTorrentReading &&
@@ -1036,14 +1114,41 @@ internal fun ChunksApp(
                     }
                 )
             }
-        } else if (server == null) {
+        } else if (server == null || section == Section.SERVER) {
             ConnectionScreen(
-                startupReconnectEligible = RemoteStartupReconnectPolicy.shouldAttempt(
+                connectedSessionName = server?.let {
+                    savedProfiles.firstOrNull { profile ->
+                        profile.id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                            .serverIdOfAliasScope(aliasScope)?.value
+                    }?.label ?: "Connected rTorrent server"
+                },
+                onViewConnectedTransfers = {
+                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                        .serverIdOfAliasScope(aliasScope)?.value?.let { id ->
+                            profileScopeRequest = id
+                            section = Section.COMBINED
+                        }
+                },
+                onDisconnectCurrent = { disconnectCurrentRemote() },
+                connectedVersion = version,
+                connectedRequestedView = requestedView,
+                onSelectConnectedView = { requestedView = it },
+                onLoadConnectedView = refresh,
+                onConnectedSeedingRules = { openTool(Section.SEEDING, Section.SERVER) },
+                onOpenProfileTransfers = { profile ->
+                    // Persisted ID is the only scope authority, independent of labels.
+                    profileScopeRequest = profile.id
+                    section = Section.COMBINED
+                },
+                startupReconnectEligible = server == null && RemoteStartupReconnectPolicy.shouldAttempt(
                     rememberingEnabled = rememberLogin,
                     hasSavedVerifiedLogin = remembered != null,
                     alreadyAttempted = startupReconnectAttempted
                 ),
-                onStartupReconnectConsumed = { startupReconnectAttempted = true },
+                onStartupReconnectConsumed = {
+                    startupReconnectAttempted = true
+                    returnFromStartupConnectToCanonical = section == Section.SERVER && server == null
+                },
                 endpoint = endpoint, username = username, password = password,
                 rpcPath = rpcPath, onRpcPath = { rpcPath = it },
                 error = error, loading = loading,
@@ -1054,6 +1159,7 @@ internal fun ChunksApp(
                     remoteFence.invalidate()
                     RemoteCredentialLock.invalidate()
                     loading = false
+                    returnFromStartupConnectToCanonical = false
                     connectDiagnostics = ConnectionDiagnostics()
                     error = "Connection check cancelled. Nothing was changed on the server."
                 },
@@ -1245,8 +1351,20 @@ internal fun ChunksApp(
                                     // A phone-origin .torrent can be prepared before a
                                     // remote login. Keep its reviewed Add draft visible
                                     // after connecting, without submitting any RPC.
-                                    section = if (magnet.isNotBlank() ||
-                                        serverHandoffTorrent != null) Section.ADD else Section.TRANSFERS
+                                    // Add drafts remain in their existing retained ViewModel
+                                    // and are never submitted by a verified connection.
+                                    val fromSavedStartup = returnFromStartupConnectToCanonical &&
+                                        section == Section.SERVER
+                                    returnFromStartupConnectToCanonical = false
+                                    section = if (fromSavedStartup) Section.COMBINED else Section.SERVER
+                                    val verifiedId = io.github.gamesbyian.chunks.model
+                                        .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+                                    if (fromSavedStartup) profileScopeRequest = verifiedId
+                                    else verifiedConnectionNotice = VerifiedConnectionNotice(
+                                        savedProfiles.firstOrNull { it.id == verifiedId }?.label
+                                            ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
+                                        saved = false
+                                    )
                                     currentView = ticket.view
                                     requestedView = ticket.view
                                     // A successful authenticated Connect is the only time
@@ -1291,6 +1409,16 @@ internal fun ChunksApp(
                                             }
                                             // Do not retain another copy in the screen field.
                                             password = ""
+                                            val savedName = refreshed.firstOrNull { profile ->
+                                                profile.id == io.github.gamesbyian.chunks.model
+                                                    .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
+                                            }?.label
+                                            if (verifiedConnectionNotice != null) {
+                                                verifiedConnectionNotice = VerifiedConnectionNotice(
+                                                    savedName ?: verifiedConnectionNotice!!.label,
+                                                    saved = saveThisLogin && retained && savedName != null
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1298,6 +1426,7 @@ internal fun ChunksApp(
                                 throw cancel
                             } catch (failure: Exception) {
                                 if (remoteFence.current(ticket) && server == null) {
+                                    returnFromStartupConnectToCanonical = false
                                     error = readableFailure(failure)
                                     connectDiagnostics = if (failure is RemoteSmartConnect.ConnectionFailed)
                                         ConnectionDiagnostics(attempts = failure.attempts,
@@ -1874,6 +2003,7 @@ internal fun ChunksApp(
                 // modes. Its chips change view scopes only; this route grants
                 // no engine, server or per-job mutation authority.
                 section = Section.COMBINED
+                returnToCatalogRevision++
                 // Re-tapping Transfers is useful even when already on this
                 // list: return to its first row without resetting search,
                 // filter, exact environment selection or any Add draft.
@@ -1882,7 +2012,8 @@ internal fun ChunksApp(
             onAdd = { section = Section.ADD_CHOOSE },
             onOptions = { section = Section.OPTIONS },
             onConnections = { section = Section.SERVER },
-            addDescription = "Add a torrent"
+            addDescription = "Add a torrent",
+            activeDestination = footerDestinationForVisibleScreen(section.name, server != null, toolOrigin)
         )
     }
 }
@@ -1915,11 +2046,20 @@ internal fun isLoginRefused(failure: Exception): Boolean =
         (failure.status == 401 || failure.status == 403)
 
 @Composable
-private fun ConnectionScreen(
+internal fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
     rpcPath: String = "", onRpcPath: (String) -> Unit = {},
     diagnostics: ConnectionDiagnostics = ConnectionDiagnostics(),
     onCancelConnect: () -> Unit = {},
+    connectedSessionName: String? = null,
+    onViewConnectedTransfers: () -> Unit = {},
+    onDisconnectCurrent: () -> Unit = {},
+    onOpenProfileTransfers: (RememberedRemoteProfileRoster.Profile) -> Unit = {},
+    connectedVersion: String = "",
+    connectedRequestedView: String = "main",
+    onSelectConnectedView: (String) -> Unit = {},
+    onLoadConnectedView: () -> Unit = {},
+    onConnectedSeedingRules: () -> Unit = {},
     startupReconnectEligible: Boolean = false,
     onStartupReconnectConsumed: () -> Unit = {},
     rememberLogin: Boolean, savedLoginPresent: Boolean,
@@ -1942,15 +2082,22 @@ private fun ConnectionScreen(
     val submitConnect: () -> Unit = {
         connectKeyboard?.hide()
         connectFocus.clearFocus()
-        onConnect()
+        if (connectedSessionName == null) onConnect()
     }
     var pendingForget by remember { mutableStateOf<String?>(null) }
-    var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
+    var currentServerToolsOpen by rememberSaveable { mutableStateOf(false) }
     var renameProfileId by remember { mutableStateOf<String?>(null) }
     var renameDraft by remember { mutableStateOf("") }
     var renameBusy by remember { mutableStateOf(false) }
     var renameNotice by remember { mutableStateOf<String?>(null) }
     val renameScope = rememberCoroutineScope()
+    val connectionsListState = androidx.compose.foundation.lazy.rememberLazyListState()
+    // Completing authentication replaces the form with a verified session
+    // management state. Keep that result and its View transfers action visible
+    // even if the user was scrolled down to the Connect button beforehand.
+    LaunchedEffect(connectedSessionName) {
+        if (connectedSessionName != null) connectionsListState.scrollToItem(0)
+    }
     // Reuse the exact existing verified Connect operation. No saved password or
     // endpoint is broadcast to an unverified profile, and no torrent mutation
     // occurs merely because the app opened. Consume before invoking the action
@@ -1961,39 +2108,104 @@ private fun ConnectionScreen(
         onConnect = onConnect
     )
     LazyColumn(
+        state = connectionsListState,
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            ColoredPanel("Your downloads",
-                "Use this phone without a server account, or connect to an rTorrent server below. " +
-                    "Opening either option never moves existing downloads.", Lilac)
+            ColoredPanel("Connect to another computer or server (optional)",
+                "Manage a seedbox or other rTorrent client from a secure endpoint. " +
+                    "Checking a connection never changes its transfers; each transfer action " +
+                    "requires separate review.", Lilac)
         }
-        item { PhoneFirstEntry(onOpenPhone = onLocalEngine) }
         item {
-            Text("Connect to another computer or server (optional)",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() })
-            Text("Manage a seedbox here. Connecting checks a secure endpoint without changing " +
-                "its downloads; each transfer action is reviewed separately.",
-                style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(
+                value = endpoint, onValueChange = onEndpoint,
+                label = { Text("Seedbox hostname, ruTorrent URL or RPC address") },
+                placeholder = { Text("server.example or https://server.example/rutorrent/") },
+                // Next moves to the following field; no autocorrect on an address.
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
+                    autoCorrectEnabled = false,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+                singleLine = true, modifier = Modifier.fillMaxWidth()
+            )
+            val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
+            if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
+        }
+        if (connectedSessionName != null) item {
+            Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
+                Column(Modifier.fillMaxWidth().padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Connected · " + connectedSessionName,
+                        style = MaterialTheme.typography.titleMedium)
+                    Text("This verified session is available in Transfers. " +
+                        "Browsing does not change its torrents.",
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = onViewConnectedTransfers,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("View transfers")
+                    }
+                    OutlinedButton(onClick = { currentServerToolsOpen = !currentServerToolsOpen },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .semantics {
+                                stateDescription = if (currentServerToolsOpen) "Expanded" else "Collapsed"
+                            }) {
+                        Text(if (currentServerToolsOpen) "Hide current server tools" else "Current server tools")
+                    }
+                    if (currentServerToolsOpen) {
+                        Text("rTorrent " + connectedVersion + " · selected view " + connectedRequestedView,
+                            style = MaterialTheme.typography.bodySmall)
+                        Text("Select a server view, then explicitly refresh. A filtered rTorrent view " +
+                            "is not evidence of the complete account inventory.",
+                            style = MaterialTheme.typography.bodySmall)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            listOf("main", "default", "started", "stopped").forEach { view ->
+                                FilterChip(selected = connectedRequestedView == view,
+                                    onClick = { onSelectConnectedView(view) },
+                                    label = { Text(view) }, modifier = Modifier.heightIn(min = 48.dp))
+                            }
+                        }
+                        Row(Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = onLoadConnectedView, enabled = !loading,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text(if (loading) "Refreshing…" else "Load view")
+                            }
+                            OutlinedButton(onClick = onConnectedSeedingRules,
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                Text("Seeding rules")
+                            }
+                        }
+                    }
+                    OutlinedButton(onClick = onDisconnectCurrent, enabled = !loading,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Disconnect current session")
+                    }
+                }
+            }
         }
         if (rememberLogin && savedProfiles.isNotEmpty()) {
             item {
                 Text("Saved servers", style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold)
-                Text("Choose an account, then Connect. No server is contacted just by selecting it.",
+                Text("Open a saved profile in the same Transfers browser, or use its " +
+                    "credentials to reconnect. Opening a profile does not sign in or change torrents.",
                     style = MaterialTheme.typography.bodySmall)
             }
             items(savedProfiles, key = { "saved-profile-" + it.id }) { profile ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(onClick = {
                         pendingForget = null
-                        onSelectProfile(profile)
+                        onOpenProfileTransfers(profile)
                     }, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Column(Modifier.fillMaxWidth()) {
-                            Text("Use " + profile.label)
+                            Text("View transfers · " + profile.label)
                             // The exact address tells instances of one account apart.
                             Text(profile.address, style = MaterialTheme.typography.bodySmall)
                             Text(profile.lastVerifiedAt?.let {
@@ -2001,6 +2213,13 @@ private fun ConnectionScreen(
                                     it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
                             } ?: "Last connection time not recorded", style = MaterialTheme.typography.bodySmall)
                         }
+                    }
+                    OutlinedButton(onClick = {
+                        pendingForget = null
+                        onSelectProfile(profile)
+                    }, enabled = !loading && connectedSessionName == null,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Use saved login")
                     }
                     if (pendingForget == profile.id) {
                         Text("Forget saved credentials for this account? Torrents are unchanged.",
@@ -2079,22 +2298,6 @@ private fun ConnectionScreen(
             Text(renameNotice.orEmpty(), style = MaterialTheme.typography.bodySmall)
         }
         item {
-            OutlinedTextField(
-                value = endpoint, onValueChange = onEndpoint,
-                label = { Text("Seedbox hostname, ruTorrent URL or RPC address") },
-                placeholder = { Text("server.example or https://server.example/rutorrent/") },
-                // Next moves to the following field; no autocorrect on an address.
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
-                    autoCorrectEnabled = false,
-                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
-                singleLine = true, modifier = Modifier.fillMaxWidth()
-            )
-            val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
-            if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp).semantics { liveRegion = LiveRegionMode.Polite })
-        }
-        item {
             var advancedOpen by rememberSaveable { mutableStateOf(rpcPath.isNotBlank()) }
             TextButton(onClick = { advancedOpen = !advancedOpen },
                 modifier = Modifier.heightIn(min = 48.dp)) {
@@ -2132,7 +2335,8 @@ private fun ConnectionScreen(
                 value = password, onValueChange = onPassword,
                 modifier = Modifier.fillMaxWidth(),
                 // Go runs the same read-only Connect as the button, under its rules.
-                onGo = { if (!loading && endpoint.isNotBlank()) submitConnect() }
+                onGo = { if (!loading && connectedSessionName == null &&
+                    endpoint.isNotBlank()) submitConnect() }
             )
         }
         item {
@@ -2162,36 +2366,20 @@ private fun ConnectionScreen(
         item {
             Button(
                 onClick = submitConnect,
-                enabled = !loading && endpoint.isNotBlank(),
+                enabled = !loading && connectedSessionName == null && endpoint.isNotBlank(),
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
-            ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
+            ) { Text(when {
+                loading -> "Finding secure rTorrent…"
+                connectedSessionName != null -> "Disconnect before connecting another server"
+                else -> "Connect to rTorrent"
+            }) }
         }
         item { ConnectionDiagnosticsPanel(diagnostics, loading, onCancelConnect) }
         if (error != null) item { Notice("Connection unsuccessful", error) }
         item {
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
-        }
-        item {
-            OutlinedButton(
-                onClick = { extraToolsOpen = !extraToolsOpen },
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .semantics {
-                        stateDescription = if (extraToolsOpen) "Expanded" else "Collapsed"
-                    }
-            ) { Text(if (extraToolsOpen) "Hide offline tools" else "More offline tools") }
-            if (extraToolsOpen) Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActionTile("Inspect a local ZIP without connecting", ChunksColors.Yellow,
-                    onClick = onLocalZipReview, modifier = Modifier.fillMaxWidth(),
-                    icon = R.drawable.chunks_ic_archive, stacked = false)
-                ActionTile("Inspect .chunksnap backup (offline)", ChunksColors.Pink,
-                    onClick = onInspectSnapshot, modifier = Modifier.fillMaxWidth(),
-                    icon = R.drawable.chunks_ic_document, stacked = false)
-                ActionTile("Create a torrent from phone files", ChunksColors.Green,
-                    onClick = onCreateTorrent, modifier = Modifier.fillMaxWidth(),
-                    icon = R.drawable.chunks_ic_add_torrent, stacked = false)
-            }
         }
     }
 }
