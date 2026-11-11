@@ -1,6 +1,14 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -31,9 +39,12 @@ class ConnectionsRemoteIntroTest {
         onViewTransfers: ((RememberedRemoteProfileRoster.Profile) -> Unit)? = null,
         connected: String? = null,
         onViewConnectedTransfers: () -> Unit = {},
-        onDisconnect: () -> Unit = {}
+        onDisconnect: () -> Unit = {},
+        fontScale: Float = 1f
     ) {
         rule.setContent {
+            val baseDensity = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(baseDensity.density, fontScale)) {
             ChunksTheme {
                 ConnectionScreen(
                     endpoint = "", username = "", password = "",
@@ -55,6 +66,7 @@ class ConnectionsRemoteIntroTest {
                     onEndpoint = {}, onUsername = {},
                     onPassword = {}, onConnect = {}
                 )
+            }
             }
         }
     }
@@ -140,6 +152,27 @@ class ConnectionsRemoteIntroTest {
         assertEquals(0, disconnect)
         rule.onNodeWithText("Disconnect").performClick()
         assertEquals(1, disconnect)
+    }
+
+    @Test
+    @Config(qualifiers = "w320dp-h700dp-mdpi")
+    fun duplicateProfileActionsStaySideBySideAndSpeakTheirExactRouteAt200Percent() {
+        val profile = RememberedRemoteProfileRoster.Profile(
+            id = RememberedRemoteProfileRoster.identityOf("https://server.test/rutorrent2/RPC2", "one"),
+            label = "Studio",
+            credentials = RemoteCredentials("https://server.test/rutorrent2/RPC2", "one", "example-only")
+        )
+        render(profiles = listOf(profile), onViewTransfers = {}, fontScale = 2f)
+        val view = "View transfers for saved " + profile.label + " on " + profile.address
+        val login = "Use saved login for " + profile.label + " on " + profile.address
+        rule.onNode(hasScrollToIndexAction())
+            .performScrollToNode(hasContentDescription(view))
+        val viewBounds = rule.onNodeWithContentDescription(view).getUnclippedBoundsInRoot()
+        val loginBounds = rule.onNodeWithContentDescription(login).getUnclippedBoundsInRoot()
+        org.junit.Assert.assertTrue("saved client actions remain on one row at 320dp/200%",
+            viewBounds.top == loginBounds.top && viewBounds.right <= loginBounds.left)
+        org.junit.Assert.assertTrue("exact-route TalkBack controls retain 48dp touch targets",
+            listOf(viewBounds, loginBounds).all { it.bottom - it.top >= 48.dp })
     }
 
 }
