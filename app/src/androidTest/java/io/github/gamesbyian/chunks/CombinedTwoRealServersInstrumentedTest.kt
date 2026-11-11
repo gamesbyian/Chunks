@@ -178,10 +178,13 @@ class CombinedTwoRealServersInstrumentedTest {
         assumeTrue("Requires the two-disposable-server workflow phase 2",
             args.getString("chunks_combined_phase") == "after-process-death")
         val urlB = decoded("chunks_combined_b_b64")
-        val before = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
-            .map { it.hash to it.started }.toSet()
+        val observedBefore = runBlocking {
+            RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main")
+        }
+        assertTrue("Only a verified real B transfer can anchor the restored view", observedBefore.isNotEmpty())
+        val before = observedBefore.map { it.hash to it.started }.toSet()
         ActivityScenario.launch(MainActivity::class.java).use {
-            enterConnectedQueueIfCombined(before.first().name)
+            enterConnectedQueueIfCombined(observedBefore.first().name)
             waitFor("reconnect after process death", 90_000) { connectedQueue() }
             assertTrue(!visible("Seedbox hostname, ruTorrent URL or RPC address"))
             stage("process-death-reconnected")
