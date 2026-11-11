@@ -121,6 +121,9 @@ class RemoteAddSessionContinuityTest {
         rule.runOnIdle { showing.value = false }
         rule.runOnIdle { showing.value = true }
         reveal("test.txt")
+        // The lazy form composes the submit action only when scrolled near it.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT))
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertExists()
         reveal("Add transfer")
         
