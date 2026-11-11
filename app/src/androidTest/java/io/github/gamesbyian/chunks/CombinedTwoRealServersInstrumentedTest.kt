@@ -242,7 +242,13 @@ class CombinedTwoRealServersInstrumentedTest {
             stage("connected-b")
 
             rule.onAllNodesWithText("All environments…")[0].performClick()
-            waitFor("Combined view") { visible("All environments") && !visible("All environments…") }
+            waitFor("canonical Combined-derived Transfers browser") {
+                // The catalog's actual heading is now "Transfers"; the old
+                // "All environments" screen name belonged to the legacy fork.
+                // Require its unique search control and absence of the old
+                // switch before verifying the four-row real-account union.
+                visible("Search names or hashes") && !visible("All environments…")
+            }
             stage("combined-open")
             scrollTo("Load other saved servers (read-only)")
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
