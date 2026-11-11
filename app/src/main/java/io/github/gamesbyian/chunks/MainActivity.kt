@@ -310,6 +310,21 @@ internal fun ChunksApp(
         // owner to mount. Combined is a read-only list, not a reconnect executor.
         mutableStateOf(if (remembered == null) Section.COMBINED else Section.SERVER)
     }
+    // Restored canonical Transfers cannot itself run an authenticated Connect.
+    // Delegate exactly one eligible cold-start attempt to existing Connections,
+    // preserving its identity/credential epoch, cancel and read-only contracts.
+    LaunchedEffect(section, remembered, rememberLogin, startupReconnectAttempted, server) {
+        if (NavigationRestorePolicy.requiresColdReconnectHandoff(
+                section = section.name,
+                savedCredentialPresent = remembered != null,
+                rememberingEnabled = rememberLogin,
+                alreadyAttempted = startupReconnectAttempted,
+                authenticated = server != null
+            )) {
+            section = Section.SERVER
+        }
+    }
+
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
