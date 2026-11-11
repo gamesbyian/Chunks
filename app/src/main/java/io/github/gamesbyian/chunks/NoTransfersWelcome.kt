@@ -43,6 +43,16 @@ internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: (() -> Unit)?)
     }
 }
 
+/**
+ * A verified login retained in the legacy vault is a configured remote client
+ * even before the asynchronously loaded roster contains its profile. Passing
+ * only its presence prevents an incorrect first-install declaration without
+ * granting the browser access to credentials or an RPC session.
+ */
+internal fun configuredRemoteForWelcome(
+    connected: Boolean, hasRosterProfile: Boolean, hasRememberedVaultLogin: Boolean
+): Boolean = connected || hasRosterProfile || hasRememberedVaultLogin
+
 /** An initial/stale/filtered empty list is not evidence of an unused setup. */
 internal fun showPhoneFirstRunWelcome(
     inventoryConfirmed: Boolean,
