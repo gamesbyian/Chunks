@@ -518,6 +518,16 @@ internal fun ChunksApp(
         magnet = source
         remoteAddSessions.selectMagnet(aliasScope)
     }
+    /**
+     * An explicitly chosen .torrent is the newest source and replaces any older typed magnet:
+     * Universal Add holds one source, and a stale valid magnet would otherwise make
+     * [selectAuthenticatedAddTarget] discard the document the user just picked.
+     */
+    fun prepareRemoteTorrent(document: ByteArray) {
+        remoteAddSessions.clearPendingSourceSelection()
+        magnet = ""
+        serverHandoffTorrent = document
+    }
     var aliasRevision by remember { mutableStateOf(0) }
     // Purely derive the configured identities during composition. SharedPreferences
     // writes must happen after composition, off the main thread, and only when
@@ -1271,8 +1281,7 @@ internal fun ChunksApp(
                         section = Section.TRANSFERS
                     },
                     onPrepareRemoteTorrent = { document ->
-                        remoteAddSessions.clearPendingSourceSelection()
-                        serverHandoffTorrent = document
+                        prepareRemoteTorrent(document)
                         section = Section.TRANSFERS
                     }
                 )
@@ -1732,8 +1741,7 @@ internal fun ChunksApp(
                             selectAuthenticatedAddTarget()
                         },
                         onPrepareRemoteTorrent = { document ->
-                            remoteAddSessions.clearPendingSourceSelection()
-                            serverHandoffTorrent = document
+                            prepareRemoteTorrent(document)
                             selectAuthenticatedAddTarget()
                         }
                     )
@@ -1995,8 +2003,7 @@ internal fun ChunksApp(
                             busyEngine = loading,
                             mutationGeneration = snapshotRevision,
                             onPrepareAdd = { document ->
-                                remoteAddSessions.clearPendingSourceSelection()
-                                serverHandoffTorrent = document
+                                prepareRemoteTorrent(document)
                                 selectAuthenticatedAddTarget()
                             },
                             onPrepareMagnet = { link ->
