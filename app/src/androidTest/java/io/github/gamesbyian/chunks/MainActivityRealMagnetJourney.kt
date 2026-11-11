@@ -617,14 +617,13 @@ internal class MainActivityRealMagnetJourney(
                 report("chunks_real_add_app_stage", "click-after-back")
                 refreshAndFind(hash)
                 report("chunks_real_add_app_stage", "click-found-by-hash")
-                // Names (numbers only) why the original name could not be located.
-                runCatching { scroll(preview.name) }.onFailure {
-                    val rows = rule.onAllNodes(hasContentDescription("Details for ", substring = true))
-                        .fetchSemanticsNodes().size
-                    report("chunks_real_add_app_stage", "click-name-missing-rows-$rows")
-                    throw it
-                }
-                assertTrue("Actual Transfers lost original metadata name", visible(preview.name))
+                // The compact row's accessible name is "Details for <display name> on <environment>",
+                // so the original metadata name is asserted through that stable semantics rather than
+                // a literal text node (the title Text overrides its own description when merged).
+                val named = hasContentDescription("Details for " + preview.name, substring = true)
+                rule.waitUntil(30_000) { rule.onAllNodes(named).fetchSemanticsNodes().isNotEmpty() }
+                assertTrue("Actual Transfers lost original metadata name",
+                    rule.onAllNodes(named).fetchSemanticsNodes().size == 1)
                 assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
                 if (!combinedDetailsVerified) {
                     inspectCombinedDetails(hash, preview.name, payload.directory)
