@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks.visual
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import io.github.gamesbyian.chunks.MainActivity
@@ -13,16 +15,19 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Phone search is navigation state that survives Activity recreation (rotation). */
+/** Canonical catalog search survives Activity recreation; empty Welcome hides unused phone search. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
 class PhoneSearchRecreationTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    @Test fun phoneSearchSurvivesRecreation() {
+    @Test fun catalogSearchSurvivesRecreationAfterWelcome() {
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Search transfers on this device"))
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("Transfers").performClick()
+        rule.waitForIdle()
+        rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
             .performScrollTo().performTextInput("debian")
         rule.activityRule.scenario.recreate()
         rule.waitForIdle()
