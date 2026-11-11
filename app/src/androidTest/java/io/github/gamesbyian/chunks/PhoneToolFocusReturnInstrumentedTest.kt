@@ -6,6 +6,8 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -28,15 +30,16 @@ import org.junit.runner.RunWith
 class PhoneToolFocusReturnInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private fun phone() = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
-
+    // A fresh install opens on the evidence-gated Welcome, not the device pane. The
+    // capability under test (keyboard focus returns after leaving an Options tool) only
+    // needs the persistent footer's Options root, found by its stable id.
     private fun waitForPhone() = rule.waitUntil(20_000) {
-        rule.onAllNodes(phone()).fetchSemanticsNodes().isNotEmpty()
+        rule.onAllNodesWithTag(ChunksSemantics.FOOTER_OPTIONS).fetchSemanticsNodes().isNotEmpty()
     }
 
     private fun keyboardReturn(button: String, paneTitle: String) {
         waitForPhone()
-        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_TAB)
         rule.waitForIdle()
         rule.onNode(hasText(button) and hasClickAction()).performScrollTo()
