@@ -335,6 +335,9 @@ internal fun LocalEngineScreen(
     addFolderState: androidx.compose.runtime.MutableState<String>? = null,
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    /** Shared source-first Add target selector, embedded without creating a second route. */
+    addDestinationPicker: (@Composable () -> Unit)? = null,
+    externalSourceReading: Boolean = false,
     /** Reviewed .torrent bytes outlive phone screen navigation, never Activity/process recreation. */
     pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null,
     /** App-owned process-only attempt/reconciliation authority, injected by Agent 5. */
@@ -466,10 +469,14 @@ internal fun LocalEngineScreen(
         problemOutcome = text
     }
     var busy by remember { mutableStateOf(false) }
+    // Parent-owned private source is available to all intake callbacks, including
+    // the asynchronous picker. Keep it in RAM rather than Android SavedState.
+    val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
+    var magnet by magnetHolder
     // One cancellable source-read owner, shared by picker, Android handoff and
     // HTTPS intake. Cancellation is read-only; it never consumes a queued URI.
     var sourceReadJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
-    val sourceReading = sourceReadJob != null
+    val sourceReading = sourceReadJob != null || externalSourceReading
     fun cancelSourceRead() {
         val obsolete = sourceReadJob
         sourceReadJob = null
@@ -490,6 +497,9 @@ internal fun LocalEngineScreen(
             val reviewed = withContext(Dispatchers.IO) { SharedTorrentDocument.read(context.contentResolver, uri) }
             if (sourceReadJob !== read) return null
             pending = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+            // The independently validated user-selected document supersedes
+            // a previously typed URL/magnet only after a successful read.
+            magnet = ""
             message = if (shared) "Shared torrent reviewed locally. Confirm its destination and Add below."
                 else "Torrent reviewed locally. Confirm its destination and Add below."
             return true
@@ -533,11 +543,13 @@ internal fun LocalEngineScreen(
     }
     val addKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val addFocus = androidx.compose.ui.platform.LocalFocusManager.current
-    val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
-    var magnet by magnetHolder
     fun selectTextSource(value: String) {
         cancelSourceRead()
         initialTorrentUri?.let(onTorrentConsumed)
+        // A complete, explicitly entered magnet outranks a previously
+        // reviewed document. For a typed URL, keep the validated document
+        // until a new fetched candidate independently validates.
+        if (MagnetDraftCheck.inspect(value) is MagnetDraftCheck.Valid) pending = null
         magnet = value
     }
     // A kept draft reopens its form on return, rather than hiding it.
@@ -965,7 +977,7 @@ internal fun LocalEngineScreen(
             message?.let { PhoneOutcomeNotice(it, needsAttention = problemOutcome == it) }
         }
         if (pane == PhonePane.ADD) {
-        Text("Add on this device", style = MaterialTheme.typography.titleLarge,
+        Text("Add a transfer", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         phoneAddAttemptSession?.attemptedTicket?.let {
             val phase = phoneAddAttemptSession.coordinator.phase
@@ -1012,19 +1024,16 @@ internal fun LocalEngineScreen(
             }
         }
         if (addExpanded || pane == PhonePane.ADD) {
-        Text("Add a download on this device", style = MaterialTheme.typography.titleMedium,
+        Text("Torrent source", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.bringIntoViewRequester(addRequester)
                 .semantics { heading() })
-        ActionTile("Choose .torrent file", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
-            enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null,
-            modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
         val magnetCheck = remember(magnet) { MagnetDraftCheck.inspect(magnet) }
         // A web link is a different source: fetched only on request, then reviewed as a .torrent.
         val linkCheck = remember(magnet) { TorrentLinkCheck.inspect(magnet) }
         val isLink = linkCheck !is TorrentLinkCheck.NotALink
         OutlinedTextField(value = magnet, onValueChange = { selectTextSource(it.trim()) },
             enabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
-            label = { Text("Or paste a magnet or torrent link") }, singleLine = true,
+            label = { Text("Magnet or HTTP(S) torrent URL") }, singleLine = true,
             isError = if (isLink) linkCheck is TorrentLinkCheck.Problem else magnetCheck is MagnetDraftCheck.Problem,
             // Autocorrect must never rewrite a magnet's hash or trackers.
             keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
@@ -1032,7 +1041,10 @@ internal fun LocalEngineScreen(
                 autoCorrectEnabled = false,
                 imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             modifier = Modifier.fillMaxWidth())
-        if (magnet.isEmpty()) PasteMagnetButton(
+        ActionTile("Open .torrent", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
+            enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null,
+            modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
+        PasteMagnetButton(
             enabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
             onPaste = { selectTextSource(it) },
             onNothingToPaste = { message = "The clipboard has no text to paste. Copy a magnet or torrent link first." })
@@ -1075,6 +1087,80 @@ internal fun LocalEngineScreen(
             "Seeding: your phone Seeding rules choose a policy when this magnet's metadata " +
                 "arrives (its trackers and private flag are known then); otherwise the phone default applies.",
             style = MaterialTheme.typography.bodySmall)
+        addDestinationPicker?.invoke()
+        // Save to is a primary Add choice, above Start and submission.
+        // Keep both intake methods discoverable before optional storage, seeding
+        // and engine explanations. Existing Place and safety gates remain authoritative.
+        LocalDownloadPlacePicker(
+            resolution = addPlaceResolution,
+            enabled = !busy && !inventoryStale && !placeSaving &&
+                phoneAddAttemptSession?.attemptedTicket == null,
+            currentAdd = true,
+            defaultResolution = placeResolution,
+            onChoose = { choice -> currentAddPlaceId = LocalAddPlacePolicy.identity(choice.place) },
+            onUseDefault = { currentAddPlaceId = null },
+            onSaveDefault = { choice ->
+                placeSaving = true
+                scope.launch {
+                    val saved = withContext(Dispatchers.IO) {
+                        try {
+                            // Recheck the exact root, including removable-volume identity.
+                            LocalDownloadPlaces.choices(context).singleOrNull {
+                                LocalAddPlacePolicy.identity(it.place) == LocalAddPlacePolicy.identity(choice.place) && it.verified
+                            }?.let { LocalDownloadPlaces.remember(context, it) } == true
+                        } catch (_: Exception) { false }
+                    }
+                    if (saved) {
+                        placeCheck++
+                        message = "Phone default saved for future Adds. Existing transfers keep their files where they are."
+                    } else noteProblem("That download location could not be saved. Check phone download locations before trying again.")
+                    placeSaving = false
+                }
+            },
+            onUseAutomatic = {
+                placeSaving = true
+                scope.launch {
+                    val forgotten = withContext(Dispatchers.IO) {
+                        try { LocalDownloadPlaces.forget(context) } catch (_: Exception) { false }
+                    }
+                    if (forgotten) {
+                        placeCheck++
+                        message = "New phone downloads use the automatic location. Existing transfers keep their files where they are."
+                    } else noteProblem("The saved download location could not be cleared. Check phone download locations before trying again.")
+                    placeSaving = false
+                }
+            },
+            onRequestStoragePermission = {
+                storagePermission.launch(LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS)
+            }
+        )
+        OutlinedTextField(
+            value = addFolderDraft,
+            onValueChange = { addFolderDraft = it },
+            label = { Text("Optional phone download subfolder") },
+            placeholder = { Text("Leave blank for Chunks default") },
+            singleLine = true,
+            // A folder name is typed exactly: no autocorrect or auto-capitalisation.
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+            // Only the typed name can be wrong; an unresolved download location is
+            // reported separately ("Checking where this phone can save…").
+            isError = addFolderNameInvalid,
+            enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text("Optional. Leave blank to save directly in the download location above. " +
+            "A nonempty folder is refused; nothing is created until Add is confirmed.",
+            style = MaterialTheme.typography.bodySmall)
+        if (addFolderNameInvalid)
+            Text("Use one plain folder name, without slashes, dot-prefixed names, " +
+                "control characters or path traversal.",
+                color = MaterialTheme.colorScheme.error)
+        else if (proposedAddDestination != null)
+            Text("Planned local Place: " + proposedAddDestination.absolutePath,
+                style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
             .toggleable(value = startAfterAdd,
                 enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
@@ -1083,7 +1169,7 @@ internal fun LocalEngineScreen(
             Checkbox(checked = startAfterAdd,
                 enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
                 onCheckedChange = null)
-            Text("Start downloading after Add (recommended)", modifier = Modifier.padding(start = 8.dp))
+            Text("Start when added", modifier = Modifier.padding(start = 8.dp))
         }
         AddArtworkChoice(automaticArtwork,
             enabled = !busy && phoneAddAttemptSession?.attemptedTicket == null) { automaticArtwork = it }
@@ -1104,7 +1190,7 @@ internal fun LocalEngineScreen(
                 },
                 opensOptions = onOpenOptions != null
             )
-            ActionTile(if (startAfterAdd) "Add magnet and start" else "Add magnet (metadata only)",
+            ActionTile("Add transfer",
                 ChunksColors.Purple, icon = R.drawable.chunks_ic_magnet, stacked = false, onClick = {
                 if (sourceReadJob != null) return@ActionTile
                 // Submitting closes the keyboard, so the form's collapse is not
@@ -1225,79 +1311,8 @@ internal fun LocalEngineScreen(
                 phoneAddAttemptSession?.attemptedTicket == null,
                 modifier = Modifier.fillMaxWidth())
         }
-        // Keep both intake methods discoverable before optional storage, seeding
-        // and engine explanations. Existing Place and safety gates remain authoritative.
+        // Engine/network explanation is optional, after actual Add selections.
         PhoneEngineAbout()
-        LocalDownloadPlacePicker(
-            resolution = addPlaceResolution,
-            enabled = !busy && !inventoryStale && !placeSaving &&
-                phoneAddAttemptSession?.attemptedTicket == null,
-            currentAdd = true,
-            defaultResolution = placeResolution,
-            onChoose = { choice -> currentAddPlaceId = LocalAddPlacePolicy.identity(choice.place) },
-            onUseDefault = { currentAddPlaceId = null },
-            onSaveDefault = { choice ->
-                placeSaving = true
-                scope.launch {
-                    val saved = withContext(Dispatchers.IO) {
-                        try {
-                            // Recheck the exact root, including removable-volume identity.
-                            LocalDownloadPlaces.choices(context).singleOrNull {
-                                LocalAddPlacePolicy.identity(it.place) == LocalAddPlacePolicy.identity(choice.place) && it.verified
-                            }?.let { LocalDownloadPlaces.remember(context, it) } == true
-                        } catch (_: Exception) { false }
-                    }
-                    if (saved) {
-                        placeCheck++
-                        message = "Phone default saved for future Adds. Existing transfers keep their files where they are."
-                    } else noteProblem("That download location could not be saved. Check phone download locations before trying again.")
-                    placeSaving = false
-                }
-            },
-            onUseAutomatic = {
-                placeSaving = true
-                scope.launch {
-                    val forgotten = withContext(Dispatchers.IO) {
-                        try { LocalDownloadPlaces.forget(context) } catch (_: Exception) { false }
-                    }
-                    if (forgotten) {
-                        placeCheck++
-                        message = "New phone downloads use the automatic location. Existing transfers keep their files where they are."
-                    } else noteProblem("The saved download location could not be cleared. Check phone download locations before trying again.")
-                    placeSaving = false
-                }
-            },
-            onRequestStoragePermission = {
-                storagePermission.launch(LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS)
-            }
-        )
-        OutlinedTextField(
-            value = addFolderDraft,
-            onValueChange = { addFolderDraft = it },
-            label = { Text("Optional phone download subfolder") },
-            placeholder = { Text("Leave blank for Chunks default") },
-            singleLine = true,
-            // A folder name is typed exactly: no autocorrect or auto-capitalisation.
-            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
-                autoCorrectEnabled = false,
-                imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-            // Only the typed name can be wrong; an unresolved download location is
-            // reported separately ("Checking where this phone can save…").
-            isError = addFolderNameInvalid,
-            enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text("Optional. Leave blank to save directly in the download location above. " +
-            "A nonempty folder is refused; nothing is created until Add is confirmed.",
-            style = MaterialTheme.typography.bodySmall)
-        if (addFolderNameInvalid)
-            Text("Use one plain folder name, without slashes, dot-prefixed names, " +
-                "control characters or path traversal.",
-                color = MaterialTheme.colorScheme.error)
-        else if (proposedAddDestination != null)
-            Text("Planned local Place: " + proposedAddDestination.absolutePath,
-                style = MaterialTheme.typography.bodySmall)
         if (magnet.isNotEmpty() && destination != null) {
             FinishInOrderAddChoice(
                 "Finish in Order once the file list arrives (episodes or numbered files)",
@@ -1421,6 +1436,10 @@ internal fun LocalEngineScreen(
         }
 
         val add = pending
+        if (add != null && magnet.isNotBlank()) {
+            Text("A newer torrent source is entered. Resolve or clear it before adding the previously selected .torrent.",
+                style = MaterialTheme.typography.bodySmall)
+        }
         if (add != null && destination == null) {
             Text("Selected .torrent: " + add.preview.name, fontWeight = FontWeight.Bold)
         }
@@ -1457,14 +1476,15 @@ internal fun LocalEngineScreen(
         if (add != null && destination != null) LocalAddReview(
             add.preview, proposedAddDestination ?: destination,
             placeTitle = place?.title,
-            busy = busy || sourceReading || !addInventoryReady || placeSaving || proposedAddDestination == null ||
+            busy = busy || !phoneReviewedMetainfoIsCurrent(magnet, sourceReading) ||
+                !addInventoryReady || placeSaving || proposedAddDestination == null ||
                 phoneAddAttemptSession?.attemptedTicket != null,
             startAfterAdd = startAfterAdd,
             cancelEnabled = !busy && phoneAddAttemptSession?.attemptedTicket == null,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             seeding = seedingPreview,
             onConfirm = confirm@{
-                if (sourceReadJob != null || pending !== add) return@confirm
+                if (!phoneReviewedMetainfoIsCurrent(magnet, sourceReading) || pending !== add) return@confirm
                 if (PhoneUniversalAddAdapter.alreadyPresentInFreshInventory(
                         add.preview.infoHashV1, transfers, hasConfirmedLocalInventory && !inventoryStale)) {
                     noteProblem("This exact torrent already exists on this phone. No second Add was sent. Open its transfer card instead.")
@@ -2785,7 +2805,7 @@ internal fun LocalAddReview(
 ) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Review download", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+            Text("Torrent details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
                 modifier = Modifier.semantics { heading() })
             Text(preview.name, fontWeight = FontWeight.Bold)
             Text(preview.fileCount.toString() + (if (preview.fileCount == 1) " file, " else " files, ") +
@@ -2848,7 +2868,7 @@ internal fun LocalAddReview(
             if (preview.trackerCount == 0) Text("This torrent lists no tracker, so peers can only be found through DHT (if turned on) or its web sources.",
                 color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text(if (startAfterAdd) "Add and start downloading" else "Add stopped")
+                Text("Add transfer")
             }
             OutlinedButton(onClick = onCancel, enabled = cancelEnabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Cancel") }
         }
