@@ -38,6 +38,9 @@ class ChunksMedia private constructor(context: Context) {
     private val http = UrlConnectionMediaHttp()
     private val queryCache by lazy { FileMediaQueryCache(File(app.filesDir, "media/queries.json")) }
     private val artworkDisk by lazy { ArtworkDiskCache(File(app.cacheDir, "media-art")) }
+    // Android may purge cacheDir at any time; user-imported images must survive it.
+    // Older selections remain readable from cacheDir and are migrated on first use.
+    private val importedArtworkDisk by lazy { ArtworkDiskCache(File(app.filesDir, "media/imported-art")) }
     val providers: List<MediaMetadataProvider> = listOf(TvMazeProvider(), TmdbProvider { settingsStore.tmdbCredential() },
         WikidataProvider(), MusicBrainzProvider(), OpenLibraryProvider(), AniListProvider())
     private val service by lazy { MediaEnrichmentService(providers, http, lazyCache()) }
@@ -51,7 +54,7 @@ class ChunksMedia private constructor(context: Context) {
                 // Provider disable is a network revocation, including stored matches. Cached
                 // derivatives still load offline because ArtworkRepository checks disk first.
                 byId[id]?.info?.takeIf { currentSettings().providerOn(it) }?.artworkHostPolicy
-            }),
+            }, importedDisk = importedArtworkDisk),
             storeFactory = { FileTransferMediaAssignmentStore(File(app.filesDir, "media/assignments.json")) },
             settings = { currentSettings() },
             network = { networkState() },
@@ -145,7 +148,8 @@ class ChunksMedia private constructor(context: Context) {
     }
 
     // Metadata cache deletion shares the enrichment service lock with provider result writes.
-    fun clearAllMediaData() = controller.clearAllMediaData({ service.clearLookupHistory() }, { artworkDisk.clear() })
+    fun clearAllMediaData() = controller.clearAllMediaData({ service.clearLookupHistory() },
+        { artworkDisk.clear(); importedArtworkDisk.clear() })
 
     /** Off main thread: a short, title-free summary for settings. */
     fun cacheSummary(): String {
