@@ -72,7 +72,7 @@ import kotlinx.coroutines.withContext
  * Metainfo and attempted outcomes stay in the parent session's process memory only.
  */
 @Composable
-fun VerifiedAddScreen(
+internal fun VerifiedAddScreen(
     remote: RTorrentRemote,
     magnet: String,
     destination: String,
@@ -112,6 +112,10 @@ fun VerifiedAddScreen(
     },
     clipboardTextReader: (android.content.Context) -> String? = { context ->
         ClipboardMagnetPrefill.readText(context)
+    },
+    /** Read-only injectable HTTPS intake for deterministic stalled-request UI tests. */
+    fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
+        withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
     }
 ) {
     val context = LocalContext.current
@@ -132,6 +136,7 @@ fun VerifiedAddScreen(
     // A newer Android share/phone edit cannot change the displayed recovery identity.
     val sourceText = draft.attemptSource ?: magnet
     val currentSource = rememberUpdatedState(magnet)
+    val latestExternalSourceReading = rememberUpdatedState(externalSourceReading)
     DisposableEffect(draft) {
         onDispose {
             if (draft.alreadyAttempted && draft.reportedVerifiedHash == null)
@@ -252,6 +257,7 @@ fun VerifiedAddScreen(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && !choosing && !submitting && !alreadyAttempted) {
             choosing = true
+            val sourceWitness = RemoteAddSourceReadWitness(currentSource.value, selectedBytes, useFile)
             // Preserve an existing reviewed .torrent until the replacement
             // has been fully read and validated. An invalid provider document
             // must not erase the user's working Add draft.
@@ -267,6 +273,11 @@ fun VerifiedAddScreen(
                             context.contentResolver, uri)
                         reviewed.preview to reviewed.bytes
                     }
+                    if (alreadyAttempted || submitting ||
+                        !sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
+                        fileError = "The source changed while opening the .torrent. Your newer choice was kept."
+                        return@launch
+                    }
                     selectedTorrent = result.first
                     selectedBytes = result.second
                     draft.textAtFileSelection = magnet
@@ -275,8 +286,11 @@ fun VerifiedAddScreen(
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
-                    fileError = "Could not open that .torrent (unsupported v1 metainfo or size limit)." +
-                        if (selectedTorrent != null) " Your previous .torrent remains selected." else ""
+                    if (!alreadyAttempted && !submitting &&
+                        sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
+                        fileError = "Could not open that .torrent (unsupported v1 metainfo or size limit)." +
+                            if (selectedTorrent != null) " Your previous .torrent remains selected." else ""
+                    }
                 } finally {
                     choosing = false
                 }
@@ -396,15 +410,30 @@ fun VerifiedAddScreen(
             if (clipboardFilled != null && sourceText == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
                 onClear = { onMagnet(""); clipboardFilled = null }, enabled = !submitting)
             if (!useFile && linkCheck !is TorrentLinkCheck.NotALink) TorrentLinkPanel(linkCheck,
-                fetching = linkFetching, enabled = !submitting && !choosing && !alreadyAttempted,
-                onFetch = { link ->
-                    val requestedSource = magnet
+                fetching = linkFetching,
+                enabled = !submitting && !choosing && !alreadyAttempted && !externalSourceReading,
+                onFetch = fetch@{ link ->
+                    // The button's composed URI may lag a newer text edit by
+                    // one frame. Freeze the URL actually requested, including
+                    // its signed query, and refuse the obsolete click *before*
+                    // any network access rather than binding it to new text.
+                    val sourceWitness = RemoteAddSourceReadWitness(
+                        link.uri.toString(), selectedBytes, useFile)
+                    if (latestExternalSourceReading.value ||
+                        !sourceWitness.stillSelected(
+                            currentSource.value.trim(), selectedBytes, useFile)) {
+                        fileError = "The draft changed before fetching. Your newer source was kept."
+                        return@fetch
+                    }
                     linkFetching = true
                     scope.launch {
                         try {
-                            when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
+                            when (val result = fetchTorrentLink(link)) {
                                 is TorrentLinkResult.Fetched -> {
-                                    if (alreadyAttempted || submitting || currentSource.value != requestedSource) {
+                                    if (alreadyAttempted || submitting || choosing ||
+                                        latestExternalSourceReading.value ||
+                                        !sourceWitness.stillSelected(
+                                            currentSource.value.trim(), selectedBytes, useFile)) {
                                         fileError = "The draft changed while fetching. The current source was kept."
                                         return@launch
                                     }
@@ -420,7 +449,15 @@ fun VerifiedAddScreen(
                                     clipboardFilled = null
                                     onMagnet("")
                                 }
-                                is TorrentLinkResult.Refused -> fileError = result.message
+                                is TorrentLinkResult.Refused -> {
+                                    // A refused old URL must not pollute a newer
+                                    // explicitly selected source with its error.
+                                    if (!alreadyAttempted && !submitting && !choosing &&
+                                        !latestExternalSourceReading.value &&
+                                        sourceWitness.stillSelected(
+                                            currentSource.value.trim(), selectedBytes, useFile))
+                                        fileError = result.message
+                                }
                             }
                         } finally {
                             linkFetching = false

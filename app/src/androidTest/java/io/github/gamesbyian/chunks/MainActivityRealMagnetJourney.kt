@@ -582,10 +582,26 @@ internal class MainActivityRealMagnetJourney(
                 assertEquals("Restart altered registered transfer name", preview.name, restartedRow.name)
                 if (!publicDiscovery) controller("/$label/resume", source.listenPort)
                 val completeBeforeRestart = publicDiscovery && stopped.verifiedBytes == stopped.expectedBytes
-                if (!completeBeforeRestart) await(90, "progress before restart") {
-                    val sample = readOnly { remote.readTrafficSample(hash) }
-                    (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
-                        (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
+                if (!completeBeforeRestart) {
+                    try {
+                        await(90, "progress before restart") {
+                            val sample = readOnly { remote.readTrafficSample(hash) }
+                            (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
+                                (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
+                        }
+                    } catch (timeout: AssertionError) {
+                        // Unlike the initial peer-progress timeout, the resume
+                        // checkpoint previously discarded the exact remote
+                        // counters and status. Preserve only allowlisted
+                        // numbers and no-path/no-tracker state classifications,
+                        // while the originally observed exact job still exists.
+                        // These READS are never grounds for a retry or success.
+                        runCatching {
+                            traffic(label, "resumed", readOnly { remote.readTrafficSample(hash) })
+                        }
+                        reportReadOnlyStall(label, remote, hash)
+                        throw timeout
+                    }
                 }
                 traffic(label, "resumed", readOnly { remote.readTrafficSample(hash) })
                 stage(label, "restarted")

@@ -605,7 +605,13 @@ internal fun ChunksApp(
     // original selected draft and never reaches either Add executor.
     LaunchedEffect(incomingDocumentRead) {
         val document = incomingDocumentRead ?: return@LaunchedEffect
-        val sourceBeforeRead = magnet
+        val witness = IncomingDocumentSelectionWitness(
+            text = magnet,
+            phoneDocument = phoneReviewedTorrent.value,
+            remoteHandoff = serverHandoffTorrent,
+            remoteSession = aliasScope.takeIf { it.isNotBlank() }
+                ?.let(remoteAddSessions::forAccount)
+        )
         sharedTorrentReading = true
         sharedTorrentError = null
         var cancelledByLifecycle = false
@@ -613,7 +619,11 @@ internal fun ChunksApp(
             val reviewed = withContext(Dispatchers.IO) {
                 SharedTorrentDocument.read(context.contentResolver, document)
             }
-            if (incomingDocumentRead == document && magnet == sourceBeforeRead) {
+            val currentRemoteDraft = aliasScope.takeIf { it.isNotBlank() }
+                ?.let(remoteAddSessions::forAccount)
+            if (incomingDocumentRead == document && witness.canApply(
+                    magnet, phoneReviewedTorrent.value, serverHandoffTorrent,
+                    currentRemoteDraft)) {
                 phoneReviewedTorrent.value = PendingLocalAdd(reviewed.preview, reviewed.bytes)
                 serverHandoffTorrent = if (addUsingAuthenticatedRemote && server != null &&
                     RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
