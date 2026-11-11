@@ -53,6 +53,36 @@ class RemoteMutationReadbackGateTest {
         assertTrue(gate.tryStart())
     }
 
+    @Test fun provenIdleReleasesOnlyItsOwnNoWriteLease() {
+        val gate = RemoteMutationReadbackGate()
+        val beforeIdle = gate.ticket()
+        assertTrue(gate.tryStart())
+        val overlappingRead = gate.ticket()
+        assertFalse(gate.tryStart())
+
+        gate.abandonKnownNoWrite()
+        assertFalse("An old snapshot must not inherit an idle lease", gate.accepts(beforeIdle))
+        assertFalse("A read acquired while idle work ran is obsolete", gate.accepts(overlappingRead))
+        assertTrue("A positively idle tick cannot lock out later Start/Stop", gate.tryStart())
+
+        gate.settled() // This second attempt could have actually written.
+        assertFalse("A real/uncertain write still requires fresh readback", gate.tryStart())
+        assertTrue(gate.acceptFreshRead(gate.ticket()))
+        assertTrue(gate.tryStart())
+    }
+
+    @Test fun noWriteAbortCannotClearASettledUncertainMutation() {
+        val gate = RemoteMutationReadbackGate()
+        assertTrue(gate.tryStart())
+        gate.settled()
+        val afterWrite = gate.ticket()
+        gate.abandonKnownNoWrite()
+        assertTrue("A later no-op abort must not invalidate readback", gate.accepts(afterWrite))
+        assertFalse("Uncertain write cannot be retried without a read", gate.tryStart())
+        assertTrue(gate.acceptFreshRead(afterWrite))
+        assertTrue(gate.tryStart())
+    }
+
     @Test fun reconnectionInvalidatesOldResponsesAndAllowsNewWrites() {
         val gate = RemoteMutationReadbackGate()
         assertTrue(gate.tryStart())
