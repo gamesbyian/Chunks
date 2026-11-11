@@ -39,12 +39,25 @@ class HttpsPhoneAddJourneyInstrumentedTest {
     }
     private fun read(path: String, limit: Int): ByteArray {
         require(path in setOf("/ready", "/magnet3.torrent", "/magnet3.seed.torrent", "/magnet3.piece"))
-        val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
-        connection.connectTimeout = 5_000; connection.readTimeout = 30_000
-        try {
-            check(connection.responseCode == 200)
-            return connection.inputStream.use { it.readNBytes(limit + 1) }.also { require(it.size <= limit) }
-        } finally { connection.disconnect() }
+        // Idempotent GET against the runner's own controller: a bounded retry rides out a
+        // controller or adb-reverse hiccup; a persistent failure still fails and names the status.
+        var last = "no attempt"
+        val end = System.nanoTime() + 30_000_000_000
+        do {
+            val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
+            connection.connectTimeout = 5_000; connection.readTimeout = 30_000
+            try {
+                val code = connection.responseCode
+                if (code == 200) {
+                    return connection.inputStream.use { it.readNBytes(limit + 1) }.also { require(it.size <= limit) }
+                }
+                last = "http $code"
+            } catch (io: java.io.IOException) {
+                last = io.javaClass.simpleName
+            } finally { connection.disconnect() }
+            Thread.sleep(1_000)
+        } while (System.nanoTime() < end)
+        throw IllegalStateException("controller read $path failed: $last")
     }
     private fun await(what: String, detail: () -> String = { "" }, condition: () -> Boolean) {
         val end = System.nanoTime() + 90_000_000_000
