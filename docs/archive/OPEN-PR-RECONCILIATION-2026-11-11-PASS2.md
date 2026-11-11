@@ -61,3 +61,37 @@ A cloud sandbox can run JVM tests without CI: install Android command-line tools
 2. Port #1594, #1611, #1546, then guarded Details (#1534, #1565, #1566) onto #1644 one at a time, each with its tests, per the table above.
 3. Close #1638 as redundant; close #1641-#1643, #1637, #1587 and the older stacks only after their unique tests are confirmed on the accepted tree.
 4. Independent review and an installed real-public-peer Add, Stop/Start, Remove run on the assembled APK before any acceptance claim.
+
+## Exact-head evidence for #1644 at `86cacf6` (CI, source `86cacf682646664cc4f453ad14e135bc3545bd75`)
+
+Produced with `python3 tools/pr_acceptance_report.py --sha 86cacf6… --profile integration-real-peer`; annotations pulled per shard.
+
+**Passed on this exact commit:** `check`, `build` (full JVM, 2,260 tests locally with only three sandbox-only filesystem failures), `build-once`, native atlas, R8 minified smoke, API29 Downloads, two-server Combined, remote-delete-data. **The phone HTTPS Add journey passed with real verified pieces** (`verified=true`, 82,991,443 bytes received, default Place preserved) inside the installed real-magnet job; that job as a whole is still red.
+
+**Failed (6 named native tests + 2 dependent gates):**
+
+| Shard | Test | Classification |
+| --- | --- | --- |
+| 0 | `ChunksMainActivityAtlasTest.installedAppNavigatesPopulatedReadOnlyRpcScreens` | Test-contract drift: waits for the legacy connected list text `3 transfers` after Connect; verified Connect now acknowledges and stays on Connections (#1515) |
+| 0 | `InstalledMediaArtworkInstrumentedTest.installedRemoteRowShowsUserArtworkAndOptionsSettingTurnsItOff` | Same drift (`2 transfers` after Connect) |
+| 0 | `PhoneAddHiddenInCombinedInstrumentedTest.anAcknowledgedPhoneAddHiddenByTheCombinedSearchIsExplained` | Drift: `reachPhone` waits for a pane/entry (`Open phone downloads`) that the Combined-first flow no longer offers; `Open device transfer controls` is the current entry |
+| 1 | `FooterImeInstalledInstrumentedTest.footerRemainsAvailableThroughSoftKeyboardAndAfterSearchKey`, `...catalogSearchSurvivesActivityRecreation` | Precondition drift: needs a catalog with a search field; a genuinely empty first install shows only the Welcome by spec, so these need a seeded-inventory precondition |
+| 1 | `MainActivitySafeRouteRestoreInstrumentedTest.createCommandRouteRestoresOnlyCanonicalTransfersAndKeepsOfflineToolsReachable` | Not diagnosed beyond the failing assertion `Create torrent` after opening the Create tool; needs an emulator run |
+| - | `installed-magnet-lifecycle` (remote journey `MainActivityRealMagnetJourney`) | Test-contract drift: after Connect it waits for the legacy server queue (`+ Add torrent`, `All environments…`, `Refresh`), used across about 300 lines of the journey; failed at stage `connect-submitted` (line 224) |
+| - | `verify-complete-native-add` | Fails because the shards above failed; not independent |
+
+No assertion was deleted, skipped or weakened to reach these results. `PhoneToolFocusReturnInstrumentedTest`, which failed on `40fe74b`, now passes after waiting for the stable footer id.
+
+## Decisions made in this pass
+
+- **#1594 ported into #1644; #1611 reverted from it.** The #1611 test block failed `two-server-combined` at `connect(urlB)` waiting for `Connected ·` (run 42968879065). Reverting it restored the gate to passed (confirmed on `86cacf6`). #1611's commit `db19baac1` stays in #1644's history and as PR #1611; re-land it separately once its interaction with the #1641 verified-Connect acknowledgement is debugged on an emulator.
+- **Canonical Transfers heading is `Transfers`, not `All environments`** (#1642, `a00e1bb40`); `ChunksSemantics.TRANSFERS_HEADING` is the stable id. Tests that waited for the old text were drift.
+- The acceptance report now picks the newest check run per gate and no longer labels a journey step as environment failure just because its name contains "Installed".
+- Pushing to a PR cancels in-flight native shards and re-runs everything, because path filters evaluate the whole PR diff, including for docs-only pushes. Batch changes; the verifier job runs after a cancel and fails for missing receipts, which is not evidence.
+
+## Next executable tasks (updated)
+
+1. On an emulator or via workflow dispatch of `installed-rtorrent-magnets.yml` (these are not cancelled by pushes), port `MainActivityRealMagnetJourney` to the canonical flow stage by stage: Connect → `Connection verified` → `Continue to Connections` → `View transfers` → footer Add with `ADD_TARGET_REMOTE` → Add → verified job. Keep every real-peer assertion.
+2. Port the three shard-0 drifted tests the same way, then give `FooterIme…` and the route-restore test a seeded-inventory precondition.
+3. Re-land #1611, then #1546, then guarded Details (#1534, #1565, #1566) one at a time on the green tree.
+4. Do not merge #1644 until `pr_acceptance_report.py` reports ACCEPTABLE on the exact head and an independent review is done.
