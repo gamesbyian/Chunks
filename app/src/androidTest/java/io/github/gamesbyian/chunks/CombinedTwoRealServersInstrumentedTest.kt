@@ -234,9 +234,17 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("connected server screen") { visible("Disconnect") }
             scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
-            waitFor("connection screen after Disconnect") {
-                visible("Seedbox hostname, ruTorrent URL or RPC address") || visible("Saved servers")
+            waitFor("explicit Disconnect remains on manual Connect form") {
+                runCatching {
+                    scrollTo("Connect to rTorrent")
+                    visible("Connect to rTorrent") && !visible("Connected ·")
+                }.getOrDefault(false)
             }
+            rule.waitForIdle()
+            assertTrue(
+                "A saved verified login must not silently reconnect after explicit Disconnect",
+                visible("Connect to rTorrent") && !visible("Connected ·")
+            )
             stage("disconnected-a")
             connect(urlB)
             stage("connected-b")
