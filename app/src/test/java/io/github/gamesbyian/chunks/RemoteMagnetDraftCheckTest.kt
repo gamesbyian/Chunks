@@ -73,16 +73,15 @@ class RemoteMagnetDraftCheckTest {
                     } }
                 }
             }
-            reveal("Review Add")
-            rule.onNodeWithText("Review Add").performClick()
-            reveal("Confirm: add then start")
-            rule.onNodeWithText("Confirm: add then start").performClick()
+            reveal("Add transfer")
+            // One explicit Add transfer click is the sole submission action.
+            rule.onNodeWithText("Add transfer").performClick()
             rule.waitUntil(15_000) { settled == 1 }
             reveal("The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.")
             reveal("Magnet or torrent link")
             rule.onNodeWithText("Magnet or torrent link").assertIsEnabled()
-            reveal("Review Add")
-            rule.onNodeWithText("Review Add").assertIsEnabled()
+            reveal("Add transfer")
+            rule.onNodeWithText("Add transfer").assertIsEnabled()
             org.junit.Assert.assertFalse("Refusal retains the opt-out", automatic.value)
             org.junit.Assert.assertTrue("Only the read-only default Place query is allowed", methods.all { it == "directory.default" })
             org.junit.Assert.assertTrue(mediaHttp.requests.isEmpty())
@@ -149,8 +148,8 @@ class RemoteMagnetDraftCheckTest {
         rule.runOnIdle { onServer.value = true }
         reveal("Magnet for: PhoneDraft")
         rule.onNodeWithText("Magnet for: PhoneDraft").assertExists()
-        reveal("Start downloading after verified Add (recommended)")
-        rule.onNodeWithText("Start downloading after verified Add (recommended)").performClick()
+        reveal("Start when added")
+        rule.onNodeWithText("Start when added").performClick()
         reveal("Artwork & metadata")
         rule.onNodeWithText("Artwork & metadata").performClick()
         reveal("Automatically identify and fetch artwork & metadata")
@@ -172,8 +171,6 @@ class RemoteMagnetDraftCheckTest {
         show("magnet:?xt=urn:btih:3WBFL3G4PSSV7MF37AJSHWDQMLNR63I4&dn=Sintel")
         reveal("Magnet for: Sintel")
         rule.onNodeWithText("Magnet for: Sintel").assertExists()
-        reveal("Review Add")
-        rule.onNodeWithText("Review Add").performClick()
         reveal("Infohash: dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c")
         rule.onNodeWithText("Infohash: dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c").assertExists()
     }
@@ -182,7 +179,7 @@ class RemoteMagnetDraftCheckTest {
         show("magnet:?xt=urn:btih:" + "ab".repeat(19))
         reveal(MagnetDraftCheck.BAD_HASH)
         rule.onNodeWithText(MagnetDraftCheck.BAD_HASH).assertExists()
-        rule.onNodeWithText("Review Add").assertDoesNotExist()
+        rule.onNodeWithText("Add transfer").assertDoesNotExist()
     }
 
     @Test fun copiedMagnetFillsAnEmptyServerAddWithItsNote() {
@@ -212,7 +209,7 @@ class RemoteMagnetDraftCheckTest {
         reveal("Torrent link: archive.org · x_archive.torrent")
         rule.onNodeWithText("Get torrent from link").assertExists()
         rule.onNodeWithText(MagnetDraftCheck.NOT_A_MAGNET).assertDoesNotExist()
-        rule.onNodeWithText("Review Add").assertDoesNotExist()
+        rule.onNodeWithText("Add transfer").assertDoesNotExist()
     }
 
     /** Opt-in real public HTTPS fetch with a redirect: the fetched .torrent is reviewed by its verified hash. */
@@ -237,16 +234,16 @@ class RemoteMagnetDraftCheckTest {
         rule.waitForIdle()
         org.junit.Assert.assertEquals("The fetched URL is no longer the editable text source", "", source.value)
         org.junit.Assert.assertTrue("Fetched metainfo must remain the selected source", session.useFile)
-        reveal("Review Add")
-        rule.onNodeWithText("Review Add").performClick()
+        reveal("Add transfer")
+        rule.onNodeWithText("Add transfer").performClick()
         reveal("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed")
         rule.onNodeWithText("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed").assertExists()
         reveal("Source: Selected .torrent file")
         reveal("Back to transfers")
         rule.onNodeWithText("Back to transfers").performClick()
         rule.runOnIdle { showing.value = true }
-        reveal("Review Add")
-        rule.onNodeWithText("Review Add").performClick()
+        reveal("Add transfer")
+        rule.onNodeWithText("Add transfer").performClick()
         reveal("Source: Selected .torrent file")
 
     }

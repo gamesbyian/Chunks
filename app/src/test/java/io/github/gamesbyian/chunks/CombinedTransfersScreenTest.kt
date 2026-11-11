@@ -355,7 +355,8 @@ class CombinedTransfersScreenTest {
                 CombinedTransfersScreen(
                     server = null, savedProfiles = emptyList(),
                     onOpenPhone = { phoneControls++ }, onOpenServer = null,
-                    onAddToPhone = { addReviews++ }, onBack = {})
+                    onAddToPhone = { addReviews++ }, onBack = {},
+                    enableFirstRunWelcome = true, onWelcomeAdd = { addReviews++ })
             } }
         }
         // A deliberately narrowed empty view is neither fresh-install proof

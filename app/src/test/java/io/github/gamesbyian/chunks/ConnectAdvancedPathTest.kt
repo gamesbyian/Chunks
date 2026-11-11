@@ -4,6 +4,7 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
@@ -56,7 +57,12 @@ class ConnectAdvancedPathTest {
         // The persistent footer returns to one Combined-derived catalog without
         // requiring remote credentials or an alternate local list shortcut.
         rule.onNodeWithText("Transfers").performClick()
-        rule.onNodeWithText("All environments").assertExists()
+        // A genuinely empty first install shows the evidence-gated Welcome; any
+        // other state shows the Combined-derived catalog. Both are the one canonical route.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty() ||
+                rule.onAllNodesWithText("All environments").fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test fun anAddressWithAPathAndAnAdvancedPathIsRefusedBeforeConnecting() {

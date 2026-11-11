@@ -41,7 +41,7 @@ class PhoneMagnetDraftCheckTest {
     }
 
     private fun addTile() = rule.onNode(hasClickAction() and
-        (hasText("Add magnet and start") or hasText("Add magnet (metadata only)")))
+        (hasText("Add transfer")))
 
     @Test fun mistypedHashIsExplainedAndAddIsUnavailable() {
         openAdd()

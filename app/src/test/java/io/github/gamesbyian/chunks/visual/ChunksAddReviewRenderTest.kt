@@ -44,9 +44,9 @@ class ChunksAddReviewRenderTest {
         }
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/add-form.png")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Confirm: add then start"))
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Add transfer"))
+        // Single explicit Add transfer action; no second confirmation step remains.
+        rule.onNodeWithText("Add transfer").assertExists()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/add-review.png")
     }
