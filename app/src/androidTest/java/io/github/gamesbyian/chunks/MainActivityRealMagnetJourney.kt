@@ -351,16 +351,29 @@ internal class MainActivityRealMagnetJourney(
                 // of inferring it from whether the lazy option happens to be composed or visible:
                 // a blind click on an already-expanded disclosure would collapse the opt-out.
                 val disclosure = "Artwork & metadata"
-                rule.waitUntil(45_000) { runCatching { scroll(disclosure); true }.getOrDefault(false) }
-                val collapsed = runCatching {
-                    rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
-                        .fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
-                }.getOrNull() == "Collapsed"
-                if (collapsed) click(disclosure)
+                // Opening or closing the disclosure is a UI toggle only (no write). The form can
+                // recompose between steps, so (re)establish "expanded" and tap the exact option in
+                // one pass; the option tap itself is the user's choice and is never retried.
+                rule.waitUntil(60_000) {
+                    runCatching {
+                        scroll(disclosure)
+                        val state = rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
+                            .fetchSemanticsNodes().firstOrNull()?.config?.let {
+                                runCatching { it[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] }.getOrNull()
+                            }
+                        if (rule.onAllNodesWithText(artworkChoice).fetchSemanticsNodes().isEmpty() && state != "Expanded") {
+                            rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction()).performClick()
+                            rule.waitForIdle()
+                        }
+                        rule.onAllNodesWithText(artworkChoice).fetchSemanticsNodes().isNotEmpty()
+                    }.getOrDefault(false)
+                }
                 report("chunks_real_add_app_stage", "artwork-choice")
                 // This must remain present, reachable and actionable for
                 // EVERY Add; do not silently omit an opt-out after navigation.
-                click(artworkChoice)
+                rule.onNodeWithText(artworkChoice).performScrollTo()
+                rule.onNodeWithText(artworkChoice).assertIsEnabled().performClick()
+                report("chunks_real_add_app_stage", "artwork-chosen")
             }
             // The source-first form has one explicit "Add transfer" submission action and no
             // separate review card. The exact full infohash is shown inline before Add; assert it
