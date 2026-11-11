@@ -61,6 +61,19 @@ class NoTransfersWelcomeTest {
         org.junit.Assert.assertFalse(show(noIncoming = false))
     }
 
+    @Test fun rememberedLegacyVaultLoginBlocksFalseFreshInstallBeforeRosterLoad() {
+        org.junit.Assert.assertFalse(configuredRemoteForWelcome(false, false, false))
+        org.junit.Assert.assertTrue(configuredRemoteForWelcome(false, false, true))
+        org.junit.Assert.assertTrue(configuredRemoteForWelcome(false, true, false))
+        org.junit.Assert.assertTrue(configuredRemoteForWelcome(true, false, false))
+        org.junit.Assert.assertFalse(showCanonicalFirstRunWelcome(
+            noPersistedJobs = true, nativeRunning = false, nativeConfirmed = false,
+            nativeStale = false, nativeCount = 0,
+            hasRemoteProfile = configuredRemoteForWelcome(false, false, true),
+            restrictedView = false, privacyAllowed = true, pendingExternalSource = false
+        ))
+    }
+
     @Test fun canonicalWelcomeNeverConflatesUnobservedRestoreOfflineOrFilteredZero() {
         fun show(
             noResume: Boolean? = true, running: Boolean = false,
