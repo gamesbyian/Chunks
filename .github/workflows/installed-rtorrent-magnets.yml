@@ -132,6 +132,22 @@ jobs:
           throttle.global_down.max_rate.set = 128
           system.daemon.set = true
           EOF
+          # This disposable run must use the original publisher metainfo and
+          # independently verified publisher pieces, but its controlled-peer
+          # phases cannot be deterministic if real tracker announces import
+          # unrelated public peers. DHT/PEX off alone did not prevent that:
+          # earlier receipts found 18 remote peers and >32 MiB verified before
+          # the scheduled 32 MiB controlled restart source appeared.
+          #
+          # rTorrent's native trackers.disable command is global; it takes one
+          # required but ignored argument. Do not alter source infohash,
+          # remove real tracker data from metainfo, or touch protected hosts.
+          # Explicit public-discovery dispatches keep their usual trackers.
+          if [ "$CHUNKS_PUBLIC_DISCOVERY" != "1" ]; then
+            printf '%s\\n' 'trackers.disable = 0' >> "$RUNNER_TEMP/chunks-disposable/rtorrent.rc"
+            grep -Fxq 'trackers.disable = 0' "$RUNNER_TEMP/chunks-disposable/rtorrent.rc"
+            echo 'CHUNKS_CONTROLLED_DISCOVERY: native disposable rTorrent tracker discovery disabled; real resumed pieces still required' >> "$GITHUB_STEP_SUMMARY"
+          fi
           nohup rtorrent -n -o "import=$RUNNER_TEMP/chunks-disposable/rtorrent.rc" \
             > "$RUNNER_TEMP/chunks-disposable/rtorrent.log" 2>&1 < /dev/null &
           echo $! > "$RUNNER_TEMP/chunks-disposable/rtorrent.pid"
