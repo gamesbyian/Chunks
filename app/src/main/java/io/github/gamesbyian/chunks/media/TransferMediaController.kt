@@ -1055,12 +1055,22 @@ class TransferMediaController(
                     // Distinguish a verified match from its missing image; no filenames, URLs
                     // or credentials are stored in this transient presentation message.
                     val net = network()
+                    val s = settings()
+                    val sourceConfigured = match?.artwork?.any {
+                        service.isConfiguredArtworkSource(it.provider, s)
+                    } == true
                     val reason = when {
-                        !settings().onlineLookupConsent -> "Image is not cached; online lookup consent is off"
+                        !s.onlineLookupConsent -> "Image is not cached; online lookup consent is off"
                         !net.online -> "Image is not cached; network is offline"
-                        net.metered && !settings().artworkOnMeteredNetwork ->
+                        net.metered && !s.artworkOnMeteredNetwork ->
                             "Image is not cached; artwork download is paused on mobile data"
-                        !settings().downloadArtwork -> "Artwork download is switched off in Options"
+                        !s.downloadArtwork -> "Artwork download is switched off in Options"
+                        !manualChoice && !s.automaticLookup ->
+                            "Identified; automatic artwork retrieval is switched off in Options"
+                        !manualChoice && net.powerSaver ->
+                            "Identified; artwork retrieval is paused in power saver mode"
+                        a.userArtwork == null && match?.artwork?.isNotEmpty() == true && !sourceConfigured ->
+                            "Identified; artwork source is disabled or needs configuration in Options"
                         else -> "Identified, but the image source is temporarily unavailable"
                     }
                     f.update { cur ->

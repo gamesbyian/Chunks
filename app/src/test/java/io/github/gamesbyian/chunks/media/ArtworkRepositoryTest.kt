@@ -338,4 +338,44 @@ class ArtworkRepositoryTest {
             newRepository().loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
     }
 
+
+    @Test fun removingAnOptionalProviderKeyStopsUncachedImageHttpButKeepsCachedPixels() {
+        var credential: String? = null
+        val provider = io.github.gamesbyian.chunks.media.providers.TmdbProvider { credential }
+        val settings = MediaPrivacySettings(onlineLookupConsent = true)
+        val dir = Files.createTempDirectory("key-revoked-poster-cache").toFile()
+        val http = FakeMediaHttp().onBytes("image.tmdb.org", image(680, 1000),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        fun newRepository() = ArtworkRepository(http, ArtworkDiskCache(dir),
+            hostPolicyFor = { id ->
+                provider.takeIf {
+                    it.info.id == id && settings.providerOn(it.info) && it.isConfigured()
+                }?.info?.artworkHostPolicy
+            })
+        val first = ArtworkCandidate("tmdb",
+            "https://image.tmdb.org/t/p/w500/first.jpg", ArtworkRole.POSTER)
+        val second = ArtworkCandidate("tmdb",
+            "https://image.tmdb.org/t/p/w500/second.jpg", ArtworkRole.POSTER)
+
+        assertFalse(provider.isConfigured())
+        assertTrue(newRepository().loadOne(first, ArtworkRole.SQUARE, true)
+            is ArtworkLoadResult.Unavailable)
+        assertTrue("No image HTTP without the user's configured key", http.requests.isEmpty())
+
+        credential = "a".repeat(32)
+        assertTrue(provider.isConfigured())
+        assertTrue(newRepository().loadOne(first, ArtworkRole.SQUARE, true)
+            is ArtworkLoadResult.Loaded)
+        assertEquals(1, http.requests.size)
+
+        credential = null
+        assertTrue("An already processed, consented image stays usable without network",
+            newRepository().loadOne(first, ArtworkRole.SQUARE, false)
+                is ArtworkLoadResult.Loaded)
+        assertTrue(newRepository().loadOne(second, ArtworkRole.SQUARE, true)
+            is ArtworkLoadResult.Unavailable)
+        assertEquals("Removing the provider credential forbids new image downloads",
+            1, http.requests.size)
+    }
+
 }

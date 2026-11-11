@@ -80,6 +80,11 @@ class MediaEnrichmentService(
         providers.any { it.info.providesArtwork && it.info.kinds.any(kind::compatibleWith) &&
             preferences.providerOn(it.info) && it.isConfigured() }
 
+    /** Exact artwork source eligibility for saved matches. No HTTP, title or credential disclosure. */
+    fun isConfiguredArtworkSource(id: String, preferences: MediaPrivacySettings): Boolean =
+        providers.any { it.info.id == id && it.info.providesArtwork &&
+            preferences.providerOn(it.info) && it.isConfigured() }
+
     @Synchronized fun resetProviderPause(provider: String) { unauthorized.remove(provider); cooldownUntil.remove(provider) }
 
     /** Serializes a privacy purge with in-flight lookups and their response-cache commits. */
