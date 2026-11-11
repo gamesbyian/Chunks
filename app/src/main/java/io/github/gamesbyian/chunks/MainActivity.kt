@@ -2104,7 +2104,11 @@ internal fun ConnectionScreen(
                                 pendingForget = null
                                 onSelectProfile(profile)
                             }, enabled = !loading && connectedSessionName == null,
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                    .semantics {
+                                        contentDescription =
+                                            "Use saved login for " + profile.label + " on " + profile.address
+                                    }) {
                                 Text("Use saved login")
                             }
                         }
@@ -2148,14 +2152,22 @@ internal fun ConnectionScreen(
                                 renameNotice = null
                                 pendingForget = null
                             }, enabled = !loading && !renameBusy,
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                    .semantics {
+                                        contentDescription =
+                                            "Rename saved " + profile.label + " on " + profile.address
+                                    }) {
                                 Text("Rename")
                             }
                             OutlinedButton(onClick = {
                                 pendingForget = profile.id
                                 renameProfileId = null
                             }, enabled = !loading && !renameBusy,
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
+                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
+                                    .semantics {
+                                        contentDescription =
+                                            "Forget saved " + profile.label + " on " + profile.address
+                                    }) {
                                 Text("Forget " + profile.label)
                             }
                         }
