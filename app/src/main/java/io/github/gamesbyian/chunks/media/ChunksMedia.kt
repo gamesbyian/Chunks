@@ -53,7 +53,11 @@ class ChunksMedia private constructor(context: Context) {
             artwork = ArtworkRepository(http, lazyDisk(), hostPolicyFor = { id: String ->
                 // Provider disable is a network revocation, including stored matches. Cached
                 // derivatives still load offline because ArtworkRepository checks disk first.
-                byId[id]?.info?.takeIf { currentSettings().providerOn(it) }?.artworkHostPolicy
+                // Removing a user's API key revokes an uncached provider image
+                // download as surely as disabling that provider. An already cached
+                // derivative remains readable offline without a new HTTP request.
+                byId[id]?.takeIf { currentSettings().providerOn(it.info) && it.isConfigured() }
+                    ?.info?.artworkHostPolicy
             }, importedDisk = importedArtworkDisk),
             storeFactory = { FileTransferMediaAssignmentStore(File(app.filesDir, "media/assignments.json")) },
             settings = { currentSettings() },
