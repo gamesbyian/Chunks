@@ -78,6 +78,10 @@ class TransferMediaController(
     /** Ephemeral provider-configuration attempts are hints, not identity or authorization.
      * Bound historical exact-hash churn without evicting any durable assignment or opt-out. */
     private val lastProviderAttemptRevision = BoundedRetryTimestamps<MediaTransferKey>()
+    /** Sanitized query behind each key's last automatic negative/ambiguous result (in memory only). */
+    private val lastAutomaticQuery = object : LinkedHashMap<MediaTransferKey, String>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MediaTransferKey, String>) = size > 10_000
+    }
     private val ruleStoreLazy = lazy(ruleStoreFactory)
     private val ruleStore by ruleStoreLazy
     companion object {
@@ -200,7 +204,7 @@ class TransferMediaController(
                 automaticMessage = artworkGapReason(a ?: it.assignment) ?:
                     if ((a ?: it.assignment)?.displayMatch != null) null else automaticPauseReason(enabled)) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
-            if (automaticDue(key, a)) maybeAutomatic(key)
+            if (automaticDue(key, a, flow.value.recognition)) maybeAutomatic(key)
         }
         return flow
     }
@@ -246,11 +250,29 @@ class TransferMediaController(
                 automaticMessage = artworkGapReason(a ?: it.assignment) ?:
                     if ((a ?: it.assignment)?.displayMatch != null) null else automaticPauseReason(enabled)) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
-            if (automaticDue(key, a)) maybeAutomatic(key)
+            if (automaticDue(key, a, f.value.recognition)) maybeAutomatic(key)
         }
     }
 
-    private fun automaticDue(key: MediaTransferKey, assignment: TransferMediaAssignment?): Boolean {
+    /** Stable fingerprint of what an automatic lookup would send; null when nothing may be sent. */
+    private fun queryFingerprint(r: MediaRecognition): String? =
+        (MediaQuerySanitizer.fromRecognition(r) as? MediaQueryDecision.Allowed)?.query?.let { q ->
+            listOf(q.kind.name, q.title, q.year, q.season, q.episode, q.creator, q.issue, q.animeHint).joinToString("\u0000")
+        }
+
+    /**
+     * Local evidence that arrives after a lookup (magnet metadata, a Details file list, embedded
+     * tags) can change what would be asked. One automatic retry of an unresolved result is then
+     * due; an unchanged query keeps the normal TTL/provider-revision schedule.
+     */
+    private fun evidenceChangedQuery(key: MediaTransferKey, recognition: MediaRecognition?): Boolean {
+        val previous = synchronized(lastAutomaticQuery) { lastAutomaticQuery[key] } ?: return false
+        val current = recognition?.let(::queryFingerprint) ?: return false
+        return current != previous
+    }
+
+    private fun automaticDue(key: MediaTransferKey, assignment: TransferMediaAssignment?,
+                             recognition: MediaRecognition? = null): Boolean {
         if (assignment == null) return true
         val now = clock()
         val stale = now >= assignment.updatedAtMs &&
@@ -264,13 +286,13 @@ class TransferMediaController(
         val providerChanged = providerConfigurationRevision.get() > (previousRevision ?: 0L)
         if (assignment.state == MediaAssignmentState.COULDNT_IDENTIFY &&
             assignment.lastStatus == MediaLookupStatus.NOT_FOUND)
-            return stale || firstPassAfterRestart || providerChanged
+            return stale || firstPassAfterRestart || providerChanged || evidenceChangedQuery(key, recognition)
         // An ambiguous filename cannot be verified by its existing suggestions, but
         // a newly enabled provider can break a tie. Retry once per provider revision
         // and once on cold startup, with service query-cache TTLs guarding HTTP.
         // Ordinary inventory notifications must not repeatedly search the same ambiguity.
         if (assignment.state == MediaAssignmentState.SUGGESTED)
-            return firstPassAfterRestart || providerChanged
+            return firstPassAfterRestart || providerChanged || evidenceChangedQuery(key, recognition)
         val match = assignment.match ?: return false
         if (assignment.state != MediaAssignmentState.AUTOMATIC ||
             assignment.userArtwork != null || match.artwork.isNotEmpty()) return false
@@ -362,7 +384,7 @@ class TransferMediaController(
             try {
                 if (!permitted()) return
                 val previous = store.get(key)
-                if (!automaticDue(key, previous)) {
+                if (!automaticDue(key, previous, recognition)) {
                     // Offscreen, already verified transfers may be missing the processed
                     // derivative after cache eviction or a previous failed image request.
                     // Re-fetch only absent images; no metadata query or user-choice mutation.
@@ -401,6 +423,8 @@ class TransferMediaController(
                 val outcome = service.lookup(recognition, preferences, network(),
                     MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT, requestAllowed = permitted)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (outcome.status == MediaLookupStatus.NOT_FOUND || outcome.status == MediaLookupStatus.NEEDS_REVIEW)
+                    queryFingerprint(recognition)?.let { synchronized(lastAutomaticQuery) { lastAutomaticQuery[key] = it } }
                 // A user edit, exclusion, withdrawn consent or closed privacy scope wins over HTTP.
                 if (!permitted() || store.get(key) != previous) return
                 // A failed poster-completion lookup must not loop on every
@@ -1000,7 +1024,7 @@ class TransferMediaController(
                 f.update { cur -> cur.copy(automaticMessage =
                     artworkGapReason(cur.assignment) ?: if (cur.match != null) null else automaticPauseReason(enabled)) }
                 if (authorization(key)() && s.onlineLookupConsent && s.automaticLookup &&
-                    s.showArtwork && s.downloadArtwork && automaticDue(key, f.value.assignment)) maybeAutomatic(key)
+                    s.showArtwork && s.downloadArtwork && automaticDue(key, f.value.assignment, f.value.recognition)) maybeAutomatic(key)
                 if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
             }

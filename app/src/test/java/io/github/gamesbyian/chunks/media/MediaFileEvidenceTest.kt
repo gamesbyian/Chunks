@@ -59,6 +59,9 @@ class MediaFileEvidenceTest {
              "overview":"Synthetic fixture","poster_path":"/syntheticHackers.jpg","popularity":20.0,"adult":false},
             {"id":99999,"title":"Hackers","original_title":"Hackers","release_date":"2031-01-01",
              "overview":"Synthetic remake","poster_path":"/syntheticRemake.jpg","popularity":5.0,"adult":false}]}""")
+        .on("/3/search/tv", body = """{"results":[
+            {"id":68595,"name":"Planet Earth II","original_name":"Planet Earth II","first_air_date":"2016-11-06",
+             "overview":"Synthetic fixture","poster_path":"/syntheticPlanet.jpg","popularity":30.0}]}""")
         .onBytes("image.tmdb.org", jpeg(), headers = mapOf("Content-Type" to "image/jpeg"))
 
     private fun providerRequests() = http.requests.filter { it.contains("api.themoviedb.org") }
@@ -133,6 +136,36 @@ class MediaFileEvidenceTest {
         files = movieFiles
         c.enrichInventory(listOf(phone to folderName))
         assertEquals(MediaAssignmentState.AUTOMATIC, records().get(phone)?.state)
+    }
+
+    @Test fun lateMagnetMetadataRetriesAnUnresolvedResultOnceWhenTheQueryChanges() = runBlocking {
+        // A magnet's display name alone looks like a film; no matching movie exists.
+        val magnetName = "Planet.Earth.II.2160p.UHD.BluRay.x265-TEST"
+        assertEquals(MediaKind.VIDEO, MediaRecognizer.recognize(magnetName).kind)
+        var files: List<MediaFileHint>? = null
+        val c = controller { key -> if (key == phone) files else null }
+        c.enrichInventory(listOf(phone to magnetName))
+        assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, records().get(phone)?.state)
+        assertTrue(providerRequests().all { it.contains("/search/movie") })
+
+        // An unchanged inventory pass must not repeat the negative search.
+        val before = http.requests.size
+        c.enrichInventory(listOf(phone to magnetName))
+        assertEquals(before, http.requests.size)
+
+        // Metadata arrives: six episode files reveal a season pack. One retry is now due.
+        files = (1..6).map { MediaFileHint("Planet.Earth.II/Planet.Earth.II.S01E0$it.2160p.mkv", 4_000_000_000L) }
+        c.enrichInventory(listOf(phone to magnetName))
+        val saved = records().get(phone)
+        assertEquals(MediaAssignmentState.AUTOMATIC, saved?.state)
+        assertEquals("68595", saved!!.match!!.ref.externalId)
+        val tvQuery = providerRequests().single { it.contains("/search/tv") }
+        for (leak in listOf("S01E0", "mkv", "2160p", "%2F")) assertFalse(leak, tvQuery.contains(leak))
+
+        // Resolved: later passes do not search again.
+        val settled = http.requests.size
+        c.enrichInventory(listOf(phone to magnetName))
+        assertEquals(settled, http.requests.size)
     }
 
     @Test fun nonVideoCompositionIsNeverLookedUpAsAMovie() = runBlocking {
