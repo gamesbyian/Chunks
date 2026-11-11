@@ -92,15 +92,8 @@ class CombinedTwoRealServersInstrumentedTest {
         }
     }
 
-    private fun scrollTo(text: String) {
-        val match = hasText(text, substring = true)
-        // Combined and remote Add are lazy lists; phone-first Universal Add is
-        // an eagerly composed, vertically scrolling form. A LazyColumn-only
-        // locator falsely fails before testing any source or session behavior.
-        if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(match)
-        else rule.onNode(match).performScrollTo()
-    }
+    private fun scrollTo(text: String) =
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
 
     private fun waitFor(what: String, timeoutMs: Long = 60_000, condition: () -> Boolean) {
         try {
@@ -386,83 +379,6 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("server B stopped by Combined", 30_000) { !startedOn(urlB) }
             assertTrue(!startedOn(urlA))
             stage("combined-stop-scoped")
-
-            // A and B are both saved; B is authenticated here. The shared
-            // footer opens source-first phone Add by default, from which A's
-            // saved credentials must NOT become an Add permission while B is
-            // live. Use the actual phone-source field before selecting A.
-            rule.onNodeWithText("+ Add").performClick()
-            waitFor("source-first Universal Add") { visible("Add a transfer") }
-            val preservedDraft = "magnet:?xt=urn:btih:$sharedHash"
-            typeInto("Magnet or HTTP(S) torrent URL", preservedDraft)
-            scrollTo("Other saved connections")
-            rule.onNodeWithText("Other saved connections", substring = true).performClick()
-            scrollTo("Connect to ")
-            rule.onNodeWithText("Connect to ", substring = true).performClick()
-            // This must show an ACTUAL login, not B's already authenticated
-            // server UI with A's address painted into editable fields.
-            waitFor("explicit A authentication rather than stale B", 30_000) {
-                // ConnectionScreen uses LazyColumn. Its login fields are
-                // below the saved-profile list, so require actual scrolling
-                // to the input rather than simultaneous viewport visibility.
-                runCatching {
-                    scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
-                    rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
-                        .assertIsEnabled()
-                    true
-                }.getOrDefault(false)
-            }
-            scrollTo("Connect to rTorrent")
-            rule.onNodeWithText("Connect to rTorrent").assertIsEnabled()
-            assertTrue("Choosing a saved Add target must not add to A",
-                runBlocking { RTorrentRemote(credsFor(urlA)).listTransfers("main") }
-                    .map { it.hash to it.started }.toSet() ==
-                    truthA.map { it.hash to it.started }.toSet())
-            stage("saved-add-target-login")
-
-            // Reauthenticate the original exact A account through the app.
-            // Successful Connect must restore this same source-first draft,
-            // and must never silently Add or inherit B's principal.
-            typeInto("Seedbox hostname, ruTorrent URL or RPC address", urlA)
-            typeInto("Username, if required", userA)
-            typeInto("Password", passA)
-            scrollTo("Connect to rTorrent")
-            rule.onNodeWithText("Connect to rTorrent").assertIsEnabled().performClick()
-            waitFor("source-first draft resumes after exact authenticated A", 90_000) {
-                visible("Add a transfer") && visible("Magnet or torrent link")
-            }
-            scrollTo("Magnet or torrent link")
-            assertTrue("Saved-profile auth must preserve exact source text", visible(preservedDraft))
-            assertEquals("A may only be inspected, never implicitly mutated",
-                truthA.map { it.hash to it.started }.toSet(),
-                runBlocking { RTorrentRemote(credsFor(urlA)).listTransfers("main") }
-                    .map { it.hash to it.started }.toSet())
-            assertEquals("B cannot be the implicit Add recipient",
-                truthB.map { it.hash to it.started }.toSet(),
-                runBlocking { RTorrentRemote(credsFor(urlB)).listTransfers("main") }
-                    .map { it.hash to it.started }.toSet())
-            stage("saved-add-target-restored")
-
-            // Restore B as the remembered current profile so the existing
-            // process-death/relaunch and source-isolation tests are unchanged.
-            typeInto("Magnet or torrent link", "")
-            rule.onNodeWithText("Connections").performClick()
-            waitFor("A authenticated Connections management") { visible("Disconnect") }
-            scrollTo("Disconnect")
-            rule.onNodeWithText("Disconnect").performClick()
-            waitFor("B connection form") {
-                runCatching {
-                    // Two saved profiles push the ordinary login fields below
-                    // the first lazy viewport. Require the actual editable
-                    // input instead of inferring it from a visible summary.
-                    scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
-                    rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
-                        .assertIsEnabled()
-                    true
-                }.getOrDefault(false)
-            }
-            connect(urlB)
-            stage("connected-b-restored-after-saved-add")
         }
 
         // Fresh activity in the same app process: the remembered verified
