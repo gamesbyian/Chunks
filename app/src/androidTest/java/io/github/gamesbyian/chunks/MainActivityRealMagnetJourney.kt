@@ -614,8 +614,16 @@ internal class MainActivityRealMagnetJourney(
                 assertTrue(payload.completedBytes in 1..payload.sizeBytes)
                 if (!publicDiscovery) assertTrue(payload.completedBytes < payload.sizeBytes)
                 click("Back to transfers")
+                report("chunks_real_add_app_stage", "click-after-back")
                 refreshAndFind(hash)
-                scroll(preview.name)
+                report("chunks_real_add_app_stage", "click-found-by-hash")
+                // Names (numbers only) why the original name could not be located.
+                runCatching { scroll(preview.name) }.onFailure {
+                    val rows = rule.onAllNodes(hasContentDescription("Details for ", substring = true))
+                        .fetchSemanticsNodes().size
+                    report("chunks_real_add_app_stage", "click-name-missing-rows-$rows")
+                    throw it
+                }
                 assertTrue("Actual Transfers lost original metadata name", visible(preview.name))
                 assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
                 if (!combinedDetailsVerified) {
