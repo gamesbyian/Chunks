@@ -308,6 +308,12 @@ class CombinedTransfersScreenTest {
     }
 
     @Test fun phoneOnlyCatalogKeepsExplicitRecoveryWhenNativeEngineIsAbsent() {
+        // A user-selected phone-only filter must stay manageable even with
+        // zero native jobs: it is not a pristine first-install state.
+        CombinedViewPreferences(context).save(
+            io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                scope = EnvironmentViewScope.Only(
+                    setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
         // A view filter must never start the phone engine. If there are no
         // rows, provide an explicit entry to the existing device controls.
         var openedDevice = 0
@@ -336,7 +342,11 @@ class CombinedTransfersScreenTest {
     }
 
     @Test fun phoneOnlyEmptyCatalogOffersReviewWithoutStartingOrGuessingInventory() {
-        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+        // Explicitly narrowed scope preserves recovery and pending-restore
+        // warnings rather than showing the unrelated fresh-install Welcome.
+        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+            scope = EnvironmentViewScope.Only(
+                setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
         assertNull("Fixture must not silently start the phone engine", LocalEngineHolder.current())
         var addReviews = 0
         var phoneControls = 0
@@ -348,10 +358,18 @@ class CombinedTransfersScreenTest {
                     onAddToPhone = { addReviews++ }, onBack = {})
             } }
         }
-        revealText("Review a new torrent on this device")
-        rule.onNodeWithText("No verified transfer list is available yet.", substring = true)
-            .assertExists()
-        rule.onNodeWithText("Review a new torrent on this device").performClick()
+        // A deliberately narrowed empty view is neither fresh-install proof
+        // nor permission to infer a current native inventory. Recover scope
+        // explicitly, then use the same Welcome/Add callback as all entries.
+        revealText("No transfers are visible with these view choices.")
+        rule.onNodeWithText("No transfers are visible with these view choices.",
+            substring = true).assertExists()
+        revealText("Show all transfers")
+        rule.onNodeWithText("Show all transfers").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Add a torrent").performClick()
         assertEquals(1, addReviews)
         assertEquals(0, phoneControls)
         assertNull("Review navigation does not start the native engine", LocalEngineHolder.current())
@@ -752,4 +770,39 @@ class CombinedTransfersScreenTest {
         rule.waitUntil(5_000) { stored.load().hueOf(serverId) == automatic }
         assertEquals(automatic, stored.load().hueOf(serverId))
     }
+    @Test fun rootTransfersReturnClosesDetailsWithoutLosingExactScopeOrViewPreferences() {
+        val id = requireNotNull(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
+        val selected = EnvironmentViewScope.Only(setOf(id))
+        CombinedViewPreferences(context).save(
+            io.github.gamesbyian.chunks.model.UnifiedTransferQuery(scope = selected))
+        var returnRevision by androidx.compose.runtime.mutableLongStateOf(0L)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, rows, stale = false,
+                        fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
+                        lifecycle = gate),
+                    savedProfiles = listOf(other),
+                    showNavigationFooter = false,
+                    returnToCatalogRevision = returnRevision,
+                    onOpenPhone = {}, onOpenServer = null, onBack = {})
+            } }
+        }
+        val details = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(details)
+        rule.onNodeWithContentDescription(details).performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        // The parent root footer sends only a navigation revision. No Add,
+        // Start/Stop, remote read or scope reset belongs to this action.
+        rule.runOnIdle { returnRevision++ }
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isEmpty()
+        }
+        revealText("Viewing:")
+        rule.onNodeWithText("Viewing:", substring = true).assertExists()
+        assertEquals(selected, CombinedViewPreferences(context).load().scope)
+        assertTrue("Root navigation issued no mutation", commands.isEmpty())
+    }
+
 }
