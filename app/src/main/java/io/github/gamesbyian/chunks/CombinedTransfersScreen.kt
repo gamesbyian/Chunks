@@ -334,6 +334,8 @@ internal fun CombinedTransfersScreen(
     onShowAllEnvironmentsConsumed: (Long) -> Unit = {},
     /** Host opt-in: genuine first-run omits all inventory-management chrome. */
     enableFirstRunWelcome: Boolean = false,
+    /** True for an existing verified vault login not yet represented by a roster. */
+    hasRememberedRemoteLogin: Boolean = false,
     onWelcomeAdd: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -828,7 +830,8 @@ internal fun CombinedTransfersScreen(
         nativeConfirmed = phoneConfirmed,
         nativeStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations(),
         nativeCount = phoneFrame.entries.size,
-        hasRemoteProfile = server != null || savedProfiles.isNotEmpty(),
+        hasRemoteProfile = server != null || savedProfiles.isNotEmpty() ||
+            hasRememberedRemoteLogin,
         restrictedView = CombinedViewPreferences.narrowingActive(query),
         privacyAllowed = phonePrivacy.mayShow,
         pendingExternalSource = pendingSharedMagnet || pendingSharedLink ||
@@ -837,6 +840,7 @@ internal fun CombinedTransfersScreen(
     )
     val checkingFreshPhone = enableFirstRunWelcome && noPersistedPhoneJobs == null &&
         !phoneRunning && !phoneConfirmed && savedProfiles.isEmpty() && server == null &&
+        !hasRememberedRemoteLogin &&
         !CombinedViewPreferences.narrowingActive(query) && phonePrivacy.mayShow &&
         !pendingSharedMagnet && !pendingSharedTorrent && !readingSharedTorrent
 
