@@ -116,7 +116,7 @@ class PhoneDocumentReplacementTest {
         rule.onNodeWithText("Review .torrent on connected server").performScrollTo().assertIsEnabled().performClick()
     }
     private fun openPicker(): ShadowActivity.IntentForResult {
-        rule.onNodeWithText("Choose .torrent file").performScrollTo().assertIsEnabled().performClick()
+        rule.onNodeWithText("Open .torrent").performScrollTo().assertIsEnabled().performClick()
         return requireNotNull(Shadows.shadowOf(rule.activity).nextStartedActivityForResult).also {
             assertEquals(Intent.ACTION_OPEN_DOCUMENT, it.intent.action)
         }
@@ -159,7 +159,7 @@ class PhoneDocumentReplacementTest {
         rule.waitUntil(15_000) { SourceProvider.opened.count == 0L }
         rule.onNodeWithText("kept.txt", substring = true).performScrollTo().assertExists()
         rule.onNodeWithText("Review .torrent on connected server").performScrollTo().assertIsNotEnabled()
-        rule.onNodeWithText("Choose .torrent file").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithText("Open .torrent").performScrollTo().assertIsNotEnabled()
         SourceProvider.release.countDown()
         waitFor("next.txt")
         handoff()
@@ -210,7 +210,7 @@ class PhoneDocumentReplacementTest {
         rule.waitUntil(15_000) { SourceProvider.opened.count == 0L }
         rule.runOnIdle { shown.value = false }
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Choose .torrent file").fetchSemanticsNodes().isEmpty()
+            rule.onAllNodesWithText("Open .torrent").fetchSemanticsNodes().isEmpty()
         }
         SourceProvider.release.countDown()
         rule.waitUntil(15_000) { SourceProvider.returned.count == 0L }
@@ -226,7 +226,7 @@ class PhoneDocumentReplacementTest {
 
 
     private fun requestHttpsReplacement(url: String) {
-        rule.onNodeWithText("Or paste a magnet or torrent link").performScrollTo()
+        rule.onNodeWithText("Magnet or HTTP(S) torrent URL").performScrollTo()
             .performTextInput(url)
         rule.onNodeWithText("Get torrent from link").performScrollTo().assertIsEnabled()
             .performClick()
@@ -240,6 +240,9 @@ class PhoneDocumentReplacementTest {
         // was under review, forcing the user to discard A before trying B.
         requestHttpsReplacement("https://example.org/not-available.torrent?private=token")
         waitFor(TorrentLinkResult.OFFLINE)
+        // The older validated bytes remain recoverable, but an unresolved
+        // newer typed URL cannot silently leave them as a live Add source.
+        rule.onNodeWithText("A newer torrent source is entered", substring = true).assertExists()
         assertArrayEquals(metainfo("kept.txt"), draft.value?.bytes)
         rule.onNodeWithText("kept.txt", substring = true).performScrollTo().assertExists()
         handoff()
