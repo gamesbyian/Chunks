@@ -300,7 +300,14 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "add-open")
             // A verified previous Add remains a result on return; only this
             // explicit action starts a fresh source review, without an RPC.
-            if (runCatching { scroll("Start another Add") }.isSuccess) click("Start another Add")
+            // The retained result offers exactly one acknowledgement whose label names the server
+            // state (verified, session confirmed, or registered with Start unverified). Each only
+            // begins a fresh review; none resends Add or Start. Match the button label exactly.
+            listOf("Start another Add", "Acknowledge session and start another Add",
+                "Acknowledge registered job; Start unverified").firstOrNull { label ->
+                runCatching { scroll(label) }
+                rule.onAllNodesWithText(label).fetchSemanticsNodes().isNotEmpty()
+            }?.let { click(it) }
             // The real Seedhost must receive the actual publisher magnet, including
             // its original tracker list. The disposable controlled test keeps
             // the deliberate dead tracker to isolate the supplied peer.

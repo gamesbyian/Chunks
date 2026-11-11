@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
@@ -103,8 +104,11 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
             }
             exactNativeJobSeen
         }
-        rule.onNodeWithText("Transfers").performClick()
-        rule.onNodeWithText("All environments").performScrollTo().performClick()
+        rule.onNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.FOOTER_TRANSFERS)).performClick()
+        // The scope chip exists only when more than one environment is configured; a
+        // phone-only install is already showing every environment.
+        if (rule.onAllNodesWithText("All environments").fetchSemanticsNodes().isNotEmpty())
+            rule.onNodeWithText("All environments").performScrollTo().performClick()
         // First demand a fresh, exact-hash phone row in the canonical
         // Combined inventory. A mere native Add receipt is NOT sufficient to
         // claim that a new transfer is hidden; the notice is only allowed

@@ -598,7 +598,9 @@ class ChunksMainActivityAtlasTest {
         save("app-organize-populated-real-compose")
 
         rule.onNodeWithContentDescription("Connections").performClick()
-        rule.onNodeWithText("Server settings", substring = true).assertExists()
+        // Canonical Connections identifies the verified server ("Connected · …"); the legacy
+        // "Server settings" panel is not part of that screen (#1514/#1515).
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("Connected ·", substring = true).fetchSemanticsNodes().isNotEmpty() }
         save("app-server-populated-real-compose")
 
         // Transfers now leads through the read-only combined inventory;

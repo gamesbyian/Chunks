@@ -73,11 +73,11 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
         rule.onNodeWithText("Create a torrent from phone files").performClick()
-        rule.onNodeWithText("Create torrent").assertExists()
+        rule.onNodeWithText("Make it shareable.").assertExists()
         // Recreating never retries file picker or submission.
         rule.activityRule.scenario.recreate()
         footerTransfers().assertExists()
-        rule.onNodeWithText("Create torrent").assertDoesNotExist()
+        rule.onNodeWithText("Make it shareable.").assertDoesNotExist()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()

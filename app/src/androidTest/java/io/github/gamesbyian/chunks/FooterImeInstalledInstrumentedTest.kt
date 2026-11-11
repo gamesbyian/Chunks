@@ -1,11 +1,9 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithContentDescription
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
@@ -34,10 +32,14 @@ import org.junit.runner.RunWith
 class FooterImeInstalledInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val searchLabel = "Search names or hashes"
+    // A genuine fresh install shows the Welcome, which deliberately has no catalog search
+    // (#1512). The enduring requirement is the footer through a real soft keyboard and a typed
+    // draft surviving recreation, so both are exercised on the Add source field, reachable from
+    // the Welcome by the stable footer id. (Reconciled 2026-11-11; see TEST-ARCHITECTURE section 5.)
+    private val field = hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)
 
     private fun footerShown() =
-        rule.onAllNodesWithContentDescription("Options").fetchSemanticsNodes().isNotEmpty()
+        rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_OPTIONS)).fetchSemanticsNodes().isNotEmpty()
 
     private fun imeShown(): Boolean {
         var shown = false
@@ -48,20 +50,16 @@ class FooterImeInstalledInstrumentedTest {
         return shown
     }
 
-    private fun waitForCatalog() = rule.waitUntil(20_000) {
-        rule.onAllNodesWithText("All environments").fetchSemanticsNodes().isNotEmpty()
-    }
-
-    private fun enterCatalogFromWelcome() {
+    private fun openAddFromWelcome() {
         rule.waitUntil(20_000) { footerShown() }
-        rule.onAllNodesWithText("Transfers").onLast().performClick()
-        waitForCatalog()
+        rule.onNode(hasTestTag(ChunksSemantics.FOOTER_ADD)).performClick()
+        rule.waitUntil(20_000) { rule.onAllNodes(field).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test fun footerRemainsAvailableThroughSoftKeyboardAndAfterSearchKey() {
-        enterCatalogFromWelcome()
+        openAddFromWelcome()
         rule.waitUntil(10_000) { footerShown() }
-        val field = rule.onNode(hasSetTextAction() and hasText(searchLabel))
+        val input = rule.onNode(field)
         // Accessibility actions can reach an unfocused Activity. A real tap
         // after window focus is the ordinary foreground keyboard journey.
         // Two independent installed runs showed Android's *external* Pixel
@@ -86,24 +84,25 @@ class FooterImeInstalledInstrumentedTest {
                 false
             }
         }
-        field.performScrollTo().performTouchInput { click() }
+        input.performScrollTo().performTouchInput { click() }
         val keyboardAppeared = runCatching { rule.waitUntil(15_000) { imeShown() } }.isSuccess
         assumeTrue("This emulator did not show a soft keyboard; no IME evidence possible", keyboardAppeared)
         rule.waitUntil(10_000) { footerShown() }
-        field.performTextInput("ubuntu")
-        field.performImeAction()
+        input.performTextInput("ubuntu")
+        input.performImeAction()
         rule.waitUntil(15_000) { !imeShown() && footerShown() }
-        rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
+        rule.onNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD) and hasText("ubuntu", substring = true)).assertExists()
     }
 
     @Test fun catalogSearchSurvivesActivityRecreation() {
-        enterCatalogFromWelcome()
-        rule.onNode(hasSetTextAction() and hasText(searchLabel)).performScrollTo().performTextInput("debian")
+        openAddFromWelcome()
+        rule.onNode(field).performScrollTo().performTextInput("debian")
         rule.activityRule.scenario.recreate()
-        waitForCatalog()
+        // Route restore may land on the canonical root; the typed draft must survive either way.
+        rule.waitUntil(20_000) { footerShown() }
+        if (rule.onAllNodes(field).fetchSemanticsNodes().isEmpty()) openAddFromWelcome()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("debian", substring = true).fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodes(field and hasText("debian", substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNode(hasSetTextAction() and hasText("debian")).assertExists()
     }
 }

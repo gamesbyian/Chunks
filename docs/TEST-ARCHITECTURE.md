@@ -61,6 +61,12 @@ Current requirement → replacement verification (source-first Universal Add, #1
 | "On the connected server" / "On this device" destination gateway | Add target is explicit and non-mutating | `ADD_TARGET_DEVICE` selected by default; `ADD_TARGET_REMOTE` only for the authenticated profile |
 | `add-confirmation-real-compose.png` required | A capture of the Add form with source and destination | `add-source-and-destination-real-compose.png` (manifest `retired` entry) |
 | `Source: Magnet link` card text | A fetched publisher `.torrent` must not remain the submitted source | **Gap:** now rests on post-Add tracker-list/BEP9 witnesses; unrun on an emulator |
+| Catalog search on a fresh install (`FooterImeInstalledInstrumentedTest`) | Footer stays reachable through a real soft keyboard; a typed draft survives Activity recreation | Exercised on `ADD_SOURCE_FIELD`, reached from the Welcome by `FOOTER_ADD` (the Welcome deliberately has no search, #1512) |
+| "Create torrent" heading (`MainActivitySafeRouteRestoreInstrumentedTest`) | Create opens from offline tools and is not restored after recreation | Asserted on the current heading "Make it shareable." |
+| "Server settings" on Connections (`ChunksMainActivityAtlasTest`) | Connections identifies the verified server | "Connected ·" on canonical Connections |
+| "All environments" chip click (`PhoneAddHiddenInCombinedInstrumentedTest`) | Canonical Transfers shows every environment before the hidden-Add notice is judged | Footer `FOOTER_TRANSFERS`; the scope chip is pressed only when more than one environment exists |
+| "Start another Add" only (real-peer journey) | A retained result offers one acknowledgement that begins a fresh review without resending Add/Start | The exact button label for the reported server state (verified, session confirmed, or registered with Start unverified) |
+| Transfers row literal name (real-peer journey) | Transfers shows the original metadata name for the exact job | The row's accessible name `Details for <name> on <environment>`; also exposed a product defect (stale pre-metadata name), fixed by re-reading on the Transfers root |
 
 ## 6. Installed-device and end-to-end evidence is mandatory
 
