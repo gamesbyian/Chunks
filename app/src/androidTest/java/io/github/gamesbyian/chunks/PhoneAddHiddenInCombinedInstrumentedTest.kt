@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -46,10 +47,10 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
 
     private fun reachPhone() {
         val phone = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
-        val entry = hasText("Open phone downloads") and hasClickAction()
+        val entry = hasText("Open device transfer controls") and hasClickAction()
         waitFor(30_000) {
             rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() ||
-                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open phone downloads")) }.isSuccess
+                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open device transfer controls")) }.isSuccess
         }
         if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
             rule.onNode(entry).performScrollTo().performClick()
@@ -64,7 +65,7 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
         // Merely tapping All environments never resets the transfer filter.
         CombinedViewPreferences(rule.activity).save(UnifiedTransferQuery())
         reachPhone()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
         val field = hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL")
         waitFor { rule.onAllNodes(field).fetchSemanticsNodes().isNotEmpty() }

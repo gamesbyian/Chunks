@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.content.ContentValues
+import androidx.compose.ui.test.onNodeWithTag
 import android.content.Context
 import android.view.inputmethod.InputMethodManager
 import android.graphics.Bitmap
@@ -361,7 +362,17 @@ class ChunksMainActivityAtlasTest {
         }
         assertTrue("Enabled Connect button was never composed and clicked after scrolling", connectClicked)
         try {
-            rule.waitUntil(20_000) {
+            // Verified Connect acknowledges and stays on Connections (#1515); the saved
+            // profile then opens the one canonical Transfers browser.
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("Continue to Connections").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("Continue to Connections").performClick()
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("View transfers").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("View transfers").performScrollTo().performClick()
+            rule.waitUntil(30_000) {
                 rule.onAllNodesWithText("3 transfers", substring = true).fetchSemanticsNodes().isNotEmpty()
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
@@ -384,28 +395,27 @@ class ChunksMainActivityAtlasTest {
 
         // Real combined navigation keeps the signed-in server identity, and
         // the four root destinations never imply an Add or a server mutation.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
-        rule.onNodeWithText("All environments…").performClick()
-        rule.onNodeWithText("All environments").assertExists()
-        // The scoped catalog routes to the authenticated owner's controls
-        // through a full Details screen, without changing connection identity.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Only connected server"))
-        rule.onNodeWithText("Only connected server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_HEADING).assertExists()
+        // The canonical catalog routes to the authenticated owner's controls through
+        // the one full Details screen, without changing connection identity.
         val serverRow = androidx.compose.ui.test.hasContentDescription(
             "Details for A deliberately very long test filename", substring = true)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(serverRow)
         rule.onNode(serverRow).performClick()
-        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
         rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
         // The source-first Add route is shared across footer entries.
         // Changing target is a draft edit, never an RPC mutation.
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         assertPhoneAddEntryIsReachable()
-        rule.onNodeWithText("Options").performClick()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         assertPhoneAddEntryIsReachable()
-        rule.onNodeWithText("On ", substring = true).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
         rule.onNodeWithText("Add a transfer").assertExists()
         rule.onNodeWithText("Magnet or torrent link").assertExists()
         // Exercise the production Add screen, including the parent-owned draft.
