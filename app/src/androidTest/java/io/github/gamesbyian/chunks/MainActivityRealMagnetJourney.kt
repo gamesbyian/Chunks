@@ -239,7 +239,9 @@ internal class MainActivityRealMagnetJourney(
         // profile then opens the one canonical Transfers browser. There is no legacy
         // server queue landing screen.
         rule.waitUntil(90_000) { visible("Continue to Connections") }
-        click("Continue to Connections")
+        // The acknowledgement is a dialog (its own window), not an item in the Connections
+        // list, so it is clicked directly rather than through the list-scrolling helper.
+        rule.onNodeWithText("Continue to Connections").performClick()
         rule.waitUntil(60_000) { visible("View transfers") }
         // Connections lists the current server's button AND one per saved profile; only the
         // current verified server's exact accessibility name is unambiguous.
