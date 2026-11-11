@@ -207,7 +207,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                 URLEncoder.encode(tracker.url, "UTF-8")))
 
             ActivityScenario.launch<MainActivity>(input).use {
-                waitForText("Add on this device")
+                waitForText("Torrent source")
                 waitForText("Saves to: Downloads/Chunks Downloads")
                 val target = File(publicRoot, name)
                 assertFalse("Review cannot create payload", target.exists())
@@ -216,7 +216,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                     reviewedEngine == null || reviewedEngine.completeIdentityInventory() == emptyList<String>())
                 assertTrue("Saved-state discovery cannot hide failures",
                     reviewedEngine == null || reviewedEngine.restoreProblems.isEmpty())
-                click(if (kind == "share") "Add and start downloading" else "Add magnet and start")
+                click("Add transfer")
                 // A tracker is a peer-discovery mechanism, not an essential
                 // transport prerequisite for testing the installed Add flow.
                 // Supply one deterministic, exact-hash localhost fixture peer
@@ -332,7 +332,7 @@ class PhoneIntakeJourneyInstrumentedTest {
         // to Add another job or resume the existing restored transfer.
         ActivityScenario.launch<MainActivity>(intent(Intent.ACTION_VIEW,
             Uri.parse("magnet:?xt=urn:btih:$hash"))).use {
-            waitForText("Add on this device")
+            waitForText("Torrent source")
             await("exact stopped restore") { LocalEngineHolder.current()?.status(hash)?.stopped == true }
             val phone = requireNotNull(LocalEngineHolder.current())
             assertTrue(phone.restoreProblems.toString(), phone.restoreProblems.isEmpty())
@@ -492,7 +492,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                 ActivityScenario.launch<MainActivity>(input).use {
                     waitForText("Saves to: Downloads/Chunks Downloads")
                     assertFalse("Review cannot create payload", target.exists())
-                    click("Add and start downloading")
+                    click("Add transfer")
                     await("real UI registered the exact native job", 30) {
                         LocalEngineHolder.current()?.status(hash) != null
                     }
@@ -522,7 +522,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                 for (attempt in 1..6) {
                     ActivityScenario.launch<MainActivity>(input).use {
                         waitForText("Saves to: Downloads/Chunks Downloads")
-                        click("Add and start downloading")
+                        click("Add transfer")
                         // A same-session re-add may be refused while native
                         // I/O of the old handle drains; that is a refusal,
                         // not an uncertain write, so a later user retry is valid.
