@@ -329,6 +329,8 @@ internal fun CombinedTransfersScreen(
     onScopeFocusConsumed: () -> Unit = {},
     /** Root Transfers returns from full Details without changing filters or identity. */
     returnToCatalogRevision: Long = 0L,
+    /** Explicit All environments navigation is distinct from a saved profile link. */
+    showAllEnvironmentsRevision: Long = 0L,
     /** Host opt-in: genuine first-run omits all inventory-management chrome. */
     enableFirstRunWelcome: Boolean = false,
     onWelcomeAdd: (() -> Unit)? = null
@@ -366,6 +368,12 @@ internal fun CombinedTransfersScreen(
         // Save at the explicit event, not during composition; no queued write
         // can reorder a newer choice behind a late preference read.
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
+    }
+
+    // Only an explicit "All environments" action may clear the narrower
+    // previously selected saved-profile scope; Details return preserves it.
+    LaunchedEffect(showAllEnvironmentsRevision) {
+        if (showAllEnvironmentsRevision > 0L) update(CombinedViewPreferences.showAll(query))
     }
 
     // A saved-connection tap changes only the existing canonical browser's scope.
