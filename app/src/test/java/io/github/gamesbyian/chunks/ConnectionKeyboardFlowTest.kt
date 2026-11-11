@@ -69,7 +69,7 @@ class ConnectionScreenImeTest {
         rule.waitForIdle()
         rule.onNodeWithText("+ Add").performClick()
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
+        rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
         rule.onNode(hasSetTextAction() and hasText("Optional phone download subfolder"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
