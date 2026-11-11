@@ -1,0 +1,442 @@
+[
+  {
+    "id": "T01",
+    "case_id": "CH-01",
+    "scenario": "A proposed Android torrent client must download into the user's explicitly selected folder. A prior regular file has the same exact payload relative path. What is the default engineering response?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Ban all existing paths and implement a custom JNI disk writer"
+      },
+      {
+        "id": "B",
+        "text": "Use documented libtorrent check/reuse/replace of that authorized regular payload with path containment and real-byte tests"
+      },
+      {
+        "id": "C",
+        "text": "Silently delete the entire folder before download"
+      }
+    ],
+    "answer": "B",
+    "reason": "authorized ordinary same-path payload differs from non-owned exports",
+    "source": "https://github.com/gamesbyian/Chunks"
+  },
+  {
+    "id": "T02",
+    "case_id": "CH-02",
+    "scenario": "A ZIP exporter gets a returned SAF URI that might identify an existing unrelated document. Earlier code opens it in truncating write mode. How should shipping proceed?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Treat picker selection as permission to truncate any URI"
+      },
+      {
+        "id": "B",
+        "text": "Permit export after one JVM-only mock test"
+      },
+      {
+        "id": "C",
+        "text": "Keep unsafe exporter refused, implement a provider-specific new-object positive path and separately reviewed exact-target Replace"
+      }
+    ],
+    "answer": "C",
+    "reason": "document target identity and consent are necessary",
+    "source": "https://github.com/gamesbyian/Chunks"
+  },
+  {
+    "id": "T03",
+    "case_id": "CH-05",
+    "scenario": "A remote rTorrent endpoint returns public version and inventory to supplied invented credentials. The test says 'authenticated'. What do you fix?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Require challenged/accepted credentials in test AND shipping Android Connect before persisting identity"
+      },
+      {
+        "id": "B",
+        "text": "Keep Connect behavior because public success implies credential validity"
+      },
+      {
+        "id": "C",
+        "text": "Add a second anonymous version read as authentication evidence"
+      }
+    ],
+    "answer": "A",
+    "reason": "transport authentication must be actually challenged",
+    "source": "https://github.com/gamesbyian/Chunks"
+  },
+  {
+    "id": "T04",
+    "case_id": "CH-03",
+    "scenario": "Repeated native resume metadata events grow unbounded. Which correction is proportional?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Extend unlimited event files until disk fills"
+      },
+      {
+        "id": "B",
+        "text": "Prove conventional bounded transactional storage, atomic migration, retirement and real restart/Remove tests"
+      },
+      {
+        "id": "C",
+        "text": "Rewrite all torrent payload writers and default Downloads"
+      }
+    ],
+    "answer": "B",
+    "reason": "metadata durability is separate from payload policy",
+    "source": "https://github.com/gamesbyian/Chunks"
+  },
+  {
+    "id": "T05",
+    "case_id": "GL-02",
+    "scenario": "Exclusive CREATE_NEW file publication prevents overwrites but the app can die during the streaming copy before Room admission. What follows?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Automatically delete any unknown same-hash path"
+      },
+      {
+        "id": "B",
+        "text": "Treat atomic creation as proof of an atomic complete file"
+      },
+      {
+        "id": "C",
+        "text": "Journal ownership and crash boundaries, preserve or quarantine ambiguous bytes and verify a safe recovery path"
+      }
+    ],
+    "answer": "C",
+    "reason": "no-replace does not imply complete-file visibility",
+    "source": "https://github.com/gamesbyian/Glimpse"
+  },
+  {
+    "id": "T06",
+    "case_id": "GL-01",
+    "scenario": "A CI job verifies old/new APK migration with one ephemeral signer inside a single run, but production debug builds have different certificates. Can app updates be called safe?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "No: owner-stable signing and real across-build populated adb install -r still need proof"
+      },
+      {
+        "id": "B",
+        "text": "Yes: shared temporary test key is sufficient forever"
+      },
+      {
+        "id": "C",
+        "text": "Yes: tell the user to uninstall first"
+      }
+    ],
+    "answer": "A",
+    "reason": "temporary signer cannot prove owner signing continuity",
+    "source": "https://github.com/gamesbyian/Glimpse"
+  },
+  {
+    "id": "T07",
+    "case_id": "GL-06",
+    "scenario": "WallpaperManager.setBitmap entered, then threw/cancelled. A new rotation might apply again. Correct response?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Clear pending and retry immediately"
+      },
+      {
+        "id": "B",
+        "text": "Mark definite failure and advance shuffle bag"
+      },
+      {
+        "id": "C",
+        "text": "Persist pending/uncertain, pause auto-repeat and only reconcile from trustworthy OS evidence"
+      }
+    ],
+    "answer": "C",
+    "reason": "non-idempotent side-effect uncertainty",
+    "source": "https://github.com/gamesbyian/Glimpse"
+  },
+  {
+    "id": "T08",
+    "case_id": "GL-07",
+    "scenario": "The screenshot atlas CI is green, but at 320dp/200% text the app title wraps one letter per line. What next?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Inspect specific capture and fix actual adaptive Compose layout; recheck exact visual viewport"
+      },
+      {
+        "id": "B",
+        "text": "Accept because capture generated successfully"
+      },
+      {
+        "id": "C",
+        "text": "Remove 200% text test"
+      }
+    ],
+    "answer": "A",
+    "reason": "visual acceptance requires actual screenshot inspection",
+    "source": "https://github.com/gamesbyian/Glimpse"
+  },
+  {
+    "id": "T09",
+    "case_id": "EX-01",
+    "scenario": "API35 UI test failed to find DocumentsUI, but logcat shows system PickActivity and no Copy occurred. What is the first classification?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Proven broken SFTP byte engine"
+      },
+      {
+        "id": "B",
+        "text": "Pre-transfer OS picker/harness-window or reachability failure needing real window diagnostics"
+      },
+      {
+        "id": "C",
+        "text": "Successful copy because the intent was sent"
+      }
+    ],
+    "answer": "B",
+    "reason": "last reached step is pre-transfer picker visibility",
+    "source": "https://github.com/gamesbyian/Expository"
+  },
+  {
+    "id": "T10",
+    "case_id": "EX-02",
+    "scenario": "A new Copy UI opened two Android picker intents then displayed Success without reading output bytes. Is E2 acceptance earned?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Yes, UI progression proves transfer"
+      },
+      {
+        "id": "B",
+        "text": "Yes, if source is synthetic"
+      },
+      {
+        "id": "C",
+        "text": "No: require real two-authority grants, confirmed target membership and independently read-back bytes and source preservation"
+      }
+    ],
+    "answer": "C",
+    "reason": "picker intent is not a write receipt",
+    "source": "https://github.com/gamesbyian/Expository"
+  },
+  {
+    "id": "T11",
+    "case_id": "EX-05",
+    "scenario": "A native file is renamed out of an Android directory. GitHub's workflow-level paths filter prevents the native selector from running. Best fix?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Cheap always-dispatched, trusted-base selector that examines old/new paths, fails closed and preserves required check contexts"
+      },
+      {
+        "id": "B",
+        "text": "Tell the selector to process renames only if the workflow runs"
+      },
+      {
+        "id": "C",
+        "text": "Disable native checks on renamed files"
+      }
+    ],
+    "answer": "A",
+    "reason": "a skipped top-level workflow cannot self-detect",
+    "source": "https://github.com/gamesbyian/Expository"
+  },
+  {
+    "id": "T12",
+    "case_id": "GL-05",
+    "scenario": "A PR text says 'do not close #143' but GitHub closes the issue on merge. How to prevent recurrence?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Disable all issue links in PRs"
+      },
+      {
+        "id": "B",
+        "text": "Use 'Issue #143 remains open' for incomplete work, reserve auto-close syntax for completion and check post-merge issue state"
+      },
+      {
+        "id": "C",
+        "text": "Pretend issue closure proves implementation"
+      }
+    ],
+    "answer": "B",
+    "reason": "parser acts on negated keywords",
+    "source": "https://github.com/gamesbyian/Glimpse"
+  },
+  {
+    "id": "T13",
+    "case_id": "EX-06",
+    "scenario": "Stop is requested while an underlying input stream is blocking. It returns bytes after coroutine cancellation. How prevent a false VERIFIED result?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Check owning Job/permit after every blocking boundary, before writes and after readback EOF; retain uncertainty if side effect possible"
+      },
+      {
+        "id": "B",
+        "text": "Ignore stop once stream started"
+      },
+      {
+        "id": "C",
+        "text": "Mark verified when the progress UI disappears"
+      }
+    ],
+    "answer": "A",
+    "reason": "cancellation is not retroactive to blocking calls",
+    "source": "https://github.com/gamesbyian/Expository"
+  },
+  {
+    "id": "T14",
+    "case_id": "CH-09",
+    "scenario": "Two old green stacked PRs have different base trees and partial overlapping fixes; latest main differs. How integrate?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Merge both because each was green"
+      },
+      {
+        "id": "B",
+        "text": "Close one as superseded without comparing unique tests"
+      },
+      {
+        "id": "C",
+        "text": "Reconcile unique source/test deltas against live main, build one final integrated head and rerun required checks"
+      }
+    ],
+    "answer": "C",
+    "reason": "stale-parent green is not final-head proof",
+    "source": "https://github.com/gamesbyian/Chunks"
+  },
+  {
+    "id": "T15",
+    "case_id": "GL-08",
+    "scenario": "The app receives an Android Photo Picker result while another import is busy. Current handler clears the result before admission. Next step?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Persist the temporary URI in public preferences for later"
+      },
+      {
+        "id": "B",
+        "text": "Only clear after admitted; otherwise retain visible transient retry/dismiss, with repick after process loss"
+      },
+      {
+        "id": "C",
+        "text": "Drop result silently to avoid duplicate content"
+      }
+    ],
+    "answer": "B",
+    "reason": "do not lose user intent or persist unsafe provider grant",
+    "source": "https://github.com/gamesbyian/Glimpse"
+  },
+  {
+    "id": "T16",
+    "case_id": "EX-09",
+    "scenario": "A 12-file SAF Copy batch is reviewed once. After 6 verified items, item 7 is uncertain. What should the app report?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Success 12/12 because batch was authorized"
+      },
+      {
+        "id": "B",
+        "text": "Rollback by deleting all source files"
+      },
+      {
+        "id": "C",
+        "text": "Stop without blind replay, keep sources, show 6 verified and item 7 uncertain with per-item journal"
+      }
+    ],
+    "answer": "C",
+    "reason": "batch review does not imply atomicity",
+    "source": "https://github.com/gamesbyian/Expository"
+  },
+  {
+    "id": "T17",
+    "case_id": "CH-13",
+    "scenario": "A chained installed API35 lifecycle job confirms real dataSync timeout and cold restore, then stops logging just after reboot is armed and the run times out. What validation decision is justified?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Declare all four chained lifecycle scenarios passed because the first phase did"
+      },
+      {
+        "id": "B",
+        "text": "Keep the real reboot gate red; retain independent FGS-positive evidence and add bounded ADB stages and step receipts before rerunning only the unresolved phase"
+      },
+      {
+        "id": "C",
+        "text": "Replace the reboot test with mocked ADB and declare E2 accepted"
+      }
+    ],
+    "answer": "B",
+    "reason": "shared sessions need independently observable bounded phases; probable hanging command is not yet proven",
+    "source": "https://github.com/gamesbyian/Chunks/pull/1123"
+  },
+  {
+    "id": "T18",
+    "case_id": "EX-11",
+    "scenario": "A repeated genuine Android picker-and-Copy test has independently verified target bytes, untouched source and visible success, but consistently fails during Material3 Compose teardown. Which check should be prioritized during diagnosis?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Run the full two-picker copy repeatedly without changing the failure hypothesis"
+      },
+      {
+        "id": "B",
+        "text": "Waive the teardown exception and merge because the bytes are correct"
+      },
+      {
+        "id": "C",
+        "text": "Keep end-to-end lifecycle qualification open, isolate minimal Activity/semantics/picker conditions first, then rerun one complete exact-head E2 after the proposed fix"
+      }
+    ],
+    "answer": "C",
+    "reason": "diagnostic information gain is distinct from final end-to-end acceptance",
+    "source": "https://github.com/gamesbyian/Expository/pull/401"
+  },
+  {
+    "id": "T19",
+    "case_id": "CH-14",
+    "scenario": "A real installed magnet test sees expected verified destination bytes but zero received new bytes; the destination had already completed that exact public torrent. What should happen?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Report fresh peer ingress because the destination SHA matched"
+      },
+      {
+        "id": "B",
+        "text": "Mark fresh-ingress evidence inconclusive, preserve the pre-existing torrent, and use strictly owned alternative fixtures with initial-state and delta assertions"
+      },
+      {
+        "id": "C",
+        "text": "Delete the pre-existing external payload without consent, then retry the same magnet"
+      }
+    ],
+    "answer": "B",
+    "reason": "a complete existing fixture is not proof of newly received peer bytes",
+    "source": "https://github.com/gamesbyian/Chunks/pull/1051"
+  },
+  {
+    "id": "T20",
+    "case_id": "CH-15",
+    "scenario": "An Android JVM suite runs 1,178 tests, but one Compose assertion times out while waiting simultaneously for background list loading and UI statuses. How best increase the evidence value?",
+    "choices": [
+      {
+        "id": "A",
+        "text": "Separate exact callback completion from rendered status waits and assert both, preserving existing negative assertions"
+      },
+      {
+        "id": "B",
+        "text": "Treat the whole app as confirmed broken because the full foundation job is red"
+      },
+      {
+        "id": "C",
+        "text": "Delete the UI assertion because 1,178 passing tests are more than enough"
+      }
+    ],
+    "answer": "A",
+    "reason": "a discriminating test separates asynchronous scheduling from UI behavior",
+    "source": "https://github.com/gamesbyian/Chunks/pull/860"
+  }
+]

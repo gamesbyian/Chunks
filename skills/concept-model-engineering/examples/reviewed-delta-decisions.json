@@ -1,0 +1,52 @@
+{
+  "schema": "concept-model/reviewed-delta-v1",
+  "source_links": [
+    {
+      "stage_id": "S1",
+      "model_id": "SRC_OWNER",
+      "decision": "add",
+      "as_of": "2026-01-01",
+      "checked_locator": "synthetic://requirements#L15",
+      "basis": "Synthetic source record inspected for R1; no assertion of real-world evidence"
+    }
+  ],
+  "new_concepts": [],
+  "identity_links": [
+    {
+      "mention_id": "M1",
+      "concept_id": "C2",
+      "checked_locator": "synthetic://requirements#L15",
+      "basis": "Fictional action is the example's remote-copy operation",
+      "boundary_basis": null
+    },
+    {
+      "mention_id": "M5",
+      "concept_id": "C4",
+      "checked_locator": "synthetic://requirements#L16",
+      "basis": "Fictional state corresponds to local-byte verification",
+      "boundary_basis": null
+    }
+  ],
+  "relation_reviews": [
+    {
+      "relation_id": "R1",
+      "decision": "accept",
+      "claim_id": "P3",
+      "checked_locator": "synthetic://requirements#L16",
+      "basis": "Teaching example: inspected relation span, truth kind remains documented",
+      "bridge_source_id": null,
+      "bridge_locator": null,
+      "challenge_claim_ids": []
+    },
+    {
+      "relation_id": "R2",
+      "decision": "defer",
+      "claim_id": null,
+      "checked_locator": "synthetic://code#L44",
+      "basis": "Cross-source relationship remains unresolved until a checked bridge is documented",
+      "bridge_source_id": null,
+      "bridge_locator": null,
+      "challenge_claim_ids": []
+    }
+  ]
+}

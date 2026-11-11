@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0", "id": "mobile-remote-reconnect", "status": "investigating",
+  "focus": "Restore configured remote-server connections without surprising users or duplicating mutations",
+  "context": {"users": ["person using multiple remote environments"], "platform": "Android with remote network service", "constraints": ["credentials stay protected", "do not replay uncertain writes", "user must see each environment's truth"]},
+  "cues": ["background lifecycle", "network uncertainty", "identity and scope", "UX visibility"],
+  "questions": [
+    {"id":"q1", "text":"Does reconnect apply on foreground launch, network recovery, reboot, or all three?", "why":"Android background limits differ by lifecycle", "answer_source":"owner", "status":"open", "decision_impact":"changes scheduler and user promise"},
+    {"id":"q2", "text":"Where are environment identity, credentials and selected server stored?", "why":"prevent cross-server authorization mistakes", "answer_source":"code", "status":"open", "decision_impact":"determines source of truth and reconnection isolation"},
+    {"id":"q3", "text":"What does the UI show while one of several servers is unreachable?", "why":"a stale list must not impersonate an online inventory", "answer_source":"user-research", "status":"open", "decision_impact":"determines offline badge and cached-list policy"},
+    {"id":"q4", "text":"Can a timed-out remote operation have committed successfully?", "why":"avoids duplicated irreversible actions", "answer_source":"documentation", "status":"open", "decision_impact":"determines reconciliation before retry"}
+  ],
+  "model": {"competency_questions": ["Can each environment reconnect independently?", "Can uncertain mutations be reconciled without replay?"], "nodes": ["App", "Environment", "Connection", "RemoteCommand", "VisibleInventory"], "edges": [
+    {"from":"App", "predicate":"owns stored profiles for", "to":"Environment", "truth_kind":"hypothesis"},
+    {"from":"Environment", "predicate":"has connection state", "to":"Connection", "truth_kind":"hypothesis"},
+    {"from":"Environment", "predicate":"scopes remote mutations", "to":"RemoteCommand", "truth_kind":"hypothesis"}
+  ], "gaps": [{"name":"Mapping reconnect outcomes to visible cached inventory", "classification":"unknown", "next_probe":"inspect source UI state and compare two remote-control clients"}]},
+  "alternatives": [
+    {"id":"foreground", "description":"Reconnect on app foreground and network recovery", "risk":"offline state may persist until app opens", "discriminator":"read Android requirements and validate user expectations"},
+    {"id":"persistent", "description":"Add persistent background reconnection", "risk":"battery restrictions and incorrect background promises", "discriminator":"prove a platform-supported user need and execution primitive"}
+  ],
+  "decision": {"status":"deferred", "selected":null, "rationale":"Requires existing implementation and product-contract inspection", "reversal_trigger":"Owner requirement or measured lifecycle behavior invalidates preferred approach"},
+  "verification": {"oracle":"Installed app reconnects each configured environment after an allowed lifecycle transition and reports unreachable profiles truthfully without replaying uncertain commands", "tier":"not-run", "result":"not-run", "evidence_refs":[]},
+  "sources": [
+    {"id":"EV4-0069", "role":"recommendation", "url":"https://github.com/GuillemRoca/agent-skills-android/blob/68fd141eec5ad2029ae8393e510dbe46dea48c36/skills/android-background-work/SKILL.md", "scope":"background-work retry idempotency, not proof of remote-reconnect UX"},
+    {"id":"editorial-1", "role":"editorial", "url":"https://github.com/GBIDEVELOPMENT/general-purpose/blob/1cb880c97c6eac1a25abd9fb6659333b3e8b64c0/skills/engineering-judgment/SKILL.md", "scope":"proposed conditional inquiry, not source-proven user requirement"}
+  ]
+}

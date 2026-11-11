@@ -1,0 +1,3 @@
+# Task: CI impact selection
+
+A small service decides whether an Android test suite needs to run for a list of changed GitHub files. Each complete record has `path`, `status` (added/modified/removed/renamed), and `previous_path` for renames. The Android source root is `android/`. A change moved **out** of that directory still requires Android validation. Malformed, truncated or unknown change metadata must **not** silently skip potentially necessary checks. Unrelated docs-only changes should avoid the expensive suite. Preserve `requires_android_checks(changes)`, returning bool. This is the selector's logic; deployment still needs an always-triggered workflow so the selector actually runs. Edit only `candidate.py`.

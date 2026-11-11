@@ -1,0 +1,15 @@
+{
+  "schema": "mechanised-expertise/inquiry-input-v1",
+  "task_id": "synthetic-label-typo",
+  "goal": "Replace an explicitly approved static settings label with the specified exact text",
+  "risk_tier": "routine",
+  "sources": [
+    {
+      "id": "SPEC-2",
+      "kind": "owner_contract",
+      "locator": "synthetic://owner/label",
+      "scope": "One approved spelling replacement with no behavior change"
+    }
+  ],
+  "observations": []
+}

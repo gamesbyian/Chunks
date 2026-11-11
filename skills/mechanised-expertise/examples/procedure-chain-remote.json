@@ -1,0 +1,80 @@
+{
+  "schema": "mechanised-expertise/procedure-chain-input-v1",
+  "task_id": "synthetic-remote-mutation",
+  "goal": "Prevent duplicate remote writes after a response timeout",
+  "risk_tier": "consequential",
+  "facts": [
+    {
+      "id": "owner-target",
+      "kind": "owner_contract",
+      "locator": "synthetic://spec/remote#approved-target",
+      "status": "documented",
+      "claim": "The approved target is an exact account and transfer ID."
+    },
+    {
+      "id": "rpc-path",
+      "kind": "code",
+      "locator": "synthetic://app/remote#write",
+      "status": "hypothesized",
+      "claim": "A client may retry a mutation after an ambiguous timeout."
+    },
+    {
+      "id": "protocol",
+      "kind": "protocol",
+      "locator": "synthetic://docs/remote#commit",
+      "status": "unknown",
+      "claim": "Whether a mutation can commit before a timeout remains unknown."
+    },
+    {
+      "id": "constraint",
+      "kind": "spec",
+      "locator": "synthetic://spec/remote#nonduplicate",
+      "status": "documented",
+      "claim": "Each approved user command must not be duplicated."
+    }
+  ],
+  "selected": [
+    {
+      "id": "PROC-005",
+      "trigger": "An apparently failed remote write could already have changed server state.",
+      "trigger_fact_ids": [
+        "owner-target",
+        "rpc-path"
+      ],
+      "exclusion_checked": true,
+      "exclusion_applies": false,
+      "bindings": {
+        "approved_target": {
+          "fact": "owner-target"
+        },
+        "protocol_contract": {
+          "fact": "protocol"
+        },
+        "remote_command_path": {
+          "fact": "rpc-path"
+        }
+      }
+    },
+    {
+      "id": "PROC-010",
+      "trigger": "The correct reconciliation design depends on unresolved server guarantees.",
+      "trigger_fact_ids": [
+        "constraint",
+        "protocol"
+      ],
+      "exclusion_checked": true,
+      "exclusion_applies": false,
+      "bindings": {
+        "decision_target": {
+          "output": "PROC-005.target_binding"
+        },
+        "hard_constraints": {
+          "fact": "constraint"
+        },
+        "candidate_options": {
+          "output": "PROC-005.reconciliation_plan"
+        }
+      }
+    }
+  ]
+}

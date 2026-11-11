@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "concept-model/v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "focus_question",
+    "scope",
+    "source_records",
+    "competency_questions",
+    "concepts",
+    "claims",
+    "gaps"
+  ],
+  "properties": {
+    "schema": {
+      "const": "concept-model/v1"
+    },
+    "focus_question": {
+      "type": "string",
+      "minLength": 10
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 10
+    },
+    "source_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "role",
+          "as_of"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "as_of": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "competency_questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "question",
+          "status",
+          "claim_ids"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "answered",
+              "partial",
+              "unknown",
+              "out_of_scope"
+            ]
+          },
+          "claim_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "label"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "subject",
+          "predicate",
+          "object",
+          "truth_kind",
+          "source_ids",
+          "scope"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "predicate": {
+            "type": "string"
+          },
+          "object": {
+            "type": "string"
+          },
+          "truth_kind": {
+            "enum": [
+              "documented",
+              "observed",
+              "inferred",
+              "hypothesized",
+              "contested",
+              "refuted",
+              "unknown"
+            ]
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "scope": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "question",
+          "kind",
+          "qualification",
+          "source_checks",
+          "falsifier",
+          "next_action"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "question": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "acquisition_omission",
+              "alias_mismatch",
+              "schema_blind_spot",
+              "underlinked_fact",
+              "contradiction",
+              "unknown_fact",
+              "version_boundary",
+              "deliberate_exclusion",
+              "candidate_frontier"
+            ]
+          },
+          "qualification": {
+            "enum": [
+              "map_repair",
+              "insufficient_evidence",
+              "out_of_scope",
+              "qualified_frontier"
+            ]
+          },
+          "source_checks": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "falsifier": {
+            "type": "string"
+          },
+          "next_action": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

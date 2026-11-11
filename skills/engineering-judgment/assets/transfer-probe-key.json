@@ -1,0 +1,113 @@
+{
+  "schema": "engineering-judgment/transfer-key-v1",
+  "answers": [
+    {
+      "id": "J01",
+      "answer": "B",
+      "pattern": "authorized-reuse-versus-protection",
+      "reason": "Consent to update an exact object differs from unrelated overwrites."
+    },
+    {
+      "id": "J02",
+      "answer": "C",
+      "pattern": "partial-private-original",
+      "reason": "Exclusive names and proven ownership protect immutable originals."
+    },
+    {
+      "id": "J03",
+      "answer": "A",
+      "pattern": "public-read-auth",
+      "reason": "Anonymous read does not prove principal identity."
+    },
+    {
+      "id": "J04",
+      "answer": "B",
+      "pattern": "side-effect-uncertainty",
+      "reason": "A timeout after a non-idempotent effect cannot imply failure."
+    },
+    {
+      "id": "J05",
+      "answer": "C",
+      "pattern": "source-harness-separation",
+      "reason": "Test failure before an operation does not prove the backend failed."
+    },
+    {
+      "id": "J06",
+      "answer": "A",
+      "pattern": "ui-reachability",
+      "reason": "Rendering/accessibility is an observable property, not a model assertion."
+    },
+    {
+      "id": "J07",
+      "answer": "B",
+      "pattern": "build-vs-upgrade",
+      "reason": "Same-run temporary signer does not prove real upgrade identity."
+    },
+    {
+      "id": "J08",
+      "answer": "C",
+      "pattern": "ci-trigger-completeness",
+      "reason": "A selector cannot detect events that prevent its own dispatch."
+    },
+    {
+      "id": "J09",
+      "answer": "A",
+      "pattern": "research-frontier",
+      "reason": "Missing inventory entry can be a retrieval or ontology failure."
+    },
+    {
+      "id": "J10",
+      "answer": "C",
+      "pattern": "proportional-investigation",
+      "reason": "Expert judgment includes not overinvestigating routine reversible work."
+    },
+    {
+      "id": "J11",
+      "answer": "B",
+      "pattern": "non-idempotent-batch",
+      "reason": "Batch review does not confer atomicity across independently written targets."
+    },
+    {
+      "id": "J12",
+      "answer": "A",
+      "pattern": "architectural-reuse",
+      "reason": "Find the actual bottleneck before inventing a second subsystem."
+    },
+    {
+      "id": "J13",
+      "answer": "C",
+      "pattern": "external-publication",
+      "reason": "UI intent alone does not guarantee provider's returned target semantics."
+    },
+    {
+      "id": "J14",
+      "answer": "B",
+      "pattern": "identity-scope",
+      "reason": "Mutable UI selection is not durable authorization for an in-flight command."
+    },
+    {
+      "id": "J15",
+      "answer": "A",
+      "pattern": "semantic-control",
+      "reason": "Correct schema doesn't guarantee comprehensible action consequences."
+    },
+    {
+      "id": "J16",
+      "answer": "C",
+      "pattern": "research-frontier",
+      "reason": "Missing relation may simply be missing creator evidence/link traversal."
+    },
+    {
+      "id": "J17",
+      "answer": "B",
+      "pattern": "research-frontier",
+      "reason": "Normalized identity diversity is not validated behavioral diversity."
+    },
+    {
+      "id": "J18",
+      "answer": "C",
+      "pattern": "partial-private-original",
+      "reason": "Exclusive path reservation does not make streaming atomic."
+    }
+  ]
+}

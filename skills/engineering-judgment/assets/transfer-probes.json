@@ -1,0 +1,329 @@
+{
+  "schema": "engineering-judgment/transfer-prompts-v1",
+  "probes": [
+    {
+      "id": "J01",
+      "prompt": "An editor saves user-approved revisions of a document to the same named file. A junior agent proposes a universal ban on any pre-existing target. What is the most defensible first decision?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Implement a custom storage engine that never writes a name twice."
+        },
+        {
+          "id": "B",
+          "text": "Keep normal explicitly authorized replacement with scope checks; separately protect unrelated files."
+        },
+        {
+          "id": "C",
+          "text": "Disable all saves until every file can be proven newly created."
+        }
+      ]
+    },
+    {
+      "id": "J02",
+      "prompt": "A scientific lab vault stores immutable raw acquisition images. A copy process finds an existing immutable digest path with uncertain contents. How should it proceed?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Overwrite existing digest to restore consistency."
+        },
+        {
+          "id": "B",
+          "text": "Delete unknown matching-name files during cleanup."
+        },
+        {
+          "id": "C",
+          "text": "Preserve the existing object, verify provenance and stage new bytes independently before any recovery."
+        }
+      ]
+    },
+    {
+      "id": "J03",
+      "prompt": "A calendar service returns a public build-version endpoint even when a user enters a wrong password. The app labels the account 'verified'. What should the agent investigate?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Require proof that credentials were challenged for the actual protected account in the shipping login path."
+        },
+        {
+          "id": "B",
+          "text": "Add another call to the same public endpoint."
+        },
+        {
+          "id": "C",
+          "text": "Treat successful TCP connection as user authentication."
+        }
+      ]
+    },
+    {
+      "id": "J04",
+      "prompt": "A ticket-buying client sent a purchase request and then timed out. The UI says 'try again automatically'. What must be determined first?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Immediately retry until a success response arrives."
+        },
+        {
+          "id": "B",
+          "text": "Reconcile the possibly completed purchase read-only using exact transaction identity, recording uncertainty meanwhile."
+        },
+        {
+          "id": "C",
+          "text": "Always show failure and erase the receipt."
+        }
+      ]
+    },
+    {
+      "id": "J05",
+      "prompt": "A test fails to locate a system share chooser. Device logs show the chooser opened, and no upload was attempted. Which diagnosis should be tested first?",
+      "options": [
+        {
+          "id": "A",
+          "text": "The upload protocol corrupted bytes."
+        },
+        {
+          "id": "B",
+          "text": "The server credentials must be invalid."
+        },
+        {
+          "id": "C",
+          "text": "The system-window locator/visibility or app reachability failed before upload; inspect the last reached assertion."
+        }
+      ]
+    },
+    {
+      "id": "J06",
+      "prompt": "A contact-list interface passes unit tests, but on a narrow screen at maximum text scale its primary action is clipped under nested scrolling. What's the next move?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Inspect the running viewport and fix reachable layout/semantics while keeping the original operation guard."
+        },
+        {
+          "id": "B",
+          "text": "Assume unit tests prove human reachability."
+        },
+        {
+          "id": "C",
+          "text": "Disable larger text scale in app settings."
+        }
+      ]
+    },
+    {
+      "id": "J07",
+      "prompt": "An app migration test installs two builds signed with one freshly generated key in a single run. Real developer builds use changing signing certificates. Is the user upgrade proven?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Yes, because database migration has passed."
+        },
+        {
+          "id": "B",
+          "text": "No. Verify stable distributed signing and in-place install over populated old app data, without uninstalling."
+        },
+        {
+          "id": "C",
+          "text": "No testing matters because signing is a UI issue."
+        }
+      ]
+    },
+    {
+      "id": "J08",
+      "prompt": "A code file is moved out of the native directory. The CI workflow's top-level path filter doesn't dispatch, so its internal rename classifier never runs. What is a sufficient direction?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Require developers to rename files back before any CI."
+        },
+        {
+          "id": "B",
+          "text": "Assume the classifier will detect it on the next unrelated commit."
+        },
+        {
+          "id": "C",
+          "text": "Have a cheap safely trusted selection step dispatch for relevant PRs and inspect both old and new paths, failing closed on missing metadata."
+        }
+      ]
+    },
+    {
+      "id": "J09",
+      "prompt": "A feature study labels a workflow 'unprecedented' because none of 40 reviewed applications listed it verbatim. What's the first corrective investigation?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Search synonyms, older names, plugins, APIs, versions and counterexamples, then bound the novelty claim to the reviewed evidence."
+        },
+        {
+          "id": "B",
+          "text": "Treat 40 examples as statistical proof of nonexistence."
+        },
+        {
+          "id": "C",
+          "text": "Add the feature immediately because novelty is valuable by definition."
+        }
+      ]
+    },
+    {
+      "id": "J10",
+      "prompt": "The task is to adjust a non-destructive icon label using the project's established style, with no changed behavior or meaning. Which workflow depth is proportionate?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Run a multidisciplinary product-model interview and exhaustive platform audit."
+        },
+        {
+          "id": "B",
+          "text": "Design a new abstraction to future-proof all icons."
+        },
+        {
+          "id": "C",
+          "text": "Make the small conventional change and run focused visual/accessibility checks."
+        }
+      ]
+    },
+    {
+      "id": "J11",
+      "prompt": "A user authorizes copying eight files. Three are verified, a fourth may be partially written when connection drops, and the rest were untouched. What should be shown?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Success 8/8 because the batch was approved."
+        },
+        {
+          "id": "B",
+          "text": "Three verified; fourth uncertain, rest unattempted; keep sources and reconcile without blind replay."
+        },
+        {
+          "id": "C",
+          "text": "Delete all sources and restart the entire batch."
+        }
+      ]
+    },
+    {
+      "id": "J12",
+      "prompt": "An agent proposes replacing the database query engine to fix a 'slow list', but has no trace of latency, load or UI rendering. What first?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Profile a representative real workload to separate query, rendering, IO and scheduling before selecting the smallest bottleneck fix."
+        },
+        {
+          "id": "B",
+          "text": "Replace the whole engine because large lists are always database bottlenecks."
+        },
+        {
+          "id": "C",
+          "text": "Increase concurrency until the issue disappears."
+        }
+      ]
+    },
+    {
+      "id": "J13",
+      "prompt": "A Save New report operation obtains a returned cloud document handle but the provider might have returned an existing object. The current write mode can truncate. What must gate execution?",
+      "options": [
+        {
+          "id": "A",
+          "text": "The displayed friendly filename matches user's typed name."
+        },
+        {
+          "id": "B",
+          "text": "The target account has a logged-in session."
+        },
+        {
+          "id": "C",
+          "text": "Prove a fresh output object, or require explicitly reviewed replacement of the exact returned existing target."
+        }
+      ]
+    },
+    {
+      "id": "J14",
+      "prompt": "A user switches workspace while a delayed delete operation is awaiting a network reply. The command currently reads the global active workspace at completion. What invariant is missing?",
+      "options": [
+        {
+          "id": "A",
+          "text": "All workspaces should be locked until completion."
+        },
+        {
+          "id": "B",
+          "text": "The operation must preserve and revalidate the exact original workspace and target identity across suspensions."
+        },
+        {
+          "id": "C",
+          "text": "Global workspace selection is harmless after server acknowledgment."
+        }
+      ]
+    },
+    {
+      "id": "J15",
+      "prompt": "An AI translation helper generates a localization pack. A destructive button's translated phrase sounds non-destructive even though the key IDs validate. What should happen?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Validate semantic equivalence of critical actions with real context before importing into shipping UI."
+        },
+        {
+          "id": "B",
+          "text": "Assume IDs and Unicode validity establish safety."
+        },
+        {
+          "id": "C",
+          "text": "Use the generated text automatically unless users complain."
+        }
+      ]
+    },
+    {
+      "id": "J16",
+      "prompt": "A recommendation engine sees an obscure TV episode and a vintage comic collection. Basic title and genre search finds no relation, but creator data is not indexed. What should it investigate?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Classify the works as unrelated and stop."
+        },
+        {
+          "id": "B",
+          "text": "Invent a thematic influence relation from vague similarity."
+        },
+        {
+          "id": "C",
+          "text": "Resolve credits and authors through typed creator links before proposing speculative thematic relationships."
+        }
+      ]
+    },
+    {
+      "id": "J17",
+      "prompt": "A simulation study records 18,000 unique hashes of selected internal state fields, but has not matched any against external behavioral ground truth. What can be concluded?",
+      "options": [
+        {
+          "id": "A",
+          "text": "18,000 unique real behaviors have been accepted."
+        },
+        {
+          "id": "B",
+          "text": "Only bounded normalized field fingerprints are distinct; behavioral novelty/acceptance requires independent checks."
+        },
+        {
+          "id": "C",
+          "text": "The model is complete because the count is high."
+        }
+      ]
+    },
+    {
+      "id": "J18",
+      "prompt": "An asset importer reserves an unused final path atomically and streams bytes directly into it. It crashes halfway through, before updating its database. Which recovery assumption is safest?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Atomic path creation means complete bytes were published."
+        },
+        {
+          "id": "B",
+          "text": "Unknown same-name file can be automatically deleted based on age."
+        },
+        {
+          "id": "C",
+          "text": "Partial content may exist; preserve evidence and require proven ownership and safe recovery before database admission or cleanup."
+        }
+      ]
+    }
+  ]
+}
