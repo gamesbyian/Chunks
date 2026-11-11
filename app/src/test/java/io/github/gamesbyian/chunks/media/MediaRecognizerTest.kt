@@ -94,6 +94,20 @@ class MediaRecognizerTest {
         assertEquals(MediaKind.AUDIOBOOK, ab.kind); assertEquals("Stephen King", ab.artist); assertEquals("Carrie", ab.title)
     }
 
+    @Test fun explicitBookAndComicFormatTokensInFolderNamesClassifyWithoutFiles() {
+        // Like "[FLAC]" for music: an explicit format token is a clear local cue for a pack/folder name.
+        val book = r("Frank Herbert - Dune (epub)")
+        assertEquals(MediaKind.BOOK, book.kind); assertEquals("Frank Herbert", book.artist); assertEquals("Dune", book.title)
+        assertEquals(MediaKind.BOOK, r("Andy Weir - Project Hail Mary [EPUB MOBI AZW3]").kind)
+        val comic = r("Saga 054 (2018) (Digital) (cbz)")
+        assertEquals(MediaKind.COMIC, comic.kind); assertEquals(54, comic.issue); assertEquals("Saga", comic.title)
+        // A video name or actual file composition still wins over a stray format word.
+        assertEquals(MediaKind.MOVIE, r("Hackers.1995.1080p.BluRay.x264.mkv").kind)
+        assertEquals(MediaKind.MUSIC_ALBUM, r("Some Pack (epub)", "a.flac" to 30L, "b.flac" to 30L).kind)
+        // A bare title remains unknown: nothing is blindly classified for online lookup.
+        assertEquals(MediaKind.UNKNOWN, r("Frank Herbert - Dune").kind)
+    }
+
     @Test fun collectionYearRangeIsNotAReleaseYear() {
         val x = r("The Incredible Hulk (1987-1998)", "Hulk 331.cbz" to 30L, "Hulk 332.cbz" to 30L)
         assertEquals(MediaKind.COMIC, x.kind); assertEquals(1987..1998, x.yearRange); assertNull(x.year)

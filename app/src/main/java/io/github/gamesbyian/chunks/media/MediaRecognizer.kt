@@ -92,6 +92,9 @@ object MediaRecognizer {
     private val audiobookRx = Regex("(?i)${B}(?:audiobook|audio[ ._-]?book|unabridged|abridged|narrated[ ._-]by|m4b)$E")
     private val adultRx = Regex("(?i)${B}(?:xxx|porn|nsfw|hentai|onlyfans|brazzers|18\\+)$E")
     private val musicHintRx = Regex("(?i)${B}(?:discography|album|ep|single|ost|soundtrack|flac|mp3|320kbps|v0|24bit|16bit|lossless|web[ .-]?flac|cd[ ._-]?rip)$E")
+    // Explicit format tokens in a folder/pack name ("Dune (epub)", "Saga 001 [cbz]"), like "[FLAC]" for music.
+    private val ebookFormatRx = Regex("(?i)${B}(?:epub|mobi|azw3)$E")
+    private val comicFormatRx = Regex("(?i)${B}(?:cbz|cbr)$E")
     private val musicTitleTokensRx = Regex("(?i)\\s*[\\[(](?:flac|mp3|320|v0|24bit|16bit|web|cd|vinyl|lossless|[0-9]{2,3}\\s?kbps)[^\\])]*[\\])]")
 
     private data class Marker(val start: Int, val end: Int, val what: String)
@@ -205,6 +208,8 @@ object MediaRecognizer {
             effectiveBucket == Bucket.AUDIO -> MediaKind.MUSIC_ALBUM
             effectiveBucket == null && musicHintRx.containsMatchIn(stem) && Regex("(?i)${B}(?:flac|mp3|320kbps|v0|24bit|16bit|lossless)$E").containsMatchIn(stem) -> MediaKind.MUSIC_ALBUM
             effectiveBucket == Bucket.EBOOK -> MediaKind.BOOK
+            effectiveBucket == null && comicFormatRx.containsMatchIn(stem) -> MediaKind.COMIC
+            effectiveBucket == null && ebookFormatRx.containsMatchIn(stem) -> MediaKind.BOOK
             effectiveBucket == Bucket.COMIC -> MediaKind.COMIC
             effectiveBucket == Bucket.DOCUMENT -> MediaKind.DOCUMENT
             gameHint -> MediaKind.GAME
