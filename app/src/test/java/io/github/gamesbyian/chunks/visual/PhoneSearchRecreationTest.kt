@@ -1,10 +1,9 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import io.github.gamesbyian.chunks.MainActivity
@@ -15,18 +14,28 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Canonical catalog search survives Activity recreation; empty Welcome hides unused phone search. */
+/** Phone search is navigation state that survives Activity recreation (rotation). */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
 class PhoneSearchRecreationTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    private fun enterExplicitDeviceView() {
+        rule.runOnIdle {
+            io.github.gamesbyian.chunks.CombinedViewPreferences(rule.activity).save(
+                io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                    scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                        setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
+        }
+        rule.activityRule.scenario.recreate()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 
-    @Test fun catalogSearchSurvivesRecreationAfterWelcome() {
-        rule.waitForIdle()
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        rule.onNodeWithText("Transfers").performClick()
-        rule.waitForIdle()
+
+    @Test fun phoneSearchSurvivesRecreation() {
+        enterExplicitDeviceView()
         rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
             .performScrollTo().performTextInput("debian")
         rule.activityRule.scenario.recreate()
