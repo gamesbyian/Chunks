@@ -261,7 +261,13 @@ class CombinedTwoRealServersInstrumentedTest {
             stage("connected-b")
 
             rule.onAllNodesWithText("All environments…")[0].performClick()
-            waitFor("Combined view") { visible("All environments") && !visible("All environments…") }
+            waitFor("canonical Combined-derived Transfers browser") {
+                // The catalog's actual heading is now "Transfers"; the old
+                // "All environments" screen name belonged to the legacy fork.
+                // Require its unique search control and absence of the old
+                // switch before verifying the four-row real-account union.
+                visible("Search names or hashes") && !visible("All environments…")
+            }
             stage("combined-open")
             scrollTo("Load other saved servers (read-only)")
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
@@ -405,10 +411,20 @@ class CombinedTwoRealServersInstrumentedTest {
             enterConnectedQueueIfCombined()
             waitFor("reconnect for C2", 90_000) { connectedQueue() }
             rule.onAllNodesWithText("All environments…")[0].performClick()
-            waitFor("Combined for C2") { visible("All environments") && !visible("All environments…") }
+            waitFor("canonical Combined browser for C2") {
+                visible("Search names or hashes") && !visible("All environments…")
+            }
             scrollTo("Load other saved servers (read-only)")
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
-            waitFor("union before fault", 60_000) { visible("Showing 4") }
+            waitFor("union before fault", 60_000) {
+                // Opening the read-only secondary server loader scrolls the
+                // lazy catalog. Require the truthful four-row summary after
+                // bringing its item back into composition.
+                runCatching {
+                    scrollTo("Showing 4")
+                    visible("Showing 4")
+                }.getOrDefault(false)
+            }
             fun fault(action: String) {
                 val c = java.net.URL("http://127.0.0.1:18083/$action").openConnection()
                     as java.net.HttpURLConnection
