@@ -210,4 +210,132 @@ class ArtworkRepositoryTest {
             1, wire.requests.size)
     }
 
+
+    @Test fun importedImageSurvivesAndroidCacheCleanupAndNewRepositoryInstance() {
+        val cache = Files.createTempDirectory("reclaimable-provider-art").toFile()
+        val durable = Files.createTempDirectory("durable-manual-art").toFile()
+        fun newRepository() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        val candidate = newRepository().importLocal(image(600, 800)).first!!
+        assertEquals(LOCAL_PROVIDER, candidate.provider)
+        assertTrue(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+
+        // Android is allowed to remove arbitrary cacheDir contents, even while the
+        // user's exact manual assignment still refers to the imported image.
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        val recovered = newRepository().loadOne(candidate, ArtworkRole.SQUARE, allowNetwork = false)
+        assertTrue("Manual selection must be available without network or cacheDir",
+            recovered is ArtworkLoadResult.Loaded)
+        assertTrue((recovered as ArtworkLoadResult.Loaded).fromCache)
+    }
+
+    @Test fun olderCachedImportMigratesToDurableStoreWithoutChangingIdentity() {
+        val cache = Files.createTempDirectory("legacy-import-cache").toFile()
+        val durable = Files.createTempDirectory("migrated-manual-art").toFile()
+        val existing = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze })
+        val candidate = existing.importLocal(image(600, 800)).first!!
+        assertTrue(cache.listFiles().orEmpty().any { it.name.endsWith(".img") })
+
+        fun upgraded() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        assertTrue(upgraded().loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+        assertTrue("Migration must copy an older local derivative to durable storage",
+            durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        assertTrue("A later cold restore must retain the exact legacy import",
+            upgraded().loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+
+        // Deliberate removal must delete both durable and legacy copies. A saved
+        // assignment that refers to the removed candidate must not revive from either.
+        val finished = upgraded()
+        finished.removeLocal(candidate)
+        assertTrue(finished.loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Unavailable)
+        assertFalse(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+    }
+
+
+    @Test fun deliberatelySelectedProviderArtworkSurvivesCacheCleanupOffline() {
+        val cache = Files.createTempDirectory("provider-auto-cache").toFile()
+        val durable = Files.createTempDirectory("selected-poster-storage").toFile()
+        val wire = FakeMediaHttp().onBytes("p.jpg", image(680, 1000),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        fun newRepository(http: FakeMediaHttp = wire) =
+            ArtworkRepository(http, ArtworkDiskCache(cache),
+                hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+
+        val first = newRepository()
+        assertTrue(first.loadOne(poster, ArtworkRole.SQUARE, true) is ArtworkLoadResult.Loaded)
+        assertFalse("Ordinary automatic downloaded artwork is still reclaimable",
+            durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        first.pin(poster, ArtworkRole.SQUARE)
+        assertTrue("Choosing an image promotes its processed derivative to durable storage",
+            durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        val offline = FakeMediaHttp()
+        assertTrue(newRepository(offline).loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+        assertTrue(offline.requests.isEmpty())
+
+        val released = newRepository(offline)
+        released.unpin(poster, ArtworkRole.SQUARE)
+        assertFalse(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        assertTrue(newRepository(offline).loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Unavailable)
+        assertTrue(offline.requests.isEmpty())
+    }
+
+    @Test fun choosingPosterBeforeFirstDownloadStoresThatRoleDurably() {
+        val cache = Files.createTempDirectory("poster-cache").toFile()
+        val durable = Files.createTempDirectory("chosen-poster-storage").toFile()
+        val wire = FakeMediaHttp().onBytes("p.jpg", image(680, 1000),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        val first = ArtworkRepository(wire, ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        first.pin(poster, ArtworkRole.POSTER)
+        assertTrue(first.loadOne(poster, ArtworkRole.POSTER, true) is ArtworkLoadResult.Loaded)
+        assertTrue(durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        assertEquals(1, wire.requests.size)
+
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        val noNetwork = FakeMediaHttp()
+        val restored = ArtworkRepository(noNetwork, ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        assertTrue(restored.loadOne(poster, ArtworkRole.POSTER, false) is ArtworkLoadResult.Loaded)
+        assertTrue(noNetwork.requests.isEmpty())
+    }
+
+    @Test fun formerlyPinnedProviderArtworkMigratesAfterUpgradeWithoutAnIdentityChange() {
+        val cache = Files.createTempDirectory("old-pinned-cache").toFile()
+        val durable = Files.createTempDirectory("new-pinned-storage").toFile()
+        val wire = FakeMediaHttp().onBytes("p.jpg", image(680, 1000))
+        val legacy = ArtworkRepository(wire, ArtworkDiskCache(cache), hostPolicyFor = { tvmaze })
+        assertTrue(legacy.loadOne(poster, ArtworkRole.SQUARE, true) is ArtworkLoadResult.Loaded)
+        legacy.pin(poster, ArtworkRole.SQUARE)
+        assertTrue(ArtworkDiskCache(cache).isPinned(
+            io.github.gamesbyian.chunks.media.artwork.ArtworkBytesPolicy.cacheKey(
+                poster.url, ArtworkRole.SQUARE, ArtworkRepository.SQUARE_SIZE)))
+
+        fun upgraded() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))
+        assertTrue(upgraded().loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+        cache.listFiles().orEmpty().forEach { it.delete() }
+        assertTrue(upgraded().loadOne(poster, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+    }
+
+
+    @Test fun newManualImageIsNeverEvictedBeforeItsFirstPinUnderStoragePressure() {
+        val cache = Files.createTempDirectory("ordinary-art-cache").toFile()
+        val durable = Files.createTempDirectory("one-byte-limit-user-art").toFile()
+        fun newRepository() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
+            hostPolicyFor = { tvmaze },
+            // This deliberately cannot fit any JPEG. The user's explicit choice is
+            // protected even when existing pins already exceed the target budget.
+            importedDisk = ArtworkDiskCache(durable, maxBytes = 1))
+        val candidate = newRepository().importLocal(image(600, 800)).first!!
+        assertTrue("New manual art must be pinned before trim sees its bytes",
+            durable.listFiles().orEmpty().any { it.name.endsWith(".img") })
+        assertTrue("A cold instance must decode the exact manual image offline",
+            newRepository().loadOne(candidate, ArtworkRole.SQUARE, false) is ArtworkLoadResult.Loaded)
+    }
+
 }

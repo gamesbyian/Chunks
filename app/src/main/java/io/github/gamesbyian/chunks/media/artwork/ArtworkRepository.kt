@@ -84,7 +84,9 @@ class ArtworkRepository(
     private val disk: ArtworkDiskCache,
     /** Provider id → artwork host policy (from MediaProviderInfo.artworkHosts). */
     private val hostPolicyFor: (String) -> MediaHostPolicy?,
-    memoryBytes: Int = defaultMemoryBytes()
+    memoryBytes: Int = defaultMemoryBytes(),
+    /** Durable app-private storage for explicit imported images, distinct from reclaimable poster cache. */
+    private val importedDisk: ArtworkDiskCache = disk
 ) {
     companion object {
         const val SQUARE_SIZE = 384
@@ -111,14 +113,38 @@ class ArtworkRepository(
     fun hasCachedSquare(candidates: List<ArtworkCandidate>): Boolean =
         ArtworkSelector.order(candidates, ArtworkRole.SQUARE).any { c ->
             val k = key(c, ArtworkRole.SQUARE)
-            memory.get(k) != null || disk.hasPlausibleProcessedJpeg(k)
+            memory.get(k) != null || importedDisk.hasPlausibleProcessedJpeg(k) ||
+                disk.hasPlausibleProcessedJpeg(k)
         }
 
     private fun key(source: ArtworkCandidate, role: ArtworkRole) =
         ArtworkBytesPolicy.cacheKey(source.url, role, if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE)
 
-    fun pin(source: ArtworkCandidate, role: ArtworkRole) = disk.pin(key(source, role))
-    fun unpin(source: ArtworkCandidate, role: ArtworkRole) = disk.unpin(key(source, role))
+    /** Explicitly selected images are durable, including official-provider alternatives.
+     * An image chosen before its HTTP response is available is pinned first, then stored on fetch.
+     * Ordinary automatically fetched provider art stays in the reclaimable LRU cache. */
+    fun pin(source: ArtworkCandidate, role: ArtworkRole) = synchronized(mutationLock) {
+        val k = key(source, role)
+        if (source.provider != io.github.gamesbyian.chunks.media.LOCAL_PROVIDER && importedDisk !== disk) {
+            // A chosen image may still exist only in decoded memory after Android
+            // reclaimed cacheDir. Encode that already-processed bitmap if necessary.
+            val bytes = disk.get(k) ?: memory.get(k)?.let(ArtworkComposer::encode)
+            if (bytes != null) importedDisk.putPinned(k, bytes)
+            disk.unpin(k) // Legacy provider pin moves to the durable store.
+        }
+        importedDisk.pin(k)
+    }
+
+    fun unpin(source: ArtworkCandidate, role: ArtworkRole) = synchronized(mutationLock) {
+        val k = key(source, role)
+        importedDisk.unpin(k)
+        if (source.provider != io.github.gamesbyian.chunks.media.LOCAL_PROVIDER) {
+            // Only a deliberate selected image belongs in persistent storage.
+            // Ordinary provider cache copies remain available until LRU eviction.
+            if (importedDisk !== disk) importedDisk.remove(k)
+            disk.unpin(k)
+        }
+    }
 
     /** Try candidates in deterministic order; the first usable one wins. */
     fun load(candidates: List<ArtworkCandidate>, role: ArtworkRole, allowNetwork: Boolean, providerOrder: List<String> = emptyList(), requestAllowed: () -> Boolean = { true }): ArtworkLoadResult {
@@ -149,7 +175,10 @@ class ArtworkRepository(
         val candidate = ArtworkCandidate(io.github.gamesbyian.chunks.media.LOCAL_PROVIDER, "local:$digest", ArtworkRole.SQUARE,
             square.width, square.height)
         val k = key(candidate, ArtworkRole.SQUARE)
-        disk.put(k, encoded); disk.pin(k); memory.put(k, square)
+        synchronized(mutationLock) {
+            importedDisk.putPinned(k, encoded)
+            memory.put(k, square)
+        }
         return candidate to null
     }
 
@@ -182,7 +211,13 @@ class ArtworkRepository(
     /** Forget a user import (caller has verified no other assignment references it). */
     fun removeLocal(c: ArtworkCandidate) {
         if (c.provider != io.github.gamesbyian.chunks.media.LOCAL_PROVIDER) return
-        val k = key(c, ArtworkRole.SQUARE); memory.remove(k); disk.remove(k)
+        val k = key(c, ArtworkRole.SQUARE)
+        synchronized(mutationLock) {
+            memory.remove(k)
+            importedDisk.remove(k)
+            // Remove a legacy cached import as well, avoiding resurrection from the migration path.
+            if (importedDisk !== disk) disk.remove(k)
+        }
     }
 
     fun loadOne(c: ArtworkCandidate, role: ArtworkRole, allowNetwork: Boolean, requestAllowed: () -> Boolean = { true }): ArtworkLoadResult {
@@ -190,13 +225,27 @@ class ArtworkRepository(
         val k = key(c, if (local) ArtworkRole.SQUARE else role)
         memory.get(k)?.let { return ArtworkLoadResult.Loaded(it, c, true) }
         synchronized(mutationLock) {
-            disk.get(k)?.let { bytes ->
-                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let {
-                    memory.put(k, it)
-                    return ArtworkLoadResult.Loaded(it, c, true)
+            // User-imported images are durable presentation choices. Earlier app versions kept
+            // them in cacheDir; migrate such an image on its first successful read without
+            // changing its digest/assignment identity or exposing the original imported URI.
+            val retainPin = local || importedDisk.isPinned(k) || disk.isPinned(k)
+            val stores = if (importedDisk !== disk) listOf(importedDisk, disk) else listOf(disk)
+            for (store in stores) {
+                val bytes = store.get(k) ?: continue
+                val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                if (decoded != null) {
+                    if (store !== importedDisk && retainPin) {
+                        importedDisk.putPinned(k, bytes)
+                        if (importedDisk !== disk) disk.unpin(k)
+                    }
+                    memory.put(k, decoded)
+                    return ArtworkLoadResult.Loaded(decoded, c, true)
                 }
-                if (!local) disk.remove(k)
+                if (!local || store === importedDisk) store.remove(k)
             }
+            // Preserve a chosen image's intent even if its previous durable
+            // derivative was corrupt: a later permitted fetch can repair it.
+            if (retainPin && !importedDisk.isPinned(k)) importedDisk.pin(k)
         }
         if (local) return ArtworkLoadResult.Unavailable(listOf("Your image is no longer stored"))
         if (disk.isNegative(k)) return ArtworkLoadResult.Unavailable(listOf("Recently failed; will retry later"))
@@ -226,6 +275,12 @@ class ArtworkRepository(
             // negative-cache side effect may reappear on disk or in memory.
             if (!requestAllowed()) return ArtworkLoadResult.Unavailable(listOf("Not cached; network not allowed"))
             disk.put(k, encoded)
+            if (importedDisk !== disk && (importedDisk.isPinned(k) || disk.isPinned(k))) {
+                // Choosing a poster can precede its first HTTP response.
+                // Keep a durable processed derivative only for that explicit selection.
+                importedDisk.putPinned(k, encoded)
+                disk.unpin(k)
+            }
             memory.put(k, processed)
         }
         return ArtworkLoadResult.Loaded(processed, c, false)

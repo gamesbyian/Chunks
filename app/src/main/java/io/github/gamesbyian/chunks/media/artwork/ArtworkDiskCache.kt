@@ -89,6 +89,14 @@ class ArtworkDiskCache(
         trim()
     }
 
+    /** Persist the pin BEFORE writing and trimming. A newly imported derivative must never
+     * be evicted between put() and pin() when the cache is already full of pinned images. */
+    @Synchronized fun putPinned(key: String, bytes: ByteArray) {
+        ensureLoaded()
+        if (pinned.add(key)) savePins()
+        put(key, bytes)
+    }
+
     /** Pinned (user-chosen/imported) derivatives survive eviction and restarts until unpinned. */
     @Synchronized fun pin(key: String) { ensureLoaded(); if (pinned.add(key)) savePins() }
     @Synchronized fun unpin(key: String) { ensureLoaded(); if (pinned.remove(key)) savePins() }
