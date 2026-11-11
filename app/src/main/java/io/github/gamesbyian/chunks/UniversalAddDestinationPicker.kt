@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import io.github.gamesbyian.chunks.model.TransferDisplayNames
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +42,8 @@ internal fun UniversalAddDestinationPicker(
     authenticatedRemoteLabel: String?,
     savedOtherProfiles: List<UniversalAddSavedDestination>,
     enabled: Boolean,
+    aliasDraft: String = "",
+    onAliasChange: (String) -> Unit = {},
     incomingSourceWaiting: Boolean = false,
     importingSource: Boolean = false,
     sourceError: String? = null,
@@ -50,6 +54,7 @@ internal fun UniversalAddDestinationPicker(
     onConnectSaved: (String) -> Unit
 ) {
     var showSaved by rememberSaveable { mutableStateOf(false) }
+    var showAlias by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (incomingSourceWaiting) {
             Text("Another torrent source was shared. Keep the current draft or explicitly replace it; neither choice adds a transfer.",
@@ -83,6 +88,33 @@ internal fun UniversalAddDestinationPicker(
         }
         Text("Destination selection only changes this draft. Add transfer is the sole submission action.",
             style = MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick = { showAlias = !showAlias }, enabled = enabled,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
+                stateDescription = if (showAlias) "Expanded" else "Collapsed"
+            }) {
+            Text(if (showAlias) "Hide display name" else
+                if (aliasDraft.isBlank()) "Optional display name" else "Display name selected")
+        }
+        if (showAlias) {
+            OutlinedTextField(
+                value = aliasDraft,
+                onValueChange = { onAliasChange(it.take(TransferDisplayNames.MAX_ALIAS_LENGTH + 1)) },
+                label = { Text("Display name in Chunks") },
+                placeholder = { Text("Optional; leave blank for original name") },
+                singleLine = false,
+                maxLines = 3,
+                enabled = enabled,
+                isError = !validUniversalAddAlias(aliasDraft),
+                modifier = Modifier.fillMaxWidth()
+            )
+            Text("Only the Chunks list label changes after a verified new Add. " +
+                "The torrent name, source, files and server remain untouched.",
+                style = MaterialTheme.typography.bodySmall)
+            if (!validUniversalAddAlias(aliasDraft)) Text(
+                "Use a visible name of at most 160 characters without control characters.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall)
+        }
         if (savedOtherProfiles.isNotEmpty()) {
             OutlinedButton(onClick = { showSaved = !showSaved },
                 enabled = enabled,
