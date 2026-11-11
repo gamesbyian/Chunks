@@ -228,7 +228,7 @@ internal class MainActivityRealMagnetJourney(
         fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}) {
             report("chunks_real_add_app_stage", "add-open-requested")
             click("+ Add torrent")
-            rule.waitUntil(30_000) { visible("Add a download to this server") }
+            rule.waitUntil(30_000) { visible("Add a transfer") }
             report("chunks_real_add_app_stage", "add-open")
             // A verified previous Add remains a result on return; only this
             // explicit action starts a fresh source review, without an RPC.
@@ -289,22 +289,9 @@ internal class MainActivityRealMagnetJourney(
                 // EVERY Add; do not silently omit an opt-out after navigation.
                 click(artworkChoice)
             }
-            report("chunks_real_add_app_stage", "review-click")
-            click("Review Add")
-            report("chunks_real_add_app_stage", "review-open")
-            scroll("Confirm one server operation")
-            assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
-            if (disposable && !publicDiscovery && torrentLinks && label != null && label != "magnet0") {
-                // The earlier HTTPS fetch is a read-only preview. Require the
-                // *production confirmation card* to say the pending source is
-                // the isolated magnet, never the original public .torrent.
-                // This is independently corroborated after Add by the engine's
-                // exact tracker list and missing-metadata/BEP9 witness.
-                assertTrue("Publisher HTTPS preview was retained as the submitted source",
-                    visible("Source: Magnet link"))
-                assertFalse("A fetched publisher .torrent must not remain the chosen source",
-                    visible("Source: Selected .torrent file"))
-            }
+            // The source-first form has one explicit "Add transfer" submission action and no
+            // separate review card; the exact identity is asserted independently after Add
+            // (registered hash, tracker list and BEP9 witness), not from a pre-submit card.
             if (torrentLinks && label != null && label != "magnet0") {
                 InstrumentationRegistry.getInstrumentation().sendStatus(2,
                     Bundle().apply { putString("chunks_https_review", label) })
@@ -313,7 +300,7 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "add-review")
             onSubmit()
             report("chunks_real_add_app_stage", "add-submitted")
-            click("Confirm: add then start")
+            click("Add transfer")
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
             assertTrue("Actual app did not verify Add+Start", visible("Verified: added and started on rTorrent."))
             if (disposable) {
@@ -332,7 +319,7 @@ internal class MainActivityRealMagnetJourney(
             scroll("View verified transfer in rTorrent")
             rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
-                runCatching { scroll("Review Add") }.isFailure)
+                runCatching { scroll("Add transfer") }.isFailure)
             assertNotNull("Navigation must retain the independently registered exact job", row(hash))
             if (disposable && !publicDiscovery) {
                 // The HTTPS preview above must NOT leak its public trackers

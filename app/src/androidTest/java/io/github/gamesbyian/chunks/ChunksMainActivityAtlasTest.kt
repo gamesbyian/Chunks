@@ -501,7 +501,7 @@ class ChunksMainActivityAtlasTest {
         // Regression: before reserving the footer's viewport, this real tap
         // landed on the overlapping + Add footer and navigated away instead
         // of expanding the exact transfer.
-        rule.onNodeWithText("Add a download to this server").assertDoesNotExist()
+        rule.onNodeWithText("Add a transfer").assertDoesNotExist()
         try {
             rule.waitUntil(10_000) {
                 rule.onAllNodesWithText("Hide details").fetchSemanticsNodes().isNotEmpty()
