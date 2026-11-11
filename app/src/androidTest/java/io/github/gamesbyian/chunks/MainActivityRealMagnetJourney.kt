@@ -59,11 +59,20 @@ internal class MainActivityRealMagnetJourney(
         // First find the LazyColumn item and confirm the action is enabled.
         // A large transfer Card may be taller than the viewport: scrolling to
         // its item alone does NOT expose a confirmation button near its end.
-        rule.waitUntil(45_000) { runCatching {
-            scroll(text)
-            rule.onNodeWithText(text).assertIsEnabled()
-            true
-        }.getOrDefault(false) }
+        try {
+            rule.waitUntil(45_000) { runCatching {
+                scroll(text)
+                rule.onNodeWithText(text).assertIsEnabled()
+                true
+            }.getOrDefault(false) }
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            // Names WHY this control was unusable (bounded, lowercase; no labels from the app).
+            val count = rule.onAllNodesWithText(text).fetchSemanticsNodes().size
+            report("chunks_real_add_app_stage", "click-" +
+                text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(26) +
+                if (count == 0) "-absent" else if (count > 1) "-ambiguous" else "-unusable")
+            throw timeout
+        }
         rule.waitForIdle()
         // Connect is already visible; a redundant scroll there previously
         // raced its re-composing form. Only scroll within an oversized item
@@ -405,7 +414,17 @@ internal class MainActivityRealMagnetJourney(
         fun lifecycle(hash: String, start: Boolean) {
             refreshAndFind(hash)
             openDetails(hash)
-            click(if (start) "Start transfer…" else "Stop transfer…")
+            // Canonical Details never dispatches Start/Stop itself: it hands the exact job to the
+            // owner's separately confirmed review ("Review Start / Stop"), which then offers the
+            // exact-job action and its confirmation.
+            click("Review Start / Stop")
+            val action = if (start) "Start transfer…" else "Stop transfer…"
+            // The owner can present the exact job collapsed; reveal its actions only if needed.
+            if (!runCatching { scroll(action); true }.getOrDefault(false)) {
+                rule.waitUntil(30_000) { runCatching { scroll("More details"); true }.getOrDefault(false) }
+                click("More details")
+            }
+            click(action)
             click(if (start) "Confirm start" else "Confirm stop")
             await(what = "lifecycle state readback") { row(hash)?.started == start && readOnly { remote.readActivity(hash).active } == start }
         }
