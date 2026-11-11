@@ -331,6 +331,7 @@ internal fun ChunksApp(
     var combinedFromConnections by rememberSaveable { mutableStateOf(false) }
     var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
     var showAllEnvironmentsRevision by remember { mutableLongStateOf(0L) }
+    var consumedShowAllEnvironmentsRevision by remember { mutableLongStateOf(0L) }
     // View-only one-shot canonical catalog focus; never a login, Add target,
     // RPC account or authority. The browser consumes this exact stable ID.
     var savedProfileCatalogFocus by remember { mutableStateOf<String?>(null) }
@@ -757,7 +758,13 @@ internal fun ChunksApp(
                 scopeFocusRequest = savedProfileCatalogFocus,
                 onScopeFocusConsumed = { savedProfileCatalogFocus = null },
                 returnToCatalogRevision = returnToCatalogRevision,
-                showAllEnvironmentsRevision = showAllEnvironmentsRevision,
+                showAllEnvironmentsRevision =
+                    showAllEnvironmentsRevision.takeIf { it > consumedShowAllEnvironmentsRevision } ?: 0L,
+                onShowAllEnvironmentsConsumed = { consumed ->
+                    // A slower old completion cannot consume a newer explicit tap.
+                    consumedShowAllEnvironmentsRevision =
+                        maxOf(consumedShowAllEnvironmentsRevision, consumed)
+                },
                 enableFirstRunWelcome = true,
                 // The existing Add destination remains the sole admission
                 // coordinator until source-first Universal Add is integrated.
@@ -1023,6 +1030,7 @@ internal fun ChunksApp(
                 onViewConnectedTransfers = {
                     io.github.gamesbyian.chunks.model.EnvironmentSnapshots
                         .serverIdOfAliasScope(aliasScope)?.value?.let { id ->
+                            consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                             savedProfileCatalogFocus = id
                             combinedFromConnections = true
                             section = Section.COMBINED
@@ -1159,6 +1167,7 @@ internal fun ChunksApp(
                 onOpenProfileTransfers = { profile ->
                     // This is a view filter, never an implicit Connect or a write.
                     // The encrypted roster's immutable ID is the only selector.
+                    consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                     savedProfileCatalogFocus = profile.id
                     combinedFromConnections = true
                     section = Section.COMBINED
@@ -1257,6 +1266,7 @@ internal fun ChunksApp(
                                         .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
                                     if (startupReturn) {
                                         // Read-only startup catalog focus. No Add target.
+                                        consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
                                         savedProfileCatalogFocus = verifiedId
                                         combinedFromConnections = true
                                     } else {
