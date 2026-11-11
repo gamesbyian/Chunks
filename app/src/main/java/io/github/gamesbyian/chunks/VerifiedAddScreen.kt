@@ -101,6 +101,9 @@ internal fun VerifiedAddScreen(
     /** Parent-owned choice shared with phone Add; no extra Save/Apply interaction. */
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
+    addAliasState: androidx.compose.runtime.MutableState<String>? = null,
+    /** Saves only the confirmed new exact-account Chunks list alias. */
+    onVerifiedAlias: (String, String) -> Boolean = { _, _ -> false },
     /** Parent-owned exact-account review; remounting must not revive Add authority. */
     session: RemoteAddSession? = null,
     /** Inline shared Add-to selector; never grants remote admission. */
@@ -202,6 +205,17 @@ internal fun VerifiedAddScreen(
             if (draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED &&
                 draft.reportedVerifiedHash != it) {
                 draft.reportedVerifiedHash = it
+                val submittedHash = draft.attemptTicket?.intent?.source?.expectedInfoHash
+                val verifiedAlias = exactNewAddAlias(
+                    draft.frozenAlias, submittedHash.orEmpty(), it)
+                if (verifiedAlias != null) {
+                    if (!runCatching { onVerifiedAlias(it, verifiedAlias) }.getOrDefault(false))
+                        outcome = outcome.orEmpty() +
+                        " The transfer was verified, but its Chunks display name could not be saved."
+                    else addAliasState?.let { aliasDraft ->
+                        if (aliasDraft.value == verifiedAlias) aliasDraft.value = ""
+                    }
+                }
                 onVerifiedAdd(it)
                 if (draft.resetArtworkAfterVerification && magnet == draft.attemptSource && initialTorrent == null)
                     automaticArtwork = true
@@ -681,6 +695,9 @@ internal fun VerifiedAddScreen(
                             // Both authorization and the one-shot ticket are acquired
                             // synchronously on the explicit Add click, before any
                             // suspending source, metadata or network operation.
+                            val aliasRaw = addAliasState?.value.orEmpty()
+                            if (!validUniversalAddAlias(aliasRaw)) return@addClick
+                            val aliasAtClick = normalizedUniversalAddAlias(aliasRaw)
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val requestedStart = startAfterAdd
                             val allowArtwork = automaticArtwork
@@ -722,6 +739,7 @@ internal fun VerifiedAddScreen(
                             observedProgress = null
                             draft.attemptTicket = ticket
                             draft.attemptSource = magnet
+                            draft.frozenAlias = aliasAtClick
                             val artworkEnvironment = ticket.intent.target.environment
                             scope.launch {
                                 try {
@@ -844,7 +862,8 @@ internal fun VerifiedAddScreen(
                                 outcome = "Add could not be authorized for this exact server. Refresh the connection and review again; nothing was submitted."
                             }
                         },
-                        enabled = !submitting && !choosing && !externalSourceReading,
+                        enabled = !submitting && !choosing && !externalSourceReading &&
+                            validUniversalAddAlias(addAliasState?.value.orEmpty()),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                             .testTag(ChunksSemantics.ADD_SUBMIT)
                     ) { Text("Add transfer") }

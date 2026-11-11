@@ -124,6 +124,8 @@ internal class PhoneAddAttemptOwner : androidx.lifecycle.ViewModel() {
     // Retain private Add drafts through configuration changes in RAM only.
     // Never serialize magnet passkeys, document bytes or account scope.
     val sourceDraft = mutableStateOf("")
+    // The optional Chunks-only label belongs to the single in-RAM Add draft.
+    val aliasDraft = mutableStateOf("")
     val reviewedTorrent = mutableStateOf<PendingLocalAdd?>(null)
     val pendingSharedMagnet = mutableStateOf<String?>(null)
     val pendingSharedDocument = mutableStateOf<Uri?>(null)
@@ -404,6 +406,8 @@ internal fun ChunksApp(
     // neither browsing filters nor opening a screen silently authorizes Add.
     // Process memory only, never SavedState/preferences: links can hold passkeys.
     val addSourceDraft = retainedAddOwner?.sourceDraft ?: remember { mutableStateOf("") }
+    val addAliasDraft = retainedAddOwner?.aliasDraft ?: remember { mutableStateOf("") }
+    val verifiedAliasStore = remember(context) { TransferAliasStore(context) }
     val phoneAddPlace = rememberSaveable { mutableStateOf<String?>(null) }
     val phoneAddFolder = rememberSaveable { mutableStateOf("") }
     val phoneAddStart = rememberSaveable { mutableStateOf(true) }
@@ -577,6 +581,35 @@ internal fun ChunksApp(
     val remoteFence = remember { RemoteUiRequestFence() }
     val inspectionFence = remember { RemoteUiRequestFence() }
     val mutationGate = remember { RemoteMutationReadbackGate() }
+    val savedAddReconnect = remember { SavedAddProfileReconnect() }
+
+    // A profile switch is a read-only navigation/authentication choice, but
+    // it must retire the old authenticated principal before displaying the
+    // connection form. Reuse the ordinary Disconnect revocation path; do not
+    // clear any Add source, reviewed bytes, exact-job attempt or account-specific
+    // Add preferences. No remote RPC or torrent mutation is sent here.
+    fun detachAuthenticatedRemoteSession() {
+        remoteFence.invalidate()
+        connectJob?.cancel()
+        RemoteCredentialLock.invalidate()
+        inspectionFence.invalidate()
+        mutationGate.reset()
+        server = null
+        aliasScope = ""
+        aliasSessions.clear()
+        version = ""
+        transfers = emptyList()
+        transfersObservedAt = null
+        expandedHash = null
+        files = null
+        filesError = null
+        filesLoading = false
+        loading = false
+        error = null
+        stale = false
+        currentView = "main"
+        requestedView = "main"
+    }
 
     // Share/Open With only admits source data, never a phone or remote Add.
     // An occupied draft is held until the user explicitly chooses replacement.
@@ -843,6 +876,8 @@ internal fun ChunksApp(
                     RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
             }.map { UniversalAddSavedDestination(it.id, it.label + " · " + it.address) },
             enabled = addChoicesEnabled && !sharedTorrentReading,
+            aliasDraft = addAliasDraft.value,
+            onAliasChange = { addAliasDraft.value = it },
             incomingSourceWaiting = pendingSharedMagnet != null || pendingSharedDocument != null,
             importingSource = sharedTorrentReading,
             sourceError = sharedTorrentError,
@@ -874,13 +909,32 @@ internal fun ChunksApp(
             onAuthenticatedRemote = { selectAuthenticatedAddTarget() },
             onConnectSaved = { requested ->
                 val profile = savedProfiles.firstOrNull { it.id == requested }
-                if (profile != null) {
-                    endpoint = profile.credentials.endpoint
-                    rpcPath = ""
-                    username = profile.credentials.username
-                    password = profile.credentials.password
-                    credentialNotice = "Authenticate this saved connection before remote Add. Your Add source is retained."
-                    section = Section.SERVER
+                if (profile != null && !loading) {
+                    val requestedScope = RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials)
+                    if (server != null && aliasScope == requestedScope) {
+                        // The current authenticated profile already owns the
+                        // target; never authenticate or switch it a second time.
+                        savedAddReconnect.abandon()
+                        selectAuthenticatedAddTarget()
+                    } else {
+                        // A saved label is not an authenticated Add target. An
+                        // already connected different account must be detached,
+                        // or Section.SERVER would still display its old server
+                        // screen while the new credentials sat in text fields.
+                        savedAddReconnect.requestAuthentication(requestedScope)
+                        // The one-shot cold-start reconnect may still be
+                        // eligible after a manual login. This explicit saved
+                        // profile choice must not silently reconnect the
+                        // previously remembered (possibly different) account.
+                        startupReconnectAttempted = true
+                        detachAuthenticatedRemoteSession()
+                        endpoint = profile.credentials.endpoint
+                        rpcPath = ""
+                        username = profile.credentials.username
+                        password = profile.credentials.password
+                        credentialNotice = "Authenticate this saved connection before remote Add. Your Add source is retained."
+                        section = Section.SERVER
+                    }
                 }
             }
         )
@@ -1163,6 +1217,7 @@ internal fun ChunksApp(
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     addArtworkState = addArtworkChoices.onPhone(),
                     addDestinationPicker = if (presentationSection == Section.LOCAL_ADD) addDestinationPicker else null,
+                    addAliasState = addAliasDraft,
                     externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                     pendingAddState = phoneReviewedTorrent,
                     phoneAddAttemptSession = activePhoneAddAttempt,
@@ -1260,6 +1315,9 @@ internal fun ChunksApp(
                 error = error, loading = loading,
                 diagnostics = connectDiagnostics,
                 onCancelConnect = {
+                    // A cancelled explicit Add-target login cannot route a
+                    // future unrelated successful Connect back into Add.
+                    savedAddReconnect.abandon()
                     // Discovery is read-only, so abandoning it changes nothing.
                     connectJob?.cancel()
                     remoteFence.invalidate()
@@ -1272,6 +1330,11 @@ internal fun ChunksApp(
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
                 savedProfiles = savedProfiles, credentialNotice = credentialNotice,
                 onSelectProfile = { profile ->
+                    // Explicitly choosing another saved account abandons an
+                    // older Add-return promise. Re-selecting the same account
+                    // while editing its login leaves that draft intact.
+                    savedAddReconnect.abandonIfDifferent(
+                        RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
                     endpoint = profile.credentials.endpoint
                     rpcPath = ""
                     username = profile.credentials.username
@@ -1383,7 +1446,11 @@ internal fun ChunksApp(
                 },
                 onLocalZipReview = { openTool(Section.ARCHIVES, Section.SERVER) },
                 onInspectSnapshot = { section = Section.SNAPSHOT_INSPECT },
-                onLocalEngine = { localFromCombined = false; section = Section.LOCAL },
+                onLocalEngine = {
+                    savedAddReconnect.abandon()
+                    localFromCombined = false
+                    section = Section.LOCAL
+                },
                 onCreateTorrent = { openTool(Section.CREATE, Section.SERVER) },
                 onEndpoint = { endpoint = it }, onUsername = { username = it },
                 onPassword = { password = it },
@@ -1472,6 +1539,11 @@ internal fun ChunksApp(
                                     val startupReturn = returnFromStartupConnectToCanonical &&
                                         section == Section.SERVER
                                     returnFromStartupConnectToCanonical = false
+                                    // A saved-profile choice in Universal Add resumes only after THIS
+                                    // exact route/principal is authenticated; no RPC is sent.
+                                    if (savedAddReconnect.consumeAuthenticated(aliasScope)) {
+                                        selectAuthenticatedAddTarget()
+                                    } else {
                                     // Preserve any source draft without implicitly
                                     // submitting it when the Connect probe finishes.
                                     section = if (startupReturn) Section.COMBINED else Section.SERVER
@@ -1488,6 +1560,7 @@ internal fun ChunksApp(
                                                 ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
                                             saved = null // persistence has not been observed yet
                                         )
+                                    }
                                     }
                                     currentView = ticket.view
                                     requestedView = ticket.view
@@ -1599,6 +1672,7 @@ internal fun ChunksApp(
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         addArtworkState = addArtworkChoices.onPhone(),
                     addDestinationPicker = if (presentationSection == Section.LOCAL_ADD) addDestinationPicker else null,
+                    addAliasState = addAliasDraft,
                     externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                         pendingAddState = phoneReviewedTorrent,
                         phoneAddAttemptSession = activePhoneAddAttempt,
@@ -2005,7 +2079,10 @@ internal fun ChunksApp(
                     onRefresh = refresh,
                     onSeedingRules = { openTool(Section.SEEDING, Section.SERVER) },
                     environmentLabel = serverEnvironmentLabel(aliasScope),
-                    onDisconnect = { disconnectCurrentRemote() }
+                    onDisconnect = {
+                        savedAddReconnect.abandon()
+                        disconnectCurrentRemote()
+                    }
                 )
                 Section.ADD -> {
                     val addSession = remember(aliasScope) {
@@ -2035,6 +2112,16 @@ internal fun ChunksApp(
                         addArtworkState = addArtworkChoices.onServer(aliasScope),
                         addDestinationPicker = addDestinationPicker,
                         externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
+                        addAliasState = addAliasDraft,
+                        onVerifiedAlias = { hash, value ->
+                            // The frozen coordinator confirms a new exact job,
+                            // and a stale account/route cannot receive its label.
+                            val ticket = addSession.attemptTicket
+                            if (server !== connectedRemote ||
+                                aliasScope != addSession.accountScope ||
+                                ticket?.intent?.source?.expectedInfoHash?.equals(hash, true) != true) false
+                            else verifiedAliasStore.saveVerifiedNewAddAlias(aliasScope, hash, value)
+                        },
                         onBack = { section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->
@@ -2078,6 +2165,7 @@ internal fun ChunksApp(
         AuthenticatedTransfersFooter(
             optionsOpen = null,
             onTransfers = {
+                savedAddReconnect.abandon()
                 // One canonical catalog in phone-only, remote-only and mixed
                 // modes. Its chips change view scopes only; this route grants
                 // no engine, server or per-job mutation authority.
@@ -2093,8 +2181,14 @@ internal fun ChunksApp(
                 // listed under its pre-metadata name until some unrelated write settles.
                 refresh()
             },
-            onAdd = { section = Section.ADD_CHOOSE },
-            onOptions = { section = Section.OPTIONS },
+            onAdd = {
+                savedAddReconnect.abandon()
+                section = Section.ADD_CHOOSE
+            },
+            onOptions = {
+                savedAddReconnect.abandon()
+                section = Section.OPTIONS
+            },
             onConnections = { section = Section.SERVER },
             addDescription = "Add a torrent",
             activeDestination = footerDestinationForVisibleScreen(section.name, server != null, toolOrigin)

@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -52,6 +53,36 @@ class UniversalAddDestinationPickerInstrumentedTest {
             assertEquals("magnet:?xt=urn:btih:" + "a".repeat(40), source.value)
             assertEquals(false, start.value)
             assertEquals(0, submissions.value)
+        }
+    }
+
+    @Test fun optionalAddAliasRemainsDraftOnlyWhileSwitchingTargets() {
+        val alias = mutableStateOf("")
+        val remote = mutableStateOf(false)
+        var submitted = 0
+        rule.setContent {
+            MaterialTheme {
+                UniversalAddDestinationPicker(
+                    addingRemotely = remote.value,
+                    authenticatedRemoteLabel = "On test rTorrent",
+                    savedOtherProfiles = emptyList(),
+                    enabled = true,
+                    aliasDraft = alias.value,
+                    onAliasChange = { alias.value = it },
+                    onPhone = { remote.value = false },
+                    onAuthenticatedRemote = { remote.value = true },
+                    onConnectSaved = { submitted++ })
+            }
+        }
+        rule.onNodeWithText("Optional display name").performClick()
+        rule.onNodeWithText("Display name in Chunks")
+            .performTextReplacement("Custom List Alias")
+        rule.onNodeWithText("On test rTorrent").performClick()
+        rule.onNodeWithText("This device").performClick()
+        rule.onNodeWithText("Custom List Alias").assertExists()
+        rule.runOnIdle {
+            assertEquals("Custom List Alias", alias.value)
+            assertEquals(0, submitted)
         }
     }
 

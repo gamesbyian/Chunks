@@ -33,6 +33,8 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal var uncertain by mutableStateOf(false)
     internal var verifiedHash by mutableStateOf<String?>(null)
     internal var reportedVerifiedHash: String? = null
+    /** Frozen optional Chunks list alias, valid only for the retained ticket. */
+    internal var frozenAlias: String? = null
     // A completion from an interrupted old draft must not change a newer
     // phone/server draft's shared metadata choice.
     internal var resetArtworkAfterVerification = true
@@ -47,6 +49,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal fun refusedBeforeAdd() {
         alreadyAttempted = false
         attemptSource = null
+        frozenAlias = null
         attemptTicket?.let(coordinator::refusedBeforeAnyWrite)
         attemptTicket = null
         uncertain = false
@@ -92,6 +95,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
         uncertain = false
         verifiedHash = null
         reportedVerifiedHash = null
+        frozenAlias = null
         resetArtworkAfterVerification = true
         observedProgress = null
         destination = ""
