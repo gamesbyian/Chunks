@@ -1,24 +1,35 @@
 package io.github.gamesbyian.chunks
 
 /**
- * Restore only navigation-safe destinations after Activity or process
- * recreation. The device Add destination may reopen as an empty shell, but
- * source bytes, private magnet links, selections, approvals and remote
- * session authority are never restored. All operational routes fall back
- * to device Transfers.
+ * Restore only view/navigation state. Old local and server-only transfer routes
+ * migrate to the one Combined-derived Transfers browser, never to a mutation
+ * executor. The exact selected profile, login session, source/Place/Start,
+ * private magnet and approval never enter SavedState.
  *
- * A restored route never authenticates a server, starts an engine, fetches a
- * transfer, or replays a pending command. A new Android share is admitted
- * only on a fresh launch or onNewIntent; the original Intent must not be
- * replayed when the Activity is recreated after a consumed source.
+ * A restored universal Add destination is an EMPTY source shell; Android
+ * Share/Open With is admitted only on a fresh Intent, never replayed here.
  */
 internal object NavigationRestorePolicy {
+    /**
+     * Restored canonical Transfers may exist before a remembered session is
+     * live. Delegate once to the *existing* authenticated read-only Connect
+     * owner instead of leaving the browser permanently disconnected.
+     * A deliberate Disconnect, canceled attempt, or Remember opt-out must
+     * not trigger a new automatic attempt.
+     */
+    fun requiresColdReconnectHandoff(
+        section: String,
+        savedCredentialPresent: Boolean,
+        rememberingEnabled: Boolean,
+        alreadyAttempted: Boolean,
+        authenticated: Boolean
+    ): Boolean = section == "COMBINED" && savedCredentialPresent &&
+        rememberingEnabled && !alreadyAttempted && !authenticated
+
     fun restorableSection(name: String?): String = when (name) {
-        // Media settings hold no transfer data, server session or command.
-        // Restore only the Add shell: private sources and approvals never replay.
-        "LOCAL", "LOCAL_ADD", "COMBINED", "MEDIA", "OPTIONS" -> name
-        // A remote-only route without an authenticated server would otherwise
-        // reopen the connection form instead of the requested transfer list.
-        else -> "LOCAL"
+        "SERVER", "COMBINED", "MEDIA", "OPTIONS", "ADD_CHOOSE" -> name
+        "LOCAL_ADD" -> "ADD_CHOOSE"
+        "LOCAL", "TRANSFERS" -> "COMBINED"
+        else -> "COMBINED"
     }
 }

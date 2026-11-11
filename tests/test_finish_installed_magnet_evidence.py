@@ -7,7 +7,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from finish_installed_magnet_evidence import (
-    precompleted_control_preserved, safe_failure_diagnostic, parse_installed_apk_identity,
+    _SAFE_CLICK_STAGE, precompleted_control_preserved, safe_failure_diagnostic, parse_installed_apk_identity,
     still_matches_built_apk,
 )
 
@@ -155,6 +155,15 @@ class SafeInstalledFailureDiagnosticTests(unittest.TestCase):
         self.assertNotIn("NEVER_ECHO", str(detail))
         self.assertNotIn("private.example", str(detail))
 
+class ClickStageDiagnosticTests(unittest.TestCase):
+    def test_a_bounded_lowercase_click_stage_is_safe_to_report(self):
+        for stage in ("click-stop-transfer", "click-back-to-transfers", "click-confirm-stop"):
+            self.assertTrue(_SAFE_CLICK_STAGE.fullmatch(stage), stage)
+
+    def test_urls_hashes_paths_and_oversized_labels_are_never_safe(self):
+        for stage in ("click-http://x", "click-" + "a" * 41, "click-Upper", "click-a/b",
+                      "click-", "magnet:?xt=urn:btih:abc", "stop-transfer"):
+            self.assertFalse(_SAFE_CLICK_STAGE.fullmatch(stage), stage)
 
 
 if __name__ == "__main__":

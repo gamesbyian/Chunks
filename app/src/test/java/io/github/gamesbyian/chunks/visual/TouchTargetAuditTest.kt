@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Surface
@@ -61,7 +63,7 @@ class PhoneTouchTargetAuditTest {
         val density = rule.activity.resources.displayMetrics.density
         val small = rule.smallTouchTargets(density).toMutableList()
         // Traverse the real Options destination before auditing its lower controls.
-        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         rule.onNodeWithText("Save speed limits").performScrollTo()
         rule.waitForIdle()
         small += rule.smallTouchTargets(density)

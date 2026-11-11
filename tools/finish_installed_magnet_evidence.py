@@ -108,6 +108,9 @@ _SAFE_UI_STAGES = frozenset((
     "add-review", "add-submitted", "add-registered", "metadata-already-resolved",
     "read-only-exhausted",
 ))
+# A bounded, lowercase control name the journey reports just before each click, so a failure
+# names the exact step (e.g. click-stop-transfer). Carries no URL, hash, path or credential.
+_SAFE_CLICK_STAGE = re.compile(r"click-[a-z0-9-]{1,40}")
 _SAFE_FRAME_FILES = frozenset((
     "MainActivityRealMagnetJourney.kt", "SeedhostAndroidAddUiInstrumentedTest.kt",
     "VerifiedAddScreen.kt", "RTorrentRemote.kt", "TransferLifecycleControl.kt",
@@ -136,7 +139,8 @@ def safe_failure_diagnostic(receipt, peer_valid, control_preserved, journeys_ver
     last = "none"
     if isinstance(stages, list):
         last = next((stage for stage in reversed(stages)
-                     if isinstance(stage, str) and stage in _SAFE_UI_STAGES), "none")
+                     if isinstance(stage, str) and (stage in _SAFE_UI_STAGES or
+                                                    _SAFE_CLICK_STAGE.fullmatch(stage))), "none")
     frames = receipt.get("safe_failure_source_frames")
     frame = "none"
     if isinstance(frames, list):

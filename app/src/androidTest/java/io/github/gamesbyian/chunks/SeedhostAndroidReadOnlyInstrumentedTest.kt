@@ -208,7 +208,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
                 .fetchSemanticsNodes().isNotEmpty()
             hasDefault || unavailable
         }
-        rule.onNodeWithText("Review Add").assertDoesNotExist()
+        rule.onNodeWithText("Add transfer").assertDoesNotExist()
         // No preview candidate exists, so the Add mutation must remain
         // impossible while we inspect this genuine connected screen.
         captureConnectedQueue("seedhost-android-add-readonly-live")

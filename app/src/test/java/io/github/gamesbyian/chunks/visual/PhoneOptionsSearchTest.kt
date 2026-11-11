@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -41,7 +43,7 @@ class PhoneOptionsSearchTest {
 
     private fun search(text: String) {
         rule.waitForIdle()
-        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         rule.onNode(hasSetTextAction() and hasText("Search options")).performScrollTo().performTextInput(text)
         rule.waitForIdle()
     }
@@ -83,7 +85,7 @@ class PhoneOptionsSearchTest {
         rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
             .assertIsDisplayed()
         // Moving to Add must not repeat the durable opt-out beside its source.
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
             .assertDoesNotExist()
     }

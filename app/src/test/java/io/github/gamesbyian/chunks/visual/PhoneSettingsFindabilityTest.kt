@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -36,7 +38,7 @@ class PhoneSettingsFindabilityTest {
 
     @Test fun speedLimitsPrecedeOccasionalPhoneTools() {
         rule.waitForIdle()
-        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         val value = rule.onNodeWithText("Now: unlimited download and upload (default).")
             .performScrollTo()
         val speedTop = value.getUnclippedBoundsInRoot().top

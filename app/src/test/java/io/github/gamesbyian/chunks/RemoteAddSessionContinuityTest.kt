@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
@@ -68,19 +69,19 @@ class RemoteAddSessionContinuityTest {
                     onMutationStarted = { attempts++; true }, onMutationSettled = { settled++ },
                     finishInOrderScope = endpoint + "\u0000", session = session)
             } } }
-            reveal("Review Add")
-            rule.onNodeWithText("Review Add").performClick()
-            reveal("Confirm: add then start")
-            rule.onNodeWithText("Confirm: add then start").performClick()
+            reveal("Add transfer")
+            
+            reveal("Add transfer")
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }
             reveal("Check server state (read only)")
             reveal("Back to transfers")
             rule.onNodeWithText("Back to transfers").performClick()
             rule.runOnIdle { showing.value = true }
             reveal("Check server state (read only)")
-            rule.onNodeWithText("Review Add").assertDoesNotExist()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
             reveal("Magnet or torrent link")
-            rule.onNodeWithText("Magnet or torrent link").assertIsNotEnabled()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
             reveal("Check server state (read only)")
             assertEquals(1, attempts)
             val before = requests.toList()
@@ -95,7 +96,7 @@ class RemoteAddSessionContinuityTest {
     private val document = ("d4:infod6:lengthi5e4:name8:test.txt12:piece lengthi16384e6:pieces20:" +
         "01234567890123456789ee").toByteArray()
 
-    @Test fun reviewedDocumentAndPlaceSurviveReturnButConfirmationDoesNot() {
+    @Test fun reviewedDocumentAndPlaceSurviveReturnWithoutSubmitting() {
         val endpoint = "http://127.0.0.1:9/RPC2"
         val account = endpoint + "\u0000owner"
         val session = RemoteAddSession(account, "/srv/reviewed")
@@ -114,15 +115,18 @@ class RemoteAddSessionContinuityTest {
                 initialTorrent = incoming.value, onInitialTorrentConsumed = { incoming.value = null; consumed++ },
                 finishInOrderScope = account, addStartState = start, addArtworkState = artwork, session = session)
         } } }
-        reveal("Review Add")
-        rule.onNodeWithText("Review Add").performClick()
-        reveal("Confirm: add stopped")
+        reveal("Add transfer")
+        
+        reveal("Add transfer")
         rule.runOnIdle { showing.value = false }
         rule.runOnIdle { showing.value = true }
         reveal("test.txt")
-        rule.onNodeWithText("Confirm: add stopped").assertDoesNotExist()
-        reveal("Review Add")
-        rule.onNodeWithText("Review Add").performClick()
+        // The lazy form composes the submit action only when scrolled near it.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertExists()
+        reveal("Add transfer")
+        
         reveal("Destination: /srv/reviewed")
         assertEquals(1, consumed)
         assertArrayEquals(document, session.selectedBytes)
@@ -141,7 +145,7 @@ class RemoteAddSessionContinuityTest {
         rule.onNodeWithText(".torrent file").performClick()
         rule.runOnIdle { showing.value = false }
         rule.runOnIdle { showing.value = true }
-        reveal("Review Add")
+        reveal("Add transfer")
         assertTrue("An explicit file choice is retained on ordinary return", session.useFile)
     }
 
@@ -209,10 +213,10 @@ class RemoteAddSessionContinuityTest {
                     initialTorrent = incoming.value, onInitialTorrentConsumed = { incoming.value = null; consumed++ },
                     finishInOrderScope = account, addStartState = start, addArtworkState = artwork, session = session)
             } } }
-            reveal("Review Add")
-            rule.onNodeWithText("Review Add").performClick()
-            reveal("Confirm: add then start")
-            rule.onNodeWithText("Confirm: add then start").performClick()
+            reveal("Add transfer")
+            
+            reveal("Add transfer")
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             try {
                 rule.waitUntil(15_000) { received.count == 0L }
             } catch (failure: Throwable) {
@@ -234,7 +238,7 @@ class RemoteAddSessionContinuityTest {
             assertEquals(0, consumed)
             assertEquals(oldHash, session.attemptTicket?.intent?.source?.expectedInfoHash)
             assertTrue(session.attemptTicket?.intent?.startWhenAdded == true)
-            rule.onNodeWithText("Review Add").assertDoesNotExist()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
             rule.onNodeWithText("Check server state (read only)").performClick()
             rule.waitUntil(15_000) {
                 session.coordinator.phase ==
@@ -303,7 +307,7 @@ class RemoteAddSessionContinuityTest {
         } } }
         reveal("Acknowledge registered job; Start unverified")
         rule.onNodeWithText("Acknowledge registered job; Start unverified").assertIsEnabled()
-        rule.onNodeWithText("Confirm: add then start").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
         assertEquals(io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
             session.coordinator.phase)
         rule.onNodeWithText("Acknowledge registered job; Start unverified").performClick()
@@ -315,7 +319,7 @@ class RemoteAddSessionContinuityTest {
         assertEquals("New shared source must be preserved", "cd".repeat(20),
             newSource.value.substringAfter("urn:btih:"))
         assertEquals("Explicit acknowledgement did not authorize another RPC", 0, mutationCalls)
-        reveal("Review Add")
+        reveal("Add transfer")
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -361,14 +365,14 @@ class RemoteAddSessionContinuityTest {
                     onMutationStarted = { true }, onMutationSettled = { settled++ },
                     finishInOrderScope = account, session = session)
             } } }
-            reveal("Review Add")
-            rule.onNodeWithText("Review Add").performClick()
-            reveal("Confirm: add then start")
-            rule.onNodeWithText("Confirm: add then start").performClick()
+            reveal("Add transfer")
+            
+            reveal("Add transfer")
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }
             assertFalse("An existing-hash preflight sent no mutation; the user may correct the draft", session.alreadyAttempted)
             reveal("Magnet or torrent link")
-            rule.onNodeWithText("Magnet or torrent link").assertIsEnabled()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsEnabled()
             assertFalse(calls.any { it.startsWith("load.") || it in setOf("d.start", "d.resume") })
         } finally { server.stop(0) }
     }

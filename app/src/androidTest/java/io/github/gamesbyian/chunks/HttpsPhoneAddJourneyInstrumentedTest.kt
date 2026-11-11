@@ -39,12 +39,25 @@ class HttpsPhoneAddJourneyInstrumentedTest {
     }
     private fun read(path: String, limit: Int): ByteArray {
         require(path in setOf("/ready", "/magnet3.torrent", "/magnet3.seed.torrent", "/magnet3.piece"))
-        val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
-        connection.connectTimeout = 5_000; connection.readTimeout = 30_000
-        try {
-            check(connection.responseCode == 200)
-            return connection.inputStream.use { it.readNBytes(limit + 1) }.also { require(it.size <= limit) }
-        } finally { connection.disconnect() }
+        // Idempotent GET against the runner's own controller: a bounded retry rides out a
+        // controller or adb-reverse hiccup; a persistent failure still fails and names the status.
+        var last = "no attempt"
+        val end = System.nanoTime() + 30_000_000_000
+        do {
+            val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
+            connection.connectTimeout = 5_000; connection.readTimeout = 30_000
+            try {
+                val code = connection.responseCode
+                if (code == 200) {
+                    return connection.inputStream.use { it.readNBytes(limit + 1) }.also { require(it.size <= limit) }
+                }
+                last = "http $code"
+            } catch (io: java.io.IOException) {
+                last = io.javaClass.simpleName
+            } finally { connection.disconnect() }
+            Thread.sleep(1_000)
+        } while (System.nanoTime() < end)
+        throw IllegalStateException("controller read $path failed: $last")
     }
     private fun await(what: String, detail: () -> String = { "" }, condition: () -> Boolean) {
         val end = System.nanoTime() + 90_000_000_000
@@ -100,7 +113,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
 
     private fun awaitSourceReview() {
         try {
-            rule.waitUntil(45_000) { visible("Review download") }
+            rule.waitUntil(45_000) { visible("Torrent details") }
         } catch (failure: Throwable) {
             // Fixed labels only: source text, tracker tokens and provider errors
             // must never enter the public acceptance artifact.
@@ -175,14 +188,18 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             stage("seed-verified")
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
-                rule.waitUntil(30_000) { visible("This device") }
+                // A fresh install opens on the evidence-gated Welcome, which has no device
+                // scope badge. Wait for the persistent footer's Add root instead.
+                rule.waitUntil(30_000) {
+                    rule.onAllNodesWithTag(ChunksSemantics.FOOTER_ADD).fetchSemanticsNodes().isNotEmpty()
+                }
                 stage("phone-open")
                 click("+ Add")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }
                 click("Change download location")
                 click("Chunks app folder")
                 type("Optional phone download subfolder", folder)
-                type("Or paste a magnet or torrent link", url)
+                type("Magnet or HTTP(S) torrent URL", url)
                 // Leaving the phone screen must not turn an explicit one-time root
                 // into the saved default when the same draft returns.
                 stage("override-set")
@@ -209,7 +226,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertNull("Activity recreation cannot authorize a phone Add",
                     LocalEngineHolder.current()?.status(preview.infoHashV1))
                 // Exercise a real refused retrieval and recover the same scoped draft.
-                type("Or paste a magnet or torrent link", "https://127.0.0.1/blocked.torrent")
+                type("Magnet or HTTP(S) torrent URL", "https://127.0.0.1/blocked.torrent")
                 click("Get torrent from link")
                 // A refused URL's notice may be below the currently composed
                 // LazyColumn viewport after recreation. Actually scroll to it:
@@ -227,7 +244,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
                 stage("refusal-recovered")
                 // Source URLs stay out of instance state by the existing privacy contract.
-                type("Or paste a magnet or torrent link", url)
+                type("Magnet or HTTP(S) torrent URL", url)
                 stage("before-fetch")
                 click("Get torrent from link")
                 awaitSourceReview()
@@ -248,11 +265,11 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 click("Change download location")
                 click("Chunks app folder")
                 type("Optional phone download subfolder", folder)
-                type("Or paste a magnet or torrent link", url)
+                type("Magnet or HTTP(S) torrent URL", url)
                 click("Get torrent from link")
                 awaitSourceReview()
                 stage("cancel-recovered")
-                click("Start downloading after Add (recommended)")
+                click("Start when added")
                 val mediaKey = io.github.gamesbyian.chunks.media.MediaTransferKey.of(
                     requireNotNull(phoneAddedKey(preview.infoHashV1)))
                 fun excluded() = io.github.gamesbyian.chunks.media.FileMediaAutomationPreferences(
@@ -261,7 +278,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 click("Artwork & metadata")
                 click("Automatically identify and fetch artwork & metadata")
                 assertFalse("The draft choice alone is not Add admission", excluded())
-                click("Add stopped")
+                click("Add transfer")
                 awaitUi("exact stopped Add") { LocalEngineHolder.current()?.status(preview.infoHashV1)?.stopped == true }
                 assertTrue("Phone Add must persist the exclusion before exposing the job", excluded())
                 val phone = requireNotNull(LocalEngineHolder.current())
@@ -387,7 +404,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     setOf(preview.infoHashV1.lowercase()),
                     phone.list().map { it.infoHash.lowercase() }.toSet())
                 click("Transfers")
-                rule.waitUntil(30_000) { visible("All environments") }
+                rule.waitUntil(30_000) {
+                    rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_HEADING).fetchSemanticsNodes().isNotEmpty()
+                }
                 // The Combined list reads phone inventory and its privacy
                 // policy asynchronously; entering the screen does not mean
                 // its first full snapshot has been rendered. Wait for the
@@ -414,7 +433,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertTrue("Read-only Details must not restart the native job",
                     phone.status(preview.infoHashV1)?.stopped == true)
                 click("Back to transfers")
-                rule.waitUntil(30_000) { visible("All environments") }
+                rule.waitUntil(30_000) {
+                    rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_HEADING).fetchSemanticsNodes().isNotEmpty()
+                }
                 click("Open device transfer controls")
                 rule.waitUntil(30_000) { visible("This device") }
                 stage("phone-details-verified")

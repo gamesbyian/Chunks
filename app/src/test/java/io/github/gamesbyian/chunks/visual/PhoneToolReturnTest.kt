@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
@@ -17,7 +19,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Tools opened from Phone options return to the phone, not to the
+ * Tools opened from app Options return to Options, not to the
  * server-connection entry. Navigation only; nothing is created or saved.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -31,8 +33,7 @@ class PhoneToolReturnTest {
 
     private fun openAndReturn(button: String, paneTitle: String) {
         rule.waitForIdle()
-        onPhone()
-        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         rule.onNodeWithText(button).performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, paneTitle)).assertExists()

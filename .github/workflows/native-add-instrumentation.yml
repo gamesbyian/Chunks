@@ -24,6 +24,11 @@ on:
       - "app/build.gradle.kts"
       # Changes to the test command must re-run this suite.
       - "tools/native_add_review.sh"
+      # The screenshot classification manifest and its offline contract decide which
+      # captures are mandatory evidence; changing either must re-run the gate.
+      - "tools/native_atlas_manifest.json"
+      - "tools/check_native_atlas_contract.py"
+      - "tests/test_native_atlas_contract.py"
       # Shared immutable APK pair + source-bound AndroidJUnitRunner evidence.
       - "tools/native_add_prebuilt.sh"
       - "tools/parse_instrumentation_stream.py"

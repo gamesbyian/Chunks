@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.ui.platform.testTag
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
@@ -65,12 +67,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * An optional Place override and a two-step confirmation gate
- * any RPC write; unexpected or uncertain outcomes never auto-retry.
+ * One explicit Add transfer click acquires the existing frozen coordinator ticket
+ * before any RPC write; unexpected or uncertain outcomes never auto-retry.
  * Metainfo and attempted outcomes stay in the parent session's process memory only.
  */
 @Composable
-fun VerifiedAddScreen(
+internal fun VerifiedAddScreen(
     remote: RTorrentRemote,
     magnet: String,
     destination: String,
@@ -101,12 +103,19 @@ fun VerifiedAddScreen(
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
     /** Parent-owned exact-account review; remounting must not revive Add authority. */
     session: RemoteAddSession? = null,
+    /** Inline shared Add-to selector; never grants remote admission. */
+    addDestinationPicker: (@Composable () -> Unit)? = null,
+    externalSourceReading: Boolean = false,
     /** Enables deterministic delayed-preference tests without touching external Add or RPC. */
     clipboardEnabledReader: suspend (android.content.Context) -> Boolean = { context ->
         withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
     },
     clipboardTextReader: (android.content.Context) -> String? = { context ->
         ClipboardMagnetPrefill.readText(context)
+    },
+    /** Read-only injectable HTTPS intake for deterministic stalled-request UI tests. */
+    fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
+        withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
     }
 ) {
     val context = LocalContext.current
@@ -127,6 +136,7 @@ fun VerifiedAddScreen(
     // A newer Android share/phone edit cannot change the displayed recovery identity.
     val sourceText = draft.attemptSource ?: magnet
     val currentSource = rememberUpdatedState(magnet)
+    val latestExternalSourceReading = rememberUpdatedState(externalSourceReading)
     DisposableEffect(draft) {
         onDispose {
             if (draft.alreadyAttempted && draft.reportedVerifiedHash == null)
@@ -247,6 +257,7 @@ fun VerifiedAddScreen(
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null && !choosing && !submitting && !alreadyAttempted) {
             choosing = true
+            val sourceWitness = RemoteAddSourceReadWitness(currentSource.value, selectedBytes, useFile)
             // Preserve an existing reviewed .torrent until the replacement
             // has been fully read and validated. An invalid provider document
             // must not erase the user's working Add draft.
@@ -262,6 +273,11 @@ fun VerifiedAddScreen(
                             context.contentResolver, uri)
                         reviewed.preview to reviewed.bytes
                     }
+                    if (alreadyAttempted || submitting ||
+                        !sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
+                        fileError = "The source changed while opening the .torrent. Your newer choice was kept."
+                        return@launch
+                    }
                     selectedTorrent = result.first
                     selectedBytes = result.second
                     draft.textAtFileSelection = magnet
@@ -270,8 +286,11 @@ fun VerifiedAddScreen(
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
-                    fileError = "Could not open that .torrent (unsupported v1 metainfo or size limit)." +
-                        if (selectedTorrent != null) " Your previous .torrent remains selected." else ""
+                    if (!alreadyAttempted && !submitting &&
+                        sourceWitness.stillSelected(currentSource.value, selectedBytes, useFile)) {
+                        fileError = "Could not open that .torrent (unsupported v1 metainfo or size limit)." +
+                            if (selectedTorrent != null) " Your previous .torrent remains selected." else ""
+                    }
                 } finally {
                     choosing = false
                 }
@@ -354,11 +373,8 @@ fun VerifiedAddScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
-                }
-            }
+            Text("Add a transfer", style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.semantics { heading() })
         }
         item {
             OutlinedTextField(
@@ -379,11 +395,11 @@ fun VerifiedAddScreen(
                     autoCorrectEnabled = false,
                     imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                 enabled = !submitting && !choosing && !alreadyAttempted,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SOURCE_FIELD),
                 minLines = 2,
                 maxLines = 4
             )
-            if (sourceText.isBlank() && !alreadyAttempted) PasteMagnetButton(
+            if (!alreadyAttempted) PasteMagnetButton(
                 enabled = !submitting && !choosing,
                 onPaste = {
                     onMagnet(it)
@@ -394,15 +410,30 @@ fun VerifiedAddScreen(
             if (clipboardFilled != null && sourceText == clipboardFilled && !alreadyAttempted) ClipboardPrefillNote(
                 onClear = { onMagnet(""); clipboardFilled = null }, enabled = !submitting)
             if (!useFile && linkCheck !is TorrentLinkCheck.NotALink) TorrentLinkPanel(linkCheck,
-                fetching = linkFetching, enabled = !submitting && !choosing && !alreadyAttempted,
-                onFetch = { link ->
-                    val requestedSource = magnet
+                fetching = linkFetching,
+                enabled = !submitting && !choosing && !alreadyAttempted && !externalSourceReading,
+                onFetch = fetch@{ link ->
+                    // The button's composed URI may lag a newer text edit by
+                    // one frame. Freeze the URL actually requested, including
+                    // its signed query, and refuse the obsolete click *before*
+                    // any network access rather than binding it to new text.
+                    val sourceWitness = RemoteAddSourceReadWitness(
+                        link.uri.toString(), selectedBytes, useFile)
+                    if (latestExternalSourceReading.value ||
+                        !sourceWitness.stillSelected(
+                            currentSource.value.trim(), selectedBytes, useFile)) {
+                        fileError = "The draft changed before fetching. Your newer source was kept."
+                        return@fetch
+                    }
                     linkFetching = true
                     scope.launch {
                         try {
-                            when (val result = withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }) {
+                            when (val result = fetchTorrentLink(link)) {
                                 is TorrentLinkResult.Fetched -> {
-                                    if (alreadyAttempted || submitting || currentSource.value != requestedSource) {
+                                    if (alreadyAttempted || submitting || choosing ||
+                                        latestExternalSourceReading.value ||
+                                        !sourceWitness.stillSelected(
+                                            currentSource.value.trim(), selectedBytes, useFile)) {
                                         fileError = "The draft changed while fetching. The current source was kept."
                                         return@launch
                                     }
@@ -418,7 +449,15 @@ fun VerifiedAddScreen(
                                     clipboardFilled = null
                                     onMagnet("")
                                 }
-                                is TorrentLinkResult.Refused -> fileError = result.message
+                                is TorrentLinkResult.Refused -> {
+                                    // A refused old URL must not pollute a newer
+                                    // explicitly selected source with its error.
+                                    if (!alreadyAttempted && !submitting && !choosing &&
+                                        !latestExternalSourceReading.value &&
+                                        sourceWitness.stillSelected(
+                                            currentSource.value.trim(), selectedBytes, useFile))
+                                        fileError = result.message
+                                }
                             }
                         } finally {
                             linkFetching = false
@@ -441,7 +480,7 @@ fun VerifiedAddScreen(
                 enabled = !choosing && !submitting && !alreadyAttempted,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
             ) {
-                Text(if (choosing) "Reading torrent…" else "Choose a .torrent from Android Files")
+                Text(if (choosing) "Reading torrent…" else "Open .torrent")
             }
         }
         if (selectedTorrent != null) {
@@ -480,6 +519,12 @@ fun VerifiedAddScreen(
                 }
             }
         }
+        if (!alreadyAttempted && addDestinationPicker != null) item {
+            addDestinationPicker()
+        }
+        item {
+            RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
+        }
         item {
             OutlinedTextField(
                 value = destination,
@@ -517,6 +562,31 @@ fun VerifiedAddScreen(
                     awaitingConfirmation = false
                 }
             )
+        }
+
+        if (!alreadyAttempted && plan != null) item {
+            Text("Infohash: " + plan.expectedInfoHash, style = MaterialTheme.typography.bodySmall)
+            Text("Destination: " + plan.destination +
+                if (plan.useServerDefault) " (server default; no directory override)"
+                else " (custom parent folder)", style = MaterialTheme.typography.bodySmall)
+            // Restored from the former confirmation card: the one-click Add must still warn,
+            // before submission, that a trackerless source can only find peers by DHT/web seeds.
+            val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
+                else TorrentMetainfoReader.magnetTrackerCount(sourceText)
+            if (trackers == 0) ChunksBanner("No tracker", trackerlessWarning(useFile), ChunksTone.ERROR)
+        }
+        if (!alreadyAttempted) item {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag(ChunksSemantics.ADD_START_PREFERENCE).toggleable(
+                    value = startAfterAdd, enabled = !submitting && !choosing,
+                    role = Role.Checkbox,
+                    onValueChange = { startAfterAdd = it; awaitingConfirmation = false }),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(checked = startAfterAdd, onCheckedChange = null)
+                Text("Start when added", modifier = Modifier.padding(start = 8.dp))
+            }
         }
         // Existing choices are suggestions, never permission/write probes. Keep
         // the effective default and manually editable custom Place above.
@@ -593,20 +663,7 @@ fun VerifiedAddScreen(
             }
         }
         if (plan != null && !alreadyAttempted) {
-            item {
-                Row(
-                    Modifier.fillMaxWidth().toggleable(
-                        value = startAfterAdd, enabled = !submitting, role = Role.Checkbox,
-                        onValueChange = { startAfterAdd = it; awaitingConfirmation = false }
-                    ).padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Checkbox(checked = startAfterAdd, onCheckedChange = null)
-                    Text("Start downloading after verified Add (recommended)",
-                        modifier = Modifier.padding(start = 8.dp))
-                }
-            }
-            // Only a .torrent shows its file list before Add; magnets are excluded.
+            // Finish-in-order is eligible only for multi-file .torrent sources.
             val fioStore = finishInOrderStore
             if (fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2) item {
                 FinishInOrderAddChoice(
@@ -617,53 +674,12 @@ fun VerifiedAddScreen(
                     defaultOn = finishInOrderDefault,
                     onDefault = { on -> if (fioStore.setDefaultForNewAdds(on)) finishInOrderDefault = on })
             }
-            if (!awaitingConfirmation) {
                 item {
                     Button(
-                        onClick = {
-                            // The review replaces the form; close the keyboard first.
-                            reviewKeyboard?.hide()
-                            reviewFocus.clearFocus()
-                            awaitingConfirmation = true
-                        },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-                        enabled = !submitting && !choosing
-                    ) { Text("Review Add") }
-                }
-            } else {
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)) {
-                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Confirm one server operation", fontWeight = FontWeight.Bold)
-                            environmentLabel?.let { EnvironmentBadge("Adding to: $it", server = true,
-                                // finishInOrderScope is the authenticated endpoint + NUL + username.
-                                environment = finishInOrderScope?.let {
-                                    io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
-                                }) }
-                            Text("Source: " + if (useFile) "Selected .torrent file" else "Magnet link")
-                            Text("Infohash: " + plan.expectedInfoHash)
-                            Text("Destination: " + plan.destination + if (plan.useServerDefault)
-                                " (server default; no directory override)" else " (custom parent folder)")
-                            Text(if (startAfterAdd && !(useFile && finishInOrderAfterAdd &&
-                                    (selectedTorrent?.fileCount ?: 0) >= 2 && finishInOrderScope != null))
-                                "Use rTorrent's native add-and-start command once, then verify the exact torrent identity, destination and active engine state. An uncertain response is never retried automatically."
-                            else if (startAfterAdd)
-                                "Add stopped, apply reviewed file priorities, then Start once. Verify each outcome; never retry an uncertain command automatically."
-                            else "Add stopped only; use Start later from Transfers. No file move or download is implied.")
-                            val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
-                                else TorrentMetainfoReader.magnetTrackerCount(sourceText)
-                            if (trackers == 0) {
-                                // Red text on this green card measured 1.74:1; a dark inset banner keeps it readable.
-                                ChunksBanner("No tracker", trackerlessWarning(useFile), ChunksTone.ERROR)
-                            }
-                        }
-                    }
-                }
-                item {
-                    Button(
-                        onClick = {
+                        onClick = addClick@{
+                            if (externalSourceReading) return@addClick
                             // Both authorization and the one-shot ticket are acquired
-                            // synchronously on this explicit Confirm click, before any
+                            // synchronously on the explicit Add click, before any
                             // suspending source, metadata or network operation.
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val requestedStart = startAfterAdd
@@ -828,18 +844,11 @@ fun VerifiedAddScreen(
                                 outcome = "Add could not be authorized for this exact server. Refresh the connection and review again; nothing was submitted."
                             }
                         },
-                        enabled = !submitting && !choosing,
+                        enabled = !submitting && !choosing && !externalSourceReading,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                    ) { Text(if (startAfterAdd) "Confirm: add then start" else "Confirm: add stopped") }
+                            .testTag(ChunksSemantics.ADD_SUBMIT)
+                    ) { Text("Add transfer") }
                 }
-                item {
-                    OutlinedButton(
-                        onClick = { awaitingConfirmation = false },
-                        enabled = !submitting,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                    ) { Text("Cancel, don't add") }
-                }
-            }
         }
         if (outcome != null) {
             item {

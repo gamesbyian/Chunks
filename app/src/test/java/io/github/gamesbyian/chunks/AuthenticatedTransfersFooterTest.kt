@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
@@ -58,7 +59,7 @@ class AuthenticatedTransfersFooterTest {
                 }
             }
         }
-        val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val add = rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).getUnclippedBoundsInRoot()
         val conn = rule.onNodeWithContentDescription("Connections").getUnclippedBoundsInRoot()
         val opts = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
         assertTrue("Connections stays on the same navigation row as Add", conn.top == add.top)
@@ -80,7 +81,7 @@ class AuthenticatedTransfersFooterTest {
             }
         }
         val transfers = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
-        val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val add = rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).getUnclippedBoundsInRoot()
         val connections = rule.onNodeWithContentDescription("Connections").getUnclippedBoundsInRoot()
         val options = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
         assertTrue("four destinations stay in one row",
@@ -106,14 +107,14 @@ class AuthenticatedTransfersFooterTest {
             }
         }
         val top = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
-        val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val add = rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).getUnclippedBoundsInRoot()
         val opts = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
         for (rect in listOf(top, add, opts)) {
             assertTrue("footer touch target must remain 48dp class", rect.bottom - rect.top >= 48.dp)
         }
         assertTrue(top.right < add.left && add.right < opts.left)
-        rule.onNodeWithText("Transfers").performClick()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.onNodeWithContentDescription("Options").performClick()
         assertEquals(1, transfers)
         assertEquals(1, adds)
@@ -131,7 +132,7 @@ class AuthenticatedTransfersFooterTest {
             }
         }
         val t = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
-        val a = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val a = rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).getUnclippedBoundsInRoot()
         val o = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
         assertTrue("all navigation remains on one row at 200% text",
             t.top == a.top && a.top == o.top)
@@ -149,7 +150,7 @@ class AuthenticatedTransfersFooterTest {
             }
         }
         val transfers = rule.onNodeWithText("Transfers").getUnclippedBoundsInRoot()
-        val add = rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        val add = rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).getUnclippedBoundsInRoot()
         val options = rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
         assertTrue("140% text retains one row", transfers.top == add.top && add.top == options.top)
         assertTrue("each control has distinct horizontal bounds",
@@ -197,7 +198,7 @@ class AuthenticatedTransfersFooterTest {
             }
         }
         val transfers = rule.onNodeWithText("Transfers")
-        val add = rule.onNodeWithText("+ Add")
+        val add = rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD)
         val connection = rule.onNodeWithContentDescription("Connections")
         val option = rule.onNodeWithContentDescription("Options")
         val bounds = listOf(transfers, add, connection, option).map {
@@ -232,7 +233,7 @@ class AuthenticatedTransfersFooterTest {
         rule.onAllNodesWithText("Options").assertCountEquals(1)
         ime = false
         rule.waitForIdle()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.onNodeWithContentDescription("Options").getUnclippedBoundsInRoot()
         assertEquals(1, adds)
     }
@@ -245,7 +246,7 @@ class AuthenticatedTransfersFooterTest {
                 Box(Modifier.width(412.dp)) { AuthenticatedTransfersFooter(false, {}, {}, {}) }
             }
         }
-        rule.onNodeWithText("+ Add").getUnclippedBoundsInRoot()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).getUnclippedBoundsInRoot()
         rule.runOnIdle {
             val root = requireNotNull(view).rootView
             ViewCompat.dispatchApplyWindowInsets(root, WindowInsetsCompat.Builder()
@@ -281,19 +282,19 @@ class AuthenticatedTransfersFooterTest {
             }
         }
         rule.onNodeWithText("Transfers").assertIsSelected()
-        rule.onNodeWithText("+ Add").assertIsNotSelected()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).assertIsNotSelected()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNodeWithContentDescription("Connections").assertIsSelected()
-        rule.onNodeWithText("+ Add").assertIsNotSelected()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).assertIsNotSelected()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.onNodeWithContentDescription("Options").assertIsSelected()
         rule.onNodeWithContentDescription("Connections").assertIsNotSelected()
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("+ Add").assertIsSelected()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).assertIsSelected()
         rule.onNodeWithText("Transfers").assertIsNotSelected()
-        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.onNodeWithText("Transfers").assertIsSelected()
-        rule.onNodeWithText("+ Add").assertIsNotSelected()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).assertIsNotSelected()
     }
 
     @Test fun sectionMappingPreservesActualSelectedRootIncludingNestedDetails() {

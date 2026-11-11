@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
@@ -81,8 +82,8 @@ class PhoneUniversalAddScreenGateTest {
             rule.onAllNodes(hasText("Previous phone Add:", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Or paste a magnet or torrent link").assertIsNotEnabled()
-        rule.onNodeWithText("Choose .torrent file").performScrollTo().assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
+        rule.onNodeWithText("Open .torrent").performScrollTo().assertIsNotEnabled()
         rule.onNodeWithText("Review another phone Add").assertDoesNotExist()
         assertNotNull(session.attemptedTicket)
         assertEquals(UniversalAddCoordinator.Phase.READBACK_REQUIRED, session.coordinator.phase)
@@ -109,7 +110,7 @@ class PhoneUniversalAddScreenGateTest {
             rule.onAllNodes(hasText("Previous phone Add: waiting for exact phone transfer verification", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Or paste a magnet or torrent link").assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
         rule.onNodeWithText("Acknowledge existing job (Start unverified)").assertDoesNotExist()
         rule.onNodeWithText("Review another phone Add").assertDoesNotExist()
         assertSame("Contrary inventory keeps the exact attempted ticket", ticket, session.attemptedTicket)
@@ -153,7 +154,7 @@ class PhoneUniversalAddScreenGateTest {
             rule.onAllNodes(hasText("Previous phone Add: waiting for exact phone transfer verification",
                 substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Or paste a magnet or torrent link").assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
         rule.onNodeWithText("Acknowledge existing job, then review another").assertDoesNotExist()
         rule.onNodeWithText("Review another phone Add").assertDoesNotExist()
         assertSame("Exact attempted ticket remains fenced", ticket, session.attemptedTicket)

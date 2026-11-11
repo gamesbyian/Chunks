@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.content.ContentValues
+import androidx.compose.ui.test.onNodeWithTag
 import android.content.Context
 import android.view.inputmethod.InputMethodManager
 import android.graphics.Bitmap
@@ -67,8 +68,8 @@ class ChunksMainActivityAtlasTest {
 
     /** The dedicated Add destination retains the original review without submitting. */
     private fun assertPhoneAddEntryIsReachable() {
-        rule.onNodeWithText("Add on this device").assertExists()
-        rule.onNodeWithText("Add a download on this device").assertExists()
+        rule.onNodeWithText("Torrent source").assertExists()
+        rule.onNodeWithText("Magnet or HTTP(S) torrent URL").assertExists()
     }
 
     private fun str(s: String) = "<value><string>" + s.replace("&", "&amp;")
@@ -361,7 +362,17 @@ class ChunksMainActivityAtlasTest {
         }
         assertTrue("Enabled Connect button was never composed and clicked after scrolling", connectClicked)
         try {
-            rule.waitUntil(20_000) {
+            // Verified Connect acknowledges and stays on Connections (#1515); the saved
+            // profile then opens the one canonical Transfers browser.
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("Continue to Connections").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("Continue to Connections").performClick()
+            rule.waitUntil(60_000) {
+                rule.onAllNodesWithText("View transfers").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
+            rule.waitUntil(30_000) {
                 rule.onAllNodesWithText("3 transfers", substring = true).fetchSemanticsNodes().isNotEmpty()
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
@@ -384,32 +395,28 @@ class ChunksMainActivityAtlasTest {
 
         // Real combined navigation keeps the signed-in server identity, and
         // the four root destinations never imply an Add or a server mutation.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("All environments…"))
-        rule.onNodeWithText("All environments…").performClick()
-        rule.onNodeWithText("All environments").assertExists()
-        // The scoped catalog routes to the authenticated owner's controls
-        // through a full Details screen, without changing connection identity.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Only connected server"))
-        rule.onNodeWithText("Only connected server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_HEADING).assertExists()
+        // The canonical catalog routes to the authenticated owner's controls through
+        // the one full Details screen, without changing connection identity.
         val serverRow = androidx.compose.ui.test.hasContentDescription(
             "Details for A deliberately very long test filename", substring = true)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(serverRow)
         rule.onNode(serverRow).performClick()
-        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
         rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
-        // The destination chooser requires an explicit choice, keeping the
-        // phone and authenticated server's Add reviews distinct.
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("On this device").performClick()
+        // The source-first Add route is shared across footer entries.
+        // Changing target is a draft edit, never an RPC mutation.
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         assertPhoneAddEntryIsReachable()
-        rule.onNodeWithText("Options").performClick()
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("On this device").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         assertPhoneAddEntryIsReachable()
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("On the connected server").performClick()
-        rule.onNodeWithText("Add a download to this server").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.onNodeWithText("Add a transfer").assertExists()
         rule.onNodeWithText("Magnet or torrent link").assertExists()
         // Exercise the production Add screen, including the parent-owned draft.
         // Reset must invalidate the custom-folder review before a default-folder
@@ -420,21 +427,12 @@ class ChunksMainActivityAtlasTest {
             "magnet:?xt=urn:btih:" + "ab".repeat(20))
         replaceTextInLazyField("Custom server folder (optional)", "/srv/one-off")
         dismissSearchKeyboard()
-        // The Add list is lazy and its editable folder field recomposes after
-        // keyboard dismissal. Demand an *enabled, displayed* Review target
-        // before dispatching its single read-only click. Do not retry an
-        // action after it may have run; a timeout is a genuine red test.
-        rule.waitUntil(15_000) {
-            runCatching {
-                addList.performScrollToNode(hasText("Review Add"))
-                rule.onNodeWithText("Review Add").assertIsEnabled().assertIsDisplayed()
-            }.isSuccess
-        }
-        rule.onNodeWithText("Review Add").performClick()
+        // Inline source/Place proof is read-only. Never click Add transfer
+        // in a synthetic inventory-only fixture.
         addList.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
         rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()
-        addList.performScrollToNode(hasText("Confirm: add then start"))
-        rule.onNodeWithText("Confirm: add then start").assertExists()
+        addList.performScrollToNode(hasText("Add transfer"))
+        rule.onNodeWithText("Add transfer").assertExists()
 
         val reset = androidx.compose.ui.test.hasContentDescription(
             "Use rTorrent default save folder for this Add")
@@ -446,21 +444,14 @@ class ChunksMainActivityAtlasTest {
         }
         addList.performScrollToNode(reset)
         rule.onNode(reset).performClick()
-        // Scrolling to Review Add proves the old confirmation was invalidated;
-        // merely finding no offscreen confirmation node would be insufficient.
-        rule.waitUntil(15_000) {
-            runCatching {
-                addList.performScrollToNode(hasText("Review Add"))
-                rule.onNodeWithText("Review Add").assertIsEnabled().assertIsDisplayed()
-            }.isSuccess
-        }
-        rule.onNodeWithText("Review Add").performClick()
+        // Place changes replace the inline effective destination without
+        // authorizing Add or making a second Review screen.
         addList.performScrollToNode(hasText(
             "Destination: /downloads (server default; no directory override)"))
         rule.onNodeWithText("Destination: /downloads (server default; no directory override)")
             .assertExists()
-        addList.performScrollToNode(hasText("Cancel, don't add"))
-        rule.onNodeWithText("Cancel, don't add").performClick()
+        addList.performScrollToNode(hasText("Add transfer"))
+        rule.onNodeWithText("Add transfer").assertExists()
         assertTrue("Editing and re-reviewing the destination must send no mutation",
             receivedMethods.toList().all {
                 it in setOf("system.client_version", "d.multicall2", "f.multicall", "directory.default")
@@ -520,7 +511,7 @@ class ChunksMainActivityAtlasTest {
         // Regression: before reserving the footer's viewport, this real tap
         // landed on the overlapping + Add footer and navigated away instead
         // of expanding the exact transfer.
-        rule.onNodeWithText("Add a download to this server").assertDoesNotExist()
+        rule.onNodeWithText("Add a transfer").assertDoesNotExist()
         try {
             rule.waitUntil(10_000) {
                 rule.onAllNodesWithText("Hide details").fetchSemanticsNodes().isNotEmpty()
@@ -607,7 +598,9 @@ class ChunksMainActivityAtlasTest {
         save("app-organize-populated-real-compose")
 
         rule.onNodeWithContentDescription("Connections").performClick()
-        rule.onNodeWithText("Server settings", substring = true).assertExists()
+        // Canonical Connections identifies the verified server ("Connected · …"); the legacy
+        // "Server settings" panel is not part of that screen (#1514/#1515).
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("Connected ·", substring = true).fetchSemanticsNodes().isNotEmpty() }
         save("app-server-populated-real-compose")
 
         // Transfers now leads through the read-only combined inventory;

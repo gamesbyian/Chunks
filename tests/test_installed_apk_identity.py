@@ -33,6 +33,8 @@ class InstalledApkIdentityTests(unittest.TestCase):
             '  matched) cp "$CHUNKS_EXPECTED" "$3" ;;\n'
             '  altered) printf "different-installed-bytes" > "$3" ;;\n'
             '  unavailable) exit 39 ;;\n'
+            '  flaky) n=$(cat "$CHUNKS_COUNTER" 2>/dev/null || echo 0); echo $((n+1)) > "$CHUNKS_COUNTER"; '
+            '[[ "$n" -ge 2 ]] && cp "$CHUNKS_EXPECTED" "$3" || exit 41 ;;\n'
             '  *) exit 40 ;;\n'
             "esac\n",
             encoding="utf-8",
@@ -44,6 +46,8 @@ class InstalledApkIdentityTests(unittest.TestCase):
         env["PATH"] = str(self.bin) + os.pathsep + env.get("PATH", "")
         env["CHUNKS_FAKE_ADB"] = mode
         env["CHUNKS_EXPECTED"] = str(self.expected)
+        env["CHUNKS_COUNTER"] = str(self.root / "pull-count")
+        env["CHUNKS_ADB_PULL_RETRY_DELAY"] = "0"
         result = subprocess.run(
             ["bash", str(SCRIPT), str(expected or self.expected),
              "/fixture/base.apk", str(pulled or self.pulled)],
@@ -72,6 +76,15 @@ class InstalledApkIdentityTests(unittest.TestCase):
         result = self.invoke("unavailable")
         self.assertEqual(1, result.returncode)
         self.assertEqual("CHUNKS_INSTALLED_APK: adb-pull-failed\n", result.stderr)
+
+    def test_a_transient_pull_failure_is_retried_and_still_byte_compared(self):
+        result = self.invoke("flaky")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("sha256=", result.stdout)
+
+    def test_a_retry_never_accepts_different_bytes(self):
+        result = self.invoke("altered")
+        self.assertNotEqual(0, result.returncode)
 
     def test_changed_installed_bytes_are_never_accepted(self):
         result = self.invoke("altered")

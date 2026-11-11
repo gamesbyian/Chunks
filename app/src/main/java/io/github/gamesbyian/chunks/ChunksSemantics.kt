@@ -1,0 +1,43 @@
+package io.github.gamesbyian.chunks
+
+/**
+ * Stable semantic identifiers for *enduring product capabilities*.
+ *
+ * Tests find a control by what it is for, not by its current wording, position or
+ * which screen hosts it. A capability keeps its identifier when the UI is redesigned,
+ * and the same identifier is used by every surface that offers that capability (for
+ * example the phone and the authenticated-server Add forms share one source field id).
+ *
+ * Rules (see docs/TEST-ARCHITECTURE.md):
+ * - Add an identifier only for a capability the product specification requires.
+ * - Never encode copy, layout, order, environment or a screen name in an identifier.
+ * - An identifier says nothing about enabled/selected/error state; tests assert that
+ *   state through Compose semantics (`assertIsEnabled`, `assertIsSelected`, state
+ *   description) so accessibility and test checks stay the same thing.
+ * - Retiring a capability means deleting its identifier in the same change that
+ *   records the requirement's replacement verification in docs/TEST-ARCHITECTURE.md.
+ */
+internal object ChunksSemantics {
+    // Persistent root navigation (one footer row).
+    const val FOOTER_TRANSFERS = "chunks.footer.transfers"
+    const val FOOTER_ADD = "chunks.footer.add"
+    const val FOOTER_CONNECTIONS = "chunks.footer.connections"
+    const val FOOTER_OPTIONS = "chunks.footer.options"
+
+    // Universal Add: one source, one submission action, one Start preference.
+    const val ADD_SOURCE_FIELD = "chunks.add.source"
+    const val ADD_SUBMIT = "chunks.add.submit"
+    const val ADD_START_PREFERENCE = "chunks.add.start-preference"
+    /** Inline Add-to choice for this device. Selected state is a Compose semantic. */
+    const val ADD_TARGET_DEVICE = "chunks.add.target.device"
+    /** Inline Add-to choice for the one authenticated remote profile. */
+    const val ADD_TARGET_REMOTE = "chunks.add.target.remote"
+
+    /** The canonical Transfers list title. It also hosts the first-install Welcome. */
+    const val TRANSFERS_HEADING = "chunks.transfers.heading"
+
+    // First-install Welcome.
+    const val WELCOME_HEADING = "chunks.welcome.heading"
+    const val WELCOME_ADD = "chunks.welcome.add"
+    const val WELCOME_CONNECTIONS = "chunks.welcome.connections"
+}

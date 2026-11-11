@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,22 +27,34 @@ import androidx.compose.ui.unit.dp
 internal fun NoTransfersWelcome(onAdd: () -> Unit, onConnections: (() -> Unit)?) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Welcome to Chunks", style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.semantics { heading() })
+            modifier = Modifier.testTag(ChunksSemantics.WELCOME_HEADING).semantics { heading() })
         Text("Start a download on this device, or connect a remote BitTorrent client. " +
             "You can use Chunks with either, or both.",
             style = MaterialTheme.typography.bodyMedium)
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp)) {
+            TextButton(onClick = onAdd, modifier = Modifier.heightIn(min = 48.dp)
+                .testTag(ChunksSemantics.WELCOME_ADD)) {
                 Text("Add a torrent")
             }
             if (onConnections != null) TextButton(onClick = onConnections,
-                modifier = Modifier.heightIn(min = 48.dp)) {
+                modifier = Modifier.heightIn(min = 48.dp)
+                .testTag(ChunksSemantics.WELCOME_CONNECTIONS)) {
                 Text("Connections")
             }
         }
     }
 }
+
+/**
+ * A verified login retained in the legacy vault is a configured remote client
+ * even before the asynchronously loaded roster contains its profile. Passing
+ * only its presence prevents an incorrect first-install declaration without
+ * granting the browser access to credentials or an RPC session.
+ */
+internal fun configuredRemoteForWelcome(
+    connected: Boolean, hasRosterProfile: Boolean, hasRememberedVaultLogin: Boolean
+): Boolean = connected || hasRosterProfile || hasRememberedVaultLogin
 
 /** An initial/stale/filtered empty list is not evidence of an unused setup. */
 internal fun showPhoneFirstRunWelcome(

@@ -6,7 +6,9 @@
 
 **Product instructions:** [PRODUCT](PRODUCT.md) · [UX](UX.md) · [ARCHITECTURE](ARCHITECTURE.md) · [SECURITY](SECURITY.md) · [DECISIONS](DECISIONS.md). The [owner-approved unified UX/media requirements](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) specify the single-row footer, All/device/server list parity, Add-only metadata choice and automatically applied artwork, while [OPTIONS](OPTIONS-INFORMATION-ARCHITECTURE.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) and [SMART-ROUTING](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) govern the domain specifics.
 
-**Current integration audit:** [18-PR reconciliation and remaining 17 dependencies](archive/OPEN-PR-RECONCILIATION-2026-11-11.md) records source-head test holds and the safely merged #1636 focus fix. The [active queue](WORK-QUEUE.md) remains the only executable backlog.
+**Current integration audit:** [18-PR reconciliation and remaining 17 dependencies](archive/OPEN-PR-RECONCILIATION-2026-11-11.md) records source-head test holds and the safely merged #1636 focus fix. The [active queue](WORK-QUEUE.md) remains the only executable backlog. **Second pass (merged #1640, assembled #1644, child-conflict map, local test setup):** [second-pass audit](archive/OPEN-PR-RECONCILIATION-2026-11-11-PASS2.md).
+
+**Test standard:** [TEST-ARCHITECTURE](TEST-ARCHITECTURE.md) defines assertion categories, stable semantic ids, screenshot evidence versus baselines, UX-change reconciliation and failure classification; its [audit record](archive/TEST-ARCHITECTURE-AUDIT-2026-11-11.md) lists the obsolete assertions found and gaps.
 
 **History and measurements:** [CI policy history](CI-POLICY-HISTORY-2026-11-09.md) · [artwork implementation history](MEDIA-ARTWORK-IMPLEMENTATION-HISTORY-2026-11-09.md) · [source-exact media artwork integration and real-provider qualification](archive/MEDIA-ARTWORK-QUALIFICATION-2026-11-11.md) · [build artifact history](BUILD-HISTORY-2026-11-09.md). Active [CI policy](CI-POLICY.md), [artwork implementation instructions](MEDIA-ARTWORK-IMPLEMENTATION.md) and [build guidance](BUILD.md) state procedures rather than past run reports.
 

@@ -7,10 +7,12 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
@@ -34,16 +36,53 @@ internal class MainActivityRealMagnetJourney(
     private fun arg(name: String) = InstrumentationRegistry.getArguments().getString(name)
     private fun decoded(name: String) = String(Base64.decode(requireNotNull(arg(name)), Base64.NO_WRAP), Charsets.UTF_8)
     private fun visible(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
-    private fun scroll(text: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
+    private fun scroll(text: String) {
+        val match = hasText(text, substring = true)
+        // Plain scroll first (canonical Details is a non-lazy column); lazy lists (Transfers,
+        // Connections) only compose nearby items, so fall back to scrolling by item.
+        try { rule.onNode(match).performScrollTo(); return } catch (_: AssertionError) { }
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(match)
+    }
+    private fun hasTag(tag: String) = rule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+    /** Stable-id click for persistent roots; waits for composition, never retries a click. */
+    private fun clickTag(tag: String) {
+        rule.waitUntil(45_000) { hasTag(tag) }
+        rule.waitForIdle()
+        rule.onNode(hasTestTag(tag)).performClick()
+    }
+    private fun waitTransfersCatalog() = rule.waitUntil(60_000) {
+        hasTag(ChunksSemantics.TRANSFERS_HEADING) && visible("Search names or hashes")
+    }
     private fun click(text: String) {
+        // Names the control about to be clicked so a failure reports the exact step.
+        report("chunks_real_add_app_stage",
+            "click-" + text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40))
         // First find the LazyColumn item and confirm the action is enabled.
         // A large transfer Card may be taller than the viewport: scrolling to
         // its item alone does NOT expose a confirmation button near its end.
-        rule.waitUntil(45_000) { runCatching {
-            scroll(text)
-            rule.onNodeWithText(text).assertIsEnabled()
-            true
-        }.getOrDefault(false) }
+        try {
+            rule.waitUntil(45_000) { runCatching {
+                scroll(text)
+                rule.onNodeWithText(text).assertIsEnabled()
+                true
+            }.getOrDefault(false) }
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            // Names WHY this control was unusable (bounded, lowercase; no labels from the app).
+            val count = rule.onAllNodesWithText(text).fetchSemanticsNodes().size
+            report("chunks_real_add_app_stage", "click-" +
+                text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(26) +
+                if (count == 0) "-absent" else if (count > 1) "-ambiguous" else "-unusable")
+            // Which well-known screen parts were showing (1/0 flags only, no app text):
+            // outcome, verified result, Add form infohash, checking, Add button, Transfers search.
+            val flags = listOf("Operation outcome", "View verified transfer in rTorrent", "Infohash:",
+                "Checking server", "Add transfer", "Search names or hashes", "Torrent link:",
+                "A new source is waiting")
+                .joinToString("") { if (visible(it)) "1" else "0" }
+            // Flags first, then the control being clicked (bounded slug), so one stage names both.
+            report("chunks_real_add_app_stage", "click-seen-$flags-" +
+                text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(13))
+            throw timeout
+        }
         rule.waitForIdle()
         // Connect is already visible; a redundant scroll there previously
         // raced its re-composing form. Only scroll within an oversized item
@@ -55,14 +94,23 @@ internal class MainActivityRealMagnetJourney(
         // recycling the button even after the earlier enabled-only probe.
         // Give Compose a bounded chance to settle using *read/scroll-only*
         // operations. Never attempt a click in this loop.
-        rule.waitUntil(30_000) {
-            runCatching {
-                scroll(text)
-                rule.onNodeWithText(text).performScrollTo()
-                rule.waitForIdle()
-                rule.onNodeWithText(text).assertIsDisplayed()
-                true
-            }.getOrDefault(false)
+        try {
+            rule.waitUntil(30_000) {
+                runCatching {
+                    scroll(text)
+                    rule.onNodeWithText(text).performScrollTo()
+                    rule.waitForIdle()
+                    rule.onNodeWithText(text).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            // Numeric geometry only (no app text): top/bottom of the control and of the root.
+            val b = runCatching { rule.onAllNodesWithText(text).fetchSemanticsNodes().firstOrNull()?.boundsInRoot }.getOrNull()
+            val r = runCatching { rule.onRoot().fetchSemanticsNode().boundsInRoot }.getOrNull()
+            report("chunks_real_add_app_stage", "click-geo-" + (b?.top?.toInt() ?: -1) + "-" +
+                (b?.bottom?.toInt() ?: -1) + "-" + (r?.bottom?.toInt() ?: -1))
+            throw timeout
         }
         // Exactly one click; never retry a possibly submitted RPC mutation.
         rule.onNodeWithText(text).performClick()
@@ -219,20 +267,50 @@ internal class MainActivityRealMagnetJourney(
         report("chunks_real_add_app_stage", "connect-click-attempt")
         click("Connect to rTorrent")
         report("chunks_real_add_app_stage", "connect-submitted")
-        // Current compact connected Transfers UI has no former greeting hero.
-        // Require its actual authenticated inventory controls before attempting Add.
-        rule.waitUntil(90_000) { visible("+ Add torrent") && visible("All environments…") }
+        // Verified Connect acknowledges and stays on Connections (#1515); the saved
+        // profile then opens the one canonical Transfers browser. There is no legacy
+        // server queue landing screen.
+        rule.waitUntil(90_000) { visible("Continue to Connections") }
+        // The acknowledgement is a dialog (its own window), not an item in the Connections
+        // list, so it is clicked directly rather than through the list-scrolling helper.
+        rule.onNodeWithText("Continue to Connections").performClick()
+        rule.waitUntil(60_000) { visible("View transfers") }
+        // Connections lists the current server's button AND one per saved profile; only the
+        // current verified server's exact accessibility name is unambiguous.
+        rule.onNode(hasContentDescription("View transfers on current verified server"))
+            .performScrollTo().performClick()
+        waitTransfersCatalog()
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
+        fun remoteAddShowing() = visible("Magnet or torrent link") || visible("View verified transfer in rTorrent")
+        fun openRemoteAdd() {
+            clickTag(ChunksSemantics.FOOTER_ADD)
+            rule.waitUntil(30_000) { visible("Add a transfer") || remoteAddShowing() }
+            // The footer opens the last selected target; on first use that is this device. The
+            // authenticated server is an explicit, non-mutating Add-to choice (it grants no Add
+            // permission). Select it only when the remote form is not already showing, e.g. when
+            // returning to a retained verified result.
+            if (!remoteAddShowing()) {
+                rule.waitUntil(30_000) { hasTag(ChunksSemantics.ADD_TARGET_REMOTE) }
+                rule.onNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE)).performScrollTo().performClick()
+            }
+            rule.waitUntil(30_000) { remoteAddShowing() }
+        }
         fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}) {
             report("chunks_real_add_app_stage", "add-open-requested")
-            click("+ Add torrent")
-            rule.waitUntil(30_000) { visible("Add a download to this server") }
+            openRemoteAdd()
             report("chunks_real_add_app_stage", "add-open")
             // A verified previous Add remains a result on return; only this
             // explicit action starts a fresh source review, without an RPC.
-            if (runCatching { scroll("Start another Add") }.isSuccess) click("Start another Add")
+            // The retained result offers exactly one acknowledgement whose label names the server
+            // state (verified, session confirmed, or registered with Start unverified). Each only
+            // begins a fresh review; none resends Add or Start. Match the button label exactly.
+            listOf("Start another Add", "Acknowledge session and start another Add",
+                "Acknowledge registered job; Start unverified").firstOrNull { label ->
+                runCatching { scroll(label) }
+                rule.onAllNodesWithText(label).fetchSemanticsNodes().isNotEmpty()
+            }?.let { click(it) }
             // The real Seedhost must receive the actual publisher magnet, including
             // its original tracker list. The disposable controlled test keeps
             // the deliberate dead tracker to isolate the supplied peer.
@@ -279,32 +357,39 @@ internal class MainActivityRealMagnetJourney(
                 // opt-out. Probe only semantics/scroll before choosing whether
                 // the disclosure needs opening. Never retry the checkbox tap
                 // (it represents the user's actual source-specific choice).
-                val choiceAlreadyExpanded = runCatching {
-                    scroll(artworkChoice)
-                    rule.onNodeWithText(artworkChoice).assertIsDisplayed()
-                }.isSuccess
-                if (!choiceAlreadyExpanded) click("Artwork & metadata")
+                // The disclosure states its own state ("Expanded"/"Collapsed"), so read that instead
+                // of inferring it from whether the lazy option happens to be composed or visible:
+                // a blind click on an already-expanded disclosure would collapse the opt-out.
+                val disclosure = "Artwork & metadata"
+                // Opening or closing the disclosure is a UI toggle only (no write). The form can
+                // recompose between steps, so (re)establish "expanded" and tap the exact option in
+                // one pass; the option tap itself is the user's choice and is never retried.
+                rule.waitUntil(60_000) {
+                    runCatching {
+                        scroll(disclosure)
+                        val state = rule.onAllNodes(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
+                            .fetchSemanticsNodes().firstOrNull()?.config?.let {
+                                runCatching { it[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] }.getOrNull()
+                            }
+                        if (rule.onAllNodesWithText(artworkChoice).fetchSemanticsNodes().isEmpty() && state != "Expanded") {
+                            rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction()).performClick()
+                            rule.waitForIdle()
+                        }
+                        rule.onAllNodesWithText(artworkChoice).fetchSemanticsNodes().isNotEmpty()
+                    }.getOrDefault(false)
+                }
                 report("chunks_real_add_app_stage", "artwork-choice")
                 // This must remain present, reachable and actionable for
                 // EVERY Add; do not silently omit an opt-out after navigation.
-                click(artworkChoice)
+                rule.onNodeWithText(artworkChoice).performScrollTo()
+                rule.onNodeWithText(artworkChoice).assertIsEnabled().performClick()
+                report("chunks_real_add_app_stage", "artwork-chosen")
             }
-            report("chunks_real_add_app_stage", "review-click")
-            click("Review Add")
-            report("chunks_real_add_app_stage", "review-open")
-            scroll("Confirm one server operation")
-            assertTrue("Review lost exact public identity", visible("Infohash: $hash"))
-            if (disposable && !publicDiscovery && torrentLinks && label != null && label != "magnet0") {
-                // The earlier HTTPS fetch is a read-only preview. Require the
-                // *production confirmation card* to say the pending source is
-                // the isolated magnet, never the original public .torrent.
-                // This is independently corroborated after Add by the engine's
-                // exact tracker list and missing-metadata/BEP9 witness.
-                assertTrue("Publisher HTTPS preview was retained as the submitted source",
-                    visible("Source: Magnet link"))
-                assertFalse("A fetched publisher .torrent must not remain the chosen source",
-                    visible("Source: Selected .torrent file"))
-            }
+            // The source-first form has one explicit "Add transfer" submission action and no
+            // separate review card. The exact full infohash is shown inline before Add; assert it
+            // here, then verify the registered hash, tracker list and BEP9 witness after Add.
+            scroll("Infohash: $hash")
+            assertTrue("Add form lost exact public identity", visible("Infohash: $hash"))
             if (torrentLinks && label != null && label != "magnet0") {
                 InstrumentationRegistry.getInstrumentation().sendStatus(2,
                     Bundle().apply { putString("chunks_https_review", label) })
@@ -313,7 +398,21 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "add-review")
             onSubmit()
             report("chunks_real_add_app_stage", "add-submitted")
-            click("Confirm: add then start")
+            // The one submission control, by its stable id: the lazy form may not have composed
+            // it yet and other text contains "Add transfer", so a literal-text lookup is unsafe.
+            // Only read/scroll checks repeat; the click happens exactly once.
+            val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
+            report("chunks_real_add_app_stage", "click-add-submit")
+            rule.waitUntil(45_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(submit)
+                    rule.onNode(submit).assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+            }
+            rule.onNode(submit).performScrollTo()
+            rule.waitForIdle()
+            rule.onNode(submit).performClick()
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
             assertTrue("Actual app did not verify Add+Start", visible("Verified: added and started on rTorrent."))
             if (disposable) {
@@ -327,12 +426,16 @@ internal class MainActivityRealMagnetJourney(
             }
             // Exercise the production app owner, not a directly composed form:
             // leaving/reopening must retain the exact verified result and latch.
-            click("Back to transfers")
-            click("+ Add torrent")
+            clickTag(ChunksSemantics.FOOTER_TRANSFERS)
+            waitTransfersCatalog()
+            openRemoteAdd()
             scroll("View verified transfer in rTorrent")
             rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
-                runCatching { scroll("Review Add") }.isFailure)
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction())
+                        .performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+                }.isFailure)
             assertNotNull("Navigation must retain the independently registered exact job", row(hash))
             if (disposable && !publicDiscovery) {
                 // The HTTPS preview above must NOT leak its public trackers
@@ -351,44 +454,49 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "add-registered")
         }
         fun refreshAndFind(hash: String) {
-            click("Refresh")
-            type("Search names, aliases, folders or hashes", hash)
+            // Footer Transfers is the one canonical list; searching an exact hash narrows it
+            // without any write.
+            clickTag(ChunksSemantics.FOOTER_TRANSFERS)
+            waitTransfersCatalog()
+            type("Search names or hashes", hash)
         }
-        // Current compact transfer cards intentionally hide secondary actions
-        // behind a read-only disclosure. Open it for the exact searched hash,
-        // rather than assuming a collapsed card exposes Stop/Remove.
-        fun exposeTransferActions() {
-            // The exact hash search can leave its lazy row offscreen while
-            // Compose and the IME settle. Discover its read-only disclosure
-            // by scrolling the list, never by a visible-only opportunistic
-            // check that silently skips the required Stop/Remove controls.
-            val expanded = runCatching { scroll("Hide details") }.isSuccess
-            if (!expanded) {
-                rule.waitUntil(30_000) {
-                    runCatching { scroll("More details"); true }.getOrDefault(false)
-                }
-                click("More details")
-            }
+        // Compact rows open full Details on tap; Start/Stop/Remove live in that one Details.
+        fun openDetails(hash: String) {
+            // The exact-hash search leaves one row for this job, so open it without relying on
+            // the display name (a metadata-pending magnet's server name differs from its label).
+            requireNotNull(row(hash)) { "exact remote job must exist" }
+            val anyRow = hasContentDescription("Details for ", substring = true)
+            rule.waitUntil(60_000) { rule.onAllNodes(anyRow).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals("The exact-hash search must leave exactly one row", 1,
+                rule.onAllNodes(anyRow).fetchSemanticsNodes().size)
+            rule.onNode(anyRow).performClick()
+            rule.waitUntil(30_000) { visible("Transfer details") }
         }
         fun lifecycle(hash: String, start: Boolean) {
             refreshAndFind(hash)
-            exposeTransferActions()
-            click(if (start) "Start transfer…" else "Stop transfer…")
-            click(if (start) "Confirm start" else "Confirm stop")
+            openDetails(hash)
+            // Canonical Details never dispatches Start/Stop itself: "Review Start / Stop" hands the
+            // exact job to the Transfers batch tools with that one key selected. The owner's
+            // separately confirmed review then names the target before one sequential run.
+            click("Review Start / Stop")
+            click(if (start) "Start…" else "Stop…")
+            click(if (start) "Start selected" else "Stop selected")
             await(what = "lifecycle state readback") { row(hash)?.started == start && readOnly { remote.readActivity(hash).active } == start }
         }
         fun remove(hash: String) {
             if (row(hash)?.started == true) lifecycle(hash, false)
             refreshAndFind(hash)
-            exposeTransferActions()
+            openDetails(hash)
             click("Remove from rTorrent…"); click("Remove transfer, keep data")
             await { readOnly { remote.lookupName(hash) } == null }
             assertEquals(before, readOnly { remote.listTransfers("main") }.map { it.hash.lowercase() }.toSet())
             // A follow-on Add must start from an unfiltered Transfers screen.
             // Clearing the prior exact-hash search is read-only, and prevents
             // the next fixture from inheriting an obsolete UI selection.
-            type("Search names, aliases, folders or hashes", "")
-            rule.waitUntil(30_000) { visible("+ Add torrent") }
+            clickTag(ChunksSemantics.FOOTER_TRANSFERS)
+            waitTransfersCatalog()
+            type("Search names or hashes", "")
+            rule.waitUntil(30_000) { hasTag(ChunksSemantics.FOOTER_ADD) }
         }
         // Exercise an entire real, authenticated rTorrent Add -> Transfers ->
         // Combined -> read-only Details -> Transfers -> Stop/Start -> Remove
@@ -398,8 +506,8 @@ internal class MainActivityRealMagnetJourney(
         fun inspectCombinedDetails(hash: String, displayName: String, expectedPlace: String) {
             val original = requireNotNull(row(hash))
             val originalHashes = readOnly { remote.listTransfers("main").map { it.hash.lowercase() }.toSet() }
-            click("All environments…")
-            rule.waitUntil(45_000) { visible("All environments") }
+            clickTag(ChunksSemantics.FOOTER_TRANSFERS)
+            waitTransfersCatalog()
             // Combined asynchronously loads its phone/remote privacy and
             // inventory. The title appearing does not prove that its exact
             // remote transfer row has been composed yet.
@@ -425,20 +533,7 @@ internal class MainActivityRealMagnetJourney(
             // Reading a transfer never grants a Start/Stop/Remove authority,
             // changes its target, or performs any write.
             rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
-            rule.waitUntil(30_000) { visible("All environments") }
-            // The canonical catalog no longer has a free-floating server-list
-            // button. Re-enter this exact environment and hash through the
-            // same full Details owner route; no RPC mutation is dispatched.
-            click("Only connected server")
-            rule.waitUntil(30_000) {
-                runCatching {
-                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(rowMatch)
-                    true
-                }.getOrDefault(false)
-            }
-            rule.onNode(rowMatch).performClick()
-            rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
-            rule.waitUntil(30_000) { visible("+ Add torrent") }
+            waitTransfersCatalog()
             val after = requireNotNull(row(hash))
             assertTrue("Details altered authenticated source Place", after.directory == original.directory)
             assertTrue("Details altered authenticated transfer name", after.name == original.name)
@@ -569,10 +664,30 @@ internal class MainActivityRealMagnetJourney(
                 assertTrue(payload.completedBytes in 1..payload.sizeBytes)
                 if (!publicDiscovery) assertTrue(payload.completedBytes < payload.sizeBytes)
                 click("Back to transfers")
+                report("chunks_real_add_app_stage", "click-after-back")
                 refreshAndFind(hash)
-                scroll(preview.name)
-                assertTrue("Actual Transfers lost original metadata name", visible(preview.name))
-                assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
+                report("chunks_real_add_app_stage", "click-found-by-hash")
+                // The compact row's accessible name is "Details for <display name> on <environment>",
+                // so the original metadata name is asserted through that stable semantics rather than
+                // a literal text node (the title Text overrides its own description when merged).
+                val named = hasContentDescription("Details for " + preview.name, substring = true)
+                try {
+                    rule.waitUntil(30_000) { rule.onAllNodes(named).fetchSemanticsNodes().isNotEmpty() }
+                } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+                    // Numbers only: row description length, expected-name length, common prefix length.
+                    val d = rule.onAllNodes(hasContentDescription("Details for ", substring = true)).fetchSemanticsNodes()
+                        .firstOrNull()?.config?.let {
+                            runCatching { it[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].firstOrNull() }.getOrNull()
+                        }.orEmpty().removePrefix("Details for ")
+                    val common = d.commonPrefixWith(preview.name).length
+                    report("chunks_real_add_app_stage", "click-nm-${d.length}-${preview.name.length}-$common")
+                    throw timeout
+                }
+                assertTrue("Actual Transfers lost original metadata name",
+                    rule.onAllNodes(named).fetchSemanticsNodes().size == 1)
+                // The exact-hash search leaves this one row; after metadata it must no longer
+                // present the job as metadata-pending (canonical row wording).
+                assertFalse("Actual Transfers retained placeholder facts", visible("Fetching metadata"))
                 if (!combinedDetailsVerified) {
                     inspectCombinedDetails(hash, preview.name, payload.directory)
                     combinedDetailsVerified = true
@@ -593,10 +708,26 @@ internal class MainActivityRealMagnetJourney(
                 assertEquals("Restart altered registered transfer name", preview.name, restartedRow.name)
                 if (!publicDiscovery) controller("/$label/resume", source.listenPort)
                 val completeBeforeRestart = publicDiscovery && stopped.verifiedBytes == stopped.expectedBytes
-                if (!completeBeforeRestart) await(90, "progress before restart") {
-                    val sample = readOnly { remote.readTrafficSample(hash) }
-                    (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
-                        (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
+                if (!completeBeforeRestart) {
+                    try {
+                        await(90, "progress before restart") {
+                            val sample = readOnly { remote.readTrafficSample(hash) }
+                            (sample.receivedBytes ?: 0L) > (stopped.receivedBytes ?: 0L) &&
+                                (sample.verifiedBytes ?: 0L) > (stopped.verifiedBytes ?: 0L)
+                        }
+                    } catch (timeout: AssertionError) {
+                        // Unlike the initial peer-progress timeout, the resume
+                        // checkpoint previously discarded the exact remote
+                        // counters and status. Preserve only allowlisted
+                        // numbers and no-path/no-tracker state classifications,
+                        // while the originally observed exact job still exists.
+                        // These READS are never grounds for a retry or success.
+                        runCatching {
+                            traffic(label, "resumed", readOnly { remote.readTrafficSample(hash) })
+                        }
+                        reportReadOnlyStall(label, remote, hash)
+                        throw timeout
+                    }
                 }
                 traffic(label, "resumed", readOnly { remote.readTrafficSample(hash) })
                 stage(label, "restarted")
@@ -650,9 +781,12 @@ internal class MainActivityRealMagnetJourney(
             assertEquals(1, (readOnly { remote.call("d.is_meta", listOf(negative)) } as Number).toInt())
             click("Back to transfers"); inTransfers = true
             refreshAndFind(negative)
+            // Canonical compact row (the exact-hash search leaves only this job): it must say
+            // metadata is pending and must not claim payload progress or completion.
             scroll("Fetching metadata")
-            assertTrue(visible("Payload size and progress pending metadata"))
+            assertTrue(visible("Fetching metadata"))
             assertFalse(visible("100% ·"))
+            assertFalse(visible("Sharing ·"))
             report("chunks_real_add_negative_stage", "transfers-ui-truthful")
         } finally {
             if (row(negative) != null) {

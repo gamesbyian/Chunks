@@ -2,11 +2,15 @@ package io.github.gamesbyian.chunks
 
 import android.os.Bundle
 import android.util.Base64
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
@@ -94,36 +98,53 @@ class RemoteDeleteDataInstalledInstrumentedTest {
         stage("ground-truth")
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("persistent Connections destination") { visible("Connections") }
-            rule.onNodeWithText("Connections").performClick()
+            // The Welcome shortcut and persistent footer both say Connections:
+            // only the footer's exact accessibility identifier is the root route.
+            waitFor("persistent Connections destination") {
+                rule.onAllNodes(hasContentDescription("Connections")).fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithContentDescription("Connections").performClick()
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             typeInto("Seedbox hostname, ruTorrent URL or RPC address", url)
             scrollTo("Connect to rTorrent")
             rule.onNodeWithText("Connect to rTorrent").performClick()
-            waitFor("ruTorrent server queue", 90_000) {
-                // Header pluralises: "· 1 transfer", "· 2 transfers".
-                visible("· ${before.size} transfer") && visible("+ Add torrent")
+            waitFor("verified connection acknowledgment", 90_000) {
+                visible("Continue to Connections")
+            }
+            rule.onNodeWithText("Continue to Connections").performClick()
+            waitFor("connected server in Connections", 60_000) {
+                visible("View transfers")
+            }
+            rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
+            waitFor("canonical server-scoped Transfers", 60_000) {
+                visible("Search names or hashes")
             }
             stage("connected")
-            typeInto("Search names, aliases, folders or hashes", hash)
-            // The search filter applies asynchronously (run on 18a8e87): wait
-            // for the filtered card, open its disclosure, then the action.
-            // Disclosure is read-only, so repeating it is safe.
-            waitFor("Remove action reachable on the exact transfer", 60_000) {
-                val reachable = runCatching { scrollTo("Remove from rTorrent…"); true }.getOrDefault(false)
-                if (!reachable) runCatching {
-                    scrollTo("More details")
-                    rule.onNodeWithText("More details").performScrollTo().performClick()
-                    rule.waitForIdle()
-                }
-                reachable
+            rule.onNode(hasScrollToIndexAction())
+                .performScrollToNode(hasText("Search names or hashes"))
+            rule.onNodeWithText("Search names or hashes").performTextReplacement(hash)
+            val selected = before.single { it.hash.equals(hash, ignoreCase = true) }
+            val exactRow = hasContentDescription("Details for ${selected.name} on", substring = true)
+            waitFor("exact remote compact row in canonical Transfers", 60_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(exactRow)
+                    rule.onNode(exactRow).fetchSemanticsNode()
+                    true
+                }.getOrDefault(false)
             }
-            clickOnce("Remove from rTorrent…")
-            waitFor("data deletion offered on the ruTorrent route") {
-                visible("Remove transfer and data") && !visible("Remove transfer and data (unavailable)")
+            rule.onNode(exactRow).performClick()
+            waitFor("full Details for authenticated exact transfer") {
+                visible("Transfer details") && visible("Remove from rTorrent…")
+            }
+            // The actual existing guarded Remove control now lives inside the
+            // same canonical Details as phone, saved-server and All scopes.
+            rule.onNodeWithText("Remove from rTorrent…").performScrollTo().performClick()
+            waitFor("data deletion offered on exact server Details") {
+                visible("Remove transfer and data") &&
+                    !visible("Remove transfer and data (unavailable)")
             }
             stage("review-open")
-            clickOnce("Remove transfer and data")
+            rule.onNodeWithText("Remove transfer and data").performScrollTo().performClick()
             // The result card can leave with the removed row on refresh, so
             // accept the queued message OR independent exact-session absence.
             waitFor("queued delete-data outcome", 60_000) {

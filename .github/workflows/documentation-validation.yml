@@ -71,6 +71,13 @@ on:
       - '.github/workflows/android-interrupt-harness-qa.yml'
       - 'tools/check_native_atlas_contract.py'
       - 'tests/test_native_atlas_contract.py'
+      - 'tools/native_atlas_manifest.json'
+      - 'tools/pr_acceptance_report.py'
+      - 'tools/acceptance_gates.json'
+      - 'tests/test_pr_acceptance_report.py'
+      - 'tools/apt_install_retry.sh'
+      - 'tests/test_apt_install_retry.py'
+      - 'docs/TEST-ARCHITECTURE.md'
       - 'tests/test_docs_check.py'
       - 'tools/verify_release_apk_identity.py'
       - 'tests/test_verify_release_apk_identity.py'
@@ -169,6 +176,13 @@ on:
       - '.github/workflows/android-interrupt-harness-qa.yml'
       - 'tools/check_native_atlas_contract.py'
       - 'tests/test_native_atlas_contract.py'
+      - 'tools/native_atlas_manifest.json'
+      - 'tools/pr_acceptance_report.py'
+      - 'tools/acceptance_gates.json'
+      - 'tests/test_pr_acceptance_report.py'
+      - 'tools/apt_install_retry.sh'
+      - 'tests/test_apt_install_retry.py'
+      - 'docs/TEST-ARCHITECTURE.md'
       - 'tests/test_docs_check.py'
       - 'tools/verify_release_apk_identity.py'
       - 'tests/test_verify_release_apk_identity.py'
@@ -267,6 +281,9 @@ jobs:
         run: |
           python3 tools/check_native_atlas_contract.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_native_atlas_contract.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_pr_acceptance_report.py
+          bash -n tools/apt_install_retry.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_apt_install_retry.py
       - name: Respect owner-authorized torrent fixture policy without live tracker access
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_owner_torrent_fixture_policy.py
       - name: Guard documentation dispatch parity and existing path targets

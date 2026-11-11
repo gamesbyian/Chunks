@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.content.ContentValues
+import androidx.compose.ui.test.onNodeWithTag
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -203,7 +204,17 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)
         hideKeyboard()
         clickLazyButton("Connect to rTorrent")
-        rule.waitUntil(20_000) { rule.onAllNodesWithText("2 transfers", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        // Verified Connect acknowledges and stays on Connections (#1515); the saved
+        // profile then opens the one canonical Transfers browser.
+        rule.waitUntil(60_000) {
+            rule.onAllNodesWithText("Continue to Connections").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Continue to Connections").performClick()
+        rule.waitUntil(60_000) {
+            rule.onAllNodesWithText("View transfers").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
+        rule.waitUntil(30_000) { rule.onAllNodesWithText("2 transfers", substring = true).fetchSemanticsNodes().isNotEmpty() }
 
         // Real row, bundled category art from the original torrent name; nothing looked up.
         waitForDescription("TV episode category artwork. $format")
@@ -225,7 +236,7 @@ class InstalledMediaArtworkInstrumentedTest {
         save("media-row-remote-user-artwork-installed")
 
         // Options → Artwork & info: turn artwork off; the visible row returns to category art.
-        rule.onNode(hasClickAction() and hasText("Options")).performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         rule.onNodeWithText("Search options").performTextInput("artwork")
         hideKeyboard()
         rule.onNodeWithText("Artwork & media info").performClick()
@@ -238,13 +249,8 @@ class InstalledMediaArtworkInstrumentedTest {
         // Back from media settings restores central Options. Navigate through
         // the same Combined inventory to the exact authenticated server list.
         rule.onNodeWithText("Options · this device").assertExists()
-        rule.onNodeWithText("Transfers").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Only connected server"))
-        rule.onNodeWithText("Only connected server").performClick()
-        val exactRow = hasContentDescription("Details for $episode on", substring = true)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(exactRow)
-        rule.onNode(exactRow).performClick()
-        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
+        // The canonical Transfers catalog (not a legacy server queue) hosts the exact row.
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(episode))
         waitForDescription("TV episode category artwork. $format")
 

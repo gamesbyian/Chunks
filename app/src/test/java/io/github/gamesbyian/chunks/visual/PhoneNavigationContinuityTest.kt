@@ -1,8 +1,12 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -16,29 +20,38 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Fresh Welcome hides unused phone search; the canonical catalog instead
- * preserves its typed query across root Options/Transfers navigation.
+ * Leaving the phone list for All environments and returning keeps the
+ * person's typed search (navigation state only; no command or selection).
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
 class PhoneNavigationContinuityTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    private fun enterExplicitDeviceView() {
+        rule.runOnIdle {
+            io.github.gamesbyian.chunks.CombinedViewPreferences(rule.activity).save(
+                io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                    scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                        setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
+        }
+        rule.activityRule.scenario.recreate()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 
-    @Test fun catalogSearchSurvivesOptionsAndTransfersRootRoundTrip() {
-        rule.waitForIdle()
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        rule.onNodeWithText("Transfers").performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("All environments").assertExists()
+
+    @Test fun explicitDeviceScopeAndSearchSurviveRootNavigation() {
+        enterExplicitDeviceView()
         rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
-            .performScrollTo().performTextInput("ubuntu")
-        rule.onNodeWithText("Options").performClick()
+            .performTextInput("ubuntu")
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Options · this device").assertExists()
-        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("All environments").assertExists()
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
+
 }

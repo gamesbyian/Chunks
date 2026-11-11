@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
@@ -154,6 +155,7 @@ private fun FooterTransfers(
     isCurrent: Boolean = false
 ) {
     OutlinedButton(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
+        .testTag(ChunksSemantics.FOOTER_TRANSFERS)
         .currentDestination(isCurrent)
         .then(if (environmentLabel == null) Modifier else Modifier.semantics {
             contentDescription = "Show transfers on $environmentLabel"
@@ -176,6 +178,7 @@ private fun FooterAdd(
 ) {
     val spoken = description ?: environmentLabel?.let { "Add torrent on $it" }
     Button(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
+        .testTag(ChunksSemantics.FOOTER_ADD)
         .currentDestination(isCurrent)
         .then(if (spoken == null) Modifier else Modifier.semantics {
             contentDescription = spoken
@@ -196,6 +199,7 @@ private fun FooterConnections(onClick: () -> Unit, modifier: Modifier,
     isCurrent: Boolean = false) {
     OutlinedButton(onClick = onClick, contentPadding = contentPadding,
         modifier = modifier.heightIn(min = 48.dp)
+        .testTag(ChunksSemantics.FOOTER_CONNECTIONS)
         .currentDestination(isCurrent)
         .semantics { contentDescription = "Connections" }) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -218,7 +222,8 @@ private fun FooterOptions(
         contentPadding = contentPadding,
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp)
-            .currentDestination(isCurrent)
+            .testTag(ChunksSemantics.FOOTER_OPTIONS)
+        .currentDestination(isCurrent)
             .semantics {
                 contentDescription = if (environmentLabel == null) "Options"
                     else "Options on $environmentLabel"

@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.hasTestTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
@@ -44,9 +47,9 @@ class ChunksAddReviewRenderTest {
         }
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/add-form.png")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Review Add"))
-        rule.onNodeWithText("Review Add").performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Confirm: add then start"))
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        // Single explicit Add transfer action; no second confirmation step remains.
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertExists()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/add-review.png")
     }

@@ -4,6 +4,10 @@
 
 ## Current integration starting point (11 November UTC)
 
+**Test standard:** before editing or adding any test, read [TEST-ARCHITECTURE](TEST-ARCHITECTURE.md). Use `ChunksSemantics` ids, run the acceptance report on the exact head, and keep the atlas manifest classified. Still open: convert installed helpers and the first-launch atlas check (needs an emulator), enable `testTagsAsResourceId` for UIAutomator evidence, and decide whether to approve real visual baselines ([audit](archive/TEST-ARCHITECTURE-AUDIT-2026-11-11.md)).
+
+**Second-pass update:** read [the second-pass audit](archive/OPEN-PR-RECONCILIATION-2026-11-11-PASS2.md) first. #1640 is merged (`56efe33`). The surviving assembly is draft [#1644](https://github.com/gamesbyian/Chunks/pull/1644) (#1641-#1643 content plus ported tests); continue there, porting #1594 → #1611 → #1546 and then guarded Details one at a time. Do not edit the original stacked PRs. A full (not shallow) clone is required to judge branch relationships.
+
 First read [the current open-PR audit](archive/OPEN-PR-RECONCILIATION-2026-11-11.md) alongside live GitHub state. #1636's one-file Options focus retry is now merged as `0ef4411`. At that audit, 17 PRs remained open, most stacked or overlapping; the two integration drafts #1548/#1551 conflict with main. Do **not** cherry-pick an entire outdated branch or merge a stacked child against its older parent and mistake that for an accepted main integration. Choose one fresh-main reconciliation, diff exact unique Add/navigation/Details/test contributions and repair the executed native/foundation/real-magnet red checks. Merge each independently source-qualified compatible slice, then mark redundant PRs as superseded only when their code/test deltas survive and their disposition is explained. Produce a current installed APK provenance receipt before declaring ordinary owner daily use. This assignment is cross-domain and follows the current dispatch, never a fixed agent lane.
 
 ## 1. Capture live source, work and evidence

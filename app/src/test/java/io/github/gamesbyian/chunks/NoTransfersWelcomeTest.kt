@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -28,12 +29,12 @@ class NoTransfersWelcomeTest {
                 }
             }
         }
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertExists()
         rule.onNodeWithText("Start a download on this device, or connect a remote BitTorrent client. " +
             "You can use Chunks with either, or both.").assertExists()
         assertEquals(0, add)
         assertEquals(0, connections)
-        rule.onNodeWithText("Add a torrent").performClick()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).performClick()
         assertEquals(1, add)
         assertEquals(0, connections)
         rule.onNodeWithText("Connections").performClick()
@@ -59,6 +60,19 @@ class NoTransfersWelcomeTest {
         org.junit.Assert.assertFalse(show(defaultFilter = false))
         org.junit.Assert.assertFalse(show(restoreHealthy = false))
         org.junit.Assert.assertFalse(show(noIncoming = false))
+    }
+
+    @Test fun rememberedLegacyVaultLoginBlocksFalseFreshInstallBeforeRosterLoad() {
+        org.junit.Assert.assertFalse(configuredRemoteForWelcome(false, false, false))
+        org.junit.Assert.assertTrue(configuredRemoteForWelcome(false, false, true))
+        org.junit.Assert.assertTrue(configuredRemoteForWelcome(false, true, false))
+        org.junit.Assert.assertTrue(configuredRemoteForWelcome(true, false, false))
+        org.junit.Assert.assertFalse(showCanonicalFirstRunWelcome(
+            noPersistedJobs = true, nativeRunning = false, nativeConfirmed = false,
+            nativeStale = false, nativeCount = 0,
+            hasRemoteProfile = configuredRemoteForWelcome(false, false, true),
+            restrictedView = false, privacyAllowed = true, pendingExternalSource = false
+        ))
     }
 
     @Test fun canonicalWelcomeNeverConflatesUnobservedRestoreOfflineOrFilteredZero() {
@@ -107,8 +121,8 @@ class NoTransfersWelcomeTest {
                 }
             }
         }
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        rule.onNodeWithText("Add a torrent").performClick()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertExists()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).performClick()
         rule.onNodeWithText("Connections").performClick()
         assertEquals(1, add)
         assertEquals(1, connections)

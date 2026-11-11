@@ -44,8 +44,7 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Start disposable rTorrent, SCGI proxy and pinned ruTorrent PHP
         run: |
-          sudo timeout 180s apt-get update -qq
-          sudo timeout 180s env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq rtorrent nginx php-cli php-xml php-mbstring php-curl
+          bash tools/apt_install_retry.sh rtorrent nginx php-cli php-xml php-mbstring php-curl
           mkdir -p "$RUNNER_TEMP/chunks-home" "$RUNNER_TEMP/chunks-data" "$RUNNER_TEMP/chunks-session" \
             "$RUNNER_TEMP/chunks-rutorrent-web" "$RU_PROFILE_PATH"
           cat > "$RUNNER_TEMP/chunks-home/.rtorrent.rc" <<EOF

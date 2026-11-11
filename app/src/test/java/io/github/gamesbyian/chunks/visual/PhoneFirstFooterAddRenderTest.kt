@@ -1,10 +1,15 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import io.github.gamesbyian.chunks.MainActivity
 import org.junit.Rule
 import org.junit.Test
@@ -24,29 +29,35 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneFirstFooterAddRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
+    private fun waitForWelcome() = rule.waitUntil(20_000) {
+        rule.onAllNodesWithTag(ChunksSemantics.WELCOME_HEADING).fetchSemanticsNodes().isNotEmpty()
+    }
+
     @Test fun freshPhoneLaunchKeepsOrientationAndReachesInventoryInOneTap() {
-        rule.waitForIdle()
-        // A truly empty, 320dp/200% installation begins with usable Welcome,
-        // without obscuring the persistent Transfers and Add navigation.
-        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
-        rule.onNodeWithText("This device").assertDoesNotExist()
-        rule.onNodeWithText("Search transfers on this device").assertDoesNotExist()
-        rule.onNodeWithText("Transfers")
+        waitForWelcome()
+        // Launch does not scroll away from where-am-I and Back, even here.
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertIsDisplayed()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS)
             .assertIsDisplayed().performClick()
-        rule.onNodeWithText("All environments").assertExists()
-        rule.onNodeWithText("Search names or hashes").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertExists()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
         // The persistent footer retains direct Add without needing to scroll
         // back through secondary tools.
-        rule.onNodeWithText("+ Add").assertIsDisplayed()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).assertIsDisplayed()
     }
 
     @Test fun footerAddRevealsActualPhoneAddFormAboveFooter() {
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        val add = rule.onNodeWithText("+ Add")
+        waitForWelcome()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertExists()
+        val add = rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD)
         add.assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Add a download on this device").assertIsDisplayed()
+        rule.onNodeWithText("Add a transfer").assertExists()
+        // At 320dp/200% the destination belongs to the SAME vertically
+        // scrollable source-first shell; prove the actual option is reachable
+        // rather than assuming every control must fit in the first viewport.
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().assertIsDisplayed()
         // The button remains actionable after opening the actual in-place form.
-        rule.onNodeWithText("+ Add").assertIsDisplayed()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).assertIsDisplayed()
     }
 }

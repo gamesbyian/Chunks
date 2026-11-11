@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.app.Activity
+import androidx.compose.ui.platform.testTag
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.WindowManager
@@ -69,6 +70,7 @@ import io.github.gamesbyian.chunks.privacy.RemoteTransferPrivacyScope
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyRuntime
 import io.github.gamesbyian.chunks.privacy.TransferDeviceAuthenticator
 import io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteStallEvidence
 import io.github.gamesbyian.chunks.model.LifecycleReply
@@ -142,8 +144,32 @@ internal data class CombinedServerSource(
     /** Start/Stop through the server screen's own mutation gate; null when not offered. */
     val lifecycle: CombinedServerLifecycle? = null,
     /** Live authenticated RTorrentRemote identity, never a saved profile string. */
-    val authenticatedSession: Any? = null
+    val authenticatedSession: Any? = null,
+    /** Parent's accepted inventory revision, required for destructive review identity. */
+    val snapshotRevision: Long = 0L
 )
+
+/**
+ * Destructive Details controls require a *transport-backed* principal match.
+ * A rendered source alias and ID are independently supplied view data, so
+ * matching those to each other never proves that their RTorrentRemote adapter
+ * targets the same endpoint, username and numbered ruTorrent route.
+ *
+ * This is a pure eligibility check: it sends no RPC, creates no mutation
+ * ticket and only returns the exact live row already in the source snapshot.
+ */
+internal fun authenticatedExactRemovalRow(
+    key: UnifiedTransferKey,
+    source: CombinedServerSource?,
+    advertisedServerId: EnvironmentId?
+): RemoteTransfer? {
+    val owner = source ?: return null
+    val remote = owner.authenticatedSession as? RTorrentRemote ?: return null
+    if (remote.addAccountScope() != owner.aliasScope) return null
+    val derivedId = EnvironmentSnapshots.serverIdOfAliasScope(owner.aliasScope) ?: return null
+    if (derivedId != key.environment || derivedId != advertisedServerId) return null
+    return owner.transfers.singleOrNull { it.hash.equals(key.infoHash, ignoreCase = true) }
+}
 
 /** The connected server's lease, command and settle, exactly as its own list uses them. */
 internal class CombinedServerLifecycle(
@@ -153,8 +179,22 @@ internal class CombinedServerLifecycle(
     /** Read-only method-list probe of the same signed-in server; null skips the pre-check. */
     val probe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)? = null,
     /** Exact-identity, read-only diagnosis on the same live authenticated server. */
-    val inspectStall: (suspend (String) -> RemoteStallEvidence)? = null
+    val inspectStall: (suspend (String) -> RemoteStallEvidence)? = null,
+    /** The command lease and RPC are owned by this exact transport, not a label. */
+    val ownerSession: RTorrentRemote? = null
 )
+
+/** Exact adapter-to-view binding for mutating canonical rTorrent operations. */
+internal fun verifiedCombinedLifecycleOwner(
+    source: CombinedServerSource?, advertisedServerId: EnvironmentId?
+): RTorrentRemote? {
+    val owner = source ?: return null
+    val remote = owner.authenticatedSession as? RTorrentRemote ?: return null
+    if (owner.lifecycle?.ownerSession !== remote) return null
+    if (remote.addAccountScope() != owner.aliasScope) return null
+    if (EnvironmentSnapshots.serverIdOfAliasScope(owner.aliasScope) != advertisedServerId) return null
+    return remote
+}
 
 /** A saved profile that is not signed in during this session. */
 internal data class CombinedSavedProfile(
@@ -328,7 +368,15 @@ internal fun CombinedTransfersScreen(
     scopeFocusRequest: String? = null,
     onScopeFocusConsumed: () -> Unit = {},
     /** Root Transfers returns from full Details without changing filters or identity. */
-    returnToCatalogRevision: Long = 0L
+    returnToCatalogRevision: Long = 0L,
+    /** Explicit All environments navigation is distinct from a saved profile link. */
+    showAllEnvironmentsRevision: Long = 0L,
+    onShowAllEnvironmentsConsumed: (Long) -> Unit = {},
+    /** Host opt-in: genuine first-run omits all inventory-management chrome. */
+    enableFirstRunWelcome: Boolean = false,
+    /** True for an existing verified vault login not yet represented by a roster. */
+    hasRememberedRemoteLogin: Boolean = false,
+    onWelcomeAdd: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -365,6 +413,18 @@ internal fun CombinedTransfersScreen(
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
 
+    // Only an explicit "All environments" action may clear the narrower
+    // previously selected saved-profile scope; Details return preserves it.
+    LaunchedEffect(showAllEnvironmentsRevision) {
+        val requested = showAllEnvironmentsRevision
+        if (requested > 0L) {
+            // A historical nonzero counter must never replay when the catalog
+            // remounts after navigating to a different exact saved profile.
+            update(CombinedViewPreferences.showAll(query))
+            onShowAllEnvironmentsConsumed(requested)
+        }
+    }
+
     // A saved-connection tap changes only the existing canonical browser's scope.
     // Never interpret a friendly label as identity and never fall back to All
     // when a profile is forgotten between tap and composition.
@@ -389,6 +449,21 @@ internal fun CombinedTransfersScreen(
     var phoneFrame by remember { mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false)) }
     var phoneConfirmed by remember { mutableStateOf(false) }
     var phoneRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
+    // No native engine can also mean saved torrents waiting for restoration.
+    // Positive absence comes from read-only durable discovery, never an empty
+    // in-memory list. Repeat after engine stop/list count change to avoid
+    // stale absence evidence from a prior Add.
+    var noPersistedPhoneJobs by remember(context) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(context, phoneRunning, phoneFrame.entries.size) {
+        noPersistedPhoneJobs = try {
+            withContext(Dispatchers.IO) {
+                !io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery.shouldAttemptRestore(
+                    java.io.File(context.filesDir, "local-engine"))
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (_: Exception) { false }
+    }
     var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
     // Restores only a read-only detail target, never an in-flight command or batch selection.
     var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
@@ -789,6 +864,25 @@ internal fun CombinedTransfersScreen(
     val addedHidden = combinedAddedTransferHidden(recentlyAddedTransfer, sources,
         result.transfers.map { it.key })
     val sourcesByEnvironment = result.sources.associateBy { it.environment }
+    val firstRunVisible = enableFirstRunWelcome && showCanonicalFirstRunWelcome(
+        noPersistedJobs = noPersistedPhoneJobs,
+        nativeRunning = phoneRunning,
+        nativeConfirmed = phoneConfirmed,
+        nativeStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations(),
+        nativeCount = phoneFrame.entries.size,
+        hasRemoteProfile = configuredRemoteForWelcome(
+            server != null, savedProfiles.isNotEmpty(), hasRememberedRemoteLogin),
+        restrictedView = CombinedViewPreferences.narrowingActive(query),
+        privacyAllowed = phonePrivacy.mayShow,
+        pendingExternalSource = pendingSharedMagnet || pendingSharedLink ||
+            pendingSharedTorrent || readingSharedTorrent ||
+            sharedTorrentError != null || recentlyAddedTransfer != null
+    )
+    val checkingFreshPhone = enableFirstRunWelcome && noPersistedPhoneJobs == null &&
+        !phoneRunning && !phoneConfirmed && savedProfiles.isEmpty() && server == null &&
+        !hasRememberedRemoteLogin &&
+        !CombinedViewPreferences.narrowingActive(query) && phonePrivacy.mayShow &&
+        !pendingSharedMagnet && !pendingSharedTorrent && !readingSharedTorrent
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
     val secure = (phonePrivacy.needsSecureWindow && phonePrivacy.mayShow) ||
@@ -870,15 +964,16 @@ internal fun CombinedTransfersScreen(
                 EnvironmentCapabilities.phone() else snapshot,
             System.currentTimeMillis()
         )
+        val verifiedOwner = verifiedCombinedLifecycleOwner(server, serverId)
         val readOnlyProbe = server?.lifecycle?.probe?.takeIf {
             focusedKey.environment == serverId &&
-                server?.authenticatedSession != null &&
+                verifiedOwner != null &&
                 serverPrivacy?.mayShow == true &&
                 details.readState == TransferDetailReadState.CURRENT
         }
         val stallProbe = server?.lifecycle?.inspectStall?.takeIf {
             focusedKey.environment == serverId &&
-                server?.authenticatedSession != null &&
+                verifiedOwner != null &&
                 serverPrivacy?.mayShow == true && !server.stale &&
                 details.readState == TransferDetailReadState.CURRENT
         }
@@ -892,16 +987,58 @@ internal fun CombinedTransfersScreen(
             ((focusedKey.environment == EnvironmentSnapshots.PHONE &&
                 phonePrivacy.mayShow && phoneRunning) ||
                 (focusedKey.environment == serverId && server?.lifecycle != null &&
-                    server?.authenticatedSession != null && serverPrivacy?.mayShow == true &&
+                    verifiedOwner != null && serverPrivacy?.mayShow == true &&
                     server?.stale == false &&
                     // rTorrent Start/Stop only supports exact v1 hashes. Keep
                     // unsupported remote identities read-only before review.
                     focusedKey.infoHash.matches(Regex("[0-9a-f]{40}"))))
+        // Reuse the existing exact-account rTorrent Remove control inside
+        // canonical Details. It owns separate destructive approval, session
+        // readback, uncertain-write latch and non-force ruTorrent data cleanup.
+        // This only moves presentation: no new mutation/executor/RPC authority.
+        val activeRemoteForRemoval = server?.authenticatedSession as? RTorrentRemote
+        val exactRemoteRow = authenticatedExactRemovalRow(focusedKey, server, serverId)
+        val canShowExactRemoval = exactRemoteRow != null &&
+            serverPrivacy?.mayShow == true && verifiedOwner != null
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
+            exactServerOperations = if (canShowExactRemoval) ({
+                val owner = requireNotNull(server)
+                val mutation = requireNotNull(owner.lifecycle)
+                val boundRemote = requireNotNull(activeRemoteForRemoval)
+                val boundRow = requireNotNull(exactRemoteRow)
+                val operationsStale = owner.stale ||
+                    details.readState != TransferDetailReadState.CURRENT ||
+                    sourcesByEnvironment[focusedKey.environment]
+                        ?.canClaimCompleteLiveInventory != true
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    TransferSessionRemoveControl(
+                        remote = boundRemote, transfer = boundRow,
+                        snapshotStale = operationsStale,
+                        mainView = owner.fullView,
+                        onMutationStarted = mutation.begin,
+                        onSettled = mutation.settled,
+                        environmentLabel = labels[focusedKey.environment],
+                        snapshotRevision = owner.snapshotRevision
+                    )
+                    // The SAME exact authenticated adapter and lease. File
+                    // reads are explicit, bounded and privacy-gated; the
+                    // already-reviewed existing priority/ordering components
+                    // independently verify every consequential write.
+                    CanonicalRemoteFilesControls(
+                        remote = boundRemote, transfer = boundRow,
+                        aliasScope = owner.aliasScope,
+                        snapshotStale = operationsStale,
+                        mainView = owner.fullView,
+                        snapshotRevision = owner.snapshotRevision,
+                        onMutationStarted = mutation.begin,
+                        onSettled = mutation.settled
+                    )
+                }
+            }) else null,
             onOpenOwningList = openFor(focusedKey),
             onReviewStartStop = if (canReviewLifecycle) ({
                 // Selection is always the one exact key just examined, not
@@ -1009,11 +1146,24 @@ internal fun CombinedTransfersScreen(
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
-        } else item {
+        } else if (!firstRunVisible) item {
             // Keep one compact, spoken view identity without a duplicate Back.
-            Text("All environments", style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() })
+            Text("Transfers", style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.testTag(ChunksSemantics.TRANSFERS_HEADING).semantics { heading() })
         }
+        if (firstRunVisible) {
+            item(key = "canonical-fresh-welcome") {
+                NoTransfersWelcome(
+                    onAdd = onWelcomeAdd ?: onAddToPhone ?: onOpenPhone,
+                    onConnections = onConnections
+                )
+            }
+        } else if (checkingFreshPhone) {
+            item(key = "canonical-fresh-probe") {
+                Text("Checking transfers on this device…",
+                    style = MaterialTheme.typography.bodyMedium)
+            }
+        } else {
         // Add lives in its own destination when this is the app's primary list.
         // A shared source still surfaces a target choice, never auto-submits.
         if (showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent) item(key = COMBINED_ADD_ITEM_KEY) {
@@ -1205,6 +1355,7 @@ internal fun CombinedTransfersScreen(
                     val snapshot = sources
                     val owner = batchIdentity
                     val lifecycle = server?.lifecycle
+                    val capturedServer = server
                     val targetServer = serverId
                     batchScope.launch {
                         // Dispatch may be queued behind a server/account switch.
@@ -1213,6 +1364,7 @@ internal fun CombinedTransfersScreen(
                         try {
                             val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
                                 runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
+                                    serverSource = capturedServer,
                                     reviewStillCurrent = { latestBatchIdentity.value == owner },
                                     onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
                             }
@@ -1434,8 +1586,11 @@ internal fun CombinedTransfersScreen(
                 Text("Open device transfer controls")
             }
         }
+        } // genuine Welcome/probe has no management chrome or list actions
         }
-        ReturnToTopControl(visible = showReturnToTop, onClick = {
+        ReturnToTopControl(
+            visible = showReturnToTop && !firstRunVisible && !checkingFreshPhone,
+            onClick = {
             batchScope.launch {
                 if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
                 else listState.scrollToItem(0)
@@ -1650,6 +1805,8 @@ internal suspend fun runCombinedLifecycle(
     sources: List<EnvironmentTransferSnapshot>,
     serverLifecycle: CombinedServerLifecycle?,
     serverId: EnvironmentId?,
+    /** UI callers must provide the exact authenticated source for command ownership. */
+    serverSource: CombinedServerSource? = null,
     phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
     nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     /** Old session, privacy or saved-profile review cannot authorize another mutation. */
@@ -1722,16 +1879,33 @@ internal suspend fun runCombinedLifecycle(
                     }
                 }
             } else if (environment == serverId && serverLifecycle != null) {
-                // Fresh read-only pre-check before leasing: a server that does not
-                // advertise Start/Stop refuses here. No answer leaves it UNKNOWN,
-                // and the command's own readback still decides.
-                val capability = serverCapabilities(environment, serverLifecycle.probe)
+                // Pure lifecycle unit fixtures have no real authenticated adapter.
+                // Production always supplies serverSource with a bound RPC owner.
+                // Even duplicate valid hashes on other numbered routes are refused.
+                val bound = serverLifecycle.ownerSession
+                val requiresIdentity = serverSource != null || bound != null
+                fun ownerMatches(): Boolean = !requiresIdentity ||
+                    (bound != null && serverSource?.lifecycle === serverLifecycle &&
+                        verifiedCombinedLifecycleOwner(serverSource, serverId) === bound)
+                if (!ownerMatches()) {
+                    refusals[environment] =
+                        "Authenticated rTorrent account does not match this transfer; reconnect and review"
+                    continue
+                }
+                // Capability RPC must use that exact owner, never a crosswired
+                // callback that may have captured a foreign session.
+                val exactProbe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)? =
+                    if (bound == null) serverLifecycle.probe else ({ bound.probe() })
+                val capability = serverCapabilities(environment, exactProbe)
                     .decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
                 val source = currentSources.first { it.environment == environment }
                 // The read-only method probe can suspend while the user changes
                 // accounts or locks privacy. Check again before taking a lease.
                 if (!reviewStillCurrent())
                     refusals[environment] = expiredReview
+                else if (!ownerMatches())
+                    refusals[environment] =
+                        "Authenticated rTorrent account changed during capability check; review again"
                 else if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
                     refusals[environment] = "Transfer list is out of date; refresh first"
                 else if (!capability.allowed) refusals[environment] = capability.explanation
@@ -1741,8 +1915,10 @@ internal suspend fun runCombinedLifecycle(
                     adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
                         // rTorrent identities are v1 only: refuse before any RPC rather than
                         // letting a local validation failure read as an uncertain mutation.
-                        if (!hash.matches(Regex("[0-9a-f]{40}"))) LifecycleReply.REFUSED
-                        else serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
+                        if (!hash.matches(Regex("[0-9a-f]{40}")) ||
+                            !reviewStillCurrent() || !ownerMatches()) LifecycleReply.REFUSED
+                        else (if (bound == null) serverLifecycle.setStarted(hash, on)
+                            else bound.setStarted(hash, on)).toLifecycleReply(on)
                     }
                 }
             } else refusals[environment] = "only listed here; sign in to this server to change it"
@@ -1753,6 +1929,9 @@ internal suspend fun runCombinedLifecycle(
             // sent keeps its own reported result, but no later write escapes
             // a retired session/selection/privacy review.
             sourceIsFresh = { source -> reviewStillCurrent() &&
+                (source.environment != serverId || serverSource == null ||
+                    verifiedCombinedLifecycleOwner(serverSource, serverId) ===
+                        serverLifecycle?.ownerSession) &&
                 (source.environment == EnvironmentSnapshots.PHONE ||
                     !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis())) },
             preflightRefusals = unsupportedServerTargets)

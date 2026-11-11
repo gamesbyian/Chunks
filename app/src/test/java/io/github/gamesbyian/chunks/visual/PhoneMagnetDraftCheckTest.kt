@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.hasTestTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -32,16 +35,16 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneMagnetDraftCheckTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val field get() = rule.onNode(hasSetTextAction() and hasText("Or paste a magnet or torrent link"))
+    private val field get() = rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
 
     private fun openAdd() {
         rule.waitForIdle()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
     }
 
     private fun addTile() = rule.onNode(hasClickAction() and
-        (hasText("Add magnet and start") or hasText("Add magnet (metadata only)")))
+        (hasTestTag(ChunksSemantics.ADD_SUBMIT)))
 
     @Test fun mistypedHashIsExplainedAndAddIsUnavailable() {
         openAdd()
@@ -81,6 +84,11 @@ class PhoneMagnetDraftCheckTest {
         copy("  $link\n")
         openAdd()
         rule.waitForIdle()
+        // The clipboard is read off the main thread, so the prefill lands after the form is idle
+        // (CI run 43077533021 failed here intermittently). Wait for it, then assert as before.
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(hasSetTextAction() and hasText(link)).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
         rule.onNodeWithText("Magnet for: pasted").assertExists()
         rule.onNodeWithText("Filled from your clipboard. Nothing is added until you confirm.").assertExists()
@@ -111,14 +119,14 @@ class PhoneMagnetDraftCheckTest {
             copy("unrelated text, not a magnet or torrent link")
             openAdd()
             rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
-            rule.onNodeWithText("Options").performClick()
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
             rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
                 .performScrollTo().performClick()
             rule.waitUntil(5_000) { !prefs.getBoolean("enabled", true) }
             copy(link)
             // Merely returning to Add cannot prefill against the opt-out,
             // grant submission authority, or revive an older draft.
-            rule.onNodeWithText("+ Add").performClick()
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
             rule.waitForIdle()
             rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
             // A deliberate manual Paste still works with prefill disabled.
@@ -137,9 +145,9 @@ class PhoneMagnetDraftCheckTest {
         val typed = "magnet:?xt=urn:btih:" + "c".repeat(40) + "&dn=typed"
         field.performScrollTo().performTextInput(typed)
         copy("magnet:?xt=urn:btih:" + "d".repeat(40) + "&dn=copied")
-        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(typed)).assertExists()
         rule.onNodeWithText("Magnet for: copied").assertDoesNotExist()

@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -7,6 +9,8 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -28,28 +32,35 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
 class CombinedSearchContinuityTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    private fun enterExplicitDeviceView() {
+        rule.runOnIdle {
+            io.github.gamesbyian.chunks.CombinedViewPreferences(rule.activity).save(
+                io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                    scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                        setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
+        }
+        rule.activityRule.scenario.recreate()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
 
     private fun pane(title: String) = rule.onNode(
         SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, title)).assertExists()
 
-    @Test fun combinedSearchSurvivesAPhoneRoundTrip() {
-        rule.waitForIdle()
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        rule.onNodeWithText("Transfers").performClick()
-        rule.waitForIdle()
+    @Test fun canonicalScopedSearchSurvivesOptionsAndTransfersRoundTrip() {
+        enterExplicitDeviceView()
         pane("All environments")
         rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
             .performScrollTo().performTextInput("ubuntu")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open device transfer controls"))
-        rule.onNodeWithText("Open device transfer controls").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        pane("Transfers on this device")
-        // The empty phone Welcome keeps search/scope hidden; persistent Transfers
-        // still opens the same canonical catalog with its saved query.
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        rule.onNodeWithText("Transfers").performClick()
+        pane("Options")
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
         pane("All environments")
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
+
 }

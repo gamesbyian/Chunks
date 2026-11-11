@@ -18,7 +18,17 @@ fi
 
 # The runner must not retain the pulled APK after either outcome.
 trap 'rm -f -- "$pulled"' EXIT
-if ! adb pull "$device_path" "$pulled" >/dev/null 2>&1; then
+# Pulling is read-only, so a bounded retry is safe. A freshly booted emulator can drop its adb
+# connection briefly (observed: three of six installed runs on 2026-11-11 failed here before any
+# test started). Every attempt is judged by the same strict byte comparison below.
+pulled_ok=0
+for attempt in 1 2 3 4; do
+  if adb pull "$device_path" "$pulled" >/dev/null 2>&1; then pulled_ok=1; break; fi
+  rm -f -- "$pulled"
+  adb wait-for-device >/dev/null 2>&1 || true
+  sleep "${CHUNKS_ADB_PULL_RETRY_DELAY:-3}"
+done
+if [[ "$pulled_ok" != 1 ]]; then
   printf '%s\n' 'CHUNKS_INSTALLED_APK: adb-pull-failed' >&2
   exit 1
 fi

@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -25,6 +27,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import io.github.gamesbyian.chunks.model.EnvironmentViewScope
 import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 import io.github.gamesbyian.chunks.model.UnifiedSortKey
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import org.junit.Assert.*
 import org.junit.Rule
@@ -64,8 +68,15 @@ class CombinedTransfersScreenTest {
 
     private val commands = ArrayList<Pair<String, Boolean>>()
     private var settles = 0
+    // A synthetic Any() token is no longer enough to offer authenticated
+    // lifecycle controls. Use a genuinely transport-scoped adapter for the
+    // positive presentation-only Details case. No network is contacted.
+    private val verifiedRemote = RTorrentRemote(RemoteCredentials(
+        aliasScope.substringBefore('\u0000'), "ian", "dummy"))
     private val gate = CombinedServerLifecycle(begin = { true }, settled = { settles++ },
-        setStarted = { hash, on -> commands += hash to on; io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) })
+        setStarted = { hash, on -> commands += hash to on;
+            io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) },
+        ownerSession = verifiedRemote)
 
     private fun show(stale: Boolean = false, observedAtEpochMillis: Long = System.currentTimeMillis(),
         authenticatedSession: Any? = null) = rule.setContent {
@@ -87,6 +98,103 @@ class CombinedTransfersScreenTest {
         revealText("Search names or hashes")
         rule.onNodeWithText("Change sort & grouping", substring = true).assertExists()
         assertTrue(commands.isEmpty())
+    }
+
+    @Test fun freshCanonicalWelcomeRoutesAddAndConnectionsWithoutInventoryChrome() {
+        var add = 0
+        var connections = 0
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = null, savedProfiles = emptyList(),
+                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    onConnections = { connections++ },
+                    enableFirstRunWelcome = true,
+                    onWelcomeAdd = { add++ },
+                    showNavigationFooter = false
+                )
+            } }
+        }
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithTag(ChunksSemantics.WELCOME_HEADING).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertExists()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
+        rule.onNodeWithText("All environments").assertDoesNotExist()
+        rule.onNodeWithText("Batch & tools").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).performClick()
+        rule.onNodeWithText("Connections").performClick()
+        assertEquals(1, add)
+        assertEquals(1, connections)
+        assertTrue("first-run welcome never writes torrents", commands.isEmpty())
+    }
+
+    @Test fun vaultOnlyRememberedRemoteDoesNotMasqueradeAsFreshInstall() {
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = null, savedProfiles = emptyList(),
+                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    enableFirstRunWelcome = true,
+                    hasRememberedRemoteLogin = true,
+                    showNavigationFooter = false
+                )
+            } }
+        }
+        // A verified old account may still be in the encrypted vault before
+        // its roster becomes readable. Preserve the truthful catalog/offline
+        // presentation, even when local engine inventory is genuinely empty.
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertDoesNotExist()
+        rule.onNodeWithText("Search names or hashes").assertExists()
+        rule.onNodeWithText("Transfers").assertExists()
+        assertTrue("vault-only browse must not issue rTorrent writes", commands.isEmpty())
+    }
+
+    @Test fun explicitAllEnvironmentsClearsPriorSavedProfileViewWithoutRpcCommand() {
+        val currentId = requireNotNull(io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+            .serverIdOfAliasScope(aliasScope)).value
+        var pendingFocus by mutableStateOf<String?>(currentId)
+        var showAllRevision by androidx.compose.runtime.mutableLongStateOf(0L)
+        var consumedRevision by androidx.compose.runtime.mutableLongStateOf(0L)
+        var mounted by mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                if (mounted) CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, rows, stale = false,
+                        fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
+                        lifecycle = gate),
+                    savedProfiles = listOf(other),
+                    onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                    scopeFocusRequest = pendingFocus,
+                    onScopeFocusConsumed = { pendingFocus = null },
+                    showAllEnvironmentsRevision =
+                        showAllRevision.takeIf { it > consumedRevision } ?: 0L,
+                    onShowAllEnvironmentsConsumed = { delivered ->
+                        consumedRevision = maxOf(consumedRevision, delivered)
+                    }
+                )
+            } }
+        }
+        revealText("Show all transfers")
+        rule.onNodeWithText("Show all transfers").assertExists()
+        rule.runOnIdle { showAllRevision++ }
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Show all transfers").fetchSemanticsNodes().isEmpty()
+        }
+        revealText("Big Archive")
+        revealText("Small Episode")
+        rule.waitUntil(15_000) { consumedRevision == showAllRevision }
+        // Reenter via an exact saved profile after an earlier explicit All tap.
+        // The old counter must not replay and defeat this new view-only request.
+        rule.runOnIdle { mounted = false }
+        rule.waitForIdle()
+        rule.runOnIdle {
+            pendingFocus = currentId
+            mounted = true
+        }
+        revealText("Show all transfers")
+        assertTrue("old All request must stay consumed on remount", consumedRevision == showAllRevision)
+        assertTrue("view scope reset can never dispatch an rTorrent mutation", commands.isEmpty())
     }
 
     @Test fun rootTransfersTapClosesFullDetailsWithoutIssuingLifecycleCommand() {
@@ -148,7 +256,7 @@ class CombinedTransfersScreenTest {
     }
 
     @Test fun liveExactDetailsReviewSelectsOneJobWithoutDispatchingLifecycle() {
-        show(authenticatedSession = Any())
+        show(authenticatedSession = verifiedRemote)
         val action = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(action)
         rule.onNodeWithContentDescription(action).performClick()
@@ -211,6 +319,12 @@ class CombinedTransfersScreenTest {
     }
 
     @Test fun phoneOnlyCatalogKeepsExplicitRecoveryWhenNativeEngineIsAbsent() {
+        // A user-selected phone-only filter must stay manageable even with
+        // zero native jobs: it is not a pristine first-install state.
+        CombinedViewPreferences(context).save(
+            io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                scope = EnvironmentViewScope.Only(
+                    setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
         // A view filter must never start the phone engine. If there are no
         // rows, provide an explicit entry to the existing device controls.
         var openedDevice = 0
@@ -239,7 +353,11 @@ class CombinedTransfersScreenTest {
     }
 
     @Test fun phoneOnlyEmptyCatalogOffersReviewWithoutStartingOrGuessingInventory() {
-        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+        // Explicitly narrowed scope preserves recovery and pending-restore
+        // warnings rather than showing the unrelated fresh-install Welcome.
+        CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+            scope = EnvironmentViewScope.Only(
+                setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
         assertNull("Fixture must not silently start the phone engine", LocalEngineHolder.current())
         var addReviews = 0
         var phoneControls = 0
@@ -248,13 +366,22 @@ class CombinedTransfersScreenTest {
                 CombinedTransfersScreen(
                     server = null, savedProfiles = emptyList(),
                     onOpenPhone = { phoneControls++ }, onOpenServer = null,
-                    onAddToPhone = { addReviews++ }, onBack = {})
+                    onAddToPhone = { addReviews++ }, onBack = {},
+                    enableFirstRunWelcome = true, onWelcomeAdd = { addReviews++ })
             } }
         }
-        revealText("Review a new torrent on this device")
-        rule.onNodeWithText("No verified transfer list is available yet.", substring = true)
-            .assertExists()
-        rule.onNodeWithText("Review a new torrent on this device").performClick()
+        // A deliberately narrowed empty view is neither fresh-install proof
+        // nor permission to infer a current native inventory. Recover scope
+        // explicitly, then use the same Welcome/Add callback as all entries.
+        revealText("No transfers are visible with these view choices.")
+        rule.onNodeWithText("No transfers are visible with these view choices.",
+            substring = true).assertExists()
+        revealText("Show all transfers")
+        rule.onNodeWithText("Show all transfers").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithTag(ChunksSemantics.WELCOME_HEADING).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).performClick()
         assertEquals(1, addReviews)
         assertEquals(0, phoneControls)
         assertNull("Review navigation does not start the native engine", LocalEngineHolder.current())
@@ -508,7 +635,7 @@ class CombinedTransfersScreenTest {
         assertEquals("An expired inventory must never take the server lease", 0, settles)
     }
 
-    @Test fun selectedStopIsPreviewedPerEnvironmentAndRunsOnlyOnThatServer() {
+    @Test fun unsignedInSyntheticBatchCannotDispatchUnderARealServerIdentity() {
         show()
         revealText("Batch tools")
         rule.onNodeWithText("Batch tools").performClick()
@@ -527,10 +654,11 @@ class CombinedTransfersScreenTest {
         assertTrue("nothing runs before confirmation", commands.isEmpty())
         revealText("Stop selected")
         rule.onNodeWithText("Stop selected").performClick()
-        rule.waitUntil(5_000) { settles == 1 }
-        revealText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.")
-        rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + ": 1 confirmed stopped.").assertExists()
-        assertEquals(listOf("1".repeat(40) to false), commands)
+        revealText("Authenticated rTorrent account does not match this transfer")
+        rule.onNodeWithText("Authenticated rTorrent account does not match this transfer",
+            substring = true).assertExists()
+        assertTrue("Unbound synthetic session never sends a remote Stop", commands.isEmpty())
+        assertEquals("Unbound synthetic session never acquires a lease", 0, settles)
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-batch-result.png")
     }
 
@@ -655,4 +783,39 @@ class CombinedTransfersScreenTest {
         rule.waitUntil(5_000) { stored.load().hueOf(serverId) == automatic }
         assertEquals(automatic, stored.load().hueOf(serverId))
     }
+    @Test fun rootTransfersReturnClosesDetailsWithoutLosingExactScopeOrViewPreferences() {
+        val id = requireNotNull(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
+        val selected = EnvironmentViewScope.Only(setOf(id))
+        CombinedViewPreferences(context).save(
+            io.github.gamesbyian.chunks.model.UnifiedTransferQuery(scope = selected))
+        var returnRevision by androidx.compose.runtime.mutableLongStateOf(0L)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, rows, stale = false,
+                        fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
+                        lifecycle = gate),
+                    savedProfiles = listOf(other),
+                    showNavigationFooter = false,
+                    returnToCatalogRevision = returnRevision,
+                    onOpenPhone = {}, onOpenServer = null, onBack = {})
+            } }
+        }
+        val details = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(details)
+        rule.onNodeWithContentDescription(details).performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        // The parent root footer sends only a navigation revision. No Add,
+        // Start/Stop, remote read or scope reset belongs to this action.
+        rule.runOnIdle { returnRevision++ }
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isEmpty()
+        }
+        revealText("Viewing:")
+        rule.onNodeWithText("Viewing:", substring = true).assertExists()
+        assertEquals(selected, CombinedViewPreferences(context).load().scope)
+        assertTrue("Root navigation issued no mutation", commands.isEmpty())
+    }
+
 }

@@ -60,6 +60,23 @@ class AddArtworkChoiceInstrumentedTest {
         }
     }
 
+
+    @Test fun activeDetailsNeverOffersAddOnlyArtworkPreference() {
+        media.updateSettings(MediaPrivacySettings(
+            onlineLookupConsent = false, automaticLookup = false,
+            showArtwork = true, downloadArtwork = true))
+        val key = io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE, "a".repeat(40))
+        rule.setContent {
+            MaterialTheme {
+                TransferMediaDetailSection(key, "Hackers.1995")
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("Artwork & media information").assertExists()
+        rule.onNodeWithText(label).assertDoesNotExist()
+    }
+
     @Test fun globallyHiddenArtworkDoesNotOfferAddChoice() {
         media.updateSettings(MediaPrivacySettings(
             onlineLookupConsent = true, automaticLookup = true,

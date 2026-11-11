@@ -5,7 +5,8 @@ import unittest
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
-from check_native_atlas_contract import check_repo, required_images, validate, capture_producers
+import json
+from check_native_atlas_contract import check_repo, required_images, validate, capture_producers, load_manifest
 
 
 def script(*names: str) -> str:
@@ -104,6 +105,73 @@ class NativeAtlasContractTest(unittest.TestCase):
         for name in ["../a-real-compose.png", "foo.txt", "a.png", ""]:
             with self.subTest(name=name), self.assertRaisesRegex(ValueError, "Invalid"):
                 required_images(script(name))
+
+def manifest(required=(), evidence=(), retired=()):
+    return json.dumps({
+        "schema": "chunks.native-atlas-manifest.v1",
+        "required": [{"image": n, "capability": "some-capability", "requirement": "docs/UX.md"}
+                     for n in required],
+        "evidence_only": [{"image": n} for n in evidence],
+        "retired": list(retired),
+    })
+
+
+RETIRED = {"image": "old-real-compose.png", "retired": "2026-11-11", "reason": "screen removed",
+           "requirement": "docs/UX.md", "replacement_verification": "new-real-compose.png"}
+
+
+class NativeAtlasManifestTest(unittest.TestCase):
+    def test_current_manifest_classifies_every_producer_and_names_its_requirements(self):
+        text = (ROOT / "tools/native_atlas_manifest.json").read_text()
+        data = load_manifest(text)
+        self.assertGreaterEqual(len(data["required"]), 20)
+        self.assertTrue(all(e["capability"] and e["requirement"] for e in data["required"]))
+        self.assertEqual(len(check_repo()), len(data["required"]))
+
+    def test_every_capture_must_be_classified(self):
+        text = manifest(required=["a-real-compose.png"])
+        with self.assertRaisesRegex(ValueError, "classified.*b-real-compose"):
+            validate(text, {"T.kt": kotlin("a-real-compose.png", "b-real-compose.png")})
+
+    def test_evidence_only_capture_is_allowed_but_never_required(self):
+        text = manifest(required=["a-real-compose.png"], evidence=["b-real-compose.png"])
+        self.assertEqual(("a-real-compose.png",),
+                         validate(text, {"T.kt": kotlin("a-real-compose.png", "b-real-compose.png")}))
+
+    def test_removing_a_required_screen_without_retiring_it_fails(self):
+        text = manifest(required=["a-real-compose.png", "gone-real-compose.png"])
+        with self.assertRaisesRegex(ValueError, "no executable Kotlin capture.*gone"):
+            validate(text, {"T.kt": kotlin("a-real-compose.png")})
+
+    def test_a_removed_screen_is_retired_with_reason_and_replacement(self):
+        text = manifest(required=["new-real-compose.png"], retired=[RETIRED])
+        self.assertEqual(("new-real-compose.png",),
+                         validate(text, {"T.kt": kotlin("new-real-compose.png")}))
+
+    def test_retired_entry_must_say_why_and_what_verifies_the_requirement_now(self):
+        for field in ("reason", "requirement", "replacement_verification", "retired"):
+            broken = dict(RETIRED); broken[field] = " "
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, field):
+                validate(manifest(required=["new-real-compose.png"], retired=[broken]),
+                         {"T.kt": kotlin("new-real-compose.png")})
+
+    def test_a_screenshot_cannot_be_required_and_retired(self):
+        with self.assertRaisesRegex(ValueError, "both required and retired"):
+            validate(manifest(required=["old-real-compose.png"], retired=[RETIRED]),
+                     {"T.kt": kotlin("old-real-compose.png")})
+
+    def test_required_entry_needs_capability_and_requirement(self):
+        for field in ("capability", "requirement"):
+            data = json.loads(manifest(required=["a-real-compose.png"]))
+            data["required"][0][field] = ""
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                required_images(json.dumps(data))
+
+    def test_missing_requirement_document_is_rejected_when_checked_against_a_repo(self):
+        data = json.loads(manifest(required=["a-real-compose.png"]))
+        data["required"][0]["requirement"] = "docs/DOES-NOT-EXIST.md"
+        with self.assertRaisesRegex(ValueError, "does not exist"):
+            validate(json.dumps(data), {"T.kt": kotlin("a-real-compose.png")}, ROOT)
 
 
 if __name__ == "__main__":
