@@ -357,7 +357,7 @@ internal class MainActivityRealMagnetJourney(
                 rule.waitUntil(60_000) {
                     runCatching {
                         scroll(disclosure)
-                        val state = rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
+                        val state = rule.onAllNodes(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
                             .fetchSemanticsNodes().firstOrNull()?.config?.let {
                                 runCatching { it[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] }.getOrNull()
                             }
