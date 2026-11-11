@@ -36,10 +36,11 @@ internal class MainActivityRealMagnetJourney(
     private fun decoded(name: String) = String(Base64.decode(requireNotNull(arg(name)), Base64.NO_WRAP), Charsets.UTF_8)
     private fun visible(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun scroll(text: String) {
-        // Lazy lists (Transfers, Connections) scroll by item; canonical Details is a plain column.
-        if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
-        else rule.onNode(hasText(text, substring = true)).performScrollTo()
+        val match = hasText(text, substring = true)
+        // Plain scroll first (canonical Details is a non-lazy column); lazy lists (Transfers,
+        // Connections) only compose nearby items, so fall back to scrolling by item.
+        try { rule.onNode(match).performScrollTo(); return } catch (_: AssertionError) { }
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(match)
     }
     private fun hasTag(tag: String) = rule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
     /** Stable-id click for persistent roots; waits for composition, never retries a click. */
@@ -52,6 +53,9 @@ internal class MainActivityRealMagnetJourney(
         hasTag(ChunksSemantics.TRANSFERS_HEADING) && visible("Search names or hashes")
     }
     private fun click(text: String) {
+        // Names the control about to be clicked so a failure reports the exact step.
+        report("chunks_real_add_app_stage",
+            "click-" + text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(40))
         // First find the LazyColumn item and confirm the action is enabled.
         // A large transfer Card may be taller than the viewport: scrolling to
         // its item alone does NOT expose a confirmation button near its end.
