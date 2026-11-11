@@ -331,6 +331,7 @@ internal fun CombinedTransfersScreen(
     returnToCatalogRevision: Long = 0L,
     /** Explicit All environments navigation is distinct from a saved profile link. */
     showAllEnvironmentsRevision: Long = 0L,
+    onShowAllEnvironmentsConsumed: (Long) -> Unit = {}
     /** Host opt-in: genuine first-run omits all inventory-management chrome. */
     enableFirstRunWelcome: Boolean = false,
     onWelcomeAdd: (() -> Unit)? = null
@@ -373,7 +374,13 @@ internal fun CombinedTransfersScreen(
     // Only an explicit "All environments" action may clear the narrower
     // previously selected saved-profile scope; Details return preserves it.
     LaunchedEffect(showAllEnvironmentsRevision) {
-        if (showAllEnvironmentsRevision > 0L) update(CombinedViewPreferences.showAll(query))
+        val requested = showAllEnvironmentsRevision
+        if (requested > 0L) {
+            // A historical nonzero counter must never replay when the catalog
+            // remounts after navigating to a different exact saved profile.
+            update(CombinedViewPreferences.showAll(query))
+            onShowAllEnvironmentsConsumed(requested)
+        }
     }
 
     // A saved-connection tap changes only the existing canonical browser's scope.
