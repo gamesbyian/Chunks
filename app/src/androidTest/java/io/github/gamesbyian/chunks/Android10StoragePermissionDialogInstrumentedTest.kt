@@ -41,7 +41,7 @@ class Android10StoragePermissionDialogInstrumentedTest {
         assumeTrue("Needs a fresh install without the storage grant", !granted())
         rule.setContent { MaterialTheme { LocalEngineScreen(pane = PhonePane.ADD) } }
         // Render the dedicated Add destination; keep OS/readback checks intact.
-        rule.onNodeWithText("Add a download on this device").assertExists()
+        rule.onNodeWithText("Add a transfer").assertExists()
 
         val button = "Allow storage access for Downloads/" + LocalDownloadPlaces.PUBLIC_FOLDER_NAME
         rule.waitUntil(30_000) { rule.onAllNodesWithText(button).fetchSemanticsNodes().isNotEmpty() }
