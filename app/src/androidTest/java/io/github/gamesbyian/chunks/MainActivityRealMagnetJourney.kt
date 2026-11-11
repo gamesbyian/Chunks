@@ -72,6 +72,12 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "click-" +
                 text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(26) +
                 if (count == 0) "-absent" else if (count > 1) "-ambiguous" else "-unusable")
+            // Which well-known screen parts were showing (1/0 flags only, no app text):
+            // outcome, verified result, Add form infohash, checking, Add button, Transfers search.
+            val flags = listOf("Operation outcome", "View verified transfer in rTorrent", "Infohash:",
+                "Checking server", "Add transfer", "Search names or hashes")
+                .joinToString("") { if (visible(it)) "1" else "0" }
+            report("chunks_real_add_app_stage", "click-seen-$flags")
             throw timeout
         }
         rule.waitForIdle()
