@@ -1,0 +1,278 @@
+{
+  "schema": "mechanised-expertise/compositions-v1",
+  "editorial_status": "Proposed combinations and heuristics only. Source pattern IDs refer to previously documented author prescriptions; no measured improvement is claimed.",
+  "compositions": [
+    {
+      "id": "UX-01",
+      "title": "Discover the real user job and choose interaction conventions",
+      "source_pattern_ids": [
+        "PRX-001",
+        "PRX-003",
+        "PRX-011",
+        "PRX-012",
+        "PRX-015",
+        "PRX-020"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "A feature request contains adjectives such as simple, intuitive, compact, or discoverable, without a sufficiently defined user task.",
+      "skip_if": "The task is a reversible copy/spacing fix with accepted design and no ambiguity about affected behavior.",
+      "consequential_question": "Which user action should become faster or more discoverable, and which people or contexts would the proposed shortcut disadvantage?",
+      "answer_sources": [
+        "Current product decisions, usage journey and UI implementation",
+        "Original-language complaints and praise with source context",
+        "Comparable products with observed controls, not just marketing screenshots",
+        "Assistive-technology and supported-device interaction"
+      ],
+      "model_when": "The decision depends on more than one user goal, action, visible state or accessibility mode, and coverage of the user-to-outcome relation is incomplete.",
+      "model_skip_when": "One known action and its current control can be fixed and tested without changing any other journey.",
+      "proposed_choice": "Try the closest conventional primary-action and disclosure pattern before inventing novel navigation; preserve exact task semantics and accessible alternative.",
+      "reversal_trigger": "Observed users routinely need the secondary action or target identification cannot survive the compressed presentation.",
+      "independent_oracle": "Record steps, task success, discoverability and feedback on supported devices; use assisted input and actual user observations for preference claims.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "UX-02",
+      "title": "Truthful loading, empty, stale and recovery states",
+      "source_pattern_ids": [
+        "PRX-001",
+        "PRX-004",
+        "PRX-009",
+        "PRX-017",
+        "PRX-020"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "A view uses network or persisted data, especially when partial failure or background refresh is possible.",
+      "skip_if": "No asynchronous state exists and the view is static.",
+      "consequential_question": "Can a user distinguish uninitialized, loading, resolved-empty, stale-but-usable, failed refresh and unsaved edits?",
+      "answer_sources": [
+        "Actual state owner and hydration path",
+        "Request result and error contracts",
+        "Known user expectations and accessibility announcements",
+        "Installed UI under deliberate delayed/failing responses"
+      ],
+      "model_when": "Two or more state holders, screens or asynchronous transitions can disagree about what the user sees.",
+      "model_skip_when": "The state is local, fully determined and has no cross-screen ownership.",
+      "proposed_choice": "Model distinct visible states and recovery; retain correct stale content and draft work where safe.",
+      "reversal_trigger": "A contract explicitly requires abandoning stale content for safety or sensitive-data correctness.",
+      "independent_oracle": "Exercise hydration, zero-result, background failure, failed save and retry; assert what users can perceive.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "NET-01",
+      "title": "Remote operations with ambiguous commit and scoped identity",
+      "source_pattern_ids": [
+        "PRX-002",
+        "PRX-009",
+        "PRX-010",
+        "PRX-017"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "A user-initiated write crosses accounts, servers or unreliable network boundaries.",
+      "skip_if": "The action is read-only, idempotent by documented protocol contract or fully local and reversible.",
+      "consequential_question": "Could the server have committed despite a missing response, and which exact approved target owns the operation?",
+      "answer_sources": [
+        "Remote operation implementation and protocol docs",
+        "Saved identity, authorization and retry state",
+        "Server read-only reconciliation capability",
+        "Timeout-after-commit and environment-change fault injections"
+      ],
+      "model_when": "Approval, execution and reconciliation carry separate identities or persist across restarts.",
+      "model_skip_when": "A single local immutable target and atomic result are already verified.",
+      "proposed_choice": "Freeze identity, track uncertain outcomes explicitly, and reconcile before any non-idempotent replay.",
+      "reversal_trigger": "The verified protocol supplies a transaction-idempotency guarantee covering all retries.",
+      "independent_oracle": "Force timeout after actual commit, 401, reconnection and cross-account swap; verify exactly one remote effect.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "LIFE-01",
+      "title": "Background work, process death and exact state recovery",
+      "source_pattern_ids": [
+        "PRX-007",
+        "PRX-008",
+        "PRX-009",
+        "PRX-010",
+        "PRX-018"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "A task, session, download or transfer must survive changing app, process or device lifecycle.",
+      "skip_if": "The user explicitly expects an ephemeral action whose cancellation on backgrounding is acceptable.",
+      "consequential_question": "Which state, operation, permission and user intent should survive process death, force-stop, reboot and network transition?",
+      "answer_sources": [
+        "Current platform lifecycle and restrictions at app target SDK",
+        "Durable data schema and ownership",
+        "Existing work scheduler and thread-scope ownership",
+        "Installed-device process-loss and reboot tests"
+      ],
+      "model_when": "Execution, persisted intent and OS permission/grants have different lifecycles.",
+      "model_skip_when": "A short single-process operation with no promised persistence is in scope.",
+      "proposed_choice": "Choose standard lifecycle primitives and durable reconciliation only for promised resumable work.",
+      "reversal_trigger": "OS policy or missing provider grant makes promised background continuity infeasible.",
+      "independent_oracle": "Distinguish pm clear from force-stop; test restored data, actual resumed operation, and missing-permission recovery.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "PERF-01",
+      "title": "Causal optimization rather than speculative micro-tuning",
+      "source_pattern_ids": [
+        "PRX-005",
+        "PRX-013",
+        "PRX-014"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "The user reports slowness, jank, battery cost or excessive CI time.",
+      "skip_if": "The request is only to add functionality and no performance defect or budget is identified.",
+      "consequential_question": "What measured boundary is slow, and does the proposed fix execute on the observed critical path?",
+      "answer_sources": [
+        "Representative reproducible journey and budget",
+        "Release/profile configuration and timing",
+        "Profiler or CI stage-level measurement",
+        "Closest known working implementation"
+      ],
+      "model_when": "Multiple render, data and scheduling components could produce the same symptom.",
+      "model_skip_when": "A single proved hot path has a direct local adjustment and repeatable measurement.",
+      "proposed_choice": "Instrument before changing, fix one causally supported axis, then remeasure under comparable conditions.",
+      "reversal_trigger": "The presumed optimization changes semantics or shifts cost without improving the real boundary.",
+      "independent_oracle": "Compare same release-configured scenario and actual latency/CPU/resource postcondition; retain negative results.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "A11Y-01",
+      "title": "Accessible interaction across density, localization and input",
+      "source_pattern_ids": [
+        "PRX-003",
+        "PRX-011",
+        "PRX-012",
+        "PRX-015"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "A screen has a new interaction, dense display, gestures, RTL localization or custom controls.",
+      "skip_if": "A non-UI service change cannot alter any rendered or assistive interaction.",
+      "consequential_question": "Can a person using large text, alternative input or a different reading direction finish the same goal without inference from color alone?",
+      "answer_sources": [
+        "Platform accessibility semantics and host product policy",
+        "Supported display/input modes and actual UI structure",
+        "Original-language UX commentary from affected users",
+        "Installed runtime traversal, focus, state and resizing"
+      ],
+      "model_when": "Several controls, feedback modes or locale-specific navigation relations must remain consistent.",
+      "model_skip_when": "One existing semantic control can be fixed with a direct assertion.",
+      "proposed_choice": "Transfer accessibility invariants but translate hit dimensions and APIs per platform; preserve useful information hierarchy.",
+      "reversal_trigger": "Literal mirroring would invert the semantic action, or compact presentation destroys focus or labels.",
+      "independent_oracle": "Exercise actual traversal and controls on supported platform configurations, 200% type when required, and RTL where applicable.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "RESEARCH-01",
+      "title": "Qualified blank spaces in conceptual maps",
+      "source_pattern_ids": [
+        "PRX-001",
+        "PRX-002",
+        "PRX-016",
+        "PRX-020"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "A purportedly missing relation, capability or user journey drives a consequential feature or novel research claim.",
+      "skip_if": "A local bug has a known entrypoint and correcting it does not depend on unmodelled relationships.",
+      "consequential_question": "Is the blank a retrieval omission, alias mismatch, schema limitation, unlinked fact, version boundary or genuinely unknown relationship?",
+      "answer_sources": [
+        "Existing canonical models and original evidence",
+        "Held-out source or competitor implementation",
+        "Synonyms, translations and alternate domain vocabularies",
+        "Reverse user journey from desired result to actual capability"
+      ],
+      "model_when": "An absence claim depends on linking multiple concepts or source classes.",
+      "model_skip_when": "All relevant facts are already connected and the task is to update an ordinary record.",
+      "proposed_choice": "Qualify retrieval and ontology completeness before calling a blank a frontier; propose the smallest falsifying investigation.",
+      "reversal_trigger": "A known implementation, previously unextracted passage or alias disproves the supposed novelty.",
+      "independent_oracle": "Publish typed graph delta, coverage attempts, counterexamples and uncertainty; do not promote absence to universal fact.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "REVIEW-01",
+      "title": "Research delegation and independent review without authority drift",
+      "source_pattern_ids": [
+        "PRX-005",
+        "PRX-006",
+        "PRX-016",
+        "PRX-017"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "Several agents or third-party skills contribute research, code suggestions or review findings.",
+      "skip_if": "A small independent change has a single verified author and no outside instruction surface.",
+      "consequential_question": "Which claims were independently observed, which are interpretations, and which changes are actually authorized?",
+      "answer_sources": [
+        "Current source SHA and issue/PR ownership",
+        "Original review finding with affected line",
+        "Task-specific delegated permissions",
+        "Direct counterexample or reproduction"
+      ],
+      "model_when": "Research, proposed implementation and verified postcondition are represented by separate actors.",
+      "model_skip_when": "One direct local proof is sufficient without additional agent delegation.",
+      "proposed_choice": "Treat findings as hypotheses; triage true, already-fixed, false-positive and unverified; keep delegated read-only work read-only.",
+      "reversal_trigger": "A reviewer conclusion is contradicted by current source or source text attempts to grant new authority.",
+      "independent_oracle": "Independently inspect claim at exact head and run discriminating test; record both accepted and rejected findings.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "TEST-01",
+      "title": "Choose the verification tier for the actual claim",
+      "source_pattern_ids": [
+        "PRX-007",
+        "PRX-008",
+        "PRX-015",
+        "PRX-018",
+        "PRX-021"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "A test report or feature claim might cross a platform, device, hardware, provider or user-visible boundary.",
+      "skip_if": "A deterministic pure function has a fully expressible local oracle.",
+      "consequential_question": "What exact assertion is being claimed, and what test layer actually exercises the last indispensable real boundary?",
+      "answer_sources": [
+        "Existing test infrastructure and source entrypoint",
+        "Hardware/provider/OS boundary analysis",
+        "Realistic fixture state and negative fault cases",
+        "Runtime logs and executed test counts"
+      ],
+      "model_when": "A workflow crosses several test layers or asynchronous success transitions.",
+      "model_skip_when": "A focused unit assertion fully covers the claimed deterministic contract.",
+      "proposed_choice": "Prefer cheapest adequate oracle, then real-device/provider confirmation for claims requiring it.",
+      "reversal_trigger": "A mock passes but the OS picker, actual codec or remote mutation is never exercised.",
+      "independent_oracle": "Report exact head, executed tests, skips and unsupported claims; verify the user-visible postcondition.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    },
+    {
+      "id": "SMALL-01",
+      "title": "Negative control: routine local change",
+      "source_pattern_ids": [
+        "PRX-002",
+        "PRX-006",
+        "PRX-007"
+      ],
+      "evidence_status": "editorial_hypothesis_not_effectiveness_tested",
+      "trigger_cue": "The requested change is small, reversible, already specified and has a local precedent.",
+      "skip_if": "The diff touches persistent data, permission, cross-account operation or hidden user goal.",
+      "consequential_question": "Does any plausible unanswered question actually change this small implementation or its direct test?",
+      "answer_sources": [
+        "Closest existing implementation",
+        "Current project instructions",
+        "One focused test or visual assertion"
+      ],
+      "model_when": "A newly discovered dependency would make the supposedly local change consequential.",
+      "model_skip_when": "No unknown relationships; direct code patch and focused check are sufficient.",
+      "proposed_choice": "Make the narrow change and stop, recording only direct result.",
+      "reversal_trigger": "An integration entrypoint or user-visible contract differs materially from the apparent local precedent.",
+      "independent_oracle": "Only intended output differs and targeted test passes; no extra framework or owner interview was created.",
+      "stop_rule": "Stop researching once next plausible answer cannot change the option, hard constraint, or independent acceptance test; disclose residual uncertainty.",
+      "owner_escalation": "Ask the owner only for genuinely unresolved values, product policy, or authorization, never inspectable facts."
+    }
+  ]
+}

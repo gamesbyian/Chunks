@@ -1,0 +1,43 @@
+{
+  "schema": "mechanised-expertise/operator-applications-v1",
+  "status": "Teaching examples only: no production code or user research has been tested.",
+  "cases": [
+    {
+      "id": "compact-transfers",
+      "goal": "Users can identify and operate the correct transfer quickly from a dense multi-environment list.",
+      "context": "Hypothetical existing Android transfer list. No installed runtime inspection performed.",
+      "applied": [
+        {"operator_id": "MENTAL-MODEL", "question": "Does the user expect an always-present pause button or a swipe/overflow action for the most frequent transfer operation?", "answer_source": "Existing project decisions, original user feedback and observed competitor UI", "if_first_answer": "Keep visible primary action and move uncommon tools to expansion.", "if_second_answer": "Use the existing conventional overflow action with discoverability cues.", "reversal_observation": "Real user tasks reveal that the assumed frequent operation is rarely used.", "oracle": "Installed user task with counted actions, accessible controls and correct target."},
+        {"operator_id": "ORACLE-INVERT", "question": "Could a rendered preview look compact while scrolling or TalkBack make the action unreachable?", "answer_source": "Installed supported-device tests, actual semantics and focus traversal", "if_first_answer": "Treat static previews as inadequate; inspect the installed interaction.", "if_second_answer": "Accept the validated installed interaction within its tested boundary.", "reversal_observation": "A focus or font-scale failure occurs in the supported device configuration.", "oracle": "Run installed traversal and text-scale checks rather than relying on a static image."}
+      ],
+      "skipped": [{"operator_id": "DESIGN-QOC", "reason": "Defer formal comparison until the actual frequent user job and current design constraints are understood."}],
+      "model_gate": "conditional", "model_reason": "Map exact identity to a row action only if refresh/reordering could change target scope.",
+      "evidence_status": "unverified_teaching_case"
+    },
+    {
+      "id": "cross-media-connections",
+      "goal": "A library can explain useful associations between identified movies, songs and people without conflating weak inference with identity.",
+      "context": "Hypothetical media-metadata graph with unverified source completeness.",
+      "applied": [
+        {"operator_id": "COMPOSE-JOBS", "question": "Could users benefit from discovering an actor's portrayal of an artist alongside the artist's recordings, and is that relationship represented in the current ontology?", "answer_source": "Original provider schemas, user scenarios and graph implementation", "if_first_answer": "Add a typed, provenance-backed relation for explainable discovery.", "if_second_answer": "Keep current separate catalogue views and record unsupported relationship.", "reversal_observation": "Users find this association irrelevant or an existing provider already supplies the correct edge.", "oracle": "Trace a known media link to exact source fields and show a readable explanation."},
+        {"operator_id": "MAP-REVERSE", "question": "Is a missing film-to-music edge a source ingestion omission, alias mismatch or genuine unanswered graph relationship?", "answer_source": "Held-out metadata source, identifier mapping and provider documentation", "if_first_answer": "Repair extraction/identity mapping rather than adding a new feature.", "if_second_answer": "Maintain a qualified unknown and research the relation before proposing a feature.", "reversal_observation": "An unexamined provider supplies the relation or existing nodes have a misnormalized alias.", "oracle": "Report typed graph delta or bounded unknown with exact provenance; never infer a canonical ID from shared topic alone."}
+      ],
+      "skipped": [{"operator_id": "BOUNDARY-CROSS", "reason": "No write mutation has been authorized: only read-only discovery is in scope."}],
+      "model_gate": "prefer", "model_reason": "The question requires typed relations spanning multiple entities, roles and evidence sources.",
+      "evidence_status": "unverified_teaching_case"
+    },
+    {
+      "id": "tiny-label-correction",
+      "goal": "Correct a typo in a previously approved static settings label.",
+      "context": "Reversible one-string change; no adjacent behavior change.",
+      "applied": [],
+      "skipped": [
+        {"operator_id": "GOAL-INVERT", "reason": "An approved static string is directly correctable without unknown failure states."},
+        {"operator_id": "DESIGN-QOC", "reason": "No consequential alternatives exist after owner-approved text is confirmed."},
+        {"operator_id": "MAP-REVERSE", "reason": "No inter-feature relationship is relevant to a static copy edit."}
+      ],
+      "model_gate": "not_needed", "model_reason": "A single label and focused assertion suffice.",
+      "evidence_status": "unverified_teaching_case"
+    }
+  ]
+}

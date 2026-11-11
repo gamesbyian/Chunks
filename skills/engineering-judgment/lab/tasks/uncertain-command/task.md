@@ -1,0 +1,3 @@
+# Task: a command with uncertain outcome
+
+A remote service accepts commands that can have an irreversible effect. Its `ledger.write(transaction_id, amount)` can time out before or **after** applying that effect. The service exposes a read-only `ledger.read(transaction_id)` for independently checking the exact outcome; that read may also time out. Modify `candidate.py` so the client **never blindly resends** a possibly applied write, reports `"VERIFIED"` only when the matching amount is independently seen, and otherwise reports `"UNCERTAIN"`. Keep `submit(ledger, transaction_id, amount)`. Do not modify other files.

@@ -1,0 +1,50 @@
+{
+  "schema": "engineering-judgment/code-lab-v1",
+  "tasks": [
+    {
+      "id": "authenticated-profile",
+      "summary": "A remote client's public version endpoint must not be mistaken for proof that the supplied account credentials were authenticated. Preserve previously verified profiles if a later connection attempt fails.",
+      "source": "tasks/authenticated-profile/task.md",
+      "surfaces": [
+        "python-stdlib"
+      ],
+      "real_user_data": false
+    },
+    {
+      "id": "immutable-publication",
+      "summary": "An app-private immutable object must be completed before the final object becomes visible, with no damage to existing or unrelated files when a stream fails.",
+      "source": "tasks/immutable-publication/task.md",
+      "surfaces": [
+        "python-stdlib"
+      ],
+      "real_user_data": false
+    },
+    {
+      "id": "uncertain-command",
+      "summary": "A potentially applied non-idempotent remote command requires read-only reconciliation, never a blind retry after an ambiguous timeout.",
+      "source": "tasks/uncertain-command/task.md",
+      "surfaces": [
+        "python-stdlib"
+      ],
+      "real_user_data": false
+    },
+    {
+      "id": "rename-aware-ci",
+      "summary": "Workflow-dispatch triage must consider the old and new file paths and fail conservatively when path metadata is incomplete.",
+      "source": "tasks/rename-aware-ci/task.md",
+      "surfaces": [
+        "python-stdlib"
+      ],
+      "real_user_data": false
+    },
+    {
+      "id": "small-label-fix",
+      "summary": "A reversible copy-only UI label task is a negative control for unnecessary architectures and research.",
+      "source": "tasks/small-label-fix/task.md",
+      "surfaces": [
+        "python-stdlib"
+      ],
+      "real_user_data": false
+    }
+  ]
+}

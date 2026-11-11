@@ -1,0 +1,16 @@
+{
+  "schema": "mechanised-expertise/procedure-chain-input-v1",
+  "task_id": "synthetic-typo",
+  "goal": "Correct a static spelling error in a label",
+  "risk_tier": "routine",
+  "facts": [
+    {
+      "id": "accepted-label",
+      "kind": "owner_contract",
+      "locator": "synthetic://spec/ui#label",
+      "status": "documented",
+      "claim": "An accepted exact replacement for the static label is supplied."
+    }
+  ],
+  "selected": []
+}

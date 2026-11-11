@@ -1,0 +1,3 @@
+# Task: immutable-object publication
+
+A local **app-private POSIX** store publishes immutable originals. The caller supplies a `Path` and an iterator of byte chunks. A final filename must never become visible with incomplete bytes, pre-existing final objects must remain untouched, and any staging owned by the operation must be cleaned on a stream failure. A stream may raise an exception after yielding some bytes. Preserve `publish_original(chunks, destination)` and return the final Path on success. Do not delete unrelated sibling files. Linux POSIX semantics may be used; do **not** assume this is Android SAF or a cloud document provider. Edit only `candidate.py`.

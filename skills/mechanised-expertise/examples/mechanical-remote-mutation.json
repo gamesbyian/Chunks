@@ -1,0 +1,90 @@
+{
+  "schema": "mechanised-expertise/inquiry-input-v1",
+  "task_id": "synthetic-remote-mutation",
+  "goal": "A remote transfer action affects only the selected environment and reports the actual result",
+  "risk_tier": "consequential",
+  "sources": [
+    {
+      "id": "SPEC-1",
+      "kind": "spec",
+      "locator": "synthetic://spec/remote-action",
+      "scope": "Defines multi-server transfer action and intended ownership"
+    },
+    {
+      "id": "TRACE-1",
+      "kind": "code",
+      "locator": "synthetic://code/action-handler",
+      "scope": "Shows async dispatch and current-list lookup"
+    },
+    {
+      "id": "TEST-1",
+      "kind": "test",
+      "locator": "synthetic://test/remote-mutation",
+      "scope": "Unit test verifies a simulated callback only"
+    }
+  ],
+  "observations": [
+    {
+      "id": "OBS-1",
+      "operator_id": "BOUNDARY-CROSS",
+      "kind": "mutable_boundary",
+      "source_ids": [
+        "SPEC-1",
+        "TRACE-1"
+      ],
+      "cue": "Selected row may be replaced while asynchronous request is in flight",
+      "facts": {
+        "resource": "the selected remote transfer",
+        "before": "approval",
+        "after": "server dispatch"
+      },
+      "rejection_checked": true,
+      "rejection_applies": false,
+      "branches": [
+        {
+          "answer": "Target identifiers are frozen before suspension",
+          "decision_if_true": "Keep existing identity capture and test reordered list"
+        },
+        {
+          "answer": "Action reads a mutable selected row after suspension",
+          "decision_if_true": "Capture immutable target identity at approval and test reordered list"
+        }
+      ],
+      "answer_source": "Inspect handler, selected row owner and async call graph",
+      "oracle": "Execute a real operation while list reorders, then independently read target and sibling",
+      "reversal_observation": "A trace showing identity drift after approval would reverse the current design conclusion",
+      "model_dependency": "relation_could_change_choice"
+    },
+    {
+      "id": "OBS-2",
+      "operator_id": "ORACLE-INVERT",
+      "kind": "proof_boundary",
+      "source_ids": [
+        "TEST-1",
+        "SPEC-1"
+      ],
+      "cue": "The existing test asserts callback success without remote postcondition",
+      "facts": {
+        "evidence": "a simulated success callback",
+        "goal": "the transfer starting on its exact server",
+        "actor": "the user"
+      },
+      "rejection_checked": true,
+      "rejection_applies": false,
+      "branches": [
+        {
+          "answer": "Callback proof covers the intended narrow unit contract",
+          "decision_if_true": "Keep the test but do not make a real-server claim"
+        },
+        {
+          "answer": "Callback may succeed despite missing remote effect",
+          "decision_if_true": "Require an integration readback before claiming success"
+        }
+      ],
+      "answer_source": "Inspect assertions, remote command acknowledgement and readback",
+      "oracle": "Verify only the authorized target changed on a real provider",
+      "reversal_observation": "A provider run where the callback passes but transfer remains stopped disproves the shipping claim",
+      "model_dependency": "none"
+    }
+  ]
+}
