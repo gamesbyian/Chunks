@@ -2,6 +2,8 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.SemanticsMatcher
@@ -24,7 +26,8 @@ class ConnectionsRemoteIntroTest {
 
     private fun render(
         profiles: List<RememberedRemoteProfileRoster.Profile> = emptyList(),
-        onProfile: (RememberedRemoteProfileRoster.Profile) -> Unit = {}
+        onProfile: (RememberedRemoteProfileRoster.Profile) -> Unit = {},
+        onViewTransfers: ((RememberedRemoteProfileRoster.Profile) -> Unit)? = null
     ) {
         rule.setContent {
             ChunksTheme {
@@ -36,6 +39,7 @@ class ConnectionsRemoteIntroTest {
                     onRememberLogin = {},
                     onForgetLogin = {},
                     onSelectProfile = onProfile,
+                    onOpenProfileTransfers = onViewTransfers,
                     onRenameProfile = { _, _ -> false },
                     onForgetProfile = {},
                     onLocalZipReview = {},
@@ -70,4 +74,31 @@ class ConnectionsRemoteIntroTest {
         rule.onNodeWithText("Use Studio").performClick()
         assertEquals(profile.id, selectedId)
     }
+    @Test fun savedProfileViewAndLoginRemainDistinctExactAccountActions() {
+        val first = RememberedRemoteProfileRoster.Profile(
+            id = RememberedRemoteProfileRoster.identityOf("https://server.test/rutorrent/RPC2", "one"),
+            label = "Studio",
+            credentials = RemoteCredentials("https://server.test/rutorrent/RPC2", "one", "example-only")
+        )
+        val second = RememberedRemoteProfileRoster.Profile(
+            id = RememberedRemoteProfileRoster.identityOf("https://server.test/rutorrent2/RPC2", "one"),
+            label = "Studio",
+            credentials = RemoteCredentials("https://server.test/rutorrent2/RPC2", "one", "example-only")
+        )
+        val viewed = mutableListOf<String>()
+        val chosenLogins = mutableListOf<String>()
+        render(profiles = listOf(first, second),
+            onViewTransfers = { viewed += it.id },
+            onProfile = { chosenLogins += it.id })
+        rule.onAllNodesWithText("View transfers").assertCountEquals(2)
+        rule.onAllNodesWithText("Use saved login").assertCountEquals(2)
+        // Both profiles have identical friendly labels but distinct endpoint routes.
+        rule.onAllNodesWithText("View transfers")[1].performClick()
+        assertEquals(listOf(second.id), viewed)
+        assertEquals(emptyList<String>(), chosenLogins)
+        rule.onAllNodesWithText("Use saved login")[0].performClick()
+        assertEquals(listOf(first.id), chosenLogins)
+        assertEquals(listOf(second.id), viewed)
+    }
+
 }

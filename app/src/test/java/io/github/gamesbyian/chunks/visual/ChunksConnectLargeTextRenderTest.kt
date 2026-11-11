@@ -26,20 +26,20 @@ class ChunksConnectLargeTextRenderTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     @Test fun connectAt200Percent() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/connect-200pct.png")
     }
 
     @Test fun phoneAt200Percent() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/phone-200pct.png")
     }
 
     @Test fun createAt200Percent() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()

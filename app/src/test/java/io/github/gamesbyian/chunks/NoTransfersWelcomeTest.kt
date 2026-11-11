@@ -42,8 +42,11 @@ class NoTransfersWelcomeTest {
     }
     @Test fun firstRunRequiresAConfirmedFreshUnfilteredEmptyInventory() {
         fun show(confirmed: Boolean = true, stale: Boolean = false, empty: Boolean = true,
-                 profiles: Boolean = false, query: String = "", addOpen: Boolean = false) =
-            showPhoneFirstRunWelcome(confirmed, stale, empty, profiles, query, addOpen)
+                 profiles: Boolean = false, query: String = "", addOpen: Boolean = false,
+                 defaultFilter: Boolean = true, restoreHealthy: Boolean = true,
+                 noIncoming: Boolean = true) =
+            showPhoneFirstRunWelcome(confirmed, stale, empty, profiles, query, addOpen,
+                defaultFilter, restoreHealthy, noIncoming)
         org.junit.Assert.assertTrue(show())
         org.junit.Assert.assertFalse(show(confirmed = false))
         org.junit.Assert.assertFalse(show(stale = true))
@@ -51,6 +54,11 @@ class NoTransfersWelcomeTest {
         org.junit.Assert.assertFalse(show(profiles = true))
         org.junit.Assert.assertFalse(show(query = "hidden"))
         org.junit.Assert.assertFalse(show(addOpen = true))
+        // A missing transfer must not hide recovery controls for a filtered or
+        // failed-restore view, and an inbound torrent must keep its Add draft.
+        org.junit.Assert.assertFalse(show(defaultFilter = false))
+        org.junit.Assert.assertFalse(show(restoreHealthy = false))
+        org.junit.Assert.assertFalse(show(noIncoming = false))
     }
 
     @Test fun canonicalWelcomeNeverConflatesUnobservedRestoreOfflineOrFilteredZero() {
