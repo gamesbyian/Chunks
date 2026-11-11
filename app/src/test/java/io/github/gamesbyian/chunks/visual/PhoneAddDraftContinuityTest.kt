@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.assertIsOff
@@ -56,14 +58,14 @@ class PhoneAddDraftContinuityTest {
     }
 
     @Test fun artworkOptOutSurvivesAllEnvironmentsRoundTripWithoutAdding() {
-        rule.onNodeWithText("+ Add").performClick()
-        rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
             .performScrollTo().performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40))
         openArtworkChoice()
         val choice = "Automatically identify and fetch artwork & metadata"
         rule.onNodeWithText(choice).performScrollTo().performClick().assertIsOff()
-        rule.onNodeWithText("Options").performClick()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         openArtworkChoice()
         rule.onNodeWithText(choice).performScrollTo().assertIsOff()
     }
@@ -71,13 +73,13 @@ class PhoneAddDraftContinuityTest {
     @Test fun magnetDraftSurvivesAllEnvironmentsRoundTrip() {
         val draft = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=draft"
         rule.waitForIdle()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
             .performScrollTo().performTextInput(draft)
-        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText(draft)).assertExists()
     }

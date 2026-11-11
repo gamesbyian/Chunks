@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -33,7 +35,7 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneAddLargeTextAuditTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    private val field get() = rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
+    private val field get() = rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
 
     private fun assertFitsAndTargets(where: String) {
         val density = rule.activity.resources.displayMetrics.density
@@ -48,7 +50,7 @@ class PhoneAddLargeTextAuditTest {
 
     @Test fun pasteProblemAndValidStatesKeepTargetsAt320dpAnd200Percent() {
         rule.waitForIdle()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Paste link").performScrollTo()
         assertFitsAndTargets("empty draft")

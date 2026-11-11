@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -55,7 +57,7 @@ class CombinedSearchContinuityTest {
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         pane("Options")
-        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
         pane("All environments")
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()

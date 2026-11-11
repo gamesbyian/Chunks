@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import android.app.Activity
 import android.content.ContentProvider
 import android.content.ContentValues
@@ -226,7 +227,7 @@ class PhoneDocumentReplacementTest {
 
 
     private fun requestHttpsReplacement(url: String) {
-        rule.onNodeWithText("Magnet or HTTP(S) torrent URL").performScrollTo()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performScrollTo()
             .performTextInput(url)
         rule.onNodeWithText("Get torrent from link").performScrollTo().assertIsEnabled()
             .performClick()

@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.ui.platform.testTag
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -380,7 +381,7 @@ fun VerifiedAddScreen(
                     autoCorrectEnabled = false,
                     imeAction = androidx.compose.ui.text.input.ImeAction.Done),
                 enabled = !submitting && !choosing && !alreadyAttempted,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SOURCE_FIELD),
                 minLines = 2,
                 maxLines = 4
             )
@@ -534,7 +535,8 @@ fun VerifiedAddScreen(
         }
         if (!alreadyAttempted) item {
             Row(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag(ChunksSemantics.ADD_START_PREFERENCE).toggleable(
                     value = startAfterAdd, enabled = !submitting && !choosing,
                     role = Role.Checkbox,
                     onValueChange = { startAfterAdd = it; awaitingConfirmation = false }),
@@ -802,6 +804,7 @@ fun VerifiedAddScreen(
                         },
                         enabled = !submitting && !choosing && !externalSourceReading,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                            .testTag(ChunksSemantics.ADD_SUBMIT)
                     ) { Text("Add transfer") }
                 }
         }

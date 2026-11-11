@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertAny
 import androidx.compose.ui.test.hasClickAction
@@ -36,12 +39,12 @@ class PhoneInventoryFirstViewportTest {
     // A fresh canonical catalog can legitimately wait on durable resume
     // discovery; an unobserved empty native list is not first-use evidence.
     private fun waitForWelcome() = rule.waitUntil(20_000) {
-        rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+        rule.onAllNodesWithTag(ChunksSemantics.WELCOME_HEADING).fetchSemanticsNodes().isNotEmpty()
     }
 
     @Test fun genuineFirstRunShowsWelcomeBeforeAnyManagementToolbar() {
         waitForWelcome()
-        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertIsDisplayed()
         rule.onNodeWithText("This device").assertDoesNotExist()
         rule.onNodeWithText("Search transfers on this device").assertDoesNotExist()
         rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
@@ -58,17 +61,17 @@ class PhoneInventoryFirstViewportTest {
         // Privacy settings are an Option on this screen, not a pinned top row.
         rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
         // The footer now enters the single canonical catalog in every mode.
-        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         waitForWelcome()
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertExists()
         rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
     }
 
     @Test fun aGenuinelyEmptyFirstRunShowsWelcomeNotAnEmptyTransferCount() {
         rule.waitForIdle()
-        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertIsDisplayed()
         rule.onNodeWithText("Your transfers will appear here").assertDoesNotExist()
-        rule.onNodeWithText("Add a torrent").assertIsDisplayed()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).assertIsDisplayed()
         // The shared footer may expose the same destination; match the collection safely.
         rule.onAllNodesWithText("Connections").assertAny(hasClickAction())
         rule.onRoot().captureRoboImage("build/chunks-visual/phone-true-empty-welcome-412dp.png")

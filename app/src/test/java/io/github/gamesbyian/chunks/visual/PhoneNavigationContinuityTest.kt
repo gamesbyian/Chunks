@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -47,7 +49,7 @@ class PhoneNavigationContinuityTest {
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Options · this device").assertExists()
-        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }

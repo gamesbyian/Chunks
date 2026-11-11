@@ -1,5 +1,8 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.hasTestTag
+import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
@@ -137,7 +140,7 @@ open class ChunksServerRenderTest {
     @Test fun serverAddKeepsItsFieldsEditableBelowDestinations() {
         connectToFixture()
         rule.waitForIdle()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         // Footer Add enters the one source-first form with the authenticated server
         // already selected in its inline Add-to selector; no destination gateway remains.
         rule.waitForIdle()
@@ -147,14 +150,14 @@ open class ChunksServerRenderTest {
             !hasText("On this", substring = true)).performScrollTo().performClick()
         rule.waitForIdle()
         val addList = rule.onNode(hasScrollToIndexAction())
-        addList.performScrollToNode(hasText("Magnet or torrent link"))
-        rule.onNodeWithText("Magnet or torrent link").performTextReplacement("magnet:?xt=urn:btih:" + "ab".repeat(20))
+        addList.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement("magnet:?xt=urn:btih:" + "ab".repeat(20))
         addList.performScrollToNode(hasText("Custom server folder (optional)"))
         rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/srv/one-off")
         rule.onNode(hasText("/srv/one-off")).assertExists()
         // The same next steps as the installed atlas: review the one-off folder.
-        addList.performScrollToNode(hasText("Add transfer"))
-        rule.onNodeWithText("Add transfer").performClick()
+        addList.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
         rule.waitForIdle()
         addList.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
         rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()

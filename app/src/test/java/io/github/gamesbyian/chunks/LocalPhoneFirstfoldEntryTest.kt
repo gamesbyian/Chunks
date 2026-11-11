@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -44,7 +45,7 @@ class LocalPhoneFirstfoldEntryTest {
         showPhoneAt200Percent()
         val title = rule.onNodeWithText("Add a transfer")
         val torrent = rule.onNodeWithText("Open .torrent")
-        val magnet = rule.onNodeWithText("Magnet or HTTP(S) torrent URL")
+        val magnet = rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
         val warning = rule.onNodeWithText("Downloads and seeds with Chunks' own engine.", substring = true)
         title.assertExists()
         torrent.assertExists()
@@ -58,7 +59,7 @@ class LocalPhoneFirstfoldEntryTest {
         assertTrue("Magnet input must be reachable before the long engine explanation",
             magnet.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
         magnet.performTextInput("magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=Open%20test")
-        val submit = rule.onNodeWithText("Add transfer")
+        val submit = rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT)
         submit.assertExists()
         assertTrue("The actual phone-only Add action must precede advanced explanation",
             submit.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
@@ -69,12 +70,12 @@ class LocalPhoneFirstfoldEntryTest {
     fun alternatePhoneViewportKeepsBothIntakeChoicesBeforeExplanation() {
         showPhoneAt200Percent()
         val torrent = rule.onNodeWithText("Open .torrent")
-        val magnet = rule.onNodeWithText("Magnet or HTTP(S) torrent URL")
+        val magnet = rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
         val warning = rule.onNodeWithText("Downloads and seeds with Chunks' own engine.", substring = true)
         assertTrue(torrent.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
         assertTrue(magnet.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
         magnet.performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=Open%20test")
-        val submit = rule.onNodeWithText("Add transfer")
+        val submit = rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT)
         submit.assertExists()
         assertTrue(submit.getUnclippedBoundsInRoot().top < warning.getUnclippedBoundsInRoot().top)
     }

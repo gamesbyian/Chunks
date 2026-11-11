@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -56,11 +58,11 @@ class ConnectAdvancedPathTest {
         rule.onNodeWithText("Connection unsuccessful").assertDoesNotExist()
         // The persistent footer returns to one Combined-derived catalog without
         // requiring remote credentials or an alternate local list shortcut.
-        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         // A genuinely empty first install shows the evidence-gated Welcome; any
         // other state shows the Combined-derived catalog. Both are the one canonical route.
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty() ||
+            rule.onAllNodesWithTag(ChunksSemantics.WELCOME_HEADING).fetchSemanticsNodes().isNotEmpty() ||
                 rule.onAllNodesWithText("All environments").fetchSemanticsNodes().isNotEmpty()
         }
     }

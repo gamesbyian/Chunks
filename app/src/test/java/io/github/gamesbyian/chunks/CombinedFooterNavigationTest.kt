@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -116,7 +117,7 @@ class CombinedFooterNavigationTest {
     @Test fun footerTransfersReturnsToTheTopOfTheInventory() {
         show()
         reachLastTransfer()
-        rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
         rule.onNodeWithText("All environments").assertIsDisplayed()
     }

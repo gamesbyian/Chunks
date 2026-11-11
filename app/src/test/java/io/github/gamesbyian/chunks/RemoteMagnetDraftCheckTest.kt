@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -75,13 +76,13 @@ class RemoteMagnetDraftCheckTest {
             }
             reveal("Add transfer")
             // One explicit Add transfer click is the sole submission action.
-            rule.onNodeWithText("Add transfer").performClick()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }
             reveal("The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.")
             reveal("Magnet or torrent link")
-            rule.onNodeWithText("Magnet or torrent link").assertIsEnabled()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsEnabled()
             reveal("Add transfer")
-            rule.onNodeWithText("Add transfer").assertIsEnabled()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
             org.junit.Assert.assertFalse("Refusal retains the opt-out", automatic.value)
             org.junit.Assert.assertTrue("Only the read-only default Place query is allowed", methods.all { it == "directory.default" })
             org.junit.Assert.assertTrue(mediaHttp.requests.isEmpty())
@@ -179,7 +180,7 @@ class RemoteMagnetDraftCheckTest {
         show("magnet:?xt=urn:btih:" + "ab".repeat(19))
         reveal(MagnetDraftCheck.BAD_HASH)
         rule.onNodeWithText(MagnetDraftCheck.BAD_HASH).assertExists()
-        rule.onNodeWithText("Add transfer").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
     }
 
     @Test fun copiedMagnetFillsAnEmptyServerAddWithItsNote() {
@@ -209,7 +210,7 @@ class RemoteMagnetDraftCheckTest {
         reveal("Torrent link: archive.org · x_archive.torrent")
         rule.onNodeWithText("Get torrent from link").assertExists()
         rule.onNodeWithText(MagnetDraftCheck.NOT_A_MAGNET).assertDoesNotExist()
-        rule.onNodeWithText("Add transfer").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
     }
 
     /** Opt-in real public HTTPS fetch with a redirect: the fetched .torrent is reviewed by its verified hash. */
@@ -235,7 +236,7 @@ class RemoteMagnetDraftCheckTest {
         org.junit.Assert.assertEquals("The fetched URL is no longer the editable text source", "", source.value)
         org.junit.Assert.assertTrue("Fetched metainfo must remain the selected source", session.useFile)
         reveal("Add transfer")
-        rule.onNodeWithText("Add transfer").performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
         reveal("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed")
         rule.onNodeWithText("Infohash: e531c7ca2cca262ea75a3496a7bdbb53de90abed").assertExists()
         reveal("Source: Selected .torrent file")
@@ -243,7 +244,7 @@ class RemoteMagnetDraftCheckTest {
         rule.onNodeWithText("Back to transfers").performClick()
         rule.runOnIdle { showing.value = true }
         reveal("Add transfer")
-        rule.onNodeWithText("Add transfer").performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
         reveal("Source: Selected .torrent file")
 
     }

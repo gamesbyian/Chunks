@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
@@ -71,16 +72,16 @@ class RemoteAddSessionContinuityTest {
             reveal("Add transfer")
             
             reveal("Add transfer")
-            rule.onNodeWithText("Add transfer").performClick()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }
             reveal("Check server state (read only)")
             reveal("Back to transfers")
             rule.onNodeWithText("Back to transfers").performClick()
             rule.runOnIdle { showing.value = true }
             reveal("Check server state (read only)")
-            rule.onNodeWithText("Add transfer").assertDoesNotExist()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
             reveal("Magnet or torrent link")
-            rule.onNodeWithText("Magnet or torrent link").assertIsNotEnabled()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
             reveal("Check server state (read only)")
             assertEquals(1, attempts)
             val before = requests.toList()
@@ -120,7 +121,7 @@ class RemoteAddSessionContinuityTest {
         rule.runOnIdle { showing.value = false }
         rule.runOnIdle { showing.value = true }
         reveal("test.txt")
-        rule.onNodeWithText("Add transfer").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertExists()
         reveal("Add transfer")
         
         reveal("Destination: /srv/reviewed")
@@ -212,7 +213,7 @@ class RemoteAddSessionContinuityTest {
             reveal("Add transfer")
             
             reveal("Add transfer")
-            rule.onNodeWithText("Add transfer").performClick()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             try {
                 rule.waitUntil(15_000) { received.count == 0L }
             } catch (failure: Throwable) {
@@ -234,7 +235,7 @@ class RemoteAddSessionContinuityTest {
             assertEquals(0, consumed)
             assertEquals(oldHash, session.attemptTicket?.intent?.source?.expectedInfoHash)
             assertTrue(session.attemptTicket?.intent?.startWhenAdded == true)
-            rule.onNodeWithText("Add transfer").assertDoesNotExist()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
             rule.onNodeWithText("Check server state (read only)").performClick()
             rule.waitUntil(15_000) {
                 session.coordinator.phase ==
@@ -303,7 +304,7 @@ class RemoteAddSessionContinuityTest {
         } } }
         reveal("Acknowledge registered job; Start unverified")
         rule.onNodeWithText("Acknowledge registered job; Start unverified").assertIsEnabled()
-        rule.onNodeWithText("Add transfer").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
         assertEquals(io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED,
             session.coordinator.phase)
         rule.onNodeWithText("Acknowledge registered job; Start unverified").performClick()
@@ -364,11 +365,11 @@ class RemoteAddSessionContinuityTest {
             reveal("Add transfer")
             
             reveal("Add transfer")
-            rule.onNodeWithText("Add transfer").performClick()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }
             assertFalse("An existing-hash preflight sent no mutation; the user may correct the draft", session.alreadyAttempted)
             reveal("Magnet or torrent link")
-            rule.onNodeWithText("Magnet or torrent link").assertIsEnabled()
+            rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsEnabled()
             assertFalse(calls.any { it.startsWith("load.") || it in setOf("d.start", "d.resume") })
         } finally { server.stop(0) }
     }

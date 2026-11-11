@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -72,11 +73,12 @@ internal fun UniversalAddDestinationPicker(
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             FilterChip(selected = !addingRemotely, enabled = enabled,
                 onClick = onPhone, label = { Text("This device") },
-                modifier = Modifier.heightIn(min = 48.dp))
+                modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_TARGET_DEVICE))
             authenticatedRemoteLabel?.let { label ->
                 FilterChip(selected = addingRemotely, enabled = enabled,
                     onClick = onAuthenticatedRemote,
-                    label = { Text(label) }, modifier = Modifier.heightIn(min = 48.dp))
+                    label = { Text(label) },
+                    modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_TARGET_REMOTE))
             }
         }
         Text("Destination selection only changes this draft. Add transfer is the sole submission action.",

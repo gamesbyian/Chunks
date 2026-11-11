@@ -1040,7 +1040,7 @@ internal fun LocalEngineScreen(
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
                 autoCorrectEnabled = false,
                 imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-            modifier = Modifier.fillMaxWidth())
+            modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SOURCE_FIELD))
         ActionTile("Open .torrent", ChunksColors.Green, onClick = { picker.launch(arrayOf("*/*")) },
             enabled = !busy && !sourceReading && phoneAddAttemptSession?.attemptedTicket == null,
             modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_add_torrent, stacked = false)
@@ -1162,6 +1162,7 @@ internal fun LocalEngineScreen(
             Text("Planned local Place: " + proposedAddDestination.absolutePath,
                 style = MaterialTheme.typography.bodySmall)
         Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .testTag(ChunksSemantics.ADD_START_PREFERENCE)
             .toggleable(value = startAfterAdd,
                 enabled = !busy && !inventoryStale && phoneAddAttemptSession?.attemptedTicket == null,
                 role = Role.Checkbox, onValueChange = { startAfterAdd = it }),
@@ -1309,7 +1310,7 @@ internal fun LocalEngineScreen(
             }, enabled = !busy && !sourceReading && addInventoryReady && !dhtSaving && !placeSaving && proposedAddDestination != null &&
                 magnetCheck is MagnetDraftCheck.Valid &&
                 phoneAddAttemptSession?.attemptedTicket == null,
-                modifier = Modifier.fillMaxWidth())
+                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SUBMIT))
         }
         // Engine/network explanation is optional, after actual Add selections.
         PhoneEngineAbout()

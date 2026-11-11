@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -67,9 +68,9 @@ class ConnectionScreenImeTest {
 
     @Test fun phoneMagnetFieldClosesWithDone() {
         rule.waitForIdle()
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL"))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
         rule.onNode(hasSetTextAction() and hasText("Optional phone download subfolder"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))

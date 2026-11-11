@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -105,13 +107,13 @@ class CombinedTransfersScreenTest {
             } }
         }
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithTag(ChunksSemantics.WELCOME_HEADING).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertExists()
         rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
         rule.onNodeWithText("All environments").assertDoesNotExist()
         rule.onNodeWithText("Batch & tools").assertDoesNotExist()
-        rule.onNodeWithText("Add a torrent").performClick()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).performClick()
         rule.onNodeWithText("Connections").performClick()
         assertEquals(1, add)
         assertEquals(1, connections)
@@ -133,7 +135,7 @@ class CombinedTransfersScreenTest {
         // A verified old account may still be in the encrypted vault before
         // its roster becomes readable. Preserve the truthful catalog/offline
         // presentation, even when local engine inventory is genuinely empty.
-        rule.onNodeWithText("Welcome to Chunks").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertDoesNotExist()
         rule.onNodeWithText("Search names or hashes").assertExists()
         rule.onNodeWithText("Transfers").assertExists()
         assertTrue("vault-only browse must not issue rTorrent writes", commands.isEmpty())
@@ -368,9 +370,9 @@ class CombinedTransfersScreenTest {
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").performClick()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithTag(ChunksSemantics.WELCOME_HEADING).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Add a torrent").performClick()
+        rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).performClick()
         assertEquals(1, addReviews)
         assertEquals(0, phoneControls)
         assertNull("Review navigation does not start the native engine", LocalEngineHolder.current())

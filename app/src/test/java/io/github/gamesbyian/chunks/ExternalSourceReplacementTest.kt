@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import android.net.Uri
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -65,7 +66,7 @@ class ExternalSourceReplacementTest {
         // next Add mounts a fresh gate that reads the updated store.
         rule.onNodeWithText("Connections").performClick()
         rule.runOnIdle { policy(TransferLockMode.NEVER) }
-        rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.onNodeWithText("Use new source").performClick()
         rule.waitUntil(15_000) {
             rule.onAllNodes(hasText("The shared .torrent could not be verified", substring = true))
