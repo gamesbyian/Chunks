@@ -7,6 +7,8 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -23,17 +25,22 @@ import org.junit.runner.RunWith
 class MainActivitySafeRouteRestoreInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
+    // Combined can have a spoken "Transfers" section heading while the
+    // footer also has a Transfers button. Require an actionable footer node
+    // rather than accidentally asserting on the heading during cold probing.
+    private fun footerTransfers() = rule.onNode(hasText("Transfers") and hasClickAction())
+
     @Test fun disconnectedCanonicalTransfersAndConnectionsSurviveActivityRecreationWithoutCommands() {
         val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
         // No remote profile is required: root Transfers now uses one canonical
         // browser, whose genuine fresh welcome appears after durable probing.
-        rule.onNodeWithText("Transfers").assertIsSelected()
+        footerTransfers().assertIsSelected()
         // Purple Add remains visually prominent but must not claim selected
         // semantics unless the actual Add screen is active.
         rule.onNodeWithText("+ Add").assertIsNotSelected()
         rule.onNodeWithContentDescription("Connections").assertIsNotSelected()
         rule.activityRule.scenario.recreate()
-        rule.onNodeWithText("Transfers").assertExists()
+        footerTransfers().assertExists()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNodeWithContentDescription("Connections").assertIsSelected()
         rule.onNodeWithText("+ Add").assertIsNotSelected()
@@ -43,12 +50,12 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         // list or an implicitly authenticated new server.
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
-        rule.onNodeWithText("Transfers").performClick()
-        rule.onNodeWithText("Transfers").assertIsSelected()
+        footerTransfers().performClick()
+        footerTransfers().assertIsSelected()
         rule.onNodeWithText("+ Add").assertIsNotSelected()
         rule.onNodeWithText("+ Add").performClick()
         rule.onNodeWithText("+ Add").assertIsSelected()
-        rule.onNodeWithText("Transfers").assertIsNotSelected()
+        footerTransfers().assertIsNotSelected()
         rule.onNodeWithText("Add a transfer").assertExists()
         rule.activityRule.scenario.recreate()
         // The existing Add destination remains source-empty after restoration.
@@ -70,7 +77,7 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.onNodeWithText("Create torrent").assertExists()
         // Recreating never retries file picker or submission.
         rule.activityRule.scenario.recreate()
-        rule.onNodeWithText("Transfers").assertExists()
+        footerTransfers().assertExists()
         rule.onNodeWithText("Create torrent").assertDoesNotExist()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
