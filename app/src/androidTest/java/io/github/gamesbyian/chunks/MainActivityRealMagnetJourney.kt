@@ -341,12 +341,15 @@ internal class MainActivityRealMagnetJourney(
                 // opt-out. Probe only semantics/scroll before choosing whether
                 // the disclosure needs opening. Never retry the checkbox tap
                 // (it represents the user's actual source-specific choice).
-                // Existence, not full visibility: a partly visible expanded option must not be
-                // mistaken for a collapsed disclosure (the click would then collapse it).
-                val choiceAlreadyExpanded = runCatching { scroll(artworkChoice) }.let {
-                    rule.onAllNodesWithText(artworkChoice).fetchSemanticsNodes().isNotEmpty()
-                }
-                if (!choiceAlreadyExpanded) click("Artwork & metadata")
+                // The disclosure states its own state ("Expanded"/"Collapsed"), so read that instead
+                // of inferring it from whether the lazy option happens to be composed or visible:
+                // a blind click on an already-expanded disclosure would collapse the opt-out.
+                val disclosure = "Artwork & metadata"
+                rule.waitUntil(45_000) { runCatching { scroll(disclosure); true }.getOrDefault(false) }
+                val collapsed = rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
+                    .fetchSemanticsNode().config.getOrNull(
+                        androidx.compose.ui.semantics.SemanticsProperties.StateDescription) == "Collapsed"
+                if (collapsed) click(disclosure)
                 report("chunks_real_add_app_stage", "artwork-choice")
                 // This must remain present, reachable and actionable for
                 // EVERY Add; do not silently omit an opt-out after navigation.
