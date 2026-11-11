@@ -328,7 +328,9 @@ internal fun CombinedTransfersScreen(
     scopeFocusRequest: String? = null,
     onScopeFocusConsumed: () -> Unit = {},
     /** Root Transfers returns from full Details without changing filters or identity. */
-    returnToCatalogRevision: Long = 0L
+    returnToCatalogRevision: Long = 0L,
+    /** Explicit legacy All environments selector is not an exact saved-profile deep-link. */
+    showAllEnvironmentsRevision: Long = 0L
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -363,6 +365,15 @@ internal fun CombinedTransfersScreen(
         // Save at the explicit event, not during composition; no queued write
         // can reorder a newer choice behind a late preference read.
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
+    }
+
+    // An explicit "All environments" action must not retain the narrower scope
+    // from an earlier saved-profile deep link. This is a *view-only* request.
+    // Recomposition, background refresh and Details return do not clear scope.
+    LaunchedEffect(showAllEnvironmentsRevision) {
+        if (showAllEnvironmentsRevision > 0L) {
+            update(CombinedViewPreferences.showAll(query))
+        }
     }
 
     // A saved-connection tap changes only the existing canonical browser's scope.
