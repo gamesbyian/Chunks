@@ -1,0 +1,83 @@
+name: Installed source torrent archive filesystem safety
+
+# Source-only acceptance: Android app-private files, no remote engine, SAF
+# delete, tracker, source-document mutation or real torrent payload.
+on:
+  pull_request:
+    paths:
+      - "app/src/main/java/io/github/gamesbyian/chunks/SourceTorrentArchive.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/SourceTorrentArchiveTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/SourceTorrentArchiveInstrumentedTest.kt"
+      - "tools/installed_source_archive.sh"
+      - ".github/workflows/installed-source-archive.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-installed-source-archive-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  installed-source-archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [29, 35]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse a synthetic PR merge with an unreviewed source tree
+        if: github.event_name == 'pull_request'
+        env:
+          EXACT_HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$EXACT_HEAD"
+          git diff --quiet FETCH_HEAD HEAD || {
+            echo "::error::PR synthetic merge differs from exact reviewed head; reconcile before accepting evidence"
+            exit 1
+          }
+          echo "CHUNKS_ARCHIVE_SOURCE_TREE: exact head and installed checkout match"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build the source-matched app and Android instrumentation
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Prepare emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed Android filesDir / dedup / refusal assertions
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/installed_source_archive.sh ${{ matrix.api }}
+        env:
+          CHUNKS_ARCHIVE_REQUESTED_HEAD: ${{ github.event.pull_request.head.sha }}
+      - name: Upload independent installed filesystem evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-source-archive-api${{ matrix.api }}
+          path: ${{ runner.temp }}/chunks-source-archive-api${{ matrix.api }}/
+          retention-days: 14
+          if-no-files-found: warn

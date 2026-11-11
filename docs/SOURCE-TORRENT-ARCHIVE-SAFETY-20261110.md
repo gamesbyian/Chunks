@@ -1,0 +1,34 @@
+# Verified source-.torrent archive: implementation boundary
+
+**Status: implemented private-copy primitive, NOT wired to Universal Add and NOT owner-accepted.** This is a non-overlapping foundation slice for #1517. Source file actions in [the binding lifecycle specification](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) remain incomplete. Do not mark Keep/Archive/Delete or Smart Routing as delivered.
+
+## Caller contract
+
+`SourceTorrentArchive` accepts only user-originated `content://` document **bytes already read through the existing bounded/validated source intake**; an exact-environment, exact-infohash *new registration* positively verified by the shared Add coordinator/engine; and explicit choice Keep, Archive or Delete. The archive primitive neither proves that RPC/native verification nor takes its own authority to Add.
+
+- **Keep** returns without reading, copying or deleting the original. No proof is needed to refrain from work.
+- **Archive** refuses absent/ambiguous/duplicate/failed Add evidence, wrong infohash, malformed/non-v1 bytes, URL/magnet masquerading as an original document, untrusted archive directories, oversize or quota exhaustion. Valid original bytes are copied into app-private `filesDir/source-torrents/`; original remains untouched.
+- **Delete** returns `OriginalDeletionRequiresApproval` *only* for valid original-document bytes and a verified fresh exact Add. It never invokes `ContentResolver.delete`, `DocumentsContract.deleteDocument` or another mutator. This result is not user approval and must not be treated as proof of deletion.
+- No engine, provider lookup or network operation occurs here. No filenames, source URIs, tracker passkeys, account credentials or torrent payload paths appear in archive identities or logs.
+
+## Storage safety
+
+Archive identities are `<original-v1-infohash>-<SHA-256-full-metainfo>.torrent`, allowing byte-identical deduplication and distinct validated tracker/metadata variants without a collision overwrite. The archive is bounded by **64 MiB and 256 stored definitions**, independent of torrent payload storage. Existing entries are checked without following symlinks; unexpected files, symlinks, corrupt identities, excessive abandoned staging entries and quota exhaustion refuse archival rather than auto-cleaning. An exact existing copy is re-fsynced before a deduplication success claim because a previous interrupted publication might not have established directory durability. A new copy is staged in the same directory, file-fsynced, published with an atomic same-directory move only after checking the destination is absent under a shared process lock, directory-fsynced and independently read back. If directory durability is uncertain the caller receives `NeedsReconciliation`, never a success claim or permission to remove an original. App uninstall removes these private copies.
+
+## Still required before integration
+
+1. Expose **Source file handling** in the **single** Universal Add form only for a genuine original Android document, with persisted global default Archive and per-job Keep/Archive/Delete override; fetched HTTPS and magnets must not gain a fictitious deletable original.
+2. Retain temporary original URI authority separately from the source bytes, without storing passkeys in SavedState. Freeze source, environment/account/Place/Start and handling selection with the Add ticket.
+3. After an independently verified *new* Add, invoke archive on IO, retain exact environment+hash association for later source sharing, and report **Archived copy; original kept** unless separately authorized original deletion succeeds. Handle process interruption/restart, dedup and recoverable copy with no blind retries.
+4. For Archive-as-move or Delete, independently check same-source document authority, permissions, user approval and provider outcome. Never delete for duplicate, refused, pending, uncertain or changed-source Add. Never touch payloads or remote URLs.
+5. Qualify on a disposable installed Android document provider with accepted/refused deletion, no-permission, lost response, restart, changed URI, duplicate Add and exact remote/phone positive piece-verified Add. Add unit tests are necessary but *insufficient* for acceptance.
+
+Neither `SourceTorrentArchive` nor its tests claim independent authenticated peer/piece evidence. Preserve #1521's red native/installed receipts until its source-first Add journey qualifies at an exact head.
+
+## Safety review: dedup inventory and concurrent registration
+
+A source-exact follow-up stacked on this foundation validates **all** archive directory entries, including an exact deduplicated target, before returning ArchivedCopy. A stray file or symlink beside a valid copy now refuses as CorruptOrUnsafeArchive; it never silently blesses an unsafe archive by testing the target alone. A process-wide archive lock serializes independent SourceTorrentArchive instances' validation, 256-file / 64 MiB quota and no-replace publication to prevent competing app Jobs from both consuming the final slot. The lock does **not** authorize independent multi-process or external writers; those need a separately audited OS-level lock or a single trusted storage process. JVM regression tests create an actual valid target with unsafe siblings and launch two independent archive instances simultaneously at 255/256 entries. Android instrumented regression checks original preservation, dangerous sibling refusal and app-private file behavior. Installed Android execution remains a separate qualification requirement.
+
+## Real Android hard-link denial and atomic publication repair
+
+Installed app+test APK bytes were independently matched on both API29 and API35 in [run 42927705845](https://github.com/gamesbyian/Chunks/actions/runs/42927705845), and actual Android positive Archive tests failed with `IoFailure`; a redaction-safe diagnostic on [head 65af0ff](https://github.com/gamesbyian/Chunks/pull/1626) identified `hardlink-publish / AccessDeniedException` on API35. The production archive now uses a prior same-process-locked check of the exact target followed by `Files.move(staged, target, ATOMIC_MOVE)` without a non-atomic fallback. This depends on the app-private catalog having **one application process** as its writer; a separate process or another app UID may not be admitted without an independently reviewed cross-process no-replace/locking contract. An interrupted/unavailable directory sync remains `NeedsReconciliation`; neither a successful rename alone nor an RPC ACK authorizes original-document deletion. The repaired version still requires executed installed API29 and API35 success before claims of Android archive durability.
