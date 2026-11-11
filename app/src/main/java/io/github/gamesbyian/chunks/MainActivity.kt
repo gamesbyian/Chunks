@@ -2086,6 +2086,10 @@ internal fun ChunksApp(
                 // list: return to its first row without resetting search,
                 // filter, exact environment selection or any Add draft.
                 scope.launch { combinedListState.scrollToItem(0) }
+                // Returning to Transfers re-reads the current server (read-only, fenced by the
+                // mutation gate), as ruTorrent/Transdroid lists do; otherwise a magnet stays
+                // listed under its pre-metadata name until some unrelated write settles.
+                refresh()
             },
             onAdd = { section = Section.ADD_CHOOSE },
             onOptions = { section = Section.OPTIONS },
