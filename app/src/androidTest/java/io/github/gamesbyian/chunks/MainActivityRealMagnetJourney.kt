@@ -398,7 +398,21 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "add-review")
             onSubmit()
             report("chunks_real_add_app_stage", "add-submitted")
-            click("Add transfer")
+            // The one submission control, by its stable id: the lazy form may not have composed
+            // it yet and other text contains "Add transfer", so a literal-text lookup is unsafe.
+            // Only read/scroll checks repeat; the click happens exactly once.
+            val submit = hasTestTag(ChunksSemantics.ADD_SUBMIT)
+            report("chunks_real_add_app_stage", "click-add-submit")
+            rule.waitUntil(45_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(submit)
+                    rule.onNode(submit).assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+            }
+            rule.onNode(submit).performScrollTo()
+            rule.waitForIdle()
+            rule.onNode(submit).performClick()
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
             assertTrue("Actual app did not verify Add+Start", visible("Verified: added and started on rTorrent."))
             if (disposable) {
@@ -418,7 +432,10 @@ internal class MainActivityRealMagnetJourney(
             scroll("View verified transfer in rTorrent")
             rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
-                runCatching { scroll("Add transfer") }.isFailure)
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction())
+                        .performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+                }.isFailure)
             assertNotNull("Navigation must retain the independently registered exact job", row(hash))
             if (disposable && !publicDiscovery) {
                 // The HTTPS preview above must NOT leak its public trackers
