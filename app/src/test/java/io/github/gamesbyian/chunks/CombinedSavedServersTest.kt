@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -304,4 +305,48 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
         assertEquals(0, calls.get())
     }
+    @Test fun tappingOneSavedProfileLoadsOnlyItsExactReadOnlyScopeAfterPrivacy() {
+        CombinedViewPreferences(androidx.test.core.app.ApplicationProvider
+            .getApplicationContext<android.content.Context>()).save(
+                io.github.gamesbyian.chunks.model.UnifiedTransferQuery())
+        val readsA = AtomicInteger(0)
+        val readsB = AtomicInteger(0)
+        val profileA = CombinedSavedProfile(id(scopeA), "Shared label", scopeA) {
+            readsA.incrementAndGet()
+            listOf(RemoteTransfer("a".repeat(40), "A only", 100, 50, false, "/a", 0, 0))
+        }
+        val profileB = CombinedSavedProfile(id(scopeB), "Shared label", scopeB) {
+            readsB.incrementAndGet()
+            listOf(RemoteTransfer("b".repeat(40), "B only", 100, 70, false, "/b", 0, 0))
+        }
+        var requested by mutableStateOf<String?>(null)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(server = null,
+                    savedProfiles = listOf(profileA, profileB),
+                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    scopeFocusRequest = requested,
+                    onScopeFocusConsumed = { requested = null })
+            } }
+        }
+        assertEquals("Saved scopes are never queried merely by mounting Transfers", 0, readsA.get())
+        assertEquals(0, readsB.get())
+        rule.runOnIdle { requested = profileB.id }
+        rule.waitUntil(15_000) { readsB.get() == 1 }
+        assertEquals("Same-label unrelated principal must remain unread", 0, readsA.get())
+        assertEquals(1, readsB.get())
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Viewing: Server · Shared label", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        revealText("B only")
+        rule.onNodeWithText("B only").assertExists()
+        assertEquals(0, readsA.get())
+        // Forged/forgotten IDs never read either alternate saved principal.
+        rule.runOnIdle { requested = "not-a-saved-profile" }
+        rule.waitForIdle()
+        assertEquals(0, readsA.get())
+        assertEquals(1, readsB.get())
+    }
+
 }
