@@ -965,7 +965,8 @@ internal fun ChunksApp(
                             probe = remote::probe,
                             inspectStall = { hash ->
                                 io.github.gamesbyian.chunks.rpc.RemoteStallInspector.inspect(remote, hash)
-                            }),
+                            },
+                            ownerSession = remote),
                         authenticatedSession = remote,
                         snapshotRevision = snapshotRevision)
                 },

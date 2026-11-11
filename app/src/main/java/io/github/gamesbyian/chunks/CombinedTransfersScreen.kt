@@ -179,8 +179,22 @@ internal class CombinedServerLifecycle(
     /** Read-only method-list probe of the same signed-in server; null skips the pre-check. */
     val probe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)? = null,
     /** Exact-identity, read-only diagnosis on the same live authenticated server. */
-    val inspectStall: (suspend (String) -> RemoteStallEvidence)? = null
+    val inspectStall: (suspend (String) -> RemoteStallEvidence)? = null,
+    /** The command lease and RPC are owned by this exact transport, not a label. */
+    val ownerSession: RTorrentRemote? = null
 )
+
+/** Exact adapter-to-view binding for mutating canonical rTorrent operations. */
+internal fun verifiedCombinedLifecycleOwner(
+    source: CombinedServerSource?, advertisedServerId: EnvironmentId?
+): RTorrentRemote? {
+    val owner = source ?: return null
+    val remote = owner.authenticatedSession as? RTorrentRemote ?: return null
+    if (owner.lifecycle?.ownerSession !== remote) return null
+    if (remote.addAccountScope() != owner.aliasScope) return null
+    if (EnvironmentSnapshots.serverIdOfAliasScope(owner.aliasScope) != advertisedServerId) return null
+    return remote
+}
 
 /** A saved profile that is not signed in during this session. */
 internal data class CombinedSavedProfile(
@@ -950,15 +964,16 @@ internal fun CombinedTransfersScreen(
                 EnvironmentCapabilities.phone() else snapshot,
             System.currentTimeMillis()
         )
+        val verifiedOwner = verifiedCombinedLifecycleOwner(server, serverId)
         val readOnlyProbe = server?.lifecycle?.probe?.takeIf {
             focusedKey.environment == serverId &&
-                server?.authenticatedSession != null &&
+                verifiedOwner != null &&
                 serverPrivacy?.mayShow == true &&
                 details.readState == TransferDetailReadState.CURRENT
         }
         val stallProbe = server?.lifecycle?.inspectStall?.takeIf {
             focusedKey.environment == serverId &&
-                server?.authenticatedSession != null &&
+                verifiedOwner != null &&
                 serverPrivacy?.mayShow == true && !server.stale &&
                 details.readState == TransferDetailReadState.CURRENT
         }
@@ -972,7 +987,7 @@ internal fun CombinedTransfersScreen(
             ((focusedKey.environment == EnvironmentSnapshots.PHONE &&
                 phonePrivacy.mayShow && phoneRunning) ||
                 (focusedKey.environment == serverId && server?.lifecycle != null &&
-                    server?.authenticatedSession != null && serverPrivacy?.mayShow == true &&
+                    verifiedOwner != null && serverPrivacy?.mayShow == true &&
                     server?.stale == false &&
                     // rTorrent Start/Stop only supports exact v1 hashes. Keep
                     // unsupported remote identities read-only before review.
@@ -984,7 +999,7 @@ internal fun CombinedTransfersScreen(
         val activeRemoteForRemoval = server?.authenticatedSession as? RTorrentRemote
         val exactRemoteRow = authenticatedExactRemovalRow(focusedKey, server, serverId)
         val canShowExactRemoval = exactRemoteRow != null &&
-            serverPrivacy?.mayShow == true && server?.lifecycle != null
+            serverPrivacy?.mayShow == true && verifiedOwner != null
         UnifiedTransferDetailPanel(
             detail = details,
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
@@ -1323,6 +1338,7 @@ internal fun CombinedTransfersScreen(
                     val snapshot = sources
                     val owner = batchIdentity
                     val lifecycle = server?.lifecycle
+                    val capturedServer = server
                     val targetServer = serverId
                     batchScope.launch {
                         // Dispatch may be queued behind a server/account switch.
@@ -1331,6 +1347,7 @@ internal fun CombinedTransfersScreen(
                         try {
                             val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
                                 runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
+                                    serverSource = capturedServer,
                                     reviewStillCurrent = { latestBatchIdentity.value == owner },
                                     onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
                             }
@@ -1771,6 +1788,8 @@ internal suspend fun runCombinedLifecycle(
     sources: List<EnvironmentTransferSnapshot>,
     serverLifecycle: CombinedServerLifecycle?,
     serverId: EnvironmentId?,
+    /** UI callers must provide the exact authenticated source for command ownership. */
+    serverSource: CombinedServerSource? = null,
     phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
     nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     /** Old session, privacy or saved-profile review cannot authorize another mutation. */
@@ -1843,16 +1862,33 @@ internal suspend fun runCombinedLifecycle(
                     }
                 }
             } else if (environment == serverId && serverLifecycle != null) {
-                // Fresh read-only pre-check before leasing: a server that does not
-                // advertise Start/Stop refuses here. No answer leaves it UNKNOWN,
-                // and the command's own readback still decides.
-                val capability = serverCapabilities(environment, serverLifecycle.probe)
+                // Pure lifecycle unit fixtures have no real authenticated adapter.
+                // Production always supplies serverSource with a bound RPC owner.
+                // Even duplicate valid hashes on other numbered routes are refused.
+                val bound = serverLifecycle.ownerSession
+                val requiresIdentity = serverSource != null || bound != null
+                fun ownerMatches(): Boolean = !requiresIdentity ||
+                    (bound != null && serverSource?.lifecycle === serverLifecycle &&
+                        verifiedCombinedLifecycleOwner(serverSource, serverId) === bound)
+                if (!ownerMatches()) {
+                    refusals[environment] =
+                        "Authenticated rTorrent account does not match this transfer; reconnect and review"
+                    continue
+                }
+                // Capability RPC must use that exact owner, never a crosswired
+                // callback that may have captured a foreign session.
+                val exactProbe: (suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe)? =
+                    if (bound == null) serverLifecycle.probe else ({ bound.probe() })
+                val capability = serverCapabilities(environment, exactProbe)
                     .decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
                 val source = currentSources.first { it.environment == environment }
                 // The read-only method probe can suspend while the user changes
                 // accounts or locks privacy. Check again before taking a lease.
                 if (!reviewStillCurrent())
                     refusals[environment] = expiredReview
+                else if (!ownerMatches())
+                    refusals[environment] =
+                        "Authenticated rTorrent account changed during capability check; review again"
                 else if (EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis()))
                     refusals[environment] = "Transfer list is out of date; refresh first"
                 else if (!capability.allowed) refusals[environment] = capability.explanation
@@ -1862,8 +1898,10 @@ internal suspend fun runCombinedLifecycle(
                     adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
                         // rTorrent identities are v1 only: refuse before any RPC rather than
                         // letting a local validation failure read as an uncertain mutation.
-                        if (!hash.matches(Regex("[0-9a-f]{40}"))) LifecycleReply.REFUSED
-                        else serverLifecycle.setStarted(hash, on).toLifecycleReply(on)
+                        if (!hash.matches(Regex("[0-9a-f]{40}")) ||
+                            !reviewStillCurrent() || !ownerMatches()) LifecycleReply.REFUSED
+                        else (if (bound == null) serverLifecycle.setStarted(hash, on)
+                            else bound.setStarted(hash, on)).toLifecycleReply(on)
                     }
                 }
             } else refusals[environment] = "only listed here; sign in to this server to change it"
@@ -1874,6 +1912,9 @@ internal suspend fun runCombinedLifecycle(
             // sent keeps its own reported result, but no later write escapes
             // a retired session/selection/privacy review.
             sourceIsFresh = { source -> reviewStillCurrent() &&
+                (source.environment != serverId || serverSource == null ||
+                    verifiedCombinedLifecycleOwner(serverSource, serverId) ===
+                        serverLifecycle?.ownerSession) &&
                 (source.environment == EnvironmentSnapshots.PHONE ||
                     !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis())) },
             preflightRefusals = unsupportedServerTargets)
