@@ -330,7 +330,8 @@ internal fun CombinedTransfersScreen(
     /** Root Transfers returns from full Details without changing filters or identity. */
     returnToCatalogRevision: Long = 0L,
     /** Explicit legacy All environments selector is not an exact saved-profile deep-link. */
-    showAllEnvironmentsRevision: Long = 0L
+    showAllEnvironmentsRevision: Long = 0L,
+    onShowAllEnvironmentsConsumed: (Long) -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -371,8 +372,12 @@ internal fun CombinedTransfersScreen(
     // from an earlier saved-profile deep link. This is a *view-only* request.
     // Recomposition, background refresh and Details return do not clear scope.
     LaunchedEffect(showAllEnvironmentsRevision) {
-        if (showAllEnvironmentsRevision > 0L) {
+        val requested = showAllEnvironmentsRevision
+        if (requested > 0L) {
+            // A historical nonzero counter must never replay when the catalog
+            // remounts after navigating to a different exact saved profile.
             update(CombinedViewPreferences.showAll(query))
+            onShowAllEnvironmentsConsumed(requested)
         }
     }
 
