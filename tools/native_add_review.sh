@@ -46,11 +46,13 @@ if (( count > 1 )); then
   echo "CHUNKS_NATIVE_DIAGNOSTIC: screenshot_validation=delegated_to_coordinator"
   exit 0
 fi
+export CHUNKS_ATLAS_MANIFEST="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/native_atlas_manifest.json"
 python3 - <<'PY'
 from pathlib import Path
-import struct, os
+import json, struct, os
 root=Path(os.environ["RUNNER_TEMP"])/"chunks-add-native-review"
-for name in ("add-source-and-destination-real-compose.png","add-invalid-path-real-compose.png","remove-confirmation-real-compose.png","add-uncertain-recheck-real-compose.png","files-dense-second-page-real-compose.png","file-priority-confirmation-real-compose.png","alias-suggestions-real-compose.png","alias-saved-real-compose.png","app-transfers-populated-real-compose.png","app-places-populated-real-compose.png","app-organize-populated-real-compose.png","app-server-populated-real-compose.png","app-files-populated-real-compose.png","app-alias-review-populated-real-compose.png","app-alias-saved-populated-real-compose.png","zip-local-review-safe-real-compose.png","zip-local-review-blocked-real-compose.png","zip-extract-confirm-unknown-space-real-compose.png","zip-extract-unavailable-real-compose.png","local-engine-add-review-real-compose.png","local-engine-remove-confirm-real-compose.png","local-engine-file-selection-real-compose.png","local-engine-speed-limits-real-compose.png","local-engine-copy-review-real-compose.png"):
+manifest=json.load(open(os.environ["CHUNKS_ATLAS_MANIFEST"], encoding="utf-8"))
+for name in [e["image"] for e in manifest["required"]]:
     raw=(root/name).read_bytes()
     assert raw[:8]==b"\x89PNG\r\n\x1a\n", "Not a real PNG screenshot"
     assert raw[12:16]==b"IHDR"

@@ -1,0 +1,191 @@
+{
+  "schema": "chunks.native-atlas-manifest.v1",
+  "purpose": "Classifies every native Compose screenshot producer. Screenshots are evidence for human review; a screen's removal must be an explicit, reviewable change here, never a silent deletion. See docs/TEST-ARCHITECTURE.md.",
+  "required": [
+    {
+      "image": "add-source-and-destination-real-compose.png",
+      "capability": "universal-add-source-and-destination-inline",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "add-invalid-path-real-compose.png",
+      "capability": "add-destination-validation-message",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "remove-confirmation-real-compose.png",
+      "capability": "remote-remove-explicit-confirmation",
+      "requirement": "docs/PRODUCT.md"
+    },
+    {
+      "image": "add-uncertain-recheck-real-compose.png",
+      "capability": "uncertain-add-read-only-reconciliation",
+      "requirement": "docs/PRODUCT.md"
+    },
+    {
+      "image": "files-dense-second-page-real-compose.png",
+      "capability": "file-list-density-at-large-text",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "file-priority-confirmation-real-compose.png",
+      "capability": "file-priority-write-confirmation",
+      "requirement": "docs/PRODUCT.md"
+    },
+    {
+      "image": "alias-suggestions-real-compose.png",
+      "capability": "display-alias-suggestions",
+      "requirement": "docs/PRODUCT.md"
+    },
+    {
+      "image": "alias-saved-real-compose.png",
+      "capability": "display-alias-saved-state",
+      "requirement": "docs/PRODUCT.md"
+    },
+    {
+      "image": "app-transfers-populated-real-compose.png",
+      "capability": "canonical-transfers-list-populated",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "app-places-populated-real-compose.png",
+      "capability": "places-populated",
+      "requirement": "docs/UNIFIED-ENVIRONMENTS.md"
+    },
+    {
+      "image": "app-organize-populated-real-compose.png",
+      "capability": "organize-populated",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "app-server-populated-real-compose.png",
+      "capability": "connections-populated",
+      "requirement": "docs/SMART-REMOTE-CONNECTION.md"
+    },
+    {
+      "image": "app-files-populated-real-compose.png",
+      "capability": "transfer-files-populated",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "app-alias-review-populated-real-compose.png",
+      "capability": "alias-review-populated",
+      "requirement": "docs/PRODUCT.md"
+    },
+    {
+      "image": "app-alias-saved-populated-real-compose.png",
+      "capability": "alias-saved-populated",
+      "requirement": "docs/PRODUCT.md"
+    },
+    {
+      "image": "zip-local-review-safe-real-compose.png",
+      "capability": "zip-review-safe-archive",
+      "requirement": "docs/STORAGE-AND-EXTRACTION.md"
+    },
+    {
+      "image": "zip-local-review-blocked-real-compose.png",
+      "capability": "zip-review-blocked-archive",
+      "requirement": "docs/STORAGE-AND-EXTRACTION.md"
+    },
+    {
+      "image": "zip-extract-confirm-unknown-space-real-compose.png",
+      "capability": "zip-extract-explicit-confirm-unknown-space",
+      "requirement": "docs/STORAGE-AND-EXTRACTION.md"
+    },
+    {
+      "image": "zip-extract-unavailable-real-compose.png",
+      "capability": "zip-extract-unavailable-truthful-state",
+      "requirement": "docs/STORAGE-AND-EXTRACTION.md"
+    },
+    {
+      "image": "local-engine-add-review-real-compose.png",
+      "capability": "phone-add-draft-review",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "local-engine-remove-confirm-real-compose.png",
+      "capability": "phone-remove-explicit-confirmation",
+      "requirement": "docs/PRODUCT.md"
+    },
+    {
+      "image": "local-engine-file-selection-real-compose.png",
+      "capability": "phone-file-selection",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "local-engine-speed-limits-real-compose.png",
+      "capability": "phone-speed-limits",
+      "requirement": "docs/UX.md"
+    },
+    {
+      "image": "local-engine-copy-review-real-compose.png",
+      "capability": "copy-transfer-job-review",
+      "requirement": "docs/CROSS-ENGINE-TRANSFER-JOBS.md"
+    }
+  ],
+  "evidence_only": [
+    {
+      "image": "add-artwork-exclusion-320dp-200pct-real-compose.png"
+    },
+    {
+      "image": "add-recheck-unconfirmed-fixture-real-compose.png"
+    },
+    {
+      "image": "app-alias-after-suggestion-diagnostic-real-compose.png"
+    },
+    {
+      "image": "app-alias-before-save-diagnostic-real-compose.png"
+    },
+    {
+      "image": "app-alias-post-save-diagnostic-real-compose.png"
+    },
+    {
+      "image": "app-connection-diagnostic-real-compose.png"
+    },
+    {
+      "image": "app-expand-details-timeout-diagnostic-real-compose.png"
+    },
+    {
+      "image": "app-options-server-filter-precheck-real-compose.png"
+    },
+    {
+      "image": "app-search-filter-timeout-diagnostic-real-compose.png"
+    },
+    {
+      "image": "combined-hidden-added-200pct.png"
+    },
+    {
+      "image": "combined-saved-recovery-200pct.png"
+    },
+    {
+      "image": "media-row-remote-user-artwork-installed.png"
+    },
+    {
+      "image": "media-settings-installed.png"
+    },
+    {
+      "image": "phone-storage-low-native-compose.png"
+    },
+    {
+      "image": "phone-storage-normal-native-compose.png"
+    },
+    {
+      "image": "seedhost-android-add-ui-draft-failure.png"
+    },
+    {
+      "image": "seedhost-android-add-ui-outcome.png"
+    },
+    {
+      "image": "seedhost-android-add-ui-review.png"
+    }
+  ],
+  "retired": [
+    {
+      "image": "add-confirmation-real-compose.png",
+      "retired": "2026-11-11",
+      "reason": "The separate Add review/confirmation screen was intentionally removed by the one-click source-first Universal Add (#1643).",
+      "requirement": "docs/UX.md",
+      "replacement_verification": "add-source-and-destination-real-compose.png plus VerifiedAddScreenAtlasTest.unsubmittedAddShowsExactHashAndEffectiveDestination, which assert the full infohash and effective destination are shown inline before Add"
+    }
+  ]
+}

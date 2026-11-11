@@ -53,7 +53,7 @@ def verify(root, count, sha, screenshot_manifest=None):
         raise ValueError("invalid shard count")
     manifest = screenshot_manifest
     if manifest is None:
-        manifest = required_images((REPO / "tools/native_add_review.sh").read_text())
+        manifest = required_images((REPO / "tools/native_atlas_manifest.json").read_text())
     totals = {"tests": 0, "executed": 0, "failed": 0, "skipped": 0, "reports": 0}
     summaries = []
     known_test_ids = set()

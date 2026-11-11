@@ -1,0 +1,25 @@
+{
+  "schema": "chunks.acceptance-gates.v1",
+  "note": "Gate names are GitHub check-run names. A gate that did not execute on the exact commit is NOT passed. See docs/TEST-ARCHITECTURE.md and docs/CI-POLICY.md.",
+  "profiles": {
+    "foundation": {
+      "description": "Cheap offline/JVM evidence. Enough for iteration, never for integration of UI, Add, navigation or remote behavior.",
+      "gates": ["check", "build"]
+    },
+    "integration": {
+      "description": "Required before merging a change to shared Add, navigation, persistence, remote RPC or operation gating (docs/CI-POLICY.md).",
+      "gates": ["check", "build", "build-once", "add-review-device-test (0)", "add-review-device-test (1)",
+                "verify-complete-native-add", "android-native-atlas", "minified-smoke",
+                "api29-downloads", "two-server-combined", "remote-delete-data"]
+    },
+    "integration-real-peer": {
+      "description": "integration plus the installed real-peer Add journey. Required when Add, source intake or remote Add behavior changed.",
+      "extends": "integration",
+      "gates": ["installed-magnet-lifecycle"]
+    }
+  },
+  "step_hints": {
+    "environment": ["set up", "setup", "checkout", "cache", "restore", "download", "install", "emulator", "boot", "avd", "sdk", "prefetch", "start disposable", "start real peer"],
+    "test_or_product": ["test", "verify", "assert", "journey", "instrument", "gradle", "run native", "run installed"]
+  }
+}
