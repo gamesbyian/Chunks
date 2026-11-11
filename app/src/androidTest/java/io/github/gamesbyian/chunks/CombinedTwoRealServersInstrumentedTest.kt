@@ -221,7 +221,7 @@ class CombinedTwoRealServersInstrumentedTest {
         assertEquals(sharedHash, truthB.single { it.name == shared }.hash.lowercase())
         stage("ground-truth")
 
-        ActivityScenario.launch(MainActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             waitFor("persistent Connections destination") { visible("Connections") }
             rule.onNodeWithContentDescription("Connections").performClick()
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
@@ -246,6 +246,17 @@ class CombinedTwoRealServersInstrumentedTest {
                 visible("Connect to rTorrent") && !visible("Connected ·")
             )
             stage("disconnected-a")
+            // Explicit Disconnect is a navigation decision, not a request to
+            // restore the old session on configuration change. Recreate the
+            // actual installed Activity, retaining the saved verified login.
+            scenario.recreate()
+            waitFor("manual Connect remains after Disconnect + Activity recreation") {
+                runCatching {
+                    scrollTo("Connect to rTorrent")
+                    visible("Connect to rTorrent") && !visible("Connected ·")
+                }.getOrDefault(false)
+            }
+            stage("explicit-disconnect-restored")
             connect(urlB)
             stage("connected-b")
 
