@@ -25,6 +25,12 @@ If the installed native Add shard reports `ClipboardUriIntakeInstrumentedTest.si
 - If the runner never reached a new assertion, say so explicitly; do not classify that assertion passed or failed. No all-skipped or missing receipts accepted.
 - Never print private credentials, tracker tokens, user paths or raw server errors in CI logs, artifacts, PR descriptions or public issue text.
 
+## Test design and exact-commit acceptance
+
+Write and change tests by [TEST-ARCHITECTURE](TEST-ARCHITECTURE.md): stable semantic ids for enduring capabilities, outcomes over presentation, screenshots as evidence unless an approved baseline exists, and explicit reconciliation (never deletion or weakening) when a UX change is deliberate. Classify every red or missing result as product failure, test-contract drift, environment/dependency or **not executed**.
+
+**Draft PRs skip the native, R8 and installed-magnet jobs; skipped is not passed.** Mark a PR ready so every gate runs on the current head, then run `python3 tools/pr_acceptance_report.py --sha <exact head> --profile integration` (`integration-real-peer` when Add, source intake or remote Add changed). It exits non-zero unless every gate in [`tools/acceptance_gates.json`](../tools/acceptance_gates.json) executed and passed on that exact commit; waivers need `--waive GATE=REASON`. Evidence from another head, a parent PR or a different workflow mode does not qualify this commit. Adding or removing a native screenshot producer requires the matching entry in [`tools/native_atlas_manifest.json`](../tools/native_atlas_manifest.json).
+
 ## Merge and release acceptance
 
 The integrator must independently review PR diffs, source ancestry/overlap and required check execution. Green on an older parent does not qualify a rebased dependent. Use current GitHub state, not a dated handoff, before merging.

@@ -8,6 +8,8 @@
 
 **Current integration audit:** [18-PR reconciliation and remaining 17 dependencies](archive/OPEN-PR-RECONCILIATION-2026-11-11.md) records source-head test holds and the safely merged #1636 focus fix. The [active queue](WORK-QUEUE.md) remains the only executable backlog. **Second pass (merged #1640, assembled #1644, child-conflict map, local test setup):** [second-pass audit](archive/OPEN-PR-RECONCILIATION-2026-11-11-PASS2.md).
 
+**Test standard:** [TEST-ARCHITECTURE](TEST-ARCHITECTURE.md) defines assertion categories, stable semantic ids, screenshot evidence versus baselines, UX-change reconciliation and failure classification; its [audit record](archive/TEST-ARCHITECTURE-AUDIT-2026-11-11.md) lists the obsolete assertions found and gaps.
+
 **History and measurements:** [CI policy history](CI-POLICY-HISTORY-2026-11-09.md) · [artwork implementation history](MEDIA-ARTWORK-IMPLEMENTATION-HISTORY-2026-11-09.md) · [source-exact media artwork integration and real-provider qualification](archive/MEDIA-ARTWORK-QUALIFICATION-2026-11-11.md) · [build artifact history](BUILD-HISTORY-2026-11-09.md). Active [CI policy](CI-POLICY.md), [artwork implementation instructions](MEDIA-ARTWORK-IMPLEMENTATION.md) and [build guidance](BUILD.md) state procedures rather than past run reports.
 
 **Historical reference only:** [previous Work Queue](WORK-QUEUE-HISTORY-2026-11-09.md), [previous Spec Coverage](SPEC-COVERAGE-HISTORY-2026-11-09.md), [previous Agent Lanes](AGENT-LANES-HISTORY-2026-11-09.md), [previous Next Push](NEXT-PUSH-HANDOFF-HISTORY-2026-11-08.md), [quality receipts](QUALITY-LEDGER.md). These contain dated heads and retrospectives, not current assignments. Keep implementation plans imperative and move chronological logs here or to a new dated history file.
