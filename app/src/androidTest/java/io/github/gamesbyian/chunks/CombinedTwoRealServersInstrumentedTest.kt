@@ -397,7 +397,15 @@ class CombinedTwoRealServersInstrumentedTest {
             }
             scrollTo("Load other saved servers (read-only)")
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
-            waitFor("union before fault", 60_000) { visible("Showing 4") }
+            waitFor("union before fault", 60_000) {
+                // Opening the read-only secondary server loader scrolls the
+                // lazy catalog. Require the truthful four-row summary after
+                // bringing its item back into composition.
+                runCatching {
+                    scrollTo("Showing 4")
+                    visible("Showing 4")
+                }.getOrDefault(false)
+            }
             fun fault(action: String) {
                 val c = java.net.URL("http://127.0.0.1:18083/$action").openConnection()
                     as java.net.HttpURLConnection
