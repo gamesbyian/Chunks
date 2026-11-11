@@ -155,6 +155,8 @@ A code review of the `app/src/main` diff (unverified findings, then checked here
 
 **Merged** as `2812eaf` (squash, 22:25 UTC) at qualified head `687bb04d6cab326c80d79d336c05738268ea01b4`; the merge tree equals the qualified tree (`4fb6844`). Exact-head acceptance (`integration-real-peer`): **ACCEPTABLE**, every required gate executed and passed. Real-peer PR run 43109677545 receipt: `result=passed`, independent peer evidence verified, precompleted control preserved, phone HTTPS journey verified, qualified debug preview `chunks-https-verified-preview-a24126bd5f4d.apk` (build source `a24126b`, same tree).
 
+**Published:** **Preview APK published:** release [`android-debug-2812eaf8eb9d`](https://github.com/gamesbyian/Chunks/releases/tag/android-debug-2812eaf8eb9d) (workflow run 43111744795, built commit `2812eaf`, whose tree `4fb6844` equals the real-peer-qualified head): `chunks-preview.apk` SHA-256 `d5da626f6cfb609d9af9839f0ee7d54d4efad39ac2ec277dcda6ad999bb2f063`, `chunks-debug.apk` SHA-256 `0096f52f29152359fa8c2b5b64686f26b620913abfc1f2b5601dca032ea40a84`. Debug-signed pre-alpha; emulator evidence only, not physical-phone, OEM, Doze or protected-host acceptance.
+
 **Closed as superseded, each with a disposition comment:** #1641, #1642, #1643, #1594, #1534, #1565, #1566.
 
 **Still open:**
