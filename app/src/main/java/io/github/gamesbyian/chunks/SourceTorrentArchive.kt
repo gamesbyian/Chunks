@@ -51,7 +51,12 @@ internal sealed interface SourceArchiveOutcome {
  * only from canonical infohash and full SHA-256, never a source URI, tracker
  * passkey, provider filename or remote account. All operations are local.
  */
-internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
+internal class SourceTorrentArchive(
+    private val privateFilesDirectory: File,
+    // Test-only, stage+exception-type diagnostic. Never passes path/URI,
+    // metainfo, provider message, file bytes or exception message.
+    private val diagnostic: ((String, String) -> Unit)? = null
+) {
     companion object {
         const val DIRECTORY = "source-torrents"
         const val MAX_ARCHIVED_BYTES = 64L * 1024L * 1024L
@@ -107,7 +112,10 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
             if (!Files.exists(archive, nofollow)) Files.createDirectory(archive)
             if (!Files.isDirectory(archive, nofollow) || Files.isSymbolicLink(archive))
                 return SourceArchiveOutcome.CorruptOrUnsafeArchive
-        } catch (_: Exception) { return SourceArchiveOutcome.IoFailure }
+        } catch (failure: Exception) {
+            diagnostic?.invoke("prepare-directory", failure.javaClass.simpleName)
+            return SourceArchiveOutcome.IoFailure
+        }
 
         val digest = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") {
             (it.toInt() and 0xff).toString(16).padStart(2, '0')
@@ -136,9 +144,11 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
             return SourceArchiveOutcome.ArchiveFull
 
         var temporary: Path? = null
+        var stage = "temp-create"
         try {
             val staged = Files.createTempFile(archive, ".pending-", ".tmp")
             temporary = staged
+            stage = "write-fsync"
             FileChannel.open(staged, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING).use {
                 val buf = ByteBuffer.wrap(bytes)
                 while (buf.hasRemaining()) it.write(buf)
@@ -146,6 +156,7 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
             }
             // Hard-link publication is atomic and refuses to overwrite an
             // existing identity. Both names are in the same private directory.
+            stage = "hardlink-publish"
             try {
                 Files.createLink(target, staged)
             } catch (_: FileAlreadyExistsException) {
@@ -156,12 +167,14 @@ internal class SourceTorrentArchive(private val privateFilesDirectory: File) {
                 return concurrent
             }
             if (!syncDirectory(archive)) return SourceArchiveOutcome.NeedsReconciliation
+            stage = "temp-unlink"
             Files.delete(staged)
             temporary = null
             if (!syncDirectory(archive)) return SourceArchiveOutcome.NeedsReconciliation
             return verifyExisting(target, bytes, wasAlreadyPresent = false)
                 ?: SourceArchiveOutcome.CorruptOrUnsafeArchive
-        } catch (_: Exception) {
+        } catch (failure: Exception) {
+            diagnostic?.invoke(stage, failure.javaClass.simpleName)
             return SourceArchiveOutcome.IoFailure
         } finally {
             // On failed writes, never delete a previously archived identity.

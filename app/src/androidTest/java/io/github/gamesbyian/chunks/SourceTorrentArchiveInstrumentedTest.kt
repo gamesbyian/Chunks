@@ -27,6 +27,10 @@ class SourceTorrentArchiveInstrumentedTest {
     private fun proof(newRegistration: Boolean = true) =
         SourceAddVerification("phone", expectedHash, newRegistration)
 
+    private fun observedArchive(root: File) = SourceTorrentArchive(root) { stage, type ->
+        throw AssertionError("Android archive write failure: stage=$stage exceptionType=$type")
+    }
+
     @Before fun setup() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         sandbox = File(context.cacheDir, "chunks-source-archive-" + UUID.randomUUID())
@@ -43,7 +47,7 @@ class SourceTorrentArchiveInstrumentedTest {
             writeBytes(byteArrayOf(0x12, 0x34, 0x56))
         }
         val privateFiles = File(sandbox, "app-private").apply { assertTrue(mkdir()) }
-        val archive = SourceTorrentArchive(privateFiles)
+        val archive = observedArchive(privateFiles)
         val first = archive.apply(OriginalTorrentHandling.ARCHIVE,
             OriginalTorrentOrigin.ANDROID_DOCUMENT, bytes, proof())
         assertTrue("Android filesystem must produce durable verified archive, not merely an RPC ACK: $first",
@@ -58,7 +62,7 @@ class SourceTorrentArchiveInstrumentedTest {
 
         // Reinstantiate to exercise on-disk dedup, rather than relying on
         // in-process object identity or an unverified cache map.
-        val reopened = SourceTorrentArchive(privateFiles)
+        val reopened = observedArchive(privateFiles)
         assertEquals(SourceArchiveOutcome.ArchivedCopy(created.relativeName, true),
             reopened.apply(OriginalTorrentHandling.ARCHIVE,
                 OriginalTorrentOrigin.ANDROID_DOCUMENT, bytes, proof()))
@@ -69,7 +73,7 @@ class SourceTorrentArchiveInstrumentedTest {
     @Test fun deleteIsNeverImplicitAndUnverifiedAddCannotArchive() {
         val source = File(sandbox, "original.torrent").apply { writeBytes(bytes) }
         val privateFiles = File(sandbox, "app-private").apply { assertTrue(mkdir()) }
-        val archive = SourceTorrentArchive(privateFiles)
+        val archive = observedArchive(privateFiles)
         assertEquals(SourceArchiveOutcome.UnverifiedAdd, archive.apply(
             OriginalTorrentHandling.ARCHIVE, OriginalTorrentOrigin.ANDROID_DOCUMENT,
             bytes, proof(newRegistration = false)))
@@ -83,7 +87,7 @@ class SourceTorrentArchiveInstrumentedTest {
     @Test fun repeatedArchiveRefusesUnexpectedSiblingWithoutTouchingUserSource() {
         val original = File(sandbox, "original.torrent").apply { writeBytes(bytes) }
         val privateFiles = File(sandbox, "app-private").apply { assertTrue(mkdir()) }
-        val first = SourceTorrentArchive(privateFiles).apply(
+        val first = observedArchive(privateFiles).apply(
             OriginalTorrentHandling.ARCHIVE,
             OriginalTorrentOrigin.ANDROID_DOCUMENT, bytes, proof())
         assertTrue("Initial archive must be independently durable: $first",
@@ -91,7 +95,7 @@ class SourceTorrentArchiveInstrumentedTest {
         val dir = File(privateFiles, SourceTorrentArchive.DIRECTORY)
         val stray = File(dir, "stray-source.txt").apply { writeText("leave intact") }
         assertEquals(SourceArchiveOutcome.CorruptOrUnsafeArchive,
-            SourceTorrentArchive(privateFiles).apply(
+            observedArchive(privateFiles).apply(
                 OriginalTorrentHandling.ARCHIVE,
                 OriginalTorrentOrigin.ANDROID_DOCUMENT, bytes, proof()))
         assertEquals("leave intact", stray.readText())
