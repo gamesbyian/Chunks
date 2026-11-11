@@ -2,84 +2,86 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.hasContentDescription
-import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Actual installed MainActivity + SavedStateRegistry recreation, without a
- * server, an Add draft, a torrent, credentials or any native transfer mutation.
- * This is Activity recreation; process *kill* and re-launch require a separate
- * physical-device witness.
- *
- * Invocation:
- * connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=
- *   io.github.gamesbyian.chunks.MainActivitySafeRouteRestoreInstrumentedTest
+ * Real installed Activity recreation: no Add source, credentials, login or
+ * pending command is persisted by navigation restoration. Activity recreation
+ * is NOT process kill, and real saved-profile/peer flows require other gates.
  */
 @RunWith(AndroidJUnit4::class)
 class MainActivitySafeRouteRestoreInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    @Test fun disconnectedPhoneAndCombinedRoutesSurviveActivityRecreationWithoutCommands() {
+    // Combined can have a spoken "Transfers" section heading while the
+    // footer also has a Transfers button. Require an actionable footer node
+    // rather than accidentally asserting on the heading during cold probing.
+    private fun footerTransfers() = rule.onNode(hasText("Transfers") and hasClickAction())
+
+    @Test fun disconnectedCanonicalTransfersAndConnectionsSurviveActivityRecreationWithoutCommands() {
         val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        rule.onNodeWithText("This device").assertDoesNotExist()
-        rule.onNodeWithText("All environments").assertDoesNotExist()
-        rule.onNodeWithText("+ Add").assertExists()
-        rule.onNodeWithContentDescription("Connections").assertExists()
+        // No remote profile is required: root Transfers now uses one canonical
+        // browser, whose genuine fresh welcome appears after durable probing.
+        footerTransfers().assertIsSelected()
+        // Purple Add remains visually prominent but must not claim selected
+        // semantics unless the actual Add screen is active.
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
+        rule.onNodeWithContentDescription("Connections").assertIsNotSelected()
         rule.activityRule.scenario.recreate()
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        // Direct first-run Welcome has no scope management chrome.
-        rule.onNodeWithText("All environments").assertDoesNotExist()
-        // The footer enters the one canonical scoped catalog from Welcome.
-        // The old phone-only management chip is intentionally absent.
-        rule.onNodeWithText("Transfers").performClick()
-        rule.onNodeWithText("All environments").assertExists()
+        footerTransfers().assertExists()
+        rule.onNodeWithContentDescription("Connections").performClick()
+        rule.onNodeWithContentDescription("Connections").assertIsSelected()
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
+        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
         rule.activityRule.scenario.recreate()
-        rule.onNodeWithText("All environments").assertExists()
-        // Footer Transfers no longer falls into a distinct legacy phone list.
-        // It always returns to the canonical scope-filtered catalog.
-        rule.onNodeWithText("Transfers").performClick()
-        rule.onNodeWithText("All environments").assertExists()
-        // A local Add shell can survive rotation, never its source or approval.
+        // Connections is a restorable non-mutating root, never a legacy phone
+        // list or an implicitly authenticated new server.
+        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
+        footerTransfers().performClick()
+        footerTransfers().assertIsSelected()
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
         rule.onNodeWithText("+ Add").performClick()
-        rule.onNodeWithText("Add a download on this device").assertExists()
+        rule.onNodeWithText("+ Add").assertIsSelected()
+        footerTransfers().assertIsNotSelected()
+        rule.onNodeWithText("Add a transfer").assertExists()
         rule.activityRule.scenario.recreate()
-        rule.onNodeWithText("Add a download on this device").assertExists()
-        rule.onNodeWithText("Or paste a magnet or torrent link").assertExists()
+        // The existing Add destination remains source-empty after restoration.
+        // Only the Add implementer may replace this destination with its single
+        // source-first form; rotation itself never grants an approval.
+        rule.onNodeWithText("Add a transfer").assertExists()
+        rule.onNodeWithText("+ Add").assertIsSelected()
         rule.onNodeWithText("Start selected").assertDoesNotExist()
-        org.junit.Assert.assertEquals("Navigation cannot create torrent jobs", before,
-            LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
+        org.junit.Assert.assertEquals("Restoring navigation cannot create torrent jobs",
+            before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
     }
 
-    @Test fun createRouteDropsPendingReviewAndReturnsToDisconnectedEntry() {
-        // The offline tools remain available from the disconnected server setup.
+    @Test fun createCommandRouteRestoresOnlyCanonicalTransfersAndKeepsOfflineToolsReachable() {
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
         rule.onNodeWithText("Create a torrent from phone files").performClick()
-        rule.onNodeWithText("Your downloads").assertDoesNotExist()
-
-        // A restore may never manufacture a pending file-selection or create
-        // command. The authenticated remote session remains absent.
+        rule.onNodeWithText("Create torrent").assertExists()
+        // Recreating never retries file picker or submission.
         rule.activityRule.scenario.recreate()
-        rule.waitForIdle()
-        rule.onNodeWithText("Welcome to Chunks").assertExists()
-        rule.onNodeWithText("This device").assertDoesNotExist()
+        footerTransfers().assertExists()
+        rule.onNodeWithText("Create torrent").assertDoesNotExist()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Create a torrent from phone files"))
         rule.onNodeWithText("Create a torrent from phone files").assertExists()
-        rule.onNodeWithText("Create torrent").assertDoesNotExist()
     }
 }
