@@ -50,7 +50,6 @@ internal fun TransferMediaDetailSection(
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Artwork & media information", style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.semantics { heading() })
-        io.github.gamesbyian.chunks.media.ui.TransferAutomaticMetadataToggle(key, originalName)
         TransferMediaSummaryRoute(
             key = key,
             originalName = originalName,
