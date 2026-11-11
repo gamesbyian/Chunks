@@ -1468,4 +1468,68 @@ class TransferMediaControllerTest {
             ArtworkCandidate("tvmaze", "https://static.tvmaze.com/second.jpg", ArtworkRole.POSTER)),
         attribution = MediaAttribution("TVmaze", "CC", null))
 
+
+    @Test fun providerDisableDuringVisibleArtworkHttpCannotPersistLatePoster() {
+        settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
+        val tv = TvMazeProvider()
+        val wire = FakeMediaHttp().onBytes("static.tvmaze.com", jpeg(),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        val match = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_SERIES, "Babylon 5", 1993,
+            artwork = listOf(ArtworkCandidate("tvmaze",
+                "https://static.tvmaze.com/late-revoked-poster.jpg", ArtworkRole.POSTER)),
+            attribution = MediaAttribution("TVmaze", "CC", null))
+        val saved = InMemoryTransferMediaAssignmentStore()
+        saved.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+            match = match, updatedAtMs = clock.now))
+        val disk = ArtworkDiskCache(File(dir, "provider-revoked-visible"))
+        lateinit var controller: TransferMediaController
+        var disableOnce = true
+        val intercepted = object : MediaHttp by wire {
+            override fun get(url: String, hosts: MediaHostPolicy,
+                             headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
+                val response = wire.get(url, hosts, headers, maxBytes)
+                if (disableOnce && url.contains("static.tvmaze.com")) {
+                    disableOnce = false
+                    settings = settings.copy(disabledProviders = setOf(tv.info.id))
+                    controller.onProviderConfigurationChanged()
+                }
+                return response
+            }
+        }
+        val artworkRepo = ArtworkRepository(intercepted, disk,
+            hostPolicyFor = { id ->
+                if (id == tv.info.id && settings.providerOn(tv.info))
+                    tv.info.artworkHostPolicy else null
+            })
+        controller = TransferMediaController(
+            MediaEnrichmentService(listOf(tv), intercepted, InMemoryMediaQueryCache(),
+                { clock.now }, clock::sleep),
+            artworkRepo, { saved }, { settings }, { MediaNetworkState(true, false) },
+            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
+            Dispatchers.Unconfined, { clock.now })
+        val visible = controller.observe(phone, name)
+        assertTrue(disableOnce.not())
+        assertEquals(1, wire.requests.size)
+        assertFalse("An in-flight response must not repopulate art after provider revocation",
+            artworkRepo.hasCachedSquare(match.artwork))
+        assertNull(visible.value.artwork)
+        assertEquals(MediaAssignmentState.AUTOMATIC, saved.get(phone)?.state)
+
+        settings = settings.copy(disabledProviders = emptySet())
+        controller.onProviderConfigurationChanged()
+        assertTrue("Re-enabling the provider may fetch the still-verified original poster",
+            artworkRepo.hasCachedSquare(match.artwork))
+        assertNotNull(visible.value.artwork)
+        assertEquals(2, wire.requests.size)
+
+        settings = settings.copy(disabledProviders = setOf(tv.info.id))
+        controller.onProviderConfigurationChanged()
+        val offline = ArtworkRepository(FakeMediaHttp(), disk, hostPolicyFor = { null })
+        assertTrue("Revoking the provider must not destroy already cached legitimate art",
+            offline.load(match.artwork, ArtworkRole.SQUARE, allowNetwork = false)
+                is io.github.gamesbyian.chunks.media.artwork.ArtworkLoadResult.Loaded)
+    }
+
 }

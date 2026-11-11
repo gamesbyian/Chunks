@@ -843,6 +843,7 @@ class TransferMediaController(
      */
     suspend fun alternatives(key: MediaTransferKey, limit: Int = 8): List<ArtworkAlternative> {
         val dataGeneration = mediaDataGeneration.get()
+        val providerRevision = providerConfigurationRevision.get()
         return kotlinx.coroutines.withContext(artworkDispatcher) {
             if (mediaDataGeneration.get() != dataGeneration) return@withContext emptyList()
             val cur = flow(key)?.value ?: return@withContext emptyList()
@@ -851,6 +852,7 @@ class TransferMediaController(
             if (!s.showArtwork || cur.displayKind == MediaKind.ADULT) return@withContext emptyList()
             val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
             val permitted = { job?.isActive != false && mediaDataGeneration.get() == dataGeneration &&
+                providerConfigurationRevision.get() == providerRevision &&
                 artworkNetworkAllowed(key, explicitRequest = true) }
             match.artwork.filter { it.season == null || it.season == match.season }.distinctBy { it.url }.take(limit.coerceIn(1, 24))
                 .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.SQUARE, true, permitted) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
@@ -873,6 +875,7 @@ class TransferMediaController(
      */
     suspend fun posterAlternatives(key: MediaTransferKey, limit: Int = 8): List<ArtworkAlternative> {
         val dataGeneration = mediaDataGeneration.get()
+        val providerRevision = providerConfigurationRevision.get()
         return kotlinx.coroutines.withContext(artworkDispatcher) {
             if (mediaDataGeneration.get() != dataGeneration) return@withContext emptyList()
             val cur = flow(key)?.value ?: return@withContext emptyList()
@@ -881,6 +884,7 @@ class TransferMediaController(
             if (!s.showArtwork || cur.displayKind == MediaKind.ADULT || cur.userArtwork != null) return@withContext emptyList()
             val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
             val permitted = { job?.isActive != false && mediaDataGeneration.get() == dataGeneration &&
+                providerConfigurationRevision.get() == providerRevision &&
                 artworkNetworkAllowed(key, explicitRequest = true) }
             posterCandidates(match).distinctBy { it.url }.take(limit.coerceIn(1, 24))
                 .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.POSTER, true, permitted) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
@@ -985,12 +989,14 @@ class TransferMediaController(
         if (cur.poster != null || cur.userArtwork != null || cur.displayKind == MediaKind.ADULT) return
         if (match.artwork.none { it.role == ArtworkRole.POSTER }) return
         val dataGeneration = mediaDataGeneration.get()
+        val providerRevision = providerConfigurationRevision.get()
         // Settings/network reads may touch disk: never on the caller's (main) thread.
         scope.launch(artworkDispatcher) {
             val s = settings()
             if (!s.showArtwork) return@launch
             val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
             val permitted = { job?.isActive != false && mediaDataGeneration.get() == dataGeneration &&
+                providerConfigurationRevision.get() == providerRevision &&
                 artworkNetworkAllowed(key, explicitRequest = cur.assignment?.state == MediaAssignmentState.CHOSEN_BY_USER) }
             val posters = posterCandidates(match)
             // The user's chosen poster first (pinned, so offline-capable); otherwise deterministic order.
@@ -1023,12 +1029,14 @@ class TransferMediaController(
         val candidates = listOfNotNull(a.userArtwork) + (match?.artwork ?: emptyList())
         if (!s.showArtwork || candidates.isEmpty() || f.value.recognition.kind == MediaKind.ADULT) return
         val dataGeneration = mediaDataGeneration.get()
+        val providerRevision = providerConfigurationRevision.get()
         scope.launch(artworkDispatcher) {
             val job = kotlinx.coroutines.currentCoroutineContext()[kotlinx.coroutines.Job]
             // Add's exclusion blocks automation, never a deliberately chosen manual image.
             // Consent, host allowlists, network gates and a live observer remain mandatory.
             val manualChoice = explicitRequest || a.state == MediaAssignmentState.CHOSEN_BY_USER
             val permitted = { job?.isActive != false && mediaDataGeneration.get() == dataGeneration &&
+                providerConfigurationRevision.get() == providerRevision &&
                 artworkNetworkAllowed(key, explicitRequest = manualChoice) }
             val providerOrder = service.providerInfos().map { it.id }
             // The user's own image always wins (explicit pin > provider art); otherwise deterministic order.
