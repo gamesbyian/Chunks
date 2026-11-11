@@ -73,6 +73,30 @@ jobs:
           assert set(found)==expected, "Missing executed public album/book provider tests"
           print("CHUNKS_PUBLIC_LIBRARY_ACCEPTANCE: executed=2 failed=0 skipped=0 real_musicbrainz_cover=true real_openlibrary_cover=true")
           PY
+      - name: Emit bounded failed case identity and local stack location without provider URLs
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import pathlib, re, xml.etree.ElementTree as ET
+          root=pathlib.Path("app/build/test-results/testDebugUnitTest")
+          expected={"albumEndToEndWithCoverArtArchiveRedirects","bookEndToEnd"}
+          valid=re.compile(r"(MediaLiveProviderTest|ArtworkRepository|MediaEnrichmentService|MusicBrainzProvider)\\.kt:[1-9][0-9]{0,4}")
+          for file in root.glob("*.xml"):
+              try: doc=ET.parse(file).getroot()
+              except ET.ParseError: continue
+              for c in doc.iter("testcase"):
+                  name=c.get("name")
+                  if c.get("classname")!="io.github.gamesbyian.chunks.media.MediaLiveProviderTest" or name not in expected: continue
+                  f=c.find("failure")
+                  if f is None: f=c.find("error")
+                  if f is None: continue
+                  typ=re.sub(r"[^A-Za-z0-9_.]","", f.get("type","unknown"))[:100]
+                  frames=valid.findall((f.text or ""))
+                  print("CHUNKS_PUBLIC_LIBRARY_FAILURE: case="+name+" type="+typ+
+                      " source_frames="+",".join(sorted(set(frames))[:6]))
+                  # A real provider's external response or error might contain a
+                  # secret-bearing URL. Never print raw failure messages or trace.
+          PY
       - name: Retain only sanitized source-bound execution receipt
         if: always()
         run: |
