@@ -392,7 +392,9 @@ class CombinedTwoRealServersInstrumentedTest {
             enterConnectedQueueIfCombined()
             waitFor("reconnect for C2", 90_000) { connectedQueue() }
             rule.onAllNodesWithText("All environments…")[0].performClick()
-            waitFor("Combined for C2") { visible("All environments") && !visible("All environments…") }
+            waitFor("canonical Combined browser for C2") {
+                visible("Search names or hashes") && !visible("All environments…")
+            }
             scrollTo("Load other saved servers (read-only)")
             rule.onNodeWithText("Load other saved servers (read-only)").performClick()
             waitFor("union before fault", 60_000) { visible("Showing 4") }
