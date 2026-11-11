@@ -275,6 +275,10 @@ internal fun ChunksApp(
     // verified saved login. A failed 401/timeout does not start a retry loop, and
     // Disconnect/Cancel never automatically reconnect within the same app session.
     var startupReconnectAttempted by remember { mutableStateOf(false) }
+    // Explicit Disconnect survives Activity recreation within this task.
+    // A separate saved flag is essential: saving the startup-attempt flag
+    // would disable legitimate read-only reconnect after ordinary process death.
+    var explicitDisconnectSuppressed by rememberSaveable { mutableStateOf(false) }
     // Startup reconnect is one read-only probe; manual connection creation
     // returns to Connections with an explicit verified-result acknowledgement.
     var returnFromStartupConnectToCanonical by remember { mutableStateOf(false) }
@@ -616,6 +620,10 @@ internal fun ChunksApp(
 
     /** Disconnect does not forget credentials, transfer bytes or Add draft. */
     fun disconnectCurrentRemote() {
+        // Retire pending automatic restoration BEFORE server becomes null.
+        // No Compose effect may turn a deliberate Disconnect into reconnect.
+        startupReconnectAttempted = true
+        explicitDisconnectSuppressed = true
         remoteFence.invalidate()
         RemoteCredentialLock.invalidate()
         inspectionFence.invalidate()
@@ -1029,7 +1037,8 @@ internal fun ChunksApp(
                 startupReconnectEligible = RemoteStartupReconnectPolicy.shouldAttempt(
                     rememberingEnabled = rememberLogin,
                     hasSavedVerifiedLogin = remembered != null,
-                    alreadyAttempted = startupReconnectAttempted
+                    alreadyAttempted = startupReconnectAttempted ||
+                        explicitDisconnectSuppressed
                 ),
                 onStartupReconnectConsumed = {
                     startupReconnectAttempted = true
@@ -1241,6 +1250,10 @@ internal fun ChunksApp(
                                     // The full address now carries the path.
                                     rpcPath = ""
                                     server = candidate
+                                    // Only an authenticated, positively verified
+                                    // manual/new session clears deliberate Disconnect.
+                                    // A failed login cannot re-enable auto retry.
+                                    explicitDisconnectSuppressed = false
                                     stale = false
                                     // A phone-origin .torrent can be prepared before a
                                     // remote login. Keep its reviewed Add draft visible
