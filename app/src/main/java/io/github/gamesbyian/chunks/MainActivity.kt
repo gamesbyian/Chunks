@@ -315,6 +315,7 @@ internal fun ChunksApp(
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
     var combinedFromConnections by rememberSaveable { mutableStateOf(false) }
     var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
+    var showAllEnvironmentsRevision by remember { mutableLongStateOf(0L) }
     // View-only one-shot canonical catalog focus; never a login, Add target,
     // RPC account or authority. The browser consumes this exact stable ID.
     var savedProfileCatalogFocus by remember { mutableStateOf<String?>(null) }
@@ -741,6 +742,7 @@ internal fun ChunksApp(
                 scopeFocusRequest = savedProfileCatalogFocus,
                 onScopeFocusConsumed = { savedProfileCatalogFocus = null },
                 returnToCatalogRevision = returnToCatalogRevision,
+                showAllEnvironmentsRevision = showAllEnvironmentsRevision,
                 enableFirstRunWelcome = true,
                 // The existing Add destination remains the sole admission
                 // coordinator until source-first Universal Add is integrated.
@@ -943,7 +945,13 @@ internal fun ChunksApp(
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                     onZipReview = { openTool(Section.ARCHIVES,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                    onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
+                    onCombined = {
+                        localFromCombined = false
+                        combinedFromPhone = true
+                        savedProfileCatalogFocus = null
+                        showAllEnvironmentsRevision++
+                        section = Section.COMBINED
+                    },
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
                     onConnections = { section = Section.SERVER },
                     onOpenAdd = { section = Section.LOCAL_ADD },
@@ -1363,7 +1371,13 @@ internal fun ChunksApp(
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                         onZipReview = { openTool(Section.ARCHIVES,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
-                        onCombined = { localFromCombined = false; combinedFromPhone = true; section = Section.COMBINED },
+                        onCombined = {
+                        localFromCombined = false
+                        combinedFromPhone = true
+                        savedProfileCatalogFocus = null
+                        showAllEnvironmentsRevision++
+                        section = Section.COMBINED
+                    },
                         onConnections = { section = Section.SERVER },
                         onOpenAdd = { section = Section.LOCAL_ADD },
                         onOpenOptions = { section = Section.OPTIONS },
@@ -1607,7 +1621,12 @@ internal fun ChunksApp(
                         orderDirection = direction
                         sortEnvironment?.let { sortStore.set(it, key, direction) }
                     },
-                    onCombined = { combinedFromPhone = false; section = Section.COMBINED },
+                    onCombined = {
+                        combinedFromPhone = false
+                        savedProfileCatalogFocus = null
+                        showAllEnvironmentsRevision++
+                        section = Section.COMBINED
+                    },
                     onRefresh = refresh, onAdd = { section = Section.ADD },
                     onConnections = { section = Section.SERVER },
                     showNavigationFooter = false,
