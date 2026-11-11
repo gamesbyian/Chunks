@@ -16,9 +16,11 @@ internal object NavigationRestorePolicy {
     fun restorableSection(name: String?): String = when (name) {
         // Media settings hold no transfer data, server session or command.
         // Restore only the Add shell: private sources and approvals never replay.
-        "LOCAL", "LOCAL_ADD", "COMBINED", "MEDIA", "OPTIONS" -> name
-        // A remote-only route without an authenticated server would otherwise
-        // reopen the connection form instead of the requested transfer list.
+        "LOCAL", "LOCAL_ADD", "COMBINED", "MEDIA", "OPTIONS", "SERVER" -> name
+        // Connections is a non-mutating management destination even when no
+        // authenticated server survives Activity recreation. An explicit
+        // Disconnect must stay in Connections, not reopen a phone-only list.
+        // Operational remote screens still fall back without restoring authority.
         else -> "LOCAL"
     }
 }
