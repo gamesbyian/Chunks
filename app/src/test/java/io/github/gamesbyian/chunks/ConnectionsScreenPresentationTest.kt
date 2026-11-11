@@ -69,7 +69,9 @@ class ConnectionsScreenPresentationTest {
         )
         var selectedId: String? = null
         render(profiles = listOf(profile), onProfile = { selectedId = it.id })
-        rule.onNodeWithText("View transfers · Studio").performClick()
+        // The button's accessible name carries the exact saved profile (label and address).
+        rule.onNode(androidx.compose.ui.test.hasContentDescription(
+            "View transfers for saved Studio", substring = true)).performClick()
         assertEquals(profile.id, selectedId)
     }
 

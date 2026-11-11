@@ -167,6 +167,10 @@ class CombinedTwoRealServersInstrumentedTest {
         }
         rule.onNodeWithText("Continue to Connections").performClick()
         waitFor("verified Connections management") {
+            // Connections is a lazy list that can still be scrolled to the saved
+            // profiles from an earlier step (two profiles are saved here); bring
+            // the connected card back into composition before reading it.
+            runCatching { scrollTo("Connected ·") }
             visible("Connected ·") && visible("View transfers")
         }
         rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
