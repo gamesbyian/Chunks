@@ -388,16 +388,14 @@ internal class MainActivityRealMagnetJourney(
         }
         // Compact rows open full Details on tap; Start/Stop/Remove live in that one Details.
         fun openDetails(hash: String) {
-            val name = requireNotNull(row(hash)) { "exact remote job must exist" }.name
-            val match = hasContentDescription("Details for $name on", substring = true)
-            rule.waitUntil(60_000) {
-                runCatching {
-                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(match)
-                    rule.onNode(match).fetchSemanticsNode()
-                    true
-                }.getOrDefault(false)
-            }
-            rule.onNode(match).performClick()
+            // The exact-hash search leaves one row for this job, so open it without relying on
+            // the display name (a metadata-pending magnet's server name differs from its label).
+            requireNotNull(row(hash)) { "exact remote job must exist" }
+            val anyRow = hasContentDescription("Details for ", substring = true)
+            rule.waitUntil(60_000) { rule.onAllNodes(anyRow).fetchSemanticsNodes().isNotEmpty() }
+            assertEquals("The exact-hash search must leave exactly one row", 1,
+                rule.onAllNodes(anyRow).fetchSemanticsNodes().size)
+            rule.onNode(anyRow).performClick()
             rule.waitUntil(30_000) { visible("Transfer details") }
         }
         fun lifecycle(hash: String, start: Boolean) {
