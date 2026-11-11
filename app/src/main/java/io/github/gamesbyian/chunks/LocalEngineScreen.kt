@@ -900,17 +900,32 @@ internal fun LocalEngineScreen(
     val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val createFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val zipFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    LaunchedEffect(returnFocusTool) {
+    LaunchedEffect(returnFocusTool, pane) {
         val target = when (returnFocusTool) {
             "SEEDING" -> seedingFocus
             "CREATE" -> createFocus
             "ARCHIVES" -> zipFocus
             else -> null
         } ?: return@LaunchedEffect
-        // Wait one frame so the restored list is laid out before focusing.
-        androidx.compose.runtime.withFrameNanos { }
-        try { target.requestFocus() } catch (_: IllegalStateException) { }
-        onReturnFocusConsumed()
+        // Those tool entry buttons are mounted on Options, not Transfers.
+        // A return to a different pane must not steal keyboard focus later.
+        if (pane != PhonePane.OPTIONS) {
+            onReturnFocusConsumed()
+            return@LaunchedEffect
+        }
+        // One frame is not always enough after restoring a long, scrollable
+        // Options tree. FocusRequester may still be unattached and throw, or
+        // requestFocus may return false. Never ACK a focus request that failed.
+        // Bounded retries are presentation-only: no Add, RPC or file action.
+        repeat(12) {
+            androidx.compose.runtime.withFrameNanos { }
+            if (runCatching { target.requestFocus() }.getOrDefault(false)) {
+                onReturnFocusConsumed()
+                return@LaunchedEffect
+            }
+        }
+        // Leave the in-process request pending if the options button never
+        // became focusable. A future explicit pane mount can try again.
     }
     val addRequester = remember { BringIntoViewRequester() }
     var addNavigationRevision by remember { mutableIntStateOf(0) }
