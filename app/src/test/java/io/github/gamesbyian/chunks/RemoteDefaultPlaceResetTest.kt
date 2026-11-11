@@ -65,8 +65,8 @@ class RemoteDefaultPlaceResetTest {
                 } }
             }
             val list = rule.onNode(hasScrollToIndexAction())
-            list.performScrollToNode(hasText("Review Add"))
-            rule.onNodeWithText("Review Add").performClick()
+            
+            
             list.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
             rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()
             list.performScrollToNode(hasText("Custom server folder (optional)"))
@@ -78,13 +78,13 @@ class RemoteDefaultPlaceResetTest {
                 "Use rTorrent default save folder for this Add"))
             rule.onNodeWithContentDescription("Use rTorrent default save folder for this Add").performClick()
             rule.runOnIdle { assertEquals("", destination.value) }
-            list.performScrollToNode(hasText("Review Add"))
-            rule.onNodeWithText("Review Add").performClick()
+            
+            
             list.performScrollToNode(hasText(
                 "Destination: /downloads (server default; no directory override)"))
             rule.onNodeWithText("Destination: /downloads (server default; no directory override)")
                 .assertExists()
-            assertEquals("Review and Reset must issue only the default read",
+            assertEquals("Preview and Reset must issue only the default read",
                 listOf("directory.default"), methods.toList())
         } finally {
             server.stop(0)
