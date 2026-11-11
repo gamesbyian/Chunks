@@ -1,0 +1,102 @@
+name: Chunks one-shot live public music and book artwork
+
+# Deliberately NOT a normal provider-network CI job. Only this explicitly
+# authorized QA branch can make public MusicBrainz / OpenLibrary / cover CDN calls.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/installed-public-library-live-one-shot.yml"
+    types: [opened, reopened, synchronize]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-public-library-one-shot-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  live-public-music-book-artwork:
+    if: github.event.pull_request.head.repo.full_name == 'gamesbyian/Chunks' && github.head_ref == 'qa/media-live-public-library-20261110'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CHUNKS_LIVE_MEDIA: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Assert exact one-shot scope and record source/tree
+        run: |
+          test "$GITHUB_HEAD_REF" = qa/media-live-public-library-20261110
+          test "$GITHUB_EVENT_NAME" = pull_request
+          printf 'CHUNKS_PUBLIC_LIBRARY_SOURCE: commit=%s tree=%s\n'             "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned Android SDK for source-exact JVM tests
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Run precisely two real public image-provider cases
+        run: |
+          set -euo pipefail
+          test "$CHUNKS_LIVE_MEDIA" = 1
+          # Source paths/trackers are never sent: these pre-existing cases use
+          # only the public fixtures OK Computer and Dune and the production HTTP.
+          # Do not expose raw requested URL logs in retained artifacts.
+          if ! timeout 600 gradle --no-daemon :app:testDebugUnitTest               --tests 'io.github.gamesbyian.chunks.media.MediaLiveProviderTest.albumEndToEndWithCoverArtArchiveRedirects'               --tests 'io.github.gamesbyian.chunks.media.MediaLiveProviderTest.bookEndToEnd'               > "$RUNNER_TEMP/public-provider-gradle.log" 2>&1; then
+            echo 'CHUNKS_PUBLIC_LIBRARY: live provider or test failure; consult bounded JUnit below'
+            grep -E 'BUILD FAILED|Execution failed|[0-9]+ tests? completed|FAILED|> Task :app:testDebugUnitTest'               "$RUNNER_TEMP/public-provider-gradle.log" | tail -20 || true
+            exit 1
+          fi
+      - name: Require both executed tests, genuine fixture image decoding and no skips
+        run: |
+          python3 - <<'PY'
+          import pathlib, xml.etree.ElementTree as ET
+          root=pathlib.Path("app/build/test-results/testDebugUnitTest")
+          expected={"albumEndToEndWithCoverArtArchiveRedirects","bookEndToEnd"}
+          found={}
+          for file in root.glob("*.xml"):
+              doc=ET.parse(file).getroot()
+              for case in doc.iter("testcase"):
+                  if case.get("classname")=="io.github.gamesbyian.chunks.media.MediaLiveProviderTest" and case.get("name") in expected:
+                      name=case.get("name")
+                      assert name not in found, "Duplicate real provider execution"
+                      assert case.find("skipped") is None, name+" skipped"
+                      assert case.find("failure") is None and case.find("error") is None, name+" failed"
+                      found[name]=True
+          assert set(found)==expected, "Missing executed public album/book provider tests"
+          print("CHUNKS_PUBLIC_LIBRARY_ACCEPTANCE: executed=2 failed=0 skipped=0 real_musicbrainz_cover=true real_openlibrary_cover=true")
+          PY
+      - name: Retain only sanitized source-bound execution receipt
+        if: always()
+        run: |
+          mkdir -p "$RUNNER_TEMP/chunks-public-library-proof"
+          printf 'commit=%s\ntree=%s\nrun=%s\n'             "$(git rev-parse HEAD)" "$(git rev-parse HEAD^{tree})" "$GITHUB_RUN_ID" > "$RUNNER_TEMP/chunks-public-library-proof/source.txt"
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+          p=Path("app/build/test-results/testDebugUnitTest")
+          wanted={"albumEndToEndWithCoverArtArchiveRedirects","bookEndToEnd"}
+          lines=[]
+          for f in p.glob("*.xml"):
+              try: doc=ET.parse(f).getroot()
+              except ET.ParseError: continue
+              for c in doc.iter("testcase"):
+                  if c.get("classname")=="io.github.gamesbyian.chunks.media.MediaLiveProviderTest" and c.get("name") in wanted:
+                      result="skip" if c.find("skipped") is not None else "fail" if c.find("failure") is not None or c.find("error") is not None else "pass"
+                      lines.append(c.get("name")+":"+result)
+          Path(__import__("os").environ["RUNNER_TEMP"],"chunks-public-library-proof","results.txt").write_text("\n".join(sorted(lines))+"\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chunks-public-library-one-shot-receipt
+          path: ${{ runner.temp }}/chunks-public-library-proof/
+          retention-days: 14
+          if-no-files-found: warn
