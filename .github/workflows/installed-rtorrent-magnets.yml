@@ -144,7 +144,7 @@ jobs:
           # remove real tracker data from metainfo, or touch protected hosts.
           # Explicit public-discovery dispatches keep their usual trackers.
           if [ "$CHUNKS_PUBLIC_DISCOVERY" != "1" ]; then
-            printf '%s\\n' 'trackers.disable = 0' >> "$RUNNER_TEMP/chunks-disposable/rtorrent.rc"
+            printf '%s\n' 'trackers.disable = 0' >> "$RUNNER_TEMP/chunks-disposable/rtorrent.rc"
             grep -Fxq 'trackers.disable = 0' "$RUNNER_TEMP/chunks-disposable/rtorrent.rc"
             echo 'CHUNKS_CONTROLLED_DISCOVERY: native disposable rTorrent tracker discovery disabled; real resumed pieces still required' >> "$GITHUB_STEP_SUMMARY"
           fi
