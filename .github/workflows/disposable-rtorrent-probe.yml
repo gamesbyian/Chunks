@@ -6,6 +6,7 @@ on:
       - ".github/workflows/disposable-rtorrent-probe.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableAuthenticatedTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableDigestAuthenticatedTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableFullJourneyTest.kt"
       - "tools/verify_disposable_rutorrent_readd_cancel.py"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableNativeStartedAddTest.kt"
@@ -160,6 +161,19 @@ jobs:
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml
           grep -q 'tests="2" skipped="0" failures="0" errors="0"' "$report"
           echo "CHUNKS_AUTH_REAL: disposable nginx Basic challenge accepted on real rTorrent, exact-job mutation/reconciliation and rejected wrong credentials" >> "$GITHUB_STEP_SUMMARY"
+      - name: SHA-256 Digest real engine authenticated Add and session-only Remove
+        env:
+          CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
+          CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
+        run: |
+          # Unlike an XML-RPC fixture, the challenge is independently SHA-256
+          # verified and ONLY approved calls reach disposable real rTorrent.
+          # Both a wrong password and wrong username must be rejected.
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableDigestAuthenticatedTest'
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableDigestAuthenticatedTest.xml
+          grep -q 'tests="1" skipped="0" failures="0" errors="0"' "$report"
+          echo "CHUNKS_DIGEST_REAL: independent SHA-256 challenge and one exact real rTorrent Add/Remove passed" >> "$GITHUB_STEP_SUMMARY"
       - name: Real ruTorrent PHP erasedata collector deletes exact payload and preserves canary
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
@@ -427,6 +441,10 @@ jobs:
               --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest' || status=1
           grep -q 'tests="2" skipped="0" failures="0" errors="0"' \
             app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml || status=1
+          gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableDigestAuthenticatedTest' || status=1
+          grep -q 'tests="1" skipped="0" failures="0" errors="0"' \
+            app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableDigestAuthenticatedTest.xml || status=1
           python3 - <<'PY'
           import pathlib, xml.etree.ElementTree as ET
           for path in sorted(pathlib.Path("app/build/test-results/testDebugUnitTest").glob("TEST-*Disposable*.xml")):
