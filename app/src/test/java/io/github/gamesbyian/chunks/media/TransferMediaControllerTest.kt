@@ -1532,4 +1532,48 @@ class TransferMediaControllerTest {
                 is io.github.gamesbyian.chunks.media.artwork.ArtworkLoadResult.Loaded)
     }
 
+
+    @Test fun disabledProviderWithSavedPosterExplainsConfigurationRatherThanNetworkFailure() {
+        val tv = TvMazeProvider()
+        settings = MediaPrivacySettings(onlineLookupConsent = true,
+            automaticLookup = true, disabledProviders = setOf(tv.info.id))
+        val imageUrl = "https://static.tvmaze.com/saved-disabled.jpg"
+        val wire = FakeMediaHttp().onBytes("static.tvmaze.com", jpeg(),
+            headers = mapOf("Content-Type" to "image/jpeg"))
+        val match = MediaCandidate(
+            io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+            MediaKind.TV_SERIES, "Babylon 5", 1993,
+            artwork = listOf(ArtworkCandidate(tv.info.id, imageUrl, ArtworkRole.POSTER)),
+            attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
+        val stored = InMemoryTransferMediaAssignmentStore()
+        stored.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+            match = match, updatedAtMs = clock.now))
+        val c = TransferMediaController(
+            MediaEnrichmentService(listOf(tv), wire, InMemoryMediaQueryCache(),
+                { clock.now }, clock::sleep),
+            ArtworkRepository(wire, ArtworkDiskCache(File(dir, "disabled-art-reason")),
+                hostPolicyFor = { id ->
+                    if (id == tv.info.id && settings.providerOn(tv.info))
+                        tv.info.artworkHostPolicy else null
+                }),
+            { stored }, { settings }, { MediaNetworkState(true, false) },
+            CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
+            Dispatchers.Unconfined, { clock.now })
+        val observed = c.observe(phone, name)
+        assertEquals(MediaAssignmentState.AUTOMATIC, observed.value.state)
+        assertNull(observed.value.artwork)
+        assertTrue("Saved verified identity needs an actionable provider configuration reason",
+            observed.value.automaticMessage.orEmpty().contains("disabled or needs configuration"))
+        assertTrue("A disabled provider must receive no image HTTP", wire.requests.isEmpty())
+        assertEquals(match.ref, stored.get(phone)?.match?.ref)
+
+        settings = settings.copy(disabledProviders = emptySet())
+        c.onProviderConfigurationChanged()
+        assertNotNull("Re-enabling the provider fetches art for the same saved identity",
+            observed.value.artwork)
+        assertEquals(match.ref, stored.get(phone)?.match?.ref)
+        assertEquals(1, wire.requests.size)
+        assertNull(observed.value.automaticMessage)
+    }
+
 }
