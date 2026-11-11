@@ -1,0 +1,32 @@
+name: Portable agent Skills integrity
+on:
+  pull_request:
+    paths:
+      - 'skills/**'
+      - '.github/workflows/portable-agent-skills.yml'
+  push:
+    paths:
+      - 'skills/**'
+      - '.github/workflows/portable-agent-skills.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: portable-skills-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: python3 skills/scripts/check_portability.py --skills-dir skills
+      - run: python3 skills/scripts/audit_instruction_completeness.py --skills-dir skills --check-contracts
+      - run: python3 -m unittest discover -s skills/tests
+      - name: Verify copy into an unrelated project layout
+        run: |
+          mkdir -p /tmp/portable-skill-probe
+          python3 skills/scripts/install_into_project.py --source-root "$PWD" --project-root /tmp/portable-skill-probe --source-revision "$GITHUB_SHA"
+          python3 /tmp/portable-skill-probe/skills/scripts/check_portability.py --skills-dir /tmp/portable-skill-probe/skills

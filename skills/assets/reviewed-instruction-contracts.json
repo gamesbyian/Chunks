@@ -1,0 +1,72 @@
+[
+  {
+    "id": "EVIDENCE-E3",
+    "path": "evidence-acquisition/SKILL.md",
+    "anchor": "3. **E3. Generate independent discovery routes.**",
+    "method": "evidence-acquisition/references/retrieval-protocol.md",
+    "trigger": "A consequential product question lacks independent source-class coverage.",
+    "inputs": "Owner decision, competing answers, actor and version-specific source matrix.",
+    "operation": "Derive job, failure, synonym, competitor, adjacent and independent queries, then log executed searches.",
+    "branch": "If new origin-diverse sources change an option, extend search; if none, test saturation.",
+    "output": "Version-scoped query ledger, original source groups and supported behavior cells.",
+    "evidence": "Exact retrieved source locator and evidence tier for each material matrix claim.",
+    "stop": "Stop once new affordable independent routes cannot affect the next authorized choice.",
+    "fallback": "Mark missing source classes inaccessible and describe unverified hypotheses."
+  },
+  {
+    "id": "RESOURCE-R4",
+    "path": "engineering-resource-discovery/SKILL.md",
+    "anchor": "4. **R4. Run knock-out checks before scoring.**",
+    "method": "engineering-resource-discovery/references/candidate-qualification.md",
+    "trigger": "More than one implementation candidate could satisfy a costly new capability.",
+    "inputs": "Required capability contracts and pinned candidate versions plus owner limits.",
+    "operation": "Inspect primary APIs, license, runtime compatibility, privacy and adapter boundaries before cost comparisons.",
+    "branch": "Reject known violations, spike costly unknowns, then compare remaining qualified paths.",
+    "output": "Candidate disposition with violated conditions, integration path and reversal evidence.",
+    "evidence": "First-party license and versioned API source with actual executed acceptance when available.",
+    "stop": "Stop after an appropriately evidenced viable path survives meaningful credible rivals.",
+    "fallback": "Mark legal, platform or side-effect uncertainty as blocked rather than presume permission."
+  },
+  {
+    "id": "SPEC-S8",
+    "path": "product-specification-engineering/SKILL.md",
+    "anchor": "8. **S8. Perform bidirectional completeness and contradiction checks.**",
+    "method": "product-specification-engineering/references/contract-construction.md",
+    "trigger": "A multi-feature product or architecture specification is expected to direct substantial implementation.",
+    "inputs": "Owner/source authority ledger, requirements, variant states, data ownership and adapter plans.",
+    "operation": "Trace each user goal to entry, state, side effects and acceptance, then every feature back to a sourced goal.",
+    "branch": "If a required path or authority is unlinked, repair evidence or classify blocked; otherwise assess readiness.",
+    "output": "Bidirectional coverage ledger and per-workstream unresolved contradictions.",
+    "evidence": "Original owner requirement, code/API boundary and independently observable acceptance contract.",
+    "stop": "Stop for a ready slice when no untracked material unknown could reverse it.",
+    "fallback": "Preserve UNKNOWN and mark separate workstreams RESEARCH NEXT or DECISION NEXT."
+  },
+  {
+    "id": "INCEPTION-ECO",
+    "path": "project-inception/SKILL.md",
+    "anchor": "3. **Solution ecosystem:**",
+    "method": "evidence-acquisition/SKILL.md",
+    "trigger": "A complex greenfield product has not yet surveyed relevant competing and adjacent implementations.",
+    "inputs": "Project problem statement, users, consequential choices and current evidence inventory.",
+    "operation": "Route ecosystem investigation to E1-E8 and capture independently sampled source records.",
+    "branch": "If source-class omissions could reverse design, continue targeted research; otherwise bound conclusion.",
+    "output": "Evidence-backed ecosystem comparison and explicit unknown cells for the product specification.",
+    "evidence": "Original source locator and actual observed/documented behavior, with distinct provenance.",
+    "stop": "Stop when material source classes are covered enough for the next workstream.",
+    "fallback": "Report unavailable sources and preserve provisional architectural assumptions."
+  },
+  {
+    "id": "DOCUMENT-D2",
+    "path": "CAPABILITY-ARCHITECTURE.md",
+    "anchor": "When a material project decision, implementation result or milestone changes what an agent must do next, maintain operational plans, specs, onboarding, work queues and handoffs",
+    "method": "references/operational-documentation-integrity.md",
+    "trigger": "An accepted decision, observed implementation change, superseded task, or direct cleanup request materially affects instructions.",
+    "inputs": "Host document role map, owner authority, current branch/PR and relevant plan/spec/onboarding/queue/handoff claims.",
+    "operation": "Classify current versus historical claims, compute exact document deltas, reconcile affected operational statements, preserve material evidence and check direct consumers.",
+    "branch": "If authority conflicts, mark unresolved; if no instruction changed, return NO CHANGE; if unique history would be lost, retain it in established records.",
+    "output": "Scoped document delta or justified NO CHANGE, with source/revision and concise reconciliation receipt.",
+    "evidence": "Current authorized requirement and source/PR/evidence revision, checked against changed directions and concrete next-task oracle.",
+    "stop": "Stop when material affected instructions are current, conflicts explicitly bounded and relevant references checked.",
+    "fallback": "When sources or write permissions are unavailable, state the gap and give a proposed delta without inventing authority or changing files."
+  }
+]

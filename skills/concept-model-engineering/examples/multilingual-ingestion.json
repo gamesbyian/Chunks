@@ -1,0 +1,182 @@
+{
+  "schema": "concept-model/source-ingestion-v1",
+  "focus_question": "Does a remote transfer completion signal prove local verified bytes?",
+  "scope": "Synthetic two-system transfer, not a real app or user study.",
+  "questions": [
+    {
+      "id": "Q1",
+      "question": "Can users distinguish ACK from verified local bytes?",
+      "required_source_kinds": [
+        "owner_decision",
+        "implementation",
+        "user_report"
+      ]
+    },
+    {
+      "id": "Q2",
+      "question": "What evidence survives a process restart?",
+      "required_source_kinds": [
+        "implementation",
+        "test"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "S1",
+      "kind": "owner_decision",
+      "locator": "synthetic://requirements#15",
+      "revision": "fixture-v1",
+      "language": "en",
+      "lineage_id": "owner_A",
+      "status": "inspected",
+      "covers": [
+        "Q1"
+      ]
+    },
+    {
+      "id": "S2",
+      "kind": "implementation",
+      "locator": "synthetic://code#42",
+      "revision": "fixture-v1",
+      "language": "en",
+      "lineage_id": "code_A",
+      "status": "inspected",
+      "covers": [
+        "Q1",
+        "Q2"
+      ]
+    },
+    {
+      "id": "S3",
+      "kind": "user_report",
+      "locator": "synthetic://forum#19",
+      "revision": "fixture-v1",
+      "language": "fr",
+      "lineage_id": "thread_A",
+      "status": "inspected",
+      "covers": [
+        "Q1"
+      ]
+    },
+    {
+      "id": "S4",
+      "kind": "user_report",
+      "locator": "synthetic://translation#20",
+      "revision": "fixture-v1",
+      "language": "en",
+      "lineage_id": "thread_A",
+      "status": "inspected",
+      "covers": [
+        "Q1"
+      ]
+    },
+    {
+      "id": "S5",
+      "kind": "test",
+      "locator": "synthetic://tests#14",
+      "revision": "unknown",
+      "language": "en",
+      "lineage_id": "unknown",
+      "status": "not_searched",
+      "covers": [
+        "Q2"
+      ]
+    },
+    {
+      "id": "S6",
+      "kind": "other",
+      "locator": "synthetic://notes#2",
+      "revision": "fixture-v1",
+      "language": "en",
+      "lineage_id": "unknown",
+      "status": "inspected",
+      "covers": [
+        "Q2"
+      ]
+    }
+  ],
+  "mentions": [
+    {
+      "id": "M1",
+      "source_id": "S1",
+      "label": "Transfer",
+      "kind": "action",
+      "scope": "fictional_app_v1",
+      "evidence_locator": "synthetic://requirements#L15",
+      "candidate_concept_id": "C_transfer"
+    },
+    {
+      "id": "M2",
+      "source_id": "S2",
+      "label": "Ｔｒａｎｓｆｅｒ",
+      "kind": "action",
+      "scope": "fictional_app_v1",
+      "evidence_locator": "synthetic://code#L42",
+      "candidate_concept_id": "C_transfer_duplicate"
+    },
+    {
+      "id": "M3",
+      "source_id": "S3",
+      "label": "Transfer",
+      "kind": "state",
+      "scope": "fictional_app_v1",
+      "evidence_locator": "synthetic://forum#L19",
+      "candidate_concept_id": "C_state"
+    },
+    {
+      "id": "M4",
+      "source_id": "S2",
+      "label": "Local bytes verified",
+      "kind": "state",
+      "scope": "fictional_app_v1",
+      "evidence_locator": "synthetic://code#L44",
+      "candidate_concept_id": "C_verified"
+    },
+    {
+      "id": "M5",
+      "source_id": "S1",
+      "label": "Octets vérifiés",
+      "kind": "state",
+      "scope": "fictional_app_v1",
+      "evidence_locator": "synthetic://requirements#L16",
+      "candidate_concept_id": "C_verified"
+    },
+    {
+      "id": "M6",
+      "source_id": "S3",
+      "label": "Télécharger",
+      "kind": "action",
+      "scope": "fictional_app_v1",
+      "evidence_locator": "synthetic://forum#L22",
+      "candidate_concept_id": null
+    }
+  ],
+  "relations": [
+    {
+      "id": "R1",
+      "source_ids": [
+        "S1"
+      ],
+      "subject_mention_id": "M1",
+      "predicate": "may_report",
+      "object_mention_id": "M5",
+      "truth_kind": "documented",
+      "scope": "fictional_app_v1",
+      "evidence_locator": "synthetic://requirements#L16"
+    },
+    {
+      "id": "R2",
+      "source_ids": [
+        "S1",
+        "S2"
+      ],
+      "subject_mention_id": "M1",
+      "predicate": "may_report",
+      "object_mention_id": "M4",
+      "truth_kind": "refuted",
+      "scope": "fictional_app_v1",
+      "evidence_locator": "synthetic://code#L44"
+    }
+  ]
+}

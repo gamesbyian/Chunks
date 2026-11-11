@@ -1,0 +1,329 @@
+{
+  "schema": "engineering-judgment/patterns-v1",
+  "patterns": [
+    {
+      "id": "identity-scope",
+      "name": "Exact identity is distinct from display labels, and cannot mutate during async work",
+      "triggers": [
+        "combining environments",
+        "remembered remote login",
+        "batch updates"
+      ],
+      "hidden": [
+        "authenticated principal",
+        "endpoint and account",
+        "immutable operation ID",
+        "generation/permission"
+      ],
+      "positive": "A command retargets after a user changes screen or server; exact scope survives delay.",
+      "discriminator": "Freeze and validate the relevant authority tuple before and after suspension.",
+      "source": "https://github.com/gamesbyian/Chunks/issues/810",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "authorized-reuse-versus-protection",
+      "name": "User intent separates normal replacement from unrelated-file damage",
+      "triggers": [
+        "overwrite safety",
+        "existing payload",
+        "export to Downloads"
+      ],
+      "hidden": [
+        "selected target policy",
+        "ownership",
+        "ordinary backend semantics",
+        "provider identity"
+      ],
+      "positive": "Normal selected payload reused safely while unrelated output remains untouched.",
+      "discriminator": "Inspect actual selected operation and library/platform write behavior; isolate harmful collision.",
+      "source": "https://github.com/gamesbyian/Chunks/issues/568",
+      "critical_exception": "Do not apply app-private immutable rules to user-authorized regular payload; never permit unrelated exports"
+    },
+    {
+      "id": "external-publication",
+      "name": "Provider capabilities and exact returned URI matter more than friendly filename",
+      "triggers": [
+        "save as",
+        "extract",
+        "cloud export"
+      ],
+      "hidden": [
+        "create new vs replace",
+        "URI grant",
+        "provider behavior",
+        "readback"
+      ],
+      "positive": "A newly selected destination is independently proven new, or exact reviewed target is replaced.",
+      "discriminator": "Refuse a potentially truncating writer until new-object identity or specific Replace authority is proven.",
+      "source": "https://github.com/gamesbyian/Chunks/issues/809",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "partial-private-original",
+      "name": "Exclusive name reservation does not imply fully published bytes",
+      "triggers": [
+        "atomic photo import",
+        "immutable blob",
+        "sha file"
+      ],
+      "hidden": [
+        "crash windows",
+        "source staging",
+        "journal provenance",
+        "database admission"
+      ],
+      "positive": "Successful import survives crash without harming pre-existing original or leaving falsely admitted rows.",
+      "discriminator": "Simulate stop during write, verify source and ownership before orphan cleanup.",
+      "source": "https://github.com/gamesbyian/Glimpse/issues/143",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "side-effect-uncertainty",
+      "name": "A failed acknowledgment after an attempt is not proof that no effect occurred",
+      "triggers": [
+        "retry on timeout",
+        "cancel after write",
+        "wallpaper setter exception"
+      ],
+      "hidden": [
+        "irreversibility",
+        "idempotence",
+        "outcome observation",
+        "reconciliation"
+      ],
+      "positive": "An uncertain attempt is recorded and read-only checked before any new side effect.",
+      "discriminator": "Force interruption after effect and before acknowledgment, demand no automatic replay.",
+      "source": "https://github.com/gamesbyian/Glimpse/pull/33",
+      "critical_exception": "No-op safe pre-call failures differ from possible post-call side effects"
+    },
+    {
+      "id": "public-read-auth",
+      "name": "Publicly accessible reads cannot prove supplied credentials were authenticated",
+      "triggers": [
+        "remote connect succeeds",
+        "version RPC",
+        "saved login"
+      ],
+      "hidden": [
+        "auth challenge",
+        "principal",
+        "protected resource",
+        "shipping caller"
+      ],
+      "positive": "Incorrect supplied credentials cannot be accepted as a verified authenticated profile.",
+      "discriminator": "Test with intentionally invalid credentials on actual production Connect path.",
+      "source": "https://github.com/gamesbyian/Chunks/pull/898",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "operation-vs-goal",
+      "name": "System reports of acceptance, progress, and actual user completion are different",
+      "triggers": [
+        "file completed",
+        "download ready",
+        "copy succeeded"
+      ],
+      "hidden": [
+        "durable state",
+        "output bytes",
+        "destination",
+        "user goal"
+      ],
+      "positive": "Claim of finished delivery rests on independently observed intended bytes and destination.",
+      "discriminator": "Compare result message with actual byte readback and target membership.",
+      "source": "https://github.com/gamesbyian/Expository/pull/292",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "ui-reachability",
+      "name": "Structurally present controls can still be unusable",
+      "triggers": [
+        "icon exists",
+        "screen mapped",
+        "visual atlas green"
+      ],
+      "hidden": [
+        "viewport",
+        "font scale",
+        "nested scroll",
+        "semantics"
+      ],
+      "positive": "Important controls remain findable and actionable at supported size/scale and modality.",
+      "discriminator": "Inspect actual 320dp/200%-scale rendering and OS/window interaction.",
+      "source": "https://github.com/gamesbyian/Glimpse/pull/38",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "semantic-control",
+      "name": "Controls are valid only when they map to real, comprehensible domain operations",
+      "triggers": [
+        "carousel for settings",
+        "reel UI",
+        "one button to do everything"
+      ],
+      "hidden": [
+        "traversed set",
+        "selection identity",
+        "apply boundary",
+        "side effect"
+      ],
+      "positive": "User can predict what selection represents and what applying it actually changes.",
+      "discriminator": "Give model a set/selection/action/cancel scenario; remove decorative affordance if meaningless.",
+      "source": "https://github.com/gamesbyian/Glimpse/blob/main/docs/design/reel-ux-audit.md",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "build-vs-upgrade",
+      "name": "Compiling an APK does not establish safe in-place upgrade or release",
+      "triggers": [
+        "old app upgrade",
+        "signed artifact",
+        "migration green"
+      ],
+      "hidden": [
+        "signer continuity",
+        "historical Room",
+        "user data",
+        "actual install"
+      ],
+      "positive": "APK installs over populated prior version without uninstall and preserves records and bytes.",
+      "discriminator": "Compare signer fingerprints across distributed builds and run real adb install -r.",
+      "source": "https://github.com/gamesbyian/Glimpse/issues/72",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "ci-trigger-completeness",
+      "name": "A workflow selector cannot classify a change when workflow filtering prevented invocation",
+      "triggers": [
+        "path-filter CI",
+        "rename",
+        "docs-only build"
+      ],
+      "hidden": [
+        "previous filename",
+        "trigger topology",
+        "required checks",
+        "test execution"
+      ],
+      "positive": "Relevant native changes including rename-out dispatch expected checks and executed suites.",
+      "discriminator": "Test rename-out and ambiguous changed-file counts against the entire dispatch topology.",
+      "source": "https://github.com/gamesbyian/Expository/issues/366",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "architectural-reuse",
+      "name": "Conventional API or architecture should be tested before bespoke replacement",
+      "triggers": [
+        "custom engine",
+        "generic storage backend",
+        "new coordinator"
+      ],
+      "hidden": [
+        "current caller",
+        "library extension points",
+        "reusable primitives",
+        "positive acceptance"
+      ],
+      "positive": "Existing supported mechanisms deliver the user journey without unneeded subsystem.",
+      "discriminator": "Run small experiment with upstream API; measure whether new machinery remains necessary.",
+      "source": "https://github.com/gamesbyian/Chunks/pull/573",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "metadata-vs-payload",
+      "name": "Data-plane and state-plane correctness are independent",
+      "triggers": [
+        "resume data",
+        "saved files",
+        "recovery journal"
+      ],
+      "hidden": [
+        "exact bytes",
+        "bounded metadata",
+        "restore authority",
+        "tombstones"
+      ],
+      "positive": "Payload remains usable while metadata admits/retains bounded changes across restarts.",
+      "discriminator": "Run real resume/readd/remove with metadata size and exact-byte independent checks.",
+      "source": "https://github.com/gamesbyian/Chunks/issues/865",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "research-frontier",
+      "name": "Blank inventory space is not evidence of external novelty",
+      "triggers": [
+        "missing feature",
+        "new game state",
+        "unrelated media"
+      ],
+      "hidden": [
+        "synonyms",
+        "source coverage",
+        "holdout",
+        "cross-links",
+        "accepted semantics"
+      ],
+      "positive": "Novelty claim is precisely bounded and contradicted if an implementation or alias exists.",
+      "discriminator": "Reverse search source and comparator; distinguish unique fingerprints from validated states.",
+      "source": "https://github.com/gamesbyian/Chunks/blob/main/docs/research/BITTORRENT-MISSING-FEATURES-SYNTHESIS-2026-10-29.md",
+      "critical_exception": "Absence from one bounded source is not proof of absence worldwide"
+    },
+    {
+      "id": "source-harness-separation",
+      "name": "Failure before an operation is not an operation-engine failure",
+      "triggers": [
+        "picker failed",
+        "UI test red",
+        "backend passed"
+      ],
+      "hidden": [
+        "last reached assertion",
+        "OS windows",
+        "test fixtures",
+        "shipping behavior"
+      ],
+      "positive": "Real provider/picker path is reached and byte operation is independently proven.",
+      "discriminator": "Trace events and OS windows without introducing fabricated grants.",
+      "source": "https://github.com/gamesbyian/Expository/issues/222",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "non-idempotent-batch",
+      "name": "One batch approval cannot make multiple cross-resource writes atomic",
+      "triggers": [
+        "copy many files",
+        "retry job",
+        "bulk move"
+      ],
+      "hidden": [
+        "per-item ownership",
+        "journal",
+        "partial progress",
+        "uncertain outcome"
+      ],
+      "positive": "Per-item outcomes remain honest; no unapproved replays or source deletion.",
+      "discriminator": "Interrupt after middle item and verify preserved source and count/status.",
+      "source": "https://github.com/gamesbyian/Expository/pull/170",
+      "critical_exception": "Apply only to reachable, consequential operation with matching authority and platform semantics"
+    },
+    {
+      "id": "proportional-investigation",
+      "name": "Complexity research should be activated by actual decision stakes",
+      "triggers": [
+        "make small label change",
+        "simple CI doc edit",
+        "architecture change"
+      ],
+      "hidden": [
+        "reversibility",
+        "uncertainty",
+        "platform boundary",
+        "blast radius"
+      ],
+      "positive": "Routine low-risk changes ship with focused evidence while high-risk changes receive deeper review.",
+      "discriminator": "Compare outcomes/cost of equivalent routine fixes with and without skill activation.",
+      "source": "https://github.com/gamesbyian/Chunks/blob/main/docs/ENGINEERING-DELIVERY-PROTOCOL.md",
+      "critical_exception": "No mandatory long study for a reversible trivial fix"
+    }
+  ]
+}

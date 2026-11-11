@@ -1,0 +1,90 @@
+{
+  "schema": "concept-model/v1",
+  "focus_question": "How can a user confirm an authorized remote file reached a local destination? (FICTIONAL EXAMPLE)",
+  "scope": "Illustrative transfer workflow, no real product or backend claim",
+  "source_records": [
+    {
+      "id": "S1",
+      "url": "https://example.org/fictional-manual",
+      "role": "fictional_test_fixture",
+      "as_of": "2026-01-01",
+      "summary": "Synthetic operation specification only"
+    }
+  ],
+  "competency_questions": [
+    {
+      "id": "CQ1",
+      "question": "Does the model distinguish server receipt from verified local bytes?",
+      "status": "answered",
+      "claim_ids": [
+        "P1",
+        "P2"
+      ]
+    },
+    {
+      "id": "CQ2",
+      "question": "What is the outcome after timeout following an uncertain write?",
+      "status": "unknown",
+      "claim_ids": []
+    }
+  ],
+  "concepts": [
+    {
+      "id": "C1",
+      "kind": "user_goal",
+      "label": "File available locally"
+    },
+    {
+      "id": "C2",
+      "kind": "operation",
+      "label": "Remote copy"
+    },
+    {
+      "id": "C3",
+      "kind": "state",
+      "label": "Server acknowledged"
+    },
+    {
+      "id": "C4",
+      "kind": "state",
+      "label": "Local bytes verified"
+    }
+  ],
+  "claims": [
+    {
+      "id": "P1",
+      "subject": "C2",
+      "predicate": "may_report",
+      "object": "C3",
+      "truth_kind": "documented",
+      "source_ids": [
+        "S1"
+      ],
+      "scope": "synthetic example only"
+    },
+    {
+      "id": "P2",
+      "subject": "C3",
+      "predicate": "does_not_imply",
+      "object": "C4",
+      "truth_kind": "inferred",
+      "source_ids": [
+        "S1"
+      ],
+      "scope": "synthetic example only"
+    }
+  ],
+  "gaps": [
+    {
+      "id": "G1",
+      "question": "How is a timed-out write reconciled?",
+      "kind": "unknown_fact",
+      "qualification": "insufficient_evidence",
+      "source_checks": [
+        "S1"
+      ],
+      "falsifier": "An authoritative system spec describes reconciliation",
+      "next_action": "Inspect the real operation protocol and interruption cases before proposing a feature"
+    }
+  ]
+}
