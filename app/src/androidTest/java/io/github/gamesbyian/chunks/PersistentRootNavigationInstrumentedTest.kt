@@ -35,7 +35,7 @@ class PersistentRootNavigationInstrumentedTest {
         rule.onAllNodes(hasText("Transfers") and hasClickAction()).onLast()
 
     private fun addButton() =
-        rule.onNodeWithContentDescription("Choose where to add a transfer")
+        rule.onNodeWithContentDescription("Add a torrent")
 
     private fun connectionsButton() =
         rule.onNodeWithContentDescription("Connections")
