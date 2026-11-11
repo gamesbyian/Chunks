@@ -50,9 +50,13 @@ internal fun showPhoneFirstRunWelcome(
     inventoryEmpty: Boolean,
     hasRemoteEnvironment: Boolean,
     search: String,
-    addOpen: Boolean
+    addOpen: Boolean,
+    filterIsDefault: Boolean = true,
+    restoreHealthy: Boolean = true,
+    noIncomingSource: Boolean = true
 ): Boolean = inventoryConfirmed && !inventoryStale && inventoryEmpty &&
-    !hasRemoteEnvironment && search.isBlank() && !addOpen
+    !hasRemoteEnvironment && search.isBlank() && !addOpen && filterIsDefault &&
+    restoreHealthy && noIncomingSource
 
 /**
  * Fresh-install welcome requires positive *absence* evidence. A process with

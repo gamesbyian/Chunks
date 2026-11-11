@@ -26,8 +26,11 @@ class PhoneFirstFooterAddRenderTest {
 
     @Test fun freshPhoneLaunchKeepsOrientationAndReachesInventoryInOneTap() {
         rule.waitForIdle()
-        // Launch does not scroll away from where-am-I and Back, even here.
-        rule.onNodeWithText("This device").assertIsDisplayed()
+        // A truly empty, 320dp/200% installation begins with usable Welcome,
+        // without obscuring the persistent Transfers and Add navigation.
+        rule.onNodeWithText("Welcome to Chunks").assertIsDisplayed()
+        rule.onNodeWithText("This device").assertDoesNotExist()
+        rule.onNodeWithText("Search transfers on this device").assertDoesNotExist()
         rule.onNodeWithText("Transfers")
             .assertIsDisplayed().performClick()
         rule.onNodeWithText("All environments").assertExists()
@@ -38,7 +41,7 @@ class PhoneFirstFooterAddRenderTest {
     }
 
     @Test fun footerAddRevealsActualPhoneAddFormAboveFooter() {
-        rule.onNodeWithText("This device").assertExists()
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
         val add = rule.onNodeWithText("+ Add")
         add.assertIsDisplayed().performClick()
         rule.waitForIdle()

@@ -16,8 +16,8 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Leaving the phone list for All environments and returning keeps the
- * person's typed search (navigation state only; no command or selection).
+ * Fresh Welcome hides unused phone search; the canonical catalog instead
+ * preserves its typed query across root Options/Transfers navigation.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -25,20 +25,20 @@ import org.robolectric.annotation.GraphicsMode
 class PhoneNavigationContinuityTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    @Test fun searchSurvivesAllEnvironmentsRoundTrip() {
+    @Test fun catalogSearchSurvivesOptionsAndTransfersRootRoundTrip() {
         rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Search transfers on this device", substring = true))
-            .performTextInput("ubuntu")
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("Transfers").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("All environments").assertExists()
+        rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
+            .performScrollTo().performTextInput("ubuntu")
         rule.onNodeWithText("Options").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Options · this device").assertExists()
         rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("All environments").assertExists()
-        // Return through the device management entry without losing the
-        // original phone search. Scope filtering never changes that draft.
-        rule.onNodeWithText("Open device transfer controls").performScrollTo().performClick()
-        rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
 }

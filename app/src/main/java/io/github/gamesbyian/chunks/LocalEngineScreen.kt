@@ -944,9 +944,13 @@ internal fun LocalEngineScreen(
         // Add disclosure, or settings stack precedes the first transfer row.
         val firstRunVisible = onConnections != null && showPhoneFirstRunWelcome(
             hasConfirmedLocalInventory, inventoryStale, transfers.isEmpty(),
-            !showFirstRunWelcome, transferSearch, addExpanded)
+            !showFirstRunWelcome, transferSearch, addExpanded,
+            transferFilter == LocalQueueFilter.ALL,
+            restoreNotice == null,
+            initialTorrentUri == null && initialMagnet.isNullOrBlank() && pending == null)
         if (pane == PhonePane.TRANSFERS) {
-            FlowRow(Modifier.fillMaxWidth(),
+            // An unconfigured, genuinely empty first launch needs no environment scope buttons.
+            if (!firstRunVisible) FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 EnvironmentBadge("This device", server = false,
@@ -1872,6 +1876,9 @@ internal fun LocalEngineScreen(
                 }
             }
         )
+        // Search, batch and filter/sort controls have no targets on genuine first use.
+        // Retain them whenever inventory is unknown, filtered, stale or populated.
+        if (!firstRunVisible) {
         // Compact controls immediately precede the inventory. All batch tools
         // stay collapsed until explicitly requested.
         ClearableTransferSearchField(
@@ -1936,6 +1943,7 @@ internal fun LocalEngineScreen(
                 TransferSortOrdering.reversed(transferDirection)) }
         )
         }
+        } // !firstRunVisible: end transfer search, batch, filter and sort tools
         val addedHidden = remember(lastAddedHash, lastAddedView, transfers, displayedTransfers,
             transferSearch, transferFilter) {
             lastAddedView == transferSearch + "\u0000" + transferFilter.name &&
@@ -1953,7 +1961,7 @@ internal fun LocalEngineScreen(
             Text("Showing ${displayedTransfers.size} of ${transfers.size} transfers on this device",
                 style = MaterialTheme.typography.bodySmall)
         if (transfers.isEmpty()) {
-            // Search and filters precede welcome even for an empty inventory.
+            // The welcome introduction follows the header directly, without empty-list tools.
             if (firstRunVisible) NoTransfersWelcome(
                 onAdd = { if (onOpenAdd != null) onOpenAdd.invoke()
                     else { addExpanded = true; addNavigationRevision++ } },
