@@ -2,6 +2,7 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.performClick
@@ -98,11 +99,29 @@ class ConnectionsRemoteIntroTest {
             onProfile = { chosenLogins += it.id })
         rule.onAllNodesWithText("View transfers").assertCountEquals(2)
         rule.onAllNodesWithText("Use saved login").assertCountEquals(2)
+        // TalkBack must distinguish duplicate friendly labels by their saved
+        // endpoint, without speaking credential secrets or ambiguous buttons.
+        for (profile in listOf(first, second)) {
+            rule.onNodeWithContentDescription(
+                "View transfers for saved " + profile.label + " on " + profile.address
+            ).assertExists()
+            rule.onNodeWithContentDescription(
+                "Use saved login for " + profile.label + " on " + profile.address
+            ).assertExists()
+            rule.onNodeWithContentDescription(
+                "Rename saved " + profile.label + " on " + profile.address
+            ).assertExists()
+            rule.onNodeWithContentDescription(
+                "Forget saved " + profile.label + " on " + profile.address
+            ).assertExists()
+        }
         // Both profiles have identical friendly labels but distinct endpoint routes.
         rule.onAllNodesWithText("View transfers")[1].performClick()
         assertEquals(listOf(second.id), viewed)
         assertEquals(emptyList<String>(), chosenLogins)
-        rule.onAllNodesWithText("Use saved login")[0].performClick()
+        rule.onNodeWithContentDescription(
+            "Use saved login for " + first.label + " on " + first.address
+        ).performClick()
         assertEquals(listOf(first.id), chosenLogins)
         assertEquals(listOf(second.id), viewed)
     }
