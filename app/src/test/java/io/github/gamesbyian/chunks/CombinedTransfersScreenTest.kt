@@ -118,6 +118,36 @@ class CombinedTransfersScreenTest {
         assertTrue("first-run welcome never writes torrents", commands.isEmpty())
     }
 
+    @Test fun explicitAllEnvironmentsClearsPriorSavedProfileViewWithoutRpcCommand() {
+        val currentId = requireNotNull(io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+            .serverIdOfAliasScope(aliasScope)).value
+        var pendingFocus by mutableStateOf<String?>(currentId)
+        var showAllRevision by androidx.compose.runtime.mutableLongStateOf(0L)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, rows, stale = false,
+                        fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
+                        lifecycle = gate),
+                    savedProfiles = listOf(other),
+                    onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                    scopeFocusRequest = pendingFocus,
+                    onScopeFocusConsumed = { pendingFocus = null },
+                    showAllEnvironmentsRevision = showAllRevision
+                )
+            } }
+        }
+        revealText("Show all transfers")
+        rule.onNodeWithText("Show all transfers").assertExists()
+        rule.runOnIdle { showAllRevision++ }
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Show all transfers").fetchSemanticsNodes().isEmpty()
+        }
+        revealText("Big Archive")
+        revealText("Small Episode")
+        assertTrue("view scope reset can never dispatch an rTorrent mutation", commands.isEmpty())
+    }
+
     @Test fun rootTransfersTapClosesFullDetailsWithoutIssuingLifecycleCommand() {
         var catalogRevision by mutableStateOf(0L)
         rule.setContent {
