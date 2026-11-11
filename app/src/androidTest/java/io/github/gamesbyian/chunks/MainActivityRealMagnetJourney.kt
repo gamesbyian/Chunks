@@ -251,14 +251,19 @@ internal class MainActivityRealMagnetJourney(
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
+        fun remoteAddShowing() = visible("Magnet or torrent link") || visible("View verified transfer in rTorrent")
         fun openRemoteAdd() {
             clickTag(ChunksSemantics.FOOTER_ADD)
-            rule.waitUntil(30_000) { visible("Add a transfer") }
-            // The footer opens the source-first form for this device. The authenticated
-            // server is an explicit, non-mutating Add-to choice (it grants no Add permission).
-            rule.waitUntil(30_000) { hasTag(ChunksSemantics.ADD_TARGET_REMOTE) }
-            rule.onNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE)).performScrollTo().performClick()
-            rule.waitUntil(30_000) { visible("Magnet or torrent link") }
+            rule.waitUntil(30_000) { visible("Add a transfer") || remoteAddShowing() }
+            // The footer opens the last selected target; on first use that is this device. The
+            // authenticated server is an explicit, non-mutating Add-to choice (it grants no Add
+            // permission). Select it only when the remote form is not already showing, e.g. when
+            // returning to a retained verified result.
+            if (!remoteAddShowing()) {
+                rule.waitUntil(30_000) { hasTag(ChunksSemantics.ADD_TARGET_REMOTE) }
+                rule.onNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE)).performScrollTo().performClick()
+            }
+            rule.waitUntil(30_000) { remoteAddShowing() }
         }
         fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}) {
             report("chunks_real_add_app_stage", "add-open-requested")
