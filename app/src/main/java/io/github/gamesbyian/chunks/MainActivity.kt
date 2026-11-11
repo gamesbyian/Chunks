@@ -901,6 +901,43 @@ internal fun ChunksApp(
         // Child routes must not each own competing bottom navigation bars.
         Box(Modifier.weight(1f)) {
 
+        // Finish in Order on rTorrent advances whenever this server is connected, whichever screen
+        // is showing (canonical Transfers/Details and Connections included): at most one guarded
+        // step per policy every 30 s, under the same mutation gate as every other server change.
+        LaunchedEffect(server, aliasScope) {
+            val connectedRemote = server ?: return@LaunchedEffect
+            val remotePrivacyScope = RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
+            val store = FinishInOrderStore(context, aliasScope)
+            while (true) {
+                kotlinx.coroutines.delay(30_000L)
+                if (remotePrivacyScope == null) continue
+                for (transfer in transfers.filter { it.started }) {
+                    val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
+                    if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
+                    if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) break
+                    // Only a positively Idle step is known to have sent
+                    // no remote priority write. It must not consume the
+                    // readback latch and block every later lifecycle action.
+                    var confirmedNoWrite = false
+                    try {
+                        val step = try { stepRemoteFinishInOrder(connectedRemote, store, transfer.hash) }
+                            catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+                            catch (_: Exception) { null }
+                        confirmedNoWrite = step is FinishInOrderRunner.Step.Idle
+                    } finally {
+                        if (confirmedNoWrite) {
+                            mutationGate.abandonKnownNoWrite()
+                        } else {
+                            // Null/fault/cancellation may follow an applied
+                            // priority write: retain the gate until a fresh
+                            // read, without blindly dispatching another RPC.
+                            mutationGate.settled()
+                            if (server === connectedRemote) { stale = true; refresh() }
+                        }
+                    }
+                }
+            }
+        }
         if (presentationSection == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
@@ -1654,41 +1691,6 @@ internal fun ChunksApp(
                     mutationGate.settled()
                     stale = true
                     refresh()
-                }
-            }
-            // Finish in Order on rTorrent advances only while connected here:
-            // at most one guarded step per policy every 30 s, under the same
-            // mutation gate as every other server change.
-            LaunchedEffect(connectedRemote, aliasScope) {
-                val store = FinishInOrderStore(context, aliasScope)
-                while (true) {
-                    kotlinx.coroutines.delay(30_000L)
-                    if (remotePrivacyScope == null) continue
-                    for (transfer in transfers.filter { it.started }) {
-                        val record = withContext(Dispatchers.IO) { store.get(transfer.hash) } ?: continue
-                        if (record.suspendedReason != null || (record.finished && record.pending.isEmpty())) continue
-                        if (server !== connectedRemote || loading || stale || !mutationGate.tryStart()) break
-                        // Only a positively Idle step is known to have sent
-                        // no remote priority write. It must not consume the
-                        // readback latch and block every later lifecycle action.
-                        var confirmedNoWrite = false
-                        try {
-                            val step = try { stepRemoteFinishInOrder(connectedRemote, store, transfer.hash) }
-                                catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                                catch (_: Exception) { null }
-                            confirmedNoWrite = step is FinishInOrderRunner.Step.Idle
-                        } finally {
-                            if (confirmedNoWrite) {
-                                mutationGate.abandonKnownNoWrite()
-                            } else {
-                                // Null/fault/cancellation may follow an applied
-                                // priority write: retain the gate until a fresh
-                                // read, without blindly dispatching another RPC.
-                                mutationGate.settled()
-                                if (server === connectedRemote) { stale = true; refresh() }
-                            }
-                        }
-                    }
                 }
             }
             // Reuse the already-authorized destinations. No search-created

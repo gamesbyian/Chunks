@@ -569,6 +569,11 @@ internal fun VerifiedAddScreen(
             Text("Destination: " + plan.destination +
                 if (plan.useServerDefault) " (server default; no directory override)"
                 else " (custom parent folder)", style = MaterialTheme.typography.bodySmall)
+            // Restored from the former confirmation card: the one-click Add must still warn,
+            // before submission, that a trackerless source can only find peers by DHT/web seeds.
+            val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
+                else TorrentMetainfoReader.magnetTrackerCount(sourceText)
+            if (trackers == 0) ChunksBanner("No tracker", trackerlessWarning(useFile), ChunksTone.ERROR)
         }
         if (!alreadyAttempted) item {
             Row(
