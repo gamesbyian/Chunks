@@ -89,6 +89,56 @@ class CombinedTransfersScreenTest {
         assertTrue(commands.isEmpty())
     }
 
+    @Test fun freshCanonicalWelcomeRoutesAddAndConnectionsWithoutInventoryChrome() {
+        var add = 0
+        var connections = 0
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = null, savedProfiles = emptyList(),
+                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    onConnections = { connections++ },
+                    enableFirstRunWelcome = true,
+                    onWelcomeAdd = { add++ },
+                    showNavigationFooter = false
+                )
+            } }
+        }
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Welcome to Chunks").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Welcome to Chunks").assertExists()
+        rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
+        rule.onNodeWithText("All environments").assertDoesNotExist()
+        rule.onNodeWithText("Batch & tools").assertDoesNotExist()
+        rule.onNodeWithText("Add a torrent").performClick()
+        rule.onNodeWithText("Connections").performClick()
+        assertEquals(1, add)
+        assertEquals(1, connections)
+        assertTrue("first-run welcome never writes torrents", commands.isEmpty())
+    }
+
+    @Test fun vaultOnlyRememberedRemoteDoesNotMasqueradeAsFreshInstall() {
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = null, savedProfiles = emptyList(),
+                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    enableFirstRunWelcome = true,
+                    hasRememberedRemoteLogin = true,
+                    showNavigationFooter = false
+                )
+            } }
+        }
+        // A verified old account may still be in the encrypted vault before
+        // its roster becomes readable. Preserve the truthful catalog/offline
+        // presentation, even when local engine inventory is genuinely empty.
+        rule.onNodeWithText("Welcome to Chunks").assertDoesNotExist()
+        rule.onNodeWithText("Search names or hashes").assertExists()
+        rule.onNodeWithText("Transfers").assertExists()
+        assertTrue("vault-only browse must not issue rTorrent writes", commands.isEmpty())
+    }
+
     @Test fun explicitAllEnvironmentsClearsPriorSavedProfileViewWithoutRpcCommand() {
         val currentId = requireNotNull(io.github.gamesbyian.chunks.model.EnvironmentSnapshots
             .serverIdOfAliasScope(aliasScope)).value
