@@ -84,6 +84,11 @@ class PhoneMagnetDraftCheckTest {
         copy("  $link\n")
         openAdd()
         rule.waitForIdle()
+        // The clipboard is read off the main thread, so the prefill lands after the form is idle
+        // (CI run 43077533021 failed here intermittently). Wait for it, then assert as before.
+        rule.waitUntil(10_000) {
+            rule.onAllNodes(hasSetTextAction() and hasText(link)).fetchSemanticsNodes().isNotEmpty()
+        }
         rule.onNode(hasSetTextAction() and hasText(link)).assertExists()
         rule.onNodeWithText("Magnet for: pasted").assertExists()
         rule.onNodeWithText("Filled from your clipboard. Nothing is added until you confirm.").assertExists()
