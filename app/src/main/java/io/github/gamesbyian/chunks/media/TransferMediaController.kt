@@ -239,6 +239,25 @@ class TransferMediaController(
         false
     }
 
+    /**
+     * A host that has ALREADY read an exact job's file list under its current authority (e.g. a
+     * remote Details file listing) may share it as local classification evidence. Never issue a
+     * new engine/RPC read just to call this. Paths stay on the device; the next authorized
+     * inventory pass or observer refresh uses the improved recognition. Call off the main thread.
+     */
+    fun offerFileEvidence(key: MediaTransferKey, originalName: String, files: List<MediaFileHint>) {
+        if (files.isEmpty()) return
+        fileEvidenceCache.put(key, originalName, MediaRecognizer.recognize(originalName, files))
+        val f = flow(key) ?: return
+        val input = synchronized(this) { inputs[key] }
+        if (input != null && input.name == originalName && input.files.isEmpty()) {
+            val upgraded = recognizeWithEvidence(key, input)
+            f.update { cur -> if (cur.recognition.raw == originalName && cur.recognition != upgraded)
+                cur.copy(recognition = upgraded) else cur }
+            refreshAutomatic(key)
+        }
+    }
+
     /** A committed visible observer can re-check eligibility without rescanning cached hidden rows. */
     fun refreshAutomatic(key: MediaTransferKey) {
         scope.launch(lookupDispatcher) {

@@ -168,6 +168,35 @@ class MediaFileEvidenceTest {
         assertEquals(settled, http.requests.size)
     }
 
+    @Test fun hostOfferedRemoteFileListIdentifiesTheExactRemoteJobOnly() = runBlocking {
+        val c = controller(MediaFileEvidenceSource.NONE)
+        c.enrichInventory(listOf(server to folderName))
+        assertTrue(providerRequests().isEmpty()) // name alone: no lookup
+
+        // An already-loaded authorized rTorrent file list, shared by its host.
+        c.offerFileEvidence(server, folderName, movieFiles)
+        c.enrichInventory(listOf(server to folderName, phone to folderName))
+        assertEquals(MediaAssignmentState.AUTOMATIC, records().get(server)?.state)
+        // The same hash on the phone is a different job without evidence of its own.
+        assertNull(records().get(phone))
+        assertEquals(1, providerRequests().size)
+        // Exclusion still wins over offered evidence.
+        val other = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("rtorrent-profile"), "d".repeat(40)))
+        assertTrue(c.setAutomaticLookupEnabled(other, false))
+        c.offerFileEvidence(other, folderName, movieFiles)
+        c.enrichInventory(listOf(other to folderName))
+        assertNull(records().get(other))
+    }
+
+    @Test fun offeredEvidenceUpgradesAVisibleRow() {
+        val c = controller(MediaFileEvidenceSource.NONE)
+        val row = c.observe(server, folderName) { true }
+        assertEquals(MediaKind.UNKNOWN, row.value.recognition.kind)
+        c.offerFileEvidence(server, folderName, movieFiles)
+        assertEquals(MediaKind.MOVIE, row.value.recognition.kind)
+        assertEquals(MediaAssignmentState.AUTOMATIC, row.value.state)
+    }
+
     @Test fun nonVideoCompositionIsNeverLookedUpAsAMovie() = runBlocking {
         controller(CountingEvidence(mapOf(phone to photoFiles))).enrichInventory(listOf(phone to folderName))
         assertTrue(providerRequests().isEmpty())
