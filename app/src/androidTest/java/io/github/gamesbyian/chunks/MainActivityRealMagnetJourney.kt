@@ -331,10 +331,11 @@ internal class MainActivityRealMagnetJourney(
                 // opt-out. Probe only semantics/scroll before choosing whether
                 // the disclosure needs opening. Never retry the checkbox tap
                 // (it represents the user's actual source-specific choice).
-                val choiceAlreadyExpanded = runCatching {
-                    scroll(artworkChoice)
-                    rule.onNodeWithText(artworkChoice).assertIsDisplayed()
-                }.isSuccess
+                // Existence, not full visibility: a partly visible expanded option must not be
+                // mistaken for a collapsed disclosure (the click would then collapse it).
+                val choiceAlreadyExpanded = runCatching { scroll(artworkChoice) }.let {
+                    rule.onAllNodesWithText(artworkChoice).fetchSemanticsNodes().isNotEmpty()
+                }
                 if (!choiceAlreadyExpanded) click("Artwork & metadata")
                 report("chunks_real_add_app_stage", "artwork-choice")
                 // This must remain present, reachable and actionable for
