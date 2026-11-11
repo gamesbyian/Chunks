@@ -46,6 +46,15 @@ class AcceptanceReportTest(unittest.TestCase):
         self.assertEqual([r.NOT_EXECUTED, r.NOT_EXECUTED], [row["state"] for row in report["rows"]])
         self.assertFalse(report["acceptable"])
 
+    def test_newest_run_of_a_name_wins_over_a_stale_draft_skip(self):
+        stale = dict(check("build-once", "skipped"), id=10)
+        fresh = dict(check("build-once", "success"), id=20)
+        for order in ([stale, fresh], [fresh, stale]):
+            with self.subTest(order=[c["id"] for c in order]):
+                self.assertEqual(r.PASSED, r.evaluate(order, ["build-once"], CONFIG, {})["rows"][0]["state"])
+        newer_failure = dict(check("build-once", "failure"), id=30)
+        self.assertEqual(r.FAILED, r.evaluate([fresh, newer_failure], ["build-once"], CONFIG, {})["rows"][0]["state"])
+
     def test_pending_is_not_a_pass(self):
         gates = r.profile_gates(CONFIG, "foundation")
         checks = [check(gates[0]), check(gates[1], None, "in_progress")]
@@ -67,6 +76,16 @@ class AcceptanceReportTest(unittest.TestCase):
         detail = r.evaluate([test], gates, CONFIG, {})["rows"][0]["detail"]
         self.assertIn("needs-diagnosis", detail)
         self.assertNotIn("environment/dependency", detail)
+
+    def test_a_journey_step_that_merely_says_installed_is_never_environment(self):
+        journey = check("installed-magnet-lifecycle", "failure", steps=[
+            {"name": "Installed production phone and rTorrent source journeys with real peer pieces",
+             "conclusion": "failure"}])
+        detail = r.evaluate([journey], ["installed-magnet-lifecycle"], CONFIG, {})["rows"][0]["detail"]
+        self.assertIn("needs-diagnosis", detail)
+        self.assertNotIn("environment/dependency", detail)
+        emulator = check("x", "failure", steps=[{"name": "Run tests on emulator", "conclusion": "failure"}])
+        self.assertIn("needs-diagnosis", r.evaluate([emulator], ["x"], CONFIG, {})["rows"][0]["detail"])
 
     def test_real_peer_profile_extends_integration(self):
         base = r.profile_gates(CONFIG, "integration")

@@ -175,7 +175,11 @@ class HttpsPhoneAddJourneyInstrumentedTest {
             stage("seed-verified")
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
-                rule.waitUntil(30_000) { visible("This device") }
+                // A fresh install opens on the evidence-gated Welcome, which has no device
+                // scope badge. Wait for the persistent footer's Add root instead.
+                rule.waitUntil(30_000) {
+                    rule.onAllNodesWithTag(ChunksSemantics.FOOTER_ADD).fetchSemanticsNodes().isNotEmpty()
+                }
                 stage("phone-open")
                 click("+ Add")
                 rule.waitUntil(30_000) { visible("Saves to: Downloads/Chunks Downloads") }

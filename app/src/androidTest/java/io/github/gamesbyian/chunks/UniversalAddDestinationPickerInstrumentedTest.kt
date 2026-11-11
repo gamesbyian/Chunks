@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,9 +43,9 @@ class UniversalAddDestinationPickerInstrumentedTest {
                     onConnectSaved = { })
             }
         }
-        rule.onNodeWithText("This device").assertIsSelected()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).assertIsSelected()
         rule.onNodeWithText("rTorrent instance 2").performClick().assertIsSelected()
-        rule.onNodeWithText("This device").performClick().assertIsSelected()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performClick().assertIsSelected()
         rule.onNodeWithText("Other saved connections (1)").performClick()
         rule.onNodeWithText("Connect to rTorrent instance 3").assertExists()
         rule.runOnIdle {

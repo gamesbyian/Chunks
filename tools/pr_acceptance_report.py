@@ -70,8 +70,10 @@ def failure_class(check: dict, config: dict) -> str:
 def evaluate(checks: list[dict], gates: list[str], config: dict, waivers: dict[str, str],
              draft: bool = False) -> dict:
     by_name: dict[str, dict] = {}
-    for check in checks:
-        by_name[check["name"]] = check  # last wins; callers pass one attempt per name
+    # One commit can carry several check runs with one name (a draft run that skipped the
+    # job, then the ready run, or a rerun). The newest run (highest id) is the evidence.
+    for check in sorted(checks, key=lambda c: c.get("id", 0)):
+        by_name[check["name"]] = check
     rows, blockers = [], []
     for gate in gates:
         if gate in waivers:
