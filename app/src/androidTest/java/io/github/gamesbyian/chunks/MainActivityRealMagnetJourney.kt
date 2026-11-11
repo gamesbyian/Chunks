@@ -346,9 +346,10 @@ internal class MainActivityRealMagnetJourney(
                 // a blind click on an already-expanded disclosure would collapse the opt-out.
                 val disclosure = "Artwork & metadata"
                 rule.waitUntil(45_000) { runCatching { scroll(disclosure); true }.getOrDefault(false) }
-                val collapsed = rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
-                    .fetchSemanticsNode().config.getOrNull(
-                        androidx.compose.ui.semantics.SemanticsProperties.StateDescription) == "Collapsed"
+                val collapsed = runCatching {
+                    rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
+                        .fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
+                }.getOrNull() == "Collapsed"
                 if (collapsed) click(disclosure)
                 report("chunks_real_add_app_stage", "artwork-choice")
                 // This must remain present, reachable and actionable for
