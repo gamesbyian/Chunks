@@ -830,8 +830,8 @@ internal fun CombinedTransfersScreen(
         nativeConfirmed = phoneConfirmed,
         nativeStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations(),
         nativeCount = phoneFrame.entries.size,
-        hasRemoteProfile = server != null || savedProfiles.isNotEmpty() ||
-            hasRememberedRemoteLogin,
+        hasRemoteProfile = configuredRemoteForWelcome(
+            server != null, savedProfiles.isNotEmpty(), hasRememberedRemoteLogin),
         restrictedView = CombinedViewPreferences.narrowingActive(query),
         privacyAllowed = phonePrivacy.mayShow,
         pendingExternalSource = pendingSharedMagnet || pendingSharedLink ||
