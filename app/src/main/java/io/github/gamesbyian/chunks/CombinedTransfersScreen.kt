@@ -1008,19 +1008,36 @@ internal fun CombinedTransfersScreen(
             exactServerOperations = if (canShowExactRemoval) ({
                 val owner = requireNotNull(server)
                 val mutation = requireNotNull(owner.lifecycle)
-                TransferSessionRemoveControl(
-                    remote = requireNotNull(activeRemoteForRemoval),
-                    transfer = requireNotNull(exactRemoteRow),
-                    snapshotStale = owner.stale ||
-                        details.readState != TransferDetailReadState.CURRENT ||
-                        sourcesByEnvironment[focusedKey.environment]
-                            ?.canClaimCompleteLiveInventory != true,
-                    mainView = owner.fullView,
-                    onMutationStarted = mutation.begin,
-                    onSettled = mutation.settled,
-                    environmentLabel = labels[focusedKey.environment],
-                    snapshotRevision = owner.snapshotRevision
-                )
+                val boundRemote = requireNotNull(activeRemoteForRemoval)
+                val boundRow = requireNotNull(exactRemoteRow)
+                val operationsStale = owner.stale ||
+                    details.readState != TransferDetailReadState.CURRENT ||
+                    sourcesByEnvironment[focusedKey.environment]
+                        ?.canClaimCompleteLiveInventory != true
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    TransferSessionRemoveControl(
+                        remote = boundRemote, transfer = boundRow,
+                        snapshotStale = operationsStale,
+                        mainView = owner.fullView,
+                        onMutationStarted = mutation.begin,
+                        onSettled = mutation.settled,
+                        environmentLabel = labels[focusedKey.environment],
+                        snapshotRevision = owner.snapshotRevision
+                    )
+                    // The SAME exact authenticated adapter and lease. File
+                    // reads are explicit, bounded and privacy-gated; the
+                    // already-reviewed existing priority/ordering components
+                    // independently verify every consequential write.
+                    CanonicalRemoteFilesControls(
+                        remote = boundRemote, transfer = boundRow,
+                        aliasScope = owner.aliasScope,
+                        snapshotStale = operationsStale,
+                        mainView = owner.fullView,
+                        snapshotRevision = owner.snapshotRevision,
+                        onMutationStarted = mutation.begin,
+                        onSettled = mutation.settled
+                    )
+                }
             }) else null,
             onOpenOwningList = openFor(focusedKey),
             onReviewStartStop = if (canReviewLifecycle) ({
