@@ -331,7 +331,7 @@ internal fun CombinedTransfersScreen(
     returnToCatalogRevision: Long = 0L,
     /** Explicit All environments navigation is distinct from a saved profile link. */
     showAllEnvironmentsRevision: Long = 0L,
-    onShowAllEnvironmentsConsumed: (Long) -> Unit = {}
+    onShowAllEnvironmentsConsumed: (Long) -> Unit = {},
     /** Host opt-in: genuine first-run omits all inventory-management chrome. */
     enableFirstRunWelcome: Boolean = false,
     onWelcomeAdd: (() -> Unit)? = null
