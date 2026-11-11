@@ -62,7 +62,9 @@ class TransferMediaController(
     /** Separate lane so automatic lookups never queue ahead of explicit user actions. */
     private val backgroundDispatcher: CoroutineDispatcher = lookupDispatcher,
     ruleStoreFactory: () -> MediaRuleStore = { InMemoryMediaRuleStore() },
-    automationStoreFactory: () -> MediaAutomationPreferences = { InMemoryMediaAutomationPreferences() }
+    automationStoreFactory: () -> MediaAutomationPreferences = { InMemoryMediaAutomationPreferences() },
+    /** Exact-key local file lists used only as classification evidence; never transmitted. */
+    private val fileEvidence: MediaFileEvidenceSource = MediaFileEvidenceSource.NONE
 ) {
     private val automationStore by lazy(automationStoreFactory)
     private val observationAuthorization = java.util.concurrent.ConcurrentHashMap<MediaTransferKey,
@@ -76,6 +78,10 @@ class TransferMediaController(
     /** Ephemeral provider-configuration attempts are hints, not identity or authorization.
      * Bound historical exact-hash churn without evicting any durable assignment or opt-out. */
     private val lastProviderAttemptRevision = BoundedRetryTimestamps<MediaTransferKey>()
+    /** Sanitized query behind each key's last automatic negative/ambiguous result (in memory only). */
+    private val lastAutomaticQuery = object : LinkedHashMap<MediaTransferKey, String>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<MediaTransferKey, String>) = size > 10_000
+    }
     private val ruleStoreLazy = lazy(ruleStoreFactory)
     private val ruleStore by ruleStoreLazy
     companion object {
@@ -134,9 +140,38 @@ class TransferMediaController(
     private val inputs = HashMap<MediaTransferKey, MediaRecognitionInput>()
     private val embedded = HashMap<MediaTransferKey, io.github.gamesbyian.chunks.media.inspection.EmbeddedMediaTags>()
 
+    /** File-informed recognitions by exact key + original name, shared by rows, Details and inventory. */
+    private val fileEvidenceCache = MediaFileEvidenceCache()
+
     private fun recognizeWithEvidence(key: MediaTransferKey, input: MediaRecognitionInput): MediaRecognition {
-        val base = MediaRecognizer.recognize(input)
+        // A name-only observer (list row, offscreen inventory) must not discard file
+        // composition another authorized observer or the engine already supplied.
+        val base = (if (input.files.isEmpty()) fileEvidenceCache.get(key, input.name) else null)
+            ?: MediaRecognizer.recognize(input)
         return embedded[key]?.let { MediaRecognizer.withEmbeddedTags(base, it) } ?: base
+    }
+
+    /**
+     * Background lanes only. Reads the exact key's local file list once per process when the
+     * key is currently authorized. Returns true when new file evidence was recorded.
+     */
+    private fun resolveFileEvidence(key: MediaTransferKey, name: String, authorized: () -> Boolean): Boolean {
+        if (fileEvidenceCache.get(key, name) != null || !authorized()) return false
+        val files = try { fileEvidence.files(key) } catch (_: Exception) { null } ?: return false
+        // Authority may have ended during the read (lock, logout, removal): record nothing.
+        if (!authorized()) return false
+        fileEvidenceCache.put(key, name, MediaRecognizer.recognize(name, files))
+        return true
+    }
+
+    /** Upgrade an observed name-only state once file evidence is known; never downgrades. */
+    private fun applyFileEvidence(key: MediaTransferKey, f: MutableStateFlow<TransferMediaUiState>) {
+        val input = synchronized(this) { inputs[key] } ?: return
+        if (input.files.isNotEmpty()) return
+        resolveFileEvidence(key, input.name, authorization(key))
+        val upgraded = recognizeWithEvidence(key, input)
+        f.update { cur -> if (cur.recognition.raw == input.name && cur.recognition != upgraded)
+            cur.copy(recognition = upgraded) else cur }
     }
 
     fun providerInfos() = service.providerInfos()
@@ -148,7 +183,12 @@ class TransferMediaController(
     fun observe(key: MediaTransferKey, name: String, files: List<MediaFileHint> = emptyList(),
                 isAuthorized: () -> Boolean = { true }): StateFlow<TransferMediaUiState> {
         observationAuthorization.computeIfAbsent(key) { java.util.concurrent.CopyOnWriteArraySet() }.add(isAuthorized)
-        val input = MediaRecognitionInput(name, files)
+        val prior = inputs[key]
+        // A list row observes by name only while Details may supply the local file list for
+        // the same exact job. The weaker observer must not erase the stronger evidence.
+        val input = if (files.isEmpty() && prior != null && prior.name == name && prior.files.isNotEmpty()) prior
+            else MediaRecognitionInput(name, files)
+        if (files.isNotEmpty()) fileEvidenceCache.put(key, name, MediaRecognizer.recognize(input))
         val existing = states[key]
         if (existing != null && inputs[key] == input) return existing
         inputs[key] = input
@@ -157,13 +197,14 @@ class TransferMediaController(
         if (existing != null) flow.update { it.copy(recognition = recognizeWithEvidence(key, input)) }
         scope.launch(lookupDispatcher) {
             settings().let { largeListArtworkFlow.value = it.largeListArtwork; presentationFlow.value = it }
+            applyFileEvidence(key, flow)
             val enabled = !automationStore.isExcluded(key)
             val a = store.get(key) ?: if (enabled && localRulesAllowed()) applyRuleIfAny(key, flow.value.recognition) else null
             flow.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled,
                 automaticMessage = artworkGapReason(a ?: it.assignment) ?:
                     if ((a ?: it.assignment)?.displayMatch != null) null else automaticPauseReason(enabled)) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
-            if (automaticDue(key, a)) maybeAutomatic(key)
+            if (automaticDue(key, a, flow.value.recognition)) maybeAutomatic(key)
         }
         return flow
     }
@@ -198,21 +239,59 @@ class TransferMediaController(
         false
     }
 
+    /**
+     * A host that has ALREADY read an exact job's file list under its current authority (e.g. a
+     * remote Details file listing) may share it as local classification evidence. Never issue a
+     * new engine/RPC read just to call this. Paths stay on the device; the next authorized
+     * inventory pass or observer refresh uses the improved recognition. Call off the main thread.
+     */
+    fun offerFileEvidence(key: MediaTransferKey, originalName: String, files: List<MediaFileHint>) {
+        if (files.isEmpty()) return
+        fileEvidenceCache.put(key, originalName, MediaRecognizer.recognize(originalName, files))
+        val f = flow(key) ?: return
+        val input = synchronized(this) { inputs[key] }
+        if (input != null && input.name == originalName && input.files.isEmpty()) {
+            val upgraded = recognizeWithEvidence(key, input)
+            f.update { cur -> if (cur.recognition.raw == originalName && cur.recognition != upgraded)
+                cur.copy(recognition = upgraded) else cur }
+            refreshAutomatic(key)
+        }
+    }
+
     /** A committed visible observer can re-check eligibility without rescanning cached hidden rows. */
     fun refreshAutomatic(key: MediaTransferKey) {
         scope.launch(lookupDispatcher) {
             val f = flow(key) ?: return@launch
+            applyFileEvidence(key, f)
             val enabled = !automationStore.isExcluded(key)
             val a = store.get(key) ?: if (enabled && localRulesAllowed()) applyRuleIfAny(key, f.value.recognition) else null
             f.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled,
                 automaticMessage = artworkGapReason(a ?: it.assignment) ?:
                     if ((a ?: it.assignment)?.displayMatch != null) null else automaticPauseReason(enabled)) }
             if (a?.displayMatch != null || a?.userArtwork != null) loadArtwork(key)
-            if (automaticDue(key, a)) maybeAutomatic(key)
+            if (automaticDue(key, a, f.value.recognition)) maybeAutomatic(key)
         }
     }
 
-    private fun automaticDue(key: MediaTransferKey, assignment: TransferMediaAssignment?): Boolean {
+    /** Stable fingerprint of what an automatic lookup would send; null when nothing may be sent. */
+    private fun queryFingerprint(r: MediaRecognition): String? =
+        (MediaQuerySanitizer.fromRecognition(r) as? MediaQueryDecision.Allowed)?.query?.let { q ->
+            listOf(q.kind.name, q.title, q.year, q.season, q.episode, q.creator, q.issue, q.animeHint).joinToString("\u0000")
+        }
+
+    /**
+     * Local evidence that arrives after a lookup (magnet metadata, a Details file list, embedded
+     * tags) can change what would be asked. One automatic retry of an unresolved result is then
+     * due; an unchanged query keeps the normal TTL/provider-revision schedule.
+     */
+    private fun evidenceChangedQuery(key: MediaTransferKey, recognition: MediaRecognition?): Boolean {
+        val previous = synchronized(lastAutomaticQuery) { lastAutomaticQuery[key] } ?: return false
+        val current = recognition?.let(::queryFingerprint) ?: return false
+        return current != previous
+    }
+
+    private fun automaticDue(key: MediaTransferKey, assignment: TransferMediaAssignment?,
+                             recognition: MediaRecognition? = null): Boolean {
         if (assignment == null) return true
         val now = clock()
         val stale = now >= assignment.updatedAtMs &&
@@ -226,13 +305,13 @@ class TransferMediaController(
         val providerChanged = providerConfigurationRevision.get() > (previousRevision ?: 0L)
         if (assignment.state == MediaAssignmentState.COULDNT_IDENTIFY &&
             assignment.lastStatus == MediaLookupStatus.NOT_FOUND)
-            return stale || firstPassAfterRestart || providerChanged
+            return stale || firstPassAfterRestart || providerChanged || evidenceChangedQuery(key, recognition)
         // An ambiguous filename cannot be verified by its existing suggestions, but
         // a newly enabled provider can break a tie. Retry once per provider revision
         // and once on cold startup, with service query-cache TTLs guarding HTTP.
         // Ordinary inventory notifications must not repeatedly search the same ambiguity.
         if (assignment.state == MediaAssignmentState.SUGGESTED)
-            return firstPassAfterRestart || providerChanged
+            return firstPassAfterRestart || providerChanged || evidenceChangedQuery(key, recognition)
         val match = assignment.match ?: return false
         if (assignment.state != MediaAssignmentState.AUTOMATIC ||
             assignment.userArtwork != null || match.artwork.isNotEmpty()) return false
@@ -324,7 +403,7 @@ class TransferMediaController(
             try {
                 if (!permitted()) return
                 val previous = store.get(key)
-                if (!automaticDue(key, previous)) {
+                if (!automaticDue(key, previous, recognition)) {
                     // Offscreen, already verified transfers may be missing the processed
                     // derivative after cache eviction or a previous failed image request.
                     // Re-fetch only absent images; no metadata query or user-choice mutation.
@@ -363,6 +442,8 @@ class TransferMediaController(
                 val outcome = service.lookup(recognition, preferences, network(),
                     MediaLookupOrigin.CONSENTED_BACKGROUND_ENRICHMENT, requestAllowed = permitted)
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
+                if (outcome.status == MediaLookupStatus.NOT_FOUND || outcome.status == MediaLookupStatus.NEEDS_REVIEW)
+                    queryFingerprint(recognition)?.let { synchronized(lastAutomaticQuery) { lastAutomaticQuery[key] = it } }
                 // A user edit, exclusion, withdrawn consent or closed privacy scope wins over HTTP.
                 if (!permitted() || store.get(key) != previous) return
                 // A failed poster-completion lookup must not loop on every
@@ -497,7 +578,14 @@ class TransferMediaController(
             for ((key, name) in entries.distinctBy { it.first }) {
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (!isAuthorized(key)) continue
-                val recognition = MediaRecognizer.recognize(name)
+                // Offscreen jobs need the same local evidence as rendered rows/Details:
+                // a folder-named multi-file torrent is classified by its file composition.
+                resolveFileEvidence(key, name) { isAuthorized(key) }
+                val observed = synchronized(this@TransferMediaController) { inputs[key] }?.takeIf { it.name == name }
+                val recognition = recognizeWithEvidence(key, observed ?: MediaRecognitionInput(name))
+                if (observed != null && observed.files.isEmpty()) flow(key)?.update { cur ->
+                    if (cur.recognition.raw == name && cur.recognition != recognition) cur.copy(recognition = recognition) else cur
+                }
                 // A rule the user explicitly saved is local identity data, not an online
                 // lookup. Apply it to a newly arrived offscreen job even before provider
                 // consent, just as observe() does for a rendered row.
@@ -955,7 +1043,7 @@ class TransferMediaController(
                 f.update { cur -> cur.copy(automaticMessage =
                     artworkGapReason(cur.assignment) ?: if (cur.match != null) null else automaticPauseReason(enabled)) }
                 if (authorization(key)() && s.onlineLookupConsent && s.automaticLookup &&
-                    s.showArtwork && s.downloadArtwork && automaticDue(key, f.value.assignment)) maybeAutomatic(key)
+                    s.showArtwork && s.downloadArtwork && automaticDue(key, f.value.assignment, f.value.recognition)) maybeAutomatic(key)
                 if (!s.showArtwork) f.update { it.copy(artwork = null, artworkSource = null, poster = null) }
                 else if (f.value.artwork == null && f.value.assignment != null) loadArtwork(key)
             }
@@ -969,6 +1057,7 @@ class TransferMediaController(
         // Invalidate in-flight HTTP callbacks *before* the queued deletion runs.
         // Otherwise a late background response can repopulate records after purge.
         mediaDataGeneration.incrementAndGet()
+        fileEvidenceCache.clear()
         return scope.launch(lookupDispatcher) {
             store.clear(); ruleStore.clear(); clearQueryCache(); artwork.clearSafely(clearArtwork)
             synchronized(this@TransferMediaController) { states.values.toList() }.forEach { f ->

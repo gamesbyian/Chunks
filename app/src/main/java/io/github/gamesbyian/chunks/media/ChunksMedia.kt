@@ -67,7 +67,8 @@ class ChunksMedia private constructor(context: Context) {
             artworkDispatcher = Dispatchers.IO.limitedParallelism(2),
             backgroundDispatcher = Dispatchers.IO.limitedParallelism(1),
             ruleStoreFactory = { FileMediaRuleStore(File(app.filesDir, "media/rules.json")) },
-            automationStoreFactory = { FileMediaAutomationPreferences(File(app.filesDir, "media/automation.json")) })
+            automationStoreFactory = { FileMediaAutomationPreferences(File(app.filesDir, "media/automation.json")) },
+            fileEvidence = PhoneEngineMediaFileEvidence)
     }
     val controller: TransferMediaController by controllerLazy
 
