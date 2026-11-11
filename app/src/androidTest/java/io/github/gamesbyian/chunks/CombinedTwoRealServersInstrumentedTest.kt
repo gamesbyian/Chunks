@@ -63,7 +63,7 @@ class CombinedTwoRealServersInstrumentedTest {
     // Compact server header: "<host> · <n> transfers" with the server's own
     // Add action. Each disposable server holds exactly two fixtures.
     private fun connectedQueue() = visible("127.0.0.1 · 2 transfers") && visible("+ Add torrent")
-    private fun enterConnectedQueueIfCombined() {
+    private fun enterConnectedQueueIfCombined(observedOwnerTransfer: String? = null) {
         if (connectedQueue()) return
         // Startup may show a read-only Combined view during a saved-profile
         // reconnect. Wait for positive authenticated navigation; never infer
@@ -80,7 +80,10 @@ class CombinedTwoRealServersInstrumentedTest {
             // never by converting a selected scope into command authority.
             scrollTo("Only connected server")
             rule.onNodeWithText("Only connected server").performClick()
-            val shared = decoded("chunks_combined_shared_b64")
+            // Process-death phase deliberately receives only the one B endpoint;
+            // choose a transfer observed by independent authenticated readback.
+            // Phase 1 retains its explicit cross-server same-hash fixture.
+            val shared = observedOwnerTransfer ?: decoded("chunks_combined_shared_b64")
             val row = hasContentDescription("Details for $shared on", substring = true)
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
             rule.onNode(row).performClick()
@@ -178,7 +181,7 @@ class CombinedTwoRealServersInstrumentedTest {
         val before = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
             .map { it.hash to it.started }.toSet()
         ActivityScenario.launch(MainActivity::class.java).use {
-            enterConnectedQueueIfCombined()
+            enterConnectedQueueIfCombined(before.first().name)
             waitFor("reconnect after process death", 90_000) { connectedQueue() }
             assertTrue(!visible("Seedbox hostname, ruTorrent URL or RPC address"))
             stage("process-death-reconnected")
