@@ -118,6 +118,27 @@ class CombinedTransfersScreenTest {
         assertTrue("first-run welcome never writes torrents", commands.isEmpty())
     }
 
+    @Test fun vaultOnlyRememberedRemoteDoesNotMasqueradeAsFreshInstall() {
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = null, savedProfiles = emptyList(),
+                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    enableFirstRunWelcome = true,
+                    hasRememberedRemoteLogin = true,
+                    showNavigationFooter = false
+                )
+            } }
+        }
+        // A verified old account may still be in the encrypted vault before
+        // its roster becomes readable. Preserve the truthful catalog/offline
+        // presentation, even when local engine inventory is genuinely empty.
+        rule.onNodeWithText("Welcome to Chunks").assertDoesNotExist()
+        rule.onNodeWithText("Search names or hashes").assertExists()
+        rule.onNodeWithText("Transfers").assertExists()
+        assertTrue("vault-only browse must not issue rTorrent writes", commands.isEmpty())
+    }
+
     @Test fun explicitAllEnvironmentsClearsPriorSavedProfileViewWithoutRpcCommand() {
         val currentId = requireNotNull(io.github.gamesbyian.chunks.model.EnvironmentSnapshots
             .serverIdOfAliasScope(aliasScope)).value
