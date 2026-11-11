@@ -150,3 +150,15 @@ A code review of the `app/src/main` diff (unverified findings, then checked here
 - **Trackerless warning lost** from remote Add when the confirmation card was removed: restored beside the inline infohash/destination before the single Add action (`RemoteAddTrackerlessWarningTest`).
 
 **Open follow-ups recorded, not fixed in #1644** (each needs its own reproduction): stale picker/handoff results can overwrite a newer shared source (`LocalEngineScreen` review read; `incomingTorrent` no longer clears phone handoffs); `selectAuthenticatedAddTarget()` can drop a just-set server `.torrent` when the draft holds a magnet; "Connect to <saved profile>" from Add while another server is connected cannot complete (overlaps #1611); "Forget saved login while staying connected" and the stale-list indicator lived on the now-unreachable `ServerScreen`; startup auto-reconnect narrows Transfers to that server; the canonical files panel re-reads and resets on every refresh; redundant owner re-checks in `runCombinedLifecycle`.
+
+## Merged #1644 and what remains
+
+**Merged** as `2812eaf` (squash, 22:25 UTC) at qualified head `687bb04d6cab326c80d79d336c05738268ea01b4`; the merge tree equals the qualified tree (`4fb6844`). Exact-head acceptance (`integration-real-peer`): **ACCEPTABLE**, every required gate executed and passed. Real-peer PR run 43109677545 receipt: `result=passed`, independent peer evidence verified, precompleted control preserved, phone HTTPS journey verified, qualified debug preview `chunks-https-verified-preview-a24126bd5f4d.apk` (build source `a24126b`, same tree).
+
+**Closed as superseded, each with a disposition comment:** #1641, #1642, #1643, #1594, #1534, #1565, #1566.
+
+**Still open:**
+- #1611 (exact-account saved-profile Add authentication) and #1546 (frozen display alias): re-land on current main with the two-server gate; #1611's earlier port failed at the second Connect.
+- #1646: independent media-identification work; not part of this integration.
+- #1521, #1528, #1535, #1545, #1548, #1551, #1587, #1613, #1616, #1618, #1619, #1637, #1639: older overlapping assemblies and predecessors. Most of their content is in main through #1641-#1644, but each must be checked for unique tests or fixes before it is closed.
+- Review follow-ups listed in the previous section; the intermittent API29 Compose runtime crash; the intermittent phone HTTPS controller read and two-server second-Connect failures (each passed on later heads, not closed by a rerun).
