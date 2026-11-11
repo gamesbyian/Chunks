@@ -89,6 +89,53 @@ class CombinedTransfersScreenTest {
         assertTrue(commands.isEmpty())
     }
 
+    @Test fun explicitAllEnvironmentsClearsPriorSavedProfileViewWithoutRpcCommand() {
+        val currentId = requireNotNull(io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+            .serverIdOfAliasScope(aliasScope)).value
+        var pendingFocus by mutableStateOf<String?>(currentId)
+        var showAllRevision by androidx.compose.runtime.mutableLongStateOf(0L)
+        var consumedRevision by androidx.compose.runtime.mutableLongStateOf(0L)
+        var mounted by mutableStateOf(true)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                if (mounted) CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, rows, stale = false,
+                        fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
+                        lifecycle = gate),
+                    savedProfiles = listOf(other),
+                    onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                    scopeFocusRequest = pendingFocus,
+                    onScopeFocusConsumed = { pendingFocus = null },
+                    showAllEnvironmentsRevision =
+                        showAllRevision.takeIf { it > consumedRevision } ?: 0L,
+                    onShowAllEnvironmentsConsumed = { delivered ->
+                        consumedRevision = maxOf(consumedRevision, delivered)
+                    }
+                )
+            } }
+        }
+        revealText("Show all transfers")
+        rule.onNodeWithText("Show all transfers").assertExists()
+        rule.runOnIdle { showAllRevision++ }
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Show all transfers").fetchSemanticsNodes().isEmpty()
+        }
+        revealText("Big Archive")
+        revealText("Small Episode")
+        rule.waitUntil(15_000) { consumedRevision == showAllRevision }
+        // Reenter via an exact saved profile after an earlier explicit All tap.
+        // The old counter must not replay and defeat this new view-only request.
+        rule.runOnIdle { mounted = false }
+        rule.waitForIdle()
+        rule.runOnIdle {
+            pendingFocus = currentId
+            mounted = true
+        }
+        revealText("Show all transfers")
+        assertTrue("old All request must stay consumed on remount", consumedRevision == showAllRevision)
+        assertTrue("view scope reset can never dispatch an rTorrent mutation", commands.isEmpty())
+    }
+
     @Test fun rootTransfersTapClosesFullDetailsWithoutIssuingLifecycleCommand() {
         var catalogRevision by mutableStateOf(0L)
         rule.setContent {
