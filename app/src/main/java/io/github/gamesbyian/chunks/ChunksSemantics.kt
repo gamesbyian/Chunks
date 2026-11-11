@@ -33,6 +33,9 @@ internal object ChunksSemantics {
     /** Inline Add-to choice for the one authenticated remote profile. */
     const val ADD_TARGET_REMOTE = "chunks.add.target.remote"
 
+    /** The canonical Transfers list title. It also hosts the first-install Welcome. */
+    const val TRANSFERS_HEADING = "chunks.transfers.heading"
+
     // First-install Welcome.
     const val WELCOME_HEADING = "chunks.welcome.heading"
     const val WELCOME_ADD = "chunks.welcome.add"

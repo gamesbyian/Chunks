@@ -391,7 +391,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                     setOf(preview.infoHashV1.lowercase()),
                     phone.list().map { it.infoHash.lowercase() }.toSet())
                 click("Transfers")
-                rule.waitUntil(30_000) { visible("All environments") }
+                rule.waitUntil(30_000) {
+                    rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_HEADING).fetchSemanticsNodes().isNotEmpty()
+                }
                 // The Combined list reads phone inventory and its privacy
                 // policy asynchronously; entering the screen does not mean
                 // its first full snapshot has been rendered. Wait for the
@@ -418,7 +420,9 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 assertTrue("Read-only Details must not restart the native job",
                     phone.status(preview.infoHashV1)?.stopped == true)
                 click("Back to transfers")
-                rule.waitUntil(30_000) { visible("All environments") }
+                rule.waitUntil(30_000) {
+                    rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_HEADING).fetchSemanticsNodes().isNotEmpty()
+                }
                 click("Open device transfer controls")
                 rule.waitUntil(30_000) { visible("This device") }
                 stage("phone-details-verified")

@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.app.Activity
+import androidx.compose.ui.platform.testTag
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.WindowManager
@@ -1066,7 +1067,7 @@ internal fun CombinedTransfersScreen(
         } else if (!firstRunVisible) item {
             // Keep one compact, spoken view identity without a duplicate Back.
             Text("Transfers", style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.semantics { heading() })
+                modifier = Modifier.testTag(ChunksSemantics.TRANSFERS_HEADING).semantics { heading() })
         }
         if (firstRunVisible) {
             item(key = "canonical-fresh-welcome") {
