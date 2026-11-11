@@ -766,6 +766,10 @@ internal fun ChunksApp(
                         maxOf(consumedShowAllEnvironmentsRevision, consumed)
                 },
                 enableFirstRunWelcome = true,
+                // A legacy saved vault login may precede roster migration. Its
+                // existence alone forbids a misleading fresh-install Welcome.
+                // Do not hand credentials to the catalog or trigger a new RPC.
+                hasRememberedRemoteLogin = remembered != null,
                 // The existing Add destination remains the sole admission
                 // coordinator until source-first Universal Add is integrated.
                 onWelcomeAdd = { section = Section.ADD_CHOOSE },
