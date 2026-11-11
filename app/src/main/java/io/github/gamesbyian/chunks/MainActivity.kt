@@ -312,7 +312,7 @@ internal fun ChunksApp(
     var section by rememberSaveable(saver = SectionRestoreSaver) {
         // A saved login needs the existing one-shot authenticated reconnect
         // owner to mount. Combined is a read-only list, not a reconnect executor.
-        mutableStateOf(if (remembered == null) Section.LOCAL else Section.SERVER)
+        mutableStateOf(if (remembered == null) Section.COMBINED else Section.SERVER)
     }
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
@@ -758,6 +758,14 @@ internal fun ChunksApp(
                     consumedShowAllEnvironmentsRevision =
                         maxOf(consumedShowAllEnvironmentsRevision, consumed)
                 },
+                enableFirstRunWelcome = true,
+                // A legacy saved vault login may precede roster migration. Its
+                // existence alone forbids a misleading fresh-install Welcome.
+                // Do not hand credentials to the catalog or trigger a new RPC.
+                hasRememberedRemoteLogin = remembered != null,
+                // The existing Add destination remains the sole admission
+                // coordinator until source-first Universal Add is integrated.
+                onWelcomeAdd = { section = Section.ADD_CHOOSE },
                 listState = combinedListState,
                 searchState = combinedSearch,
                 // Only this session's positively verified Add on the current account.
