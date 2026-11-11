@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks.visual
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -24,21 +26,30 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
 class PhoneNavigationContinuityTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+    private fun enterExplicitDeviceView() {
+        rule.runOnIdle {
+            io.github.gamesbyian.chunks.CombinedViewPreferences(rule.activity).save(
+                io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
+                    scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
+                        setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
+        }
+        rule.activityRule.scenario.recreate()
+        rule.waitUntil(20_000) {
+            rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 
-    @Test fun searchSurvivesAllEnvironmentsRoundTrip() {
-        rule.waitForIdle()
-        rule.onNode(hasSetTextAction() and hasText("Search transfers on this device", substring = true))
+
+    @Test fun explicitDeviceScopeAndSearchSurviveRootNavigation() {
+        enterExplicitDeviceView()
+        rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
             .performTextInput("ubuntu")
-        rule.onNodeWithText("Options").performClick()
+        rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Options · this device").assertExists()
         rule.onNodeWithText("Transfers").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("All environments").assertExists()
-        // Return through the device management entry without losing the
-        // original phone search. Scope filtering never changes that draft.
-        rule.onNodeWithText("Open device transfer controls").performScrollTo().performClick()
-        rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
+
 }
