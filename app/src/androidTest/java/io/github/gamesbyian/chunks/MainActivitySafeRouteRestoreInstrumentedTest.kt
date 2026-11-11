@@ -2,6 +2,8 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -25,12 +27,16 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         val before = LocalEngineHolder.current()?.completeIdentityInventory().orEmpty()
         // No remote profile is required: root Transfers now uses one canonical
         // browser, whose genuine fresh welcome appears after durable probing.
-        rule.onNodeWithText("Transfers").assertExists()
-        rule.onNodeWithText("+ Add").assertExists()
-        rule.onNodeWithContentDescription("Connections").assertExists()
+        rule.onNodeWithText("Transfers").assertIsSelected()
+        // Purple Add remains visually prominent but must not claim selected
+        // semantics unless the actual Add screen is active.
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
+        rule.onNodeWithContentDescription("Connections").assertIsNotSelected()
         rule.activityRule.scenario.recreate()
         rule.onNodeWithText("Transfers").assertExists()
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.onNodeWithContentDescription("Connections").assertIsSelected()
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
         rule.activityRule.scenario.recreate()
         // Connections is a restorable non-mutating root, never a legacy phone
@@ -38,13 +44,18 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
         rule.onNodeWithText("Transfers").performClick()
+        rule.onNodeWithText("Transfers").assertIsSelected()
+        rule.onNodeWithText("+ Add").assertIsNotSelected()
         rule.onNodeWithText("+ Add").performClick()
+        rule.onNodeWithText("+ Add").assertIsSelected()
+        rule.onNodeWithText("Transfers").assertIsNotSelected()
         rule.onNodeWithText("Add a transfer").assertExists()
         rule.activityRule.scenario.recreate()
         // The existing Add destination remains source-empty after restoration.
         // Only the Add implementer may replace this destination with its single
         // source-first form; rotation itself never grants an approval.
         rule.onNodeWithText("Add a transfer").assertExists()
+        rule.onNodeWithText("+ Add").assertIsSelected()
         rule.onNodeWithText("Start selected").assertDoesNotExist()
         org.junit.Assert.assertEquals("Restoring navigation cannot create torrent jobs",
             before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
