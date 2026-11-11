@@ -414,18 +414,12 @@ internal class MainActivityRealMagnetJourney(
         fun lifecycle(hash: String, start: Boolean) {
             refreshAndFind(hash)
             openDetails(hash)
-            // Canonical Details never dispatches Start/Stop itself: it hands the exact job to the
-            // owner's separately confirmed review ("Review Start / Stop"), which then offers the
-            // exact-job action and its confirmation.
+            // Canonical Details never dispatches Start/Stop itself: "Review Start / Stop" hands the
+            // exact job to the Transfers batch tools with that one key selected. The owner's
+            // separately confirmed review then names the target before one sequential run.
             click("Review Start / Stop")
-            val action = if (start) "Start transfer…" else "Stop transfer…"
-            // The owner can present the exact job collapsed; reveal its actions only if needed.
-            if (!runCatching { scroll(action); true }.getOrDefault(false)) {
-                rule.waitUntil(30_000) { runCatching { scroll("More details"); true }.getOrDefault(false) }
-                click("More details")
-            }
-            click(action)
-            click(if (start) "Confirm start" else "Confirm stop")
+            click(if (start) "Start…" else "Stop…")
+            click(if (start) "Start selected" else "Stop selected")
             await(what = "lifecycle state readback") { row(hash)?.started == start && readOnly { remote.readActivity(hash).active } == start }
         }
         fun remove(hash: String) {
