@@ -62,7 +62,9 @@ class TransferMediaController(
     /** Separate lane so automatic lookups never queue ahead of explicit user actions. */
     private val backgroundDispatcher: CoroutineDispatcher = lookupDispatcher,
     ruleStoreFactory: () -> MediaRuleStore = { InMemoryMediaRuleStore() },
-    automationStoreFactory: () -> MediaAutomationPreferences = { InMemoryMediaAutomationPreferences() }
+    automationStoreFactory: () -> MediaAutomationPreferences = { InMemoryMediaAutomationPreferences() },
+    /** Exact-key local file lists used only as classification evidence; never transmitted. */
+    private val fileEvidence: MediaFileEvidenceSource = MediaFileEvidenceSource.NONE
 ) {
     private val automationStore by lazy(automationStoreFactory)
     private val observationAuthorization = java.util.concurrent.ConcurrentHashMap<MediaTransferKey,
@@ -134,9 +136,38 @@ class TransferMediaController(
     private val inputs = HashMap<MediaTransferKey, MediaRecognitionInput>()
     private val embedded = HashMap<MediaTransferKey, io.github.gamesbyian.chunks.media.inspection.EmbeddedMediaTags>()
 
+    /** File-informed recognitions by exact key + original name, shared by rows, Details and inventory. */
+    private val fileEvidenceCache = MediaFileEvidenceCache()
+
     private fun recognizeWithEvidence(key: MediaTransferKey, input: MediaRecognitionInput): MediaRecognition {
-        val base = MediaRecognizer.recognize(input)
+        // A name-only observer (list row, offscreen inventory) must not discard file
+        // composition another authorized observer or the engine already supplied.
+        val base = (if (input.files.isEmpty()) fileEvidenceCache.get(key, input.name) else null)
+            ?: MediaRecognizer.recognize(input)
         return embedded[key]?.let { MediaRecognizer.withEmbeddedTags(base, it) } ?: base
+    }
+
+    /**
+     * Background lanes only. Reads the exact key's local file list once per process when the
+     * key is currently authorized. Returns true when new file evidence was recorded.
+     */
+    private fun resolveFileEvidence(key: MediaTransferKey, name: String, authorized: () -> Boolean): Boolean {
+        if (fileEvidenceCache.get(key, name) != null || !authorized()) return false
+        val files = try { fileEvidence.files(key) } catch (_: Exception) { null } ?: return false
+        // Authority may have ended during the read (lock, logout, removal): record nothing.
+        if (!authorized()) return false
+        fileEvidenceCache.put(key, name, MediaRecognizer.recognize(name, files))
+        return true
+    }
+
+    /** Upgrade an observed name-only state once file evidence is known; never downgrades. */
+    private fun applyFileEvidence(key: MediaTransferKey, f: MutableStateFlow<TransferMediaUiState>) {
+        val input = synchronized(this) { inputs[key] } ?: return
+        if (input.files.isNotEmpty()) return
+        resolveFileEvidence(key, input.name, authorization(key))
+        val upgraded = recognizeWithEvidence(key, input)
+        f.update { cur -> if (cur.recognition.raw == input.name && cur.recognition != upgraded)
+            cur.copy(recognition = upgraded) else cur }
     }
 
     fun providerInfos() = service.providerInfos()
@@ -148,7 +179,12 @@ class TransferMediaController(
     fun observe(key: MediaTransferKey, name: String, files: List<MediaFileHint> = emptyList(),
                 isAuthorized: () -> Boolean = { true }): StateFlow<TransferMediaUiState> {
         observationAuthorization.computeIfAbsent(key) { java.util.concurrent.CopyOnWriteArraySet() }.add(isAuthorized)
-        val input = MediaRecognitionInput(name, files)
+        val prior = inputs[key]
+        // A list row observes by name only while Details may supply the local file list for
+        // the same exact job. The weaker observer must not erase the stronger evidence.
+        val input = if (files.isEmpty() && prior != null && prior.name == name && prior.files.isNotEmpty()) prior
+            else MediaRecognitionInput(name, files)
+        if (files.isNotEmpty()) fileEvidenceCache.put(key, name, MediaRecognizer.recognize(input))
         val existing = states[key]
         if (existing != null && inputs[key] == input) return existing
         inputs[key] = input
@@ -157,6 +193,7 @@ class TransferMediaController(
         if (existing != null) flow.update { it.copy(recognition = recognizeWithEvidence(key, input)) }
         scope.launch(lookupDispatcher) {
             settings().let { largeListArtworkFlow.value = it.largeListArtwork; presentationFlow.value = it }
+            applyFileEvidence(key, flow)
             val enabled = !automationStore.isExcluded(key)
             val a = store.get(key) ?: if (enabled && localRulesAllowed()) applyRuleIfAny(key, flow.value.recognition) else null
             flow.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled,
@@ -202,6 +239,7 @@ class TransferMediaController(
     fun refreshAutomatic(key: MediaTransferKey) {
         scope.launch(lookupDispatcher) {
             val f = flow(key) ?: return@launch
+            applyFileEvidence(key, f)
             val enabled = !automationStore.isExcluded(key)
             val a = store.get(key) ?: if (enabled && localRulesAllowed()) applyRuleIfAny(key, f.value.recognition) else null
             f.update { it.copy(assignment = store.get(key), automaticLookupEnabled = enabled,
@@ -497,7 +535,14 @@ class TransferMediaController(
             for ((key, name) in entries.distinctBy { it.first }) {
                 kotlinx.coroutines.currentCoroutineContext().ensureActive()
                 if (!isAuthorized(key)) continue
-                val recognition = MediaRecognizer.recognize(name)
+                // Offscreen jobs need the same local evidence as rendered rows/Details:
+                // a folder-named multi-file torrent is classified by its file composition.
+                resolveFileEvidence(key, name) { isAuthorized(key) }
+                val observed = synchronized(this@TransferMediaController) { inputs[key] }?.takeIf { it.name == name }
+                val recognition = recognizeWithEvidence(key, observed ?: MediaRecognitionInput(name))
+                if (observed != null && observed.files.isEmpty()) flow(key)?.update { cur ->
+                    if (cur.recognition.raw == name && cur.recognition != recognition) cur.copy(recognition = recognition) else cur
+                }
                 // A rule the user explicitly saved is local identity data, not an online
                 // lookup. Apply it to a newly arrived offscreen job even before provider
                 // consent, just as observe() does for a rendered row.
@@ -969,6 +1014,7 @@ class TransferMediaController(
         // Invalidate in-flight HTTP callbacks *before* the queued deletion runs.
         // Otherwise a late background response can repopulate records after purge.
         mediaDataGeneration.incrementAndGet()
+        fileEvidenceCache.clear()
         return scope.launch(lookupDispatcher) {
             store.clear(); ruleStore.clear(); clearQueryCache(); artwork.clearSafely(clearArtwork)
             synchronized(this@TransferMediaController) { states.values.toList() }.forEach { f ->
