@@ -644,7 +644,18 @@ internal class MainActivityRealMagnetJourney(
                 // so the original metadata name is asserted through that stable semantics rather than
                 // a literal text node (the title Text overrides its own description when merged).
                 val named = hasContentDescription("Details for " + preview.name, substring = true)
-                rule.waitUntil(30_000) { rule.onAllNodes(named).fetchSemanticsNodes().isNotEmpty() }
+                try {
+                    rule.waitUntil(30_000) { rule.onAllNodes(named).fetchSemanticsNodes().isNotEmpty() }
+                } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+                    // Numbers only: row description length, expected-name length, common prefix length.
+                    val d = rule.onAllNodes(hasContentDescription("Details for ", substring = true)).fetchSemanticsNodes()
+                        .firstOrNull()?.config?.let {
+                            runCatching { it[androidx.compose.ui.semantics.SemanticsProperties.ContentDescription].firstOrNull() }.getOrNull()
+                        }.orEmpty().removePrefix("Details for ")
+                    val common = d.commonPrefixWith(preview.name).length
+                    report("chunks_real_add_app_stage", "click-nm-${d.length}-${preview.name.length}-$common")
+                    throw timeout
+                }
                 assertTrue("Actual Transfers lost original metadata name",
                     rule.onAllNodes(named).fetchSemanticsNodes().size == 1)
                 assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
