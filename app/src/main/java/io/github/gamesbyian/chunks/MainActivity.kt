@@ -2067,8 +2067,13 @@ internal fun ConnectionScreen(
             item {
                 Text("Saved servers", style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold)
-                Text("Choose an account, then Connect. No server is contacted just by selecting it.",
-                    style = MaterialTheme.typography.bodySmall)
+                Text(
+                    if (onOpenProfileTransfers != null)
+                        "View transfers opens this exact saved client under its existing privacy and read-only access rules. Use saved login to prepare an explicit Connect."
+                    else
+                        "Choose an account, then Connect. Selection alone does not contact the server.",
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
             items(savedProfiles, key = { "saved-profile-" + it.id }) { profile ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
