@@ -80,7 +80,7 @@ jobs:
           import pathlib, re, xml.etree.ElementTree as ET
           root=pathlib.Path("app/build/test-results/testDebugUnitTest")
           expected={"albumEndToEndWithCoverArtArchiveRedirects","bookEndToEnd"}
-          valid=re.compile(r"(MediaLiveProviderTest|ArtworkRepository|MediaEnrichmentService|MusicBrainzProvider)\\.kt:[1-9][0-9]{0,4}")
+          valid=re.compile(r"(MediaLiveProviderTest|ArtworkRepository|MediaEnrichmentService|MusicBrainzProvider)\.kt:[1-9][0-9]{0,4}")
           for file in root.glob("*.xml"):
               try: doc=ET.parse(file).getroot()
               except ET.ParseError: continue
@@ -91,7 +91,7 @@ jobs:
                   if f is None: f=c.find("error")
                   if f is None: continue
                   typ=re.sub(r"[^A-Za-z0-9_.]","", f.get("type","unknown"))[:100]
-                  frames=valid.findall((f.text or ""))
+                  frames=[m.group(0) for m in valid.finditer(f.text or "")]
                   print("CHUNKS_PUBLIC_LIBRARY_FAILURE: case="+name+" type="+typ+
                       " source_frames="+",".join(sorted(set(frames))[:6]))
                   # A real provider's external response or error might contain a
