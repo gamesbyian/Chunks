@@ -9,6 +9,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.StandardOpenOption
+import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.BasicFileAttributes
 import java.security.MessageDigest
 
@@ -154,11 +155,22 @@ internal class SourceTorrentArchive(
                 while (buf.hasRemaining()) it.write(buf)
                 it.force(true)
             }
-            // Hard-link publication is atomic and refuses to overwrite an
-            // existing identity. Both names are in the same private directory.
-            stage = "hardlink-publish"
+            // Android app-private filesDir refuses hard-link publication on
+            // API29 and API35 (observed AccessDeniedException). Keep an exact
+            // no-existing-target check *inside* the shared process lock, then
+            // atomically rename the fsynced staging inode in the same directory.
+            // Only this application process may publish this private catalog;
+            // cross-process writers are explicitly unsupported/unqualified.
+            // Never fall back to a non-atomic copy or REPLACE_EXISTING.
+            stage = "atomic-publish"
+            val unexpected = verifyExisting(target, bytes)
+            if (unexpected != null) {
+                if (unexpected is SourceArchiveOutcome.ArchivedCopy &&
+                    !syncDirectory(archive)) return SourceArchiveOutcome.NeedsReconciliation
+                return unexpected
+            }
             try {
-                Files.createLink(target, staged)
+                Files.move(staged, target, StandardCopyOption.ATOMIC_MOVE)
             } catch (_: FileAlreadyExistsException) {
                 val concurrent = verifyExisting(target, bytes)
                     ?: return SourceArchiveOutcome.CorruptOrUnsafeArchive
@@ -166,10 +178,7 @@ internal class SourceTorrentArchive(
                     !syncDirectory(archive)) return SourceArchiveOutcome.NeedsReconciliation
                 return concurrent
             }
-            if (!syncDirectory(archive)) return SourceArchiveOutcome.NeedsReconciliation
-            stage = "temp-unlink"
-            Files.delete(staged)
-            temporary = null
+            temporary = null // rename consumed the staging filename
             if (!syncDirectory(archive)) return SourceArchiveOutcome.NeedsReconciliation
             return verifyExisting(target, bytes, wasAlreadyPresent = false)
                 ?: SourceArchiveOutcome.CorruptOrUnsafeArchive
