@@ -290,8 +290,10 @@ internal class MainActivityRealMagnetJourney(
                 click(artworkChoice)
             }
             // The source-first form has one explicit "Add transfer" submission action and no
-            // separate review card; the exact identity is asserted independently after Add
-            // (registered hash, tracker list and BEP9 witness), not from a pre-submit card.
+            // separate review card. The exact full infohash is shown inline before Add; assert it
+            // here, then verify the registered hash, tracker list and BEP9 witness after Add.
+            scroll("Infohash: $hash")
+            assertTrue("Add form lost exact public identity", visible("Infohash: $hash"))
             if (torrentLinks && label != null && label != "magnet0") {
                 InstrumentationRegistry.getInstrumentation().sendStatus(2,
                     Bundle().apply { putString("chunks_https_review", label) })

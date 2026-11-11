@@ -29,7 +29,9 @@ What the stacked chain was actually red for (reproduced locally in about 90 seco
 - the destination chooser became an inline selector (`This device`, `On <server>`) and `On the connected server` / `Add a download to this server` no longer exist;
 - the Combined first-run Welcome is opt-in (`enableFirstRunWelcome`) and evidence-gated.
 
-**Weakened witness, deliberately recorded.** `MainActivityRealMagnetJourney` used to assert the full `Infohash:` and `Source: Magnet link` on the pre-submit review card. That card no longer exists, so the journey now relies on the existing post-Add exact-hash, tracker-list and BEP9 witnesses. Whether a pre-submit exact-hash display is still required by the product contract is an open product question, not settled here.
+**Pre-submit identity witness.** `MainActivityRealMagnetJourney` used to assert the full `Infohash:` and `Source: Magnet link` on the pre-submit review card. The card is gone, but #1643's own atlas test shows the full `Infohash:` and `Destination:` inline before Add, so the journey now asserts the inline `Infohash:` before submitting. The `Source: Magnet link` text no longer exists anywhere in the product, so that one assertion (HTTPS-preview source not retained) is dropped and now rests on the post-Add tracker-list and BEP9 witnesses. This is unrun on an emulator.
+
+**Atlas contract.** CI `check` on #1644 failed because `tools/native_add_review.sh` still required `add-confirmation-real-compose.png`; the capture is now `add-source-and-destination-real-compose.png` and the list was updated (`tools/check_native_atlas_contract.py` passes: 24 captures).
 
 Local result on the assembled head: the 11 formerly red JVM classes pass; a full JVM run had 2235 tests with 5 failures, four of which (`LocalCheckedPayloadReservationsTest`, `CreateSeedCopyAcquisitionRaceTest` x2, `LocalResumeDatabaseTest`) are filesystem/root-user artifacts of the sandbox that CI did not report, and one (`CombinedTransfersScreenTest.oldAccountBatchConfirmationCannotBeReusedForSameHashOnAnotherAccount`) passed in isolation, also on unmodified #1643. Instrumented-test sources compile; none were run.
 
