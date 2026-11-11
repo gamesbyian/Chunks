@@ -202,7 +202,7 @@ class SeedhostAndroidAddUiInstrumentedTest {
             checkpoint("queue")
 
             rule.onNodeWithText("+ Add torrent").performClick()
-            rule.waitUntil(30_000) { visible("Add a download to this server") }
+            rule.waitUntil(30_000) { visible("Add a transfer") }
             checkpoint("add-open")
             try {
                 rule.onNodeWithText("Magnet or torrent link").performTextReplacement(magnet)
@@ -234,18 +234,16 @@ class SeedhostAndroidAddUiInstrumentedTest {
             }
             checkpoint("add-draft")
 
-            scrollTo("Review Add")
-            rule.onNodeWithText("Review Add").performClick()
-            scrollTo("Confirm one server operation")
+            scrollTo("Infohash: $hash")
             assertTrue(visible("Infohash: $hash"))
             assertTrue(visible(if (serverDefault != null) "(server default; no directory override)"
                 else "(custom parent folder)"))
             capture("seedhost-android-add-ui-review")
             checkpoint("review")
 
-            scrollTo("Confirm: add then start")
+            scrollTo("Add transfer")
             added = true
-            rule.onNodeWithText("Confirm: add then start").performClick()
+            rule.onNodeWithText("Add transfer").performClick()
             checkpoint("confirmed")
             rule.waitUntil(120_000) { visible("Operation outcome") }
             scrollTo("Operation outcome")
