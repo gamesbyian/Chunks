@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -62,13 +63,16 @@ class CombinedTwoRealServersInstrumentedTest {
     // Compact server header: "<host> · <n> transfers" with the server's own
     // Add action. Each disposable server holds exactly two fixtures.
     private fun connectedQueue() = visible("127.0.0.1 · 2 transfers") && visible("+ Add torrent")
-    private fun enterConnectedQueueIfCombined() {
+    private fun enterConnectedQueueIfCombined(observedOwnerTransfer: String? = null) {
         if (connectedQueue()) return
         // Startup may show a read-only Combined view during a saved-profile
         // reconnect. Wait for positive authenticated navigation; never infer
         // connection success from a saved label or silently call Connect.
         waitFor("authenticated server list entry", 90_000) {
-            connectedQueue() || visible("Only connected server")
+            connectedQueue() || runCatching {
+                scrollTo("Only connected server")
+                true
+            }.getOrDefault(false)
         }
         if (!connectedQueue()) {
             // Scope is only a view filter. For operational tests, enter the
@@ -76,7 +80,10 @@ class CombinedTwoRealServersInstrumentedTest {
             // never by converting a selected scope into command authority.
             scrollTo("Only connected server")
             rule.onNodeWithText("Only connected server").performClick()
-            val shared = decoded("chunks_combined_shared_b64")
+            // Process-death phase deliberately receives only the one B endpoint;
+            // choose a transfer observed by independent authenticated readback.
+            // Phase 1 retains its explicit cross-server same-hash fixture.
+            val shared = observedOwnerTransfer ?: decoded("chunks_combined_shared_b64")
             val row = hasContentDescription("Details for $shared on", substring = true)
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
             rule.onNode(row).performClick()
@@ -146,7 +153,20 @@ class CombinedTwoRealServersInstrumentedTest {
                 }
             }
         }
-        waitFor("server queue for the requested endpoint", 90_000) { connectedQueue() }
+        // Verified Connect acknowledges the result and returns to Connections;
+        // the legacy server queue is NOT the new landing screen.
+        waitFor("verified Connect acknowledgment", 90_000) {
+            visible("Connection verified")
+        }
+        rule.onNodeWithText("Continue to Connections").performClick()
+        waitFor("verified Connections management") {
+            visible("Connected ·") && visible("View transfers")
+        }
+        rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+        // Legacy operations remain reachable from canonical exact-owner Details
+        // until the active #1534/#1566 migration preserves full capability parity.
+        enterConnectedQueueIfCombined()
+        waitFor("server queue after exact-owner handoff", 90_000) { connectedQueue() }
     }
 
     /**
@@ -158,10 +178,13 @@ class CombinedTwoRealServersInstrumentedTest {
         assumeTrue("Requires the two-disposable-server workflow phase 2",
             args.getString("chunks_combined_phase") == "after-process-death")
         val urlB = decoded("chunks_combined_b_b64")
-        val before = runBlocking { RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main") }
-            .map { it.hash to it.started }.toSet()
+        val observedBefore = runBlocking {
+            RTorrentRemote(RemoteCredentials(urlB, "", "")).listTransfers("main")
+        }
+        assertTrue("Only a verified real B transfer can anchor the restored view", observedBefore.isNotEmpty())
+        val before = observedBefore.map { it.hash to it.started }.toSet()
         ActivityScenario.launch(MainActivity::class.java).use {
-            enterConnectedQueueIfCombined()
+            enterConnectedQueueIfCombined(observedBefore.first().name)
             waitFor("reconnect after process death", 90_000) { connectedQueue() }
             assertTrue(!visible("Seedbox hostname, ruTorrent URL or RPC address"))
             stage("process-death-reconnected")
@@ -198,23 +221,42 @@ class CombinedTwoRealServersInstrumentedTest {
         assertEquals(sharedHash, truthB.single { it.name == shared }.hash.lowercase())
         stage("ground-truth")
 
-        ActivityScenario.launch(MainActivity::class.java).use {
+        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             waitFor("persistent Connections destination") { visible("Connections") }
-            rule.onNodeWithText("Connections").performClick()
+            rule.onNodeWithContentDescription("Connections").performClick()
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             connect(urlA, userA, passA)
             stage("connected-a")
             // Connections is now a persistent direct destination. The exact
             // connected server's Disconnect remains distinct from Forget.
             waitFor("Connections destination") { visible("Connections") }
-            rule.onNodeWithText("Connections").performClick()
+            rule.onNodeWithContentDescription("Connections").performClick()
             waitFor("connected server screen") { visible("Disconnect") }
             scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
-            waitFor("connection screen after Disconnect") {
-                visible("Seedbox hostname, ruTorrent URL or RPC address") || visible("Saved servers")
+            waitFor("explicit Disconnect remains on manual Connect form") {
+                runCatching {
+                    scrollTo("Connect to rTorrent")
+                    visible("Connect to rTorrent") && !visible("Connected ·")
+                }.getOrDefault(false)
             }
+            rule.waitForIdle()
+            assertTrue(
+                "A saved verified login must not silently reconnect after explicit Disconnect",
+                visible("Connect to rTorrent") && !visible("Connected ·")
+            )
             stage("disconnected-a")
+            // Explicit Disconnect is a navigation decision, not a request to
+            // restore the old session on configuration change. Recreate the
+            // actual installed Activity, retaining the saved verified login.
+            scenario.recreate()
+            waitFor("manual Connect remains after Disconnect + Activity recreation") {
+                runCatching {
+                    scrollTo("Connect to rTorrent")
+                    visible("Connect to rTorrent") && !visible("Connected ·")
+                }.getOrDefault(false)
+            }
+            stage("explicit-disconnect-restored")
             connect(urlB)
             stage("connected-b")
 
