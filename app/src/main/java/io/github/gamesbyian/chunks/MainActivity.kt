@@ -1898,11 +1898,13 @@ internal fun ChunksApp(
                 scope.launch { combinedListState.scrollToItem(0) }
             },
             onAdd = {
-                section = when {
-                    pendingSharedMagnet != null || incomingTorrent != null -> Section.COMBINED
-                    server != null || savedProfiles.isNotEmpty() -> Section.ADD_CHOOSE
-                    else -> Section.LOCAL_ADD
-                }
+                // The footer ALWAYS enters the shared Add destination, even
+                // while an external magnet/.torrent is pending and even when
+                // there is no remote profile. Do not consume or auto-submit
+                // its frozen source/Place/Start draft by changing screens.
+                // The Add implementer replaces this interim gateway with the
+                // one source-first Universal Add form and sole coordinator.
+                section = Section.ADD_CHOOSE
             },
             onOptions = { section = Section.OPTIONS },
             onConnections = { section = Section.SERVER },
