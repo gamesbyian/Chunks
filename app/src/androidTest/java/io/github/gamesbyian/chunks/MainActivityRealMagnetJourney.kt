@@ -75,9 +75,12 @@ internal class MainActivityRealMagnetJourney(
             // Which well-known screen parts were showing (1/0 flags only, no app text):
             // outcome, verified result, Add form infohash, checking, Add button, Transfers search.
             val flags = listOf("Operation outcome", "View verified transfer in rTorrent", "Infohash:",
-                "Checking server", "Add transfer", "Search names or hashes")
+                "Checking server", "Add transfer", "Search names or hashes", "Torrent link:",
+                "A new source is waiting")
                 .joinToString("") { if (visible(it)) "1" else "0" }
-            report("chunks_real_add_app_stage", "click-seen-$flags")
+            // Flags first, then the control being clicked (bounded slug), so one stage names both.
+            report("chunks_real_add_app_stage", "click-seen-$flags-" +
+                text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(13))
             throw timeout
         }
         rule.waitForIdle()
@@ -665,7 +668,9 @@ internal class MainActivityRealMagnetJourney(
                 }
                 assertTrue("Actual Transfers lost original metadata name",
                     rule.onAllNodes(named).fetchSemanticsNodes().size == 1)
-                assertFalse("Actual Transfers retained placeholder facts", visible("Payload size and progress pending metadata"))
+                // The exact-hash search leaves this one row; after metadata it must no longer
+                // present the job as metadata-pending (canonical row wording).
+                assertFalse("Actual Transfers retained placeholder facts", visible("Fetching metadata"))
                 if (!combinedDetailsVerified) {
                     inspectCombinedDetails(hash, preview.name, payload.directory)
                     combinedDetailsVerified = true
@@ -759,9 +764,12 @@ internal class MainActivityRealMagnetJourney(
             assertEquals(1, (readOnly { remote.call("d.is_meta", listOf(negative)) } as Number).toInt())
             click("Back to transfers"); inTransfers = true
             refreshAndFind(negative)
+            // Canonical compact row (the exact-hash search leaves only this job): it must say
+            // metadata is pending and must not claim payload progress or completion.
             scroll("Fetching metadata")
-            assertTrue(visible("Payload size and progress pending metadata"))
+            assertTrue(visible("Fetching metadata"))
             assertFalse(visible("100% ·"))
+            assertFalse(visible("Sharing ·"))
             report("chunks_real_add_negative_stage", "transfers-ui-truthful")
         } finally {
             if (row(negative) != null) {

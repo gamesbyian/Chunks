@@ -67,6 +67,7 @@ Current requirement → replacement verification (source-first Universal Add, #1
 | "All environments" chip click (`PhoneAddHiddenInCombinedInstrumentedTest`) | Canonical Transfers shows every environment before the hidden-Add notice is judged | Footer `FOOTER_TRANSFERS`; the scope chip is pressed only when more than one environment exists |
 | "Start another Add" only (real-peer journey) | A retained result offers one acknowledgement that begins a fresh review without resending Add/Start | The exact button label for the reported server state (verified, session confirmed, or registered with Start unverified) |
 | Transfers row literal name (real-peer journey) | Transfers shows the original metadata name for the exact job | The row's accessible name `Details for <name> on <environment>`; also exposed a product defect (stale pre-metadata name), fixed by re-reading on the Transfers root |
+| "Payload size and progress pending metadata" (real-peer journey, legacy queue copy) | A peerless magnet is shown as metadata-pending without invented progress; a resolved job no longer is | Canonical compact row: "Fetching metadata" present and no "100% ·"/"Sharing ·" while pending; "Fetching metadata" absent after metadata (the old negative check had become vacuous) |
 
 ## 6. Installed-device and end-to-end evidence is mandatory
 
