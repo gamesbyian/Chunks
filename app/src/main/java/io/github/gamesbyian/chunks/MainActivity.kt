@@ -121,6 +121,15 @@ private val Blue = ChunksColors.Cyan
 
 internal class PhoneAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val session = PhoneAddAttemptSession()
+    // Retain private Add drafts through configuration changes in RAM only.
+    // Never serialize magnet passkeys, document bytes or account scope.
+    val sourceDraft = mutableStateOf("")
+    val reviewedTorrent = mutableStateOf<PendingLocalAdd?>(null)
+    val pendingSharedMagnet = mutableStateOf<String?>(null)
+    val pendingSharedDocument = mutableStateOf<Uri?>(null)
+    val readingSharedDocument = mutableStateOf<Uri?>(null)
+    val artworkChoices = AddArtworkDraftChoices()
+    val remoteSessions = RemoteAddSessions()
 }
 
 class MainActivity : ComponentActivity() {
@@ -180,7 +189,8 @@ class MainActivity : ComponentActivity() {
                         onIncomingTorrentConsumed = { incomingTorrent = null },
                         incomingCreate = incomingCreate,
                         onIncomingCreateConsumed = { incomingCreate = null },
-                        phoneAddAttemptSession = phoneAddAttemptOwner.session
+                        phoneAddAttemptSession = phoneAddAttemptOwner.session,
+                        retainedAddOwner = phoneAddAttemptOwner
                     )
                 }
                 }
@@ -208,6 +218,13 @@ class MainActivity : ComponentActivity() {
 }
 
 private data class VerifiedConnectionNotice(val label: String, val saved: Boolean?)
+
+// A cancelled composition cannot erase a document still owned by the
+// configuration-retained source review. Only the live completed reader consumes it.
+internal fun shouldConsumeReviewedSourceOnExit(
+    isCurrentDocument: Boolean,
+    lifecycleCancelled: Boolean
+): Boolean = isCurrentDocument && !lifecycleCancelled
 
 private enum class Section(val label: String) {
     TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
@@ -253,7 +270,8 @@ internal fun ChunksApp(
     onIncomingTorrentConsumed: () -> Unit,
     incomingCreate: io.github.gamesbyian.chunks.create.SharedCreateDocument.Request? = null,
     onIncomingCreateConsumed: () -> Unit = {},
-    phoneAddAttemptSession: PhoneAddAttemptSession? = null
+    phoneAddAttemptSession: PhoneAddAttemptSession? = null,
+    retainedAddOwner: PhoneAddAttemptOwner? = null
 ) {
     val context = LocalContext.current
     val vault = remember(context) { RememberedRemoteLogin(context) }
@@ -333,6 +351,9 @@ internal fun ChunksApp(
 
     // Navigation only: no session, command, draft or selected transfer survives restore.
     // A restored remote route safely falls back to the phone when no server exists.
+    // This chooses the visible Universal Add target in the *same* Add route.
+    // Never restore account authority, a private source, or an attempted write.
+    var addUsingAuthenticatedRemote by remember { mutableStateOf(false) }
     var combinedFromPhone by rememberSaveable { mutableStateOf(false) }
     var combinedFromConnections by rememberSaveable { mutableStateOf(false) }
     var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
@@ -382,20 +403,21 @@ internal fun ChunksApp(
     // displayed phone/server Add form. Both adapters edit the same source;
     // neither browsing filters nor opening a screen silently authorizes Add.
     // Process memory only, never SavedState/preferences: links can hold passkeys.
-    val addSourceDraft = remember { mutableStateOf("") }
+    val addSourceDraft = retainedAddOwner?.sourceDraft ?: remember { mutableStateOf("") }
     val phoneAddPlace = rememberSaveable { mutableStateOf<String?>(null) }
     val phoneAddFolder = rememberSaveable { mutableStateOf("") }
     val phoneAddStart = rememberSaveable { mutableStateOf(true) }
     // A reviewed .torrent can include private tracker tokens. Keep its bytes above
     // the disposable phone route for navigation only; never use SavedState/Bundle.
-    val phoneReviewedTorrent = remember { mutableStateOf<PendingLocalAdd?>(null) }
+    val phoneReviewedTorrent = retainedAddOwner?.reviewedTorrent
+        ?: remember { mutableStateOf<PendingLocalAdd?>(null) }
     // Production passes a configuration-retained attempt owner; test-only
     // standalone Compose callers have a process-only local fallback.
     val activePhoneAddAttempt = phoneAddAttemptSession ?: remember { PhoneAddAttemptSession() }
     // A phone opt-out must not silently become an opt-out on another server
     // (or the same server endpoint's different principal/numbered route).
     // No raw source, account identity or private tracker enters SavedState.
-    val addArtworkChoices = remember { AddArtworkDraftChoices() }
+    val addArtworkChoices = retainedAddOwner?.artworkChoices ?: remember { AddArtworkDraftChoices() }
     val combinedListState = rememberLazyListState()
     // Combined search text, like the phone's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
@@ -418,7 +440,14 @@ internal fun ChunksApp(
     var magnet by addSourceDraft
     // Process-memory-only Android Share source awaiting an explicit exact destination.
     // A magnet can contain tracker passkeys: never save/log/render its raw value.
-    var pendingSharedMagnet by remember { mutableStateOf<String?>(null) }
+    var pendingSharedMagnet by (retainedAddOwner?.pendingSharedMagnet
+        ?: remember { mutableStateOf<String?>(null) })
+    // Explicitly replace or retain an occupied source before reading a newly
+    // shared document. Neither URI nor metainfo is serialized to SavedState.
+    var pendingSharedDocument by (retainedAddOwner?.pendingSharedDocument
+        ?: remember { mutableStateOf<Uri?>(null) })
+    var incomingDocumentRead by (retainedAddOwner?.readingSharedDocument
+        ?: remember { mutableStateOf<Uri?>(null) })
     // Shared content:// documents are never persisted or sent to a remote server
     // as a URI. A selected remote receives only locally validated metainfo bytes.
     var sharedTorrentReading by remember { mutableStateOf(false) }
@@ -434,7 +463,7 @@ internal fun ChunksApp(
     var serverHandoffTorrent by remember { mutableStateOf<ByteArray?>(null) }
     // Account-scoped recovery outlives Add's composition, including privacy gates
     // and reconnects. Process memory only; Activity/process restoration is separate.
-    val remoteAddSessions = remember { RemoteAddSessions() }
+    val remoteAddSessions = retainedAddOwner?.remoteSessions ?: remember { RemoteAddSessions() }
     val scope = rememberCoroutineScope()
     val credentialChanges = remember { RemoteCredentialActionQueue() }
     val aliasStore = remember(context) { TransferAliasStore(context) }
@@ -445,6 +474,42 @@ internal fun ChunksApp(
     // being rolled back; each value has observable Compose state fields.
     val aliasSessions = remember { mutableMapOf<String, TransferAliasEditSession>() }
     var aliasScope by remember { mutableStateOf("") }
+    // The selected source text, reviewed local metainfo, remote account session,
+    // Place and Start remain parent-owned when Add changes its target in place.
+    // Switching never authorizes or starts an engine operation.
+    fun selectPhoneAddTarget() {
+        val remoteReview = aliasScope.takeIf { it.isNotBlank() }
+            ?.let { remoteAddSessions.forAccount(it) }
+        if (magnet.isBlank() && phoneReviewedTorrent.value == null &&
+            activePhoneAddAttempt.attemptedTicket == null &&
+            remoteReview?.useFile == true && remoteReview.selectedTorrent != null &&
+            remoteReview.selectedBytes != null) {
+            phoneReviewedTorrent.value = PendingLocalAdd(
+                requireNotNull(remoteReview.selectedTorrent),
+                requireNotNull(remoteReview.selectedBytes).copyOf())
+        }
+        addUsingAuthenticatedRemote = false
+        section = Section.ADD_CHOOSE
+    }
+    fun selectAuthenticatedAddTarget() {
+        if (server == null || aliasScope.isBlank() ||
+            RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) == null) return
+        val remoteReview = remoteAddSessions.forAccount(aliasScope)
+        if (MagnetDraftCheck.inspect(magnet) is MagnetDraftCheck.Valid &&
+            !remoteReview.alreadyAttempted) {
+            serverHandoffTorrent = null
+            phoneReviewedTorrent.value = null
+            remoteReview.preferMagnet()
+        }
+        if (magnet.isBlank() && !remoteReview.alreadyAttempted &&
+            phoneReviewedTorrent.value != null) {
+            serverHandoffTorrent = requireNotNull(phoneReviewedTorrent.value).bytes.copyOf()
+        } else if (magnet.isNotBlank()) {
+            remoteReview.preferMagnet()
+        }
+        addUsingAuthenticatedRemote = true
+        section = Section.ADD_CHOOSE
+    }
     fun prepareRemoteMagnet(source: String) {
         magnet = source
         remoteAddSessions.selectMagnet(aliasScope)
@@ -513,30 +578,67 @@ internal fun ChunksApp(
     val inspectionFence = remember { RemoteUiRequestFence() }
     val mutationGate = remember { RemoteMutationReadbackGate() }
 
-    // An Android content document supplies a source, not an implicit Add target.
-    // With an authenticated server available, require explicit phone/server
-    // selection. The phone route retains its existing bounded read/review.
+    // Share/Open With only admits source data, never a phone or remote Add.
+    // An occupied draft is held until the user explicitly chooses replacement.
     LaunchedEffect(incomingTorrent) {
-        if (incomingTorrent != null) {
-            remoteAddSessions.clearPendingSourceSelection()
-            sharedTorrentError = null
-            pendingSharedMagnet = null
-            phoneHandoffTorrentUri = null
-            // A privacy gate may have delayed the previous handoff. A new
-            // explicit source must not revive it when that gate opens later.
-            phoneHandoffMagnet = null
-            serverHandoffTorrent = null
-            localFromCombined = false
-            if (server == null) {
-                // Phone is the only currently verified target; still require
-                // its normal explicit Add confirmation, never start here.
-                phoneHandoffTorrentUri = incomingTorrent
-                onIncomingTorrentConsumed()
-                section = Section.LOCAL_ADD
-            } else {
-                // Connected remote can be chosen, but saved/offline profiles
-                // confer no execution authority until authenticated.
-                section = Section.COMBINED
+        val document = incomingTorrent ?: return@LaunchedEffect
+        sharedTorrentError = null
+        pendingSharedMagnet = null
+        pendingSharedDocument = null
+        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
+            ?.let { remoteAddSessions.forAccount(it) }
+        if (magnet.isNotBlank() || phoneReviewedTorrent.value != null ||
+            serverHandoffTorrent != null ||
+            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
+            activePhoneAddAttempt.attemptedTicket != null ||
+            remoteDraft?.alreadyAttempted == true) {
+            pendingSharedDocument = document
+        } else {
+            sharedTorrentReading = true
+            incomingDocumentRead = document
+        }
+        onIncomingTorrentConsumed()
+        section = Section.ADD_CHOOSE
+    }
+    // Android's granted document URI is read only in this process, validated
+    // by the existing 2 MiB/bencode intake. A failed replacement keeps the
+    // original selected draft and never reaches either Add executor.
+    LaunchedEffect(incomingDocumentRead) {
+        val document = incomingDocumentRead ?: return@LaunchedEffect
+        val sourceBeforeRead = magnet
+        sharedTorrentReading = true
+        sharedTorrentError = null
+        var cancelledByLifecycle = false
+        try {
+            val reviewed = withContext(Dispatchers.IO) {
+                SharedTorrentDocument.read(context.contentResolver, document)
+            }
+            if (incomingDocumentRead == document && magnet == sourceBeforeRead) {
+                phoneReviewedTorrent.value = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+                serverHandoffTorrent = if (addUsingAuthenticatedRemote && server != null &&
+                    RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
+                    reviewed.bytes.copyOf() else null
+                phoneHandoffTorrentUri = null
+                magnet = ""
+                remoteAddSessions.clearPendingSourceSelection()
+            } else if (incomingDocumentRead == document) {
+                sharedTorrentError = "The draft changed while reading the shared document. Your newer source was kept."
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            // Rotation cancels the old composition's coroutine. The new
+            // Activity still owns this RAM-only URI and must get a chance
+            // to validate it; cancellation cannot consume that handoff.
+            cancelledByLifecycle = true
+            throw cancel
+        } catch (_: Exception) {
+            if (incomingDocumentRead == document) sharedTorrentError =
+                "The shared .torrent could not be verified (v1 metainfo, maximum 2 MiB). The previous draft was kept."
+        } finally {
+            if (shouldConsumeReviewedSourceOnExit(
+                    isCurrentDocument = incomingDocumentRead == document,
+                    lifecycleCancelled = cancelledByLifecycle)) {
+                incomingDocumentRead = null
+                sharedTorrentReading = false
             }
         }
     }
@@ -559,28 +661,27 @@ internal fun ChunksApp(
         }
     }
 
-    // Android Share/Open With is source authority, never target authority. A
-    // live server must not silently make its own Add form the default: choose
-    // the exact destination first. Keep passkey-bearing source process-only;
-    // this temporary selector is replaced by the single Universal Add form.
+    // New Share text retains an existing draft until an explicit replacement.
     LaunchedEffect(sharedMagnet) {
-        if (sharedMagnet != null) {
-            remoteAddSessions.clearPendingSourceSelection()
-            // New explicit share replaces any older, unconsumed document review.
-            phoneHandoffTorrentUri = null
+        val proposed = sharedMagnet ?: return@LaunchedEffect
+        sharedTorrentError = null
+        pendingSharedDocument = null
+        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
+            ?.let { remoteAddSessions.forAccount(it) }
+        if ((magnet.isNotBlank() && magnet != proposed) ||
+            phoneReviewedTorrent.value != null || serverHandoffTorrent != null ||
+            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
+            activePhoneAddAttempt.attemptedTicket != null ||
+            remoteDraft?.alreadyAttempted == true) {
+            pendingSharedMagnet = proposed
+        } else {
+            pendingSharedMagnet = null
+            magnet = proposed
             phoneHandoffMagnet = null
-            serverHandoffTorrent = null
-            if (server == null) {
-                pendingSharedMagnet = null
-                phoneHandoffMagnet = sharedMagnet
-                localFromCombined = false
-                section = Section.LOCAL_ADD
-            } else {
-                pendingSharedMagnet = sharedMagnet
-                section = Section.COMBINED
-            }
-            onIncomingMagnetConsumed()
+            remoteAddSessions.selectMagnet(aliasScope)
         }
+        onIncomingMagnetConsumed()
+        section = Section.ADD_CHOOSE
     }
 
     val refresh: () -> Unit = {
@@ -707,6 +808,73 @@ internal fun ChunksApp(
         )
     }
 
+    // All entry points, including the footer and incoming Android Share, use
+    // Section.ADD_CHOOSE as one route. Its content is chosen *inline* by target;
+    // neither target choice nor a saved profile grants an Add ticket.
+    val addTargetIsAuthenticated = addUsingAuthenticatedRemote && server != null &&
+        RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null
+    val presentationSection = if (section == Section.ADD_CHOOSE) {
+        if (addTargetIsAuthenticated) Section.ADD else Section.LOCAL_ADD
+    } else section
+    val remoteAddLocked = if (server != null && aliasScope.isNotBlank())
+        remoteAddSessions.forAccount(aliasScope).alreadyAttempted else false
+    val addChoicesEnabled = activePhoneAddAttempt.attemptedTicket == null && !remoteAddLocked
+    val addDestinationPicker: @Composable () -> Unit = {
+        val verifiedRemoteScope = aliasScope.takeIf {
+            server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
+        }
+        UniversalAddDestinationPicker(
+            addingRemotely = addTargetIsAuthenticated,
+            authenticatedRemoteLabel = verifiedRemoteScope?.let {
+                "On " + serverEnvironmentLabel(it)
+            },
+            savedOtherProfiles = savedProfiles.filterNot { profile ->
+                eligibleUniversalAddRemote(verifiedRemoteScope,
+                    RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
+            }.map { UniversalAddSavedDestination(it.id, it.label + " · " + it.address) },
+            enabled = addChoicesEnabled && !sharedTorrentReading,
+            incomingSourceWaiting = pendingSharedMagnet != null || pendingSharedDocument != null,
+            importingSource = sharedTorrentReading,
+            sourceError = sharedTorrentError,
+            onAcceptIncoming = {
+                val document = pendingSharedDocument
+                val incomingText = pendingSharedMagnet
+                pendingSharedDocument = null
+                pendingSharedMagnet = null
+                sharedTorrentError = null
+                if (document != null) {
+                    sharedTorrentReading = true
+                    incomingDocumentRead = document
+                } else if (incomingText != null) {
+                    // User-authorized replacement, not an automatic Android
+                    // handoff. Keep the chosen target, Place and Start.
+                    phoneReviewedTorrent.value = null
+                    serverHandoffTorrent = null
+                    phoneHandoffTorrentUri = null
+                    magnet = incomingText
+                    remoteAddSessions.selectMagnet(aliasScope)
+                }
+            },
+            onKeepDraft = {
+                pendingSharedDocument = null
+                pendingSharedMagnet = null
+                sharedTorrentError = null
+            },
+            onPhone = { selectPhoneAddTarget() },
+            onAuthenticatedRemote = { selectAuthenticatedAddTarget() },
+            onConnectSaved = { requested ->
+                val profile = savedProfiles.firstOrNull { it.id == requested }
+                if (profile != null) {
+                    endpoint = profile.credentials.endpoint
+                    rpcPath = ""
+                    username = profile.credentials.username
+                    password = profile.credentials.password
+                    credentialNotice = "Authenticate this saved connection before remote Add. Your Add source is retained."
+                    section = Section.SERVER
+                }
+            }
+        )
+    }
     val paneTitle = ScreenPaneTitles.of(section.name, section.label,
         if (server != null && aliasScope.isNotBlank()) serverEnvironmentLabel(aliasScope) else null)
     Column(
@@ -723,46 +891,21 @@ internal fun ChunksApp(
         // Child routes must not each own competing bottom navigation bars.
         Box(Modifier.weight(1f)) {
 
-        if (section == Section.ARCHIVES) {
+        if (presentationSection == Section.ARCHIVES) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { leaveTool() }
             ) {
                 LocalZipReviewScreen(onBack = { leaveTool() })
             }
-        } else if (section == Section.SNAPSHOT_INSPECT) {
+        } else if (presentationSection == Section.SNAPSHOT_INSPECT) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { section = Section.TRANSFERS }
             ) {
                 SnapshotDocumentInspectScreen(onBack = { section = Section.TRANSFERS })
             }
-        } else if (section == Section.ADD_CHOOSE) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Add a transfer", style = MaterialTheme.typography.headlineSmall)
-                Text("Choose its destination. The source and Start choice remain yours to review; opening a destination never submits a torrent.")
-                OutlinedButton(onClick = { section = Section.LOCAL_ADD },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("On this device")
-                }
-                if (server != null && aliasScope.isNotBlank()) {
-                    OutlinedButton(onClick = { section = Section.ADD },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        // Avoid disclosing a saved account name in this local
-                        // chooser before the independent remote privacy gate.
-                        Text("On the connected server")
-                    }
-                }
-                if (savedProfiles.isNotEmpty() && server == null) {
-                    OutlinedButton(onClick = { section = Section.SERVER },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        Text("Connect to a saved server")
-                    }
-                }
-            }
-        } else if (section == Section.COMBINED) {
+        } else if (presentationSection == Section.COMBINED) {
             CombinedTransfersScreen(
                 showNavigationFooter = false,
                 scopeFocusRequest = savedProfileCatalogFocus,
@@ -839,7 +982,7 @@ internal fun ChunksApp(
                     // The existing phone review reads only an explicitly
                     // selected URI, under its own independent privacy gate.
                     localFromCombined = true
-                    section = Section.LOCAL_ADD
+                    selectPhoneAddTarget()
                 },
                 pendingSharedMagnet = pendingSharedMagnet != null && incomingTorrent == null,
                 pendingSharedLink = pendingSharedMagnet?.let {
@@ -873,7 +1016,7 @@ internal fun ChunksApp(
                                     remoteAddSessions.clearPendingSourceSelection()
                                     serverHandoffTorrent = reviewed.bytes
                                     onIncomingTorrentConsumed()
-                                    section = Section.ADD
+                                    selectAuthenticatedAddTarget()
                                 } else {
                                     sharedTorrentError =
                                         "The shared source or signed-in server changed. Choose again; nothing was added."
@@ -895,7 +1038,7 @@ internal fun ChunksApp(
                             prepareRemoteMagnet(source)
                             pendingSharedMagnet = null
                         }
-                        section = Section.ADD
+                        selectAuthenticatedAddTarget()
                     }
                 }) else null,
                 onOpenTransfer = { key ->
@@ -942,27 +1085,27 @@ internal fun ChunksApp(
                     }
                 }
             )
-        } else if (section == Section.SEEDING) {
+        } else if (presentationSection == Section.SEEDING) {
             SeedingRulesScreen(seedingEnvironments, onBack = { leaveTool() })
-        } else if (section == Section.MEDIA) {
+        } else if (presentationSection == Section.MEDIA) {
             MediaSettingsScreen(onBack = { leaveTool() })
-        } else if (section == Section.CREATE && server == null) {
+        } else if (presentationSection == Section.CREATE && server == null) {
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { leaveTool() },
                 shared = createRequest, onSharedConsumed = { createRequest = null })
-        } else if (section in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS) && server == null) {
+        } else if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS) && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                 onBack = { leavePhone() },
                 controlsInContent = true
             ) {
                 LocalEngineScreen(
-                    pane = when (section) {
+                    pane = when (presentationSection) {
                         Section.LOCAL_ADD -> PhonePane.ADD
                         Section.OPTIONS -> PhonePane.OPTIONS
                         else -> PhonePane.TRANSFERS
                     },
                     showNavigationFooter = false,
-                    listScroll = when (section) {
+                    listScroll = when (presentationSection) {
                         Section.LOCAL_ADD -> phoneAddScroll
                         Section.OPTIONS -> phoneOptionsScroll
                         else -> phoneListScroll
@@ -970,6 +1113,8 @@ internal fun ChunksApp(
                     magnetDraftState = addSourceDraft,
                     addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                     addArtworkState = addArtworkChoices.onPhone(),
+                    addDestinationPicker = if (presentationSection == Section.LOCAL_ADD) addDestinationPicker else null,
+                    externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                     pendingAddState = phoneReviewedTorrent,
                     phoneAddAttemptSession = activePhoneAddAttempt,
                     onBack = { leavePhone() },
@@ -990,7 +1135,7 @@ internal fun ChunksApp(
                     },
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
                     onConnections = { section = Section.SERVER },
-                    onOpenAdd = { section = Section.LOCAL_ADD },
+                    onOpenAdd = { selectPhoneAddTarget() },
                     onOpenOptions = { section = Section.OPTIONS },
                     remoteEnvironmentLabel = aliasScope.takeIf {
                         server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
@@ -1381,7 +1526,7 @@ internal fun ChunksApp(
             val remotePrivacyScope = remember(aliasScope) {
                 RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
             }
-            if (section in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS)) {
+            if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS)) {
                 // Phone and rTorrent privacy are independent. A locked remote
                 // profile can still navigate to the separately gated phone.
                 LocalTransferPrivacyGate(
@@ -1390,13 +1535,13 @@ internal fun ChunksApp(
                     controlsInContent = true
                 ) {
                     LocalEngineScreen(
-                        pane = when (section) {
+                        pane = when (presentationSection) {
                         Section.LOCAL_ADD -> PhonePane.ADD
                         Section.OPTIONS -> PhonePane.OPTIONS
                         else -> PhonePane.TRANSFERS
                     },
                     showNavigationFooter = false,
-                    listScroll = when (section) {
+                    listScroll = when (presentationSection) {
                         Section.LOCAL_ADD -> phoneAddScroll
                         Section.OPTIONS -> phoneOptionsScroll
                         else -> phoneListScroll
@@ -1404,6 +1549,8 @@ internal fun ChunksApp(
                         magnetDraftState = addSourceDraft,
                         addPlaceState = phoneAddPlace, addFolderState = phoneAddFolder, addStartState = phoneAddStart,
                         addArtworkState = addArtworkChoices.onPhone(),
+                    addDestinationPicker = if (presentationSection == Section.LOCAL_ADD) addDestinationPicker else null,
+                    externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                         pendingAddState = phoneReviewedTorrent,
                         phoneAddAttemptSession = activePhoneAddAttempt,
                         onBack = { leavePhone() },
@@ -1423,7 +1570,7 @@ internal fun ChunksApp(
                         section = Section.COMBINED
                     },
                         onConnections = { section = Section.SERVER },
-                        onOpenAdd = { section = Section.LOCAL_ADD },
+                        onOpenAdd = { selectPhoneAddTarget() },
                         onOpenOptions = { section = Section.OPTIONS },
                         remoteEnvironmentLabel = aliasScope.takeIf {
                             RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
@@ -1459,12 +1606,12 @@ internal fun ChunksApp(
                         onPrefillConsumed = { phoneHandoffMagnet = null },
                         onPrepareRemote = { draft ->
                             prepareRemoteMagnet(draft)
-                            section = Section.ADD
+                            selectAuthenticatedAddTarget()
                         },
                         onPrepareRemoteTorrent = { document ->
                             remoteAddSessions.clearPendingSourceSelection()
                             serverHandoffTorrent = document
-                            section = Section.ADD
+                            selectAuthenticatedAddTarget()
                         }
                     )
                 }
@@ -1633,7 +1780,7 @@ internal fun ChunksApp(
             // Per-account list position survives visiting Places, Server or
             // other routes; a different account starts at the top.
             val remoteListState = remember(aliasScope) { remoteContinuity.listState(aliasScope) }
-            when (section) {
+            when (presentationSection) {
                 Section.TRANSFERS -> RemoteEnvironmentCompositionBoundary(aliasScope, connectedRemote) {
                     TransfersScreen(
                     listState = remoteListState,
@@ -1671,7 +1818,7 @@ internal fun ChunksApp(
                         showAllEnvironmentsRevision++
                         section = Section.COMBINED
                     },
-                    onRefresh = refresh, onAdd = { section = Section.ADD },
+                    onRefresh = refresh, onAdd = { selectAuthenticatedAddTarget() },
                     onConnections = { section = Section.SERVER },
                     showNavigationFooter = false,
                     optionsOpen = optionsOpen,
@@ -1762,11 +1909,11 @@ internal fun ChunksApp(
                             onPrepareAdd = { document ->
                                 remoteAddSessions.clearPendingSourceSelection()
                                 serverHandoffTorrent = document
-                                section = Section.ADD
+                                selectAuthenticatedAddTarget()
                             },
                             onPrepareMagnet = { link ->
                                 prepareRemoteMagnet(link)
-                                section = Section.ADD
+                                selectAuthenticatedAddTarget()
                             }
                         )
                     }
@@ -1794,7 +1941,7 @@ internal fun ChunksApp(
                 Section.PLACES -> PlacesScreen(transfers) { path ->
                     remoteAddSessions.forAccount(aliasScope)
                         .takeUnless { it.alreadyAttempted }?.destination = path
-                    section = Section.ADD
+                    selectAuthenticatedAddTarget()
                 }
                 Section.NAMES -> AliasBatchReviewScreen(
                     transfers = transfers, aliasStore = aliasStore,
@@ -1872,6 +2019,8 @@ internal fun ChunksApp(
                         onMagnet = { magnet = it }, onDestination = { addSession.destination = it },
                         addStartState = phoneAddStart,
                         addArtworkState = addArtworkChoices.onServer(aliasScope),
+                        addDestinationPicker = addDestinationPicker,
+                        externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                         onBack = { section = Section.TRANSFERS },
                         onComplete = refresh,
                         onVerifiedAdd = { hash ->
@@ -1926,18 +2075,10 @@ internal fun ChunksApp(
                 // filter, exact environment selection or any Add draft.
                 scope.launch { combinedListState.scrollToItem(0) }
             },
-            onAdd = {
-                // The footer ALWAYS enters the shared Add destination, even
-                // while an external magnet/.torrent is pending and even when
-                // there is no remote profile. Do not consume or auto-submit
-                // its frozen source/Place/Start draft by changing screens.
-                // The Add implementer replaces this interim gateway with the
-                // one source-first Universal Add form and sole coordinator.
-                section = Section.ADD_CHOOSE
-            },
+            onAdd = { section = Section.ADD_CHOOSE },
             onOptions = { section = Section.OPTIONS },
             onConnections = { section = Section.SERVER },
-            addDescription = "Choose where to add a transfer",
+            addDescription = "Add a torrent",
             activeDestination = footerDestinationForVisibleScreen(section.name, server != null, toolOrigin)
         )
     }
