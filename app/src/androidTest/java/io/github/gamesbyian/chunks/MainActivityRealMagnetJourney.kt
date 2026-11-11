@@ -12,6 +12,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
@@ -84,14 +85,23 @@ internal class MainActivityRealMagnetJourney(
         // recycling the button even after the earlier enabled-only probe.
         // Give Compose a bounded chance to settle using *read/scroll-only*
         // operations. Never attempt a click in this loop.
-        rule.waitUntil(30_000) {
-            runCatching {
-                scroll(text)
-                rule.onNodeWithText(text).performScrollTo()
-                rule.waitForIdle()
-                rule.onNodeWithText(text).assertIsDisplayed()
-                true
-            }.getOrDefault(false)
+        try {
+            rule.waitUntil(30_000) {
+                runCatching {
+                    scroll(text)
+                    rule.onNodeWithText(text).performScrollTo()
+                    rule.waitForIdle()
+                    rule.onNodeWithText(text).assertIsDisplayed()
+                    true
+                }.getOrDefault(false)
+            }
+        } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+            // Numeric geometry only (no app text): top/bottom of the control and of the root.
+            val b = runCatching { rule.onAllNodesWithText(text).fetchSemanticsNodes().firstOrNull()?.boundsInRoot }.getOrNull()
+            val r = runCatching { rule.onRoot().fetchSemanticsNode().boundsInRoot }.getOrNull()
+            report("chunks_real_add_app_stage", "click-geo-" + (b?.top?.toInt() ?: -1) + "-" +
+                (b?.bottom?.toInt() ?: -1) + "-" + (r?.bottom?.toInt() ?: -1))
+            throw timeout
         }
         // Exactly one click; never retry a possibly submitted RPC mutation.
         rule.onNodeWithText(text).performClick()
