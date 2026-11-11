@@ -213,7 +213,7 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.waitUntil(60_000) {
             rule.onAllNodesWithText("View transfers").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("View transfers").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
         rule.waitUntil(30_000) { rule.onAllNodesWithText("2 transfers", substring = true).fetchSemanticsNodes().isNotEmpty() }
 
         // Real row, bundled category art from the original torrent name; nothing looked up.

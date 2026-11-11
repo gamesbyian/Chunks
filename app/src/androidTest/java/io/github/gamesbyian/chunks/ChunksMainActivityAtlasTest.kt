@@ -371,7 +371,7 @@ class ChunksMainActivityAtlasTest {
             rule.waitUntil(60_000) {
                 rule.onAllNodesWithText("View transfers").fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithText("View transfers").performScrollTo().performClick()
+            rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
             rule.waitUntil(30_000) {
                 rule.onAllNodesWithText("3 transfers", substring = true).fetchSemanticsNodes().isNotEmpty()
             }

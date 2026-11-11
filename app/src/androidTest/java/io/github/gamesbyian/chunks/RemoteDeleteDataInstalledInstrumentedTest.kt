@@ -115,7 +115,7 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             waitFor("connected server in Connections", 60_000) {
                 visible("View transfers")
             }
-            rule.onNodeWithText("View transfers").performScrollTo().performClick()
+            rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
             waitFor("canonical server-scoped Transfers", 60_000) {
                 visible("Search names or hashes")
             }

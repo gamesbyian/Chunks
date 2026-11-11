@@ -241,7 +241,10 @@ internal class MainActivityRealMagnetJourney(
         rule.waitUntil(90_000) { visible("Continue to Connections") }
         click("Continue to Connections")
         rule.waitUntil(60_000) { visible("View transfers") }
-        click("View transfers")
+        // Connections lists the current server's button AND one per saved profile; only the
+        // current verified server's exact accessibility name is unambiguous.
+        rule.onNode(hasContentDescription("View transfers on current verified server"))
+            .performScrollTo().performClick()
         waitTransfersCatalog()
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
