@@ -212,6 +212,10 @@ and [WORK-QUEUE](WORK-QUEUE.md) for live acceptance boundaries.
 
 Connect has an **Advanced connection settings** disclosure with one optional **Exact RPC path** field (for example `/RPC2`). `RemoteSmartConnect.withExactPath` joins it to a hostname-only address on the same origin, so discovery tests only that one address with the usual read-only version + main-view probe. It refuses a path without a leading `/`, `..`/encoded dot segments, `//`, spaces, `?` or `#`, and refuses an address that already names a path, so the two fields can never disagree about which instance is meant. HTTPS, embedded-credential and loopback rules still apply to the joined address. After a verified connection the address field holds the full RPC address and the path field is cleared. Evidence: JVM unit tests and a Robolectric Connect-screen test of both refusals; no real-provider or handset acceptance.
 
+## Adding further remote connections (binding UX acceptance)
+
+**Add connection** remains visibly accessible from the Connections screen regardless of whether the user has zero, one, or multiple saved profiles. The same remote setup form is reusable in create-new mode and must not silently replace or edit a pre-existing profile. Each newly verified connection creates its own independently identified saved profile, including separate numbered ruTorrent paths on a shared host; cancel, validation failure, offline/expired profiles and process recreation must not remove existing profiles or hide the add action. Return to the Connections roster after success or cancellation. Test the zero → one → two profile journey, then adding a third while an existing profile is offline, including device-width and accessibility cases. This is a product requirement and pending UI acceptance, not a shipped claim.
+
 ## Reconnecting saved profiles in combined browsing (2026-11-01 candidate)
 
 A saved Keystore credential records the last accepted account connection; it
