@@ -20,7 +20,7 @@
 ## R2. Media and Options
 
 - For changed artwork and settings screens, qualify the actual card/row/poster presentation and interaction alongside the provider/state logic. The later annotated-screenshot campaign will reconcile global style and cohesion, not invent missing per-feature UX.
-- One complete LIVE authorized inventory host independent of mounted Transfers, with offscreen/Connect/Options/Add/reconnect enrichment, exact hash/profile and privacy-epoch revocation, persisted overrides and offline cache. Real HTTP and zero-request controls. [#1453](https://github.com/gamesbyian/Chunks/issues/1453).
+- Verify and finish the merged activity-lifetime media inventory host [#1453](https://github.com/gamesbyian/Chunks/issues/1453): startup before Transfers mounts, offscreen/Connect/Options/Add/reconnect enrichment, exact hash/profile and privacy-epoch revocation, overrides and offline cache. Require installed real HTTP and zero-request controls rather than reimplementing the already merged host.
 - Genuine square artwork in rows, portrait posters in Details, square derivative only fallback [#1654](https://github.com/gamesbyian/Chunks/issues/1654). Implement the merged #1657 [Options filled-card design](design/OPTIONS-SOLID-COLOUR-INDEX.md): eight **filled-colour** Options cards, nested legacy settings, search/deep links, working toggles, contrast/large text and Pixel visual proof.
 - **Exit:** assembled installed real provider/scope proof, no accidental requests, restored state and visually accepted Options.
 
