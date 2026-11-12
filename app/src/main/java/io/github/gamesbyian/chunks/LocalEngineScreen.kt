@@ -2631,7 +2631,7 @@ internal fun LocalEngineScreen(
                 else Modifier.height(0.dp).clipToBounds().focusProperties { canFocus = false }
                     .clearAndSetSemantics { })
         ) {
-        OptionsSettingsGroup(optionsCategory == OptionsCategory.ABOUT) {
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.DOWNLOADS) {
         if (remoteEnvironmentLabel != null && onRemotePlaces != null &&
             onRemoteOrganize != null && onRemoteNames != null && onRemoteSnapshot != null) {
             // The local Options route is independently privacy-gated from
@@ -2647,10 +2647,18 @@ internal fun LocalEngineScreen(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Server collections")
             }
+        }
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.APPEARANCE) {
+        if (remoteEnvironmentLabel != null && onRemoteNames != null) {
             OutlinedButton(onClick = onRemoteNames,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Server transfer names")
             }
+        }
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.ABOUT) {
+        if (remoteEnvironmentLabel != null && onRemoteSnapshot != null) {
             OutlinedButton(onClick = onRemoteSnapshot,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Server inventory backup")

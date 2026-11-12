@@ -225,14 +225,14 @@ open class ChunksServerRenderTest {
         rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.CONNECTIONS.tag).performScrollTo()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-options.png")
 
-        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.ABOUT.tag).performScrollTo().performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS.tag).performScrollTo().performClick()
         rule.onNodeWithText("Connected server tools").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Server folders & destinations").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-places.png")
         rule.onNodeWithContentDescription("Options").performClick()
 
-        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.ABOUT.tag).performScrollTo().performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS.tag).performScrollTo().performClick()
         rule.onNodeWithText("Server collections").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-organize.png")

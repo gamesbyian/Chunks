@@ -95,6 +95,8 @@ internal val LocalOptionsShortcut.category: OptionsCategory get() = when (this) 
     LocalOptionsShortcut.MEDIA -> OptionsCategory.ARTWORK
     LocalOptionsShortcut.DHT, LocalOptionsShortcut.CLIPBOARD_PREFILL, LocalOptionsShortcut.PRIVACY -> OptionsCategory.PRIVACY
     LocalOptionsShortcut.DOWNLOAD_LOCATION, LocalOptionsShortcut.SNAPSHOT_RESTORE,
-    LocalOptionsShortcut.ZIP_REVIEW, LocalOptionsShortcut.COLLECTION_NAMES -> OptionsCategory.DOWNLOADS
+    LocalOptionsShortcut.ZIP_REVIEW, LocalOptionsShortcut.COLLECTION_NAMES,
+    LocalOptionsShortcut.SERVER_PLACES, LocalOptionsShortcut.SERVER_ORGANIZE -> OptionsCategory.DOWNLOADS
+    LocalOptionsShortcut.SERVER_NAMES -> OptionsCategory.APPEARANCE
     else -> OptionsCategory.ABOUT
 }
