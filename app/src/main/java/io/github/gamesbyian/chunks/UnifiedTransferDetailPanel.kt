@@ -66,7 +66,9 @@ internal fun UnifiedTransferDetailPanel(
     /** Optional Similar Transfers over authorized inventory; null hides the section. */
     similar: (@Composable (UnifiedTransferObservation) -> Unit)? = null,
     /** The authenticated owning adapter supplies operations without another list route. */
-    exactServerOperations: (@Composable () -> Unit)? = null
+    exactServerOperations: (@Composable () -> Unit)? = null,
+    /** Display-name (Chunks alias) editor for an authorized owner; never renames payload. */
+    rename: (@Composable (UnifiedTransferObservation) -> Unit)? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
     // Presentation state only. Never retain a mutation authority or stale command review.
@@ -98,6 +100,12 @@ internal fun UnifiedTransferDetailPanel(
             // Running text, not a heading: the readable sans per ChunksTypography.
             Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleSmall,
                 modifier = Modifier.weight(1f))
+        }
+        if (!hidden) detail.observation?.let { transfer ->
+            if (transfer.displayName != transfer.originalName)
+                Text("Original torrent name: " + transfer.originalName,
+                    style = MaterialTheme.typography.bodySmall)
+            rename?.invoke(transfer)
         }
         if (!hidden) detail.observation?.let { TransferDetailFacts(it) }
         if (!hidden) detail.observation?.let { transfer ->

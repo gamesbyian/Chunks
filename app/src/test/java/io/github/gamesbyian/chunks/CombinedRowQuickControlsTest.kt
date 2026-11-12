@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
 import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.model.EnvironmentViewScope
@@ -174,5 +175,40 @@ class CombinedRowQuickControlsTest {
         rule.onNodeWithContentDescription("Hidden: $label").performClick()
         rule.waitUntil(5_000) { CombinedViewPreferences(context).load().scope == EnvironmentViewScope.All }
         assertTrue(commands.isEmpty())
+    }
+
+    @Test fun detailsRenameAppliesASuggestionPersistsAndRestoresWithoutTouchingTheTorrent() {
+        val hash = "3".repeat(40)
+        val release = "Away We Go 2009 1080p BluRay x264-GeneMige.mkv"
+        TransferAliasStore(context).save(aliasScope, hash, null)
+        val movieRows = listOf(RemoteTransfer(hash, release, 900, 900, true, "/d", 0, 0))
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                CombinedTransfersScreen(
+                    server = CombinedServerSource(aliasScope, movieRows, stale = false, fullView = true,
+                        observedAtEpochMillis = System.currentTimeMillis(),
+                        lifecycle = CombinedServerLifecycle(begin = { true }, settled = {},
+                            setStarted = { h, on -> commands += h to on
+                                io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) },
+                            ownerSession = session),
+                        authenticatedSession = session),
+                    savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+            } }
+        }
+        val details = "Details for $release on $label"
+        reveal(hasContentDescription(details))
+        rule.onNodeWithContentDescription(details).performClick()
+        rule.onNodeWithText("Change list name").performScrollTo().performClick()
+        rule.onNodeWithText("Show name suggestions", substring = true).performScrollTo().performClick()
+        rule.onNodeWithContentDescription("Use list-name suggestion: Away We Go (2009)")
+            .performScrollTo().performClick()
+        rule.onNodeWithText("Save name").performScrollTo().performClick()
+        rule.waitUntil(5_000) { TransferAliasStore(context).get(aliasScope, hash) == "Away We Go (2009)" }
+        // The list now shows the display name; the original release name stays inspectable.
+        rule.waitUntil(5_000) { rule.onAllNodes(hasText("Original torrent name: $release"))
+            .fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Use original name").performScrollTo().performClick()
+        rule.waitUntil(5_000) { TransferAliasStore(context).get(aliasScope, hash) == null }
+        assertTrue("A display rename never commands or renames the torrent", commands.isEmpty())
     }
 }

@@ -52,7 +52,9 @@ internal fun TransferAliasEditor(
     hash: String,
     alias: String?,
     onSave: (String?) -> Boolean,
-    session: TransferAliasEditSession? = null
+    session: TransferAliasEditSession? = null,
+    /** Confidently identified media (title, year) offered ahead of filename-only suggestions. */
+    identifiedSuggestions: List<io.github.gamesbyian.chunks.model.DisplayNameSuggestion> = emptyList()
 ) {
     // The installed Transfers screen owns an editor session ABOVE its LazyColumn.
     // A keyed LazyColumn alone proved insufficient on API 35: the selected
@@ -61,7 +63,10 @@ internal fun TransferAliasEditor(
     val editor = session ?: rememberSaveable(hash, alias, saver = TransferAliasEditSessionSaver) {
         TransferAliasEditSession(alias)
     }
-    val suggestions = remember(originalName) { TransferDisplayNames.suggestions(originalName) }
+    val suggestions = remember(originalName, identifiedSuggestions) {
+        (identifiedSuggestions + TransferDisplayNames.suggestions(originalName))
+            .distinctBy { it.name }.filter { it.name != originalName }.take(4)
+    }
     var showSuggestions by rememberSaveable(hash, alias) { mutableStateOf(false) }
 
     if (!editor.editing) {
@@ -73,6 +78,11 @@ internal fun TransferAliasEditor(
         }, modifier = Modifier.heightIn(min = 48.dp)) {
             Text(if (alias == null) "Change list name" else "Edit list name")
         }
+        // A display alias is always reversible to the torrent's own name.
+        if (alias != null) OutlinedButton(onClick = {
+            if (!onSave(null)) editor.problem = "Could not restore the original name."
+        }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Use original name") }
+        if (editor.problem != null) Text(editor.problem.orEmpty())
         return
     }
 
@@ -99,7 +109,8 @@ internal fun TransferAliasEditor(
                 Text(if (showSuggestions) "Hide name suggestions" else "Show name suggestions (${suggestions.size})")
             }
             if (showSuggestions) {
-                Text("Clean-name suggestions · from this filename only")
+                Text(if (identifiedSuggestions.isEmpty()) "Clean-name suggestions · from this filename only"
+                    else "Name suggestions · identified media first, then this filename")
                 for (suggestion in suggestions) {
                 OutlinedButton(
                     onClick = { editor.draft = suggestion.name; editor.problem = null },

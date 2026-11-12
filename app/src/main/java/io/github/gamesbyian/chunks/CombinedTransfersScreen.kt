@@ -1008,8 +1008,22 @@ internal fun CombinedTransfersScreen(
         val exactRemoteRow = authenticatedExactRemovalRow(focusedKey, server, serverId)
         val canShowExactRemoval = exactRemoteRow != null &&
             serverPrivacy?.mayShow == true && verifiedOwner != null
+        val renameScope = aliasScopes[focusedKey.environment]
         UnifiedTransferDetailPanel(
             detail = details,
+            rename = if (renameScope == null) null else ({ transfer ->
+                val media by io.github.gamesbyian.chunks.media.rememberTransferMedia(
+                    io.github.gamesbyian.chunks.media.MediaTransferKey.of(transfer.key), transfer.originalName)
+                TransferAliasEditor(
+                    originalName = transfer.originalName, hash = transfer.key.infoHash,
+                    alias = transfer.displayName.takeIf { it != transfer.originalName },
+                    onSave = { value ->
+                        // Chunks display alias for this exact owner scope + hash only.
+                        runCatching { TransferAliasStore(context).save(renameScope, transfer.key.infoHash, value) }
+                            .getOrDefault(false)
+                    },
+                    identifiedSuggestions = identifiedMediaNameSuggestions(media.assignment))
+            }),
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
@@ -1756,6 +1770,23 @@ internal fun toggleEnvironmentVisibility(
     val next = if (id in visible) visible - id else visible + id
     return if (available.isNotEmpty() && next.containsAll(available)) EnvironmentViewScope.All
         else EnvironmentViewScope.Only(next)
+}
+
+/** A confident (automatic or person-chosen) media identity suggests "Title (Year)". */
+internal fun identifiedMediaNameSuggestions(
+    assignment: io.github.gamesbyian.chunks.media.TransferMediaAssignment?
+): List<io.github.gamesbyian.chunks.model.DisplayNameSuggestion> {
+    val confident = assignment?.takeIf {
+        it.state == io.github.gamesbyian.chunks.media.MediaAssignmentState.AUTOMATIC ||
+            it.state == io.github.gamesbyian.chunks.media.MediaAssignmentState.CHOSEN_BY_USER
+    }?.match ?: return emptyList()
+    val title = confident.title.trim().takeIf { it.isNotEmpty() } ?: return emptyList()
+    val episode = if (confident.season != null && confident.episode != null)
+        " S" + confident.season.toString().padStart(2, '0') + "E" + confident.episode.toString().padStart(2, '0')
+        else ""
+    val name = title + episode + (confident.year?.let { " ($it)" } ?: "")
+    return listOf(io.github.gamesbyian.chunks.model.DisplayNameSuggestion(name,
+        "Identified media (" + confident.attribution.providerName + ")"))
 }
 
 internal fun rowKeyText(key: UnifiedTransferKey): String = key.environment.value + "|" + key.infoHash
