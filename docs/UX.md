@@ -1,6 +1,6 @@
 # Chunks interaction and accessibility contract
 
-**Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID \`local\`. Remote environments are independently named profiles. Phone/handset/tablet refers only to hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
+**Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID \`local\`. Remote environments are independently named profiles. Local/handset/tablet refers only to hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
 
 **Interaction requirements:** Render the same compact transfer row in All/device/server filters and open a dedicated full Details for every transfer. Keep a one-row, always-available four-root footer. Ordinary action groups use two columns, or three where readable; preserve keyboard, TalkBack, 320/412dp, large font and 48dp hit targets. Use one Universal Add form; show the default-checked auto-artwork choice **only there when globally enabled** and never in active Details. Consent, exact authenticated mutations, error recovery and user override persistence remain mandatory. See [current UX/media contract](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) and [execution queue](WORK-QUEUE.md).
 

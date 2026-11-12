@@ -4,7 +4,7 @@
 set -euo pipefail
 pkg=io.github.gamesbyian.chunks
 runner="$pkg.test/androidx.test.runner.AndroidJUnitRunner"
-cls=io.github.gamesbyian.chunks.PhoneIntakeJourneyInstrumentedTest
+cls=io.github.gamesbyian.chunks.LocalIntakeJourneyInstrumentedTest
 # The standalone intake fixture writes public Downloads and force-stops the
 # package. Pin a positively identified emulator *before* any device mutation.
 [[ -z "${ADB_SERIAL:-}" || -z "${ANDROID_SERIAL:-}" ||
@@ -100,7 +100,7 @@ log_d="$(adb logcat -d -v raw -s ChunksIntake:I)"
 if [[ "$(grep -Fxc 'OK (1 test)' <<< "$out_d" || true)" != 1 ]] ||
    grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$out_d"; then
   echo 'CHUNKS_INTAKE: delete-data journey did not execute exactly one passing test'
-  # Disposable emulator, phone-only fixture, no account: name the last production step
+  # Disposable emulator, local-only fixture, no account: name the last production step
   # reached and the process crash frames (URLs redacted) so an intermittent Compose or
   # native crash (run 43169696534) can be located instead of reported as "Process crashed".
   grep -E '^CHUNKS_INTAKE_DELETE_STAGE [a-z-]+$' <<< "$log_d" | tail -n 3 || true

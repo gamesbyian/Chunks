@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Two separate instrumented Android app processes. No real phones, no app data
+# Two separate instrumented Android app processes. No real locals, no app data
 # clear and no permission mutations. Fixed nonsecret receipts only.
 set -euo pipefail
 api="$1"

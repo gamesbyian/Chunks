@@ -222,7 +222,7 @@ internal fun EnvironmentBadge(
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // Library icons are drawn for light fills; tint to the badge accent on this dark chip.
-        Image(painterResource(if (server) R.drawable.chunks_ic_server else R.drawable.__CHUNKS_PHYSICAL_LOCAL_ICON__),
+        Image(painterResource(if (server) R.drawable.chunks_ic_server else R.drawable.chunks_ic_phone),
             contentDescription = null, modifier = Modifier.size(20.dp),
             colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(accent))
         Text(label, style = MaterialTheme.typography.labelLarge, color = ChunksColors.Text)

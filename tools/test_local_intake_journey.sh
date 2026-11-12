@@ -95,9 +95,9 @@ esac
 MOCK
 chmod +x "$tmp/bin/adb"
 export PATH="$tmp/bin:$PATH" MOCK_STATE="$tmp/state"
-bash -n "$root/phone_intake_journey.sh"
-bash -n "$root/test_phone_intake_journey.sh"
-env -u ADB_SERIAL -u ANDROID_SERIAL bash "$root/phone_intake_journey.sh" > "$tmp/positive.log"
+bash -n "$root/local_intake_journey.sh"
+bash -n "$root/test_local_intake_journey.sh"
+env -u ADB_SERIAL -u ANDROID_SERIAL bash "$root/local_intake_journey.sh" > "$tmp/positive.log"
 [[ "$(wc -l < "$MOCK_STATE/instruments")" == 5 ]]
 for bad in physical second_device devices_failure state_failure ambiguous_qemu identity_failure \
            sdk_failure old_api stop_failure alive no_death no_arm duplicate_arm log_failure wrong_kind \
@@ -105,7 +105,7 @@ for bad in physical second_device devices_failure state_failure ambiguous_qemu i
            terminal_duplicate terminal_mixed no_recovery changed_bytes no_seed duplicate_recovery \
            no_delete delete_fail no_readd; do
   rm -f "$MOCK_STATE/stops" "$MOCK_STATE/instruments"
-  if env -u ADB_SERIAL -u ANDROID_SERIAL BAD="$bad" bash "$root/phone_intake_journey.sh" > "$tmp/$bad.log" 2>&1; then
+  if env -u ADB_SERIAL -u ANDROID_SERIAL BAD="$bad" bash "$root/local_intake_journey.sh" > "$tmp/$bad.log" 2>&1; then
     echo "CHUNKS_INTAKE_MOCK: falsely accepted $bad" >&2; exit 1
   fi
   case "$bad" in
@@ -116,13 +116,13 @@ for bad in physical second_device devices_failure state_failure ambiguous_qemu i
   esac
 done
 rm -f "$MOCK_STATE/stops" "$MOCK_STATE/instruments"
-if ADB_SERIAL=WRONG ANDROID_SERIAL=MOCK_USB bash "$root/phone_intake_journey.sh" > "$tmp/conflicting.log" 2>&1; then
+if ADB_SERIAL=WRONG ANDROID_SERIAL=MOCK_USB bash "$root/local_intake_journey.sh" > "$tmp/conflicting.log" 2>&1; then
   echo 'CHUNKS_INTAKE_MOCK: accepted conflicting ADB selectors' >&2; exit 1
 fi
 [[ ! -e "$MOCK_STATE/stops" && ! -e "$MOCK_STATE/instruments" ]] || {
   echo 'CHUNKS_INTAKE_MOCK: mutated before rejecting contradictory selectors' >&2; exit 1;
 }
-if ANDROID_SERIAL=NOT_CONNECTED bash "$root/phone_intake_journey.sh" > "$tmp/unknown.log" 2>&1; then
+if ANDROID_SERIAL=NOT_CONNECTED bash "$root/local_intake_journey.sh" > "$tmp/unknown.log" 2>&1; then
   echo 'CHUNKS_INTAKE_MOCK: accepted unlisted ADB selector' >&2; exit 1
 fi
 [[ ! -e "$MOCK_STATE/stops" && ! -e "$MOCK_STATE/instruments" ]] || {

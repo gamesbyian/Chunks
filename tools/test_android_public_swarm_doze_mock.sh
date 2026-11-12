@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Offline fake-adb regression tests for opt-in forced Doze, no phone/emulator.
+# Offline fake-adb regression tests for opt-in forced Doze, no local/emulator.
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 temp="$(mktemp -d)"

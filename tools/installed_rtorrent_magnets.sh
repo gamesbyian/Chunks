@@ -82,26 +82,26 @@ bash tools/verify_installed_apk_bytes.sh \
   | tee "$RUNNER_TEMP/chunks-installed-apk-identity.txt"
 unset installed_apk
 if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
-  milestone 'running production phone HTTPS and one-time Place journey'
+  milestone 'running production local HTTPS and one-time Place journey'
   tunnel
   adb logcat -c
   adb shell am instrument -w -r \
-    -e class io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest \
+    -e class io.github.gamesbyian.chunks.HttpsLocalAddJourneyInstrumentedTest \
     -e chunks_https_add authorized \
     "${candidate_package}.test/androidx.test.runner.AndroidJUnitRunner" \
-    > "$RUNNER_TEMP/chunks-https-phone.raw" 2>&1
+    > "$RUNNER_TEMP/chunks-https-local.raw" 2>&1
   # Capture the disposable public-fixture process crash before parsing can fail.
   # No account has been entered at this point; never retain a protected host log.
   if [[ "${CHUNKS_DISPOSABLE:-0}" = 1 ]]; then
-    adb logcat -d -b crash > "$RUNNER_TEMP/chunks-https-phone-crash.txt"
+    adb logcat -d -b crash > "$RUNNER_TEMP/chunks-https-local-crash.txt"
   fi
-  adb logcat -d -v raw -s ChunksHttps:I > "$RUNNER_TEMP/chunks-https-phone-witness.txt"
-  python3 tools/parse_instrumentation_stream.py --raw "$RUNNER_TEMP/chunks-https-phone.raw" \
-    --junit "$RUNNER_TEMP/chunks-https-phone.xml"
-  python3 tools/ci_failure_digest.py --suite https-phone --status success --require-executed \
-    --glob "$RUNNER_TEMP/chunks-https-phone.xml" --output "$RUNNER_TEMP/chunks-https-phone-digest.json"
-  grep -E '^CHUNKS_HTTPS_PHONE verified=true received=[1-9][0-9]* pieces_bytes=[1-9][0-9]* complete=false default_preserved=true piece_sha256=[0-9a-f]{64}$' \
-    "$RUNNER_TEMP/chunks-https-phone-witness.txt"
+  adb logcat -d -v raw -s ChunksHttps:I > "$RUNNER_TEMP/chunks-https-local-witness.txt"
+  python3 tools/parse_instrumentation_stream.py --raw "$RUNNER_TEMP/chunks-https-local.raw" \
+    --junit "$RUNNER_TEMP/chunks-https-local.xml"
+  python3 tools/ci_failure_digest.py --suite https-local --status success --require-executed \
+    --glob "$RUNNER_TEMP/chunks-https-local.xml" --output "$RUNNER_TEMP/chunks-https-local-digest.json"
+  grep -E '^CHUNKS_HTTPS_LOCAL verified=true received=[1-9][0-9]* pieces_bytes=[1-9][0-9]* complete=false default_preserved=true piece_sha256=[0-9a-f]{64}$' \
+    "$RUNNER_TEMP/chunks-https-local-witness.txt"
   adb shell am force-stop "$candidate_package"
 fi
 milestone 'starting Android instrumentation'

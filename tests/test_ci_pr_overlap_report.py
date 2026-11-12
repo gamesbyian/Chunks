@@ -14,9 +14,9 @@ def changed(path, patch, status="modified", previous=None):
 class PrOverlapTests(unittest.TestCase):
     def test_identical_small_pr_is_fully_subsumed_by_larger_ux_wave(self):
         # Structural analogue of the verified identical AndroidManifest and
-        # PhoneImeManifestTest patches in actual #1171 and #1175.
+        # LocalImeManifestTest patches in actual #1171 and #1175.
         manifest = changed("app/src/main/AndroidManifest.xml", "@@ -25 +25 @@\n+adjustResize")
-        test = changed("app/src/test/java/PhoneImeManifestTest.kt", "@@ -0 +1 @@\n+test")
+        test = changed("app/src/test/java/LocalImeManifestTest.kt", "@@ -0 +1 @@\n+test")
         other = changed("app/src/main/java/MainActivity.kt", "@@ -1 +1 @@\n+new")
         result = overlap_report([
             {"number": 1171, "files": [manifest, test]},

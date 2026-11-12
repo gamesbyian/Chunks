@@ -67,7 +67,7 @@ fail_if_skipped_or_failed "$status" 'OK (1 test)' "Android 10 permission dialog 
 # 2. Capability proof with the grant now in place.
 set +e
 adb shell am instrument -w -r \
- -e class io.github.gamesbyian.chunks.LocalPublicDownloadsPlaceInstrumentedTest,io.github.gamesbyian.chunks.LocalDownloadPlacePickerInstrumentedTest,io.github.gamesbyian.chunks.PhoneAddDestinationContinuityInstrumentedTest,io.github.gamesbyian.chunks.LocalPlaceWriteProbeRaceInstrumentedTest \
+ -e class io.github.gamesbyian.chunks.LocalPublicDownloadsPlaceInstrumentedTest,io.github.gamesbyian.chunks.LocalDownloadPlacePickerInstrumentedTest,io.github.gamesbyian.chunks.LocalAddDestinationContinuityInstrumentedTest,io.github.gamesbyian.chunks.LocalPlaceWriteProbeRaceInstrumentedTest \
  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
 set -e

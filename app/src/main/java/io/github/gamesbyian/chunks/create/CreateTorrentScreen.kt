@@ -225,7 +225,7 @@ internal fun CreateTorrentScreen(
                     }
                     else -> ActionTile("Seed a copy on this device", ChunksColors.Green, {
                         scope.launch { seedReview = withContext(Dispatchers.IO) { seedCopyReview(context, done, builtWith) } }
-                    }, Modifier.fillMaxWidth(), icon = R.drawable.__CHUNKS_PHYSICAL_LOCAL_ICON__, stacked = false)
+                    }, Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_phone, stacked = false)
                 }
             }
             ActionTile("Share or save .torrent file", ChunksColors.Blue, {

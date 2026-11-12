@@ -1,6 +1,6 @@
 # Unified local and remote experience (owner contract, 2026-10-28)
 
-**Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID \`local\`. Remote environments are independently named profiles. Phone/handset/tablet refers only to hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
+**Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID \`local\`. Remote environments are independently named profiles. Local/handset/tablet refers only to hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
 
 > **BINDING UI PARITY CORRECTION · 2026-11-09:** [Next-push reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md): All environments, Transfers on this device and a named-server scope are **filters of the same Combined-derived compact list** and open the same full Details destination. The legacy local device and server lists/inline expanded cards must not remain separate presentations. The single-row fixed four-destination footer and two/three-across action layout apply across scopes. Exact source environment/account/infohash, capability gating, lock and stale readback remain distinct; a visual filter never grants remote authority. Implementation pending installed acceptance.
 

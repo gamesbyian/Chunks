@@ -23,7 +23,7 @@ internal fun LocalFirstEntry(onOpenLocal: () -> Unit) {
             modifier = Modifier.semantics { heading() })
         ActionTile("Open local downloads", ChunksColors.Cyan,
             onClick = onOpenLocal, modifier = Modifier.fillMaxWidth(),
-            icon = R.drawable.__CHUNKS_PHYSICAL_LOCAL_ICON__, stacked = false)
+            icon = R.drawable.chunks_ic_phone, stacked = false)
         Text("No server account is needed. Local download and background recovery " +
             "are still being verified on Android devices.",
             style = MaterialTheme.typography.bodySmall)

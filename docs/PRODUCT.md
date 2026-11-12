@@ -1,6 +1,6 @@
 # Chunks canonical product contract
 
-**Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID \`local\`. Remote environments are independently named profiles. Phone/handset/tablet refers only to hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
+**Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID \`local\`. Remote environments are independently named profiles. Local/handset/tablet refers only to hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
 
 **Naming requirement:** Public/full title **Chunks Torrent Client & Remote**; installed Android label **Chunks**; in-app visual wordmark **chunks.**. Preserve explicit preview labels for side-by-side builds and do not change the app ID or system notification attribution. See [branding and app identity contract](BRANDING-AND-APP-IDENTITY.md).
 

@@ -79,7 +79,7 @@ class AcceptanceReportTest(unittest.TestCase):
 
     def test_a_journey_step_that_merely_says_installed_is_never_environment(self):
         journey = check("installed-magnet-lifecycle", "failure", steps=[
-            {"name": "Installed production phone and rTorrent source journeys with real peer pieces",
+            {"name": "Installed production local and rTorrent source journeys with real peer pieces",
              "conclusion": "failure"}])
         detail = r.evaluate([journey], ["installed-magnet-lifecycle"], CONFIG, {})["rows"][0]["detail"]
         self.assertIn("needs-diagnosis", detail)
