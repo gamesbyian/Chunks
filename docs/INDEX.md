@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+**Current completion:** [ordered cohorts, dependencies and batched validation](COMPLETION-ROADMAP.md) → [one ranked work queue](WORK-QUEUE.md) → [next dispatch handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) → [acceptance](SPEC-COVERAGE.md). [12 November source audit](archive/COMPLETION-AUDIT-2026-11-12.md) is historical.
+
+
 **Start work in this order:** [AGENTS](../AGENTS.md) → [WORK-QUEUE](WORK-QUEUE.md) → [NEXT-PUSH-HANDOFF](NEXT-PUSH-HANDOFF-2026-11-08.md) → [dispatch coordination](AGENT-LANES.md) → [SPEC-COVERAGE](SPEC-COVERAGE.md). Consult [QUALITY-LEDGER](QUALITY-LEDGER.md) for evidence, **never as a second task queue**.
 
 **Branding:** [Android and full product naming contract](BRANDING-AND-APP-IDENTITY.md) covers the concise Android label, full store title, in-app wordmark and QA preview names.
