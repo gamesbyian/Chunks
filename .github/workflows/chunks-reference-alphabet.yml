@@ -9,7 +9,6 @@ on:
       - 'tools/requirements-chunks-reference-alphabet.txt'
       - 'docs/design/reference-images/03-typography-and-wordmark.png'
       - 'assets/fonts/source/reference-alphabet/**'
-      - '.github/workflows/chunks-reference-alphabet.yml'
   pull_request:
     paths:
       - 'tools/trace_reference_alphabet.py'
@@ -17,7 +16,6 @@ on:
       - 'tools/requirements-chunks-reference-alphabet.txt'
       - 'docs/design/reference-images/03-typography-and-wordmark.png'
       - 'assets/fonts/source/reference-alphabet/**'
-      - '.github/workflows/chunks-reference-alphabet.yml'
   workflow_dispatch:
 permissions:
   contents: read

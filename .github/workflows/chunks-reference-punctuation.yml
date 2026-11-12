@@ -11,7 +11,6 @@ on:
       - 'tests/test_reference_punctuation.py'
       - 'assets/fonts/source/reference-punctuation/**'
       - 'docs/design/CHUNKS-REFERENCE-PUNCTUATION.md'
-      - '.github/workflows/chunks-reference-punctuation.yml'
   pull_request:
     paths:
       - 'docs/design/reference-images/03-typography-and-wordmark.png'
@@ -20,7 +19,6 @@ on:
       - 'tools/trace_reference_alphabet.py'
       - 'tests/test_reference_punctuation.py'
       - 'assets/fonts/source/reference-punctuation/**'
-      - '.github/workflows/chunks-reference-punctuation.yml'
   workflow_dispatch:
 permissions:
   contents: read
