@@ -6,6 +6,8 @@
 
 **State:** `main` carries #1650 (Add source precedence, Details files continuity, startup scope, clipboard opt-out race), #1644 (canonical navigation, source-first Universal Add, guarded Details), #1647 (file-informed media identification, Add display alias, exact saved-profile Add authentication, first-run control hiding) and #1649 (explicit `.torrent` supersedes an older magnet). The 10–11 November campaign sections were moved to the [archived snapshot](archive/WORK-QUEUE-SNAPSHOT-2026-11-11.md); per-run receipts are in the [pass-2 audit](archive/OPEN-PR-RECONCILIATION-2026-11-11-PASS2.md) and the [12 November session record](archive/SESSION-2026-11-12-ADD-DETAILS-CONTINUITY.md). Re-fetch live heads before acting.
 
+**Owner regression pass (12 November):** second Open With submit, remote Save to resolution, row expansion with Start/Stop, Details rename, environment toggle row and row density are implemented with JVM regressions ([session record](archive/SESSION-2026-11-12-ADD-TRANSFERS-REGRESSIONS.md)); installed/emulator acceptance on the merged head is still required, then per-transfer priority/speed quick controls (needs a canonical adapter with readback).
+
 **Do next, in order:**
 
 1. **Media host independence (G4).** Enrichment still pauses while Transfers is unmounted. A detach-the-session lease was tried and withdrawn (frozen authorization, restart on re-attach, wrong privacy witness; see the [session record](archive/SESSION-2026-11-12-ADD-DETAILS-CONTINUITY.md#media-session-navigation-continuity-attempted-and-withdrawn)). Build the authorized inventory above navigation from live observations, make identical `replace()` continue the active run, and revoke on the privacy lock state, without a second executor.

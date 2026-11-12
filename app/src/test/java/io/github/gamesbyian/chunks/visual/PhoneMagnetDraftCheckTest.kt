@@ -207,7 +207,10 @@ class PhoneMagnetDraftCheckTest {
         org.junit.Assert.assertEquals(1, rule.onAllNodes(hasText("SECRET123", substring = true)).fetchSemanticsNodes().size)
         rule.onNode(hasText("Get torrent from link") and hasClickAction()).assertExists()
         // A link is not a magnet: no magnet Add tile and no magnet problem.
-        addTile().assertDoesNotExist()
+        // Not addable until fetched and validated: the one Add action is visible but disabled
+        // with the next step (never silently omitted).
+        addTile().assertIsNotEnabled()
+        rule.onNodeWithText("Get the .torrent from this link first", substring = true).assertExists()
         rule.onNodeWithText(MagnetDraftCheck.NOT_A_MAGNET).assertDoesNotExist()
     }
 
