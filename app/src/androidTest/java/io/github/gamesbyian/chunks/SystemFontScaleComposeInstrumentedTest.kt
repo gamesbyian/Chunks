@@ -50,7 +50,7 @@ import org.junit.runner.RunWith
  * CompositionLocalProvider or merely doubling individual text pixel sizes.
  *
  * This is a diagnostic, source-controlled smoke gate for actual app navigation
- * and six surviving pixel screenshots, not a running TalkBack audit or final
+ * and source-declared pixel screenshots, not a running TalkBack audit or final
  * font-art approval. It uses a local synthetic read-only RPC endpoint and
  * never mutates torrents or requires external credentials.
  */
