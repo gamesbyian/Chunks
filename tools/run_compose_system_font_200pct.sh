@@ -18,13 +18,13 @@ pull_exit=0
 adb pull /sdcard/Pictures/ChunksCompose200Pct/. "$dest" || pull_exit=$?
 if [ "$test_exit" -ne 0 ]; then exit "$test_exit"; fi
 if [ "$pull_exit" -ne 0 ]; then exit "$pull_exit"; fi
-for screen in connection transfers-initial places organize server transfers-return combined; do
+for screen in transfers-before-connection connection transfers-initial options add connections-return transfers-return combined-filter-controls; do
   file="$dest/chunks-compose-200pct-$screen.png"
   test -s "$file" || { echo "Missing real 200% Compose capture $screen" >&2; exit 1; }
   test "$(od -An -tx1 -N8 "$file" | tr -d ' \n')" = "89504e470d0a1a0a"
   test "$(dd if="$file" bs=1 skip=12 count=4 status=none)" = "IHDR"
 done
 count="$(find "$dest" -maxdepth 1 -type f -name '*.png' | wc -l)"
-test "$count" -eq 7 || { echo "Expected 7 real 200% Compose images, saw $count" >&2; exit 1; }
+test "$count" -eq 8 || { echo "Expected 8 real 200% Compose images, saw $count" >&2; exit 1; }
 sha256sum "$dest"/*.png > "$dest/CHUNKS-COMPOSE-200PCT-SHA256.txt"
-echo "Verified seven real installed MainActivity Compose screenshots at Android system fontScale=2.0"
+echo "Verified eight real installed MainActivity Compose screenshots at Android system fontScale=2.0"
