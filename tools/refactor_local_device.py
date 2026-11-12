@@ -62,10 +62,11 @@ PHRASES = (
     (r"\bserver-to-Phone\b", "server-to-Local"),
 )
 # A phone icon is an actual device pictogram, not a runtime identity.
-ICON_SENTINEL = "__CHUNKS_PHYSICAL_PHONE_ICON__"
+ICON_SENTINEL = "__CHUNKS_PHYSICAL_PICTOGRAM__"
 
 
 def replace_terms(text: str, docs: bool = False) -> str:
+    text = text.replace("__CHUNKS_PHYSICAL_LOCAL_ICON__", "chunks_ic_phone")
     text = text.replace("chunks_ic_phone", ICON_SENTINEL)
     # These are form-factor references, not a description of the engine.
     hardware = []
@@ -106,6 +107,24 @@ def migrate_code() -> list[tuple[Path, Path]]:
             elif updated != text:
                 path.write_text(updated, encoding="utf-8")
     return moves
+
+
+def migrate_auxiliary() -> None:
+    """Keep production harness scripts and CI fixture names aligned with renamed tests."""
+    for folder, suffixes in ((ROOT / "tools", (".sh",)), (ROOT / "tests", (".py",))):
+        for path in sorted(folder.rglob("*")):
+            if not path.is_file() or path.suffix not in suffixes:
+                continue
+            dest = path.with_name(path.name.replace("phone", "local").replace("Phone", "Local"))
+            if dest != path and dest.exists():
+                raise RuntimeError(f"Destination already exists: {dest}")
+            original = path.read_text(encoding="utf-8")
+            updated = replace_terms(original)
+            if dest != path:
+                dest.write_text(updated, encoding="utf-8")
+                path.unlink()
+            elif updated != original:
+                path.write_text(updated, encoding="utf-8")
 
 
 def migrate_docs() -> None:
@@ -153,6 +172,7 @@ def main() -> int:
     args = parser.parse_args()
     if args.apply:
         moves = migrate_code()
+        migrate_auxiliary()
         migrate_docs()
         print(f"Renamed {len(moves)} Kotlin files.")
     bad = check()
