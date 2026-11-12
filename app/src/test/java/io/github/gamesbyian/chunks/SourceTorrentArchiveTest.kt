@@ -19,7 +19,7 @@ class SourceTorrentArchiveTest {
     private val raw = ("d4:infod6:lengthi5e4:name8:test.txt" +
         "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
     private val hash get() = TorrentMetainfoReader.preview(raw).infoHashV1
-    private fun proof(verified: Boolean = true, environment: String = "phone") =
+    private fun proof(verified: Boolean = true, environment: String = "local") =
         SourceAddVerification(environment, hash, verified)
     private fun privateDir() = files.newFolder("chunks-private")
 
@@ -216,7 +216,7 @@ class SourceTorrentArchiveTest {
                     val exact = TorrentMetainfoReader.preview(bytes).infoHashV1
                     SourceTorrentArchive(root).apply(OriginalTorrentHandling.ARCHIVE,
                         OriginalTorrentOrigin.ANDROID_DOCUMENT, bytes,
-                        SourceAddVerification("phone", exact, verifiedNew = true))
+                        SourceAddVerification("local", exact, verifiedNew = true))
                 }
             }
             assertTrue("Both independent archive instances must reach the quota race",

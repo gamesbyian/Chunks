@@ -54,7 +54,7 @@ internal object LocalPayloadCollisionSurvey {
                     return Result.Unknown("Resolved download root is unavailable")
             }
         } catch (_: Exception) { return Result.Unknown("Download root cannot be inspected") }
-        // Case-sensitive phone storage may distinguish these lexical names,
+        // Case-sensitive local device storage may distinguish these lexical names,
         // while FAT/exFAT and providers may map them to a single file. Reject
         // a conservative case-folded and Unicode-normalized namespace, not
         // only byte-identical names. Actual provider rules can vary.

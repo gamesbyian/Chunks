@@ -5,7 +5,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class UnifiedTransferDetailsTest {
-    private val phone = EnvironmentSnapshots.PHONE
+    private val local = EnvironmentSnapshots.LOCAL
     private val serverA = EnvironmentId("first-server")
     private val serverB = EnvironmentId("second-server")
     private val hash = "a".repeat(40)
@@ -47,8 +47,8 @@ class UnifiedTransferDetailsTest {
             it.operation == EnvironmentOperation.START_STOP }.evidence)
     }
 
-    @Test fun spoofedPhoneBuildEvidenceCanNeverAuthorizeRemoteDetails() {
-        val spoof = EnvironmentCapabilitySnapshot(serverA, "phone engine", now,
+    @Test fun spoofedLocalBuildEvidenceCanNeverAuthorizeRemoteDetails() {
+        val spoof = EnvironmentCapabilitySnapshot(serverA, "local engine", now,
             mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.BUILT_IN))
         val detail = UnifiedTransferDetails.resolve(same, listOf(source(serverA)), spoof, now)
         val action = detail.operations.single { it.operation == EnvironmentOperation.START_STOP }
@@ -58,11 +58,11 @@ class UnifiedTransferDetailsTest {
         assertTrue(action.explanation.contains("wrong engine type"))
     }
 
-    @Test fun remoteAdvertisementCanNeverAuthorizePhoneDetails() {
-        val phoneKey = UnifiedTransferKey.of(phone, hash)
-        val spoof = EnvironmentCapabilitySnapshot(phone, "rTorrent test", now,
+    @Test fun remoteAdvertisementCanNeverAuthorizeLocalDetails() {
+        val localKey = UnifiedTransferKey.of(local, hash)
+        val spoof = EnvironmentCapabilitySnapshot(local, "rTorrent test", now,
             mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.ADVERTISED))
-        val detail = UnifiedTransferDetails.resolve(phoneKey, listOf(source(phone)), spoof, now)
+        val detail = UnifiedTransferDetails.resolve(localKey, listOf(source(local)), spoof, now)
         val action = detail.operations.single { it.operation == EnvironmentOperation.START_STOP }
         assertEquals(CapabilityEvidence.UNKNOWN, action.evidence)
         assertFalse(action.mayOfferAttempt)
@@ -127,18 +127,18 @@ class UnifiedTransferDetailsTest {
             .explanation.contains("unverified"))
     }
 
-    @Test fun bundledPhoneCapabilityNeedsExactCurrentPhoneObservationToo() {
-        val key = UnifiedTransferKey.of(phone, hash)
-        val ready = UnifiedTransferDetails.resolve(key, listOf(source(phone)),
-            EnvironmentCapabilities.phone(), now)
+    @Test fun bundledLocalCapabilityNeedsExactCurrentLocalObservationToo() {
+        val key = UnifiedTransferKey.of(local, hash)
+        val ready = UnifiedTransferDetails.resolve(key, listOf(source(local)),
+            EnvironmentCapabilities.local(), now)
         assertTrue(ready.operations.single { it.operation == EnvironmentOperation.FILE_PRIORITIES }.mayOfferAttempt)
-        assertFalse(ready.operations.single { it.operation == EnvironmentOperation.COPY_TO_PHONE }.mayOfferAttempt)
+        assertFalse(ready.operations.single { it.operation == EnvironmentOperation.COPY_TO_LOCAL }.mayOfferAttempt)
         assertEquals(CapabilityEvidence.NOT_APPLICABLE,
-            ready.operations.single { it.operation == EnvironmentOperation.COPY_TO_PHONE }.evidence)
-        val missingPhone = UnifiedTransferDetails.resolve(key, emptyList(),
-            EnvironmentCapabilities.phone(), now)
-        assertEquals(TransferDetailReadState.ENVIRONMENT_MISSING, missingPhone.readState)
-        assertTrue(missingPhone.operations.none { it.mayOfferAttempt })
+            ready.operations.single { it.operation == EnvironmentOperation.COPY_TO_LOCAL }.evidence)
+        val missingLocal = UnifiedTransferDetails.resolve(key, emptyList(),
+            EnvironmentCapabilities.local(), now)
+        assertEquals(TransferDetailReadState.ENVIRONMENT_MISSING, missingLocal.readState)
+        assertTrue(missingLocal.operations.none { it.mayOfferAttempt })
     }
 
     @Test fun timestampLessOrDuplicateSourcesFailClosed() {

@@ -19,7 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** A saved phone location can return to automatic beside it; nothing else changes. */
+/** A saved local location can return to automatic beside it; nothing else changes. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi", fontScale = 2.0f)
@@ -31,7 +31,7 @@ class LocalPlaceAutomaticResetTest {
     private val app = LocalDownloadPlace(LocalPlaceKind.APP_STORAGE,
         File("/app/Downloads"), "Chunks app folder", "Private folder")
     private val choices = listOf(LocalPlaceChoice(public, null), LocalPlaceChoice(app, null))
-    private val label = "Use automatic location for new phone downloads"
+    private val label = "Use automatic location for new local downloads"
 
     private fun show(remembered: LocalPlaceKind?, onReset: () -> Unit) {
         val resolution = LocalDownloadPlacePolicy.resolve(remembered, choices)
@@ -45,7 +45,7 @@ class LocalPlaceAutomaticResetTest {
     @Test fun savedChoiceOffersAReturnToAutomaticAtLargeText() {
         var resets = 0
         show(LocalPlaceKind.APP_STORAGE) { resets++ }
-        rule.onNodeWithText("Your saved default for future phone downloads.").assertExists()
+        rule.onNodeWithText("Your saved default for future local downloads.").assertExists()
         rule.onNodeWithText(label).assertHeightIsAtLeast(48.dp).performClick()
         assertEquals(1, resets)
     }
@@ -57,7 +57,7 @@ class LocalPlaceAutomaticResetTest {
 
     @Test fun automaticDefaultOffersNoReset() {
         show(null) { error("nothing to reset") }
-        rule.onNodeWithText("Automatic phone default", substring = true).assertExists()
+        rule.onNodeWithText("Automatic local default", substring = true).assertExists()
         rule.onNodeWithText(label).assertDoesNotExist()
     }
 

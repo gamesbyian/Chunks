@@ -30,14 +30,14 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
     private val scopeA = "https://a.example/RPC2\u0000account-a"
     private val scopeB = "https://b.example/RPC2\u0000account-b"
     private fun move(alias: String) = TransferMove.start(
-        Direction.PHONE_TO_SERVER, hash, "Orphan episode",
+        Direction.LOCAL_TO_SERVER, hash, "Orphan episode",
         TransferMoveStore.scopeDigest(alias), "seed.example", sourceReviewToken = "native:123"
     ).copy(stage = Stage.SOURCE_REMOVAL_UNCERTAIN)
 
     @After fun cleanup() {
         // Delete only these test-created exact records. Never clear all journals.
         listOf(scopeA, scopeB).forEach { alias ->
-            store.get(Direction.PHONE_TO_SERVER, hash, TransferMoveStore.scopeDigest(alias))
+            store.get(Direction.LOCAL_TO_SERVER, hash, TransferMoveStore.scopeDigest(alias))
                 ?.let { store.remove(it) }
         }
     }
@@ -52,7 +52,7 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         rule.setContent {
             MaterialTheme {
                 OrphanMoveRecoveryPanel(
-                    direction = Direction.PHONE_TO_SERVER, serverAliasScope = scopeA,
+                    direction = Direction.LOCAL_TO_SERVER, serverAliasScope = scopeA,
                     visibleSourceHashes = emptyList(), enabled = true, revision = changed.intValue,
                     observeSource = { reads.incrementAndGet(); Observation.Absent },
                     onChanged = { changed.intValue++ }
@@ -61,19 +61,19 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         }
         rule.onNodeWithText("Unresolved Move records").assertExists()
         rule.onNodeWithText("Clear only this Move reminder").assertDoesNotExist()
-        assertEquals(a, store.get(Direction.PHONE_TO_SERVER, hash, a.serverScopeDigest))
+        assertEquals(a, store.get(Direction.LOCAL_TO_SERVER, hash, a.serverScopeDigest))
         rule.onNodeWithText("Check original job (read-only)").performClick()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("Clear only this Move reminder").fetchSemanticsNodes().isNotEmpty()
         }
         assertEquals(1, reads.get())
-        assertEquals(a, store.get(Direction.PHONE_TO_SERVER, hash, a.serverScopeDigest))
+        assertEquals(a, store.get(Direction.LOCAL_TO_SERVER, hash, a.serverScopeDigest))
         rule.onNodeWithText("Clear only this Move reminder").performClick()
         rule.waitUntil(10_000) {
-            store.get(Direction.PHONE_TO_SERVER, hash, a.serverScopeDigest) == null
+            store.get(Direction.LOCAL_TO_SERVER, hash, a.serverScopeDigest) == null
         }
         assertEquals("Only the two explicit independent observations are allowed", 2, reads.get())
-        assertEquals(b, store.get(Direction.PHONE_TO_SERVER, hash, b.serverScopeDigest))
+        assertEquals(b, store.get(Direction.LOCAL_TO_SERVER, hash, b.serverScopeDigest))
         // Storage commit precedes the Compose onChanged callback; waiting for
         // durable absence alone races the UI dispatcher after withContext(IO).
         // Require the UI to observe exactly one completion as a separate gate.
@@ -91,7 +91,7 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         rule.setContent {
             MaterialTheme {
                 OrphanMoveRecoveryPanel(
-                    direction = Direction.PHONE_TO_SERVER, serverAliasScope = scopeA,
+                    direction = Direction.LOCAL_TO_SERVER, serverAliasScope = scopeA,
                     visibleSourceHashes = emptyList(), enabled = true, revision = 0,
                     observeSource = { if (reads.incrementAndGet() == 1) Observation.Absent
                         else Observation.Present },
@@ -105,8 +105,8 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         }
         rule.onNodeWithText("Clear only this Move reminder").performClick()
         rule.waitUntil(10_000) { reads.get() == 2 }
-        assertEquals(a, store.get(Direction.PHONE_TO_SERVER, hash, a.serverScopeDigest))
-        assertEquals(b, store.get(Direction.PHONE_TO_SERVER, hash, b.serverScopeDigest))
+        assertEquals(a, store.get(Direction.LOCAL_TO_SERVER, hash, a.serverScopeDigest))
+        assertEquals(b, store.get(Direction.LOCAL_TO_SERVER, hash, b.serverScopeDigest))
     }
 
     @Test fun changingAccountInvalidatesPriorAbsenceConfirmationEvenForSameHash() {
@@ -118,7 +118,7 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         rule.setContent {
             MaterialTheme {
                 OrphanMoveRecoveryPanel(
-                    direction = Direction.PHONE_TO_SERVER, serverAliasScope = active.value,
+                    direction = Direction.LOCAL_TO_SERVER, serverAliasScope = active.value,
                     visibleSourceHashes = emptyList(), enabled = true, revision = 0,
                     observeSource = { Observation.Absent }, onChanged = {}
                 )
@@ -131,7 +131,7 @@ class OrphanMoveRecoveryPanelInstrumentedTest {
         rule.runOnUiThread { active.value = scopeB }
         rule.waitForIdle()
         rule.onNodeWithText("Clear only this Move reminder").assertDoesNotExist()
-        assertEquals(a, store.get(Direction.PHONE_TO_SERVER, hash, a.serverScopeDigest))
-        assertEquals(b, store.get(Direction.PHONE_TO_SERVER, hash, b.serverScopeDigest))
+        assertEquals(a, store.get(Direction.LOCAL_TO_SERVER, hash, a.serverScopeDigest))
+        assertEquals(b, store.get(Direction.LOCAL_TO_SERVER, hash, b.serverScopeDigest))
     }
 }

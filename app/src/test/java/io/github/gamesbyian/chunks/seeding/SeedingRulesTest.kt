@@ -6,11 +6,11 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SeedingRulesTest {
-    private val phone = "phone"
+    private val local = "local"
     private val box = "rtorrent:profile-7"
 
     private val forever = SeedingRule("r-ipt", SeedingRule.suggestedName(setOf("iptorrents.com"), SeedingPolicy()), false,
-        setOf("iptorrents.com"), policy = SeedingPolicy(), environments = setOf(phone, box))
+        setOf("iptorrents.com"), policy = SeedingPolicy(), environments = setOf(local, box))
     private val everythingElse = SeedingPolicy(ratioGoal = BigDecimal("1.00"),
         uploadLimit = RateLimit.parse("24 KiB/s").getOrThrow())
 
@@ -46,68 +46,68 @@ class SeedingRulesTest {
         val rule = forever
         for (url in listOf("https://iptorrents.com.evil.example/announce", "https://notiptorrents.com/a",
                 "https://user:pw@iptorrents.com/a", "ftp://iptorrents.com/a")) {
-            val r = SeedingRuleEngine.resolve(TransferFacts(phone, listOf(url), null), listOf(rule), everythingElse)
+            val r = SeedingRuleEngine.resolve(TransferFacts(local, listOf(url), null), listOf(rule), everythingElse)
             assertEquals(url, Source.DEFAULT, r.source)
         }
     }
 
     @Test fun overrideBeatsRulesAndMissingMetadataIsPending() {
-        val capped = SeedingRule("r-cap", "Slow", true, setOf("example.org"), policy = everythingElse, environments = setOf(phone))
-        val facts = TransferFacts(phone, listOf("https://iptorrents.com/a"), true, overrideRuleId = "r-cap")
+        val capped = SeedingRule("r-cap", "Slow", true, setOf("example.org"), policy = everythingElse, environments = setOf(local))
+        val facts = TransferFacts(local, listOf("https://iptorrents.com/a"), true, overrideRuleId = "r-cap")
         assertEquals(Source.OVERRIDE, SeedingRuleEngine.resolve(facts, listOf(forever, capped), SeedingPolicy()).source)
-        val pending = SeedingRuleEngine.resolve(TransferFacts(phone, null, null), listOf(forever), everythingElse)
+        val pending = SeedingRuleEngine.resolve(TransferFacts(local, null, null), listOf(forever), everythingElse)
         assertEquals(Source.PENDING, pending.source)
         assertEquals(everythingElse, pending.policy)
     }
 
     @Test fun savedOrderDecidesAndDifferingMatchesAreFlagged() {
         val second = SeedingRule("r-2", "Also IPT", true, setOf("iptorrents.com"),
-            policy = everythingElse, environments = setOf(phone))
-        val r = SeedingRuleEngine.resolve(TransferFacts(phone, listOf("https://iptorrents.com/a"), true),
+            policy = everythingElse, environments = setOf(local))
+        val r = SeedingRuleEngine.resolve(TransferFacts(local, listOf("https://iptorrents.com/a"), true),
             listOf(forever, second), SeedingPolicy())
         assertEquals("r-ipt", r.ruleId)
         assertEquals(listOf("Also IPT"), r.conflicts)
     }
 
     @Test fun environmentScopeIsExplicitAndFutureProfilesOptIn() {
-        val phoneOnly = forever.copy(environments = setOf(phone), knownEnvironments = setOf(phone, box))
-        assertFalse(phoneOnly.appliesTo(box))
-        assertFalse("a new profile is not included by default", phoneOnly.appliesTo("rtorrent:new"))
-        assertTrue(phoneOnly.copy(includeFutureEnvironments = true).appliesTo("rtorrent:new"))
-        assertFalse("known but unselected stays excluded", phoneOnly.copy(includeFutureEnvironments = true).appliesTo(box))
+        val localOnly = forever.copy(environments = setOf(local), knownEnvironments = setOf(local, box))
+        assertFalse(localOnly.appliesTo(box))
+        assertFalse("a new profile is not included by default", localOnly.appliesTo("rtorrent:new"))
+        assertTrue(localOnly.copy(includeFutureEnvironments = true).appliesTo("rtorrent:new"))
+        assertFalse("known but unselected stays excluded", localOnly.copy(includeFutureEnvironments = true).appliesTo(box))
         val r = SeedingRuleEngine.resolve(TransferFacts(box, listOf("https://iptorrents.com/a"), true),
-            listOf(phoneOnly), everythingElse)
+            listOf(localOnly), everythingElse)
         assertEquals(Source.DEFAULT, r.source)
     }
 
     @Test fun unknownPrivateFlagNeverMatchesPrivateOrPublicRule() {
         val privateRule = forever.copy(
-            id = "private-only", privateOnly = true, environments = setOf(phone))
+            id = "private-only", privateOnly = true, environments = setOf(local))
         val publicRule = privateRule.copy(id = "public-only", privateOnly = false)
         val knownTrackers = listOf("https://routing.iptorrents.com/announce.php?passkey=SECRET")
         for (conditioned in listOf(privateRule, publicRule)) {
             val pending = SeedingRuleEngine.resolve(
-                TransferFacts(phone, knownTrackers, null), listOf(conditioned), everythingElse)
+                TransferFacts(local, knownTrackers, null), listOf(conditioned), everythingElse)
             assertEquals(Source.PENDING, pending.source)
             assertNull(pending.ruleId)
             assertEquals(everythingElse, pending.policy)
             assertFalse(pending.reasons.joinToString().contains("SECRET"))
         }
         assertEquals(Source.RULE, SeedingRuleEngine.resolve(
-            TransferFacts(phone, knownTrackers, true), listOf(privateRule), everythingElse).source)
+            TransferFacts(local, knownTrackers, true), listOf(privateRule), everythingElse).source)
         assertEquals(Source.DEFAULT, SeedingRuleEngine.resolve(
-            TransferFacts(phone, knownTrackers, false), listOf(privateRule), everythingElse).source)
+            TransferFacts(local, knownTrackers, false), listOf(privateRule), everythingElse).source)
         assertEquals(Source.RULE, SeedingRuleEngine.resolve(
-            TransferFacts(phone, knownTrackers, false), listOf(publicRule), everythingElse).source)
+            TransferFacts(local, knownTrackers, false), listOf(publicRule), everythingElse).source)
         assertEquals(Source.DEFAULT, SeedingRuleEngine.resolve(
-            TransferFacts(phone, knownTrackers, true), listOf(publicRule), everythingElse).source)
+            TransferFacts(local, knownTrackers, true), listOf(publicRule), everythingElse).source)
     }
 
     @Test fun unknownHigherPriorityPrivateRuleBlocksLowerMatchingPolicy() {
         val conditional = forever.copy(
-            id = "private-first", privateOnly = true, environments = setOf(phone))
+            id = "private-first", privateOnly = true, environments = setOf(local))
         val unconditional = conditional.copy(id = "other", privateOnly = null, policy = everythingElse)
-        val facts = TransferFacts(phone, listOf("https://iptorrents.com/a"), null)
+        val facts = TransferFacts(local, listOf("https://iptorrents.com/a"), null)
         val pending = SeedingRuleEngine.resolve(
             facts, listOf(conditional, unconditional), SeedingPolicy())
         assertEquals(Source.PENDING, pending.source)
@@ -119,7 +119,7 @@ class SeedingRulesTest {
         assertEquals(Source.RULE, safe.source)
         assertEquals("other", safe.ruleId)
         val unrelated = SeedingRuleEngine.resolve(
-            TransferFacts(phone, listOf("https://unrelated.example/announce"), null),
+            TransferFacts(local, listOf("https://unrelated.example/announce"), null),
             listOf(conditional, unconditional), SeedingPolicy())
         assertEquals(Source.DEFAULT, unrelated.source)
     }

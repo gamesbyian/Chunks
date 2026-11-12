@@ -14,11 +14,11 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CombinedViewModelTest {
-    private val phone = EnvironmentId("phone")
+    private val local = EnvironmentId("local")
     private val server = EnvironmentId("a".repeat(64))
 
     @Test fun viewPreferencesRoundTripWithoutSearchAndRejectMalformedValues() {
-        val query = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(server, phone)),
+        val query = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(server, local)),
             search = "secret words", sortKey = UnifiedSortKey.SIZE,
             direction = UnifiedSortDirection.ASCENDING, groupByEnvironment = true)
         val decoded = CombinedViewPreferences.decode(CombinedViewPreferences.encode(query))
@@ -27,8 +27,8 @@ class CombinedViewModelTest {
         assertEquals(EnvironmentViewScope.All, CombinedViewPreferences.decode(
             CombinedViewPreferences.encode(UnifiedTransferQuery())).scope)
         for (bad in listOf(null, "", "*;SIZE;UP;0", "*;HEIGHT;ASCENDING;0", "*;SIZE;ASCENDING;2",
-            "not-an-id;SIZE;ASCENDING;0", "phone,not-an-id;SIZE;ASCENDING;0",
-            "phone,phone;SIZE;ASCENDING;0",
+            "not-an-id;SIZE;ASCENDING;0", "local,not-an-id;SIZE;ASCENDING;0",
+            "local,local;SIZE;ASCENDING;0",
             "${"a".repeat(64)},${"a".repeat(64)};SIZE;ASCENDING;0",
             "*;SIZE;ASCENDING")) {
             assertEquals(bad.toString(), UnifiedTransferQuery(), CombinedViewPreferences.decode(bad))
@@ -37,7 +37,7 @@ class CombinedViewModelTest {
 
     @Test fun filterRoundTripsAndOldFourPartPreferencesRemainCompatible() {
         val filtered = UnifiedTransferQuery(
-            scope = EnvironmentViewScope.Only(setOf(phone)),
+            scope = EnvironmentViewScope.Only(setOf(local)),
             filter = UnifiedTransferFilter.ATTENTION,
             sortKey = UnifiedSortKey.PROGRESS,
             direction = UnifiedSortDirection.DESCENDING,
@@ -47,10 +47,10 @@ class CombinedViewModelTest {
         val saved = CombinedViewPreferences.encode(filtered)
         assertFalse(saved.contains("private torrent"))
         assertEquals(filtered.copy(search = ""), CombinedViewPreferences.decode(saved))
-        val legacy = CombinedViewPreferences.decode("phone;SIZE;ASCENDING;1")
+        val legacy = CombinedViewPreferences.decode("local;SIZE;ASCENDING;1")
         assertEquals(UnifiedTransferFilter.ALL, legacy.filter)
         assertEquals(UnifiedSortKey.SIZE, legacy.sortKey)
-        assertEquals(EnvironmentViewScope.Only(setOf(phone)), legacy.scope)
+        assertEquals(EnvironmentViewScope.Only(setOf(local)), legacy.scope)
         assertEquals(true, legacy.groupByEnvironment)
         assertEquals(UnifiedTransferQuery(), CombinedViewPreferences.decode("*;SIZE;ASCENDING;0;UNKNOWN"))
         assertEquals(UnifiedTransferQuery(), CombinedViewPreferences.decode("*;SIZE;ASCENDING;0;"))
@@ -60,7 +60,7 @@ class CombinedViewModelTest {
         val saved = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(server)),
             filter = UnifiedTransferFilter.STOPPED, sortKey = UnifiedSortKey.SIZE,
             direction = UnifiedSortDirection.DESCENDING)
-        val current = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(phone)),
+        val current = UnifiedTransferQuery(scope = EnvironmentViewScope.Only(setOf(local)),
             search = "typed during a slow disk read", sortKey = UnifiedSortKey.NAME)
         assertEquals(current, CombinedViewPreferences.reconcileLoadedView(
             current, saved, userInteracted = true))
@@ -75,10 +75,10 @@ class CombinedViewModelTest {
     @Test fun scopeChipsSelectOneThenToggleAndNeverProduceAnEmptySubset() {
         val one = toggleScope(EnvironmentViewScope.All, server)
         assertEquals(EnvironmentViewScope.Only(setOf(server)), one)
-        val two = toggleScope(one, phone)
-        assertEquals(EnvironmentViewScope.Only(setOf(server, phone)), two)
-        assertEquals(EnvironmentViewScope.Only(setOf(phone)), toggleScope(two, server))
-        assertEquals(EnvironmentViewScope.All, toggleScope(EnvironmentViewScope.Only(setOf(phone)), phone))
+        val two = toggleScope(one, local)
+        assertEquals(EnvironmentViewScope.Only(setOf(server, local)), two)
+        assertEquals(EnvironmentViewScope.Only(setOf(local)), toggleScope(two, server))
+        assertEquals(EnvironmentViewScope.All, toggleScope(EnvironmentViewScope.Only(setOf(local)), local))
     }
 
     @Test fun privacyDecisionFailsClosedAndNeverRevealsWithoutDeviceLock() {

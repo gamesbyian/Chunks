@@ -30,7 +30,7 @@ class LocalStoppedCheckpointBudgetTest {
             true
         })
         assertEquals(listOf(first to 7L, second to 3L), waits)
-        assertTrue(LocalStoppedCheckpointBudget.warning(2).contains("2 stopped phone transfer"))
+        assertTrue(LocalStoppedCheckpointBudget.warning(2).contains("2 stopped local transfer"))
         assertEquals("", LocalStoppedCheckpointBudget.warning(0))
     }
 

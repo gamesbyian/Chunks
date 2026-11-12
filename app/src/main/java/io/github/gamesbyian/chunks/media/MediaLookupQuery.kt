@@ -66,7 +66,7 @@ object MediaQuerySanitizer {
         Regex("^/|//|\\\\|/[^/]*/"),
         Regex("\\S@\\S+\\.\\S"),                                     // emails
         Regex("%[0-9A-Fa-f]{2}"),                                   // URL-encoded content
-        Regex("\\d{7,}")                                             // phone/account/ID-like numbers
+        Regex("\\d{7,}")                                             // local/account/ID-like numbers
     )
 
     fun fromRecognition(r: MediaRecognition): MediaQueryDecision {

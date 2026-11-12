@@ -42,7 +42,7 @@ A typed receipt records task/milestone ID, declared target/criterion, exact envi
 
 Use shared **Tasks** / **Continue** entry only when worthwhile and enabled; otherwise quiet contextual **View outcome** / **Continue task** affordances from transfer details and the existing activity/operation view. Do not displace transfer list controls or primary Add. Single-env settings avoid gratuitous environment pickers; combined mode always shows precise profile indicators on task card, milestone and mutating affordance.
 
-1. An ordinary phone Add without task opt-in behaves exactly as before; optional lightweight receipt is passive.
+1. An ordinary local Add without task opt-in behaves exactly as before; optional lightweight receipt is passive.
 2. Remote Add verifies registration but explicitly does **not** claim payload on phone. When a user explicitly requests retrieval, its milestone remains incomplete until separate destination data verification.
 3. A task with a verified torrent and an unobserved library import remains **Partially complete / Needs confirmation**.
 4. Closing app during pending remote mutation and returning does not repeat command; show **Uncertain**, perform read-only reconciliation and preserve task draft and last safe action.

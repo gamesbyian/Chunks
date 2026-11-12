@@ -40,7 +40,7 @@ class CreateTorrentScreenTest {
                 // production fd capability is exercised by Android instrumentation.
                 CreateTorrentScreen(onBack = {}, initialSource = source,
                     seedCopyReview = { _, result, request ->
-                        makeSeedCopyReview(result, request, "Synthetic phone folder", 1L shl 30, dhtOff = true)
+                        makeSeedCopyReview(result, request, "Synthetic local folder", 1L shl 30, dhtOff = true)
                     })
             }
         }
@@ -86,15 +86,15 @@ class CreateTorrentScreenTest {
         rule.onNodeWithText("Torrent created").assertDoesNotExist()
     }
 
-    @Test fun seedingACopyIsReviewedFirstAndWarnsWhenPeersCannotFindThePhone() {
+    @Test fun seedingACopyIsReviewedFirstAndWarnsWhenPeersCannotFindTheLocal() {
         screen(source("Trackerless"))
         createAndWait()
-        rule.onNodeWithText("Seed a copy on this phone").performScrollTo().performClick()
+        rule.onNodeWithText("Seed a copy on this device").performScrollTo().performClick()
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Not now").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Your original files are not moved or changed", substring = true).assertExists()
-        rule.onNodeWithText("Peers may not find this phone").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Peers may not find this device").performScrollTo().assertIsDisplayed()
         rule.onRoot().captureRoboImage("build/chunks-visual/create-seed-review.png")
         rule.onNodeWithText("Not now").performScrollTo().performClick()
-        rule.onNodeWithText("Seed a copy on this phone").assertExists()
+        rule.onNodeWithText("Seed a copy on this device").assertExists()
     }
 }

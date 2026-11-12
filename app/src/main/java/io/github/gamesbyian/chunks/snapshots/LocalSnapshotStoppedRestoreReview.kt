@@ -51,8 +51,8 @@ internal fun LocalSnapshotStoppedRestoreReview(
             Text("Original: " + preview.name)
             Text("Exact infohash: " + preview.infoHashV1,
                 style = MaterialTheme.typography.bodySmall)
-            Text("New phone destination: " + selectedPlace)
-            Text("This adds this original torrent definition to the phone engine " +
+            Text("New local destination: " + selectedPlace)
+            Text("This adds this original torrent definition to the local device engine " +
                 "stopped, without transferring any downloaded files from the old " +
                 "device or server. No historical paths are reused. Existing " +
                 "transfers are never overwritten or removed. The original tracker " +
@@ -65,7 +65,7 @@ internal fun LocalSnapshotStoppedRestoreReview(
                 "automatic second Add.",
                 style = MaterialTheme.typography.bodySmall)
             if (!eligible) {
-                Text("The phone inventory or selected destination is unavailable " +
+                Text("The local inventory or selected destination is unavailable " +
                     "or has changed. Refresh and recompare before proceeding.",
                     color = MaterialTheme.colorScheme.error)
             }

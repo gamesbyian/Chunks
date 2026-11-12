@@ -30,7 +30,7 @@ class ManualCollectionPagerTest {
             ManualCollectionPager.slice((0 until 85).toList(), -100).items)
     }
 
-    @Test fun onPhoneTwentyCardPagesReachTheWholeTransferList() {
+    @Test fun onLocalTwentyCardPagesReachTheWholeTransferList() {
         val hashes = (0 until 163).map { "HASH-$it" }
         val pages = (0 until 9).map { ManualCollectionPager.slice(hashes, it, size = 20) }
         assertEquals(hashes, pages.flatMap { it.items })

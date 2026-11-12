@@ -67,7 +67,7 @@ class RealProviderLookupTest {
             System.getenv("CHUNKS_REAL_MEDIA_LOOKUP") == "1")
     }
 
-    private fun key(n: Int) = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("phone"), n.toString().repeat(40)))
+    private fun key(n: Int) = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("local"), n.toString().repeat(40)))
 
     private fun assertNoPrivateNameParts(forbidden: List<String>) {
         http.urls.forEach { u -> forbidden.forEach { f ->
@@ -100,10 +100,10 @@ class RealProviderLookupTest {
     @Test fun realOffscreenInventoryAutomaticallyFetchesAndRestoresArtworkForTwoEnvironments() =
         kotlinx.coroutines.runBlocking {
             val name = "Babylon.5.S02E07.Soul.Mates.1080p.WEB-DL.x264-GRP.mkv"
-            val phoneKey = key(4)
+            val localKey = key(4)
             val serverKey = MediaTransferKey.of(UnifiedTransferKey.of(
                 EnvironmentId("rtorrent:public-fixture"), "5".repeat(40)))
-            val inventory = listOf(phoneKey to name, serverKey to name)
+            val inventory = listOf(localKey to name, serverKey to name)
             // A full-inventory pass happens before either key has been observed
             // by a transfer row or Details. Only public synthetic titles are used.
             controller(automatic = true).enrichInventory(inventory)
@@ -116,7 +116,7 @@ class RealProviderLookupTest {
             }
             assertTrue("Actual provider and CDN traffic must have occurred", http.urls.size >= 3)
             assertNoPrivateNameParts(listOf("1080p", "WEB-DL", "x264", "GRP",
-                ".mkv", phoneKey.value.substringAfter('|'), serverKey.value.substringAfter('|'),
+                ".mkv", localKey.value.substringAfter('|'), serverKey.value.substringAfter('|'),
                 "rtorrent"))
             val afterOnline = http.urls.size
             offline = true

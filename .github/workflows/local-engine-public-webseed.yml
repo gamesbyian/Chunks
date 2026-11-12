@@ -1,6 +1,6 @@
 name: Local engine public web-seed download
 
-# Real Internet evidence for the on-phone engine core: build a deterministic
+# Real Internet evidence for the on-local engine core: build a deterministic
 # torrent from a licensed Wikimedia Commons file whose only source is the
 # official HTTPS upload URL (BEP 19 web seed), then download and verify it with
 # libtorrent. No secrets, no trackers, no peers, no rTorrent.

@@ -71,15 +71,15 @@ class RemoteCapabilitiesTest {
         assertEquals(listOf("d.hash"), missingHash.getValue("Finish in Order").missing)
     }
 
-    @Test fun optionalBoundAddressDoesNotBlockPhoneCopy() {
+    @Test fun optionalBoundAddressDoesNotBlockLocalCopy() {
         val graded = RemoteCapabilities.grade(RemoteProbe("0.16",
             all - "network.bind_address")).associateBy { it.feature.label }
         assertEquals(RemoteCapabilities.Status.ADVERTISED,
-            graded.getValue("Copy files to this phone").status)
+            graded.getValue("Copy files to this device").status)
         val missingListener = RemoteCapabilities.grade(RemoteProbe("0.16",
             all - "network.listen.port")).associateBy { it.feature.label }
         assertEquals(RemoteCapabilities.Status.MISSING,
-            missingListener.getValue("Copy files to this phone").status)
+            missingListener.getValue("Copy files to this device").status)
     }
 
     @Test fun noIntrospectionMeansUnknownNotMissing() {

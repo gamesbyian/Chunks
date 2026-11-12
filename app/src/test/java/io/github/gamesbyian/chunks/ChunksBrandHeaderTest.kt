@@ -19,7 +19,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The normal phone Transfers route must begin with inventory, not a brand hero. */
+/** The normal local Transfers route must begin with inventory, not a brand hero. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
@@ -40,7 +40,7 @@ class ChunksBrandHeaderTest {
 
     @Test
     @Config(qualifiers = "w320dp-h700dp-mdpi")
-    fun doubleSystemTextStillAvoidsBrandHeroOnPhone() {
+    fun doubleSystemTextStillAvoidsBrandHeroOnLocal() {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme {

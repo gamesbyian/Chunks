@@ -9,7 +9,7 @@ import org.junit.Test
 
 class BatchMoveRemovalTest {
     private val scope = "a".repeat(64)
-    private fun move(n: Int) = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER,
+    private fun move(n: Int) = TransferMove.start(TransferMove.Direction.LOCAL_TO_SERVER,
         "%040x".format(n), "T$n", scope, "seed.example",
         sourceReviewToken = "native-session:$n").copy(stage = Stage.TARGET_VERIFIED)
 
@@ -66,7 +66,7 @@ class BatchMoveRemovalTest {
     }
 
     @Test fun legacyMoveWithoutSourceReviewStopsBeforeObservationOrMutation() {
-        val old = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER,
+        val old = TransferMove.start(TransferMove.Direction.LOCAL_TO_SERVER,
             "%040x".format(1), "T1", scope, "seed.example")
             .copy(stage = Stage.TARGET_VERIFIED)
         val next = move(2)

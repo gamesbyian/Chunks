@@ -97,7 +97,7 @@ data class RemoteTrafficWindow(
 
     fun summary(): String = when (verdict) {
         TrafficVerdict.RECEIVED_AND_VERIFIED ->
-            "Download traffic and hash-verified completed bytes both increased during this observation. This confirms progress on the server, not the phone's own download."
+            "Download traffic and hash-verified completed bytes both increased during this observation. This confirms progress on the server, not the local device's own download."
         TrafficVerdict.RECEIVED_ONLY ->
             "Download traffic increased, but growth of hash-verified completion was not confirmed. Data may still be in-flight, redundant, or rejected."
         TrafficVerdict.VERIFIED_ONLY ->

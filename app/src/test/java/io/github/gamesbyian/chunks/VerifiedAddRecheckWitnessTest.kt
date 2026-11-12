@@ -99,7 +99,7 @@ class VerifiedAddRecheckWitnessTest {
         assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED, state.phase)
         assertEquals(UniversalAddCoordinator.Readback.WRONG_ENVIRONMENT,
             state.reconcileExactSession(ticket, observation(1_250L, false, false, null)
-                .copy(environment = EnvironmentSnapshots.PHONE)))
+                .copy(environment = EnvironmentSnapshots.LOCAL)))
         assertEquals(UniversalAddCoordinator.Phase.SESSION_CONFIRMED, state.phase)
         // A null adapter witness triggers no call. The coordinator remains
         // confirmed until an actual authenticated exact-job result arrives.

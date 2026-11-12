@@ -16,7 +16,7 @@ internal class RemoteTransferFilterStore(context: Context) {
 
     fun load(environment: String?): TransferFilter {
         if (environment == null || !TransferListSortStore.validEnvironment(environment) ||
-            environment == TransferListSortStore.PHONE) return TransferFilter.ALL
+            environment == TransferListSortStore.LOCAL) return TransferFilter.ALL
         val raw = try { preferences.getString("filter_" + environment, null) }
             catch (_: ClassCastException) { null }
         return decode(raw)
@@ -24,7 +24,7 @@ internal class RemoteTransferFilterStore(context: Context) {
 
     fun save(environment: String?, filter: TransferFilter): Boolean {
         if (environment == null || !TransferListSortStore.validEnvironment(environment) ||
-            environment == TransferListSortStore.PHONE) return false
+            environment == TransferListSortStore.LOCAL) return false
         return preferences.edit().putString("filter_" + environment, filter.name).commit()
     }
 

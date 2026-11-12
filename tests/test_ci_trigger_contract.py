@@ -94,7 +94,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
         own_journeys = (
             ("CombinedTwoRealServersInstrumentedTest.kt",
              ".github/workflows/installed-combined-two-servers.yml"),
-            ("HttpsPhoneAddJourneyInstrumentedTest.kt",
+            ("HttpsLocalAddJourneyInstrumentedTest.kt",
              ".github/workflows/installed-rtorrent-magnets.yml"),
             ("MainActivityRealMagnetJourney.kt",
              ".github/workflows/installed-rtorrent-magnets.yml"),
@@ -130,7 +130,7 @@ class AndroidCiTriggerContract(unittest.TestCase):
                    "MainActivityRealMagnetJourney.kt",)
         self.assertTrue(dispatches_for_changed_paths(campaign, changed))
 
-    def test_https_journey_covers_fetcher_and_phone_production_caller(self):
+    def test_https_journey_covers_fetcher_and_local_production_caller(self):
         source = (ROOT / ".github/workflows/installed-rtorrent-magnets.yml").read_text()
         paths = pull_request_paths(source)
         for name in ("TorrentLinkImport.kt", "LocalEngineScreen.kt"):

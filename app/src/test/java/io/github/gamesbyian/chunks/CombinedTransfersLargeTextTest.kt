@@ -38,21 +38,21 @@ import org.robolectric.annotation.GraphicsMode
 class CombinedTransfersLargeTextTest {
     @get:Rule val rule = createComposeRule()
 
-    private fun show(openPhone: IntArray, back: IntArray) {
+    private fun show(openLocal: IntArray, back: IntArray) {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
-        // Explicit phone-only scope is a real filtered view, so the full
+        // Explicit local-only scope is a real filtered view, so the full
         // catalog controls remain reachable even with zero native jobs.
         // Only genuinely unfiltered, unconfigured installs show Welcome.
         CombinedViewPreferences(context).save(UnifiedTransferQuery(
             scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
-                setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
+                setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL))))
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme {
                     Surface(color = ChunksColors.Background) {
                         CombinedTransfersScreen(
                             server = null, savedProfiles = emptyList(),
-                            onOpenPhone = { openPhone[0]++ },
+                            onOpenLocal = { openLocal[0]++ },
                             onOpenServer = null,
                             onBack = { back[0]++ })
                     }

@@ -91,7 +91,7 @@ internal fun VerifiedAddScreen(
     observedPlaces: List<String> = emptyList(),
     /** Return whether the already-verified custom Place shortcut was persisted. */
     onCustomPlaceVerified: (String) -> Boolean = { true },
-    /** A phone-prepared .torrent draft (transfer export or Android file); never auto-submitted. */
+    /** A local-prepared .torrent draft (transfer export or Android file); never auto-submitted. */
     initialTorrent: ByteArray? = null,
     onInitialTorrentConsumed: () -> Unit = {},
     /** Authenticated endpoint + account scope; null hides the Finish in Order option. */
@@ -102,7 +102,7 @@ internal fun VerifiedAddScreen(
     onViewVerifiedTransfer: (String) -> Unit = {},
     /** Reports each positively verified Add hash once, so the list can explain a hidden result. */
     onVerifiedAdd: (String) -> Unit = {},
-    /** Parent-owned choice shared with phone Add; no extra Save/Apply interaction. */
+    /** Parent-owned choice shared with local Add; no extra Save/Apply interaction. */
     addStartState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addArtworkState: androidx.compose.runtime.MutableState<Boolean>? = null,
     addAliasState: androidx.compose.runtime.MutableState<String>? = null,
@@ -147,7 +147,7 @@ internal fun VerifiedAddScreen(
     var uncertain by draft::uncertain
     var alreadyAttempted by draft::alreadyAttempted
     var verifiedHash by draft::verifiedHash
-    // A newer Android share/phone edit cannot change the displayed recovery identity.
+    // A newer Android share/local edit cannot change the displayed recovery identity.
     val sourceText = draft.attemptSource ?: magnet
     val currentSource = rememberUpdatedState(magnet)
     val latestExternalSourceReading = rememberUpdatedState(externalSourceReading)
@@ -161,7 +161,7 @@ internal fun VerifiedAddScreen(
         awaitingConfirmation = false
     }
     LaunchedEffect(magnet, alreadyAttempted) {
-        // Phone and remote text fields share the parent source. A text edit
+        // Local and remote text fields share the parent source. A text edit
         // while this form was absent selects that newer source on return.
         // An explicit incoming document takes precedence in its own review.
         if (!alreadyAttempted && initialTorrent == null && useFile &&
@@ -262,7 +262,7 @@ internal fun VerifiedAddScreen(
         io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Absolute)?.path
     val defaultReadComplete = defaultReport != null
 
-    var fromPhone by draft::fromPhone
+    var fromLocal by draft::fromLocal
     LaunchedEffect(initialTorrent, alreadyAttempted) {
         val document = initialTorrent ?: return@LaunchedEffect
         if (submitting || alreadyAttempted) return@LaunchedEffect
@@ -273,11 +273,11 @@ internal fun VerifiedAddScreen(
             selectedBytes = bytes
             draft.textAtFileSelection = magnet
             useFile = true
-            fromPhone = true
+            fromLocal = true
             fileError = null
             awaitingConfirmation = false
         } catch (_: Exception) {
-            fileError = "The phone transfer's torrent definition is not supported v1 metainfo."
+            fileError = "The local transfer's torrent definition is not supported v1 metainfo."
         }
     }
 
@@ -308,10 +308,10 @@ internal fun VerifiedAddScreen(
                     selectedTorrent = result.first
                     selectedBytes = result.second
                     // An explicitly opened .torrent is the newest source and replaces
-                    // older typed text, exactly as phone Add and HTTPS intake do. A
+                    // older typed text, exactly as local Add and HTTPS intake do. A
                     // lingering magnet would otherwise win a later Add-target switch.
                     draft.textAtFileSelection = ""
-                    fromPhone = false
+                    fromLocal = false
                     useFile = true
                     onMagnet("")
                     onTorrentAdopted(result.first, result.second)
@@ -480,12 +480,12 @@ internal fun VerifiedAddScreen(
                                         fileError = "The draft changed while fetching. The current source was kept."
                                         return@launch
                                     }
-                                    // Downloaded and validated on this phone; the server never
-                                    // fetches the link, so a private token stays on the phone.
+                                    // Downloaded and validated on this device; the server never
+                                    // fetches the link, so a private token stays on the local device.
                                     selectedTorrent = result.preview
                                     selectedBytes = result.bytes
                                     draft.textAtFileSelection = ""
-                                    fromPhone = false
+                                    fromLocal = false
                                     useFile = true
                                     fileError = null
                                     awaitingConfirmation = false
@@ -535,10 +535,10 @@ internal fun VerifiedAddScreen(
                         "\nInfohash: " + preview.infoHashV1,
                     style = MaterialTheme.typography.bodyMedium
                 )
-                if (fromPhone) Text("Original .torrent prepared on this phone. Its " +
+                if (fromLocal) Text("Original .torrent prepared on this device. Its " +
                     "tracker addresses may contain private passkeys, and the definition is " +
                     "sent to this server only when you confirm. The server downloads " +
-                    "its own payload; no downloaded files are copied from the phone.",
+                    "its own payload; no downloaded files are copied from the local device.",
                     style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -1179,7 +1179,7 @@ internal fun trackerlessWarning(isFile: Boolean): String =
 
 
 /**
- * Optional Add shortcuts must be discoverable on narrow phones and at 200%
+ * Optional Add shortcuts must be discoverable on narrow locals and at 200%
  * font size without a horizontal-only gesture. Choosing a shortcut changes
  * only this Add draft, never the remote default or a file already on disk.
  */
@@ -1269,7 +1269,7 @@ internal fun RemoteAddScopeIntro(environmentLabel: String?, aliasScope: String?)
         .semantics { stateDescription = if (showAbout) "Expanded" else "Collapsed" }) {
         Text(if (showAbout) "Hide details about adding to a server" else "About adding to a server")
     }
-    if (showAbout) Text("Downloads to this server's own folder. Nothing is copied to this phone by Add. " +
+    if (showAbout) Text("Downloads to this server's own folder. Nothing is copied to this device by Add. " +
         "Saved Chunks server-seeding rules are not applied yet; rTorrent controls seeding.",
         style = MaterialTheme.typography.bodySmall)
 }

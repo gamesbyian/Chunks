@@ -20,7 +20,7 @@ internal val TransferRowArtworkSize: Dp = 40.dp
 internal val TransferRowArtworkLargeSize: Dp = 64.dp
 
 /**
- * Fixed-size, read-only artwork for a transfer list row (phone, rTorrent and Combined).
+ * Fixed-size, read-only artwork for a transfer list row (local, rTorrent and Combined).
  *
  * Recognition always uses the [originalName] (never the user's display alias). Only local state is
  * read: an assignment the user made, a consented automatic match, or bundled category art. No
@@ -65,17 +65,17 @@ internal fun transferRowArtworkDescription(state: TransferMediaUiState, format: 
     return "$art. ${format.explanation}"
 }
 
-/** Exact phone identity; null for a malformed hash, which then shows only the format badge. */
-internal fun phoneTransferKey(infoHash: String): UnifiedTransferKey? =
-    runCatching { UnifiedTransferKey.of(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE, infoHash) }.getOrNull()
+/** Exact local identity; null for a malformed hash, which then shows only the format badge. */
+internal fun localTransferKey(infoHash: String): UnifiedTransferKey? =
+    runCatching { UnifiedTransferKey.of(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL, infoHash) }.getOrNull()
 
 /** Exact authenticated server identity; null when the account scope is ambiguous. */
 internal fun remoteTransferKey(environmentId: String?, infoHash: String): UnifiedTransferKey? =
     environmentId?.let { id -> runCatching { UnifiedTransferKey.of(io.github.gamesbyian.chunks.model.EnvironmentId(id), infoHash) }.getOrNull() }
 
 @Composable
-internal fun rememberPhoneTransferKey(infoHash: String): UnifiedTransferKey? =
-    remember(infoHash) { phoneTransferKey(infoHash) }
+internal fun rememberLocalTransferKey(infoHash: String): UnifiedTransferKey? =
+    remember(infoHash) { localTransferKey(infoHash) }
 
 @Composable
 internal fun rememberRemoteTransferKey(environmentId: String?, infoHash: String): UnifiedTransferKey? =

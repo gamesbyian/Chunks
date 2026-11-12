@@ -33,7 +33,7 @@ internal fun TransferMediaDetailSection(
 ) = TransferMediaDetailSection(transfer.key, transfer.originalName, modifier)
 
 /**
- * The same section for the phone and rTorrent list cards' expanded details, keyed by the exact
+ * The same section for the local device and rTorrent list cards' expanded details, keyed by the exact
  * environment + infohash so an assignment made here is the one Combined shows, and vice versa.
  * [originalName] is the torrent's own name, never the user's display alias.
  */
@@ -42,7 +42,7 @@ internal fun TransferMediaDetailSection(
     transferKey: io.github.gamesbyian.chunks.model.UnifiedTransferKey,
     originalName: String,
     modifier: Modifier = Modifier,
-    /** Completed phone files only; null for remote or Combined observations. */
+    /** Completed local files only; null for remote or Combined observations. */
     localFiles: LocalCompletedMediaFiles? = null
 ) {
     val key = MediaTransferKey.of(transferKey)
@@ -61,7 +61,7 @@ internal fun TransferMediaDetailSection(
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
             ) { Text("Close media identification") }
             // Remote listings never get a read callback: an rTorrent listing does not establish
-            // device-side permission to read a payload. Phone cards pass only verified completed files.
+            // device-side permission to read a payload. Local cards pass only verified completed files.
             if (localFiles == null) TransferMediaIdentifyRoute(key = key, originalName = originalName)
             else TransferMediaIdentifyRoute(key = key, originalName = originalName, files = localFiles.hints,
                 readLocalFile = localFiles::read, openLocalFile = localFiles::open)

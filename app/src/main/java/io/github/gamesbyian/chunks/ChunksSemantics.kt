@@ -6,7 +6,7 @@ package io.github.gamesbyian.chunks
  * Tests find a control by what it is for, not by its current wording, position or
  * which screen hosts it. A capability keeps its identifier when the UI is redesigned,
  * and the same identifier is used by every surface that offers that capability (for
- * example the phone and the authenticated-server Add forms share one source field id).
+ * example the local device and the authenticated-server Add forms share one source field id).
  *
  * Rules (see docs/TEST-ARCHITECTURE.md):
  * - Add an identifier only for a capability the product specification requires.

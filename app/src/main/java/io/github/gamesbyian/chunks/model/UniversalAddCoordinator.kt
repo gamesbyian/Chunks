@@ -65,9 +65,9 @@ internal class UniversalAddSource private constructor(
 internal sealed class UniversalAddTarget {
     abstract val environment: EnvironmentId
 
-    object Phone : UniversalAddTarget() {
-        override val environment: EnvironmentId = EnvironmentSnapshots.PHONE
-        override fun toString(): String = "Phone"
+    object Local : UniversalAddTarget() {
+        override val environment: EnvironmentId = EnvironmentSnapshots.LOCAL
+        override fun toString(): String = "Local"
     }
 
     class AuthenticatedServer(val accountScope: String) : UniversalAddTarget() {
@@ -82,13 +82,13 @@ internal sealed class UniversalAddTarget {
 
 /**
  * Place is a reviewed selection, not a substitute for the engine's writable
- * destination/preflight check. Do not normalize an opaque phone Place ID into
+ * destination/preflight check. Do not normalize an opaque local Place ID into
  * an rTorrent path or infer a default from a previous account.
  */
 internal sealed class UniversalAddPlace {
-    class Phone(val verifiedPlaceId: String, val relativeSubfolder: String = "") : UniversalAddPlace() {
+    class Local(val verifiedPlaceId: String, val relativeSubfolder: String = "") : UniversalAddPlace() {
         init { require(verifiedPlaceId.isNotBlank()) }
-        override fun toString(): String = "Phone(private)"
+        override fun toString(): String = "Local(private)"
     }
 
     class ServerDefault(val observedDefaultPath: String) : UniversalAddPlace() {
@@ -115,7 +115,7 @@ internal class UniversalAddIntent(
 }
 
 /**
- * Shared, single-attempt authorization/fencing model. The existing phone and
+ * Shared, single-attempt authorization/fencing model. The existing local and
  * rTorrent executors own actual writes, adapter-specific preflight and
  * proof of registration/Place/Start. Neither a capability probe nor a matching
  * inventory row grants write authorization or retries an ambiguous command.
@@ -204,7 +204,7 @@ internal class UniversalAddCoordinator {
             return ReviewDecision(false, "Resolve or finish the previous exact Add first")
         if (capabilities.environment != intent.target.environment)
             return ReviewDecision(false, "Capabilities belong to another environment")
-        if ((intent.target is UniversalAddTarget.Phone) != (intent.place is UniversalAddPlace.Phone))
+        if ((intent.target is UniversalAddTarget.Local) != (intent.place is UniversalAddPlace.Local))
             return ReviewDecision(false, "Place belongs to a different engine")
         val operation = if (intent.source.kind == UniversalAddSource.Kind.MAGNET)
             EnvironmentOperation.ADD_MAGNET else EnvironmentOperation.ADD_TORRENT_FILE
@@ -391,7 +391,7 @@ internal class UniversalAddCoordinator {
             observation.started == true else observation.started == false
         if (!observation.reviewedPlaceVerified || !startMatches) {
             if (observation.reviewedPlaceVerified && !startMatches) {
-                // This includes a phone magnet registered in metadata-only
+                // This includes a local magnet registered in metadata-only
                 // mode while its deferred payload Start cannot yet be proved.
                 // The existing job may be acknowledged, never auto-started.
                 phase = Phase.JOB_CONFIRMED_START_UNVERIFIED

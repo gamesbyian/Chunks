@@ -30,7 +30,7 @@ import org.junit.runner.RunWith
  */
 @RunWith(AndroidJUnit4::class)
 class InstalledMediaPrivacyEpochInstrumentedTest {
-    private val environment = EnvironmentId("phone")
+    private val environment = EnvironmentId("local")
     private val hash = "a".repeat(40)
     private val key = MediaTransferKey.of(UnifiedTransferKey.of(environment, hash))
     private val scope = "chunks-media-privacy-epoch-fixture-only"

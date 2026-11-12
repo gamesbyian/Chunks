@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** rTorrent parity for the phone's "added but hidden by this view" explanation. */
+/** rTorrent parity for the local device's "added but hidden by this view" explanation. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
 class RemoteAddedHiddenNoticeTest {
@@ -41,7 +41,7 @@ class RemoteAddedHiddenNoticeTest {
         var cleared = 0
         rule.setContent {
             ChunksTheme {
-                PhoneAddedHiddenNotice(onShowAll = { cleared++ },
+                LocalAddedHiddenNotice(onShowAll = { cleared++ },
                     showAllLabel = "Show all transfers on Seedhost")
             }
         }

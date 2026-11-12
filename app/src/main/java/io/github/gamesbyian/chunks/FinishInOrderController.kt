@@ -9,14 +9,14 @@ import kotlinx.coroutines.sync.withLock
 import java.util.Locale
 
 /**
- * Device-private Finish in Order policies for phone transfers, keyed by the
+ * Device-private Finish in Order policies for local transfers, keyed by the
  * local engine scope + verified infohash (the same identity rule as aliases
  * and Collections). Commits are synchronous: the runner's write-ahead journal
  * is only trusted after [save] returns true.
  */
 internal class FinishInOrderStore(
     context: Context,
-    /** LOCAL_ENGINE_SCOPE for the phone, or an rTorrent endpoint + account scope. */
+    /** LOCAL_ENGINE_SCOPE for the local device, or an rTorrent endpoint + account scope. */
     private val scope: String = TransferCollectionStore.LOCAL_ENGINE_SCOPE
 ) {
     private val prefs = context.applicationContext.getSharedPreferences(
@@ -119,7 +119,7 @@ internal object FinishInOrderController {
         })
 
     /**
-     * Turn a phone policy off. Priorities stay exactly as they are; only the
+     * Turn a local policy off. Priorities stay exactly as they are; only the
      * Sequential Playback flag Chunks itself manages is cleared (with
      * readback) before the policy is forgotten. Null means not removed.
      */

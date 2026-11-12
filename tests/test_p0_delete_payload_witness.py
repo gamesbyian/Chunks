@@ -14,7 +14,7 @@ class DeletePayloadWitnessTest(unittest.TestCase):
         (self.root / "owned/payload.bin").write_bytes(b"exact torrent payload")
         (self.root / "foreign.txt").write_bytes(b"unrelated user bytes")
         self.manifest = {
-            "environment": "disposable-phone",
+            "environment": "disposable-local",
             "info_hash": "a" * 40,
             "targets": ["owned/payload.bin"],
             "canaries": ["foreign.txt"],

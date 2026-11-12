@@ -4,7 +4,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 
 /**
- * One in-progress artwork choice for the phone, and one for each independently
+ * One in-progress artwork choice for the local device, and one for each independently
  * authenticated server route + principal. Process memory only: source magnets,
  * signed links and account identifiers are never written to SavedState.
  *
@@ -13,10 +13,10 @@ import androidx.compose.runtime.mutableStateOf
  * source; the Add coordinator alone owns the attempted-write fence.
  */
 internal class AddArtworkDraftChoices {
-    private val phone = mutableStateOf(true)
+    private val local = mutableStateOf(true)
     private val serverChoices = mutableMapOf<String, MutableState<Boolean>>()
 
-    fun onPhone(): MutableState<Boolean> = phone
+    fun onLocal(): MutableState<Boolean> = local
 
     /** The account scope includes the exact endpoint/numbered route AND principal. */
     fun onServer(exactAccountScope: String): MutableState<Boolean> {

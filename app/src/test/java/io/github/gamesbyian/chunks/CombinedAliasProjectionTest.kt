@@ -10,11 +10,11 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CombinedAliasProjectionTest {
-    private val phone = EnvironmentSnapshots.PHONE
+    private val local = EnvironmentSnapshots.LOCAL
     private val alice = EnvironmentId("a".repeat(64))
     private val bob = EnvironmentId("b".repeat(64))
     private val hash = "c".repeat(40)
-    private val phoneScope = "on-this-phone"
+    private val localScope = "on-this-local"
     private val aliceScope = "https://server.example/RPC2\u0000alice"
     private val bobScope = "https://server.example/RPC2\u0000bob"
 
@@ -28,17 +28,17 @@ class CombinedAliasProjectionTest {
             100L, 500_000, false, null, null, null))
     )
 
-    @Test fun sameHashNeverSharesAliasBetweenPhoneOrSeparateAccounts() {
-        val sources = listOf(source(phone), source(alice), source(bob))
-        val scopes = mapOf(phone to phoneScope, alice to aliceScope, bob to bobScope)
+    @Test fun sameHashNeverSharesAliasBetweenLocalOrSeparateAccounts() {
+        val sources = listOf(source(local), source(alice), source(bob))
+        val scopes = mapOf(local to localScope, alice to aliceScope, bob to bobScope)
         val requests = CombinedAliasProjection.requests(sources, scopes)
         assertEquals(3, requests.size)
         val values = mapOf(
-            CombinedAliasRequest(UnifiedTransferKey.of(phone, hash), phoneScope) to "Phone nickname",
+            CombinedAliasRequest(UnifiedTransferKey.of(local, hash), localScope) to "Local nickname",
             CombinedAliasRequest(UnifiedTransferKey.of(alice, hash), aliceScope) to "Alice nickname",
             CombinedAliasRequest(UnifiedTransferKey.of(bob, hash), bobScope) to "Bob nickname")
         val projected = CombinedAliasProjection.apply(sources, scopes, values)
-        assertEquals(listOf("Phone nickname", "Alice nickname", "Bob nickname"),
+        assertEquals(listOf("Local nickname", "Alice nickname", "Bob nickname"),
             projected.map { it.transfers.single().displayName })
         assertEquals(sources.map { it.transfers.single().key },
             projected.map { it.transfers.single().key })
@@ -75,8 +75,8 @@ class CombinedAliasProjectionTest {
     }
 
     @Test fun staleNamesNeverReplaceRawFactsOnEmptyOrMissingRead() {
-        val sources = listOf(source(phone, EnvironmentAvailability.STALE))
-        val scopes = mapOf(phone to phoneScope)
+        val sources = listOf(source(local, EnvironmentAvailability.STALE))
+        val scopes = mapOf(local to localScope)
         val projected = CombinedAliasProjection.apply(sources, scopes, emptyMap())
         assertEquals("Original title", projected.single().transfers.single().displayName)
         assertEquals(EnvironmentAvailability.STALE, projected.single().availability)

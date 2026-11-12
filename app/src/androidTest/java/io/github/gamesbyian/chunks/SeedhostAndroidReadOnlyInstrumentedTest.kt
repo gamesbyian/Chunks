@@ -94,7 +94,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
                 target.userInfo == null && target.rawQuery == null && target.rawFragment == null)
 
         // All interaction uses the REAL installed application's Compose fields.
-        // Fresh installation opens phone Transfers; Back reaches server setup.
+        // Fresh installation opens local Transfers; Back reaches server setup.
         rule.onNodeWithText("Connections").assertExists().performClick()
         // The Connect list composes lazily; at large text the field starts below the fold.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))

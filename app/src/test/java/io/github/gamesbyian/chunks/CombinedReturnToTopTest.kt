@@ -45,7 +45,7 @@ class CombinedReturnToTopTest {
                                 observedAtEpochMillis = 1L
                             ),
                             savedProfiles = emptyList(),
-                            onOpenPhone = {}, onOpenServer = {}, onBack = {}
+                            onOpenLocal = {}, onOpenServer = {}, onBack = {}
                         )
                     }
                 }

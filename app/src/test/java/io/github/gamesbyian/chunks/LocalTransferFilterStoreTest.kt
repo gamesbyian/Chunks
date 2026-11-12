@@ -24,7 +24,7 @@ class LocalTransferFilterStoreTest {
     @Before fun clearBefore() { preferences.edit().clear().commit() }
     @After fun clearAfter() { preferences.edit().clear().commit() }
 
-    @Test fun phoneFilterSurvivesNewStoreInstanceWithoutSavingSearchOrCommandTarget() {
+    @Test fun localFilterSurvivesNewStoreInstanceWithoutSavingSearchOrCommandTarget() {
         val first = LocalTransferFilterStore(context)
         assertEquals(LocalQueueFilter.ALL, first.load())
         assertTrue(first.save(LocalQueueFilter.STOPPED))

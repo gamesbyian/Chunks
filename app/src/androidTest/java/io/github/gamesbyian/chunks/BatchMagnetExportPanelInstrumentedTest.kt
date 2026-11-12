@@ -22,7 +22,7 @@ class BatchMagnetExportPanelInstrumentedTest {
     @Test fun selectionRequiresSecondExplicitReviewAndExplainsNoPayloadMove() {
         compose.setContent {
             MaterialTheme {
-                BatchMagnetExportPanel(rows, stale = false, sourceLabel = "phone")
+                BatchMagnetExportPanel(rows, stale = false, sourceLabel = "local")
             }
         }
         compose.onNodeWithText("Export multiple magnet identities").performClick()

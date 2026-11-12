@@ -10,10 +10,10 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferKey
  * Resolving a route does not authenticate, fetch, queue or change a torrent.
  */
 internal object ExactOwningListNavigation {
-    enum class Route { PHONE, AUTHENTICATED_SERVER, UNAVAILABLE }
+    enum class Route { LOCAL, AUTHENTICATED_SERVER, UNAVAILABLE }
 
     fun route(key: UnifiedTransferKey, authenticatedServer: EnvironmentId?): Route = when {
-        key.environment == EnvironmentSnapshots.PHONE -> Route.PHONE
+        key.environment == EnvironmentSnapshots.LOCAL -> Route.LOCAL
         authenticatedServer != null && key.environment == authenticatedServer ->
             Route.AUTHENTICATED_SERVER
         else -> Route.UNAVAILABLE

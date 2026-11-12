@@ -16,7 +16,7 @@ package io.github.gamesbyian.chunks
  */
 internal class IncomingDocumentSelectionWitness(
     private val text: String,
-    private val phoneDocument: PendingLocalAdd?,
+    private val localDocument: PendingLocalAdd?,
     private val remoteHandoff: ByteArray?,
     private val remoteSession: RemoteAddSession?
 ) {
@@ -25,12 +25,12 @@ internal class IncomingDocumentSelectionWitness(
 
     fun canApply(
         currentText: String,
-        currentPhoneDocument: PendingLocalAdd?,
+        currentLocalDocument: PendingLocalAdd?,
         currentRemoteHandoff: ByteArray?,
         currentRemoteSession: RemoteAddSession?
     ): Boolean {
         if (currentText != text ||
-            currentPhoneDocument !== phoneDocument ||
+            currentLocalDocument !== localDocument ||
             currentRemoteHandoff !== remoteHandoff) return false
 
         // The original account may no longer be selected. A late provider

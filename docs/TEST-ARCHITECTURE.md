@@ -33,7 +33,7 @@ Literal copy **is** the requirement for: destructive-action and consent wording,
 `app/src/main/java/io/github/gamesbyian/chunks/ChunksSemantics.kt` is the only vocabulary. An id names an **enduring capability** (footer roots, Add source, Add submit, Add Start preference, Add-to device/remote choice, Welcome heading and actions).
 
 - Add an id only for a capability a specification requires. Never encode copy, order, environment or a screen name.
-- Surfaces that offer the same capability share one id (the phone and server Add forms share `ADD_SOURCE_FIELD` and `ADD_SUBMIT`).
+- Surfaces that offer the same capability share one id (the local device and server Add forms share `ADD_SOURCE_FIELD` and `ADD_SUBMIT`).
 - Removing a capability removes its id **and** records its replacement verification (section 5) in the same change. The UI never has to keep an obsolete control for a test's sake.
 - `EnduringCapabilityAccessibilityTest` proves each id is reachable, named, touch-sized and, for the Add-to choice, selected through semantics. Extend it when you add an id.
 
@@ -69,7 +69,7 @@ Current requirement → replacement verification (source-first Universal Add, #1
 | Catalog search on a fresh install (`FooterImeInstalledInstrumentedTest`) | Footer stays reachable through a real soft keyboard; a typed draft survives Activity recreation | Exercised on `ADD_SOURCE_FIELD`, reached from the Welcome by `FOOTER_ADD` (the Welcome deliberately has no search, #1512) |
 | "Create torrent" heading (`MainActivitySafeRouteRestoreInstrumentedTest`) | Create opens from offline tools and is not restored after recreation | Asserted on the current heading "Make it shareable." |
 | "Server settings" on Connections (`ChunksMainActivityAtlasTest`) | Connections identifies the verified server | "Connected ·" on canonical Connections |
-| "All environments" chip click (`PhoneAddHiddenInCombinedInstrumentedTest`) | Canonical Transfers shows every environment before the hidden-Add notice is judged | Footer `FOOTER_TRANSFERS`; the scope chip is pressed only when more than one environment exists |
+| "All environments" chip click (`LocalAddHiddenInCombinedInstrumentedTest`) | Canonical Transfers shows every environment before the hidden-Add notice is judged | Footer `FOOTER_TRANSFERS`; the scope chip is pressed only when more than one environment exists |
 | "Start another Add" only (real-peer journey) | A retained result offers one acknowledgement that begins a fresh review without resending Add/Start | The exact button label for the reported server state (verified, session confirmed, or registered with Start unverified) |
 | Transfers row literal name (real-peer journey) | Transfers shows the original metadata name for the exact job | The row's accessible name `Details for <name> on <environment>`; also exposed a product defect (stale pre-metadata name), fixed by re-reading on the Transfers root |
 | "Payload size and progress pending metadata" (real-peer journey, legacy queue copy) | A peerless magnet is shown as metadata-pending without invented progress; a resolved job no longer is | Canonical compact row: "Fetching metadata" present and no "100% ·"/"Sharing ·" while pending; "Fetching metadata" absent after metadata (the old negative check had become vacuous) |

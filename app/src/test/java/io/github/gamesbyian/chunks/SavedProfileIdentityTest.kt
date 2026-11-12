@@ -30,7 +30,7 @@ class SavedProfileIdentityTest {
         assertFalse(SavedProfileIdentity.matches(id, ""))
         assertFalse(SavedProfileIdentity.matches(id, "$a"))
         assertFalse(SavedProfileIdentity.matches(id, "$a\u0000$user\u0000extra"))
-        assertFalse(SavedProfileIdentity.matches("phone", "$a\u0000$user"))
+        assertFalse(SavedProfileIdentity.matches("local", "$a\u0000$user"))
         assertFalse(SavedProfileIdentity.matches("not-a-hash", "$a\u0000$user"))
     }
 }

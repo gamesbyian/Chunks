@@ -25,7 +25,7 @@ class SourceTorrentArchiveInstrumentedTest {
         "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
     private val expectedHash by lazy { TorrentMetainfoReader.preview(bytes).infoHashV1 }
     private fun proof(newRegistration: Boolean = true) =
-        SourceAddVerification("phone", expectedHash, newRegistration)
+        SourceAddVerification("local", expectedHash, newRegistration)
 
     private fun observedArchive(root: File) = SourceTorrentArchive(root) { stage, type ->
         throw AssertionError("Android archive write failure: stage=$stage exceptionType=$type")

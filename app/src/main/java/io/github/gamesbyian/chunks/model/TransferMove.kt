@@ -3,14 +3,14 @@ package io.github.gamesbyian.chunks.model
 import java.util.Locale
 
 /**
- * Move Transfer between the phone engine and one rTorrent account moves the
+ * Move Transfer between the local device engine and one rTorrent account moves the
  * torrent **job**, never downloaded files (owner contract,
  * docs/CROSS-ENGINE-TRANSFER-JOBS.md):
  *
  * 1. The user starts a Move; the existing reviewed Add handoff opens on the
  *    destination. Nothing is removed.
  * 2. A fresh exact-infohash observation on the destination verifies the new job.
- * 3. A *separate* confirmation removes only the source job (phone: session
+ * 3. A *separate* confirmation removes only the source job (local: session
  *    removal keeping files; rTorrent: guarded d.erase). The stage is journaled
  *    before that mutation, so a crash or lost reply becomes UNCERTAIN and is
  *    resolved by observation, never by an automatic repeat.
@@ -18,7 +18,7 @@ import java.util.Locale
  * Source payload is never transferred, modified or deleted by this flow.
  */
 internal object TransferMove {
-    enum class Direction { PHONE_TO_SERVER, SERVER_TO_PHONE }
+    enum class Direction { LOCAL_TO_SERVER, SERVER_TO_LOCAL }
 
     enum class Stage {
         /** Handoff opened; destination job not yet observed. */
@@ -40,7 +40,7 @@ internal object TransferMove {
         /** Host only, for "connect to …" guidance. */
         val serverLabel: String,
         val stage: Stage,
-        /** Phone-only native Add generation captured before destination handoff. */
+        /** Local-only native Add generation captured before destination handoff. */
         val sourceReviewToken: String? = null,
         /** Remote-only original save directory; never a command or deletion path. */
         val sourceDirectory: String? = null
@@ -50,7 +50,7 @@ internal object TransferMove {
             require(Regex("[0-9a-f]{64}").matches(serverScopeDigest)) { "Invalid server scope" }
             require(sourceReviewToken == null ||
                 Regex("[A-Za-z0-9:.-]{1,120}").matches(sourceReviewToken)) {
-                "Invalid original phone transfer identity"
+                "Invalid original local transfer identity"
             }
             require(sourceDirectory == null || (sourceDirectory.startsWith("/") &&
                 sourceDirectory.length <= 4096 &&
@@ -96,18 +96,18 @@ internal object TransferMove {
             sourceReviewToken, sourceDirectory)
 
     /**
-     * The journal's phone source must still be the original native handle.
+     * The journal's local source must still be the original native handle.
      * A legacy v1 Move did not record a generation and can only be cancelled
      * and restarted before a source Remove. A fresh same-hash Add is never
      * consent to remove the older journal's job.
      *
      * rTorrent source removal remains separately checked by its own
-     * exact-hash/name/path preflight; there is no phone-native token there.
+     * exact-hash/name/path preflight; there is no local-native token there.
      */
     /** A legacy journal without source provenance must not reach a Remove command. */
     fun hasReviewedSourceIdentity(record: Record): Boolean = when (record.direction) {
-        Direction.PHONE_TO_SERVER -> record.sourceReviewToken != null
-        Direction.SERVER_TO_PHONE -> record.sourceDirectory != null
+        Direction.LOCAL_TO_SERVER -> record.sourceReviewToken != null
+        Direction.SERVER_TO_LOCAL -> record.sourceDirectory != null
     }
 
     fun sourceIdentityMatches(record: Record, currentName: String, currentToken: String?,
@@ -117,10 +117,10 @@ internal object TransferMove {
         // Never authorize a destructive source-job mutation on that ambiguity.
         currentName.isNotBlank() && currentName.length < 2048 &&
             record.name == currentName && when (record.direction) {
-            Direction.PHONE_TO_SERVER ->
+            Direction.LOCAL_TO_SERVER ->
                 record.sourceReviewToken != null &&
                     record.sourceReviewToken == currentToken
-            Direction.SERVER_TO_PHONE ->
+            Direction.SERVER_TO_LOCAL ->
                 // The rTorrent adapter caps directories at 4096. At the
                 // boundary a longer path may have been truncated.
                 record.sourceDirectory != null &&
@@ -181,12 +181,12 @@ internal object TransferMove {
     }
 
     fun destination(record: Record) =
-        if (record.direction == Direction.PHONE_TO_SERVER) "server" else "phone"
+        if (record.direction == Direction.LOCAL_TO_SERVER) "server" else "local"
 
     private fun doneMessage(record: Record) =
-        if (record.direction == Direction.PHONE_TO_SERVER)
-            "Moved: the job now lives on the server. Downloaded files remain on this phone and still use its storage."
-        else "Moved: the job now lives on this phone. Downloaded files remain on the server and still use its storage."
+        if (record.direction == Direction.LOCAL_TO_SERVER)
+            "Moved: the job now lives on the server. Downloaded files remain on this device and still use its storage."
+        else "Moved: the job now lives on this device. Downloaded files remain on the server and still use its storage."
 
     fun decode(text: String): Record? = try {
         val parts = text.split('\n')

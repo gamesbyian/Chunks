@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import io.github.gamesbyian.chunks.engine.LocalRateLimits
 
 /**
- * A saved phone speed-limit preference must not claim a native change was
+ * A saved local speed-limit preference must not claim a native change was
  * applied when libtorrent did not read back the requested values.
  *
  * When no session exists, saving future start-up preferences is permitted and

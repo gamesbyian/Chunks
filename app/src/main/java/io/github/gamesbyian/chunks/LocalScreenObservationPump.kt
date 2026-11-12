@@ -95,11 +95,11 @@ internal class LocalScreenObservationRevision {
 }
 
 /**
- * The one process-wide phone mutation fence. Every surface that can change
- * phone transfers (the phone screen and the combined view) takes and settles
+ * The one process-wide local mutation fence. Every surface that can change
+ * local transfers (the local device screen and the combined view) takes and settles
  * this same latch, so neither can act on a list read from before the other's
  * command.
  */
-internal object PhoneMutationFence {
+internal object LocalMutationFence {
     val revision = LocalScreenObservationRevision()
 }

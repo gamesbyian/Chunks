@@ -272,7 +272,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     /**
-     * Read-only: what the phone engine needs to download this exact transfer
+     * Read-only: what the local device engine needs to download this exact transfer
      * directly from this server's BitTorrent listener. Changes nothing.
      */
     suspend fun peerSource(hash: String): RemotePeerSource {

@@ -94,7 +94,7 @@ class CombinedTwoRealServersInstrumentedTest {
 
     private fun scrollTo(text: String) {
         val match = hasText(text, substring = true)
-        // Combined and remote Add are lazy lists; phone-first Universal Add is
+        // Combined and remote Add are lazy lists; local-first Universal Add is
         // an eagerly composed, vertically scrolling form. A LazyColumn-only
         // locator falsely fails before testing any source or session behavior.
         if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
@@ -415,9 +415,9 @@ class CombinedTwoRealServersInstrumentedTest {
             stage("combined-stop-scoped")
 
             // A and B are both saved; B is authenticated here. The shared
-            // footer opens source-first phone Add by default, from which A's
+            // footer opens source-first local Add by default, from which A's
             // saved credentials must NOT become an Add permission while B is
-            // live. Use the actual phone-source field before selecting A.
+            // live. Use the actual local-source field before selecting A.
             rule.onNodeWithText("+ Add").performClick()
             waitFor("source-first Universal Add") { visible("Add a transfer") }
             val preservedDraft = "magnet:?xt=urn:btih:$sharedHash"

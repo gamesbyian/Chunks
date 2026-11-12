@@ -45,7 +45,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Native Compose rendering of the experimental on-phone engine surfaces. */
+/** Native Compose rendering of the experimental on-local engine surfaces. */
 @RunWith(AndroidJUnit4::class)
 class LocalEngineScreenInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
@@ -122,7 +122,7 @@ class LocalEngineScreenInstrumentedTest {
                 }
             }
         }
-        rule.onNodeWithContentDescription("Remove transfer Existing media from this phone").performClick()
+        rule.onNodeWithContentDescription("Remove transfer Existing media from this device").performClick()
         rule.onNodeWithText("including matching files that were already there before Add",
             substring = true).assertExists()
         rule.onNodeWithText("Remove transfer and data").performScrollTo().assertIsEnabled().performClick()
@@ -164,7 +164,7 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(1, removed)
     }
 
-    @Test fun phoneRemovalReviewClosesWhenTheSameHashChangesLocationOrName() {
+    @Test fun localRemovalReviewClosesWhenTheSameHashChangesLocationOrName() {
         var removed = 0
         var status by mutableStateOf(LocalTransferStatus("a".repeat(40), "Original",
             LocalTransferState.DOWNLOADING, stopped = false, progressPpm = 0, wantedBytes = 1000,
@@ -189,7 +189,7 @@ class LocalEngineScreenInstrumentedTest {
         assertEquals(0, removed)
     }
 
-    @Test fun phoneRemovalReviewDoesNotSurviveStaleOrBusyInventory() {
+    @Test fun localRemovalReviewDoesNotSurviveStaleOrBusyInventory() {
         var removed = 0
         var busy by mutableStateOf(false)
         val status = LocalTransferStatus("a".repeat(40), "Original",
@@ -250,7 +250,7 @@ class LocalEngineScreenInstrumentedTest {
             }
         }
         rule.onNodeWithContentDescription(
-            "More details for Saved before tracker fix on this phone"
+            "More details for Saved before tracker fix on this device"
         ).performScrollTo().performClick()
         rule.onNodeWithText("Repair missing trackers from original .torrent…")
             .performScrollTo().performClick()
@@ -273,7 +273,7 @@ class LocalEngineScreenInstrumentedTest {
             }
         }
         rule.onNodeWithContentDescription(
-            "More details for Stale saved torrent on this phone"
+            "More details for Stale saved torrent on this device"
         ).performClick()
         rule.onNodeWithText("Repair missing trackers from original .torrent…")
             .assertIsNotEnabled()
@@ -534,7 +534,7 @@ class LocalEngineScreenInstrumentedTest {
             // Never accept the older optimistic "Saved"/"Applied" strings.
             rule.waitUntil(10_000) {
                 rule.onAllNodesWithText(
-                    "Speed limits verified (if the engine is running) and saved on this phone."
+                    "Speed limits verified (if the engine is running) and saved on this device."
                 ).fetchSemanticsNodes().isNotEmpty()
             }
             assertEquals(512 * 1024, prefs.getInt("download-limit", -1))

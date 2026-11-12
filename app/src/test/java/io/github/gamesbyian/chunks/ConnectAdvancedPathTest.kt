@@ -49,7 +49,7 @@ class ConnectAdvancedPathTest {
     @Test fun remoteConnectionsIsOptionalAndDeviceTransfersStayAccessible() {
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
-        // Phone management belongs in Transfers, not the remote-only intro.
+        // Local management belongs in Transfers, not the remote-only intro.
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         // The connection form is lazy and must still be scroll-reachable.
         scrollTo("Seedbox hostname")

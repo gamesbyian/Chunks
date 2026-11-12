@@ -158,7 +158,7 @@ class UniversalAddSourcePrecedenceTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()
         waitForText("newest.mkv")
-        assertTrue("Phone target must not show the superseded magnet",
+        assertTrue("Local target must not show the superseded magnet",
             rule.onAllNodesWithText("OlderTypedMagnet", substring = true).fetchSemanticsNodes().isEmpty())
 
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
@@ -201,9 +201,9 @@ class UniversalAddSourcePrecedenceTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performScrollTo()
-            .performTextReplacement("magnet:?xt=urn:btih:" + "e".repeat(40) + "&dn=OlderPhoneMagnet")
-        waitForText("OlderPhoneMagnet")
-        val uri = Uri.parse("content://chunks.test.documents/phone.torrent")
+            .performTextReplacement("magnet:?xt=urn:btih:" + "e".repeat(40) + "&dn=OlderLocalMagnet")
+        waitForText("OlderLocalMagnet")
+        val uri = Uri.parse("content://chunks.test.documents/local.torrent")
         shadowOf(rule.activity.contentResolver).registerInputStream(uri, document.inputStream())
         rule.onNodeWithText("Open .torrent").performScrollTo().performClick()
         rule.waitForIdle()
@@ -215,7 +215,7 @@ class UniversalAddSourcePrecedenceTest {
         rule.waitForIdle()
         waitForText("newest.mkv")
         assertTrue("The server must review the newer .torrent, not the superseded magnet",
-            rule.onAllNodesWithText("OlderPhoneMagnet", substring = true).fetchSemanticsNodes().isEmpty())
+            rule.onAllNodesWithText("OlderLocalMagnet", substring = true).fetchSemanticsNodes().isEmpty())
         assertNoWriteRpc()
     }
 

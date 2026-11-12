@@ -4,7 +4,7 @@ import android.content.Context
 import io.github.gamesbyian.chunks.model.LocalQueueFilter
 
 /**
- * One phone-only queue filter preference. Never carries transfer identity,
+ * One local-only queue filter preference. Never carries transfer identity,
  * search text or command authority. A combined-view scope and the server's
  * own saved filter are intentionally separate presentation preferences.
  */

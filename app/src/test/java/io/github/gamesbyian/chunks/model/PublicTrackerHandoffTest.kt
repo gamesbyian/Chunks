@@ -44,7 +44,7 @@ class PublicTrackerHandoffTest {
         assertTrue(PublicTrackerHandoff.usable("https://tracker.example/tracker/announce"))
     }
 
-    @Test fun explicitQueryOrFragmentCannotEscapeIntoPhoneMagnet() {
+    @Test fun explicitQueryOrFragmentCannotEscapeIntoLocalMagnet() {
         val urls = listOf(
             "udp://tracker.example:6969/announce?u=shortsecret",
             "https://tracker.example/announce?session=abc123",

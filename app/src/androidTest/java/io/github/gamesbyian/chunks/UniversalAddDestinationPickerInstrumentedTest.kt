@@ -39,7 +39,7 @@ class UniversalAddDestinationPickerInstrumentedTest {
                     savedOtherProfiles = listOf(
                         UniversalAddSavedDestination("offline-3", "rTorrent instance 3")),
                     enabled = true,
-                    onPhone = { remote.value = false },
+                    onLocal = { remote.value = false },
                     onAuthenticatedRemote = { remote.value = true },
                     onConnectSaved = { })
             }
@@ -69,7 +69,7 @@ class UniversalAddDestinationPickerInstrumentedTest {
                     enabled = true,
                     aliasDraft = alias.value,
                     onAliasChange = { alias.value = it },
-                    onPhone = { remote.value = false },
+                    onLocal = { remote.value = false },
                     onAuthenticatedRemote = { remote.value = true },
                     onConnectSaved = { submitted++ })
             }
@@ -97,7 +97,7 @@ class UniversalAddDestinationPickerInstrumentedTest {
                     incomingSourceWaiting = waiting.value,
                     onAcceptIncoming = { replacements.value++; waiting.value = false },
                     onKeepDraft = { waiting.value = false },
-                    onPhone = {}, onAuthenticatedRemote = {}, onConnectSaved = {})
+                    onLocal = {}, onAuthenticatedRemote = {}, onConnectSaved = {})
             }
         }
         rule.onNodeWithText("Keep current draft").performClick()

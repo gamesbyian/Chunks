@@ -68,7 +68,7 @@ class CombinedDetailIdentityInstrumentedTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density * 0.75f, 2f)) {
                 ChunksTheme { Box(Modifier.requiredSize(width.dp, height.dp).testTag("combined-detail-viewport")) { Surface {
                     CombinedTransfersScreen(CombinedServerSource(scope, listOf(row), false, true,
-                        System.currentTimeMillis()), emptyList(), onOpenPhone = {},
+                        System.currentTimeMillis()), emptyList(), onOpenLocal = {},
                         onOpenServer = {}, onBack = {})
                 } } }
             }

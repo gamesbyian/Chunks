@@ -94,7 +94,7 @@ fun MediaTechnicalDetails(fileName: String, open: () -> MediaByteSource?, modifi
                 }
             }
             state.attempted -> Text("Technical details unavailable for this file.", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
-            else -> Text("Reads only this file's container headers, on this phone.", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+            else -> Text("Reads only this file's container headers, on this device.", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
         if (!state.running && state.info == null) OutlinedButton(onClick = {
             state = MediaInspectionState(running = true)

@@ -22,7 +22,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Android 10's REAL system permission dialog, reached from the phone screen's
+ * Android 10's REAL system permission dialog, reached from the local device screen's
  * own "Allow storage access" button: the user taps the button, then Allow, and
  * the picker re-probes and switches to Downloads/Chunks Downloads. Must run on
  * a fresh install (no prior grant); the API 29 workflow runs it first, alone.
@@ -39,7 +39,7 @@ class Android10StoragePermissionDialogInstrumentedTest {
     @Test fun allowingTheSystemDialogSwitchesNewAddsToSharedDownloads() {
         assumeTrue("Android 10 only", Build.VERSION.SDK_INT == Build.VERSION_CODES.Q)
         assumeTrue("Needs a fresh install without the storage grant", !granted())
-        rule.setContent { MaterialTheme { LocalEngineScreen(pane = PhonePane.ADD) } }
+        rule.setContent { MaterialTheme { LocalEngineScreen(pane = LocalPane.ADD) } }
         // Render the dedicated Add destination; keep OS/readback checks intact.
         rule.onNodeWithText("Add a transfer").assertExists()
 

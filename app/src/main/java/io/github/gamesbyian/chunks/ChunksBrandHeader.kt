@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
  */
 @Composable
 internal fun ChunksBrandHeader(modifier: Modifier = Modifier, compact: Boolean = true) {
-    // This header is mounted on every phone-only Transfers screen and most
+    // This header is mounted on every local-only Transfers screen and most
     // other everyday routes. Keep their inventory in the initial viewport;
     // reserve the illustrated identity for an explicitly requested welcome.
     if (compact) {

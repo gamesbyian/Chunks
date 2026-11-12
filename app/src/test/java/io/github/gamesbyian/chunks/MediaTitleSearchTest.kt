@@ -33,15 +33,15 @@ class MediaTitleSearchTest {
     }
 
     @Test fun combinedSearchUsesTheExactEnvironmentsTitleOnly() {
-        val phone = UnifiedTransferKey.of(EnvironmentId("phone"), b5)
+        val local = UnifiedTransferKey.of(EnvironmentId("local"), b5)
         val server = UnifiedTransferKey.of(EnvironmentId("rtorrent:x"), b5)
         fun obs(k: UnifiedTransferKey) = UnifiedTransferObservation(k, "B5.S02E07", "B5.S02E07", 1, 0, true, 0, 0, 0)
         val sources = listOf(
-            EnvironmentTransferSnapshot(EnvironmentId("phone"), EnvironmentAvailability.LIVE, true, 1L, listOf(obs(phone))),
+            EnvironmentTransferSnapshot(EnvironmentId("local"), EnvironmentAvailability.LIVE, true, 1L, listOf(obs(local))),
             EnvironmentTransferSnapshot(EnvironmentId("rtorrent:x"), EnvironmentAvailability.LIVE, true, 1L, listOf(obs(server))))
         val r = UnifiedTransferCatalog.query(sources, UnifiedTransferQuery(search = "Babylon")) { k ->
-            if (k == phone) "Babylon 5" else null
+            if (k == local) "Babylon 5" else null
         }
-        assertEquals(listOf(phone), r.transfers.map { it.key })
+        assertEquals(listOf(local), r.transfers.map { it.key })
     }
 }

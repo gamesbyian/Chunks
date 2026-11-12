@@ -38,7 +38,7 @@ class TransferHealthExportPanelInstrumentedTest {
         compose.onNodeWithText("Share download-health report").assertExists()
     }
 
-    @Test fun phoneReportIsAvailableWithoutAnyNetworkOrLibtorrentAction() {
+    @Test fun localReportIsAvailableWithoutAnyNetworkOrLibtorrentAction() {
         compose.setContent {
             MaterialTheme { LocalTransferHealthExportPanel(local, stale = false) }
         }

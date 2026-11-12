@@ -25,7 +25,7 @@ import java.util.Locale
  * A base32 `xt=urn:btih:` identity (32 characters, RFC 4648) names exactly the
  * same v1 infohash as its 40-hex form; libtorrent and rTorrent accept both.
  * [Valid.normalized] rewrites only that one parameter to lowercase hex, so the
- * existing strict phone/server validators receive the standard form. Every
+ * existing strict local/server validators receive the standard form. Every
  * other parameter, including trackers, is kept byte for byte.
  */
 internal sealed class MagnetDraftCheck {

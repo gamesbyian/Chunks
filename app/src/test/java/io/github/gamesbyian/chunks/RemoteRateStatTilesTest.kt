@@ -80,7 +80,7 @@ class RemoteRateStatTilesTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
-    fun largerPhoneAt200PercentStillStacks() {
+    fun largerLocalAt200PercentStillStacks() {
         show(412, 2f)
         val down = rule.onNodeWithText("Known 120 B/s").getUnclippedBoundsInRoot()
         val up = rule.onNodeWithText("Not reported").getUnclippedBoundsInRoot()

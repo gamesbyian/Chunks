@@ -103,7 +103,7 @@ open class ChunksServerRenderTest {
         val listening = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { server = it }
         Thread { while (!listening.isClosed) try { serve(listening.accept()) } catch (_: Exception) {} }
             .apply { isDaemon = true; start() }
-        // Connect explicitly through the phone-first route, with no shortcut
+        // Connect explicitly through the local device-first route, with no shortcut
         // into the authenticated server screen.
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
         // The Connect list composes lazily; at large text the field starts below the fold.

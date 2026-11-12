@@ -52,7 +52,7 @@ internal fun UniversalAddDestinationPicker(
     sourceError: String? = null,
     onAcceptIncoming: () -> Unit = {},
     onKeepDraft: () -> Unit = {},
-    onPhone: () -> Unit,
+    onLocal: () -> Unit,
     onAuthenticatedRemote: () -> Unit,
     onConnectSaved: (String) -> Unit
 ) {
@@ -80,7 +80,7 @@ internal fun UniversalAddDestinationPicker(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             FilterChip(selected = !addingRemotely, enabled = enabled,
-                onClick = onPhone, label = { Text("This device") },
+                onClick = onLocal, label = { Text("This device") },
                 modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_TARGET_DEVICE))
             authenticatedRemoteLabel?.let { label ->
                 FilterChip(selected = addingRemotely, enabled = enabled,

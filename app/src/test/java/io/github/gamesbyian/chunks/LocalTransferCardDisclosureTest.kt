@@ -22,7 +22,7 @@ import org.robolectric.annotation.GraphicsMode
 class LocalTransferCardDisclosureTest {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun compactPhoneCardKeepsPrimaryCommandsAndHidesOnlyDiagnostics() {
+    @Test fun compactLocalCardKeepsPrimaryCommandsAndHidesOnlyDiagnostics() {
         var mutations = 0
         val transfer = LocalTransferStatus(
             infoHash = "a".repeat(40),
@@ -50,22 +50,22 @@ class LocalTransferCardDisclosureTest {
         rule.onNodeWithText("Stop").assertExists()
         rule.onNodeWithText("Remove…").assertExists()
         rule.onNodeWithText("Files").assertExists()
-        rule.onNodeWithContentDescription("Stop Public.Sample.mkv on this phone").assertExists()
+        rule.onNodeWithContentDescription("Stop Public.Sample.mkv on this device").assertExists()
         rule.onNodeWithContentDescription(
-            "Remove transfer Public.Sample.mkv from this phone").assertExists()
+            "Remove transfer Public.Sample.mkv from this device").assertExists()
         rule.onNodeWithContentDescription(
-            "Show files for Public.Sample.mkv on this phone").assertExists()
+            "Show files for Public.Sample.mkv on this device").assertExists()
         rule.onNodeWithText("Network payload counter", substring = true).assertDoesNotExist()
         rule.onNodeWithContentDescription(
-            "More details for Public.Sample.mkv on this phone").performClick()
+            "More details for Public.Sample.mkv on this device").performClick()
         rule.onNodeWithText("Network payload counter", substring = true).assertExists()
         rule.onNodeWithContentDescription(
-            "Hide diagnostics for Public.Sample.mkv on this phone").performClick()
+            "Hide diagnostics for Public.Sample.mkv on this device").performClick()
         rule.onNodeWithText("Network payload counter", substring = true).assertDoesNotExist()
         assertEquals("Expanding must not submit Start, Stop, Remove, or Files", 0, mutations)
     }
 
-    @Test fun stoppedPhoneTransferAnnouncesStartAndExactLocalTarget() {
+    @Test fun stoppedLocalTransferAnnouncesStartAndExactLocalTarget() {
         val transfer = LocalTransferStatus(
             infoHash = "b".repeat(40),
             name = "Other.Sample.mkv",
@@ -87,9 +87,9 @@ class LocalTransferCardDisclosureTest {
                     onToggle = { writes++ }, onRemove = { writes++ })
             } }
         }
-        rule.onNodeWithContentDescription("Start Other.Sample.mkv on this phone").assertExists()
+        rule.onNodeWithContentDescription("Start Other.Sample.mkv on this device").assertExists()
         rule.onNodeWithContentDescription(
-            "Remove transfer Other.Sample.mkv from this phone").assertExists()
+            "Remove transfer Other.Sample.mkv from this device").assertExists()
         assertEquals("Reading exact accessible action labels cannot change transfer state", 0, writes)
     }
 }

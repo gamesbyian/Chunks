@@ -56,13 +56,13 @@ open class LocalAddPlacePickerTest {
         assertEquals(public.place.kind.key, prefs.getString("default-kind", null))
         restoration.emulateSavedInstanceStateRestore()
         rule.onNodeWithText("Saves to: Chunks app folder").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("Use phone default for this Add").performScrollTo()
+        rule.onNodeWithText("For this Add only. Saving a local default is a separate action.").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Use local default for this Add").performScrollTo()
             .assertHeightIsAtLeast(48.dp).performClick()
         rule.onNodeWithText("Saves to: Downloads/Chunks Downloads").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Change download location").performScrollTo().performClick()
         rule.onNodeWithText("Chunks app folder").performScrollTo().performClick()
-        val save = rule.onNodeWithText("Save this location as phone default").performScrollTo()
+        val save = rule.onNodeWithText("Save this location as local default").performScrollTo()
             .assertHasClickAction().assertHeightIsAtLeast(48.dp)
         assertTrue("Save default text must have AA contrast", save.renderedContrast() >= 4.5)
         save.performClick()
@@ -77,7 +77,7 @@ open class LocalAddPlacePickerTest {
             LocalDownloadPlacePicker(LocalAddPlacePolicy.resolve(saved, LocalAddPlacePolicy.identity(app.place)),
                 true, onChoose = {}, currentAdd = true, defaultResolution = saved)
         } } } }
-        rule.onNodeWithText("The phone default is using a temporary fallback. Your saved default is preserved.")
+        rule.onNodeWithText("The local default is using a temporary fallback. Your saved default is preserved.")
             .performScrollTo().assertIsDisplayed()
     }
 
@@ -88,9 +88,9 @@ open class LocalAddPlacePickerTest {
                 true, onChoose = {}, currentAdd = true, defaultResolution = saved,
                 onUseDefault = {}, onSaveDefault = { error("unavailable") })
         } } } }
-        rule.onNodeWithText("No phone download location is available.").assertExists()
-        rule.onNodeWithText("Use phone default for this Add").performScrollTo().assertIsDisplayed()
-        rule.onNodeWithText("Save this location as phone default").assertDoesNotExist()
+        rule.onNodeWithText("No local download location is available.").assertExists()
+        rule.onNodeWithText("Use local default for this Add").performScrollTo().assertIsDisplayed()
+        rule.onNodeWithText("Save this location as local default").assertDoesNotExist()
     }
 }
 

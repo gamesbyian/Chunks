@@ -7,7 +7,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * API35 admission-order acceptance for the native phone screen state contract.
+ * API35 admission-order acceptance for the native local screen state contract.
  * This exercises readback fencing on Android, not an actual blocked JNI transfer.
  */
 @RunWith(AndroidJUnit4::class)

@@ -72,7 +72,7 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(0, options)
     }
 
-    @Test fun normalPhoneWidthShowsFourDestinationsOnOnePersistentRow() {
+    @Test fun normalLocalWidthShowsFourDestinationsOnOnePersistentRow() {
         rule.setContent {
             ChunksTheme {
                 Box(Modifier.width(412.dp)) {
@@ -121,7 +121,7 @@ class AuthenticatedTransfersFooterTest {
         assertEquals(1, options)
     }
 
-    @Test fun atPrimaryPhoneWidthEnlargedTextKeepsThreeNavigationButtonsInOneRow() {
+    @Test fun atPrimaryLocalWidthEnlargedTextKeepsThreeNavigationButtonsInOneRow() {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme {
@@ -139,7 +139,7 @@ class AuthenticatedTransfersFooterTest {
         assertTrue("all targets remain operable", listOf(t, a, o).all { it.bottom - it.top >= 48.dp })
     }
 
-    @Test fun primaryPhoneAt140PercentKeepsFullTransfersWordOnReadableRow() {
+    @Test fun primaryLocalAt140PercentKeepsFullTransfersWordOnReadableRow() {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 1.4f)) {
                 ChunksTheme {
@@ -157,7 +157,7 @@ class AuthenticatedTransfersFooterTest {
             transfers.right <= add.left && add.right <= options.left)
     }
 
-    @Test fun phoneFooterActionsNameTheExactScopeWithoutChangingRemoteSemantics() {
+    @Test fun localFooterActionsNameTheExactScopeWithoutChangingRemoteSemantics() {
         var transfers = 0
         var adds = 0
         var options = 0
@@ -168,13 +168,13 @@ class AuthenticatedTransfersFooterTest {
                         onTransfers = { transfers++ },
                         onAdd = { adds++ },
                         onOptions = { options++ },
-                        environmentLabel = "this phone")
+                        environmentLabel = "this device")
                 }
             }
         }
-        rule.onNodeWithContentDescription("Show transfers on this phone").performClick()
-        rule.onNodeWithContentDescription("Add torrent on this phone").performClick()
-        rule.onNodeWithContentDescription("Options on this phone").performClick()
+        rule.onNodeWithContentDescription("Show transfers on this device").performClick()
+        rule.onNodeWithContentDescription("Add torrent on this device").performClick()
+        rule.onNodeWithContentDescription("Options on this device").performClick()
         assertEquals(1, transfers)
         assertEquals(1, adds)
         assertEquals(1, options)

@@ -15,7 +15,7 @@ import java.security.SecureRandom
 import java.util.Random
 
 /**
- * Proves that a candidate phone download Place accepts the kind of file I/O
+ * Proves that a candidate local download Place accepts the kind of file I/O
  * the native engine performs: a sparse write beyond end-of-file, a write at
  * offset zero, fsync, independent readback, exclusive publication and delete. It never
  * inspects or touches any existing file other than its own hidden probe.

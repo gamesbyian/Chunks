@@ -185,7 +185,7 @@ internal fun AccentOutlineCard(accent: Color, modifier: Modifier = Modifier, con
 
 /**
  * Which environment a list, review or confirmation belongs to (UNIFIED-ENVIRONMENTS):
- * "On this phone" or the exact server account and address. Text carries the
+ * "On this device" or the exact server account and address. Text carries the
  * identity; the icon is decorative.
  */
 @Composable
@@ -237,7 +237,7 @@ internal fun serverEnvironmentLabel(aliasScope: String): String {
     return "Server · " + (if (user.isEmpty()) address else "$user @ $address")
 }
 
-internal const val PHONE_ENVIRONMENT_LABEL = "On this device"
+internal const val LOCAL_ENVIRONMENT_LABEL = "On this device"
 
 /**
  * States exactly which environment a setting applies to (UNIFIED-ENVIRONMENTS

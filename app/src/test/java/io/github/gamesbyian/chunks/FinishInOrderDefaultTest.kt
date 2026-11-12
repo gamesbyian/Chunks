@@ -15,20 +15,20 @@ class FinishInOrderDefaultTest {
     private val hash = "0123456789abcdef0123456789abcdef01234567"
 
     @Test fun offUntilChosenAndScopedToOneEnvironment() {
-        val phone = FinishInOrderStore(context)
+        val local = FinishInOrderStore(context)
         val server = FinishInOrderStore(context, "https://host.example/RPC2\u0000user")
-        assertFalse(phone.defaultForNewAdds())
-        assertTrue(phone.setDefaultForNewAdds(true))
+        assertFalse(local.defaultForNewAdds())
+        assertTrue(local.setDefaultForNewAdds(true))
         assertTrue(FinishInOrderStore(context).defaultForNewAdds())
         assertFalse(server.defaultForNewAdds())
-        assertTrue(phone.setDefaultForNewAdds(false))
+        assertTrue(local.setDefaultForNewAdds(false))
         assertFalse(FinishInOrderStore(context).defaultForNewAdds())
     }
 
     @Test fun choosingTheDefaultCreatesNoPolicyOrRequest() {
-        val phone = FinishInOrderStore(context)
-        assertTrue(phone.setDefaultForNewAdds(true))
-        assertNull(phone.get(hash))
-        assertTrue(phone.afterMetadataRequests().isEmpty())
+        val local = FinishInOrderStore(context)
+        assertTrue(local.setDefaultForNewAdds(true))
+        assertNull(local.get(hash))
+        assertTrue(local.afterMetadataRequests().isEmpty())
     }
 }

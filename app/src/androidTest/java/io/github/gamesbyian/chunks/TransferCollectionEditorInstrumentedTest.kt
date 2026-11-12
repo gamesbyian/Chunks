@@ -50,29 +50,29 @@ class TransferCollectionEditorInstrumentedTest {
         }
     }
 
-    @Test fun phoneEngineUsesAnIndependentCollectionNamespace() {
+    @Test fun localEngineUsesAnIndependentCollectionNamespace() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val store = TransferCollectionStore(context)
         val infoHash = "D".repeat(40)
         val localScope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
         val remoteScope = "https://test.invalid/RPC2\u0000local-separation"
         try {
-            store.remove(localScope, infoHash, "On the phone")
+            store.remove(localScope, infoHash, "On the local device")
             rule.setContent {
                 MaterialTheme {
                     TransferCollectionEditor(infoHash, "Local download", localScope, store) {}
                 }
             }
             rule.onNodeWithText("Edit collections").performClick()
-            rule.onNodeWithTag("collection-name-input").performTextInput("On the phone")
+            rule.onNodeWithTag("collection-name-input").performTextInput("On the local device")
             rule.onNodeWithText("Add to collection").performClick()
             rule.waitForIdle()
-            assertEquals(listOf("On the phone"), TransferCollectionStore(context).forTransfer(localScope, infoHash))
+            assertEquals(listOf("On the local device"), TransferCollectionStore(context).forTransfer(localScope, infoHash))
             assertEquals(emptyList<String>(), store.forTransfer(remoteScope, infoHash))
-            rule.onNodeWithText("Remove from On the phone").performClick()
+            rule.onNodeWithText("Remove from On the local device").performClick()
             assertEquals(emptyList<String>(), store.forTransfer(localScope, infoHash))
         } finally {
-            store.remove(localScope, infoHash, "On the phone")
+            store.remove(localScope, infoHash, "On the local device")
         }
     }
 

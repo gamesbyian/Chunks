@@ -7,11 +7,11 @@ import org.junit.Test
 /** The Options index only points to existing screens; it holds no values. */
 class OptionsSettingIndexTest {
     @Test fun authenticatedServerDestinationsAreSearchableWithoutInventingSettingWrites() {
-        assertTrue(PhoneOptionsShortcut.SERVER_PLACES in PhoneOptionsShortcut.search("server folder"))
-        assertTrue(PhoneOptionsShortcut.SERVER_ORGANIZE in PhoneOptionsShortcut.search("server collections"))
-        assertTrue(PhoneOptionsShortcut.SERVER_NAMES in PhoneOptionsShortcut.search("alias"))
-        assertTrue(PhoneOptionsShortcut.SERVER_BACKUP in PhoneOptionsShortcut.search("server backup"))
-        assertTrue(PhoneOptionsShortcut.CONNECTIONS in PhoneOptionsShortcut.search("remote login"))
+        assertTrue(LocalOptionsShortcut.SERVER_PLACES in LocalOptionsShortcut.search("server folder"))
+        assertTrue(LocalOptionsShortcut.SERVER_ORGANIZE in LocalOptionsShortcut.search("server collections"))
+        assertTrue(LocalOptionsShortcut.SERVER_NAMES in LocalOptionsShortcut.search("alias"))
+        assertTrue(LocalOptionsShortcut.SERVER_BACKUP in LocalOptionsShortcut.search("server backup"))
+        assertTrue(LocalOptionsShortcut.CONNECTIONS in LocalOptionsShortcut.search("remote login"))
     }
 
     @Test fun emptySearchShowsNoShortcuts() {
@@ -20,8 +20,8 @@ class OptionsSettingIndexTest {
 
     @Test fun commonSettingWordsFindTheirExistingScreen() {
         assertEquals(listOf(OptionsShortcut.SEEDING_RULES), OptionsShortcut.search("seeding ratio"))
-        assertEquals(listOf(OptionsShortcut.PHONE_SETTINGS), OptionsShortcut.search("Speed LIMIT"))
-        assertEquals(listOf(OptionsShortcut.PHONE_SETTINGS), OptionsShortcut.search("dht"))
+        assertEquals(listOf(OptionsShortcut.LOCAL_SETTINGS), OptionsShortcut.search("Speed LIMIT"))
+        assertEquals(listOf(OptionsShortcut.LOCAL_SETTINGS), OptionsShortcut.search("dht"))
         assertEquals(listOf(OptionsShortcut.ENVIRONMENT_COLOURS), OptionsShortcut.search("color"))
         assertEquals(listOf(OptionsShortcut.NAMES), OptionsShortcut.search("rename"))
         assertEquals(listOf(OptionsShortcut.PRIVACY), OptionsShortcut.search("biometric"))
@@ -33,7 +33,7 @@ class OptionsSettingIndexTest {
     }
 
     @Test fun prefixesMatchAsPeopleType() {
-        assertEquals(listOf(OptionsShortcut.PHONE_SETTINGS), OptionsShortcut.search("spe"))
+        assertEquals(listOf(OptionsShortcut.LOCAL_SETTINGS), OptionsShortcut.search("spe"))
         assertTrue(OptionsShortcut.PRIVACY in OptionsShortcut.search("priv"))
     }
 

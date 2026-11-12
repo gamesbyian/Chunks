@@ -10,7 +10,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
 /**
- * Opt-in real Internet evidence for the phone engine core: download a bounded
+ * Opt-in real Internet evidence for the local device engine core: download a bounded
  * byte budget of a licensed Internet Archive or official Debian netinst
  * torrent from ordinary BitTorrent peers. tools/public_fixture_collector.py
  * strips every web seed and keeps only the source's official tracker, so any

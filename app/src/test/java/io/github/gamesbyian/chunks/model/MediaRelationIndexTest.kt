@@ -46,14 +46,14 @@ class MediaRelationIndexTest {
     }
 
     @Test fun sameWorkAcrossEnvironmentsAndVisibilityGate() {
-        val wood = key("Wood", 1); val stone = key("Stone", 1); val phone = key("Phone", 2)
+        val wood = key("Wood", 1); val stone = key("Stone", 1); val local = key("Local", 2)
         val index = MediaRelationIndex.build(listOf(
             MediaTransferMembers(wood, listOf(member("feature", work = "tmdb:movie:1"))),
             MediaTransferMembers(stone, listOf(member("feature", work = "tmdb:movie:1"))),
-            MediaTransferMembers(phone, listOf(member("feature", work = "tmdb:movie:1")))
+            MediaTransferMembers(local, listOf(member("feature", work = "tmdb:movie:1")))
         ))
-        assertEquals(2, index.similar(wood, setOf(wood, stone, phone)).size)
-        assertEquals(0, index.similar(wood, setOf(wood, stone, phone), sameEnvironmentOnly = true).size)
+        assertEquals(2, index.similar(wood, setOf(wood, stone, local)).size)
+        assertEquals(0, index.similar(wood, setOf(wood, stone, local), sameEnvironmentOnly = true).size)
         assertEquals(listOf(stone), index.similar(wood, setOf(wood, stone)).map { it.key })
         assertTrue(index.similar(wood, setOf(stone)).isEmpty()) // privacy-locked source
         assertEquals(MediaRelationKind.SAME_TORRENT,
@@ -61,7 +61,7 @@ class MediaRelationIndexTest {
     }
 
     @Test fun adjacentEpisodeRanksAboveNonAdjacentEpisode() {
-        val origin = key("Wood",1); val adjacent = key("Stone",2); val distant = key("Phone",3)
+        val origin = key("Wood",1); val adjacent = key("Stone",2); val distant = key("Local",3)
         val s = "tmdb:tv:123"
         val index = MediaRelationIndex.build(listOf(
             MediaTransferMembers(origin,listOf(member("s02e07",series=s,season=2,episode=7))),
@@ -90,7 +90,7 @@ class MediaRelationIndexTest {
     }
 
     @Test fun sharedActorAndSpecificTopicAreIndependentEvidence() {
-        val ray=key("Wood",1); val stealth=key("Stone",2); val her=key("Phone",3)
+        val ray=key("Wood",1); val stealth=key("Stone",2); val her=key("Local",3)
         val foxx=credit("wd:Q171905",MediaCreditRole.ACTOR,"Jamie Foxx")
         val index=MediaRelationIndex.build(listOf(
             MediaTransferMembers(ray,listOf(member("ray",credits=setOf(foxx),topics=setOf("topic:music-biography")))),
@@ -117,7 +117,7 @@ class MediaRelationIndexTest {
     }
 
     @Test fun exactTorrentAcrossEnvironmentsMatchesWithoutMediaMetadata() {
-        val wood=key("Wood",99); val stone=key("Stone",99); val unrelated=key("Phone",100)
+        val wood=key("Wood",99); val stone=key("Stone",99); val unrelated=key("Local",100)
         val index=MediaRelationIndex.build(listOf(
             MediaTransferMembers(wood,emptyList()),
             MediaTransferMembers(stone,emptyList()),

@@ -34,11 +34,11 @@ import org.libtorrent4j.TorrentBuilder
 /**
  * Cross-implementation BitTorrent proof on one disposable CI runner:
  * rakshasa rTorrent (the remote engine family Chunks controls) and Arvid
- * libtorrent via libtorrent4j (the phone engine) exchange real payloads over
+ * libtorrent via libtorrent4j (the local device engine) exchange real payloads over
  * the BitTorrent peer wire protocol, in both directions, with each side
  * piece-hash verifying what it receives and the bytes compared independently.
  *
- * Loopback only, no tracker/DHT/PEX: the phone engine dials rTorrent's fixed
+ * Loopback only, no tracker/DHT/PEX: the local device engine dials rTorrent's fixed
  * peer port. This is real protocol interoperability evidence, NOT Internet
  * swarm reachability, NAT traversal, Android or physical-device evidence.
  */
@@ -155,7 +155,7 @@ class RTorrentLibtorrentInteropTest {
         return hash
     }
 
-    @Test fun phoneEngineDownloadsExactPayloadSeededByRealRTorrent() = runBlocking {
+    @Test fun localEngineDownloadsExactPayloadSeededByRealRTorrent() = runBlocking {
         val rig = rig()
         val seedParent = File(rig.dataRoot, "interop-seed-" + System.nanoTime()).apply { mkdirs() }
         val (root, files) = fixture(seedParent, "Interop from rTorrent", System.nanoTime())
@@ -168,27 +168,27 @@ class RTorrentLibtorrentInteropTest {
 
         val leechRoot = kotlin.io.path.createTempDirectory("chunks-interop-leech").toFile()
         try {
-            val phone = engine()
-            val added = phone.addStopped(torrent, leechRoot, listOf(rig.peer))
+            val local = engine()
+            val added = local.addStopped(torrent, leechRoot, listOf(rig.peer))
             val status = (added as LocalAddResult.AddedStopped).status
             assertEquals(hash.lowercase(), status.infoHash.lowercase())
-            assertEquals(LocalCommandOutcome.VERIFIED, phone.resume(status.infoHash).outcome)
-            waitFor("phone engine to download from rTorrent") {
-                val s = phone.status(status.infoHash)
-                s?.error?.let { fail("Phone engine error: $it") }
+            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(status.infoHash).outcome)
+            waitFor("local engine to download from rTorrent") {
+                val s = local.status(status.infoHash)
+                s?.error?.let { fail("Local engine error: $it") }
                 s?.state == LocalTransferState.SEEDING || s?.state == LocalTransferState.FINISHED
             }
-            assertTrue(phone.flushCompletedForLibraryRead(status.infoHash, 20_000))
+            assertTrue(local.flushCompletedForLibraryRead(status.infoHash, 20_000))
             val total = files.values.sumOf { it.size.toLong() }
             // libtorrent publishes transfer counters on its asynchronous stats tick.
-            waitFor("phone engine download counter (payload arrived over the wire)", 30) {
-                (phone.status(status.infoHash)?.payloadDownloadedBytes ?: 0) >= total
+            waitFor("local engine download counter (payload arrived over the wire)", 30) {
+                (local.status(status.infoHash)?.payloadDownloadedBytes ?: 0) >= total
             }
             files.forEach { (path, bytes) ->
                 assertArrayEquals("Exact bytes for $path",
                     bytes, File(leechRoot, "Interop from rTorrent/$path").readBytes())
             }
-            waitFor("rTorrent to report upload to the phone engine", 30) {
+            waitFor("rTorrent to report upload to the local device engine", 30) {
                 runBlocking { counter(rig.remote, "d.up.total", hash) } >= total
             }
         } finally {
@@ -196,24 +196,24 @@ class RTorrentLibtorrentInteropTest {
         }
     }
 
-    @Test fun realRTorrentDownloadsExactPayloadSeededByPhoneEngine() = runBlocking {
+    @Test fun realRTorrentDownloadsExactPayloadSeededByLocalEngine() = runBlocking {
         val rig = rig()
         val seedParent = kotlin.io.path.createTempDirectory("chunks-interop-seed").toFile()
         try {
-            val (root, files) = fixture(seedParent, "Interop from phone", System.nanoTime())
+            val (root, files) = fixture(seedParent, "Interop from the local device", System.nanoTime())
             val torrent = torrentFor(root)
-            val phone = engine()
-            val seed = (phone.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
-            assertEquals(LocalCommandOutcome.VERIFIED, phone.resume(seed.infoHash).outcome)
-            waitFor("phone engine to verify its seed") {
-                phone.status(seed.infoHash)?.state == LocalTransferState.SEEDING
+            val local = engine()
+            val seed = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(seed.infoHash).outcome)
+            waitFor("local engine to verify its seed") {
+                local.status(seed.infoHash)?.state == LocalTransferState.SEEDING
             }
 
             val leechParent = File(rig.dataRoot, "interop-leech-" + System.nanoTime()).apply { mkdirs() }
-            // The server receives the document the phone engine exports for
+            // The server receives the document the local device engine exports for
             // "Prepare on rTorrent", not the original file: identity and
             // trackers must survive that handoff for rTorrent to find peers.
-            val handoff = requireNotNull(phone.exportTorrentFile(seed.infoHash))
+            val handoff = requireNotNull(local.exportTorrentFile(seed.infoHash))
             val hash = TorrentMetainfoReader.preview(handoff).infoHashV1
             assertEquals(seed.infoHash.lowercase(), hash.lowercase())
             val added = rig.remote.loadStoppedTorrentBytes(handoff, leechParent.absolutePath)
@@ -235,9 +235,9 @@ class RTorrentLibtorrentInteropTest {
             waitFor("rTorrent started after exact baseline", 30) {
                 runBlocking { remoteRow(rig.remote, hash) }?.started == true
             }
-            // rTorrent learns the phone seeder only from its tracker announce
+            // rTorrent learns the local device seeder only from its tracker announce
             // and dials it itself: no DHT, PEX or manual peer injection.
-            waitFor("rTorrent to download from the phone engine") {
+            waitFor("rTorrent to download from the local device engine") {
                 runBlocking { remoteRow(rig.remote, hash) }?.let {
                     it.sizeBytes > 0 && it.completedBytes == it.sizeBytes
                 } == true
@@ -257,10 +257,10 @@ class RTorrentLibtorrentInteropTest {
                 after.verifiedBytes!! > before.verifiedBytes!!)
             files.forEach { (path, bytes) ->
                 assertArrayEquals("Exact bytes rTorrent wrote for $path",
-                    bytes, File(leechParent, "Interop from phone/$path").readBytes())
+                    bytes, File(leechParent, "Interop from the local device/$path").readBytes())
             }
-            waitFor("phone engine upload counter", 30) {
-                (phone.status(seed.infoHash)?.payloadUploadedBytes ?: 0) >= total
+            waitFor("local engine upload counter", 30) {
+                (local.status(seed.infoHash)?.payloadUploadedBytes ?: 0) >= total
             }
         } finally {
             seedParent.deleteRecursively()
@@ -268,7 +268,7 @@ class RTorrentLibtorrentInteropTest {
     }
 
     /**
-     * L2 remote piece evidence: rTorrent leeches from the phone engine with
+     * L2 remote piece evidence: rTorrent leeches from the local device engine with
      * one file turned OFF through the production setFilePriority. rTorrent's
      * own per-file chunk counters must show the wanted files complete while
      * the skipped file holds at most one boundary chunk shared with a wanted
@@ -280,11 +280,11 @@ class RTorrentLibtorrentInteropTest {
         try {
             val (root, files) = fixture(seedParent, "Interop priorities", System.nanoTime())
             val torrent = torrentFor(root)
-            val phone = engine()
-            val seed = (phone.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
-            assertEquals(LocalCommandOutcome.VERIFIED, phone.resume(seed.infoHash).outcome)
-            waitFor("phone engine to verify its seed") {
-                phone.status(seed.infoHash)?.state == LocalTransferState.SEEDING
+            val local = engine()
+            val seed = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(seed.infoHash).outcome)
+            waitFor("local engine to verify its seed") {
+                local.status(seed.infoHash)?.state == LocalTransferState.SEEDING
             }
             val leechParent = File(rig.dataRoot, "interop-priority-" + System.nanoTime()).apply { mkdirs() }
             val hash = TorrentMetainfoReader.preview(torrent).infoHashV1
@@ -307,7 +307,7 @@ class RTorrentLibtorrentInteropTest {
             assertTrue("Start not acknowledged: $started",
                 started is LifecycleOutcome.Verified || started is LifecycleOutcome.Pending)
             val wanted = listed.indices.filter { it != skipIndex }
-            waitFor("rTorrent completes every wanted file from the phone peer") {
+            waitFor("rTorrent completes every wanted file from the local device peer") {
                 runBlocking { wanted.all { chunks(it, "f.completed_chunks") == chunks(it, "f.size_chunks") } }
             }
             // Let any in-flight requests settle, then sample the skipped file.
@@ -325,7 +325,7 @@ class RTorrentLibtorrentInteropTest {
             }
             val normal = rig.remote.setFilePriority(hash, skipIndex, skipFile.path, skipFile.sizeBytes, 0, 1)
             assertTrue("Production priority Normal not verified: $normal", normal is FilePriorityOutcome.Verified)
-            // Having finished every wanted piece, rTorrent and the phone seed
+            // Having finished every wanted piece, rTorrent and the local device seed
             // may no longer be connected, and rTorrent spaces re-announces by
             // its own minimum (E sweep 41840562323). Ask for an announce now,
             // as a user's "update trackers" would, instead of waiting it out.
@@ -343,16 +343,16 @@ class RTorrentLibtorrentInteropTest {
     }
 
     /**
-     * "Copy files to this phone": the phone gets ONLY an exact-hash magnet
+     * "Copy files to this device": the local device gets ONLY an exact-hash magnet
      * naming the server as a direct peer (no .torrent, no tracker, no DHT).
-     * rTorrent must serve the metadata and every piece; the phone verifies
+     * rTorrent must serve the metadata and every piece; the local device verifies
      * each piece and the bytes are compared independently. The server
      * transfer is left as it was.
      */
-    @Test fun phoneCopiesACompletedServerTransferWithTheServerAsItsOnlyPeer() = runBlocking {
+    @Test fun localCopiesACompletedServerTransferWithTheServerAsItsOnlyPeer() = runBlocking {
         val rig = rig()
         val seedParent = File(rig.dataRoot, "interop-copy-" + System.nanoTime()).apply { mkdirs() }
-        val (root, files) = fixture(seedParent, "Copy to phone", System.nanoTime())
+        val (root, files) = fixture(seedParent, "Copy to the local device", System.nanoTime())
         val hash = addAndStart(rig.remote, torrentFor(root), seedParent)
         waitFor("rTorrent to verify and complete its seed data") {
             runBlocking { remoteRow(rig.remote, hash) }?.let { it.completedBytes == it.sizeBytes } == true
@@ -363,28 +363,28 @@ class RTorrentLibtorrentInteropTest {
         }
         val source = rig.remote.peerSource(hash)
         assertEquals(rig.peer.port.toLong(), source.listenPort)
-        val plan = io.github.gamesbyian.chunks.model.ServerToPhoneCopy.plan(row, source) {
+        val plan = io.github.gamesbyian.chunks.model.ServerToLocalCopy.plan(row, source) {
             java.net.InetAddress.getAllByName(it).toList()
         }
-        plan as io.github.gamesbyian.chunks.model.ServerToPhoneCopy.Ready
-        assertTrue("No tracker may reach the phone", !plan.magnet.contains("tr="))
+        plan as io.github.gamesbyian.chunks.model.ServerToLocalCopy.Ready
+        assertTrue("No tracker may reach the local device", !plan.magnet.contains("tr="))
 
         val leechRoot = kotlin.io.path.createTempDirectory("chunks-interop-copy").toFile()
         try {
-            val phone = engine()
-            val added = phone.addMagnet(plan.magnet, leechRoot, autoStartAfterMetadata = true)
+            val local = engine()
+            val added = local.addMagnet(plan.magnet, leechRoot, autoStartAfterMetadata = true)
             val infoHash = (added as LocalAddResult.FetchingMetadata).status.infoHash
             assertEquals(hash.lowercase(), infoHash)
-            waitFor("phone engine to fetch metadata and copy every piece from rTorrent") {
-                val s = phone.status(infoHash)
-                s?.error?.let { fail("Phone engine error: $it") }
+            waitFor("local engine to fetch metadata and copy every piece from rTorrent") {
+                val s = local.status(infoHash)
+                s?.error?.let { fail("Local engine error: $it") }
                 s?.metadataKnown == true &&
                     (s.state == LocalTransferState.SEEDING || s.state == LocalTransferState.FINISHED)
             }
-            assertTrue(phone.flushCompletedForLibraryRead(infoHash, 20_000))
+            assertTrue(local.flushCompletedForLibraryRead(infoHash, 20_000))
             files.forEach { (path, bytes) ->
                 assertArrayEquals("Exact copied bytes for $path",
-                    bytes, File(leechRoot, "Copy to phone/$path").readBytes())
+                    bytes, File(leechRoot, "Copy to the local device/$path").readBytes())
             }
             val total = files.values.sumOf { it.size.toLong() }
             waitFor("rTorrent to report uploading the copy", 30) {
@@ -421,12 +421,12 @@ class RTorrentLibtorrentInteropTest {
             val hash = TorrentMetainfoReader.preview(torrent).infoHashV1
             val total = files.values.sumOf { it.size.toLong() }
 
-            val phone = engine()
-            val seeded = (phone.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+            val local = engine()
+            val seeded = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
             assertEquals(hash.lowercase(), seeded.infoHash.lowercase())
-            assertEquals(LocalCommandOutcome.VERIFIED, phone.resume(hash).outcome)
+            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(hash).outcome)
             waitFor("real magnet seeder to hash-check the source") {
-                phone.status(hash)?.state == LocalTransferState.SEEDING
+                local.status(hash)?.state == LocalTransferState.SEEDING
             }
 
             // A new, empty parent under the disposable rTorrent destination:
@@ -478,7 +478,7 @@ class RTorrentLibtorrentInteropTest {
                     File(leechParent, "Interop via magnet/$relative").readBytes())
             }
             waitFor("independent seeder uploaded full magnet payload", 30) {
-                (phone.status(hash)?.payloadUploadedBytes ?: 0L) >= total
+                (local.status(hash)?.payloadUploadedBytes ?: 0L) >= total
             }
         } finally {
             seedParent.deleteRecursively()

@@ -1,0 +1,78 @@
+package io.github.gamesbyian.chunks
+
+import androidx.compose.ui.test.*
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** Uses actual Android exclusive-file/write probes; Robolectric cannot grant this capability. */
+@RunWith(AndroidJUnit4::class)
+class LocalAddDestinationContinuityInstrumentedTest {
+    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+
+    private fun clickReady(text: String) {
+        rule.waitUntil(20_000) {
+            runCatching { rule.onNodeWithText(text).performScrollTo().assertIsEnabled() }.isSuccess
+        }
+        rule.onNodeWithText(text).performClick()
+    }
+
+    private fun awaitPlace() = rule.waitUntil(20_000) {
+        rule.onAllNodesWithText("For this Add only. Saving a local default is a separate action.")
+            .fetchSemanticsNodes().isNotEmpty()
+    }
+
+    @Test fun oneTimeDestinationSubfolderAndStoppedChoiceSurviveNavigationAndRecreation() {
+        val context = rule.activity
+        val prefs = context.getSharedPreferences("local-download-place", android.content.Context.MODE_PRIVATE)
+        val oldKind = prefs.getString("default-kind", null)
+        val oldRoot = prefs.getString("resolved-root", null)
+        try {
+            rule.onNodeWithText("+ Add").performClick()
+            rule.waitUntil(20_000) {
+                rule.onAllNodesWithText("Change download location").fetchSemanticsNodes().isNotEmpty()
+            }
+            rule.onNodeWithText("Change download location").performScrollTo().performClick()
+            rule.onNodeWithText("Chunks app folder").performScrollTo().assertIsEnabled().performClick()
+            awaitPlace()
+            rule.onNodeWithText("Optional local download subfolder").performScrollTo().performTextInput("chosen-once")
+            rule.onNodeWithText("Start when added").performScrollTo()
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            rule.onNodeWithText("Start when added").assertIsOff()
+            rule.onNodeWithText("Magnet or HTTP(S) torrent URL").performScrollTo()
+                .performTextInput("magnet:?xt=urn:btih:" + "b".repeat(40))
+            rule.onNodeWithText("Options").performClick()
+            rule.waitForIdle()
+            rule.onNodeWithText("+ Add").performClick()
+            awaitPlace()
+            rule.onNodeWithText("Optional local download subfolder").assertTextContains("chosen-once")
+            rule.onNodeWithText("Start when added").assertIsOff()
+            org.junit.Assert.assertEquals("A one-time choice must not persist", oldKind, prefs.getString("default-kind", null))
+            rule.activityRule.scenario.recreate()
+            awaitPlace()
+            rule.onNodeWithText("Optional local download subfolder").assertTextContains("chosen-once")
+            rule.onNodeWithText("Start when added").assertIsOff()
+            org.junit.Assert.assertEquals(oldKind, prefs.getString("default-kind", null))
+            clickReady("Save this location as local default")
+            rule.waitUntil(20_000) {
+                prefs.getString("default-kind", null) == LocalPlaceKind.APP_STORAGE.key &&
+                    runCatching { rule.onNodeWithText("Use local default for this Add").assertIsEnabled() }.isSuccess
+            }
+            rule.onNodeWithText("Local default: Chunks app folder").assertExists()
+            rule.activityRule.scenario.recreate()
+            awaitPlace()
+            rule.onNodeWithText("Local default: Chunks app folder").assertExists()
+            clickReady("Use local default for this Add")
+            rule.onNodeWithText("Your saved default for future local downloads.").assertExists()
+            clickReady("Use automatic location for new local downloads")
+            rule.waitUntil(20_000) { prefs.getString("default-kind", null) == null }
+        } finally {
+            prefs.edit().apply {
+                if (oldKind == null) remove("default-kind") else putString("default-kind", oldKind)
+                if (oldRoot == null) remove("resolved-root") else putString("resolved-root", oldRoot)
+            }.commit()
+        }
+    }
+}

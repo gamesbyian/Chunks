@@ -10,14 +10,14 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalPlaceWriteProbe.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalPublicDownloadsPlaceInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalDownloadPlacePickerInstrumentedTest.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/PhoneAddDestinationContinuityInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalAddDestinationContinuityInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
       - "tools/android10_downloads_revocation.sh"
       - "tools/test_android10_downloads_revocation_mock.sh"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/PhoneIntakeJourneyInstrumentedTest.kt"
-      - "tools/phone_intake_journey.sh"
-      - "tools/test_phone_intake_journey.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalIntakeJourneyInstrumentedTest.kt"
+      - "tools/local_intake_journey.sh"
+      - "tools/test_local_intake_journey.sh"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalEngineScreen.kt"
       - "tools/android10_downloads_instrumentation.sh"
       - "tools/test_android10_downloads_instrumentation_mock.sh"
@@ -60,7 +60,7 @@ jobs:
       - name: Reject unsafe ADB grant-revocation targets and forged test receipts (offline)
         run: bash tools/test_android10_downloads_revocation_mock.sh
       - name: Reject forged Share/magnet intake, skipped tests and non-emulator cleanup (offline)
-        run: bash tools/test_phone_intake_journey.sh
+        run: bash tools/test_local_intake_journey.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -89,4 +89,4 @@ jobs:
           profile: pixel_3a
           emulator-boot-timeout: 600
           disable-animations: true
-          script: bash tools/android10_downloads_instrumentation.sh && bash tools/phone_intake_journey.sh && bash tools/android10_downloads_revocation.sh
+          script: bash tools/android10_downloads_instrumentation.sh && bash tools/local_intake_journey.sh && bash tools/android10_downloads_revocation.sh

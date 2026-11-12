@@ -13,7 +13,7 @@ class TransferMoveRetirementScopeTest {
 
     @Test fun sameHashAndNameOnAnotherServerAccountCannotRetireRemoteSource() {
         val record = TransferMove.start(
-            TransferMove.Direction.SERVER_TO_PHONE, hash, "Episode",
+            TransferMove.Direction.SERVER_TO_LOCAL, hash, "Episode",
             TransferMoveStore.scopeDigest(accountA), "example.test",
             sourceDirectory = "/data/episode"
         )
@@ -31,23 +31,23 @@ class TransferMoveRetirementScopeTest {
         ))
     }
 
-    @Test fun phoneOriginMoveAlsoRequiresOriginalAccountAndNativeGeneration() {
+    @Test fun localOriginMoveAlsoRequiresOriginalAccountAndNativeGeneration() {
         val record = TransferMove.start(
-            TransferMove.Direction.PHONE_TO_SERVER, hash, "Season",
+            TransferMove.Direction.LOCAL_TO_SERVER, hash, "Season",
             TransferMoveStore.scopeDigest(accountA), "example.test",
-            sourceReviewToken = "phone-generation-42"
+            sourceReviewToken = "local-generation-42"
         )
         assertTrue(moveRetirementScopeConfirmed(
-            record, accountA, "Season", "phone-generation-42", null
+            record, accountA, "Season", "local-generation-42", null
         ))
         assertFalse(moveRetirementScopeConfirmed(
-            record, accountB, "Season", "phone-generation-42", null
+            record, accountB, "Season", "local-generation-42", null
         ))
         assertFalse(moveRetirementScopeConfirmed(
-            record, accountA, "Season", "phone-generation-43", null
+            record, accountA, "Season", "local-generation-43", null
         ))
         assertFalse(moveRetirementScopeConfirmed(
-            record, accountA, "Different transfer", "phone-generation-42", null
+            record, accountA, "Different transfer", "local-generation-42", null
         ))
     }
 }

@@ -14,7 +14,7 @@ import org.junit.Test
 import java.util.concurrent.atomic.AtomicBoolean
 
 class MediaInventoryEnrichmentSessionTest {
-    private val phone = MediaTransferKey("phone|" + "a".repeat(40))
+    private val local = MediaTransferKey("local|" + "a".repeat(40))
     private val secondProfile = MediaTransferKey("rtorrent:other|" + "a".repeat(40))
 
     @Test fun fullInventoryRunsWithoutAnyComposedRowsAndRechecksCurrentWitness() {
@@ -27,7 +27,7 @@ class MediaInventoryEnrichmentSessionTest {
                     if (witness(key)) seen.add(name)
                 }
             })
-        session.replace(listOf(phone to "Hackers.1995", secondProfile to "Away.We.Go.2009")) {
+        session.replace(listOf(local to "Hackers.1995", secondProfile to "Away.We.Go.2009")) {
             allowed.get()
         }
         assertEquals(listOf("Hackers.1995", "Away.We.Go.2009"), seen)
@@ -46,7 +46,7 @@ class MediaInventoryEnrichmentSessionTest {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
         val session = MediaInventoryEnrichmentSession(scope,
             enrich = { entries, witness ->
-                if (entries.first().first == phone) {
+                if (entries.first().first == local) {
                     initial.complete(Unit)
                     try { finish.await() } catch (_: kotlinx.coroutines.CancellationException) {
                         // Model a blocking external client returning after cancellation.
@@ -54,7 +54,7 @@ class MediaInventoryEnrichmentSessionTest {
                 }
                 if (witness(entries.first().first)) observed.add(entries.first().first)
             })
-        session.replace(listOf(phone to "Hackers.1995")) { true }
+        session.replace(listOf(local to "Hackers.1995")) { true }
         initial.await()
         session.replace(listOf(secondProfile to "Away.We.Go.2009")) { true }
         finish.complete(Unit)
@@ -83,7 +83,7 @@ class MediaInventoryEnrichmentSessionTest {
                     events.add("authorized-retry")
                 }
             })
-        session.replace(listOf(phone to "Babylon.5.S02E07")) { true }
+        session.replace(listOf(local to "Babylon.5.S02E07")) { true }
         firstStarted.await()
         // A consent/network transition, followed by a quick second inventory
         // refresh, must not race the previous provider's in-flight exact key.
@@ -117,7 +117,7 @@ class MediaInventoryEnrichmentSessionTest {
                     if (witness(key)) events.add("pass$passes:$name")
                 }
             })
-        session.replace(listOf(phone to "Beginning", secondProfile to "Tail")) { true }
+        session.replace(listOf(local to "Beginning", secondProfile to "Tail")) { true }
         started.await()
         repeat(100) { session.refresh() }
         assertEquals("No heartbeat can interrupt an otherwise authorized scan", 1, passes)
@@ -146,7 +146,7 @@ class MediaInventoryEnrichmentSessionTest {
                 entries.forEach { (key, name) -> if (witness(key)) accepted.add(name) }
             })
         val consent = AtomicBoolean(true)
-        session.replace(listOf(phone to "Old HTTP body")) { consent.get() }
+        session.replace(listOf(local to "Old HTTP body")) { consent.get() }
         started.await()
         session.refresh() // routine heartbeat is pending, not revoking
         consent.set(false)
@@ -166,13 +166,13 @@ class MediaInventoryEnrichmentSessionTest {
         val session = MediaInventoryEnrichmentSession(
             CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
             enrich = { entries, witness ->
-                if (entries.first().first == phone) {
+                if (entries.first().first == local) {
                     started.complete(Unit)
                     withContext(NonCancellable) { releaseSlowRequest.await() }
                 }
                 entries.forEach { (key, name) -> if (witness(key)) seen.add(name) }
             })
-        session.replace(listOf(phone to "Old private account")) { true }
+        session.replace(listOf(local to "Old private account")) { true }
         started.await()
         repeat(4) { session.refresh() }
         session.replace(listOf(secondProfile to "Current exact account")) { true }
@@ -194,7 +194,7 @@ class MediaInventoryEnrichmentSessionTest {
                 attempted = witness(entries.single().first)
             },
             onClosed = { closedCount++ })
-        session.replace(listOf(phone to "Hackers.1995")) { true }
+        session.replace(listOf(local to "Hackers.1995")) { true }
         ready.await()
         session.close()
         release.complete(Unit)
@@ -214,7 +214,7 @@ class MediaInventoryEnrichmentSessionTest {
                 calls++
                 authorized += entries.count { witness(it.first) }
             })
-        session.replace(listOf(phone to "Hackers.1995", phone to "Duplicate")) { error("Locked") }
+        session.replace(listOf(local to "Hackers.1995", local to "Duplicate")) { error("Locked") }
         assertEquals(1, calls)
         assertEquals(0, authorized)
         session.replace(emptyList()) { true }

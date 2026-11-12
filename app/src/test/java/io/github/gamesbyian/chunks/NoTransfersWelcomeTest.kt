@@ -46,7 +46,7 @@ class NoTransfersWelcomeTest {
                  profiles: Boolean = false, query: String = "", addOpen: Boolean = false,
                  defaultFilter: Boolean = true, restoreHealthy: Boolean = true,
                  noIncoming: Boolean = true) =
-            showPhoneFirstRunWelcome(confirmed, stale, empty, profiles, query, addOpen,
+            showLocalFirstRunWelcome(confirmed, stale, empty, profiles, query, addOpen,
                 defaultFilter, restoreHealthy, noIncoming)
         org.junit.Assert.assertTrue(show())
         org.junit.Assert.assertFalse(show(confirmed = false))

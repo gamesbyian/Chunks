@@ -10,7 +10,7 @@ import java.nio.file.Files
 import java.nio.file.LinkOption
 
 /**
- * Read-only access to a phone transfer's own *completed* files for media evidence (a cover image,
+ * Read-only access to a local transfer's own *completed* files for media evidence (a cover image,
  * embedded album art or tags). A file qualifies only when the engine reports every byte verified
  * and an on-demand, no-follow check finds a regular file of exactly that size inside the real save
  * folder (same rules as [LocalFileDiskCheck]). A path string alone never grants access. Never

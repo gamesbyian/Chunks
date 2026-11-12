@@ -6,10 +6,10 @@ import java.util.Locale
 import kotlinx.coroutines.CancellationException
 
 /**
- * Batch **Copy Transfer to server**: add each selected phone transfer's exact
+ * Batch **Copy Transfer to server**: add each selected local transfer's exact
  * torrent definition to the signed-in rTorrent account as a new, stopped job
  * at the server's default Place. Job-only (docs/CROSS-ENGINE-TRANSFER-JOBS.md):
- * no payload is sent, and the phone transfers are never changed.
+ * no payload is sent, and the local device transfers are never changed.
  *
  * Items run one at a time. A transfer whose definition cannot be exported
  * with a matching identity is skipped (nothing was sent). The batch stops at
@@ -24,7 +24,7 @@ internal object BatchServerCopy {
     enum class Result(val label: String) {
         ADDED("added stopped on the server"),
         ALREADY_ON_SERVER("already on the server (not added again)"),
-        NO_DEFINITION("skipped: no exact torrent definition on the phone"),
+        NO_DEFINITION("skipped: no exact torrent definition on the local device"),
         UNCONFIRMED("sent, but not confirmed — check the server list; not retried"),
         NOT_RUN("not attempted (the batch stopped earlier)")
     }
@@ -45,7 +45,7 @@ internal object BatchServerCopy {
             count(Result.NO_DEFINITION).takeIf { it > 0 }?.let { append(", $it skipped") }
             count(Result.UNCONFIRMED).takeIf { it > 0 }?.let { append(", $it unconfirmed") }
             count(Result.NOT_RUN).takeIf { it > 0 }?.let { append(", $it not attempted") }
-            append(". Phone transfers and their files were not changed; the server jobs start ")
+            append(". Local transfers and their files were not changed; the server jobs start ")
             append("stopped and download on their own.")
         }
     }
@@ -62,7 +62,7 @@ internal object BatchServerCopy {
 
     suspend fun run(
         items: List<Item>,
-        /** The phone's exact original .torrent, or null. Read-only. */
+        /** The local's exact original .torrent, or null. Read-only. */
         exportTorrent: suspend (String) -> ByteArray?,
         /** One stopped Add at the server default; returns its verified outcome. */
         addStopped: suspend (ByteArray) -> RemoteAddOutcome

@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.ManualCollectionPager
 
 /**
- * View-only paging of the phone transfer list. Keep the visible range and
+ * View-only paging of the local device transfer list. Keep the visible range and
  * current page readable, while avoiding two full-width stacked action rows
  * on an ordinary handset. Page navigation never targets engine mutations.
  */
@@ -34,7 +34,7 @@ internal fun LocalTransferPageControls(
         val stacked = maxWidth < 380.dp || LocalDensity.current.fontScale >= 1.5f
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
-                "On-phone transfers: " + page.totalMatches +
+                "On-local transfers: " + page.totalMatches +
                     " · page " + (page.pageIndex + 1) + " of " + page.totalPages,
                 style = MaterialTheme.typography.bodyMedium
             )
@@ -44,14 +44,14 @@ internal fun LocalTransferPageControls(
                         onClick = onPrevious,
                         enabled = page.hasPrevious,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                            .semantics { contentDescription = "Previous phone transfers" }
-                    ) { Text("Previous phone transfers") }
+                            .semantics { contentDescription = "Previous local transfers" }
+                    ) { Text("Previous local transfers") }
                     OutlinedButton(
                         onClick = onNext,
                         enabled = page.hasNext,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                            .semantics { contentDescription = "Next phone transfers" }
-                    ) { Text("Next phone transfers") }
+                            .semantics { contentDescription = "Next local transfers" }
+                    ) { Text("Next local transfers") }
                 }
             } else {
                 Row(
@@ -62,14 +62,14 @@ internal fun LocalTransferPageControls(
                         onClick = onPrevious,
                         enabled = page.hasPrevious,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                            .semantics { contentDescription = "Previous phone transfers" }
-                    ) { Text("Previous phone transfers") }
+                            .semantics { contentDescription = "Previous local transfers" }
+                    ) { Text("Previous local transfers") }
                     OutlinedButton(
                         onClick = onNext,
                         enabled = page.hasNext,
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                            .semantics { contentDescription = "Next phone transfers" }
-                    ) { Text("Next phone transfers") }
+                            .semantics { contentDescription = "Next local transfers" }
+                    ) { Text("Next local transfers") }
                 }
             }
         }

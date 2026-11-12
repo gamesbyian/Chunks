@@ -1,7 +1,7 @@
 package io.github.gamesbyian.chunks.model
 
 /**
- * Shared ordering rules for every Transfers list (phone, server and the
+ * Shared ordering rules for every Transfers list (local, server and the
  * combined catalog): each sort key reverses, unknown facts stay last in BOTH
  * directions, and ties fall back to a fixed identity order that does not
  * flip with the direction toggle.

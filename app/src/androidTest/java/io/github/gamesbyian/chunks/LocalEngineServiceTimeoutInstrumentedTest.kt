@@ -119,7 +119,7 @@ class LocalEngineServiceTimeoutInstrumentedTest {
 
         val notice = active(LocalServiceTimeoutNotice.NOTIFICATION_ID)!!.notification
         val text = notice.extras.getCharSequence(android.app.Notification.EXTRA_TEXT).toString()
-        assertEquals("Android's background time limit was reached. Chunks paused 2 transfers on this phone. " +
+        assertEquals("Android's background time limit was reached. Chunks paused 2 transfers on this device. " +
             "Open Chunks to resume.", text)
         assertTrue("notice must be dismissible", notice.flags and android.app.Notification.FLAG_ONGOING_EVENT == 0)
         assertArrayEquals("first payload bytes unchanged", before, sha(payload))

@@ -20,7 +20,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.libtorrent4j.TorrentBuilder
 
-/** One-tap "Finish this next" on the real panel and the real phone engine (#415). */
+/** One-tap "Finish this next" on the real panel and the real local engine (#415). */
 @RunWith(AndroidJUnit4::class)
 class FinishInOrderFinishNextInstrumentedTest {
     @get:Rule val rule = createComposeRule()

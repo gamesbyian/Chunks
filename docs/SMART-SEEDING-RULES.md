@@ -88,7 +88,7 @@ UI distinguishes rule **selected**, **applied to Chunks**, **acknowledged by eng
 2. All interactive Add routes prominently show destination, directory, seeding group, and start-on-add with no unnecessary advanced-settings navigation.
 3. Trackerless, partial and multi-tracker magnets show pending/ambiguous states; no invented provenance or leaked passkeys.
 4. Auto-add/auto-start with opt-in rules applies only verified supported policy, otherwise follows configured stop/notify or explicit fallback.
-5. Phone-only, remote-only, and dual-mode with two named servers use identical UX but independently enforce and identify scope; disconnect does not imply remote enforcement continues.
+5. local-only, remote-only, and dual-mode with two named servers use identical UX but independently enforce and identify scope; disconnect does not imply remote enforcement continues.
 6. Per-transfer caps and aggregate caps are not confused; ratio stop, time stop, rule-driven stop, and global/manual pause show separate reasons.
 7. Changes to saved rules do not retroactively stop old jobs without an explicit reviewed batch operation; manual overrides survive rematching.
 8. Unit, property, lifecycle, controller-offline, duplicate/uncertain-command, policy collision, persistence/process-death, accessibility and 200% type tests; test on approved public torrent fixtures only.
@@ -108,14 +108,14 @@ Evidence: JVM tests, including acceptance case 1. `SeedingRuleStore` persists ru
 
 ## Implementation note: rule editor (2026-10-29)
 
-**Seeding rules…** opens from the Server tab and the phone screen. It shows ordered rules, each with its exact **Applies to** environments, and a default per environment. The editor provides:
+**Seeding rules…** opens from the Server tab and the local device screen. It shows ordered rules, each with its exact **Applies to** environments, and a default per environment. The editor provides:
 - tracker domains, rejecting anything URL-shaped;
 - an any/private/public filter;
 - independent ratio, maximum days, minimum hours and an upload limit with live exact-unit feedback, plus ANY/ALL when both stop conditions are set;
 - explicit environment checkboxes (phone, each saved server, the connected server) and a separate "Also apply to servers added later";
 - an editable generated name with "Use suggested name".
 
-Environment IDs are `phone` and `remote:` plus the saved-profile ID, so renaming a server never changes rule scope. The editor's banner, **What these rules do today**, states exactly what is applied (since the phone controller below: phone transfers added from now on; servers not yet). Evidence: Compose tests (create, scope, persistence, refused URL and ambiguous unit, delete confirmation) and renders. Not yet: remote adapters and TalkBack/handset review.
+Environment IDs are `local` and `remote:` plus the saved-profile ID, so renaming a server never changes rule scope. The editor's banner, **What these rules do today**, states exactly what is applied (since the local device controller below: phone transfers added from now on; servers not yet). Evidence: Compose tests (create, scope, persistence, refused URL and ambiguous unit, delete confirmation) and renders. Not yet: remote adapters and TalkBack/handset review.
 
 ## Implementation note: phone enforcement primitives (2026-10-29)
 
@@ -123,13 +123,13 @@ Environment IDs are `phone` and `remote:` plus the saved-profile ID, so renaming
 - with nothing downloaded on this engine (for example a seeded copy) a ratio goal is never met by itself;
 - the minimum seed time comes first, and ANY/ALL combine as written.
 
-The phone engine gains `setUploadLimit` with exact readback (null removes the cap) and `seedingObservation` (all-time counters and seeding time from one snapshot).
+The local engine gains `setUploadLimit` with exact readback (null removes the cap) and `seedingObservation` (all-time counters and seeding time from one snapshot).
 
 Evidence: JVM decision tests, plus a desktop-libtorrent loopback swarm showing cap readback and real counters. The original seeder reports zero downloaded bytes, so its ratio goal correctly cannot be judged. Not yet: remote adapters.
 
 ## Implementation note: phone controller (2026-10-29)
 
-`SeedingController` runs from the phone engine's foreground-service poll (`PhoneSeeding.tick`):
+`SeedingController` runs from the local device engine's foreground-service poll (`LocalSeeding.tick`):
 - A transfer gets a frozen policy **snapshot** the first time it is seen after the controller's first run (the stored epoch). Transfers that existed earlier are marked unmanaged for good, and later rule edits never rewrite a snapshot. This is the contract's "future transfers only" default.
 - Magnets wait until metadata gives tracker identity and the private flag.
 - The upload cap is applied only with exact readback.
@@ -140,11 +140,11 @@ Evidence: JVM controller tests with fakes, plus a desktop-libtorrent loopback te
 
 Not yet: remote rTorrent enforcement, the reviewed "apply to existing transfers" batch, and handset/Doze evidence. Enforcement runs only while the foreground service polls.
 
-## Implementation note: phone Add-review preview (2026-10-29)
+## Implementation note: local Add-review preview (2026-10-29)
 
-The phone Add review shows a **Seeding** line for a `.torrent`: the rule (or this phone's default) the controller will snapshot, in plain words, with the first match reason and any flagged conflicts. It is computed offline from the file's tracker hosts and private flag, using saved phone-scoped rules only. Magnet links have no preview; the controller resolves them once metadata arrives. The preview never changes a transfer; the controller still decides on first sight after Add.
+The local Add review shows a **Seeding** line for a `.torrent`: the rule (or this device's default) the controller will snapshot, in plain words, with the first match reason and any flagged conflicts. It is computed offline from the file's tracker hosts and private flag, using saved phone-scoped rules only. Magnet links have no preview; the controller resolves them once metadata arrives. The preview never changes a transfer; the controller still decides on first sight after Add.
 
-Each phone transfer card then shows the stored snapshot, read-only: the policy and its source, whether the rule paused it (and that starting it again is respected), any unconfirmed-action note, and **Why this rule?** with the stored match reasons. Transfers that were there before the controller's first run say they are not managed by rules.
+Each local transfer card then shows the stored snapshot, read-only: the policy and its source, whether the rule paused it (and that starting it again is respected), any unconfirmed-action note, and **Why this rule?** with the stored match reasons. Transfers that were there before the controller's first run say they are not managed by rules.
 
 Evidence: JVM tests for the preview helper, metainfo tracker/private parsing and the card summary (Compose). Not yet: the remote Add preview, a manual rule override in Add, full MF31 explanations (considered-but-unmatched rules, observed versus proposed values), and TalkBack/handset review.
 

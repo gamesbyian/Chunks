@@ -57,7 +57,7 @@ internal fun CompactRemoteInventoryHeader(
     val freshness = remoteFreshnessText(stale, loading, observedAtEpochMillis, now)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         // The transfer-list gutters leave 376dp on the primary 412dp
-        // phone. It can hold a named environment badge and the All
+        // local. It can hold a named environment badge and the All
         // environments button side by side at ordinary text sizes.
         // Preserve stacking at 320dp and when accessibility fonts enlarge.
         val stacked = maxWidth < 352.dp || LocalDensity.current.fontScale >= 1.5f

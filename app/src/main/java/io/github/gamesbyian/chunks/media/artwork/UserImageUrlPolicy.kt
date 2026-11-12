@@ -8,7 +8,7 @@ import java.net.URI
 import java.util.Locale
 
 /**
- * Policy for a user-typed "Use image URL". The phone must never be turned into a probe of the
+ * Policy for a user-typed "Use image URL". The local must never be turned into a probe of the
  * user's LAN, seedbox admin panel or router: HTTPS only, public DNS names only, and every resolved
  * address (on every redirect hop) must be globally routable. A URL is not proof of licence.
  */

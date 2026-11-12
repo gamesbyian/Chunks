@@ -103,11 +103,11 @@ class LocalDownloadPlacePickerInstrumentedTest {
                     onSaveDefault = { saved++ })
             }
         }
-        rule.onNodeWithText("For this Add only. Saving a phone default is a separate action.").assertExists()
+        rule.onNodeWithText("For this Add only. Saving a local default is a separate action.").assertExists()
         assertEquals(0, saved)
-        rule.onNodeWithText("Save this location as phone default").performClick()
+        rule.onNodeWithText("Save this location as local default").performClick()
         assertEquals(1, saved)
-        rule.onNodeWithText("Use phone default for this Add").performClick()
+        rule.onNodeWithText("Use local default for this Add").performClick()
         assertEquals(1, resets)
         rule.onNodeWithText("Saves to: Downloads/Chunks Downloads").assertExists()
     }

@@ -1,0 +1,156 @@
+package io.github.gamesbyian.chunks
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.net.InetAddress
+import java.net.ServerSocket
+import java.util.Collections
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/** "Copy files to this device" against a loopback XML-RPC fake: reads only, then hands off. */
+@RunWith(AndroidJUnit4::class)
+class ServerToLocalCopyControlInstrumentedTest {
+    @get:Rule val rule = createComposeRule()
+    private val hash = "B63EAA9720EE797667EF58EA35EF7D81AB5D1C16"
+    private val methods: MutableList<String> = Collections.synchronizedList(ArrayList())
+    @Volatile private var isPrivate = 0
+    private var server: ServerSocket? = null
+
+    @After fun stop() { server?.close() }
+
+    private fun answer(method: String): String = when (method) {
+        "d.hash" -> "<value><string>$hash</string></value>"
+        "network.local_address" -> "<value><string></string></value>"
+        // Read-only (#460). A wildcard bind names no specific peer address.
+        "network.bind_address" -> "<value><string>0.0.0.0</string></value>"
+        "network.listen.port" -> "<value><i8>6890</i8></value>"
+        "d.is_private" -> "<value><i8>$isPrivate</i8></value>"
+        "d.is_active" -> "<value><i8>1</i8></value>"
+        else -> error("Unexpected command from a read-only check: $method")
+    }
+
+    private fun startLoopback(): String {
+        val listening = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { server = it }
+        Thread {
+            while (!listening.isClosed) {
+                val socket = try { listening.accept() } catch (_: Exception) { break }
+                socket.use {
+                    val reader = BufferedReader(InputStreamReader(it.getInputStream(), Charsets.UTF_8))
+                    reader.readLine() ?: return@use
+                    var length = 0
+                    while (true) {
+                        val line = reader.readLine() ?: return@use
+                        if (line.isEmpty()) break
+                        if (line.startsWith("Content-Length:", true)) length = line.substringAfter(":").trim().toInt()
+                    }
+                    val body = CharArray(length).also { chars ->
+                        var read = 0
+                        while (read < length) read += reader.read(chars, read, length - read).coerceAtLeast(0)
+                    }
+                    val method = Regex("<methodName>([^<]+)</methodName>").find(String(body))?.groupValues?.get(1).orEmpty()
+                    methods += method
+                    val xml = ("<?xml version=\"1.0\"?><methodResponse><params><param>" + answer(method) +
+                        "</param></params></methodResponse>").toByteArray()
+                    it.getOutputStream().apply {
+                        write(("HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: ${xml.size}\r\n" +
+                            "Connection: close\r\n\r\n").toByteArray())
+                        write(xml); flush()
+                    }
+                }
+            }
+        }.apply { isDaemon = true; start() }
+        return "http://127.0.0.1:${listening.localPort}/RPC2"
+    }
+
+    private fun show(transfer: RemoteTransfer, onReview: (String) -> Unit = {}) {
+        val remote = RTorrentRemote(RemoteCredentials(startLoopback(), "", ""))
+        rule.setContent {
+            MaterialTheme { Column { ServerToLocalCopyControl(remote, transfer, stale = false, onReviewLocalAdd = onReview) } }
+        }
+    }
+
+    private fun complete() = RemoteTransfer(hash, "Big Buck Bunny", 441_396_871, 441_396_871, true, "/srv/dl")
+
+    @Test fun completedPublicTransferHandsTheServerPeerMagnetToTheLocalReview() {
+        val reviewed = ArrayList<String>()
+        show(complete()) { reviewed += it }
+        rule.onNodeWithText("Copy files to this device").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("directly from your server at 127.0.0.1:6890", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("The server transfer stays exactly as it is", substring = true).assertExists()
+        assertTrue("Reviewing nothing yet", reviewed.isEmpty())
+        rule.onNodeWithText("Review local Add").performClick()
+        assertEquals(listOf("magnet:?xt=urn:btih:${hash.lowercase()}&dn=Big%20Buck%20Bunny&x.pe=127.0.0.1:6890"),
+            reviewed)
+        assertTrue("Only read-only commands: $methods", methods.toSet() ==
+            setOf("d.hash", "network.local_address", "network.bind_address", "network.listen.port",
+                "d.is_private", "d.is_active"))
+        assertEquals("Identity must be guarded before and after peer source reads",
+            2, methods.count { it == "d.hash" })
+    }
+
+    @Test fun enteredPeerAddressIsLabelledAndUsedOnlyAfterReview() {
+        val reviewed = ArrayList<String>()
+        show(complete()) { reviewed += it }
+        rule.onNodeWithText("Copy files to this device").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Use a different server address…").fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Use a different server address…").performClick()
+        rule.onNodeWithText("Server peer address").performTextInput("127.0.0.1")
+        rule.onNodeWithText("Check with this address").performClick()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("(the address you entered)", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertTrue(reviewed.isEmpty())
+        rule.onNodeWithText("Review local Add").performClick()
+        assertEquals(listOf("magnet:?xt=urn:btih:${hash.lowercase()}&dn=Big%20Buck%20Bunny&x.pe=127.0.0.1:6890"),
+            reviewed)
+    }
+
+    @Test fun privateTransferIsRefusedWithAReasonAndNoHandoff() {
+        isPrivate = 1
+        val reviewed = ArrayList<String>()
+        show(complete()) { reviewed += it }
+        rule.onNodeWithText("Copy files to this device").performClick()
+        // A Refused plan is published before the coroutine's finally resets
+        // checking=false. Observe BOTH completion states before teardown;
+        // otherwise Compose can still apply the pending tile modifier update
+        // while the rule disposes its Activity on another test-clock thread.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("This is a private torrent", substring = true)
+                .fetchSemanticsNodes().isNotEmpty() &&
+                rule.onAllNodesWithText("Copy files to this device")
+                    .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("This is a private torrent", substring = true).assertExists()
+        rule.onNodeWithText("Review local Add").assertDoesNotExist()
+        assertTrue(reviewed.isEmpty())
+    }
+
+    @Test fun incompleteTransferOffersNoCopy() {
+        show(complete().copy(completedBytes = 1_000))
+        rule.onNodeWithText("Copy files to this device").assertDoesNotExist()
+        assertTrue(methods.isEmpty())
+    }
+}

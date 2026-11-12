@@ -85,10 +85,10 @@ object RemoteSmartConnect {
                 "Some providers use a separate web-UI password from the SSH/FTP one.",
                 "Chunks stopped after the login was refused so repeated guesses cannot lock your account.")
             Category.TLS -> listOf(
-                "Open the same address in your phone's browser and check that it shows a valid padlock.",
+                "Open the same address in your device's browser and check that it shows a valid padlock.",
                 "If your server uses a self-signed certificate, Chunks cannot connect to it yet; it will not bypass certificate checks.")
             Category.NETWORK -> listOf(
-                "Check the hostname for typos and that the phone is online.",
+                "Check the hostname for typos and that the local device is online.",
                 "If the server is only reachable on a home network or VPN, connect to that network first.")
             Category.SERVICE -> listOf(
                 "The exact seedbox gateway returned a server-side error; it may be temporarily unavailable.",

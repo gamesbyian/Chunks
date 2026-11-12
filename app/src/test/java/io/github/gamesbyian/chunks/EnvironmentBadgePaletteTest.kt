@@ -70,9 +70,9 @@ class EnvironmentBadgePaletteTest {
         // A live remote page and the combined page can both first see the same
         // two configured accounts. Neither may overwrite committed identity
         // assignments; a later ensure is idempotent for their exact IDs.
-        val phone = EnvironmentId("p".repeat(64))
+        val local = EnvironmentId("p".repeat(64))
         val remote = EnvironmentId("r".repeat(64))
-        val ids = listOf(phone, remote)
+        val ids = listOf(local, remote)
         val pool = java.util.concurrent.Executors.newFixedThreadPool(2)
         val go = java.util.concurrent.CountDownLatch(1)
         try {
@@ -88,9 +88,9 @@ class EnvironmentBadgePaletteTest {
             val a = first.get(5, java.util.concurrent.TimeUnit.SECONDS)
             val b = second.get(5, java.util.concurrent.TimeUnit.SECONDS)
             assertEquals(a, b)
-            assertNotNull(a.hueOf(phone))
+            assertNotNull(a.hueOf(local))
             assertNotNull(a.hueOf(remote))
-            assertNotEquals(a.hueOf(phone), a.hueOf(remote))
+            assertNotEquals(a.hueOf(local), a.hueOf(remote))
             val again = EnvironmentColourStore(context).ensure(ids)
             assertEquals("Repeated initialization must preserve all identity colours", a, again)
             // Revision is intentionally global: unrelated badges/tests can

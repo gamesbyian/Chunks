@@ -44,7 +44,7 @@ class LocalBatchCollectionPanelInstrumentedTest {
                         inventoryStale = false, store = store, onMembershipChanged = {})
                 }
             }
-            compose.onNodeWithText("Batch organize phone transfers").performClick()
+            compose.onNodeWithText("Batch organize local transfers").performClick()
             compose.onNodeWithText("Select shown (2)").performClick()
             compose.onNodeWithText("Collection name").performTextInput(name)
             compose.onNodeWithText("Review local Collection assignment").performClick()
@@ -70,7 +70,7 @@ class LocalBatchCollectionPanelInstrumentedTest {
                     inventoryStale = true, store = store, onMembershipChanged = {})
             }
         }
-        compose.onNodeWithText("Batch organize phone transfers").assertIsNotEnabled()
+        compose.onNodeWithText("Batch organize local transfers").assertIsNotEnabled()
         compose.onNodeWithText("Select shown (2)").assertDoesNotExist()
     }
 
@@ -87,7 +87,7 @@ class LocalBatchCollectionPanelInstrumentedTest {
                 }
             }
         }
-        compose.onNodeWithText("Batch organize phone transfers").performClick()
+        compose.onNodeWithText("Batch organize local transfers").performClick()
         compose.onNodeWithText("Public transfer two").performClick()
         compose.onNodeWithText("Copy Transfer to server (1)…").performScrollTo().performClick()
         compose.onNodeWithText("Downloaded files are not transferred", substring = true).assertExists()
@@ -104,7 +104,7 @@ class LocalBatchCollectionPanelInstrumentedTest {
                     onMembershipChanged = {})
             }
         }
-        compose.onNodeWithText("Batch organize phone transfers").performClick()
+        compose.onNodeWithText("Batch organize local transfers").performClick()
         compose.onNodeWithText("Copy selected to the server").assertDoesNotExist()
     }
 }

@@ -57,7 +57,7 @@ class ConnectionsScreenPresentationTest {
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         rule.onNodeWithText("This device").assertDoesNotExist()
-        rule.onNodeWithText("Open phone downloads").assertDoesNotExist()
+        rule.onNodeWithText("Open local downloads").assertDoesNotExist()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
     }
 

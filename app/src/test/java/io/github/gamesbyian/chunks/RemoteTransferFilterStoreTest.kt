@@ -27,14 +27,14 @@ class RemoteTransferFilterStoreTest {
         assertEquals(TransferFilter.TRANSFERRING, RemoteTransferFilterStore(context).load(second))
     }
 
-    @Test fun noUnknownOrPhoneIdentityMayCaptureARemoteView() {
+    @Test fun noUnknownOrLocalIdentityMayCaptureARemoteView() {
         val store = RemoteTransferFilterStore(context)
         assertFalse(store.save(null, TransferFilter.STOPPED))
         assertFalse(store.save("", TransferFilter.STOPPED))
-        assertFalse(store.save("phone", TransferFilter.STOPPED))
+        assertFalse(store.save("local", TransferFilter.STOPPED))
         assertFalse(store.save("https://a.example/RPC2", TransferFilter.STOPPED))
         assertEquals(TransferFilter.ALL, store.load(null))
-        assertEquals(TransferFilter.ALL, store.load("phone"))
+        assertEquals(TransferFilter.ALL, store.load("local"))
         assertEquals(TransferFilter.ALL, store.load("not-a-profile"))
     }
 

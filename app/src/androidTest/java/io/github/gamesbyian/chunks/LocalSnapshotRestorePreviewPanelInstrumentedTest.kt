@@ -35,10 +35,10 @@ class LocalSnapshotRestorePreviewPanelInstrumentedTest {
                     busyEngine = false, mutationGeneration = 0)
             }
         }
-        compose.onNodeWithText("Compare saved snapshot with phone").performClick()
+        compose.onNodeWithText("Compare saved snapshot with local").performClick()
         compose.onNodeWithText("Snapshot restore comparison (read-only)").assertExists()
         compose.onNodeWithText("Choose .chunksnap to compare").assertIsNotEnabled()
-        compose.onNodeWithText("Phone inventory is not yet confirmed, is stale, or a native " +
+        compose.onNodeWithText("Local inventory is not yet confirmed, is stale, or a native " +
             "operation is in progress. Wait for a fresh full read.").assertExists()
     }
 
@@ -50,8 +50,8 @@ class LocalSnapshotRestorePreviewPanelInstrumentedTest {
                     busyEngine = false, mutationGeneration = 1)
             }
         }
-        compose.onNodeWithText("Compare saved snapshot with phone").performClick()
-        compose.onNodeWithText("Current verified phone queue: 0 transfer identities. " +
+        compose.onNodeWithText("Compare saved snapshot with local").performClick()
+        compose.onNodeWithText("Current verified local queue: 0 transfer identities. " +
             "Comparisons are discarded if this list changes.").assertExists()
         compose.onNodeWithText("Choose .chunksnap to compare").assertIsEnabled()
         compose.onNodeWithText("Restore selected transfers").assertDoesNotExist()
@@ -69,7 +69,7 @@ class LocalSnapshotRestorePreviewPanelInstrumentedTest {
                     mutationGeneration = generation)
             }
         }
-        compose.onNodeWithText("Compare saved snapshot with phone").performClick()
+        compose.onNodeWithText("Compare saved snapshot with local").performClick()
         compose.onNodeWithText("Choose .chunksnap to compare").assertIsEnabled()
         compose.runOnIdle { isStale = true; generation++ }
         compose.onNodeWithText("Choose .chunksnap to compare").assertIsNotEnabled()

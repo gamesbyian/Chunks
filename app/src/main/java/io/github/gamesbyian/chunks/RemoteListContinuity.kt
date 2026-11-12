@@ -8,7 +8,7 @@ import java.security.MessageDigest
  * Navigation-only rTorrent list continuity, owned above the route switch.
  *
  * Each exact authenticated account (alias scope: endpoint + user) keeps its
- * own list position while the person visits the phone, All environments,
+ * own list position while the person visits the local device, All environments,
  * Places or settings, and the most recently shown account's position and
  * search survive Activity recreation. A different account always starts at
  * the top with an empty search. Nothing here holds selection, expansion,

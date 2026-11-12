@@ -4,7 +4,7 @@ import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import java.util.Locale
 
 /**
- * Reviewed bulk Start/Stop on the phone engine, one transfer at a time.
+ * Reviewed bulk Start/Stop on the local device engine, one transfer at a time.
  * Anything other than a verified readback (uncertain, missing, failure)
  * halts the batch; nothing after it runs and nothing is retried.
  */
@@ -40,7 +40,7 @@ internal object LocalBatchLifecycle {
 
     fun describe(report: Report): String {
         val verb = if (report.start) "started" else "stopped"
-        var text = "${report.verified} confirmed $verb on this phone" +
+        var text = "${report.verified} confirmed $verb on this device" +
             (if (report.skipped > 0) ", ${report.skipped} already $verb" else "") + "."
         if (report.haltedOn != null) text += if (report.haltedOutcome == LocalCommandOutcome.REFUSED)
             " Halted: a transfer explicitly refused Start because its destination is unsafe; " +

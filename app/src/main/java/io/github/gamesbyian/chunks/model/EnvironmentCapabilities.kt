@@ -13,7 +13,7 @@ enum class EnvironmentOperation(val label: String) {
     FILE_PRIORITIES("File list and priorities"),
     TRACKER_HEALTH("Tracker health"),
     SESSION_REMOVE("Remove from engine session"),
-    COPY_TO_PHONE("Copy files to this phone"),
+    COPY_TO_LOCAL("Copy files to this device"),
     FINISH_IN_ORDER("Finish in Order")
 }
 
@@ -23,7 +23,7 @@ enum class EnvironmentOperation(val label: String) {
  * own readback. ADVERTISED is a server's method list, not an authorization.
  */
 enum class CapabilityEvidence {
-    /** Implemented by the phone engine bundled with this app build. */
+    /** Implemented by the local device engine bundled with this app build. */
     BUILT_IN,
     ADVERTISED,
     MISSING,
@@ -63,16 +63,16 @@ data class EnvironmentCapabilitySnapshot(
         }
         val proof = of(operation)
         // This DTO can be constructed by callers and must not elevate a
-        // mistyped server snapshot into bundled-phone command authority.
+        // mistyped server snapshot into bundled-local command authority.
         if (proof == CapabilityEvidence.BUILT_IN &&
-            (environment != EnvironmentSnapshots.PHONE || source != "phone engine")) {
+            (environment != EnvironmentSnapshots.LOCAL || source != "local engine")) {
             return Decision(false, "${operation.label}: capability evidence belongs to the wrong engine type")
         }
-        if (proof == CapabilityEvidence.ADVERTISED && environment == EnvironmentSnapshots.PHONE) {
-            return Decision(false, "${operation.label}: a server advertisement cannot authorize the phone engine")
+        if (proof == CapabilityEvidence.ADVERTISED && environment == EnvironmentSnapshots.LOCAL) {
+            return Decision(false, "${operation.label}: a server advertisement cannot authorize the local device engine")
         }
         return when (proof) {
-            CapabilityEvidence.BUILT_IN -> Decision(true, "${operation.label}: built into the phone engine")
+            CapabilityEvidence.BUILT_IN -> Decision(true, "${operation.label}: built into the local device engine")
             CapabilityEvidence.ADVERTISED -> Decision(true, "${operation.label}: advertised by $source; checked again when used")
             CapabilityEvidence.UNKNOWN -> Decision(true, "${operation.label}: not pre-checked on $source; the result is verified when used")
             CapabilityEvidence.MISSING -> Decision(false, "${operation.label}: $source does not offer the methods it needs")
@@ -82,19 +82,19 @@ data class EnvironmentCapabilitySnapshot(
 }
 
 object EnvironmentCapabilities {
-    /** The phone engine's operations are part of this build, not negotiated. */
-    fun phone(environment: EnvironmentId = EnvironmentSnapshots.PHONE, observedAtEpochMillis: Long? = null):
+    /** The local engine's operations are part of this build, not negotiated. */
+    fun local(environment: EnvironmentId = EnvironmentSnapshots.LOCAL, observedAtEpochMillis: Long? = null):
         EnvironmentCapabilitySnapshot {
-        // A built-in capability is evidence about the bundled phone engine, never
+        // A built-in capability is evidence about the bundled local engine, never
         // a shortcut for an arbitrary server profile with the same torrent hash.
-        require(environment == EnvironmentSnapshots.PHONE) {
-            "Phone engine capabilities cannot be attached to a remote environment"
+        require(environment == EnvironmentSnapshots.LOCAL) {
+            "Local engine capabilities cannot be attached to a remote environment"
         }
-        return EnvironmentCapabilitySnapshot(environment, "phone engine", observedAtEpochMillis,
+        return EnvironmentCapabilitySnapshot(environment, "local engine", observedAtEpochMillis,
             EnvironmentOperation.entries.associateWith {
                 when (it) {
-                    // Server-side concepts with no phone-engine counterpart.
-                    EnvironmentOperation.COPY_TO_PHONE,
+                    // Server-side concepts with no local-engine counterpart.
+                    EnvironmentOperation.COPY_TO_LOCAL,
                     EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER -> CapabilityEvidence.NOT_APPLICABLE
                     else -> CapabilityEvidence.BUILT_IN
                 }
@@ -103,7 +103,7 @@ object EnvironmentCapabilities {
 
     /** Grades one server's own read-only probe. */
     fun fromProbe(environment: EnvironmentId, probe: RemoteProbe, observedAtEpochMillis: Long?): EnvironmentCapabilitySnapshot {
-        require(environment != EnvironmentSnapshots.PHONE) { "A server probe cannot describe the phone" }
+        require(environment != EnvironmentSnapshots.LOCAL) { "A server probe cannot describe the local device" }
         val graded = RemoteCapabilities.grade(probe)
         val evidence = HashMap<EnvironmentOperation, CapabilityEvidence>()
         for (g in graded) {

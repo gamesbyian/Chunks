@@ -30,9 +30,9 @@ class LocalInventorySnapshotPanelInstrumentedTest {
                 LocalInventorySnapshotPanel(inventory, stale = false, busyEngine = false)
             }
         }
-        compose.onNodeWithText("Save phone transfer inventory").performClick()
+        compose.onNodeWithText("Save local transfer inventory").performClick()
         compose.onNodeWithText("Local transfer inventory only").assertExists()
-        compose.onNodeWithText("Share phone inventory").assertIsEnabled()
+        compose.onNodeWithText("Share local inventory").assertIsEnabled()
         compose.onNodeWithText(
             "Observed: 1; recorded: 1; omitted: 0; verified restorable: 0."
         ).assertExists()
@@ -44,8 +44,8 @@ class LocalInventorySnapshotPanelInstrumentedTest {
                 LocalInventorySnapshotPanel(inventory, stale = false, busyEngine = false)
             }
         }
-        compose.onNodeWithText("Save phone transfer inventory").performClick()
-        compose.onNodeWithText("Share phone inventory").assertIsEnabled()
+        compose.onNodeWithText("Save local transfer inventory").performClick()
+        compose.onNodeWithText("Share local inventory").assertIsEnabled()
         compose.onNodeWithText("Recover verified .torrent definitions (sensitive)")
             .performClick()
         compose.onNodeWithText("Preview verified torrent definitions").assertIsEnabled()
@@ -59,7 +59,7 @@ class LocalInventorySnapshotPanelInstrumentedTest {
                 LocalInventorySnapshotPanel(inventory, stale = true, busyEngine = false)
             }
         }
-        compose.onNodeWithText("Save phone transfer inventory").performClick()
+        compose.onNodeWithText("Save local transfer inventory").performClick()
         compose.onNodeWithText("Recover verified .torrent definitions (sensitive)")
             .performClick()
         compose.onNodeWithText("Preview verified torrent definitions").assertIsNotEnabled()
@@ -71,8 +71,8 @@ class LocalInventorySnapshotPanelInstrumentedTest {
                 LocalInventorySnapshotPanel(inventory, stale = true, busyEngine = false)
             }
         }
-        compose.onNodeWithText("Save phone transfer inventory").performClick()
-        compose.onNodeWithText("Share phone inventory").assertIsNotEnabled()
+        compose.onNodeWithText("Save local transfer inventory").performClick()
+        compose.onNodeWithText("Share local inventory").assertIsNotEnabled()
     }
 
     @Test fun inFlightNativeMutationCannotExport() {
@@ -81,7 +81,7 @@ class LocalInventorySnapshotPanelInstrumentedTest {
                 LocalInventorySnapshotPanel(inventory, stale = false, busyEngine = true)
             }
         }
-        compose.onNodeWithText("Save phone transfer inventory").performClick()
-        compose.onNodeWithText("Share phone inventory").assertIsNotEnabled()
+        compose.onNodeWithText("Save local transfer inventory").performClick()
+        compose.onNodeWithText("Share local inventory").assertIsNotEnabled()
     }
 }

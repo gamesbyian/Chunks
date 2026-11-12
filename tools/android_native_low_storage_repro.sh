@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installed real JNI peer download with bounded *allocated* /data pressure.
-# Opt-in disposable API35 emulator ONLY. Never on a phone or seeded user data.
+# Opt-in disposable API35 emulator ONLY. Never on a local or seeded user data.
 set -euo pipefail
 pkg=io.github.gamesbyian.chunks
 

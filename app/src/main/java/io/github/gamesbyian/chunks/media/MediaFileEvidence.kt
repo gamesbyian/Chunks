@@ -26,14 +26,14 @@ fun interface MediaFileEvidenceSource {
 }
 
 /**
- * The phone engine's own in-memory torrent file list for exact `phone|<infohash>` keys.
+ * The local engine's own in-memory torrent file list for exact `local|<infohash>` keys.
  * Remote rTorrent keys return null: their file lists need an authenticated RPC read that
  * belongs to the inventory host, never to this media component.
  */
-internal object PhoneEngineMediaFileEvidence : MediaFileEvidenceSource {
+internal object LocalEngineMediaFileEvidence : MediaFileEvidenceSource {
     /** Composition needs a representative sample, not every file of a 50,000-file archive. */
     const val MAX_FILES = 4_096
-    private val prefix = EnvironmentSnapshots.PHONE.value + "|"
+    private val prefix = EnvironmentSnapshots.LOCAL.value + "|"
     private val hash = Regex("[0-9a-f]{40}(?:[0-9a-f]{24})?")
 
     override fun files(key: MediaTransferKey): List<MediaFileHint>? {

@@ -84,14 +84,14 @@ internal fun LocalBatchCollectionPanel(
             message = null
         }, enabled = !saving && !inventoryStale && transfers.isNotEmpty(),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text(if (expanded) "Close local batch selection" else "Batch organize phone transfers")
+            Text(if (expanded) "Close local batch selection" else "Batch organize local transfers")
         }
         if (!expanded) return@Column
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text("Add selected transfers to a Collection",
                     style = MaterialTheme.typography.titleMedium)
-                Text("${selected.size} selected. This only changes Chunks metadata on this phone. " +
+                Text("${selected.size} selected. This only changes Chunks metadata on this device. " +
                     "No torrent, download file, folder, or seeding behavior changes.",
                     style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -141,7 +141,7 @@ internal fun LocalBatchCollectionPanel(
                     modifier = Modifier.fillMaxWidth())
                 if (confirming) {
                     Text("Confirm saving ${selected.size} selected memberships to " +
-                        "'${draft.trim()}' on this phone.")
+                        "'${draft.trim()}' on this device.")
                 }
                 Button(onClick = {
                     val name = CollectionMembershipRules.cleanName(draft)
@@ -200,7 +200,7 @@ internal fun LocalBatchCollectionPanel(
                     if (copyConfirm) {
                         Text("Adds each selected torrent's exact definition to $copyServerLabel as a new, " +
                             "stopped job at the server's default Place, one at a time. Downloaded files " +
-                            "are not transferred: the server downloads on its own, and these phone " +
+                            "are not transferred: the server downloads on its own, and these local " +
                             "transfers stay exactly as they are. Torrents already on the server are " +
                             "skipped. Tracker addresses (which can include private passkeys) go only to " +
                             "this server. If an Add cannot be confirmed, Chunks stops there without retrying.",
@@ -226,8 +226,8 @@ internal fun LocalBatchCollectionPanel(
                     if (moveConfirm) {
                         Text("Moves the torrent jobs, not their files, in two steps. First Chunks adds each " +
                             "selected torrent to $copyServerLabel as a stopped job and confirms it there. " +
-                            "Then you review and separately confirm removing the original phone jobs. " +
-                            "Downloaded files stay on this phone and keep using its storage; the server " +
+                            "Then you review and separately confirm removing the original local jobs. " +
+                            "Downloaded files stay on this device and keep using its storage; the server " +
                             "may download everything again.", style = MaterialTheme.typography.bodySmall)
                         Button(onClick = {
                             moveConfirm = false
@@ -255,7 +255,7 @@ internal fun LocalBatchCollectionPanel(
                     }
                     lifecycleConfirm?.let { start ->
                         Text("${if (start) "Start" else "Stop"} ${if (start) toStart else toStop} selected " +
-                            "phone transfers one at a time. If any state cannot be confirmed, Chunks " +
+                            "local transfers one at a time. If any state cannot be confirmed, Chunks " +
                             "stops there without retrying. Files stay where they are.",
                             style = MaterialTheme.typography.bodySmall)
                         Button(onClick = {

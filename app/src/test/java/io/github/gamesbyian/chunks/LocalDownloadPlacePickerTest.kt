@@ -32,7 +32,7 @@ class LocalDownloadPlacePickerTest {
             } }
         }
         rule.onNodeWithText("Saves to: Downloads/Chunks Downloads").assertExists()
-        rule.onNodeWithText("Automatic phone default", substring = true).assertExists()
+        rule.onNodeWithText("Automatic local default", substring = true).assertExists()
         rule.onNodeWithText("Temporary fallback", substring = true).assertDoesNotExist()
     }
 

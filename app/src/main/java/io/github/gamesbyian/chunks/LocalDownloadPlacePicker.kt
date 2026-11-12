@@ -48,24 +48,24 @@ internal fun LocalDownloadPlacePicker(
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         val selected = resolution?.selected
         when {
-            resolution == null -> Text("Checking where this phone can save downloads…")
-            selected == null -> Text("No phone download location is available.",
+            resolution == null -> Text("Checking where this device can save downloads…")
+            selected == null -> Text("No local download location is available.",
                 color = MaterialTheme.colorScheme.error)
             else -> {
                 Text("Saves to: " + selected.title, fontWeight = FontWeight.Bold)
                 when (resolution.provenance) {
                     LocalPlaceResolution.Provenance.AUTOMATIC ->
-                        Text("Automatic phone default, selected from locations checked for writing.",
+                        Text("Automatic local default, selected from locations checked for writing.",
                             style = MaterialTheme.typography.bodySmall)
                     LocalPlaceResolution.Provenance.SAVED_CHOICE ->
-                        Text("Your saved default for future phone downloads.",
+                        Text("Your saved default for future local downloads.",
                             style = MaterialTheme.typography.bodySmall)
                     LocalPlaceResolution.Provenance.FALLBACK ->
                         Text("Temporary fallback: your saved location is unavailable. " +
                             "The saved choice is preserved for when it works again.",
                             style = MaterialTheme.typography.bodySmall)
                     LocalPlaceResolution.Provenance.CURRENT_ADD ->
-                        Text("For this Add only. Saving a phone default is a separate action.",
+                        Text("For this Add only. Saving a local default is a separate action.",
                             style = MaterialTheme.typography.bodySmall)
                     null -> Unit
                 }
@@ -73,7 +73,7 @@ internal fun LocalDownloadPlacePicker(
             }
         }
         if (currentAdd) {
-            Text("Phone default: " + when {
+            Text("Local default: " + when {
                 defaultResolution == null -> "Checking availability…"
                 defaultResolution.selected == null -> "Unavailable"
                 else -> defaultResolution.selected.title
@@ -81,16 +81,16 @@ internal fun LocalDownloadPlacePicker(
                 style = MaterialTheme.typography.bodySmall)
             if (resolution?.provenance == LocalPlaceResolution.Provenance.CURRENT_ADD) {
                 if (defaultResolution?.provenance == LocalPlaceResolution.Provenance.FALLBACK)
-                    Text("The phone default is using a temporary fallback. Your saved default is preserved.",
+                    Text("The local default is using a temporary fallback. Your saved default is preserved.",
                         style = MaterialTheme.typography.bodySmall)
                 if (onUseDefault != null) TextButton(onClick = onUseDefault, enabled = enabled,
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Use phone default for this Add") }
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Use local default for this Add") }
                 val chosen = resolution.choices.singleOrNull {
                     it.place == resolution.selected && it.verified
                 }
                 if (chosen != null && onSaveDefault != null) TextButton(
                     onClick = { onSaveDefault(chosen) }, enabled = enabled,
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Save this location as phone default") }
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("Save this location as local default") }
             }
         }
         resolution?.notice?.let {
@@ -116,7 +116,7 @@ internal fun LocalDownloadPlacePicker(
         if (savedChoice && onUseAutomatic != null) {
             TextButton(onClick = onUseAutomatic, enabled = enabled,
                 modifier = Modifier.heightIn(min = 48.dp)) {
-                Text("Use automatic location for new phone downloads")
+                Text("Use automatic location for new local downloads")
             }
         }
         if (expanded && resolution != null) {
@@ -143,7 +143,7 @@ internal fun LocalDownloadPlacePicker(
                 }
             }
             Text(if (currentAdd) "Choose a location for this Add only. Existing transfers keep their files where they are."
-                else "Your choice is remembered for new phone Adds only. Existing transfers keep their files where they are.",
+                else "Your choice is remembered for new local Adds only. Existing transfers keep their files where they are.",
                 style = MaterialTheme.typography.bodySmall)
         }
     }

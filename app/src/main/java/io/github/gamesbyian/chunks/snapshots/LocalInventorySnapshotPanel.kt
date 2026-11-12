@@ -102,7 +102,7 @@ internal fun LocalInventorySnapshotPanel(
                     OwnedDiagnosticExportProvider.publish(context, filename, bytes)
                 }
                 OwnedDiagnosticShare.openChooser(context, uri,
-                    "application/octet-stream", "phone snapshot")
+                    "application/octet-stream", "local snapshot")
                 result = if (definitions > 0) {
                     "Prepared $definitions verified original v1 torrent definitions in a " +
                         "read-only share. This may include private-tracker passkeys. " +
@@ -129,12 +129,12 @@ internal fun LocalInventorySnapshotPanel(
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             OutlinedButton(onClick = { expanded = !expanded }, enabled = !saving,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text(if (expanded) "Close phone inventory export" else "Save phone transfer inventory")
+                Text(if (expanded) "Close local inventory export" else "Save local transfer inventory")
             }
             if (expanded) {
                 Text("Local transfer inventory only", style = MaterialTheme.typography.titleMedium)
                 Text("Records exact v1 hashes and original torrent names from the current " +
-                    "observed phone queue. A hash by itself cannot restore a torrent. " +
+                    "observed local queue. A hash by itself cannot restore a torrent. " +
                     "This export contains no torrent metadata, magnets, payload files, " +
                     "piece verification or resume state.")
                 if (stale || busyEngine) Text(
@@ -157,7 +157,7 @@ internal fun LocalInventorySnapshotPanel(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Checkbox(checked = historicalPaths, onCheckedChange = null)
-                        Text("Include old phone paths (privacy-sensitive)")
+                        Text("Include old local paths (privacy-sensitive)")
                     }
                     Text("Saved path hints are historical only. They are not portable " +
                         "destinations and never become automatic restore targets.",
@@ -250,7 +250,7 @@ internal fun LocalInventorySnapshotPanel(
                                                 val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                                     .withZone(ZoneOffset.UTC).format(Instant.now())
                                                 shareOwnedSnapshot(encoded, selected.verifiedRestorableCount,
-                                                    "chunks-phone-reviewed-$stamp.chunksnap")
+                                                    "chunks-local-reviewed-$stamp.chunksnap")
                                             }
                                         } catch (cancel: CancellationException) {
                                             throw cancel
@@ -286,12 +286,12 @@ internal fun LocalInventorySnapshotPanel(
                         } else {
                             val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
                                 .withZone(ZoneOffset.UTC).format(Instant.now())
-                            shareOwnedSnapshot(bytes, 0, "chunks-phone-inventory-$stamp.chunksnap")
+                            shareOwnedSnapshot(bytes, 0, "chunks-local-inventory-$stamp.chunksnap")
                         }
                     },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                 ) {
-                    Text(if (saving) "Preparing phone inventory…" else "Share phone inventory")
+                    Text(if (saving) "Preparing local inventory…" else "Share local inventory")
                 }
                 result?.let {
                     Text(it, color = if (resultVerified) MaterialTheme.colorScheme.primary

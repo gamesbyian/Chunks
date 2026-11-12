@@ -39,10 +39,10 @@ class ChunksConnectLargeTextRenderTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/connect-200pct.png")
     }
 
-    @Test fun phoneAt200Percent() {
+    @Test fun localAt200Percent() {
         waitForWelcome()
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/chunks-visual/phone-200pct.png")
+        rule.onRoot().captureRoboImage("build/chunks-visual/local-200pct.png")
     }
 
     @Test fun createAt200Percent() {

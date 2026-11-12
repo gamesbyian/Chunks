@@ -29,7 +29,7 @@ internal fun RemoteTransfersPrimaryActions(
     onRefresh: () -> Unit
 ) {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // A 412dp phone has 376dp after the transfer list's 18dp side
+        // A 412dp local has 376dp after the transfer list's 18dp side
         // gutters. That space fits two normal-text actions; the former 380dp
         // cutoff stacked them and spent an unnecessary extra 52dp row.
         // Keep genuinely narrow or >=1.5x text layouts stacked.

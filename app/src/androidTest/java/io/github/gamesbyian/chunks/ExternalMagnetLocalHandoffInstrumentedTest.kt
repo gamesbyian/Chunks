@@ -35,7 +35,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             rule.waitUntil(15_000) {
                 rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty()
             }
-            // The incoming external source was consumed into the initial phone
+            // The incoming external source was consumed into the initial local
             // review. Android retains the old Activity Intent across recreate,
             // but it is no longer authority to initiate ANOTHER review.
             scenario.recreate()
@@ -49,7 +49,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         }
     }
 
-    @Test fun externalViewOpensReviewedPhoneAddWithoutRemoteLoginOrAutoStart() {
+    @Test fun externalViewOpensReviewedLocalAddWithoutRemoteLoginOrAutoStart() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val intent = Intent(context, MainActivity::class.java).apply {
             action = Intent.ACTION_VIEW
@@ -94,18 +94,18 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
             }
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty() ||
-                    rule.onAllNodesWithText("Review on this phone").fetchSemanticsNodes().isNotEmpty()
+                    rule.onAllNodesWithText("Review on this device").fetchSemanticsNodes().isNotEmpty()
             }
             // A connected server requires choosing an exact Add destination.
             // The fallback route with no server already opens device Add.
-            if (rule.onAllNodesWithText("Review on this phone").fetchSemanticsNodes().isNotEmpty()) {
-                rule.onNodeWithText("Review on this phone").performClick()
+            if (rule.onAllNodesWithText("Review on this device").fetchSemanticsNodes().isNotEmpty()) {
+                rule.onNodeWithText("Review on this device").performClick()
             }
             rule.waitUntil(20_000) {
                 rule.onAllNodesWithText(magnet).fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText(magnet).assertExists()
-            org.junit.Assert.assertEquals("Android Share intake cannot issue a phone Add",
+            org.junit.Assert.assertEquals("Android Share intake cannot issue a local Add",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
             // ActivityScenario tracks its original launch identity; a genuine
             // onNewIntent has replaced it. Restore only the test monitor's
@@ -114,7 +114,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
         }
     }
 
-    @Test fun reviewedTorrentSurvivesPhoneNavigationWithoutAddingOrPersistingItsPrivateSource() {
+    @Test fun reviewedTorrentSurvivesLocalNavigationWithoutAddingOrPersistingItsPrivateSource() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         val bytes = ("d8:announce14:http://ignored4:info" +
             "d6:lengthi5e4:name8:test.txt12:piece lengthi16384e6:pieces20:" +
@@ -145,7 +145,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                 rule.onAllNodesWithText("Torrent details").fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithText("test.txt").assertExists()
-            org.junit.Assert.assertEquals("Browsing cannot authorize a phone Add",
+            org.junit.Assert.assertEquals("Browsing cannot authorize a local Add",
                 before, LocalEngineHolder.current()?.completeIdentityInventory().orEmpty())
             // Reviewed source bytes survive configuration changes in ViewModel RAM.
             // The old Android Share Intent must never replay, and no private
@@ -155,7 +155,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                 rule.onAllNodesWithText("Torrent source")
                     .fetchSemanticsNodes().isNotEmpty()
             }
-            // Phone Add uses a normal verticalScroll rather than a lazy list.
+            // Local Add uses a normal verticalScroll rather than a lazy list.
             // A require-scroll-to-index probe can never find its details item;
             // retain the actual validated filename even while storage
             // availability rechecks on Activity recreation.
@@ -209,7 +209,7 @@ class ExternalMagnetLocalHandoffInstrumentedTest {
                     .uiAutomation.takeScreenshot()?.let { bitmap ->
                         val directory = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(
                             android.os.Environment.DIRECTORY_PICTURES), "ChunksAddAtlas").apply { mkdirs() }
-                        java.io.File(directory, "phone-source-$stage-$kind.png").outputStream().use {
+                        java.io.File(directory, "local-source-$stage-$kind.png").outputStream().use {
                             bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)
                         }
                         bitmap.recycle()

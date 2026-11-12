@@ -2,7 +2,7 @@ package io.github.gamesbyian.chunks.snapshots
 
 import java.util.Locale
 
-/** Read-only, complete navigation of a bounded snapshot-versus-phone comparison. */
+/** Read-only, complete navigation of a bounded snapshot-versus-local comparison. */
 internal object SnapshotRestoreCompareCatalogV1 {
     private const val PAGE_SIZE = 20
 

@@ -2,6 +2,8 @@
 
 **Binding authoring policy: active documents are instructions, not status diaries.**
 
+**Environment names:** Use **Local Device** for the on-device UI environment, `Local` for its implementation and `local` for its persisted identity. Phone/tablet/handset may describe physical form factors, never a separate engine or scope. Clean-install development APKs do not require migration from pre-refactor app preferences. Update current code examples and requirements, leaving historical evidence in dated archives.
+
 - **AGENTS, AGENT-LANES, WORK-QUEUE, current NEXT-PUSH handoff and implementation plans** must state what to do, in what order, who owns it, which files/interfaces to use, constraints, decision rules and acceptance tests. Prefer imperative verbs, a bounded task, dependency and exit criterion for every active work item.
 - **PRODUCT, UX, ARCHITECTURE, OPTIONS and feature specifications** must describe desired behaviour, states, defaults, APIs/interfaces, exclusions and edge-case tests. Do not prepend rolling PR histories, retrospective commentary, old SHAs or claims of what an agent did last.
 - **SPEC-COVERAGE** must be a compact requirement-to-test matrix and clearly label unverified gates. For user-visible work, keep functional and experience acceptance distinct; use [FEATURE-EXPERIENCE-CONTRACT](FEATURE-EXPERIENCE-CONTRACT.md) as delivery procedure rather than creating a second visual backlog. **QUALITY-LEDGER** is the appropriate chronological evidence record, including failures, source SHA, APK hashes, CI run details and historic qualification.

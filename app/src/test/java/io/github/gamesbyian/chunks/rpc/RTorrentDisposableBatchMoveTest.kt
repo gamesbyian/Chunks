@@ -44,7 +44,7 @@ class RTorrentDisposableBatchMoveTest {
             val added = rtorrent.loadStoppedTorrentBytes(bytes, root.absolutePath)
             assertTrue("$added", added is RemoteAddOutcome.VerifiedStopped || added is RemoteAddOutcome.PendingVerification)
             TransferMove.start(
-                TransferMove.Direction.SERVER_TO_PHONE, hash, name, "a".repeat(64), "rig",
+                TransferMove.Direction.SERVER_TO_LOCAL, hash, name, "a".repeat(64), "rig",
                 sourceDirectory = root.absolutePath
             ).copy(stage = TransferMove.Stage.TARGET_VERIFIED)
         }
@@ -53,7 +53,7 @@ class RTorrentDisposableBatchMoveTest {
                 Thread.sleep(300)
         }
         val forgotten = mutableListOf<String>()
-        // The second item's "phone job" is gone: its server job must be kept.
+        // The second item's "local job" is gone: its server job must be kept.
         val report = BatchMoveRemoval.run(records,
             observeTarget = { h -> if (h == records[0].infoHash) TransferMove.Observation.Present else TransferMove.Observation.Absent },
             removeSource = { h ->

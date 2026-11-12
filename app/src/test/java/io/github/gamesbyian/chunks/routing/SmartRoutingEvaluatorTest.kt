@@ -6,10 +6,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SmartRoutingEvaluatorTest {
-    private val phone = EnvironmentId("phone")
+    private val local = EnvironmentId("local")
     private val films = EnvironmentId("server-films")
     private val books = EnvironmentId("server-books")
-    private val targets = setOf(phone, films, books)
+    private val targets = setOf(local, films, books)
     private fun evidence(name: String = "Example.mkv", files: List<MediaFileHint>? = listOf(MediaFileHint("Movies/Example.MKV")),
                          trackers: Set<String>? = emptySet()) = RoutingEvidence("fixture-v1", name, files, trackers)
     private fun rule(id: String, target: EnvironmentId, vararg conditions: RoutingCondition,
@@ -19,7 +19,7 @@ class SmartRoutingEvaluatorTest {
 
     @Test fun firstQualifyingRuleWinsAndEveryCompetingRuleIsExplained() {
         val result = SmartRoutingEvaluator.preview(evidence(), listOf(
-            rule("first", films, video), rule("second", phone, video)), RoutingFallback.Ask, targets)
+            rule("first", films, video), rule("second", local, video)), RoutingFallback.Ask, targets)
         assertEquals(films, result.destination)
         assertEquals("first", result.selectedRuleId)
         assertEquals(listOf(RoutingRuleStatus.MATCHED, RoutingRuleStatus.MATCHED), result.rules.map { it.status })
@@ -29,8 +29,8 @@ class SmartRoutingEvaluatorTest {
 
     @Test fun explicitUserOverrideWinsAndUnavailableOverrideDoesNotSilentlyFallBack() {
         val rules = listOf(rule("video", films, video))
-        val overridden = SmartRoutingEvaluator.preview(evidence(), rules, RoutingFallback.Ask, targets, phone)
-        assertEquals(phone, overridden.destination)
+        val overridden = SmartRoutingEvaluator.preview(evidence(), rules, RoutingFallback.Ask, targets, local)
+        assertEquals(local, overridden.destination)
         assertNull(overridden.selectedRuleId)
         val missing = EnvironmentId("removed-profile")
         val result = SmartRoutingEvaluator.preview(evidence(), rules, RoutingFallback.Target(books), targets, missing)
@@ -49,9 +49,9 @@ class SmartRoutingEvaluatorTest {
 
     @Test fun knownEmptyFilesAreANonMatchRatherThanMissingMetadata() {
         val result = SmartRoutingEvaluator.preview(evidence(files = emptyList()), listOf(rule("video", films, video)),
-            RoutingFallback.Target(phone), targets)
+            RoutingFallback.Target(local), targets)
         assertEquals(RoutingRuleStatus.NOT_MATCHED, result.rules.single().status)
-        assertEquals(phone, result.destination)
+        assertEquals(local, result.destination)
         assertEquals(RoutingSelection.FALLBACK, result.selection)
     }
 
@@ -92,30 +92,30 @@ class SmartRoutingEvaluatorTest {
         val result = SmartRoutingEvaluator.preview(evidence(), listOf(
             rule("disabled", films, video, enabled = false),
             rule("weak-title", films, RoutingCondition.NameContains("example"), confidence = MediaConfidence.HIGH)),
-            RoutingFallback.Target(phone), targets)
-        assertEquals(phone, result.destination)
+            RoutingFallback.Target(local), targets)
+        assertEquals(local, result.destination)
         assertEquals(listOf(RoutingRuleStatus.DISABLED, RoutingRuleStatus.LOW_CONFIDENCE), result.rules.map { it.status })
     }
 
     @Test fun unavailableWinningTargetUsesDeclaredFallbackAndNeverALowerRule() {
         val result = SmartRoutingEvaluator.preview(evidence(), listOf(rule("first", films, video), rule("second", books, video)),
-            RoutingFallback.Target(phone), setOf(phone, books))
-        assertEquals(phone, result.destination)
+            RoutingFallback.Target(local), setOf(local, books))
+        assertEquals(local, result.destination)
         assertEquals("first", result.selectedRuleId)
         assertEquals(RoutingReason.RULE_TARGET_UNAVAILABLE, result.reason)
     }
 
     @Test fun unavailableFallbackAsksAndPreviewIsDeterministic() {
         val rules = listOf(rule("books", books, RoutingCondition.Extension("epub")))
-        val first = SmartRoutingEvaluator.preview(evidence(), rules, RoutingFallback.Target(books), setOf(phone))
+        val first = SmartRoutingEvaluator.preview(evidence(), rules, RoutingFallback.Target(books), setOf(local))
         assertNull(first.destination)
         assertEquals(RoutingReason.FALLBACK_UNAVAILABLE, first.reason)
-        repeat(10) { assertEquals(first, SmartRoutingEvaluator.preview(evidence(), rules, RoutingFallback.Target(books), setOf(phone))) }
+        repeat(10) { assertEquals(first, SmartRoutingEvaluator.preview(evidence(), rules, RoutingFallback.Target(books), setOf(local))) }
     }
 
     @Test fun duplicateRuleIdsAndUnconditionalRulesAreRejected() {
-        assertThrows(IllegalArgumentException::class.java) { rule("empty", phone) }
-        val same = rule("same", phone, video)
+        assertThrows(IllegalArgumentException::class.java) { rule("empty", local) }
+        val same = rule("same", local, video)
         assertThrows(IllegalArgumentException::class.java) {
             SmartRoutingEvaluator.preview(evidence(), listOf(same, same), RoutingFallback.Ask, targets)
         }

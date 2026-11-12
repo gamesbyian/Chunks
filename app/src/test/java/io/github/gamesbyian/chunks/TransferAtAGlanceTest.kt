@@ -6,9 +6,9 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** Truthful, read-only user wording for phone and rTorrent observations. */
+/** Truthful, read-only user wording for local and rTorrent observations. */
 class TransferAtAGlanceTest {
-    private val key = UnifiedTransferKey.of(EnvironmentId("phone"), "f".repeat(40))
+    private val key = UnifiedTransferKey.of(EnvironmentId("local"), "f".repeat(40))
     private fun transfer(
         started: Boolean? = null,
         progress: Int? = null,

@@ -66,7 +66,7 @@ class AddArtworkChoiceInstrumentedTest {
             onlineLookupConsent = false, automaticLookup = false,
             showArtwork = true, downloadArtwork = true))
         val key = io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
-            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE, "a".repeat(40))
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL, "a".repeat(40))
         rule.setContent {
             MaterialTheme {
                 TransferMediaDetailSection(key, "Hackers.1995")

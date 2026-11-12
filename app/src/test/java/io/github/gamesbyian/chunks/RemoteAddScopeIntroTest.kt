@@ -21,7 +21,7 @@ import org.robolectric.annotation.GraphicsMode
 class RemoteAddScopeIntroTest {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun selectedRemoteServerAndPhoneCopyBoundaryAreVisibleAtLargeText() {
+    @Test fun selectedRemoteServerAndLocalCopyBoundaryAreVisibleAtLargeText() {
         rule.setContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
@@ -32,9 +32,9 @@ class RemoteAddScopeIntroTest {
         }
         rule.onNodeWithText("Adding to: Seedbox 2").assertExists()
         // The copy/seeding boundary stays one tap away, not dominant default content.
-        rule.onNodeWithText("Nothing is copied to this phone by Add.", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("Nothing is copied to this device by Add.", substring = true).assertDoesNotExist()
         rule.onNodeWithText("About adding to a server").performClick()
-        rule.onNodeWithText("Nothing is copied to this phone by Add.", substring = true).assertExists()
+        rule.onNodeWithText("Nothing is copied to this device by Add.", substring = true).assertExists()
         rule.onNodeWithText("Saved Chunks server-seeding rules are not applied yet;", substring = true).assertExists()
     }
 

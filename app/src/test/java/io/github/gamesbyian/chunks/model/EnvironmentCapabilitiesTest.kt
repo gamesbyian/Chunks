@@ -16,30 +16,30 @@ class EnvironmentCapabilitiesTest {
             RemoteCapabilities.features.mapNotNull { it.operation }.toSet().size)
     }
 
-    @Test fun phoneIsBuiltInExceptCopyToPhone() {
-        val phone = EnvironmentCapabilities.phone()
-        assertEquals(CapabilityEvidence.NOT_APPLICABLE, phone.of(EnvironmentOperation.COPY_TO_PHONE))
-        assertEquals(CapabilityEvidence.NOT_APPLICABLE, phone.of(EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER))
-        assertEquals(CapabilityEvidence.BUILT_IN, phone.of(EnvironmentOperation.ADD_MAGNET))
-        assertTrue(phone.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE).allowed)
-        assertFalse(phone.decide(EnvironmentOperation.COPY_TO_PHONE, EnvironmentAvailability.LIVE).allowed)
+    @Test fun localIsBuiltInExceptCopyToLocal() {
+        val local = EnvironmentCapabilities.local()
+        assertEquals(CapabilityEvidence.NOT_APPLICABLE, local.of(EnvironmentOperation.COPY_TO_LOCAL))
+        assertEquals(CapabilityEvidence.NOT_APPLICABLE, local.of(EnvironmentOperation.SERVER_DEFAULT_ADD_FOLDER))
+        assertEquals(CapabilityEvidence.BUILT_IN, local.of(EnvironmentOperation.ADD_MAGNET))
+        assertTrue(local.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE).allowed)
+        assertFalse(local.decide(EnvironmentOperation.COPY_TO_LOCAL, EnvironmentAvailability.LIVE).allowed)
     }
 
-    @Test fun builtInPhoneEvidenceCannotBeRetargetedToRemoteProfile() {
+    @Test fun builtInLocalEvidenceCannotBeRetargetedToRemoteProfile() {
         for (remoteId in listOf(serverA, serverB)) {
             try {
-                EnvironmentCapabilities.phone(remoteId)
-                fail("A remote server cannot inherit the phone engine's built-in features")
+                EnvironmentCapabilities.local(remoteId)
+                fail("A remote server cannot inherit the local device engine's built-in features")
             } catch (_: IllegalArgumentException) { }
         }
     }
 
     @Test fun forgedBuildFactsAndServerAdvertisementsCannotAuthorizeWrongEngine() {
-        val borrowedPhone = EnvironmentCapabilitySnapshot(serverA, "phone engine", 10,
+        val borrowedLocal = EnvironmentCapabilitySnapshot(serverA, "local engine", 10,
             mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.BUILT_IN))
-        val fakeRemote = EnvironmentCapabilitySnapshot(EnvironmentSnapshots.PHONE, "rTorrent test", 10,
+        val fakeRemote = EnvironmentCapabilitySnapshot(EnvironmentSnapshots.LOCAL, "rTorrent test", 10,
             mapOf(EnvironmentOperation.START_STOP to CapabilityEvidence.ADVERTISED))
-        for (snapshot in listOf(borrowedPhone, fakeRemote)) {
+        for (snapshot in listOf(borrowedLocal, fakeRemote)) {
             val decision = snapshot.decide(EnvironmentOperation.START_STOP, EnvironmentAvailability.LIVE)
             assertFalse(decision.allowed)
             assertTrue(decision.explanation.contains("engine"))
@@ -59,8 +59,8 @@ class EnvironmentCapabilitiesTest {
         assertFalse(refused.allowed)
         assertTrue(refused.explanation.contains("rTorrent 0.9.8"))
         try {
-            EnvironmentCapabilities.fromProbe(EnvironmentSnapshots.PHONE, RemoteProbe("x", all), 1)
-            fail("a server probe described the phone")
+            EnvironmentCapabilities.fromProbe(EnvironmentSnapshots.LOCAL, RemoteProbe("x", all), 1)
+            fail("a server probe described the local device")
         } catch (_: IllegalArgumentException) { }
     }
 
@@ -103,7 +103,7 @@ class EnvironmentCapabilitiesTest {
         val optionalAbsent = EnvironmentCapabilities.fromProbe(serverA,
             RemoteProbe("0.16", all - "network.bind_address" - "network.local_address"), 10)
         assertEquals(CapabilityEvidence.ADVERTISED,
-            optionalAbsent.of(EnvironmentOperation.COPY_TO_PHONE))
+            optionalAbsent.of(EnvironmentOperation.COPY_TO_LOCAL))
         val missingHash = EnvironmentCapabilities.fromProbe(serverB,
             RemoteProbe("0.16", all - "d.hash"), 11)
         assertEquals(CapabilityEvidence.MISSING,
@@ -121,10 +121,10 @@ class EnvironmentCapabilitiesTest {
             assertTrue(decision.allowed)
             assertTrue(decision.explanation.contains("not pre-checked"))
         }
-        val phone = EnvironmentCapabilities.phone()
+        val local = EnvironmentCapabilities.local()
         for (state in listOf(EnvironmentAvailability.OFFLINE, EnvironmentAvailability.LOCKED,
             EnvironmentAvailability.STALE)) {
-            assertFalse(phone.decide(EnvironmentOperation.START_STOP, state).allowed)
+            assertFalse(local.decide(EnvironmentOperation.START_STOP, state).allowed)
         }
     }
 }

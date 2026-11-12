@@ -67,7 +67,7 @@ class CombinedRowQuickControlsTest {
                             io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) },
                         ownerSession = session),
                     authenticatedSession = session),
-                savedProfiles = listOf(other), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                savedProfiles = listOf(other), onOpenLocal = {}, onOpenServer = {}, onBack = {})
         } }
     }
 
@@ -92,7 +92,7 @@ class CombinedRowQuickControlsTest {
                                 settled = { live.value = runBlockingList(remote) },
                                 setStarted = remote::setStarted, probe = remote::probe, ownerSession = remote),
                             authenticatedSession = remote),
-                        savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                        savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {}, onBack = {})
                 } }
             }
             val stoppedRow = "Small Episode on $fakeLabel"
@@ -147,7 +147,7 @@ class CombinedRowQuickControlsTest {
         reveal(hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
         // All available environments are shown by default.
         rule.onNodeWithContentDescription("Showing $label").assertExists()
-        rule.onNodeWithContentDescription("Showing " + PHONE_ENVIRONMENT_LABEL, substring = true).assertExists()
+        rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).assertExists()
         // Hide this server: its rows leave the list immediately, no Apply step.
         rule.onNodeWithContentDescription("Showing $label").performClick()
         rule.waitForIdle()
@@ -155,7 +155,7 @@ class CombinedRowQuickControlsTest {
         val serverId = requireNotNull(EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
         rule.waitUntil(5_000) {
             (CombinedViewPreferences(context).load().scope as? EnvironmentViewScope.Only)?.ids ==
-                setOf(EnvironmentSnapshots.PHONE, io.github.gamesbyian.chunks.model.EnvironmentId(other.id))
+                setOf(EnvironmentSnapshots.LOCAL, io.github.gamesbyian.chunks.model.EnvironmentId(other.id))
         }
         // A status filter composes with the toggles instead of resetting them.
         reveal(hasText("Filters"))
@@ -165,12 +165,12 @@ class CombinedRowQuickControlsTest {
         rule.waitUntil(5_000) { CombinedViewPreferences(context).load().filter == UnifiedTransferFilter.STARTED }
         assertTrue(serverId !in ((CombinedViewPreferences(context).load().scope as EnvironmentViewScope.Only).ids))
         // Hide everything: an explicit, explained empty view.
-        rule.onNodeWithContentDescription("Showing " + PHONE_ENVIRONMENT_LABEL, substring = true).performClick()
+        rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
         rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
         reveal(hasText("No environments are selected", substring = true))
         assertEquals(EnvironmentViewScope.Only(emptySet()), CombinedViewPreferences(context).load().scope)
         // Showing every environment again returns to dynamic All.
-        rule.onNodeWithContentDescription("Hidden: " + PHONE_ENVIRONMENT_LABEL, substring = true).performClick()
+        rule.onNodeWithContentDescription("Hidden: " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
         rule.onNodeWithContentDescription("Hidden: Server · " + other.label, substring = true).performClick()
         rule.onNodeWithContentDescription("Hidden: $label").performClick()
         rule.waitUntil(5_000) { CombinedViewPreferences(context).load().scope == EnvironmentViewScope.All }
@@ -192,7 +192,7 @@ class CombinedRowQuickControlsTest {
                                 io.github.gamesbyian.chunks.rpc.LifecycleOutcome.Verified(on) },
                             ownerSession = session),
                         authenticatedSession = session),
-                    savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                    savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {}, onBack = {})
             } }
         }
         val details = "Details for $release on $label"

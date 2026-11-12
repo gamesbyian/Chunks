@@ -30,7 +30,7 @@ class SeedingRulesScreenTest {
     @get:Rule val rule = createComposeRule()
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val box = SeedingEnvironment.server("https://box.example/rutorrent2/plugins/httprpc/action.php", "ian")
-    private val environments = listOf(SeedingEnvironment.phone(), box)
+    private val environments = listOf(SeedingEnvironment.local(), box)
 
     private fun field(label: String) = rule.onNode(hasSetTextAction() and hasText(label, substring = true))
 
@@ -41,15 +41,15 @@ class SeedingRulesScreenTest {
             } }
         }
         rule.onNodeWithText(
-            "Phone rules affect new transfers only. Server rules are saved for later and are not applied yet."
+            "Local device rules affect new transfers only. Server rules are saved for later and are not applied yet."
         ).assertExists()
-        rule.onNodeWithText("On this phone, rules apply to transfers added from now on", substring = true)
+        rule.onNodeWithText("On this device, rules apply to transfers added from now on", substring = true)
             .assertDoesNotExist()
         rule.onNodeWithText("What these rules do today").performClick()
-        rule.onNodeWithText("On this phone, rules apply to transfers added from now on", substring = true)
+        rule.onNodeWithText("On this device, rules apply to transfers added from now on", substring = true)
             .assertExists()
         rule.onNodeWithText("Hide rule explanation").performClick()
-        rule.onNodeWithText("On this phone, rules apply to transfers added from now on", substring = true)
+        rule.onNodeWithText("On this device, rules apply to transfers added from now on", substring = true)
             .assertDoesNotExist()
         rule.onNodeWithText("New rule").assertExists()
     }
@@ -65,18 +65,18 @@ class SeedingRulesScreenTest {
         field("Stop at ratio").performScrollTo().performTextReplacement("1")
         field("Upload limit").performScrollTo().performTextReplacement("24 kbps")
         rule.onNodeWithText("24 kbit/s (2.9 KiB/s)").assertExists()
-        // Only the phone, not the server.
+        // Only the local device, not the server.
         rule.onNodeWithText(box.label).performScrollTo().performClick()
         rule.onRoot().captureRoboImage("build/chunks-visual/seeding-editor.png")
         rule.onNodeWithText("Save rule").performScrollTo().assertIsEnabled().performClick()
         rule.onNodeWithText("1. Iptorrents · Ratio 1.00 · 24 kbit/s").assertExists()
         rule.onNodeWithText("Applies to: On this device").assertExists()
-        rule.onNodeWithText("Phone: matching future additions only").assertExists()
+        rule.onNodeWithText("Local: matching future additions only").assertExists()
         rule.onNodeWithText("Servers: saved for later", substring = true).assertDoesNotExist()
 
         val stored = SeedingRuleStore(context).load().rules.single()
         assertEquals(setOf("iptorrents.com"), stored.trackerDomains)
-        assertEquals(setOf(SeedingEnvironment.PHONE_ID), stored.environments)
+        assertEquals(setOf(SeedingEnvironment.LOCAL_ID), stored.environments)
         assertEquals(3_000L, stored.policy.uploadLimit!!.bytesPerSecond)
         assertTrue("the server is known, so it is not a future environment", box.id in stored.knownEnvironments)
         assertFalse(stored.nameIsCustom)
@@ -93,7 +93,7 @@ class SeedingRulesScreenTest {
     @Test fun savedDefaultExplainsItsScopeAndCanBeResetWithoutChangingOtherPolicies() {
         val store = SeedingRuleStore(context)
         assertTrue(store.save(SeedingRuleStore.Snapshot(
-            emptyList(), mapOf(SeedingEnvironment.PHONE_ID to io.github.gamesbyian.chunks.seeding.SeedingPolicy())
+            emptyList(), mapOf(SeedingEnvironment.LOCAL_ID to io.github.gamesbyian.chunks.seeding.SeedingPolicy())
         )))
         rule.setContent {
             ChunksTheme { Surface(color = ChunksColors.Background) { SeedingRulesScreen(environments) {} } }
@@ -105,10 +105,10 @@ class SeedingRulesScreenTest {
         rule.onNodeWithText("Reset to automatic").performScrollTo().performClick()
         rule.onNodeWithText("Restore the automatic default for On this device?", substring = true).assertExists()
         rule.onNodeWithText("Keep default").performClick()
-        assertTrue(store.load().defaults.containsKey(SeedingEnvironment.PHONE_ID))
+        assertTrue(store.load().defaults.containsKey(SeedingEnvironment.LOCAL_ID))
         rule.onNodeWithText("Reset to automatic").performScrollTo().performClick()
         rule.onNodeWithText("Confirm reset").performClick()
-        assertFalse(store.load().defaults.containsKey(SeedingEnvironment.PHONE_ID))
+        assertFalse(store.load().defaults.containsKey(SeedingEnvironment.LOCAL_ID))
     }
 
     @Test
@@ -117,8 +117,8 @@ class SeedingRulesScreenTest {
         val store = SeedingRuleStore(context)
         val saved = io.github.gamesbyian.chunks.seeding.SeedingPolicy()
         assertTrue(store.save(SeedingRuleStore.Snapshot(
-            emptyList(), mapOf(SeedingEnvironment.PHONE_ID to saved))))
-        assertEquals(listOf(SeedingEnvironment.phone()),
+            emptyList(), mapOf(SeedingEnvironment.LOCAL_ID to saved))))
+        assertEquals(listOf(SeedingEnvironment.local()),
             matchingSeedingEnvironments(environments, "On THIS device"))
         assertEquals(environments,
             matchingSeedingEnvironments(environments, "  "))
@@ -132,8 +132,8 @@ class SeedingRulesScreenTest {
             .performTextReplacement("no-such-environment")
         rule.onNodeWithText("No environment defaults match this search", substring = true)
             .assertExists()
-        assertTrue(store.load().defaults.containsKey(SeedingEnvironment.PHONE_ID))
-        field("Find environment defaults").performScrollTo().performTextReplacement("phone")
+        assertTrue(store.load().defaults.containsKey(SeedingEnvironment.LOCAL_ID))
+        field("Find environment defaults").performScrollTo().performTextReplacement("local")
         rule.onNodeWithText("Showing 1 of 2 environment defaults").assertExists()
         rule.onNodeWithText("Using your saved preference", substring = true).assertExists()
         assertEquals(1, store.load().defaults.size)
@@ -148,9 +148,9 @@ class SeedingRulesScreenTest {
         }
         rule.onNodeWithText("Review defaults", substring = true).performClick()
         field("Find environment defaults").performScrollTo().performTextReplacement("no-such-environment")
-        rule.runOnIdle { available.value = listOf(SeedingEnvironment.phone()) }
+        rule.runOnIdle { available.value = listOf(SeedingEnvironment.local()) }
         field("Find environment defaults").performScrollTo().performTextReplacement("")
-        rule.onNodeWithText("Affects future phone transfers", substring = true).assertExists()
+        rule.onNodeWithText("Affects future local transfers", substring = true).assertExists()
     }
 
     @Test fun ambiguousUnitsBlockSavingAndDeleteNeedsConfirmation() {

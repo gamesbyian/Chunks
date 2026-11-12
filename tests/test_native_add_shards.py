@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from verify_native_add_shards import (
     verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS,
-    HTTPS_PHONE_ID, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS,
+    HTTPS_LOCAL_ID, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS,
 )
 
 
@@ -128,8 +128,8 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.change(0, skip_thirty_one)
         self.assertEqual(31, self.check()["junit"]["skipped"])
 
-    def test_accepts_reviewed_phone_delete_phase_skip(self):
-        # PhoneIntakeJourney phaseDelete runs only from its own intake script.
+    def test_accepts_reviewed_local_delete_phase_skip(self):
+        # LocalIntakeJourney phaseDelete runs only from its own intake script.
         def skip_thirty_two(d):
             for case in d["test_cases"][:32]:
                 case["outcome"] = "skipped"
@@ -169,7 +169,7 @@ class ShardedNativeAddTests(unittest.TestCase):
     def test_only_exact_dedicated_https_case_has_an_extra_opt_in_skip(self):
         # This case requires the real public-piece fixture host and executes in
         # the installed HTTPS campaign. Ordinary native Add has no such host.
-        identity = ("io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest" +
+        identity = ("io.github.gamesbyian.chunks.HttpsLocalAddJourneyInstrumentedTest" +
                     "\\0" + "fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault")
         def skip_with_dedicated_case(d):
             for case in d["test_cases"][:35]:
@@ -201,8 +201,8 @@ class ShardedNativeAddTests(unittest.TestCase):
             for case in d["test_cases"][:37]:
                 case["outcome"] = "skipped"
             # The 34 existing authorized skips plus one exact public HTTPS
-            # phone fixture and two exact installed-media phases are permitted.
-            d["test_cases"][34]["id_sha256"] = HTTPS_PHONE_ID
+            # local fixture and two exact installed-media phases are permitted.
+            d["test_cases"][34]["id_sha256"] = HTTPS_LOCAL_ID
             d["test_cases"][35]["id_sha256"] = media_ids[0]
             d["test_cases"][36]["id_sha256"] = media_ids[1]
             d["junit"]["executed"] = 144

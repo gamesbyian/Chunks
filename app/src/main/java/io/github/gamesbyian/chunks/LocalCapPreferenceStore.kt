@@ -8,7 +8,7 @@ import java.io.File
 import java.security.MessageDigest
 
 /**
- * Opt-in *advisory* limit for one app-specific phone download root.
+ * Opt-in *advisory* limit for one app-specific local download root.
  *
  * The fingerprinted canonical root prevents silently applying an old setting
  * to a different mounted volume. No transfer pausing, notifications, physical

@@ -17,20 +17,20 @@ class MediaAutomationPreferencesInstrumentedTest {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val root = Files.createTempDirectory(context.cacheDir.toPath(), "automation-preferences-test-").toFile()
         val file = root.resolve("preferences.json")
-        val phone = MediaTransferKey("phone|" + "a".repeat(40))
+        val local = MediaTransferKey("local|" + "a".repeat(40))
         val server = MediaTransferKey("server|" + "a".repeat(40))
         try {
             val store = FileMediaAutomationPreferences(file)
-            assertFalse(store.isExcluded(phone))
-            store.setExcluded(phone, true)
+            assertFalse(store.isExcluded(local))
+            store.setExcluded(local, true)
             val reopened = FileMediaAutomationPreferences(file)
-            assertTrue(reopened.isExcluded(phone))
+            assertTrue(reopened.isExcluded(local))
             assertFalse(reopened.isExcluded(server))
-            reopened.setExcluded(phone, false)
-            assertFalse(FileMediaAutomationPreferences(file).isExcluded(phone))
+            reopened.setExcluded(local, false)
+            assertFalse(FileMediaAutomationPreferences(file).isExcluded(local))
             // A damaged preference file must fail closed, rather than silently enable lookup.
             file.writeText("interrupted or damaged preferences")
-            assertTrue(FileMediaAutomationPreferences(file).isExcluded(phone))
+            assertTrue(FileMediaAutomationPreferences(file).isExcluded(local))
         } finally {
             file.delete()
             root.delete()

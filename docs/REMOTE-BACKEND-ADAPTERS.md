@@ -14,7 +14,7 @@ The existing rTorrent implementation **may be restructured** to conform to the s
 
 **In scope:** selectable profile backend type; authenticated/safe connect and repair; normalized transfer listing including All/subsets; per-profile status and capabilities; Add magnet/.torrent; exact scoped Start/Stop; file inspection/priorities; optional ratio/speed/label controls where proven; session-only remove and separately confirmed remove-and-data; metadata/share where actually available; preserved Chunks-local aliases/artwork/rules; user-directed and smart-routed **job-only** Copy/Move. Real functionality is capability-gated by server version, permissions and reachability.
 
-**Out of scope:** automatic payload/data copying in job Move or smart routing; requiring Flood, ruTorrent, a server-side Chunks component, or an account/cloud service; access to server file bytes inferred from RPC; alternate independent UI per backend; bypassing HTTPS/trust checks; fake support for unavailable client operations; replacing the phone's libtorrent4j engine; arbitrary RPC or shell consoles as the default integration. Distinct independent file-copy features remain distinct.
+**Out of scope:** automatic payload/data copying in job Move or smart routing; requiring Flood, ruTorrent, a server-side Chunks component, or an account/cloud service; access to server file bytes inferred from RPC; alternate independent UI per backend; bypassing HTTPS/trust checks; fake support for unavailable client operations; replacing the local device's libtorrent4j engine; arbitrary RPC or shell consoles as the default integration. Distinct independent file-copy features remain distinct.
 
 ## Terminology, identities and persisted schema
 
@@ -43,7 +43,7 @@ Keep shared domain and query rules independent of HTTP, JSON-RPC, XML-RPC, cooki
 
 This is a semantic contract, **not** a mandate to add seven methods or create parallel storage immediately. Reuse existing interfaces/coroutines/models where correct; a vertical adapter implementation should drive the smallest necessary extraction. Typed per-backend extension capabilities are preferable to bloating every shared transfer object with nullable flags. Normalized read models do not become command executors. A transport/session service can be shared across adapters only when behavior and security semantics truly match.
 
-Keep the phone-local backend as another environment in the same observation/query/rules architecture while preserving its distinct native engine lifecycle and filesystem grants. The same shared Add/Details/Transfers/Options presentation must work in local-only, remote-only, Combined and no-profile states.
+Keep the local device-local backend as another environment in the same observation/query/rules architecture while preserving its distinct native engine lifecycle and filesystem grants. The same shared Add/Details/Transfers/Options presentation must work in local-only, remote-only, Combined and no-profile states.
 
 ## Initial protocol and compatibility research matrix
 
@@ -115,7 +115,7 @@ Prefer direct Android HTTP clients and small protocol serializers/adapters over 
 | Controls | Fresh targeted Start/Stop/priorities; actual file priority effect where possible; native/unsupported ratio/speed states; mixed-backend batch partial outcomes |
 | Remove | Keep-data retains byte-for-byte payload and other jobs; Remove+Data is explicitly separate and requires scoped permission and independent file-absence/foreign-file protection proof |
 | Recovery | Timeouts after potential commit, lost cookie/409, process death, reconnect, cancelled requests; read-only reconciliation with no duplicate Add/Remove or wrong-server fallback |
-| UX | Phone-only, one remote, multiple remote, mixed local/remote, unsupported capability and account lock/repair; single UI controls and accessibility semantics |
+| UX | local-only, one remote, multiple remote, mixed local/remote, unsupported capability and account lock/repair; single UI controls and accessibility semantics |
 | Routing/Move | Metadata-late magnets, user-defined type rules, exact target creation, job-only retirement, source bytes untouched, portable customization restoration, opt-in rules carried only where supported |
 | Security | Secret redaction, no plain HTTP fallback, SSRF/origin restrictions, passkey safety, no remote byte access inference, protected fixtures non-destructive by default |
 

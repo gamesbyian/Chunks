@@ -21,11 +21,11 @@ class TransferMoveStoreAccountScopeTest {
     private val hash = "ab".repeat(20)
     private val scopeA = TransferMoveStore.scopeDigest("https://seed.example/RPC2\u0000alice")
     private val scopeB = TransferMoveStore.scopeDigest("https://seed.example/RPC2\u0000bob")
-    private val direction = TransferMove.Direction.PHONE_TO_SERVER
+    private val direction = TransferMove.Direction.LOCAL_TO_SERVER
 
     private fun record(scope: String) = TransferMove.start(
         direction, hash, "Same torrent", scope, "seed.example",
-        sourceReviewToken = "phone-generation-1"
+        sourceReviewToken = "local-generation-1"
     ).copy(stage = TransferMove.Stage.SOURCE_REMOVAL_UNCERTAIN)
 
     @Before fun before() { prefs.edit().clear().commit() }
@@ -116,7 +116,7 @@ class TransferMoveStoreAccountScopeTest {
         val store = TransferMoveStore(context)
         val uncertain = record(scopeA)
         assertTrue(store.save(uncertain))
-        assertFalse(store.save(uncertain.copy(sourceReviewToken = "phone-generation-2")))
+        assertFalse(store.save(uncertain.copy(sourceReviewToken = "local-generation-2")))
         assertFalse(store.save(uncertain.copy(name = "Another transfer")))
         assertFalse(store.save(uncertain.copy(stage = TransferMove.Stage.AWAITING_TARGET)))
         assertFalse(store.save(uncertain.copy(stage = TransferMove.Stage.SOURCE_REMOVAL_REQUESTED)))

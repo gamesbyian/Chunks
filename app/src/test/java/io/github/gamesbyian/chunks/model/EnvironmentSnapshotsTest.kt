@@ -24,31 +24,31 @@ class EnvironmentSnapshotsTest {
         assertNotEquals(server, EnvironmentSnapshots.serverId("https://example.org/rutorrent2/RPC2", "user"))
         assertNotEquals(server, EnvironmentSnapshots.serverId("https://example.org/RPC2", "other"))
         assertTrue(server.value.matches(Regex("[0-9a-f]{64}")))
-        assertNotEquals(EnvironmentSnapshots.PHONE, server)
+        assertNotEquals(EnvironmentSnapshots.LOCAL, server)
     }
 
-    @Test fun phoneSnapshotReportsStaleLockedAndUnconfirmedHonestly() {
+    @Test fun localSnapshotReportsStaleLockedAndUnconfirmedHonestly() {
         val frame = LocalInventoryFrame(listOf(local("a".repeat(40))), stale = false)
-        val live = EnvironmentSnapshots.phone(frame, confirmed = true, locked = false, observedAtEpochMillis = 5)
+        val live = EnvironmentSnapshots.local(frame, confirmed = true, locked = false, observedAtEpochMillis = 5)
         assertTrue(live.canClaimCompleteLiveInventory)
         assertEquals(1, live.transfers.size)
-        val withoutTimestamp = EnvironmentSnapshots.phone(frame, confirmed = true,
+        val withoutTimestamp = EnvironmentSnapshots.local(frame, confirmed = true,
             locked = false, observedAtEpochMillis = null)
         assertFalse("A confirmed flag cannot replace the last successful observation",
             withoutTimestamp.inventoryComplete)
         assertFalse(withoutTimestamp.canClaimCompleteLiveInventory)
-        val constructed = EnvironmentTransferSnapshot(EnvironmentSnapshots.PHONE,
+        val constructed = EnvironmentTransferSnapshot(EnvironmentSnapshots.LOCAL,
             EnvironmentAvailability.LIVE, inventoryComplete = true, observedAtEpochMillis = null,
             transfers = live.transfers)
         assertFalse("A manually constructed partial snapshot cannot claim complete live coverage",
             constructed.canClaimCompleteLiveInventory)
-        val stale = EnvironmentSnapshots.phone(frame.copy(stale = true), true, false, 5)
+        val stale = EnvironmentSnapshots.local(frame.copy(stale = true), true, false, 5)
         assertEquals(EnvironmentAvailability.STALE, stale.availability)
         assertFalse(stale.canClaimCompleteLiveInventory)
         // An initial empty list before any accepted read is not an observed empty engine.
-        assertFalse(EnvironmentSnapshots.phone(LocalInventoryFrame(emptyList(), false), false, false, null)
+        assertFalse(EnvironmentSnapshots.local(LocalInventoryFrame(emptyList(), false), false, false, null)
             .inventoryComplete)
-        val locked = EnvironmentSnapshots.phone(frame, true, locked = true, observedAtEpochMillis = 5)
+        val locked = EnvironmentSnapshots.local(frame, true, locked = true, observedAtEpochMillis = 5)
         assertEquals(EnvironmentAvailability.LOCKED, locked.availability)
         assertTrue("locked rows must not leak", locked.transfers.isEmpty())
     }
@@ -56,10 +56,10 @@ class EnvironmentSnapshotsTest {
     @Test fun invalidOrDuplicateHashesAreDroppedAndMarkIncomplete() {
         val good = "b".repeat(40)
         val dup = "c".repeat(40)
-        val phone = EnvironmentSnapshots.phone(LocalInventoryFrame(listOf(local(good), local("not-a-hash"),
+        val local = EnvironmentSnapshots.local(LocalInventoryFrame(listOf(local(good), local("not-a-hash"),
             local(dup), local(dup.uppercase())), false), true, false, 1)
-        assertEquals(listOf(good), phone.transfers.map { it.key.infoHash })
-        assertFalse(phone.inventoryComplete)
+        assertEquals(listOf(good), local.transfers.map { it.key.infoHash })
+        assertFalse(local.inventoryComplete)
         val remote = EnvironmentSnapshots.server(server, listOf(remote(good), remote("zz")),
             connected = true, stale = false, locked = false, fullView = true, observedAtEpochMillis = 1)
         assertEquals(listOf(good), remote.transfers.map { it.key.infoHash })

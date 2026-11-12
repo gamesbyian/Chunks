@@ -28,9 +28,9 @@ class InstalledJourneyGateTest(unittest.TestCase):
         target.write_text(json.dumps(data))
         return target
 
-    def phone(self, **kw):
-        return self.receipt("chunks-https-phone-digest.json", "https-phone",
-                            "io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest",
+    def local(self, **kw):
+        return self.receipt("chunks-https-local-digest.json", "https-local",
+                            "io.github.gamesbyian.chunks.HttpsLocalAddJourneyInstrumentedTest",
                             "fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault", **kw)
 
     def media(self, phase):
@@ -40,30 +40,30 @@ class InstalledJourneyGateTest(unittest.TestCase):
                             "io.github.gamesbyian.chunks.InstalledRealMediaInstrumentedTest", method) for method in methods]
         return paths[-1]
 
-    def test_missing_phone_and_media_cannot_publish_remote_only_success(self):
+    def test_missing_local_and_media_cannot_publish_remote_only_success(self):
         self.assertFalse(required_journeys_verified(self.root, self.env))
 
     def test_online_success_does_not_replace_cold_offline_process(self):
-        self.phone(); self.media("a")
+        self.local(); self.media("a")
         self.assertFalse(required_journeys_verified(self.root, self.env))
 
     def test_all_seven_actual_same_source_journeys_pass(self):
-        self.phone(); self.media("a"); self.media("b")
+        self.local(); self.media("a"); self.media("b")
         self.assertTrue(required_journeys_verified(self.root, self.env))
 
-    def test_skipped_phone_cannot_publish(self):
-        self.phone(skipped=True); self.media("a"); self.media("b")
+    def test_skipped_local_cannot_publish(self):
+        self.local(skipped=True); self.media("a"); self.media("b")
         self.assertFalse(required_journeys_verified(self.root, self.env))
 
     def test_stale_source_or_other_run_cannot_be_reused(self):
-        self.phone(); self.media("a"); p = self.media("b")
+        self.local(); self.media("a"); p = self.media("b")
         data = json.loads(p.read_text())
         for key, value in [("source_sha", "b" * 40), ("run_id", "different")]:
             changed = dict(data, **{key: value}); p.write_text(json.dumps(changed))
             self.assertFalse(required_journeys_verified(self.root, self.env))
 
     def test_extra_or_substituted_test_identity_is_rejected(self):
-        self.phone(); self.media("a"); p = self.media("b")
+        self.local(); self.media("a"); p = self.media("b")
         data = json.loads(p.read_text()); data['test_cases'][0]['id_sha256'] = 'f' * 64
         p.write_text(json.dumps(data))
         self.assertFalse(required_journeys_verified(self.root, self.env))

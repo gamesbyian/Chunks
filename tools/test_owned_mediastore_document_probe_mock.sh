@@ -19,7 +19,7 @@ case "$1" in
     [[ "${MOCK_UNAUTHORIZED:-0}" != 1 ]] || echo 'emulator-5558 unauthorized'
     ;;
   shell)
-    # Any unpinned ADB call could retarget a newly attached phone.
+    # Any unpinned ADB call could retarget a newly attached local.
     [[ "${ANDROID_SERIAL:-}" == emulator-5554 ]] || exit 78
     shift
     case "$1" in

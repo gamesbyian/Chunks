@@ -11,9 +11,9 @@ import java.util.Locale
 internal enum class OptionsShortcut(val title: String, val where: String, private val words: String) {
     SEEDING_RULES("Seeding rules", "Ratio and seeding-time rules · opens Seeding rules",
         "seeding seed ratio share sharing time rule rules stop upload goal"),
-    PHONE_SETTINGS("Device settings", "Speed limits and DHT are in Options; per-transfer download location is in Add · opens Options on this device",
-        "speed limit limits bandwidth throttle rate dht peer peers discovery download location place phone storage"),
-    ENVIRONMENT_COLOURS("Environment colours", "Colours for the phone and each server · opens All environments",
+    LOCAL_SETTINGS("Device settings", "Speed limits and DHT are in Options; per-transfer download location is in Add · opens Options on this device",
+        "speed limit limits bandwidth throttle rate dht peer peers discovery download location place local device storage"),
+    ENVIRONMENT_COLOURS("Environment colours", "Colours for the local device and each server · opens All environments",
         "colour colours color colors palette environment environments identity combined all"),
     MEDIA("Artwork & media info", "Online lookup consent, providers, artwork downloads and cache · opens Artwork & info",
         "artwork art poster cover image picture media metadata info identify identification match provider providers tmdb key tvmaze musicbrainz lookup online cache consent"),
@@ -43,11 +43,11 @@ internal fun optionsWordsMatch(title: String, words: String, rawQuery: String): 
 }
 
 /**
- * The same index for Phone options: each entry names a panel or tool that already exists on the
- * phone screen. A result opens that tool or scrolls to that panel; it never changes a value, starts
+ * The same index for Local options: each entry names a panel or tool that already exists on the
+ * local screen. A result opens that tool or scrolls to that panel; it never changes a value, starts
  * an engine command or picks a Place.
  */
-internal enum class PhoneOptionsShortcut(val title: String, val where: String, private val words: String) {
+internal enum class LocalOptionsShortcut(val title: String, val where: String, private val words: String) {
     CONNECTIONS("Clients & environments", "Manage device and server connections · opens Connections",
         "clients client connections connection server remote local account accounts login endpoint profile profiles password authentication"),
     SERVER_PLACES("Server folders & destinations", "Folders on the authenticated server · opens Server places",
@@ -74,7 +74,7 @@ internal enum class PhoneOptionsShortcut(val title: String, val where: String, p
         "privacy private lock unlock pin password biometric fingerprint hide screenshot recents authentication secure"),
     SNAPSHOT_RESTORE("Restore from a snapshot", "Compare a saved device snapshot and review a stopped restore · in Options",
         "snapshot restore backup import compare recover"),
-    CREATE_TORRENT("Create a torrent", "Make a .torrent from files on this phone · opens Create",
+    CREATE_TORRENT("Create a torrent", "Make a .torrent from files on this device · opens Create",
         "create make new torrent metainfo share publish"),
     ZIP_REVIEW("Review ZIP archives", "Inspect and extract downloaded ZIP files · opens ZIP review",
         "zip archive archives extract unzip unpack compressed"),
@@ -86,6 +86,6 @@ internal enum class PhoneOptionsShortcut(val title: String, val where: String, p
     fun matches(rawQuery: String): Boolean = optionsWordsMatch(title, words, rawQuery)
 
     companion object {
-        fun search(rawQuery: String): List<PhoneOptionsShortcut> = entries.filter { it.matches(rawQuery) }
+        fun search(rawQuery: String): List<LocalOptionsShortcut> = entries.filter { it.matches(rawQuery) }
     }
 }

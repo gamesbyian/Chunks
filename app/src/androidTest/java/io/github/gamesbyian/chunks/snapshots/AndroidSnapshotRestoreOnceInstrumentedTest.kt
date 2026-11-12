@@ -40,7 +40,7 @@ class AndroidSnapshotRestoreOnceInstrumentedTest {
             preview.infoHashV1, preview.name, "chunks-public.torrent", torrent)
         val archiveId = SnapshotRestoreOnceV1.itemArchiveFingerprint(
             hash("test archive " + root.name), preview.infoHashV1)
-        val targetId = hash("test phone " + root.name)
+        val targetId = hash("test local " + root.name)
         val placeId = hash("test Place " + root.name)
         val store = AndroidSnapshotRestoreJournalStore(context)
         val engine = LocalTorrentEngine(LocalEngineConfig(

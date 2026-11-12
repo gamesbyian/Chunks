@@ -38,7 +38,7 @@ class LocalProgressGrowthInstrumentedTest {
             }
         }
         compose.onNodeWithContentDescription(
-            "More details for Public growth fixture on this phone"
+            "More details for Public growth fixture on this device"
         ).performClick()
         compose.onNodeWithText("Observed over 12s:", substring = true).assertExists()
         compose.onNodeWithText("No verified or peer-network byte growth during this sample.",
