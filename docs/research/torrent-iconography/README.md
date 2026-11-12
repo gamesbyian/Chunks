@@ -35,7 +35,7 @@ The representative six optimize for diverse desktop, web/remote, and Android vis
 - Start/resume is commonly the **play triangle**, while pause is **two bars**. Stop is a **square**, sometimes inside a circle. The clients do not always give pause, stop, and inactive the same semantics: preserve labels.
 - Add and remove use plus/minus or deletion metaphors; use clear distinction between **Remove transfer** and **Delete payload files**.
 - Download/upload are **down/up arrows** with text, speed, or status colour. Completion often uses a **checkmark**; error uses an **alert**; queue and stalled states vary more.
-- **Turtle** is a meaningful alternate-speed convention, appearing in both qBittorrent (`slow.svg`) and Transmission's alternate-rate assets. Chunks has a speed-lightning draft but no turtle master in this scanned set.
+- **Turtle versus speed dial** is a meaningful alternate-speed choice: Transmission uses a literal turtle in its rate-mode assets; qBittorrent's `slow.svg` depicts a dial with a red pointer. Chunks has a speed-lightning draft but no dedicated reduced-speed master in this scanned set.
 - Recheck, reannounce, and refresh have overlapping circular-arrow/radio-wave metaphors: avoid using one ambiguous symbol for all three.
 - **Tags, RSS, ratio, scheduling, file priority and notification bell** are straightforward candidates for original Chunks symbols if corresponding features are already part of an authoritative Chunks requirement.
 
