@@ -1,6 +1,6 @@
 name: Local engine public peer swarm
 
-# Real Internet peer evidence for the on-phone engine core: collect a licensed
+# Real Internet peer evidence for the on-local engine core: collect a licensed
 # Internet Archive torrent or the official Debian amd64 netinst torrent (web
 # seeds stripped, only the source's official tracker kept), then download a
 # bounded byte budget from ordinary BitTorrent peers with libtorrent. No secrets, no rTorrent. A swarm with no reachable
@@ -71,7 +71,7 @@ jobs:
           root = pathlib.Path(os.environ["RUNNER_TEMP"]) / "public"
           m = json.loads((root / "manifest.json").read_text(encoding="utf-8"))
           t = m["torrent"]
-          assert t["infohash_v1"], "Chunks' phone engine Add needs a v1 torrent"
+          assert t["infohash_v1"], "Chunks' local engine Add needs a v1 torrent"
           print("CHUNKS_PUBLIC_SWARM_SOURCE:", m["source_url"], "license:", m["license"],
                 "v1:", t["infohash_v1"], "bytes:", t["total_bytes"], "tracker:", t["tracker_retained"])
           PY

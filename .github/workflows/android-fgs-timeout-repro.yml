@@ -19,9 +19,9 @@ on:
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalEngineRebootInstrumentedTest.kt"
       - "tools/reboot_repro.sh"
       - "tools/test_reboot_repro.sh"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/PhoneIntakeJourneyInstrumentedTest.kt"
-      - "tools/phone_intake_journey.sh"
-      - "tools/test_phone_intake_journey.sh"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalIntakeJourneyInstrumentedTest.kt"
+      - "tools/local_intake_journey.sh"
+      - "tools/test_local_intake_journey.sh"
       - ".github/workflows/android-fgs-timeout-repro.yml"
   workflow_dispatch:
 
@@ -44,8 +44,8 @@ jobs:
         run: bash tools/test_reboot_repro.sh
       - name: Negative-control process death witness (no emulator)
         run: bash tools/test_process_death_repro.sh
-      - name: Negative-control real phone intake witness (no emulator)
-        run: bash tools/test_phone_intake_journey.sh
+      - name: Negative-control real local intake witness (no emulator)
+        run: bash tools/test_local_intake_journey.sh
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -75,4 +75,4 @@ jobs:
           emulator-boot-timeout: 600
           disable-animations: true
           # Timeout first (installs APKs), then the two-process sudden-death repro.
-          script: bash tools/fgs_timeout_repro.sh && bash tools/process_death_repro.sh && bash tools/reboot_repro.sh && bash tools/phone_intake_journey.sh
+          script: bash tools/fgs_timeout_repro.sh && bash tools/process_death_repro.sh && bash tools/reboot_repro.sh && bash tools/local_intake_journey.sh

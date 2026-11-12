@@ -12,7 +12,7 @@ on:
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableNativeStartedAddTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableServerTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
-      # Cross-implementation peer-wire proof (rTorrent <-> phone libtorrent4j engine).
+      # Cross-implementation peer-wire proof (rTorrent <-> local libtorrent4j engine).
       - "app/src/test/java/io/github/gamesbyian/chunks/interop/**"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableBatchLifecycleTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/model/RemoteBatchLifecycle.kt"
@@ -259,7 +259,7 @@ jobs:
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableBatchMoveTest'
           grep -q 'tests="1" skipped="0" failures="0" errors="0"' \
             app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableBatchMoveTest.xml
-      - name: Cross-implementation payload exchange (rTorrent <-> phone engine)
+      - name: Cross-implementation payload exchange (rTorrent <-> local engine)
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
           CHUNKS_DISPOSABLE_RT_PEER_PORT: "6890"
@@ -270,7 +270,7 @@ jobs:
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest.xml
           grep -o 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' "$report" | head -1
           grep -q 'tests="5" skipped="0" failures="0" errors="0"' "$report"
-          echo "CHUNKS_INTEROP: real rTorrent <-> phone exact-byte transfers AND rTorrent magnet metadata + verified peer bytes passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "CHUNKS_INTEROP: real rTorrent <-> local exact-byte transfers AND rTorrent magnet metadata + verified peer bytes passed" >> "$GITHUB_STEP_SUMMARY"
       - name: Authenticated real rTorrent receives independently verified peer bytes
         env:
           CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/AUTHRPC
@@ -284,7 +284,7 @@ jobs:
           # independently verified positive downloaded + piece bytes, SHA1
           # hash-checked complete payload and byte-for-byte source equality.
           gradle --no-daemon :app:testDebugUnitTest \
-            --tests 'io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest.realRTorrentDownloadsExactPayloadSeededByPhoneEngine'
+            --tests 'io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest.realRTorrentDownloadsExactPayloadSeededByLocalEngine'
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest.xml
           grep -q 'tests="1" skipped="0" failures="0" errors="0"' "$report"
           echo "CHUNKS_AUTH_PEER_BYTES: exact challenged principal acquired independently hash-verified pieces and matched original payload bytes" >> "$GITHUB_STEP_SUMMARY"

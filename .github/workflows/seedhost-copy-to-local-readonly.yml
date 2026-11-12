@@ -1,7 +1,7 @@
-name: Seedhost copy-to-phone read-only probe
+name: Seedhost copy-to-local read-only probe
 
 # Owner-approved development inventory (docs/SEEDHOST-REMOTE-TESTING.md).
-# Reads the inventory and lets the phone engine (JVM build) copy the smallest
+# Reads the inventory and lets the local engine (JVM build) copy the smallest
 # complete, active, non-private transfer with the server as its only named
 # peer. Sends NO mutation to the server (it only uploads); the copy is
 # discarded with the runner. Dispatch-only and main-only.
@@ -56,7 +56,7 @@ jobs:
           if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
             ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
           fi
-      - name: Copy one small public transfer from Seedhost with the phone engine
+      - name: Copy one small public transfer from Seedhost with the local engine
         env:
           CHUNKS_COPY_PROBE: authorized
           CHUNKS_LIVE_RUTORRENT_URL: https://ianseeds.wood.seedhost.eu/rutorrent/
@@ -77,10 +77,10 @@ jobs:
           export CHUNKS_COPY_PROBE_PEER_IP="$PEER_IP"
           set +e
           gradle --no-daemon --console=plain :app:testDebugUnitTest \
-            --tests io.github.gamesbyian.chunks.interop.SeedhostServerToPhoneCopyProbeTest >/dev/null 2>&1
+            --tests io.github.gamesbyian.chunks.interop.SeedhostServerToLocalCopyProbeTest >/dev/null 2>&1
           status=$?
           set -e
-          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.SeedhostServerToPhoneCopyProbeTest.xml
+          report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.SeedhostServerToLocalCopyProbeTest.xml
           # Only the fixed marker line leaves the runner: never raw logs or stack traces.
           grep -o 'CHUNKS_SEEDHOST_COPY: [^<]*' "$report" | head -1 | tee -a "$GITHUB_STEP_SUMMARY" || true
           grep -q 'CHUNKS_SEEDHOST_COPY: VERIFIED' "$report" || { echo "::error::Copy probe did not verify (see marker)"; exit 1; }

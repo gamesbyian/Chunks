@@ -15,9 +15,9 @@ on:
       - 'tests/test_owner_torrent_fixture_policy.py'
       - '.gitignore'
       - 'tests/test_ci_native_concurrency.py'
-      - 'tools/phone_intake_journey.sh'
-      - 'tools/test_phone_intake_journey.sh'
-      - 'tests/test_ci_phone_intake.py'
+      - 'tools/local_intake_journey.sh'
+      - 'tools/test_local_intake_journey.sh'
+      - 'tests/test_ci_local_intake.py'
       - '.github/workflows/native-owned-android-link.yml'
       - '.github/workflows/native-owned-writer-experiment.yml'
       - '.github/workflows/native-owned-debug-overlay-smoke.yml'
@@ -120,9 +120,9 @@ on:
       - 'tests/test_owner_torrent_fixture_policy.py'
       - '.gitignore'
       - 'tests/test_ci_native_concurrency.py'
-      - 'tools/phone_intake_journey.sh'
-      - 'tools/test_phone_intake_journey.sh'
-      - 'tests/test_ci_phone_intake.py'
+      - 'tools/local_intake_journey.sh'
+      - 'tools/test_local_intake_journey.sh'
+      - 'tests/test_ci_local_intake.py'
       - '.github/workflows/native-owned-android-link.yml'
       - '.github/workflows/native-owned-writer-experiment.yml'
       - '.github/workflows/native-owned-debug-overlay-smoke.yml'
@@ -262,10 +262,10 @@ jobs:
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_debug_publish_gate.py
       - name: Verify native superseded-run cancellation cannot cross PRs or manual runs
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_native_concurrency.py
-      - name: Verify phone intake harness negatives and existing Android dispatch (offline)
+      - name: Verify local intake harness negatives and existing Android dispatch (offline)
         run: |
-          bash tools/test_phone_intake_journey.sh
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_phone_intake.py
+          bash tools/test_local_intake_journey.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_local_intake.py
       - name: Validate installed real-source magnet reporting without secrets or emulator
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
       - name: Verify protected Seedhost dispatch gates offline

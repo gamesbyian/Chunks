@@ -12,7 +12,7 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteAddProgress.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/SeedhostAndroidAddUiInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
-      - "app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsPhoneAddJourneyInstrumentedTest.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsLocalAddJourneyInstrumentedTest.kt"
       - "tools/real_magnet_peer.py"
       - "tools/disposable_tracker_isolation.py"
       - "tests/test_disposable_tracker_isolation.py"
@@ -42,7 +42,7 @@ on:
         default: false
         required: true
       source:
-        description: "Production source entry path (HTTPS reuses the same real peers and also qualifies phone Place)"
+        description: "Production source entry path (HTTPS reuses the same real peers and also qualifies local Place)"
         type: choice
         options: [https, magnet]
         default: https
@@ -184,7 +184,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
           test -c /dev/kvm
           sudo chmod 0666 /dev/kvm
-      - name: Installed production phone and rTorrent source journeys with real peer pieces
+      - name: Installed production local and rTorrent source journeys with real peer pieces
         uses: reactivecircus/android-emulator-runner@v2
         env:
           CHUNKS_LIVE_RTORRENT_USER: ${{ (inputs.environment == 'live') && secrets.rtorrent_user || '' }}
@@ -252,17 +252,17 @@ jobs:
           path: ${{ runner.temp }}/chunks-real-media/
           retention-days: 14
           if-no-files-found: error
-      - name: Retain phone HTTPS evidence even if remote acceptance fails
+      - name: Retain local HTTPS evidence even if remote acceptance fails
         if: always() && env.CHUNKS_HTTPS_ADD == '1'
         uses: actions/upload-artifact@v4
         with:
-          name: chunks-https-phone-evidence
+          name: chunks-https-local-evidence
           path: |
-            ${{ runner.temp }}/chunks-https-phone.raw
-            ${{ runner.temp }}/chunks-https-phone.xml
-            ${{ runner.temp }}/chunks-https-phone-digest.json
-            ${{ runner.temp }}/chunks-https-phone-witness.txt
-            ${{ runner.temp }}/chunks-https-phone-crash.txt
+            ${{ runner.temp }}/chunks-https-local.raw
+            ${{ runner.temp }}/chunks-https-local.xml
+            ${{ runner.temp }}/chunks-https-local-digest.json
+            ${{ runner.temp }}/chunks-https-local-witness.txt
+            ${{ runner.temp }}/chunks-https-local-crash.txt
           if-no-files-found: warn
           retention-days: 14
       # Failure-only and disposable-only: retain numeric upload/request/choke
