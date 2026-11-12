@@ -597,6 +597,22 @@ internal fun ChunksApp(
     val inspectionFence = remember { RemoteUiRequestFence() }
     val mutationGate = remember { RemoteMutationReadbackGate() }
     val savedAddReconnect = remember { SavedAddProfileReconnect() }
+    // One app-owned continuity lease for the single media inventory session (#1453):
+    // navigating away from Transfers detaches it; any authority change revokes it.
+    val mediaHostLease = remember { io.github.gamesbyian.chunks.media.MediaInventoryHostLease() }
+    androidx.compose.runtime.DisposableEffect(mediaHostLease) { onDispose { mediaHostLease.close() } }
+    val mediaAuthorityWitness = listOf(
+        TransferPrivacyRuntime.lifecycleRevision.toString(),
+        io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore.revision.toString(),
+        if (server != null) aliasScope else "",
+        savedProfiles.joinToString(",") { it.id }
+    ).joinToString("\u0000")
+    LaunchedEffect(mediaAuthorityWitness) {
+        while (true) {
+            mediaHostLease.revokeUnless(mediaAuthorityWitness, android.os.SystemClock.elapsedRealtime())
+            kotlinx.coroutines.delay(60_000L)
+        }
+    }
 
     // A profile switch is a read-only navigation/authentication choice, but
     // it must retire the old authenticated principal before displaying the
@@ -1023,6 +1039,8 @@ internal fun ChunksApp(
             }
         } else if (presentationSection == Section.COMBINED) {
             CombinedTransfersScreen(
+                mediaHostLease = mediaHostLease,
+                mediaHostScope = scope,
                 showNavigationFooter = false,
                 scopeFocusRequest = savedProfileCatalogFocus,
                 onScopeFocusConsumed = { savedProfileCatalogFocus = null },

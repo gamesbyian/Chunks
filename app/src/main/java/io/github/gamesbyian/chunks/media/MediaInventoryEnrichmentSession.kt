@@ -46,6 +46,8 @@ class MediaInventoryEnrichmentSession internal constructor(
     // pendingAutomatic latch; otherwise the only authorized retry gets dropped.
     private val executionMutex = Mutex()
     private var closed = false
+    /** True once [close] revoked this lease; it can never be reopened. */
+    val isClosed: Boolean get() = synchronized(lock) { closed }
     private var snapshot: Snapshot? = null
     private var active: Run? = null
     private var activeJob: Job? = null
