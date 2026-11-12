@@ -108,42 +108,15 @@ class ClipboardPrefillInstrumentedTest {
 
     @Test fun copiedMagnetPrefillsTheForegroundLocalAdd() {
         val link = "magnet:?xt=urn:btih:" + "f".repeat(40) + "&dn=Installed%20clipboard"
-        val local = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
-        val entry = hasText("Transfers") and hasClickAction()
-        // A login remembered by an earlier installed test starts on the server
-        // entry instead; reach the local device the way a person would, from there.
-        waitOrExplain("the local device screen or its entry", 30_000) {
-            rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty() ||
-                rule.onAllNodes(entry).fetchSemanticsNodes().isNotEmpty() ||
-                rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty() &&
-                runCatching { rule.onNodeWithText("Transfers").assertExists() }.isSuccess
+        // The canonical app launches Transfers-first and always exposes the
+        // four-destination footer. The old local-pane gateway is no longer
+        // part of the user journey; opening Add must work from Transfers itself.
+        val transfersDestination = hasText("Transfers") and hasClickAction()
+        waitOrExplain("persistent Transfers destination", 30_000) {
+            rule.onAllNodes(transfersDestination).fetchSemanticsNodes().isNotEmpty()
         }
-        if (rule.onAllNodes(local).fetchSemanticsNodes().isEmpty()) {
-            rule.onNode(entry).performClick()
-            waitOrExplain("device or combined transfer list", 15_000) {
-                rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty() ||
-                    rule.onAllNodesWithText("Open device transfer controls").fetchSemanticsNodes().isNotEmpty() ||
-                    rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()
-            }
-            if (rule.onAllNodes(local).fetchSemanticsNodes().isEmpty()) {
-                // A remembered server makes Transfers show the combined list.
-                // Explicitly open the device inventory, without changing login.
-                rule.onNode(hasScrollToIndexAction())
-                    .performScrollToNode(hasText("Open device transfer controls"))
-                rule.onNodeWithText("Open device transfer controls").performClick()
-            }
-            waitOrExplain("the local device screen", 15_000) {
-                rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty()
-            }
-        }
-        // The journey under test is "copy, then open Add": if the form is already
-        // open on arrival, close it first so opening it is a real transition.
-        // Transfers and Add are separate persistent destinations; ensure
-        // prefill is tested on a genuinely new Add entry.
-        if (rule.onAllNodes(local).fetchSemanticsNodes().isEmpty()) {
-            rule.onNodeWithText("Transfers").performClick()
-            rule.waitForIdle()
-        }
+        rule.onNode(transfersDestination).performClick()
+        rule.waitForIdle()
         // Real API35 snapshots show the unrelated system Pixel Launcher and
         // Messages ANR overlays can steal a healthy Chunks window's focus.
         // Allow only one *exact* system "Wait", and assert real focus before
