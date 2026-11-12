@@ -1,0 +1,332 @@
+{
+  "schema_version": 1,
+  "as_of": "2026-11-12",
+  "type": "Research candidate list, not an implementation task or authorized asset-generation backlog",
+  "source": "observations.json",
+  "instructions": [
+    "Before producing an icon, confirm its feature is required by current Chunks PRODUCT/UX/specs; research-only competitor features do not imply a new product requirement.",
+    "Check docs/design/svg/master-inventory.json and docs/design/svg/icons/catalog.json again against live main; a draft may have been added since this research.",
+    "Use original Chunks-specific SVG geometry and approved visual language. Competitor art is a visual reference, never source to copy.",
+    "Keep alternatives and owner decisions explicit. Do not replace approved icons without owner visual approval.",
+    "Report SVG path, variants/states, screenshots/16-24-32px inspection, and library registration; do not alter app runtime without a separate implementation task."
+  ],
+  "candidates": [
+    {
+      "feature_id": "file-priority",
+      "label": "File priority",
+      "priority": "high",
+      "visual_metaphors": [
+        "up/down importance arrows",
+        "high / normal / low"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "Transmission macOS",
+          "asset": "PriorityHighTemplate.png"
+        },
+        {
+          "client": "Transmission macOS",
+          "asset": "PriorityNormalTemplate.png"
+        },
+        {
+          "client": "Transmission macOS",
+          "asset": "PriorityLowTemplate.png"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "alt-speed",
+      "label": "Alternative speed / slow mode",
+      "priority": "high",
+      "visual_metaphors": [
+        "turtle",
+        "slow badge"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "slow.svg"
+        },
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "slow_off.svg"
+        },
+        {
+          "client": "Transmission macOS",
+          "asset": "TortoiseTemplate.png"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "ratio-limit",
+      "label": "Share ratio / seeding limit",
+      "priority": "high",
+      "visual_metaphors": [
+        "ratio / fraction",
+        "gauge / percentage"
+      ],
+      "notes": "Transmission ratio-symbolic.svg lives in icons/; gallery should use that path.",
+      "upstream_visual_refs": [
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "ratio.svg"
+        },
+        {
+          "client": "Transmission macOS",
+          "asset": "ratio-symbolic.svg"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "force-start",
+      "label": "Force start / bypass queue",
+      "priority": "normal",
+      "visual_metaphors": [
+        "play + emphasis",
+        "play + badge"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "torrent-start-forced.svg"
+        },
+        {
+          "client": "BiglyBT desktop",
+          "asset": "forcestart.png"
+        },
+        {
+          "client": "Transmission macOS",
+          "asset": "ResumeNoWaitOn.png"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "reannounce",
+      "label": "Reannounce to tracker",
+      "priority": "normal",
+      "visual_metaphors": [
+        "megaphone / radio waves",
+        "circular network arrow"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "reannounce.svg"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "piece-map",
+      "label": "Piece availability / hash pieces",
+      "priority": "normal",
+      "visual_metaphors": [
+        "block grid",
+        "segmented strip"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "hash.svg"
+        },
+        {
+          "client": "BiglyBT desktop",
+          "asset": "dl_bar_1g.png"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "sequential",
+      "label": "Sequential downloading / stream first",
+      "priority": "normal",
+      "visual_metaphors": [
+        "ordered play",
+        "numbered segments"
+      ],
+      "notes": "No unambiguous client icon established; treat as text-first design opportunity.",
+      "upstream_visual_refs": [
+        {
+          "client": "LibreTorrent Android",
+          "asset": "ic_screen_record_24px.xml"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "schedule",
+      "label": "Schedule limits / activity",
+      "priority": "normal",
+      "visual_metaphors": [
+        "calendar",
+        "clock"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "LibreTorrent Android",
+          "asset": "ic_schedule_24px.xml"
+        },
+        {
+          "client": "LibreTorrent Android",
+          "asset": "ic_calendar_month_24px.xml"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "dht",
+      "label": "DHT discovery",
+      "priority": "normal",
+      "visual_metaphors": [
+        "network mesh",
+        "DHT text"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "Deluge GTK",
+          "asset": "dht.svg"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "ip-block",
+      "label": "Block peer / IP",
+      "priority": "normal",
+      "visual_metaphors": [
+        "blocked sign",
+        "shield X"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "ip-blocked.svg"
+        },
+        {
+          "client": "BiglyBT desktop",
+          "asset": "Blocked_x.png"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "proxy-vpn",
+      "label": "Proxy / VPN or protected route",
+      "priority": "normal",
+      "visual_metaphors": [
+        "shield / tunnel",
+        "network lock"
+      ],
+      "notes": "I2P/Tor badges are network markers; don't claim they signify general VPN protection.",
+      "upstream_visual_refs": [
+        {
+          "client": "BiglyBT desktop",
+          "asset": "net_I2P_b.png"
+        },
+        {
+          "client": "BiglyBT desktop",
+          "asset": "net_Tor_b.png"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "rss",
+      "label": "RSS subscriptions",
+      "priority": "normal",
+      "visual_metaphors": [
+        "RSS waves"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "application-rss.svg"
+        },
+        {
+          "client": "ruTorrent web",
+          "asset": "toolbar.png"
+        },
+        {
+          "client": "LibreTorrent Android",
+          "asset": "ic_rss_feed_24px.xml"
+        },
+        {
+          "client": "BiglyBT desktop",
+          "asset": "rss.png"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "tags",
+      "label": "Tags / labels",
+      "priority": "normal",
+      "visual_metaphors": [
+        "price tag"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "qBittorrent WebUI",
+          "asset": "tags.svg"
+        },
+        {
+          "client": "LibreTorrent Android",
+          "asset": "ic_label_24px.xml"
+        },
+        {
+          "client": "BiglyBT desktop",
+          "asset": "comment.png"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "notifications",
+      "label": "Notifications",
+      "priority": "normal",
+      "visual_metaphors": [
+        "bell",
+        "notification dot"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "LibreTorrent Android",
+          "asset": "ic_info_24px.xml"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    },
+    {
+      "feature_id": "appearance",
+      "label": "Appearance / themes",
+      "priority": "normal",
+      "visual_metaphors": [
+        "palette",
+        "sun / moon"
+      ],
+      "notes": "",
+      "upstream_visual_refs": [
+        {
+          "client": "LibreTorrent Android",
+          "asset": "ic_palette_24px.xml"
+        }
+      ],
+      "review_status": "unselected; requires owner or agent direction and Chunks feature-authority check"
+    }
+  ]
+}
