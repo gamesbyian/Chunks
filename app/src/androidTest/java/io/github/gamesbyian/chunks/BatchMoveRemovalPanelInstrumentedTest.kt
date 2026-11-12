@@ -46,13 +46,13 @@ class BatchMoveRemovalPanelInstrumentedTest {
                 }
             }
         }
-        rule.onNodeWithText("Remove 2 original local jobs…").performClick()
+        rule.onNodeWithText("Remove 2 original local device jobs…").performClick()
         rule.onNodeWithText("Downloaded files stay on the local device", substring = true).assertExists()
         assertTrue(removed.isEmpty())
         rule.onNodeWithText("Remove original jobs").performScrollTo().performClick()
         rule.waitUntil(10_000) { finished.isNotEmpty() }
         assertEquals(listOf(moves[0].infoHash), removed.toList())
-        assertTrue(finished.single().contains("1 original local jobs verified absent"))
+        assertTrue(finished.single().contains("1 original local device jobs verified absent"))
     }
 
     @Test fun cancelledInFlightRemovalStillReleasesSharedMutationLease() {
@@ -85,7 +85,7 @@ class BatchMoveRemovalPanelInstrumentedTest {
                 }
             }
         }
-        rule.onNodeWithText("Remove 2 original local jobs…").performClick()
+        rule.onNodeWithText("Remove 2 original local device jobs…").performClick()
         rule.onNodeWithText("Remove original jobs").performScrollTo().performClick()
         rule.waitUntil(10_000) { enteredRemoteMutation.get() }
         // Navigation destroys the remembered coroutine scope while the
@@ -115,12 +115,12 @@ class BatchMoveRemovalPanelInstrumentedTest {
                 }
             }
         }
-        rule.onNodeWithText("Remove 2 original local jobs…").performClick()
+        rule.onNodeWithText("Remove 2 original local device jobs…").performClick()
         rule.onNodeWithText("Remove original jobs").assertExists()
         rule.runOnUiThread { activeScope.value = "b".repeat(64) }
         rule.waitForIdle()
         // Same infohashes on another account do not preserve source-removal consent.
-        rule.onNodeWithText("Remove 2 original local jobs…").assertIsNotEnabled()
+        rule.onNodeWithText("Remove 2 original local device jobs…").assertIsNotEnabled()
         assertTrue(removed.isEmpty())
     }
 }
