@@ -9,7 +9,6 @@ on:
       - 'tests/test_reference_accent_kerned.py'
       - 'assets/fonts/experimental/accent-studies/**'
       - 'assets/fonts/experimental/accent-kerned/**'
-      - '.github/workflows/reference-panel-accent-kerned.yml'
   pull_request:
     paths:
       - 'tools/build_reference_accent_kerned.py'
@@ -17,7 +16,6 @@ on:
       - 'tests/test_reference_accent_kerned.py'
       - 'assets/fonts/experimental/accent-studies/**'
       - 'assets/fonts/experimental/accent-kerned/**'
-      - '.github/workflows/reference-panel-accent-kerned.yml'
   workflow_dispatch:
 permissions:
   contents: read
