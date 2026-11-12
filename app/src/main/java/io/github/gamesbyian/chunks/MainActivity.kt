@@ -1637,7 +1637,6 @@ internal fun ChunksApp(
                                     // The full address now carries the path.
                                     rpcPath = ""
                                     server = candidate
-                                    connectionDraftEdited = false
                                     // Only an authenticated, positively verified
                                     // manual/new session clears deliberate Disconnect.
                                     // A failed login cannot re-enable auto retry.
@@ -1710,6 +1709,11 @@ internal fun ChunksApp(
                                         if (remoteFence.current(ticket) && server === candidate &&
                                             credentialChanges.isLatest(connectedUiRevision)) {
                                             savedProfiles = refreshed
+                                            // Only a confirmed paired save makes this draft safe
+                                            // to refill/reconnect after recreation. A full roster,
+                                            // failed vault commit or in-flight IO may leave the
+                                            // previous account in the vault.
+                                            connectionDraftEdited = !(retained && saveThisLogin)
                                             savedLoginPresent = vault.hasSavedLogin() || refreshed.isNotEmpty()
                                             credentialNotice = when {
                                                 !retained -> "Connected, but login remembering settings could not be saved. " +
