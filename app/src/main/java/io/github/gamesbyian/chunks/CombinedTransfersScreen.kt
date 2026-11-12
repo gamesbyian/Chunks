@@ -1849,6 +1849,9 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation, fresh: Boolean = 
     // Same words as the phone and rTorrent rows, from observed facts only.
     if (row.metadataPending == true) "Fetching metadata" else when (row.started) {
         true -> when {
+            // Existing exact-path bytes are being hash-verified before any download
+            // (FOREIGN-PARTIAL-TORRENT-RECOVERY P0); the percentage is check progress.
+            row.checkingExistingData == true -> "Checking existing data"
             row.progressPpm == 1_000_000 -> "Sharing"
             fresh && (row.downloadBytesPerSecond ?: 0L) > 0L -> "Downloading"
             else -> "Started"
@@ -1873,6 +1876,9 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation, fresh: Boolean = 
 internal fun combinedCompactRowFacts(row: UnifiedTransferObservation, fresh: Boolean = false): String = listOf(
     if (row.metadataPending == true) "Fetching metadata" else when (row.started) {
         true -> when {
+            // Existing exact-path bytes are being hash-verified before any download
+            // (FOREIGN-PARTIAL-TORRENT-RECOVERY P0); the percentage is check progress.
+            row.checkingExistingData == true -> "Checking existing data"
             row.progressPpm == 1_000_000 -> "Sharing"
             fresh && (row.downloadBytesPerSecond ?: 0L) > 0L -> "Downloading"
             else -> "Started"
