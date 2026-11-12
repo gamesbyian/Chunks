@@ -1,5 +1,7 @@
 # Chunks next-push handoff: executable entry
 
+**Integration disposition 12 November (live):** #1660 merged in `670bbe59` with all #1655 and #1657 binding documentation; originals #1655/#1657 closed as superseded (no requirements lost). #1653 closed as superseded **only** by open #1659, now rebased cleanly onto this main as code-only `3c5edde4`. #1659 has not merged. Latest earlier combined source `b65054a`: docs, JVM/foundation, R8 and native Add green; API29 delete-data Compose measure/layout crash and installed authenticated rTorrent Details return red. Fresh source-exact CI on `3c5edde4` must qualify separately; never borrow earlier green. Preserve authentic evidence and repair these gates before a safe final merge.
+
 **Start:** Read [AGENTS](../AGENTS.md), live main/open PR heads and checks, [WORK-QUEUE](WORK-QUEUE.md), [COMPLETION-ROADMAP](COMPLETION-ROADMAP.md), [SPEC-COVERAGE](SPEC-COVERAGE.md), [TEST-ARCHITECTURE](TEST-ARCHITECTURE.md) and [CI-POLICY](CI-POLICY.md). No permanent agent numbers or lanes. Prior handoff is preserved in [dated archive](archive/NEXT-PUSH-HANDOFF-SNAPSHOT-2026-11-12.md); do not follow obsolete #1644/#1548 integration instructions.
 
 ## Reconciliation checkpoint: 12 November 2026 (source-exact)
