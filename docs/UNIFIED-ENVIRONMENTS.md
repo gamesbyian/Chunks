@@ -1,6 +1,6 @@
 # Unified local and remote experience (owner contract, 2026-10-28)
 
-**Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID \`local\`. Remote environments are independently named profiles. Local/handset/tablet refers only to hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
+**Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID `local`. Remote environments are independently named profiles. Phone/handset/tablet refers only to physical hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
 
 > **BINDING UI PARITY CORRECTION · 2026-11-09:** [Next-push reconciliation](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md): All environments, Transfers on this device and a named-server scope are **filters of the same Combined-derived compact list** and open the same full Details destination. The legacy local device and server lists/inline expanded cards must not remain separate presentations. The single-row fixed four-destination footer and two/three-across action layout apply across scopes. Exact source environment/account/infohash, capability gating, lock and stale readback remain distinct; a visual filter never grants remote authority. Implementation pending installed acceptance.
 
@@ -10,7 +10,7 @@
 Use the same Details > Share affordance for local and native rTorrent transfers, with unambiguous source environment name/colour and exact torrent identity. A share operation exports metadata only and does not move files, launch a second Add or redirect a source mutation. Expository pairing separately selects one verified Chunks remote profile and one mapped Expository file root; it cannot inherit the combined-view filter as an authorization scope. [Transfer sharing](TRANSFER-SHARING.md) · [Expository file associations](EXPOSITORY-FILE-ASSOCIATIONS.md). **Both planned, not shipped.**
 
 
-**Normative principle:** Chunks is one torrent manager with interchangeable local-local device and rTorrent-backed environments. User-facing workflows, layout, terminology, information hierarchy, navigation and control placement MUST be shared wherever the verified capabilities allow. A divergence requires a concrete engine/server/security/storage capability reason; different implementation technologies alone are not an excuse to create separate applications.
+**Normative principle:** Chunks is one torrent manager with interchangeable on-device and rTorrent-backed environments. User-facing workflows, layout, terminology, information hierarchy, navigation and control placement MUST be shared wherever the verified capabilities allow. A divergence requires a concrete engine/server/security/storage capability reason; different implementation technologies alone are not an excuse to create separate applications.
 
 ## Environment colours and combined Transfers views (owner contract, 2026-10-29)
 
@@ -77,7 +77,7 @@ Use the same advanced Add, queue, network, diagnostics and settings flows in loc
 
 ## Discovery and secondary infrastructure navigation
 
-The integrated [Discover experience](INTAKE-QUEUE-AND-POLICIES.md) is a **Chunks-wide opt-in interface** with an immediate global off switch; any discovery-based Add still requires choosing an exact local device/remote environment, with per-environment limits, Places and seeding rules previewed. Disabled Discovery stops **discovery-source** polling and discovery-triggered unattended Add independently of which environments are connected, but never stops existing torrents or manual Add. On/Off is not silently overridden by a newly added remote profile or an imported settings file.
+The integrated [Discover experience](INTAKE-QUEUE-AND-POLICIES.md) is a **Chunks-wide opt-in interface** with an immediate global off switch; any discovery-based Add still requires choosing an exact local/remote environment, with per-environment limits, Places and seeding rules previewed. Disabled Discovery stops **discovery-source** polling and discovery-triggered unattended Add independently of which environments are connected, but never stops existing torrents or manual Add. On/Off is not silently overridden by a newly added remote profile or an imported settings file.
 
 [Server tools](REMOTE-INTEGRATIONS-AND-PREFERENCES.md) are **remote-profile-specific and secondary** under Servers → selected remote → Server tools. No privileged admin actions or dashboard tiles become first-class Transfers/Add/Details controls; remote-only mode still emphasizes torrent use. Local-only mode has no Server tools screen. Multiple remote profiles never inherit one another's admin credentials/permissions, and a disconnected/unverified profile cannot present an optimistic management action.
 
@@ -104,7 +104,7 @@ The same **Transfers / Files** search entry may inspect metadata from a selected
 
 ## Implementation note: environment identity badges (2026-10-29)
 
-A shared `EnvironmentBadge` (decorative local device/server icon plus text) names the environment on:
+A shared `EnvironmentBadge` (decorative local/server icon plus text) names the environment on:
 - the local device screen header ("On this device");
 - the server Transfers list header ("Server · account @ host/path");
 - the server Add confirmation ("Adding to: Server · …").
