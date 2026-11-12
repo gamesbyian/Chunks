@@ -5,7 +5,7 @@
 
 
 
-**Status:** Owner-approved contract; implementation and automated acceptance are recorded above and in [QUALITY-LEDGER](QUALITY-LEDGER.md). **Scope:** phone-only, remote-only and Combined Add. This is the single detailed source-recognition contract; [PRODUCT](PRODUCT.md), [UX](UX.md), [SECURITY](SECURITY.md) and [WORK-QUEUE](WORK-QUEUE.md) cross-reference it. Preserve accepted A–E evidence; do not start another P0 campaign for unchanged behaviour.
+**Status:** Owner-approved contract; implementation and automated acceptance are recorded above and in [QUALITY-LEDGER](QUALITY-LEDGER.md). **Scope:** local-only, remote-only and Combined Add. This is the single detailed source-recognition contract; [PRODUCT](PRODUCT.md), [UX](UX.md), [SECURITY](SECURITY.md) and [WORK-QUEUE](WORK-QUEUE.md) cross-reference it. Preserve accepted A–E evidence; do not start another P0 campaign for unchanged behaviour.
 
 
 
@@ -19,7 +19,7 @@ The single existing **Add torrent** sheet accepts: (1) a user-selected local `.t
 
 **Clipboard prefill (on by default, opt-out in Add/Options):** On opening or returning focus to the Add screen, when the source input is empty and no already-inbound Android item/draft exists, inspect the clipboard once in the foreground. If it contains a recognizable magnet URI or plausible HTTP(S) torrent link, prepopulate the source field and identify the detected source type. Do not prefetch, start or add from clipboard alone. Never overwrite user-entered source, resumed draft, or Android Share/Open With payload; never monitor clipboard in background or repeatedly poll. A manual **Paste** affordance remains available even when automatic prefill is off. Clipboard access on modern Android may produce a system privacy notice; handle Android version restrictions and unsupported/empty/multiple clipboard items without intrusive prompts. A pasted URL need not have a `.torrent` filename extension; actual torrent validity is decided after explicit user action.
 
-**Source precedence:** explicit current user edit > inbound Android Share/Open With item > restored draft > eligible clipboard suggestion > empty field. Accept a newer explicit share into an occupied draft only with a visible non-destructive choice to replace/keep draft. Never silently switch selected phone/remote profile because a URL or magnet arrived.
+**Source precedence:** explicit current user edit > inbound Android Share/Open With item > restored draft > eligible clipboard suggestion > empty field. Accept a newer explicit share into an occupied draft only with a visible non-destructive choice to replace/keep draft. Never silently switch selected local/remote profile because a URL or magnet arrived.
 
 ## Retrieval, security and errors
 
