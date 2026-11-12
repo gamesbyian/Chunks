@@ -37,7 +37,7 @@ An independent code review of the first head (`4ea4259`) found real gaps, now fi
 
 Not changed, still queued: with both a typed magnet and an explicitly chosen server `.torrent`, the **device** form shows the magnet (it holds one source). Distinct phone handoff and picker paths still record `textAtFileSelection` differently; unify them only together with that owner decision.
 
-A test-harness finding: the JDK `com.sun.net.httpserver` fixture combined with `HttpURLConnection` keep-alive delayed a later POST by the 15 s read timeout. The files-panel tests use the raw `Connection: close` socket fixture that other app tests use. Affected classes after the follow-up: 167 tests, 0 failures, and instrumented sources compile.
+A test-harness observation, **cause not established**: in the first files-panel test design, a third read after an offline→restore sequence never started. With a `com.sun.net.httpserver` fixture it arrived only about 15 s later. With a raw `Connection: close` socket fixture the host composable stopped recomposing entirely. Keep-alive reuse was therefore **not** the cause, and the earlier keep-alive explanation is withdrawn. The test was restructured so that the offline drop is its own case; the stall itself is unexplained. Affected classes after the follow-up: 167 tests, 0 failures, and instrumented sources compile.
 
 ## CI red on `4ea4259`: phone clipboard prefill race (pre-existing, fixed here)
 
@@ -61,4 +61,4 @@ A `MediaInventoryHostLease` (detach the one session when Transfers leaves compos
 
 Correct direction: build the authorized media inventory **above navigation** from live observations (phone frame, authenticated server list, explicitly read saved profiles), so authorization stays dynamic while Transfers is unmounted. Make `replace()` with identical rows and witnesses continue the active run instead of restarting it. Use the privacy *lock* state, not every lifecycle tick, as the revocation witness.
 
-Full local JVM suite with the withdrawn slice: 2,316 tests, 4 failed. Three are the documented sandbox filesystem cases. The fourth, `RemoteAddSessionContinuityTest.lostMutationReplyAndSameAccountReconnectKeepFrozenReadOnlyRecovery`, waits 15 s on a `com.sun.net.httpserver` fixture (the keep-alive stall class above) and **passed twice in isolation**.
+Full local JVM suite with the withdrawn slice: 2,316 tests, 4 failed. Three are the documented sandbox filesystem cases. The fourth, `RemoteAddSessionContinuityTest.lostMutationReplyAndSameAccountReconnectKeepFrozenReadOnlyRecovery`, timed out on a 15 s `waitUntil` under full-suite load and **passed twice in isolation**. Cause not established (possibly the same Robolectric recomposition stall).
