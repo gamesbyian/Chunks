@@ -21,6 +21,19 @@ on:
       # helper to execute in the native Add shards. Concurrent production or
       # any other AndroidTest changes still select the full native Add gate.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/MainActivityRealMagnetJourney.kt"
+      # Test-only edits to these source files are exercised by their dedicated
+      # installed workflow. Mixed changes to production or shared test code
+      # retain the full native Add gate via its positive path patterns.
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SystemFontScaleComposeInstrumentedTest.kt" # compose-system-font-200pct.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ExperimentalTypefaceNativeInstrumentedTest.kt" # experimental-font-android-render.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt" # android-native-low-storage-repro.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SourceTorrentArchiveInstrumentedTest.kt" # installed-source-archive.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt" # installed-remote-delete-data.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt" # native-visual-atlas.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt" # native-visual-atlas.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt" # storage-owned-mediastore-documents.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt" # android10-downloads-instrumentation.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt" # android10-downloads-instrumentation.yml
       - "app/build.gradle.kts"
       # Changes to the test command must re-run this suite.
       - "tools/native_add_review.sh"
@@ -36,7 +49,6 @@ on:
       - "tools/verify_native_add_shards.py"
       - "tools/select_native_add_attempts.py"
       - "tests/test_native_add_attempts.py"
-      - ".github/workflows/native-add-instrumentation.yml"
     # Drafts are implementation batches; run this costly acceptance only when
     # marked ready, then on every subsequent change. Converting back to draft
     # cancels obsolete in-flight work through the PR concurrency group.
