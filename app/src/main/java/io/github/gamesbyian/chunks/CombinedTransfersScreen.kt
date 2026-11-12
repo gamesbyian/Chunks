@@ -1925,12 +1925,7 @@ private fun CombinedTransferRow(
                     color = labelColour, fontWeight = FontWeight.Bold, maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(start = 6.dp))
-                // A nested control: opening Details never toggles the row.
-                if (onToggleExpanded != null) androidx.compose.material3.TextButton(onClick = onDetails,
-                    modifier = Modifier.heightIn(min = 48.dp).semantics {
-                        contentDescription = "Details for ${row.displayName} on $environmentLabel"
-                    }) { Text("Details", style = MaterialTheme.typography.labelMedium) }
-                else Text("Details", style = MaterialTheme.typography.labelSmall,
+                if (onToggleExpanded == null) Text("Details", style = MaterialTheme.typography.labelSmall,
                     color = ChunksColors.TextSecondary)
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
@@ -1944,6 +1939,13 @@ private fun CombinedTransferRow(
                     modifier = Modifier.weight(1f).semantics {
                         contentDescription = row.displayName
                     })
+                // A nested control in the title line (no extra row height): opening Details
+                // never toggles the row.
+                if (onToggleExpanded != null) androidx.compose.material3.TextButton(onClick = onDetails,
+                    contentPadding = PaddingValues(horizontal = 8.dp),
+                    modifier = Modifier.heightIn(min = 48.dp).semantics {
+                        contentDescription = "Details for ${row.displayName} on $environmentLabel"
+                    }) { Text("Details", style = MaterialTheme.typography.labelMedium) }
             }
             // A time estimate needs a live, complete source; last-known facts never get one.
             Text(combinedCompactRowFacts(row, fresh = source?.canClaimCompleteLiveInventory == true),

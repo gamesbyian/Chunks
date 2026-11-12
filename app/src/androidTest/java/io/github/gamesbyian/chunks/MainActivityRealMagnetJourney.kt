@@ -524,7 +524,7 @@ internal class MainActivityRealMagnetJourney(
                 visible("Transfer details") && visible("Environment:")
             }
             assertFalse("Signed-in rTorrent detail opened phone instead",
-                visible("Environment: On this phone"))
+                visible("Environment: On this device"))
             rule.onNodeWithText("Show technical details").performScrollTo().performClick()
             assertTrue("Combined Details lost the exact authenticated rTorrent hash",
                 visible("Exact infohash: $hash"))

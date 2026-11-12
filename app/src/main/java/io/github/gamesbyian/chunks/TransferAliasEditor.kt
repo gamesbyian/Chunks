@@ -65,7 +65,7 @@ internal fun TransferAliasEditor(
     }
     val suggestions = remember(originalName, identifiedSuggestions) {
         (identifiedSuggestions + TransferDisplayNames.suggestions(originalName))
-            .distinctBy { it.name }.filter { it.name != originalName }.take(4)
+            .distinctBy { it.name }.filter { it.name != originalName }.take(3)
     }
     var showSuggestions by rememberSaveable(hash, alias) { mutableStateOf(false) }
 
@@ -78,11 +78,6 @@ internal fun TransferAliasEditor(
         }, modifier = Modifier.heightIn(min = 48.dp)) {
             Text(if (alias == null) "Change list name" else "Edit list name")
         }
-        // A display alias is always reversible to the torrent's own name.
-        if (alias != null) OutlinedButton(onClick = {
-            if (!onSave(null)) editor.problem = "Could not restore the original name."
-        }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Use original name") }
-        if (editor.problem != null) Text(editor.problem.orEmpty())
         return
     }
 

@@ -130,7 +130,7 @@ class PhoneAddHiddenInCombinedInstrumentedTest {
         // Once nonempty, the TextField semantics may expose its value instead
         // of the placeholder. Address the only editable search field by action.
         rule.onNode(hasSetTextAction()).performTextReplacement("no transfer is called this")
-        val notice = "Your new transfer on On this phone is hidden by the current search, filter or environment view."
+        val notice = "Your new transfer on On this device is hidden by the current search, filter or environment view."
         waitFor(30_000) { runCatching {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(notice))
             true

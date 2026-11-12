@@ -372,8 +372,12 @@ class ChunksMainActivityAtlasTest {
                 rule.onAllNodesWithText("View transfers").fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
+            // Wait for the populated rows themselves, not a summary line whose lazy
+            // position depends on how much sits above the list.
             rule.waitUntil(30_000) {
-                rule.onAllNodesWithText("3 transfers", substring = true).fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(
+                    "Details for A deliberately very long test filename", substring = true))
+                    .fetchSemanticsNodes().isNotEmpty()
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
             // Genuine diagnostic from installed app UI. This fixture uses no
@@ -385,13 +389,15 @@ class ChunksMainActivityAtlasTest {
                     "; fixture=" + (fixtureProblem ?: "none") +
                     "; actual native UI=" + ui, failure)
         }
-        rule.onNodeWithText("3 transfers", substring = true).assertExists()
         // Supported Pixel 6-class installed screen: the first actual transfer
         // must be visible without scrolling past introductory panels. This
         // is a viewport requirement, not a server-data or engine assertion.
         rule.onNodeWithText("A deliberately very long test filename", substring = true)
             .assertIsDisplayed()
         save("app-transfers-populated-real-compose")
+        // The complete server inventory (3 transfers) is reported in the live total.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("3 transfers", substring = true))
+        rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
         // Real combined navigation keeps the signed-in server identity, and
         // the four root destinations never imply an Add or a server mutation.
@@ -406,6 +412,7 @@ class ChunksMainActivityAtlasTest {
             rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("3 transfers", substring = true))
         rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
         // The source-first Add route is shared across footer entries.

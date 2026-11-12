@@ -504,8 +504,10 @@ class CombinedTwoRealServersInstrumentedTest {
             // UX "restore connections": an automatic reconnect is not a scope choice and
             // must not overwrite the person's saved environment selection. Check once the
             // reconnect has reached canonical Transfers, before this test itself narrows it.
+            // The authenticated-only control may be below the lazy viewport: scroll, don't
+            // depend on its position (the environment toggle row sits above it).
             waitFor("automatic reconnect reaches canonical Transfers", 90_000) {
-                connectedQueue() || visible("Only connected server")
+                connectedQueue() || runCatching { scrollTo("Only connected server"); true }.getOrDefault(false)
             }
             // "Only connected server" requires the authenticated server; let the same frame's
             // scope effects (the old code's startup focus) run before reading the preference.
