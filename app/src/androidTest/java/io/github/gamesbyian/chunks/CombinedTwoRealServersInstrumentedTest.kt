@@ -507,6 +507,9 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("automatic reconnect reaches canonical Transfers", 90_000) {
                 connectedQueue() || visible("Only connected server")
             }
+            // "Only connected server" requires the authenticated server; let the same frame's
+            // scope effects (the old code's startup focus) run before reading the preference.
+            rule.waitForIdle()
             assertEquals(io.github.gamesbyian.chunks.model.EnvironmentViewScope.All,
                 viewPreferences.load().scope)
             // Run 41789912090: with a remembered verified server, launch opens

@@ -26,3 +26,15 @@ A third precedence case (magnet then `.torrent` on the **device** target, then s
 ## Local verification
 
 Targeted classes pass after the change: `UniversalAddSourcePrecedenceTest` (3), `CanonicalRemoteFilesRefreshContinuityTest` (1), `CanonicalRemoteFilesEligibilityTest`, `RemoteAddSessionContinuityTest` (6), `ExternalSourceReplacementTest`. Full local JVM suite on the changed tree: **2,309 tests, 4 failed, 57 skipped**. The four failures are the sandbox-only set already documented in the [pass-2 audit](OPEN-PR-RECONCILIATION-2026-11-11-PASS2.md): two `CreateSeedCopyAcquisitionRaceTest` and one `LocalCheckedPayloadReservationsTest` root-user filesystem cases, and `CombinedTransfersScreenTest.oldAccountBatchConfirmationCannotBeReusedForSameHashOnAnotherAccount`, which **passes in isolation** on this tree. Instrumented sources compile (`:app:compileDebugAndroidTestKotlin`). Exact-head CI results are appended below when available.
+
+## Independent review follow-up (same PR, #1650)
+
+An independent code review of the first head (`4ea4259`) found real gaps, now fixed:
+
+- A server-form `.torrent` cleared the text but left an **older device `.torrent`** as the parent's reviewed document, so a target round trip could restore the older file. The server picker and HTTPS intake now adopt the newest file as the app's one reviewed document. New red-first case `newerServerTorrentReplacesOlderDeviceTorrentOnBothTargets`.
+- The kept-while-stale file list ignored *why* the owner was stale. Canonical Details now keeps it only for a transient `CURRENT`/`STALE` read; `OFFLINE`, `LOCKED`, `INCOMPLETE`, `NOT_IN_CURRENT_LIST` and `ENVIRONMENT_MISSING` drop it (`offlineOrNoLongerListedOwnerDropsTheFileList`). Copy no longer promises a list that is absent, and a transient re-read timeout/error keeps the previous list read-only beside the error instead of discarding page/search.
+- The installed startup-scope assertion now waits for idle after the authenticated-only "Only connected server" control appears, so the old startup focus effect would have run before the preference is read.
+
+Not changed, still queued: with both a typed magnet and an explicitly chosen server `.torrent`, the **device** form shows the magnet (it holds one source). Distinct phone handoff and picker paths still record `textAtFileSelection` differently; unify them only together with that owner decision.
+
+A test-harness finding: the JDK `com.sun.net.httpserver` fixture combined with `HttpURLConnection` keep-alive delayed a later POST by the 15 s read timeout. The files-panel tests use the raw `Connection: close` socket fixture that other app tests use. Affected classes after the follow-up: 167 tests, 0 failures, and instrumented sources compile.

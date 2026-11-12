@@ -43,31 +43,50 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
 class CanonicalRemoteFilesRefreshContinuityTest {
     @get:Rule val rule = createComposeRule()
-    private val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
+    private var socket: java.net.ServerSocket? = null
     private val methods = CopyOnWriteArrayList<String>()
 
-    @After fun stop() = server.stop(0)
+    @After fun stop() { socket?.close() }
 
     private fun rows(count: Int) = (0 until count).joinToString("") {
         "<value><array><data><value><string>Season 1/Episode $it.mkv</string></value>" +
             "<value><i8>${1_000L + it}</i8></value><value><i8>1</i8></value></data></array></value>"
     }
 
+    private fun serve(listening: java.net.ServerSocket) {
+        Thread {
+            while (!listening.isClosed) try { listening.accept().use { connection ->
+                val reader = connection.getInputStream().bufferedReader()
+                reader.readLine() ?: return@use
+                var length = 0
+                while (true) {
+                    val line = reader.readLine() ?: return@use
+                    if (line.isEmpty()) break
+                    if (line.startsWith("Content-Length:", true)) length = line.substringAfter(":").trim().toInt()
+                }
+                val body = CharArray(length).also { var read = 0; while (read < length) read += reader.read(it, read, length - read) }
+                val method = Regex("<methodName>([^<]+)</methodName>").find(String(body))!!.groupValues[1]
+                methods += method
+                // Each read is distinguishable: request N reports 89 + N files.
+                val reply = if (method == "f.multicall")
+                    "<params><param><value><array><data>${rows(89 + methods.size)}</data></array></value></param></params>"
+                else "<fault><value><struct><member><name>faultCode</name><value><int>1</int></value></member>" +
+                    "<member><name>faultString</name><value><string>no</string></value></member></struct></value></fault>"
+                val bytes = "<methodResponse>$reply</methodResponse>".toByteArray()
+                connection.getOutputStream().apply {
+                    write(("HTTP/1.1 200 OK\r\nContent-Type: text/xml\r\nContent-Length: ${bytes.size}\r\n" +
+                        "Connection: close\r\n\r\n").toByteArray())
+                    write(bytes); flush()
+                }
+            } } catch (_: Exception) {}
+        }.apply { isDaemon = true; start() }
+    }
+
     @Test fun refreshKeepsFileSearchAndSelectionButNotAnotherJob() {
-        server.createContext("/RPC2") { exchange ->
-            val xml = exchange.requestBody.bufferedReader().use { it.readText() }
-            val method = Regex("<methodName>([^<]+)</methodName>").find(xml)!!.groupValues[1]
-            methods += method
-            val reply = if (method == "f.multicall")
-                "<params><param><value><array><data>${rows(90)}</data></array></value></param></params>"
-            else "<fault><value><struct><member><name>faultCode</name><value><int>1</int></value></member>" +
-                "<member><name>faultString</name><value><string>no</string></value></member></struct></value></fault>"
-            val bytes = "<methodResponse>$reply</methodResponse>".toByteArray()
-            exchange.sendResponseHeaders(200, bytes.size.toLong())
-            exchange.responseBody.use { it.write(bytes) }
-        }
-        server.start()
-        val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:${server.address.port}/RPC2", "", ""))
+        val listening = java.net.ServerSocket(0, 16, java.net.InetAddress.getByName("127.0.0.1"))
+        socket = listening
+        serve(listening)
+        val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:${listening.localPort}/RPC2", "", ""))
         val scope = remote.addAccountScope()
         val first = RemoteTransfer("a".repeat(40), "Season", 100, 30, false, "/shows", 0, 0)
         val transfer = mutableStateOf(first)
@@ -76,7 +95,8 @@ class CanonicalRemoteFilesRefreshContinuityTest {
         rule.setContent { ChunksTheme { Surface { Column(Modifier.verticalScroll(rememberScrollState())) {
             CanonicalRemoteFilesControls(remote, transfer.value, scope, snapshotStale = stale.value,
                 mainView = true, snapshotRevision = revision.longValue,
-                onMutationStarted = { error("Reading and refreshing files never writes") }, onSettled = {})
+                onMutationStarted = { error("Reading and refreshing files never writes") }, onSettled = {},
+                retainDuringRefresh = true)
         } } } }
 
         rule.onNodeWithText("Files & priorities…").performClick()
@@ -98,7 +118,7 @@ class CanonicalRemoteFilesRefreshContinuityTest {
             "Reading this transfer's files", substring = true).fetchSemanticsNodes().isEmpty() }
         // Search and the selected file survived the refresh and its fresh exact-job re-read.
         rule.onNode(hasSetTextAction() and hasText("Episode 77")).assertExists()
-        rule.onNodeWithText("Showing 1 of 90 file paths · filtered").assertExists()
+        rule.onNodeWithText("Showing 1 of 91 file paths · filtered").assertExists()
         rule.onNodeWithText("Edit one file priority").assertExists()
         rule.onNodeWithText("Review priority change").performScrollTo().assertIsNotEnabled()
 
@@ -109,5 +129,29 @@ class CanonicalRemoteFilesRefreshContinuityTest {
             .fetchSemanticsNodes().isEmpty())
         assertEquals(listOf("f.multicall", "f.multicall"), methods.toList())
         assertFalse(methods.any { it.startsWith("f.priority") || it.startsWith("d.") })
+    }
+
+    @Test fun offlineOrNoLongerListedOwnerDropsTheFileList() {
+        val listening = java.net.ServerSocket(0, 16, java.net.InetAddress.getByName("127.0.0.1"))
+        socket = listening
+        serve(listening)
+        val remote = RTorrentRemote(RemoteCredentials("http://127.0.0.1:${listening.localPort}/RPC2", "", ""))
+        val transfer = RemoteTransfer("a".repeat(40), "Season", 100, 30, false, "/shows", 0, 0)
+        val stale = mutableStateOf(false)
+        val transient = mutableStateOf(true)
+        rule.setContent { ChunksTheme { Surface { Column(Modifier.verticalScroll(rememberScrollState())) {
+            CanonicalRemoteFilesControls(remote, transfer, remote.addAccountScope(), snapshotStale = stale.value,
+                mainView = true, snapshotRevision = 1L,
+                onMutationStarted = { error("Reading files never writes") }, onSettled = {},
+                retainDuringRefresh = transient.value)
+        } } } }
+        rule.onNodeWithText("Files & priorities…").performClick()
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("90 server-reported files").fetchSemanticsNodes().isNotEmpty() }
+        rule.runOnIdle { stale.value = true; transient.value = false }
+        rule.waitForIdle()
+        assertTrue("An offline/locked/missing owner keeps no previous file list",
+            rule.onAllNodesWithText("90 server-reported files").fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithText("Waiting for a current server inventory", substring = true).assertExists()
+        assertEquals(listOf("f.multicall"), methods.toList())
     }
 }

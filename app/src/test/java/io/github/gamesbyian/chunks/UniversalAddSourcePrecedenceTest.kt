@@ -113,19 +113,22 @@ class UniversalAddSourcePrecedenceTest {
 
     /** A real v1 single-file metainfo; its infohash is computed by the production reader. */
     private fun b(text: String) = "${text.toByteArray().size}:$text"
-    private val document = ("d8:announce" + b("https://tracker.example/announce") + "4:infod6:lengthi5e" +
-        "4:name" + b("newest.mkv") + "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
+    private fun torrent(name: String) = ("d8:announce" + b("https://tracker.example/announce") +
+        "4:infod6:lengthi5e4:name" + b(name) + "12:piece lengthi16384e6:pieces20:01234567890123456789ee")
+        .toByteArray()
+    private val document = torrent("newest.mkv")
 
-    private fun pickTorrentThroughAndroidPicker() {
-        val uri = Uri.parse("content://chunks.test.documents/newest.torrent")
-        shadowOf(rule.activity.contentResolver).registerInputStream(uri, document.inputStream())
-        list().performScrollToNode(hasText("Open .torrent"))
-        rule.onNodeWithText("Open .torrent").performClick()
+    private fun pickTorrentThroughAndroidPicker(bytes: ByteArray = document, shownName: String = "newest.mkv") {
+        val uri = Uri.parse("content://chunks.test.documents/" + shownName + ".torrent")
+        shadowOf(rule.activity.contentResolver).registerInputStream(uri, bytes.inputStream())
+        // The server form is a lazy list; the device form is an ordinary scrolling column.
+        runCatching { list().performScrollToNode(hasText("Open .torrent")) }
+        rule.onNodeWithText("Open .torrent").performScrollTo().performClick()
         rule.waitForIdle()
         val started = shadowOf(rule.activity).nextStartedActivityForResult
         assertEquals(Intent.ACTION_OPEN_DOCUMENT, started.intent.action)
         shadowOf(rule.activity).receiveResult(started.intent, Activity.RESULT_OK, Intent().setData(uri))
-        waitForText("newest.mkv")
+        waitForText(shownName)
     }
 
     private fun assertNoWriteRpc() = assertFalse("Choosing sources/targets must not write: $methods",
@@ -163,6 +166,31 @@ class UniversalAddSourcePrecedenceTest {
         waitForText("newest.mkv")
         assertTrue("Server target must still review the chosen .torrent, not the old magnet",
             rule.onAllNodesWithText("OlderTypedMagnet", substring = true).fetchSemanticsNodes().isEmpty())
+        assertNoWriteRpc()
+    }
+
+    /** A newer server-form .torrent replaces an older device-form .torrent on every target. */
+    @Test fun newerServerTorrentReplacesOlderDeviceTorrentOnBothTargets() {
+        connect()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
+        rule.waitForIdle()
+        pickTorrentThroughAndroidPicker(torrent("older-device.mkv"), "older-device.mkv")
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.waitForIdle()
+        waitForText("older-device.mkv")
+        pickTorrentThroughAndroidPicker(torrent("newer-server.mkv"), "newer-server.mkv")
+
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
+        rule.waitForIdle()
+        waitForText("newer-server.mkv")
+        assertTrue("Device target must review the newer file",
+            rule.onAllNodesWithText("older-device.mkv", substring = true).fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.waitForIdle()
+        waitForText("newer-server.mkv")
+        assertTrue("Server target must not resurrect the older device file",
+            rule.onAllNodesWithText("older-device.mkv", substring = true).fetchSemanticsNodes().isEmpty())
         assertNoWriteRpc()
     }
 

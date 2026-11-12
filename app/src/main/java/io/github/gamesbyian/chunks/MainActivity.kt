@@ -2119,6 +2119,13 @@ internal fun ChunksApp(
                         observedPlaces = observedPlaces,
                         initialTorrent = serverHandoffTorrent,
                         onInitialTorrentConsumed = { serverHandoffTorrent = null },
+                        // The newest explicit server-form .torrent replaces any older phone
+                        // review, so a target switch can never resurrect the superseded file.
+                        onTorrentAdopted = { preview, bytes ->
+                            phoneReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf())
+                            serverHandoffTorrent = null
+                            phoneHandoffTorrentUri = null
+                        },
                         finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
                         environmentLabel = serverEnvironmentLabel(aliasScope),
                         onMagnet = { magnet = it }, onDestination = { addSession.destination = it },

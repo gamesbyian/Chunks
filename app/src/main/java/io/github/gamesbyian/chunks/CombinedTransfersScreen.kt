@@ -1035,7 +1035,9 @@ internal fun CombinedTransfersScreen(
                         mainView = owner.fullView,
                         snapshotRevision = owner.snapshotRevision,
                         onMutationStarted = mutation.begin,
-                        onSettled = mutation.settled
+                        onSettled = mutation.settled,
+                        retainDuringRefresh = details.readState == TransferDetailReadState.CURRENT ||
+                            details.readState == TransferDetailReadState.STALE
                     )
                 }
             }) else null,
