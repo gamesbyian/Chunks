@@ -31,15 +31,19 @@
 - Automatically interpret the transfer name and available authorized file evidence, then, once permitted and network/provider-capable, perform bounded asynchronous lookup for all eligible visible authorized transfers (not only composed rows or opened details). **Confident** provider matches become durable assignments and posters across all lists and Details. An ambiguous/no-provider/offline/consent-blocked result remains honest and actionable without implying a verified title. A recognized filename title (“Looks like: Hackers · Movie · 1995”) does not itself constitute a provider-verified match. Never display an inexplicable “Not identified” plus a mandatory Identify workflow for routine eligible content.
 - Verify why auto-enrichment is not happening: online lookup enabled/explicit OFF, global automation, per-Add exclusion, network metering/power-saver, provider configuration/cooldown, privacy authorization, scheduler coverage, stale inventory and artwork fetch. Do not assume one cause solely from screenshots. Never use raw private torrent names, passkeys, trackers, auth or paths in outbound requests.
 
-## Source audit: actual current defects, not merely design tastes
+## Live source review: verify implemented UX, do not repeat historical fixes
 
-- `MainActivity.kt` still has distinct `Section.LOCAL`, `Section.TRANSFERS` and `Section.COMBINED` paths. Old rTorrent `TransferCard` toggles `detailsOpen`; `CombinedTransfersScreen.kt` already has `EnvironmentViewScope.Only`, compact `CombinedTransferRow` and `UnifiedTransferDetailPanel`. Collapse routing onto the latter, retaining adapter-specific operations by capability.
-- `AuthenticatedTransfersFooter.kt` explicitly stacks at `maxWidth < 400.dp || fontScale >= 1.3f`. Replace with the owner-approved one-row solution, including actual narrow/large-text tests.
-- `TransferMediaDetailSection.kt` currently mounts `TransferAutomaticMetadataToggle` in active Details. Relocate that decision to Add, only under the global feature condition; keep its exact-job preference/safety semantics. The Add-path integration must be with the **single shared Universal Add coordinator**.
-- **Historical source observation superseded by owner default change:** older settings had lookup OFF, while the new implementation defaults online title lookup and automatic lookup ON with saved OFF respected. Independently audit provider, scheduler, privacy fences and metered/power-saver restrictions; no request when disabled or unauthorized.
-- `MediaMetadataSummary` renders local recognition “Looks like” without an accepted `match`, and the state badge still says “Not identified”. Improve accurate stage/reason display and the background processing path, not by blindly calling every filename a confirmed provider match.
+Before implementing or changing UI, inspect the **current** source, current owner decisions and [feature experience contract](FEATURE-EXPERIENCE-CONTRACT.md). The 9 November observations that motivated the canonical navigation, one-row footer, Add-only artwork choice and default-on lookup are **historical diagnoses**, not proof that these defects still exist:
 
-## Implementation slices, file boundaries and independence
+- Verify that `MainActivity.kt` routes local, All and each saved remote profile into the canonical `CombinedTransfersScreen.kt` and `UnifiedTransferDetailPanel`; do not recreate old server/phone-only transfer lists.
+- Verify `AuthenticatedTransfersFooter.kt` keeps the approved single-row four-root footer, correct actual-selected state and compact action layout on the primary Pixel. Secondary small-screen adaptation remains required but is not a universal P0 gate.
+- Verify the auto-identification exclusion choice occurs in the one Universal Add form only when global enabled, never in active Details; preserve the exact-job preference and one coordinator.
+- Default-on sanitized online lookup and the activity-lifetime media inventory host are merged. Check the remaining real-provider/startup-before-Transfers, revocation, zero-HTTP and offscreen evidence; do not dispatch an implementation of already merged code.
+- If the user sees a local recognition hypothesis without a provider match, show an accurate stage/reason rather than asserting it was identified. Assess actual rendered compact row and full Details, including honest loading and error states, as part of implementation.
+
+## Implementation domains and shared boundaries (not permanent agent lanes)
+
+The following domains are examples of changes that can be worked together or separately, depending on the current dispatch. They are not fixed agent assignments; check current main before following historical implementation examples.
 
 **Slice A (navigation/UX):** One-row footer + responsive shared action-grid utility and first representative screens; then unify All/phone/server list scopes onto Combined row/Details. Keep a screenshot/semantics action inventory, focus and 320/412dp/200% handling. Touch no Add coordinator or rTorrent RPC implementation.
 

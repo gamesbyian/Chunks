@@ -14,6 +14,7 @@ Name the category of every new assertion in its test's KDoc. One test may hold s
 | **Data-integrity** | Identity and persistence: infohash/profile identity, no blind retry, no write on refusal, restore/process-death state, exact-job scope. | Anything visual. | JVM, then real disposable engines |
 | **Navigation** | Reaching a capability and returning: one canonical Transfers list, footer roots, Back, deep links, restore. | Screen *names* and titles beyond the stable root ids. | JVM + installed |
 | **Accessibility** | Named controls, 48dp-class targets, 200% font, IME, TalkBack semantics, non-colour status, contrast, reduced motion. | Exact wording (assert a non-empty accessible name, not its text). | JVM + installed |
+| **Presentation-conformity** | Rendered screen follows owner-approved hierarchy, density, shared components, typography/colour, action grouping, state clarity and visual direction. Reviewer records which actual image and reference were inspected and any deviations. | Capturing an image alone, unapproved pixel-perfect golden, obsolete screen copy or specific coordinates. | Proportionate human/agent review of native/Robolectric captures; targeted structural checks |
 | **Visual-regression** | An *approved baseline* image compared pixel-wise. **None exists today.** See section 4. | n/a | n/a until baselines are approved |
 | **Evidence-inventory** | That reviewable artifacts (screenshots, receipts, JUnit counts) were produced and are classified. | Meaning of the pixels. It proves a producer exists, not that the screen is right. | Offline contracts |
 
@@ -42,6 +43,10 @@ Literal copy **is** the requirement for: destructive-action and consent wording,
 - **Approved visual-regression baselines** do not exist: no golden images are committed and Roborazzi runs in record mode. Do not describe any capture as a regression guard. Introducing baselines requires a reviewed approval step and a separate verify task; it is not implied by capturing.
 - [`tools/native_atlas_manifest.json`](../tools/native_atlas_manifest.json) classifies **every** installed screenshot producer as `required` (names the capability and the requirement it evidences), `evidence_only` (kept, never gating), or `retired` (records date, reason, requirement and replacement verification). `tools/check_native_atlas_contract.py` fails on an unclassified producer, a required image with no producer, or a retired entry missing its reason or replacement.
 - Retire a screen by moving its entry to `retired`; never delete the entry or its requirement. A removed screen needs no screenshot, but its requirement still needs a verifier.
+
+### Presentation acceptance without golden images
+
+For any UI-facing feature, follow [FEATURE-EXPERIENCE-CONTRACT](FEATURE-EXPERIENCE-CONTRACT.md). Select representative actual-render state(s), inspect them against the intended design and report findings in the PR: screenshot source and viewport, checked hierarchy/density/feedback, observed deviations, and whether physical-owner approval is still pending. Use semantic/layout relationships as automated guards where stable. An image whose producer exists is **evidence inventory**; only review of the contents provides presentation-conformity evidence. Do not fail unrelated engine-only PRs for lack of UI screenshots, and do not claim a visual-review gate runs in CI unless it actually does.
 
 ## 5. Deliberate UX change: reconcile, never bypass
 

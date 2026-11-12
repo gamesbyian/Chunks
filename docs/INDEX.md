@@ -1,6 +1,6 @@
 # Chunks documentation index
 
-**Integration disposition 12 November (live):** #1660 merged in `670bbe59` with all #1655 and #1657 binding documentation; originals #1655/#1657 closed as superseded (no requirements lost). #1653 closed as superseded **only** by open #1659, now rebased cleanly onto this main as code-only `3c5edde4`. #1659 has not merged. Latest earlier combined source `b65054a`: docs, JVM/foundation, R8 and native Add green; API29 delete-data Compose measure/layout crash and installed authenticated rTorrent Details return red. Fresh source-exact CI on `3c5edde4` must qualify separately; never borrow earlier green. Preserve authentic evidence and repair these gates before a safe final merge.
+**Current integration:** Determine live main and open PRs from GitHub, not a dated index entry. #1662 and #1663 supplied verified runtime advances; acceptance details, previous red CI and source SHA receipts live in [QUALITY-LEDGER](QUALITY-LEDGER.md). Active work and remaining experience acceptance are governed by [WORK-QUEUE](WORK-QUEUE.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md).
 
 **New binding design and recovery contracts:** [Eight solid-colour Options cards](design/OPTIONS-SOLID-COLOUR-INDEX.md) and [Options information architecture](OPTIONS-INFORMATION-ARCHITECTURE.md); [existing and foreign partial-data reuse](FOREIGN-PARTIAL-TORRENT-RECOVERY.md), [local collision policy](LOCAL-TORRENT-COLLISION-POLICY.md), and [existing-transfer file repair](TRANSFER-FILE-RECOVERY.md). These are planned product requirements, not implementation evidence.
 
@@ -14,6 +14,8 @@
 **Product instructions:** [PRODUCT](PRODUCT.md) · [UX](UX.md) · [ARCHITECTURE](ARCHITECTURE.md) · [SECURITY](SECURITY.md) · [DECISIONS](DECISIONS.md). The [owner-approved unified UX/media requirements](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) specify the single-row footer, All/device/server list parity, Add-only metadata choice and automatically applied artwork, while [OPTIONS](OPTIONS-INFORMATION-ARCHITECTURE.md), [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md) and [SMART-ROUTING](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) govern the domain specifics.
 
 **Current integration audit:** [18-PR reconciliation and remaining 17 dependencies](archive/OPEN-PR-RECONCILIATION-2026-11-11.md) records source-head test holds and the safely merged #1636 focus fix. The [active queue](WORK-QUEUE.md) remains the only executable backlog. **Second pass (merged #1640, assembled #1644, child-conflict map, local test setup):** [second-pass audit](archive/OPEN-PR-RECONCILIATION-2026-11-11-PASS2.md).
+
+**Feature delivery:** [FEATURE-EXPERIENCE-CONTRACT](FEATURE-EXPERIENCE-CONTRACT.md) integrates screen placement, interaction states, visual evidence and separate experience acceptance with engineering implementation. It does not create a new backlog or require a full redesign for internal-only changes.
 
 **Test standard:** [TEST-ARCHITECTURE](TEST-ARCHITECTURE.md) defines assertion categories, stable semantic ids, screenshot evidence versus baselines, UX-change reconciliation and failure classification; its [audit record](archive/TEST-ARCHITECTURE-AUDIT-2026-11-11.md) lists the obsolete assertions found and gaps.
 
