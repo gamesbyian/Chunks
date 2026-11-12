@@ -1254,17 +1254,21 @@ internal fun remoteDefaultUnavailableReason(
 /** Scope stays visible before someone chooses a magnet, file or destination. */
 @Composable
 internal fun RemoteAddScopeIntro(environmentLabel: String?, aliasScope: String?) {
-    Text("Add a download to this server", style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Black)
+    // "Add a transfer" already titles the screen; the target is stated once, compactly.
     environmentLabel?.let { label ->
         EnvironmentBadge("Adding to: $label", server = true,
             environment = aliasScope?.let {
                 io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(it)
             })
     }
-    // The visible controls already say how to add and where; keep only the
-    // facts a person could otherwise get wrong (where bytes go, who seeds).
-    Text("Downloads to this server's own folder. Nothing is copied to this phone by Add. " +
+    // Facts a person could get wrong (where bytes go, who seeds), available on request
+    // rather than dominating the ordinary source → target → Save to → Start → Add flow.
+    var showAbout by rememberSaveable { mutableStateOf(false) }
+    TextButton(onClick = { showAbout = !showAbout }, modifier = Modifier.heightIn(min = 48.dp)
+        .semantics { stateDescription = if (showAbout) "Expanded" else "Collapsed" }) {
+        Text(if (showAbout) "Hide details about adding to a server" else "About adding to a server")
+    }
+    if (showAbout) Text("Downloads to this server's own folder. Nothing is copied to this phone by Add. " +
         "Saved Chunks server-seeding rules are not applied yet; rTorrent controls seeding.",
         style = MaterialTheme.typography.bodySmall)
 }

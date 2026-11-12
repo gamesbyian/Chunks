@@ -1789,6 +1789,16 @@ internal fun identifiedMediaNameSuggestions(
         "Identified media (" + confident.attribution.providerName + ")"))
 }
 
+/**
+ * rTorrent names a magnet that is still fetching its metadata `<infohash>.meta`. That is a
+ * legitimate state, so it is shown, but as a short readable title instead of 45 characters
+ * of hex; the full name stays in the accessible label and Details.
+ */
+internal fun compactTransferTitle(name: String): String {
+    val meta = Regex("(?i)^([0-9a-f]{40})\\.meta$").matchEntire(name.trim()) ?: return name
+    return "Magnet " + meta.groupValues[1].take(8).lowercase() + "… (fetching metadata)"
+}
+
 internal fun rowKeyText(key: UnifiedTransferKey): String = key.environment.value + "|" + key.infoHash
 
 /** Compact toggle text: the device, or a server's short profile name without its prefix. */
@@ -1908,7 +1918,10 @@ private fun CombinedTransferRow(
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 EnvironmentDot(hue, size = 8)
-                Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelSmall,
+                // Short profile name beside its colour; the exact server identity stays in
+                // the spoken name, Details and Connections.
+                Text(environmentToggleName(row.key.environment, visibleEnvironmentLabel ?: environmentLabel),
+                    style = MaterialTheme.typography.labelSmall,
                     color = labelColour, fontWeight = FontWeight.Bold, maxLines = 1,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).padding(start = 6.dp))
@@ -1924,7 +1937,8 @@ private fun CombinedTransferRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TransferRowArtwork(row.key, row.originalName,
                     hidden = source?.availability == EnvironmentAvailability.LOCKED)
-                Text(row.displayName, style = MaterialTheme.typography.titleSmall,
+                Text(compactTransferTitle(row.displayName), style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f).semantics {

@@ -6,6 +6,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.test.performClick
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -29,8 +30,10 @@ class RemoteAddScopeIntroTest {
                 } }
             }
         }
-        rule.onNodeWithText("Add a download to this server").assertExists()
         rule.onNodeWithText("Adding to: Seedbox 2").assertExists()
+        // The copy/seeding boundary stays one tap away, not dominant default content.
+        rule.onNodeWithText("Nothing is copied to this phone by Add.", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("About adding to a server").performClick()
         rule.onNodeWithText("Nothing is copied to this phone by Add.", substring = true).assertExists()
         rule.onNodeWithText("Saved Chunks server-seeding rules are not applied yet;", substring = true).assertExists()
     }
@@ -41,7 +44,7 @@ class RemoteAddScopeIntroTest {
         rule.setContent {
             ChunksTheme { Surface { RemoteAddScopeIntro(null, null) } }
         }
-        rule.onNodeWithText("Add a download to this server").assertExists()
+        rule.onNodeWithText("About adding to a server").assertExists()
         rule.onNodeWithText("Adding to:", substring = true).assertDoesNotExist()
     }
 }
