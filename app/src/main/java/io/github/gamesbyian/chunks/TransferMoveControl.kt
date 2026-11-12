@@ -246,7 +246,8 @@ internal fun TransferMoveControl(
     }
     var working by remember(infoHash) { mutableStateOf(false) }
     var message by remember(infoHash) { mutableStateOf<String?>(null) }
-    val destination = if (direction == Direction.LOCAL_TO_SERVER) "server" else "local"
+    val destination = if (direction == Direction.LOCAL_TO_SERVER) "server" else "local device"
+    val addTarget = if (direction == Direction.LOCAL_TO_SERVER) "server" else "local"
     val destinationDisplay = if (direction == Direction.LOCAL_TO_SERVER) "server" else "the local device"
     val source = if (direction == Direction.LOCAL_TO_SERVER) "local device" else "server"
 
@@ -321,7 +322,7 @@ internal fun TransferMoveControl(
                         if (store.save(started)) { record = started; onStartMove() }
                         else message = "Chunks could not save the Move. Nothing changed."
                     }, enabled = !busy, modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                        Text("Review $destination Add")
+                        Text("Review $addTarget Add")
                     }
                     OutlinedButton(onClick = { confirmingStart = false },
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)) { Text("Cancel") }

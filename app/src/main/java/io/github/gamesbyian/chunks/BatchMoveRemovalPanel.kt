@@ -40,7 +40,7 @@ internal fun BatchMoveRemovalPanel(
     forget: (TransferMove.Record) -> Boolean,
     onFinished: (String) -> Unit,
     /** Where the original jobs live, for the confirmation text. */
-    sourceLabel: String = "local",
+    sourceLabel: String = "local device",
     /** Remote mutation gate for server-side removals; false means try later. */
     onStarted: () -> Boolean = { true },
     onSettled: () -> Unit = {}
