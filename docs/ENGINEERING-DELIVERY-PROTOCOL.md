@@ -20,6 +20,8 @@ Perform a second *capability-family scan* before new features: media identity po
 
 ## The measurable objective
 
+For every user-visible change, apply the [feature experience contract](FEATURE-EXPERIENCE-CONTRACT.md) before code: name the canonical entry/screen, expected information hierarchy and states, normal interaction, shared components, and the proportionate visual/semantic evidence needed. A feature's engine, UX interaction and presentation should arrive as one coherent slice when practical; separately record outstanding experience acceptance when an internal milestone lands first. Internal-only changes explicitly record no UI impact. Preserve the owner's later cross-screen annotated-screenshot campaign; avoid opportunistic full redesigns.
+
 Maximize **correct, usable, integrated user journeys per unit of engineering and CI effort**, without sacrificing data integrity, account isolation, security, accessibility or owner-approved capabilities. Every PR must either (a) repair an observed harmful failure, (b) complete a working slice of a required journey, or (c) remove a specific test/architecture blocker on the shortest path to (a)/(b). Generic hardening/research needs a concrete risk or decision it will resolve.
 
 Anchor active development to end-to-end paths: phone .torrent/magnet/Share → verified default or chosen Place → Add/Start/piece progress/Stop/recheck/restore/seed; rTorrent authenticated exact instance → inventory → Add/Start/Stop/priority/session-only Remove → observed readback; combined environments → truthful scope, controls, errors and accessibility. Include **positive execution** as well as destructive/ambiguous negative controls. A green component harness with no production caller is useful research, not feature completion.
