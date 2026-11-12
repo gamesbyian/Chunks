@@ -24,16 +24,16 @@ on:
       # Test-only edits to these source files are exercised by their dedicated
       # installed workflow. Mixed changes to production or shared test code
       # retain the full native Add gate via its positive path patterns.
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SystemFontScaleComposeInstrumentedTest.kt" # compose-system-font-200pct.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ExperimentalTypefaceNativeInstrumentedTest.kt" # experimental-font-android-render.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt" # android-native-low-storage-repro.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SourceTorrentArchiveInstrumentedTest.kt" # installed-source-archive.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt" # installed-remote-delete-data.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt" # native-visual-atlas.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt" # native-visual-atlas.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt" # storage-owned-mediastore-documents.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt" # android10-downloads-instrumentation.yml
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt" # android10-downloads-instrumentation.yml
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SystemFontScaleComposeInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ExperimentalTypefaceNativeInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SourceTorrentArchiveInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/build.gradle.kts"
       # Changes to the test command must re-run this suite.
       - "tools/native_add_review.sh"
