@@ -179,7 +179,7 @@ The six owner-uploaded repository-root `[IPT].torrent` inputs and two additional
 
 ## Owner step: one completed public torrent for the copy probe (2026-10-28)
 
-The read-only copy probe ([`seedhost-copy-to-phone-readonly.yml`](../.github/workflows/seedhost-copy-to-phone-readonly.yml)) needs a **complete, started, non-private** transfer on the primary instance. Every small completed transfer there today is private, so Seedhost inbound peer reachability is untested. The owner agreed on 2026-10-28 to add one public torrent. Use the official Debian netinst, which has ordinary seeders, so the server can complete it:
+The read-only copy probe ([`seedhost-copy-to-phone-readonly.yml`](../.github/workflows/seedhost-copy-to-local-readonly.yml)) needs a **complete, started, non-private** transfer on the primary instance. Every small completed transfer there today is private, so Seedhost inbound peer reachability is untested. The owner agreed on 2026-10-28 to add one public torrent. Use the official Debian netinst, which has ordinary seeders, so the server can complete it:
 
 1. Open the primary ruTorrent at https://ianseeds.wood.seedhost.eu/rutorrent/ (not `/rutorrent2/` or `/rutorrent3/`).
 2. Open **Add Torrent**. In **Torrent URL**, paste the current official file, today `https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/debian-13.7.0-amd64-netinst.iso.torrent`. If that 404s, Debian has released a newer point version: copy the `debian-…-amd64-netinst.iso.torrent` link from https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/ instead.
