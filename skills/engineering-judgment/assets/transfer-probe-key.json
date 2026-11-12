@@ -108,6 +108,54 @@
       "answer": "C",
       "pattern": "partial-private-original",
       "reason": "Exclusive path reservation does not make streaming atomic."
+    },
+    {
+      "id": "J19",
+      "answer": "B",
+      "pattern": "source-harness-separation",
+      "reason": "A stale artifact convention can be replaced only while preserving independent evidence of the enduring behavioral obligation."
+    },
+    {
+      "id": "J20",
+      "answer": "A",
+      "pattern": "ui-reachability",
+      "reason": "The redesign does not cancel stable accessibility and destructive-action reachability obligations."
+    },
+    {
+      "id": "J21",
+      "answer": "C",
+      "pattern": "semantic-control",
+      "reason": "Exact presentation is sometimes itself a normative user/product obligation; failing checks cannot unilaterally retire it."
+    },
+    {
+      "id": "J22",
+      "answer": "B",
+      "pattern": "operation-vs-goal",
+      "reason": "A simulated acknowledgment does not prove actual authenticated side effects or end-to-end reachability."
+    },
+    {
+      "id": "J23",
+      "answer": "C",
+      "pattern": "proportional-investigation",
+      "reason": "A selector-only repair needs evidence its selector works, not unrelated repeated runtime setup."
+    },
+    {
+      "id": "J24",
+      "answer": "A",
+      "pattern": "source-harness-separation",
+      "reason": "One campaign can contain independent product, environment and contract failures, with different remedies and unexecuted claims."
+    },
+    {
+      "id": "J25",
+      "answer": "C",
+      "pattern": "build-vs-upgrade",
+      "reason": "An apparently internal schema detail can be a current external or upgrade contract; verify its reachability before retiring assertions."
+    },
+    {
+      "id": "J26",
+      "answer": "B",
+      "pattern": "proportional-investigation",
+      "reason": "Change awareness is conditional; avoid process overhead when no affected contract or proof boundary is implicated."
     }
   ]
 }

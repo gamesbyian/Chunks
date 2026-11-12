@@ -8,6 +8,8 @@ A helpful expert-skill benchmark must distinguish **replay of a familiar story**
 
 Run `python3 scripts/evaluate_transfer.py --emit-prompts` to retrieve questions without labels or answers. Give the output to a **fresh agent without access to this repo**. It must respond with a JSON list of objects with `id`, `choice`, and a short `rationale`. Grade by `python3 scripts/evaluate_transfer.py --grade /path/to/replies.json`. The score checks the choice only, not the reasoning.
 
+The built-in option-choice suite now includes **practice probes J19–J26** about changed requirements, test-contract drift, current accessibility/visual authority, mock-versus-installed evidence, environment failures, compatibility and proportional no-action. These are public, inspectable training checks, **not sealed held-out experiments**, even when the answer file is separate. For future blind evaluation, create unseen surface variations that invert the correct action (retire a stale screenshot versus preserve an approved visual invariant; repair an inaccessible control versus update a locator), freeze contemporary authority, and score actual inspected assertions and patches. Do not dispatch new agent evaluations without the director's separate authorization and resources; the [dormant decision-skills evaluation plan](../../AGENT-DECISION-SKILLS-EVALUATION-PLAN.md) remains design-only.
+
 ## How to establish real benefit
 
 1. Prepare a set of genuine *held-out* PR decision points from a later time or different project, not examples used to write the skill. Keep their accepted resolutions private from both agents.

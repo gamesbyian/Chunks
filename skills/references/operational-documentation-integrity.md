@@ -10,6 +10,8 @@
 - **Skip:** a trivial code/style change with no material effect on operating instructions, an accurate document already fit for its task, a settled historical record that is merely being read, or a speculative risk unsupported by a changing decision. A justified **NO CHANGE** is a successful result.
 - **Required inputs:** current task and permission boundaries; host AGENTS/onboarding; authoritative owner decisions and applicable source/branch/PR state; affected operational files; available decision/evidence records. Treat unavailable inputs as unavailable, not as agreement. No procedure here authorizes changing code, release policy, secrets or owner intent.
 
+When a task explicitly covers repository-wide tooling, CI, editability, campaign residue **and** documentation, [Repository Hygiene](../repository-hygiene/SKILL.md) owns that breadth-first census and delegates only affected operational documents to this D1–D4 method. Do not expand a routine documentation edit into a full repository audit.
+
 ## D1. Discover the documentation roles, not filenames
 
 Inspect the host's own conventions before creating folders or ledgers. Record only relevant files and their purpose, reader, source/priority, last inspectable revision and current status. A single file may hold several clearly separated roles; an issue tracker or PR may already retain history adequately.

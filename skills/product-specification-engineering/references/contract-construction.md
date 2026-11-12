@@ -25,6 +25,8 @@ Use a reverse journey: from success outcome backward to required source, permiss
 
 **User-facing control:** stable ID, label, visibility, enablement, selection identity, default/override, confirmation/consent, cancel, immediate feedback, after-restart feedback and state holder. For accessibility, require equivalent meaning/operation via touch, keyboard/assistive tech and supported text scales.
 
+**Experience contract for visible operations:** Apply [E1–E7 Experience Conformity](experience-conformity.md): recover canonical screen, discovery route, layout density, information hierarchy, shared design conventions and visible states. Add only the facts absent from host product specifications. Internal-only work needs no screenshot. If engine integration precedes polish, label presentation PENDING rather than counting the entire experience accepted.
+
 **Data entity:** stable ID, source revision, producer, validator, owner-of-truth, persistence and deletion, privacy and grants, migration, transfer to external systems. A temporary URI is not durable ownership.
 
 **Adapter/API:** input schema, caller identity, precondition, authorization, side effects, attempted-versus-confirmed semantics, timeout/cancellation, idempotency, return/error, reconciliation and real accepted postcondition. Exact external environment/account identity must survive async boundaries.
@@ -33,7 +35,7 @@ Use a reverse journey: from success outcome backward to required source, permiss
 
 ## 5. Derive acceptance from user outcome
 
-For each required outcome, write a given/when/then whose THEN observes independent bytes, state, device behavior or user goal instead of implementation existence. Use positive normal path plus relevant negative/interrupted paths; map each test to requirement ID, exact environment, real call path and evidence tier. Mark unexecuted tests PLANNED. Select test batching and risk gates through [Validation Economics](../../android-app-development/references/validation-economics.md).
+For each required outcome, write a given/when/then whose THEN observes independent bytes, state, device behavior or user goal instead of implementation existence. For user-visible outcomes identify independent claims for operation, discoverable/accessible interaction, and presentation conformity to an actual approved rendered design. Use positive normal path plus relevant negative/interrupted paths; map each test to requirement ID, exact environment, real call path and evidence tier. Mark unexecuted tests PLANNED. Select test batching and risk gates through [Validation Economics](../../android-app-development/references/validation-economics.md).
 
 ## 6. Completeness checks and decisions
 

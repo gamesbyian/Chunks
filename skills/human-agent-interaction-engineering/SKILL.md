@@ -36,6 +36,7 @@ A user-requested choice briefing does **not** imply a release audit, nor require
 
 - **When finding all material choice dimensions from extensive research:** [Choice landscape extraction](references/choice-landscape-extraction.md), with a reverse-coverage test.
 - **When a different skill's output may create a useful director choice:** [Evidence-triggered opportunity handoffs](references/opportunity-handoffs.md), including cases where no interaction should be offered.
+- **When the owner provides annotated screenshots or requests a coordinated visual review:** [Annotated screen review](references/annotated-screen-review.md), preserving all marks while grouping shared implementation causes and reconciling into existing project authority.
 - **What UI and evidence fields to provide:** [Interaction design contract and patterns](references/interaction-design-contract.md).
 - **After feature prior-art/user-criticism research:** [Optional feature-choice survey example](examples/research-to-optional-survey.md).
 - **When a human unexpectedly asks “Any choices I could make?”:** [On-demand decision discovery example](examples/on-demand-choices.md).
