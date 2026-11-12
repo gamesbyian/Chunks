@@ -1,0 +1,2423 @@
+{
+  "schema_version": 1,
+  "created": "2026-11-12",
+  "purpose": "Lightweight visual-convention research and Chunks SVG asset gap decisions; non-normative",
+  "clients": {
+    "q": {
+      "name": "qBittorrent WebUI",
+      "repo": "qbittorrent/qBittorrent",
+      "ref": "d56ce79c99dfffcf43954b81142bc8e7cb81a429",
+      "prefix": "src/webui/www/private/images/",
+      "proof": "src/webui/www/private/index.html"
+    },
+    "t": {
+      "name": "Transmission macOS",
+      "repo": "transmission/transmission",
+      "ref": "e024d47a5004152739e0e714cde4d9d3eba907bf",
+      "prefix": "macosx/Images/Images.xcassets/",
+      "proof": "macosx/"
+    },
+    "d": {
+      "name": "Deluge GTK",
+      "repo": "deluge-torrent/deluge",
+      "ref": "e58075416dedd53636e89b1cd240f86f2e7c2ee0",
+      "prefix": "deluge/ui/data/pixmaps/",
+      "proof": "deluge/ui/data/pixmaps/"
+    },
+    "b": {
+      "name": "BiglyBT desktop",
+      "repo": "BiglySoftware/BiglyBT",
+      "ref": "342900963767ea9a6786bf9f718284ef97ba0825",
+      "prefix": "uis/src/com/biglybt/ui/icons/",
+      "proof": "uis/src/com/biglybt/ui/icons/"
+    },
+    "l": {
+      "name": "LibreTorrent Android",
+      "repo": "proninyaroslav/libretorrent",
+      "ref": "ae96f20b9852d2140fd704a3f2451ed7679e35a0",
+      "prefix": "app/src/main/res/drawable/",
+      "proof": "app/src/main/res/drawable/"
+    },
+    "r": {
+      "name": "ruTorrent web",
+      "repo": "Novik/ruTorrent",
+      "ref": "5609c62e1b6d0f060b212a81cc4f310fe4d0b4c8",
+      "prefix": "images/",
+      "proof": "css/style.css"
+    }
+  },
+  "features": [
+    {
+      "id": "add-torrent",
+      "title": "Add torrent",
+      "group": "Intake",
+      "metaphors": [
+        "plus / document",
+        "folder +"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/add-torrent.svg",
+        "docs/design/svg/icons/system/add.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "list-add.svg",
+          "meaning": "Add via WebUI menu/toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Add toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -24
+        },
+        {
+          "client": "l",
+          "asset": "ic_add_24px.xml",
+          "meaning": "Add action vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "import.png",
+          "meaning": "Import icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "magnet",
+      "title": "Add magnet link",
+      "group": "Intake",
+      "metaphors": [
+        "horseshoe magnet",
+        "chain / link"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/magnet-link.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "torrent-magnet.svg",
+          "meaning": "Torrent magnet icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_magnet_24px.xml",
+          "meaning": "Magnet icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "Magnet.png",
+          "meaning": "Magnet in macOS assets",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "add-url",
+      "title": "Add via URL",
+      "group": "Intake",
+      "metaphors": [
+        "chain link",
+        "plus + link"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/add-torrent.svg",
+        "docs/design/svg/icons/transfers/clipboard-paste.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "insert-link.svg",
+          "meaning": "WebUI add torrent link",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_link_24px.xml",
+          "meaning": "Link icon; drawable-xhdpi path",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": "LibreTorrent link file is in drawable-xhdpi rather than the normal drawable directory; review source link before using as direct image."
+    },
+    {
+      "id": "clipboard",
+      "title": "Paste source",
+      "group": "Intake",
+      "metaphors": [
+        "clipboard",
+        "paste sheet"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/clipboard-paste.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "edit-copy.svg",
+          "meaning": "Copy-style source metaphor",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_content_copy_24px.xml",
+          "meaning": "Copy icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "start",
+      "title": "Start or resume transfer",
+      "group": "Lifecycle",
+      "metaphors": [
+        "play triangle",
+        "start arrow"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/play.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "torrent-start.svg",
+          "meaning": "WebUI start toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Start toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -96
+        },
+        {
+          "client": "l",
+          "asset": "ic_play_arrow_24px.xml",
+          "meaning": "Play vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "ResumeOn.png",
+          "meaning": "Resume active icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "start.png",
+          "meaning": "Start icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "pause",
+      "title": "Pause transfer",
+      "group": "Lifecycle",
+      "metaphors": [
+        "two vertical bars"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/pause.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "pause-session.svg",
+          "meaning": "WebUI pause session action; not per-transfer stop",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Pause toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -120
+        },
+        {
+          "client": "l",
+          "asset": "ic_pause_24px.xml",
+          "meaning": "Pause vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "PauseOn.png",
+          "meaning": "Pause active",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "pause.gif",
+          "meaning": "Pause icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": "Distinguish per-transfer Pause from Stop and session-wide Pause; labels and effects vary by client."
+    },
+    {
+      "id": "stop",
+      "title": "Stop transfer",
+      "group": "Lifecycle",
+      "metaphors": [
+        "square",
+        "square within circle"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/stop.svg",
+        "docs/design/svg/new-variants/missing-glyph-icons/stop-transfer-circular.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "torrent-stop.svg",
+          "meaning": "WebUI stop action",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Stop toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -144
+        },
+        {
+          "client": "l",
+          "asset": "ic_stop_circle_24px.xml",
+          "meaning": "Stop circle",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "stop.gif",
+          "meaning": "Stop icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "remove",
+      "title": "Remove transfer",
+      "group": "Lifecycle",
+      "metaphors": [
+        "minus list",
+        "trash can",
+        "X"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/remove-transfer.svg",
+        "docs/design/svg/icons/storage/delete.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "list-remove.svg",
+          "meaning": "WebUI remove",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Remove toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -72
+        },
+        {
+          "client": "l",
+          "asset": "ic_delete_24px.xml",
+          "meaning": "Delete vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "delete.png",
+          "meaning": "Delete icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "remove-data",
+      "title": "Delete downloaded data",
+      "group": "Lifecycle",
+      "metaphors": [
+        "trash + files",
+        "destructive dialog"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/storage/delete.svg",
+        "docs/design/svg/icons/transfers/remove-transfer.svg"
+      ],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_delete_24px.xml",
+          "meaning": "Delete action",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "delete2.png",
+          "meaning": "Alternate delete icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": "Do not imply that Remove Transfer necessarily deletes payload data; use explicit copy/confirmation."
+    },
+    {
+      "id": "force-start",
+      "title": "Force start / bypass queue",
+      "group": "Lifecycle",
+      "metaphors": [
+        "play + emphasis",
+        "play + badge"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "torrent-start-forced.svg",
+          "meaning": "Force start context item",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "forcestart.png",
+          "meaning": "Force start asset",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "ResumeNoWaitOn.png",
+          "meaning": "Resume without wait macOS asset",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "recheck",
+      "title": "Force recheck data",
+      "group": "Lifecycle",
+      "metaphors": [
+        "circular verify arrow",
+        "check / inspection"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/storage/scan.svg",
+        "docs/design/svg/icons/transfers/refresh.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "force-recheck.svg",
+          "meaning": "Force recheck context menu",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "recheck.png",
+          "meaning": "Recheck icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": "Refresh, verify and retry are potentially ambiguous; preserve the semantic distinction."
+    },
+    {
+      "id": "reannounce",
+      "title": "Reannounce to tracker",
+      "group": "Lifecycle",
+      "metaphors": [
+        "megaphone / radio waves",
+        "circular network arrow"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "reannounce.svg",
+          "meaning": "Force reannounce context menu",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "queue-top",
+      "title": "Move to top of queue",
+      "group": "Lifecycle",
+      "metaphors": [
+        "up arrow + bar"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/queue.svg",
+        "docs/design/svg/new-variants/missing-glyph-icons/queue-list-variant.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "go-top.svg",
+          "meaning": "Top of queue toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "queue-up",
+      "title": "Raise queue position",
+      "group": "Lifecycle",
+      "metaphors": [
+        "up arrow"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/queue.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "go-up.svg",
+          "meaning": "Move up queue toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Move up toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -168
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "queue-down",
+      "title": "Lower queue position",
+      "group": "Lifecycle",
+      "metaphors": [
+        "down arrow"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/queue.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "go-down.svg",
+          "meaning": "Move down queue toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Move down toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -192
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "bulk-select",
+      "title": "Select multiple transfers",
+      "group": "Lifecycle",
+      "metaphors": [
+        "checkbox",
+        "multiple stacked checks"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/new-variants/missing-glyph-icons/bulk-select.svg",
+        "docs/design/svg/icons/files/file-checkbox.svg"
+      ],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_select_all_24px.xml",
+          "meaning": "Select all vector",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "status-downloading",
+      "title": "Downloading status",
+      "group": "Transfer states",
+      "metaphors": [
+        "down arrow",
+        "green / progress"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/downloading.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "downloading.svg",
+          "meaning": "WebUI download status",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "d",
+          "asset": "downloading.svg",
+          "meaning": "GTK downloading state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_download_24px.xml",
+          "meaning": "Download arrow",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "DownloadBadge.png",
+          "meaning": "Download status badge",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "down.png",
+          "meaning": "Down direction icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "status-seeding",
+      "title": "Seeding / uploading status",
+      "group": "Transfer states",
+      "metaphors": [
+        "up arrow",
+        "upward status accent"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/seeding.svg",
+        "docs/design/svg/icons/status/uploading.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "upload.svg",
+          "meaning": "Upload state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "d",
+          "asset": "seeding.svg",
+          "meaning": "GTK seeding state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_upload_24px.xml",
+          "meaning": "Upload arrow",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "UploadBadge.png",
+          "meaning": "Upload badge",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "status-paused",
+      "title": "Paused / stopped status",
+      "group": "Transfer states",
+      "metaphors": [
+        "pause bars",
+        "grey / blue status"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/paused.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "paused.svg",
+          "meaning": "Paused state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "stopped.svg",
+          "meaning": "Stopped state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_pause_24px.xml",
+          "meaning": "Pause action icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": "Do not flatten paused, stopped and completed-inactive states."
+    },
+    {
+      "id": "status-queued",
+      "title": "Queued status",
+      "group": "Transfer states",
+      "metaphors": [
+        "clock / waiting",
+        "queue lines"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/queued.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "queued.svg",
+          "meaning": "Queued status",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "d",
+          "asset": "queued.svg",
+          "meaning": "GTK queued state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "yellowled.png",
+          "meaning": "Yellow indicator light; not exclusively queue state",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "status-stalled",
+      "title": "Stalled / inactive status",
+      "group": "Transfer states",
+      "metaphors": [
+        "sleep / inactive",
+        "muted arrows"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/stalled.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "stalledDL.svg",
+          "meaning": "Stalled download",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "stalledUP.svg",
+          "meaning": "Stalled upload",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "d",
+          "asset": "inactive.svg",
+          "meaning": "Inactive GTK state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "grayled.png",
+          "meaning": "Gray indicator light",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "status-checking",
+      "title": "Checking / hashing status",
+      "group": "Transfer states",
+      "metaphors": [
+        "circular check",
+        "progress spinner"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/storage/scan.svg",
+        "docs/design/svg/icons/status/queued.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "spinner.svg",
+          "meaning": "Spinner asset",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "d",
+          "asset": "checking.svg",
+          "meaning": "Checking GTK state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_refresh_24px.xml",
+          "meaning": "Refresh vector",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "status-completed",
+      "title": "Completed status",
+      "group": "Transfer states",
+      "metaphors": [
+        "checkmark",
+        "completed box"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/completed.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "task-complete.svg",
+          "meaning": "Task complete",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "checked-completed.svg",
+          "meaning": "Checked completed status",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_download_done_24px.xml",
+          "meaning": "Download complete",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "CompleteCheck.png",
+          "meaning": "Complete check badge",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "blacktick.gif",
+          "meaning": "Tick icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "status-error",
+      "title": "Error / missing files",
+      "group": "Transfer states",
+      "metaphors": [
+        "red warning",
+        "error mark"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/error.svg",
+        "docs/design/svg/icons/status/warning.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "error.svg",
+          "meaning": "Error status",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "d",
+          "asset": "alert.svg",
+          "meaning": "Alert state",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_error_24px.xml",
+          "meaning": "Error vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "error.png",
+          "meaning": "Error icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "status-connection",
+      "title": "Connection state",
+      "group": "Transfer states",
+      "metaphors": [
+        "plug / link",
+        "online indicator"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/connectivity/server.svg",
+        "docs/design/svg/new-variants/missing-glyph-icons/server-heartbeat.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "connected.svg",
+          "meaning": "Connected",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "disconnected.svg",
+          "meaning": "Disconnected",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "greenled.png",
+          "meaning": "Green indicator LED",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "redled.png",
+          "meaning": "Red indicator LED",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "progress",
+      "title": "Progress representation",
+      "group": "Transfer states",
+      "metaphors": [
+        "filled bar",
+        "segmented piece map"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/downloading.svg"
+      ],
+      "observations": [
+        {
+          "client": "b",
+          "asset": "dl_bar_1.png",
+          "meaning": "Segmented download bar asset",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "downloadBar.png",
+          "meaning": "Download-bar image",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": "Existing Chunks UI-component progress illustrations also exist outside this icon catalogue."
+    },
+    {
+      "id": "piece-map",
+      "title": "Piece availability / hash pieces",
+      "group": "Files & content",
+      "metaphors": [
+        "block grid",
+        "segmented strip"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "hash.svg",
+          "meaning": "Hash symbol reference",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "dl_bar_1g.png",
+          "meaning": "Segmented bar source",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "file-selection",
+      "title": "Choose files to download",
+      "group": "Files & content",
+      "metaphors": [
+        "checkbox files",
+        "folder tree"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/files/file-checkbox.svg",
+        "docs/design/svg/icons/files/folder.svg"
+      ],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_checklist_24px.xml",
+          "meaning": "Checklist vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "details.png",
+          "meaning": "Details icon, not a file-selection marker",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "file-priority",
+      "title": "File priority",
+      "group": "Files & content",
+      "metaphors": [
+        "up/down importance arrows",
+        "high / normal / low"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "t",
+          "asset": "PriorityHighTemplate.png",
+          "meaning": "High priority",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "PriorityNormalTemplate.png",
+          "meaning": "Normal priority",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "PriorityLowTemplate.png",
+          "meaning": "Low priority",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "sequential",
+      "title": "Sequential downloading / stream first",
+      "group": "Files & content",
+      "metaphors": [
+        "ordered play",
+        "numbered segments"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_screen_record_24px.xml",
+          "meaning": "Screen-record-style asset, not verified as sequential control",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": "No unambiguous client icon established; treat as text-first design opportunity."
+    },
+    {
+      "id": "rename",
+      "title": "Rename transfer or file",
+      "group": "Files & content",
+      "metaphors": [
+        "pencil",
+        "text cursor"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/files/rename.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "edit-rename.svg",
+          "meaning": "Rename context action",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_edit_24px.xml",
+          "meaning": "Edit vector",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "change-location",
+      "title": "Move data / set save location",
+      "group": "Files & content",
+      "metaphors": [
+        "folder + arrow",
+        "move file"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/files/move-folder.svg",
+        "docs/design/svg/icons/transfers/move.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "set-location.svg",
+          "meaning": "Set location context action",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_drive_file_move_24px.xml",
+          "meaning": "Move file vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "move.png",
+          "meaning": "Move icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "open-folder",
+      "title": "Open content location",
+      "group": "Files & content",
+      "metaphors": [
+        "open folder"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/files/folder.svg",
+        "docs/design/svg/icons/files/folder-yellow.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "directory.svg",
+          "meaning": "Directory icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_folder_open_24px.xml",
+          "meaning": "Open folder vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "RevealOn.png",
+          "meaning": "Reveal in Finder",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "openFolder21x15.png",
+          "meaning": "Open folder",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "archive-input",
+      "title": "Archive original torrent source",
+      "group": "Files & content",
+      "metaphors": [
+        "archive box",
+        "file into box"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/storage/archive-box.svg",
+        "docs/design/svg/icons/storage/keep-original.svg"
+      ],
+      "observations": [
+        {
+          "client": "b",
+          "asset": "archive.png",
+          "meaning": "Archive action",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": "Chunks-specific source-file intake policy; competitor archive asset has a different workflow."
+    },
+    {
+      "id": "duplicate-detection",
+      "title": "Detect duplicate transfer",
+      "group": "Files & content",
+      "metaphors": [
+        "overlapping files + magnifier",
+        "equals / repeated"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/new-variants/missing-glyph-icons/magnifying-document-duplicate.svg"
+      ],
+      "observations": [],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "download-speed",
+      "title": "Download speed indicator",
+      "group": "Speed & seeding",
+      "metaphors": [
+        "down arrow + rate",
+        "downward gauge"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/rate-down.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "download.svg",
+          "meaning": "Download direction",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "DownArrowTemplate.png",
+          "meaning": "Down direction",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "speed.png",
+          "meaning": "Speed icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "upload-speed",
+      "title": "Upload speed indicator",
+      "group": "Speed & seeding",
+      "metaphors": [
+        "up arrow + rate"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/rate-up.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "upload.svg",
+          "meaning": "Upload direction",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "UpArrowTemplate.png",
+          "meaning": "Up direction",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "speed.png",
+          "meaning": "Speed icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "speed-limits",
+      "title": "Speed limit controls",
+      "group": "Speed & seeding",
+      "metaphors": [
+        "speedometer",
+        "dial / sliders"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/speed-lightning.svg"
+      ],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_speed_24px.xml",
+          "meaning": "Speed gauge vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "speed.gif",
+          "meaning": "Speed icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "turtle.svg",
+          "meaning": "Turtle for alternate rates",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "alt-speed",
+      "title": "Alternative speed / slow mode",
+      "group": "Speed & seeding",
+      "metaphors": [
+        "turtle",
+        "slow badge"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "slow.svg",
+          "meaning": "Alternative rate enabled",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "slow_off.svg",
+          "meaning": "Alternative rate disabled",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "TortoiseTemplate.png",
+          "meaning": "Tortoise alternate speed",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "ratio-limit",
+      "title": "Share ratio / seeding limit",
+      "group": "Speed & seeding",
+      "metaphors": [
+        "ratio / fraction",
+        "gauge / percentage"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "ratio.svg",
+          "meaning": "Ratio icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "ratio-symbolic.svg",
+          "meaning": "Transmission ratio symbolic icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": "Transmission ratio-symbolic.svg lives in icons/; gallery should use that path."
+    },
+    {
+      "id": "schedule",
+      "title": "Schedule limits / activity",
+      "group": "Speed & seeding",
+      "metaphors": [
+        "calendar",
+        "clock"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_schedule_24px.xml",
+          "meaning": "Clock / schedule vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_calendar_month_24px.xml",
+          "meaning": "Calendar vector",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "bandwidth-group",
+      "title": "Bandwidth group / throttle",
+      "group": "Speed & seeding",
+      "metaphors": [
+        "gauge + group",
+        "linked meters"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/speed-lightning.svg",
+        "docs/design/svg/icons/connectivity/peers.svg"
+      ],
+      "observations": [
+        {
+          "client": "b",
+          "asset": "speed.png",
+          "meaning": "Speed icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "peer-list",
+      "title": "Peers / swarm",
+      "group": "Network & sources",
+      "metaphors": [
+        "connected nodes",
+        "two people"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/connectivity/peers.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "peers.svg",
+          "meaning": "Peers icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_hub_24px.xml",
+          "meaning": "Hub network vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "host.gif",
+          "meaning": "Host icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "tracker-list",
+      "title": "Trackers",
+      "group": "Network & sources",
+      "metaphors": [
+        "antenna / tower",
+        "globe"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/new-variants/missing-glyph-icons/tracker-antenna.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "trackers.svg",
+          "meaning": "Trackers icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "add_tracker.png",
+          "meaning": "Add tracker icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "tracker-warning",
+      "title": "Tracker warning / unavailable",
+      "group": "Network & sources",
+      "metaphors": [
+        "warning triangle",
+        "signal failure"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/status/warning.svg",
+        "docs/design/svg/new-variants/missing-glyph-icons/tracker-antenna.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "tracker-warning.svg",
+          "meaning": "Tracker warning",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "tracker-error.svg",
+          "meaning": "Tracker error",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "recheck-connectivity",
+      "title": "Test port / connectivity",
+      "group": "Network & sources",
+      "metaphors": [
+        "connected / disconnected",
+        "plug check"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/connectivity/server.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "network-connect.svg",
+          "meaning": "Network connection",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "firewalled.svg",
+          "meaning": "Firewalled state",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "dht",
+      "title": "DHT discovery",
+      "group": "Network & sources",
+      "metaphors": [
+        "network mesh",
+        "DHT text"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "d",
+          "asset": "dht.svg",
+          "meaning": "DHT GTK pixmap",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "ip-block",
+      "title": "Block peer / IP",
+      "group": "Network & sources",
+      "metaphors": [
+        "blocked sign",
+        "shield X"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "ip-blocked.svg",
+          "meaning": "Blocked IP",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "Blocked_x.png",
+          "meaning": "Blocked indicator",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "private-torrent",
+      "title": "Private torrent / locked",
+      "group": "Network & sources",
+      "metaphors": [
+        "padlock"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/new-variants/missing-glyph-icons/shield-with-check.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "object-locked.svg",
+          "meaning": "Lock status",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "lock.png",
+          "meaning": "Lock icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "lock.svg",
+          "meaning": "Lock source",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "proxy-vpn",
+      "title": "Proxy / VPN or protected route",
+      "group": "Network & sources",
+      "metaphors": [
+        "shield / tunnel",
+        "network lock"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "b",
+          "asset": "net_I2P_b.png",
+          "meaning": "I2P network marker",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "net_Tor_b.png",
+          "meaning": "Tor network marker",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": "I2P/Tor badges are network markers; don't claim they signify general VPN protection."
+    },
+    {
+      "id": "magnet-copy",
+      "title": "Copy magnet link",
+      "group": "Network & sources",
+      "metaphors": [
+        "magnet + copy",
+        "chain + clipboard"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/new-variants/missing-glyph-icons/copy-magnet-variant.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "edit-copy.svg",
+          "meaning": "Copy action",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_content_copy_24px.xml",
+          "meaning": "Copy vector",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "rss",
+      "title": "RSS subscriptions",
+      "group": "Organization & discovery",
+      "metaphors": [
+        "RSS waves"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "application-rss.svg",
+          "meaning": "RSS app icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "RSS toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -240
+        },
+        {
+          "client": "l",
+          "asset": "ic_rss_feed_24px.xml",
+          "meaning": "RSS vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "rss.png",
+          "meaning": "RSS icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "search",
+      "title": "Search transfers / torrents",
+      "group": "Organization & discovery",
+      "metaphors": [
+        "magnifying glass"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/system/search.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "edit-find.svg",
+          "meaning": "Find icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Search toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -216
+        },
+        {
+          "client": "l",
+          "asset": "ic_search_24px.xml",
+          "meaning": "Search vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "search.png",
+          "meaning": "Search icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "sort",
+      "title": "Sort transfer list",
+      "group": "Organization & discovery",
+      "metaphors": [
+        "A–Z / down arrow",
+        "sort bars"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/files/sort-az.svg",
+        "docs/design/svg/new-variants/missing-glyph-icons/sort-ascending.svg",
+        "docs/design/svg/new-variants/missing-glyph-icons/sort-descending.svg"
+      ],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_sort_24px.xml",
+          "meaning": "Sort vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_sort_desc_24px.xml",
+          "meaning": "Descending vector",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "filter",
+      "title": "Filter transfer list",
+      "group": "Organization & discovery",
+      "metaphors": [
+        "funnel",
+        "status chips"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/new-variants/missing-glyph-icons/filter-funnel.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "filter-all.svg",
+          "meaning": "All filter",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "filter-active.svg",
+          "meaning": "Active filter",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_filter_list_off_24px.xml",
+          "meaning": "Filter off vector",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "tags",
+      "title": "Tags / labels",
+      "group": "Organization & discovery",
+      "metaphors": [
+        "price tag"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "tags.svg",
+          "meaning": "Tags icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_label_24px.xml",
+          "meaning": "Label vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "comment.png",
+          "meaning": "Comment icon; distinct from labels",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "categories",
+      "title": "Categories / collections",
+      "group": "Organization & discovery",
+      "metaphors": [
+        "stacked folder",
+        "folder + label"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/files/folder.svg",
+        "docs/design/svg/icons/files/folder-slot.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "view-categories.svg",
+          "meaning": "Category sidebar control",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "notifications",
+      "title": "Notifications",
+      "group": "Interface & settings",
+      "metaphors": [
+        "bell",
+        "notification dot"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_info_24px.xml",
+          "meaning": "Information icon, not notification bell",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "settings",
+      "title": "Options / settings",
+      "group": "Interface & settings",
+      "metaphors": [
+        "gear / cog"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/navigation/settings.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "configure.svg",
+          "meaning": "Configuration icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "r",
+          "asset": "toolbar.png",
+          "meaning": "Settings toolbar",
+          "evidence": "ui-mapped",
+          "sprite_x": -264
+        },
+        {
+          "client": "l",
+          "asset": "ic_settings_24px.xml",
+          "meaning": "Settings vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "cog_arrow.png",
+          "meaning": "Cog with arrow",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "appearance",
+      "title": "Appearance / themes",
+      "group": "Interface & settings",
+      "metaphors": [
+        "palette",
+        "sun / moon"
+      ],
+      "asset_status": "missing",
+      "chunks_assets": [],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_palette_24px.xml",
+          "meaning": "Palette icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "storage",
+      "title": "Storage usage / location",
+      "group": "Interface & settings",
+      "metaphors": [
+        "database stack",
+        "hard disk"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/navigation/storage.svg",
+        "docs/design/svg/icons/storage/drive.svg"
+      ],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_storage_24px.xml",
+          "meaning": "Storage vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "directory.svg",
+          "meaning": "Directory icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "remote",
+      "title": "Remote connections / server",
+      "group": "Interface & settings",
+      "metaphors": [
+        "server rack",
+        "monitor / network"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/connectivity/server.svg",
+        "docs/design/svg/new-variants/missing-glyph-icons/rtorrent-connection.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "network-server.svg",
+          "meaning": "Network server icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_lan_24px.xml",
+          "meaning": "LAN vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "host.gif",
+          "meaning": "Host icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "import-export",
+      "title": "Import / export settings",
+      "group": "Interface & settings",
+      "metaphors": [
+        "arrow in/out of box"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/storage/archive-box.svg"
+      ],
+      "observations": [
+        {
+          "client": "b",
+          "asset": "import.png",
+          "meaning": "Import icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "export.png",
+          "meaning": "Export icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "more-actions",
+      "title": "More actions / context menu",
+      "group": "Interface & settings",
+      "metaphors": [
+        "vertical ellipsis",
+        "three dots"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/system/more-vertical.svg",
+        "docs/design/svg/icons/system/more-horizontal.svg"
+      ],
+      "observations": [
+        {
+          "client": "l",
+          "asset": "ic_more_vert_24px.xml",
+          "meaning": "More icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "EllipsisTemplate.png",
+          "meaning": "Ellipsis icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": ""
+    },
+    {
+      "id": "help",
+      "title": "Help / information",
+      "group": "Interface & settings",
+      "metaphors": [
+        "question mark",
+        "circled i"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/system/help.svg",
+        "docs/design/svg/icons/system/info.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "help-contents.svg",
+          "meaning": "Help contents",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "help-about.svg",
+          "meaning": "About",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_help_24px.xml",
+          "meaning": "Help vector",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "b",
+          "asset": "info.gif",
+          "meaning": "Info icon",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "normal",
+      "detail": ""
+    },
+    {
+      "id": "artwork",
+      "title": "Artwork / metadata identity",
+      "group": "Chunks-specific",
+      "metaphors": [
+        "clapperboard / poster",
+        "image + sparkles"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/files/image.svg",
+        "docs/design/svg/icons/files/video.svg"
+      ],
+      "observations": [],
+      "priority": "high",
+      "detail": "Owner-approved Chunks differentiator; no established cross-client icon here. Follow current Options design direction."
+    },
+    {
+      "id": "environment",
+      "title": "Local versus remote environment",
+      "group": "Chunks-specific",
+      "metaphors": [
+        "phone/device + server",
+        "connection badge"
+      ],
+      "asset_status": "covered",
+      "chunks_assets": [
+        "docs/design/svg/icons/connectivity/phone.svg",
+        "docs/design/svg/icons/connectivity/server.svg",
+        "docs/design/svg/icons/connectivity/local-to-remote.svg"
+      ],
+      "observations": [
+        {
+          "client": "q",
+          "asset": "network-server.svg",
+          "meaning": "Server reference",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "l",
+          "asset": "ic_lan_24px.xml",
+          "meaning": "LAN reference",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": "Use 'Local Device' terminology in UI/specs, not Phone as a general local-device concept."
+    },
+    {
+      "id": "priority-turtle",
+      "title": "Per-transfer turtle / priority",
+      "group": "Chunks-specific",
+      "metaphors": [
+        "turtle",
+        "priority arrows"
+      ],
+      "asset_status": "adjacent",
+      "chunks_assets": [
+        "docs/design/svg/icons/transfers/speed-lightning.svg"
+      ],
+      "observations": [
+        {
+          "client": "t",
+          "asset": "TortoiseTemplate.png",
+          "meaning": "Tortoise alternative speed icon",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "q",
+          "asset": "slow.svg",
+          "meaning": "Slow mode",
+          "evidence": "asset",
+          "sprite_x": null
+        },
+        {
+          "client": "t",
+          "asset": "PriorityHighTemplate.png",
+          "meaning": "High priority",
+          "evidence": "asset",
+          "sprite_x": null
+        }
+      ],
+      "priority": "high",
+      "detail": "Separate speed limiting from per-file priority even if surfaced together."
+    }
+  ],
+  "notes": [
+    "Six clients selected for diverse ecosystems and available source assets, not proven mathematically optimal.",
+    "asset existence does not prove a specific runtime control placement; evidence labels differentiate source asset from UI mapping.",
+    "Existing Chunks assets are largely vector drafts and not proof of use in APK.",
+    "External icons are linked to their source repos; no third-party vectors are copied into the Chunks source library."
+  ]
+}
