@@ -1,5 +1,7 @@
 # Chunks documentation index
 
+**Visual research:** [Torrent-client iconography atlas](research/torrent-iconography/README.md) compares six clients' source-backed symbols with the existing Chunks SVG drafts. Its [HTML gallery](research/torrent-iconography/gallery.html) and exported choices are non-normative decision aids, not an implementation queue.
+
 **Current integration:** Determine live main and open PRs from GitHub, not a dated index entry. #1662 and #1663 supplied verified runtime advances; acceptance details, previous red CI and source SHA receipts live in [QUALITY-LEDGER](QUALITY-LEDGER.md). Active work and remaining experience acceptance are governed by [WORK-QUEUE](WORK-QUEUE.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md).
 
 **New binding design and recovery contracts:** [Eight solid-colour Options cards](design/OPTIONS-SOLID-COLOUR-INDEX.md) and [Options information architecture](OPTIONS-INFORMATION-ARCHITECTURE.md); [existing and foreign partial-data reuse](FOREIGN-PARTIAL-TORRENT-RECOVERY.md), [local collision policy](LOCAL-TORRENT-COLLISION-POLICY.md), and [existing-transfer file repair](TRANSFER-FILE-RECOVERY.md). These are planned product requirements, not implementation evidence.
