@@ -1237,8 +1237,10 @@ internal fun ChunksApp(
                             section = Section.LOCAL
                         }
                         ExactOwningListNavigation.Route.AUTHENTICATED_SERVER -> {
-                            setRemoteQuery(key.infoHash)
-                            filter = TransferFilter.ALL
+                            // The owner link is a view scope in the SAME canonical
+                            // browser, never a route back to the retired server list.
+                            consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
+                            savedProfileCatalogFocus = key.environment.value
                             // Combined may show a full "main" inventory while
                             // the signed-in screen is still on a filtered view.
                             // The safe read-only refresh is queued if a read is
@@ -1248,7 +1250,7 @@ internal fun ChunksApp(
                                 setRequestedView = { requestedView = it },
                                 refresh = refresh
                             )
-                            section = Section.TRANSFERS
+                            section = Section.COMBINED
                         }
                         ExactOwningListNavigation.Route.UNAVAILABLE -> Unit
                     }
