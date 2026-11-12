@@ -247,7 +247,8 @@ internal fun TransferMoveControl(
     var working by remember(infoHash) { mutableStateOf(false) }
     var message by remember(infoHash) { mutableStateOf<String?>(null) }
     val destination = if (direction == Direction.LOCAL_TO_SERVER) "server" else "local"
-    val source = if (direction == Direction.LOCAL_TO_SERVER) "local" else "server"
+    val destinationDisplay = if (direction == Direction.LOCAL_TO_SERVER) "server" else "the local device"
+    val source = if (direction == Direction.LOCAL_TO_SERVER) "local device" else "server"
 
     fun apply(next: TransferMove.Next): Boolean = when (next) {
         is TransferMove.Next.Save -> {
@@ -300,7 +301,7 @@ internal fun TransferMoveControl(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (current == null) {
             if (serverAliasScope == null) return@Column
-            ActionTile("Move Transfer to $destination…", ChunksColors.Pink,
+            ActionTile("Move Transfer to $destinationDisplay…", ChunksColors.Pink,
                 onClick = { confirmingStart = !confirmingStart }, enabled = !busy && !working,
                 modifier = Modifier.fillMaxWidth(), icon = R.drawable.chunks_ic_move, stacked = false)
             if (confirmingStart) {
