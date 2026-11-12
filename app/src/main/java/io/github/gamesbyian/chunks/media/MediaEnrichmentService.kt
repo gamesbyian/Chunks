@@ -6,9 +6,9 @@ import io.github.gamesbyian.chunks.model.MediaMetadataCacheDecision
 import io.github.gamesbyian.chunks.model.MediaMetadataCacheReceipt
 import io.github.gamesbyian.chunks.model.MediaMetadataReceiptState
 
-/** User privacy and enrichment preferences. Online lookup is OFF until the user opts in. */
+/** User-configurable media enrichment preferences. Online lookup is enabled by default and can be disabled. */
 data class MediaPrivacySettings(
-    val onlineLookupConsent: Boolean = false,
+    val onlineLookupConsent: Boolean = true,
     /** Look up transfers as they become visible, without a tap. Needs [onlineLookupConsent]. */
     val automaticLookup: Boolean = true,
     val disabledProviders: Set<String> = emptySet(),
