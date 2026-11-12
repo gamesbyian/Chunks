@@ -4,6 +4,8 @@ on:
     paths:
       - 'app/src/androidTest/java/io/github/gamesbyian/chunks/SystemFontScaleComposeInstrumentedTest.kt'
       - 'tools/run_compose_system_font_200pct.sh'
+      - 'tools/check_compose_capture_contract.py'
+      - 'tests/test_compose_capture_contract.py'
       - '.github/workflows/compose-system-font-200pct.yml'
   workflow_dispatch:
 permissions:
@@ -17,6 +19,10 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
+      - name: Preflight screenshot producers and collector before Android setup
+        run: |
+          python3 tools/check_compose_capture_contract.py --preflight
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_compose_capture_contract.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

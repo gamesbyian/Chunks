@@ -48,9 +48,15 @@ Literal copy **is** the requirement for: destructive-action and consent wording,
 
 For any UI-facing feature, follow [FEATURE-EXPERIENCE-CONTRACT](FEATURE-EXPERIENCE-CONTRACT.md). Select representative actual-render state(s), inspect them against the intended design and report findings in the PR: screenshot source and viewport, checked hierarchy/density/feedback, observed deviations, and whether physical-owner approval is still pending. Use semantic/layout relationships as automated guards where stable. An image whose producer exists is **evidence inventory**; only review of the contents provides presentation-conformity evidence. Do not fail unrelated engine-only PRs for lack of UI screenshots, and do not claim a visual-review gate runs in CI unless it actually does.
 
-## 5. Deliberate UX change: reconcile, never bypass
+## 5. Deliberate UX change: reconcile before test execution
 
-When a change intentionally alters the UX and a test fails:
+**Review affected tests before running them.** At the accepted change boundary, reverse-trace the altered requirement through asserting tests, fixtures, selectors, screenshot producers, artifact consumers and CI gates. Compare both the obsolete and replacement paths. Classify each affected obligation as KEEP (current), REWRITE (new locator or journey), REPLACE-EVIDENCE (new acceptance witness), RETIRE (demonstrably superseded), or BLOCK (uncertain authority). Preserve accessibility, security, recovery and data integrity oracles even when the presentation changes. A red test alone never authorizes retirement or weakening.
+
+For a small reversible change, review just its affected assertions and consumers. For an accepted UX/identity change, review the dependent test and workflow chain once before selecting expensive installed validation. Record the requirement, disposition and remaining unverified claims in the existing PR; do not require a universal manifest. Static contract checks establish internal evidence consistency only, not that the app or screenshots are correct.
+
+**Concrete cheap gate:** the 200% installed Compose test defines capture names at its savePixels calls. Run `python3 tools/check_compose_capture_contract.py --preflight` before Android/Gradle work. Its collector calls `--verify-dir` to compare real PNG output to those same test-source names; the workflow does not maintain a second list of retired screens. Exercise its offline hostile cases with `python3 -m unittest discover -s tests -p test_compose_capture_contract.py`. This must still be followed by the installed test for real-behavior claims. Use [change-aware test contracts](../skills/references/change-aware-test-contracts.md) for the portable procedure.
+
+When an intentional UX change has affected test assertions:
 
 1. Identify the requirement the test enforced (trace it before touching the test).
 2. Decide: still required, restated, or genuinely retired by a recorded product decision ([DECISIONS](DECISIONS.md), [UX](UX.md)).
