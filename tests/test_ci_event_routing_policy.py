@@ -25,6 +25,18 @@ DEDICATED = {
     "Android10DownloadsRevocationInstrumentedTest.kt": "android10-downloads-instrumentation.yml",
     "Android10StoragePermissionDialogInstrumentedTest.kt": "android10-downloads-instrumentation.yml",
 }
+OWNER_EXECUTION = {
+    "SystemFontScaleComposeInstrumentedTest.kt": "tools/run_compose_system_font_200pct.sh",
+    "ExperimentalTypefaceNativeInstrumentedTest.kt": "tools/run_native_font_acceptance.sh",
+    "AndroidNativeLowStorageRecoveryInstrumentedTest.kt": "tools/android_native_low_storage_repro.sh",
+    "SourceTorrentArchiveInstrumentedTest.kt": "tools/installed_source_archive.sh",
+    "RemoteDeleteDataInstalledInstrumentedTest.kt": "tools/installed_remote_delete_data.sh",
+    "ChunksLauncherIconInstrumentedTest.kt": ".github/workflows/native-visual-atlas.yml",
+    "ChunksBrandHeaderInstrumentedTest.kt": ".github/workflows/native-visual-atlas.yml",
+    "storage/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt": "tools/owned_mediastore_document_probe.sh",
+    "Android10DownloadsRevocationInstrumentedTest.kt": "tools/android10_downloads_revocation.sh",
+    "Android10StoragePermissionDialogInstrumentedTest.kt": "tools/android10_downloads_instrumentation.sh",
+}
 LEGACY_PUSH_BRANCHES = {
     "documentation-validation.yml": "docs/reconcile-specs-main-20261029",
     "svg-alternates-qa-refresh.yml": "feat/svg-font-independent-alternates-20261027",
@@ -115,6 +127,11 @@ class CiDispatchRelevance(unittest.TestCase):
                 owner = workflow(owner_name)
                 self.assertTrue(dispatches_for_changed_paths(owner, (path,)))
                 self.assertIn("android-emulator-runner@v2", owner)
+                executable = OWNER_EXECUTION[filename]
+                self.assertIn(executable, owner, "Owning workflow must invoke its class selector")
+                self.assertIn(Path(filename).stem,
+                              (ROOT / executable).read_text(encoding="utf-8"),
+                              "Owning execution must select the exact excluded Android test")
                 self.assertTrue(dispatches_for_changed_paths(
                     native, (path, "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt")))
                 self.assertTrue(dispatches_for_changed_paths(
