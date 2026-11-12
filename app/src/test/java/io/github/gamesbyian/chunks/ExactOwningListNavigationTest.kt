@@ -19,11 +19,11 @@ class ExactOwningListNavigationTest {
     private val serverTwo = EnvironmentId("2".repeat(64))
     private fun key(id: EnvironmentId) = UnifiedTransferKey.of(id, hash)
 
-    @Test fun phoneCanOpenWithNoServerAndNeverBeRecastAsRemote() {
-        assertEquals(ExactOwningListNavigation.Route.PHONE,
-            ExactOwningListNavigation.route(key(EnvironmentSnapshots.PHONE), null))
-        assertEquals(ExactOwningListNavigation.Route.PHONE,
-            ExactOwningListNavigation.route(key(EnvironmentSnapshots.PHONE), serverOne))
+    @Test fun localCanOpenWithNoServerAndNeverBeRecastAsRemote() {
+        assertEquals(ExactOwningListNavigation.Route.LOCAL,
+            ExactOwningListNavigation.route(key(EnvironmentSnapshots.LOCAL), null))
+        assertEquals(ExactOwningListNavigation.Route.LOCAL,
+            ExactOwningListNavigation.route(key(EnvironmentSnapshots.LOCAL), serverOne))
     }
 
     @Test fun matchingSignedInServerMayNavigateButSameHashOtherAccountMayNot() {

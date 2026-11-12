@@ -2,7 +2,7 @@ package io.github.gamesbyian.chunks
 
 import java.io.File
 
-/** Kinds of real POSIX folders the phone engine can write torrents into. */
+/** Kinds of real POSIX folders the local device engine can write torrents into. */
 internal enum class LocalPlaceKind(val key: String) {
     /** Android's shared Downloads/Chunks Downloads, visible in Files apps. */
     PUBLIC_DOWNLOADS("public-downloads"),
@@ -70,7 +70,7 @@ internal data class LocalPlaceResolution(
 }
 
 /**
- * Picks the default for new phone Adds. A remembered user choice wins only
+ * Picks the default for new local Adds. A remembered user choice wins only
  * while it still verifies; otherwise the first verified Place in preference
  * order is used and the fallback is stated, never silent. The remembered
  * choice itself is left unchanged so a reinserted SD card is used again.
@@ -89,9 +89,9 @@ internal object LocalDownloadPlacePolicy {
             wanted.place, choices, null, LocalPlaceResolution.Provenance.SAVED_CHOICE)
         val fallback = preference.mapNotNull(byKind::get).firstOrNull { it.verified }
         val notice = when {
-            fallback == null -> "No phone download folder passed Chunks' write check, so phone Adds are unavailable."
+            fallback == null -> "No local download folder passed Chunks' write check, so local Adds are unavailable."
             remembered != null && wanted == null ->
-                "Your saved download location is not available on this phone now. " +
+                "Your saved download location is not available on this device now. " +
                     "New Adds use ${fallback.place.title} instead."
             wanted != null ->
                 "Your saved download location (${wanted.place.title}) failed its write check: " +
@@ -119,7 +119,7 @@ internal object LocalAddPlacePolicy {
         val choice = default.choices.singleOrNull { identity(it.place) == currentIdentity }
         return LocalPlaceResolution(choice?.takeIf { it.verified }?.place, default.choices,
             if (choice?.verified == true) null else
-                "The location chosen for this Add is unavailable. Choose another location or use the phone default; nothing has been added.",
+                "The location chosen for this Add is unavailable. Choose another location or use the local device default; nothing has been added.",
             LocalPlaceResolution.Provenance.CURRENT_ADD)
     }
 }

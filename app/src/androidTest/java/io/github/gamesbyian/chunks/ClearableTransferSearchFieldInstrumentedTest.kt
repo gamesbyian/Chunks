@@ -34,7 +34,7 @@ class ClearableTransferSearchFieldInstrumentedTest {
     @Test fun emptyQueryHasNoClearActionAndClearingRestoresEditingAtNarrowLargeText() {
         var query by mutableStateOf("")
         var direction = "Newest first"
-        var environment = "phone"
+        var environment = "local"
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 MaterialTheme {
@@ -62,7 +62,7 @@ class ClearableTransferSearchFieldInstrumentedTest {
         rule.onNode(hasSetTextAction()).performTextInput("Debian")
         assertEquals("Debian", query)
         assertEquals("Newest first", direction)
-        assertEquals("phone", environment)
+        assertEquals("local", environment)
     }
 
     @Test fun populatedQueryCanClearAtOrdinaryWidthWithoutChangingExternalState() {

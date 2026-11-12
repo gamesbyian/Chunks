@@ -37,7 +37,7 @@ import io.github.gamesbyian.chunks.media.artwork.ArtworkRepository
 import io.github.gamesbyian.chunks.media.providers.TvMazeProvider
 import io.github.gamesbyian.chunks.model.EnvironmentId
 import io.github.gamesbyian.chunks.model.UnifiedTransferKey
-import io.github.gamesbyian.chunks.phoneTransferKey
+import io.github.gamesbyian.chunks.localTransferKey
 import io.github.gamesbyian.chunks.remoteTransferKey
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -71,7 +71,7 @@ class TransferRowArtworkTest {
     private val dir: File = Files.createTempDirectory("row-media").toFile()
     private val hash = "c".repeat(40)
     private val name = "Babylon.5.S02E07.Soul.Mates.1080p.WEB-DL.mkv"
-    private val phone = UnifiedTransferKey.of(EnvironmentId("phone"), hash)
+    private val local = UnifiedTransferKey.of(EnvironmentId("local"), hash)
     private val server = UnifiedTransferKey.of(EnvironmentId("rtorrent:seedbox-2"), hash)
 
     private fun jpeg(): ByteArray {
@@ -136,13 +136,13 @@ class TransferRowArtworkTest {
 
     @Test fun rowsShowTheExactEnvironmentsAssignmentWithoutAnyNetworkFromDisplay() {
         val c = controller()
-        c.observe(MediaTransferKey.of(phone), name); c.lookup(MediaTransferKey.of(phone))
+        c.observe(MediaTransferKey.of(local), name); c.lookup(MediaTransferKey.of(local))
         val requestsAfterLookup = http.requests.size
         rule.setContent {
             CompositionLocalProvider(LocalTransferMediaController provides c) {
                 ChunksTheme { Surface {
                     androidx.compose.foundation.layout.Column {
-                        TransferRowArtwork(phone, name)
+                        TransferRowArtwork(local, name)
                         // Same infohash on a server is a different transfer: category art only.
                         TransferRowArtwork(server, name)
                     }
@@ -157,12 +157,12 @@ class TransferRowArtworkTest {
 
     @Test fun privacyHiddenOrAmbiguousRowsNeverShowIdentifyingArtwork() {
         val c = controller()
-        c.observe(MediaTransferKey.of(phone), name); c.lookup(MediaTransferKey.of(phone))
+        c.observe(MediaTransferKey.of(local), name); c.lookup(MediaTransferKey.of(local))
         rule.setContent {
             CompositionLocalProvider(LocalTransferMediaController provides c) {
                 ChunksTheme { Surface {
                     androidx.compose.foundation.layout.Column {
-                        TransferRowArtwork(phone, name, hidden = true)
+                        TransferRowArtwork(local, name, hidden = true)
                         TransferRowArtwork(null, "Other.Release.mkv")
                     }
                 } }
@@ -171,13 +171,13 @@ class TransferRowArtworkTest {
         rule.onNodeWithContentDescription("Babylon", substring = true).assertDoesNotExist()
         assertEquals(2, rule.onAllNodesWithText("MKV").fetchSemanticsNodes().size)
         assertNull(remoteTransferKey(null, hash))
-        assertNull(phoneTransferKey("not-a-hash"))
+        assertNull(localTransferKey("not-a-hash"))
         assertEquals(server, remoteTransferKey("rtorrent:seedbox-2", hash.uppercase()))
     }
 
     @Test fun turningArtworkOffAppliesToVisibleRowsAndBackOnReloadsFromCacheOnly() {
         val c = controller()
-        val flow = c.observe(MediaTransferKey.of(phone), name); c.lookup(MediaTransferKey.of(phone))
+        val flow = c.observe(MediaTransferKey.of(local), name); c.lookup(MediaTransferKey.of(local))
         assertNotNull(flow.value.artwork)
         settings = settings.copy(showArtwork = false); c.onSettingsChanged()
         assertNull(flow.value.artwork)
@@ -188,9 +188,9 @@ class TransferRowArtworkTest {
         assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
     }
 
-    @Test fun phoneCardKeepsCompactRowAndOffersIdentificationAt200PercentText() {
+    @Test fun localCardKeepsCompactRowAndOffersIdentificationAt200PercentText() {
         val c = controller()
-        c.observe(MediaTransferKey.of(phone), name); c.lookup(MediaTransferKey.of(phone))
+        c.observe(MediaTransferKey.of(local), name); c.lookup(MediaTransferKey.of(local))
         val transfer = LocalTransferStatus(infoHash = hash, name = name, state = LocalTransferState.DOWNLOADING,
             stopped = false, progressPpm = 420_000, wantedBytes = 1_000_000, doneBytes = 420_000,
             payloadDownloadedBytes = 430_000, payloadUploadedBytes = 0, peers = 3, savePath = "/local", error = null)
@@ -209,13 +209,13 @@ class TransferRowArtworkTest {
         }
         rule.onNodeWithContentDescription("Artwork: Babylon 5 (automatic). $format").assertExists()
             .assertWidthIsEqualTo(40.dp)
-        rule.onRoot().captureRoboImage("build/chunks-visual/media-row-phone-320dp-200pct.png")
-        rule.onNodeWithContentDescription("More details for $name on this phone").performScrollTo().performClick()
+        rule.onRoot().captureRoboImage("build/chunks-visual/media-row-local-320dp-200pct.png")
+        rule.onNodeWithContentDescription("More details for $name on this device").performScrollTo().performClick()
         rule.onNodeWithText("Artwork & media information").performScrollTo().assertExists()
         rule.onNodeWithText("Change identification or artwork…").performScrollTo().performClick()
         rule.onNodeWithText("Identify this transfer").performScrollTo().assertExists()
         rule.onNodeWithText("Reset to automatic").performScrollTo().assertExists()
-        rule.onRoot().captureRoboImage("build/chunks-visual/media-identify-phone-320dp-200pct.png")
+        rule.onRoot().captureRoboImage("build/chunks-visual/media-identify-local-320dp-200pct.png")
         assertEquals("Media actions never toggle, remove or open files", 0, mutations)
         assertTrue(http.requests.none { it.contains("My show") || it.contains("My%20show") })
     }
@@ -236,12 +236,12 @@ class TransferRowArtworkTest {
         val unidentified = UnifiedTransferKey.of(EnvironmentId("rtorrent:seedbox-2"), "f".repeat(40))
         // Confirmed identity for the source and one other server transfer; the locked one is
         // identified too, but its source is LOCKED and must contribute nothing.
-        listOf(phone, serverOther, lockedKey).forEach { k ->
+        listOf(local, serverOther, lockedKey).forEach { k ->
             c.observe(MediaTransferKey.of(k), name); c.lookup(MediaTransferKey.of(k))
         }
         c.observe(MediaTransferKey.of(unidentified), name) // same title, never looked up
         val sources = listOf(
-            snapshot(EnvironmentId("phone"), false, obs(phone, name)),
+            snapshot(EnvironmentId("local"), false, obs(local, name)),
             snapshot(EnvironmentId("rtorrent:seedbox-2"), false, obs(serverOther, "B5 copy on server"), obs(unidentified, name)),
             snapshot(lockedEnv, true))
         val before = http.requests.size
@@ -249,8 +249,8 @@ class TransferRowArtworkTest {
         rule.setContent {
             CompositionLocalProvider(LocalTransferMediaController provides c) {
                 ChunksTheme { Surface {
-                    io.github.gamesbyian.chunks.SimilarTransfersHost(obs(phone, name), sources,
-                        environmentLabel = { if (it.value == "phone") "This phone" else "Seedbox 2" },
+                    io.github.gamesbyian.chunks.SimilarTransfersHost(obs(local, name), sources,
+                        environmentLabel = { if (it.value == "local") "This local" else "Seedbox 2" },
                         environmentColor = { androidx.compose.ui.graphics.Color.Cyan },
                         onOpen = { opened = it })
                 } }
@@ -270,9 +270,9 @@ class TransferRowArtworkTest {
         assertEquals(0, rule.onAllNodesWithText("Similar transfers").fetchSemanticsNodes().size)
     }
 
-    @Test fun phoneDetailsUseTheTransfersOwnCompletedCoverWithoutAnyNetwork() {
+    @Test fun localDetailsUseTheTransfersOwnCompletedCoverWithoutAnyNetwork() {
         val c = controller()
-        val folder = Files.createTempDirectory("phone-save").toFile()
+        val folder = Files.createTempDirectory("local-save").toFile()
         val album = "Artist - Album (2020) [FLAC]"
         val cover = jpeg()
         File(folder, "$album/cover.jpg").apply { parentFile.mkdirs(); writeBytes(cover) }
@@ -292,21 +292,21 @@ class TransferRowArtworkTest {
                 } }
             }
         }
-        rule.onNodeWithContentDescription("More details for $album on this phone").performScrollTo().performClick()
+        rule.onNodeWithContentDescription("More details for $album on this device").performScrollTo().performClick()
         rule.onNodeWithText("Change identification or artwork…").performScrollTo().performClick()
         rule.onNodeWithText("Use cover.jpg from this transfer").performScrollTo().performClick()
         rule.waitUntil(5_000) {
             rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Your artwork", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, c.observe(MediaTransferKey.of(phone), album).value.state)
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, c.observe(MediaTransferKey.of(local), album).value.state)
         assertEquals("A local cover never touches the network", before, http.requests.size)
         assertTrue("The payload file is unchanged", File(folder, "$album/cover.jpg").readBytes().contentEquals(cover))
     }
 
     @Test fun choosingAnotherProviderImageIsAUserChoiceThatSurvivesRestartAndIsReversible() {
         val c = controller()
-        val k = MediaTransferKey.of(phone)
+        val k = MediaTransferKey.of(local)
         val flow = c.observe(k, name); c.lookup(k)
         assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
         val alts = kotlinx.coroutines.runBlocking { c.alternatives(k) }
@@ -333,7 +333,7 @@ class TransferRowArtworkTest {
 
     @Test fun choosingADetailPosterIsPerTransferSurvivesOfflineRestartAndClearsOnReset() {
         val c = controller()
-        val k = MediaTransferKey.of(phone)
+        val k = MediaTransferKey.of(local)
         val flow = c.observe(k, name); c.lookup(k)
         val base = flow.value.match!!
         val a = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/uploads/images/original_untouched/1/a.jpg", ArtworkRole.POSTER)
@@ -363,7 +363,7 @@ class TransferRowArtworkTest {
     }
 
     @Test fun posterGalleryAppearsOnlyForSeveralPostersAndMarksTheChoice() {
-        val st0 = TransferMediaUiState(MediaTransferKey.of(phone), MediaRecognizer.recognize(name))
+        val st0 = TransferMediaUiState(MediaTransferKey.of(local), MediaRecognizer.recognize(name))
         val a = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/a.jpg", ArtworkRole.POSTER)
         val b = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/b.jpg", ArtworkRole.POSTER)
         val m = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_SERIES, "Babylon 5",
@@ -388,7 +388,7 @@ class TransferRowArtworkTest {
 
     @Test fun galleryShowsOnlyOnRequestAndRespectsDownloadSettings() {
         val c = controller()
-        val k = MediaTransferKey.of(phone)
+        val k = MediaTransferKey.of(local)
         c.observe(k, name); c.lookup(k)
         settings = settings.copy(downloadArtwork = false)
         val cachedOnly = kotlinx.coroutines.runBlocking { c.alternatives(k) }
@@ -399,7 +399,7 @@ class TransferRowArtworkTest {
 
     @Test fun searchableTitlesHoldOnlyConfirmedMatchesAndBumpTheRevision() {
         val c = controller()
-        val k = MediaTransferKey.of(phone)
+        val k = MediaTransferKey.of(local)
         c.observe(k, name)
         val before = c.assignmentRevision.value
         c.lookup(k)
@@ -410,7 +410,7 @@ class TransferRowArtworkTest {
     }
 
     @Test fun identifyPanelKindChoicesStayReachableAndTappableAt200Percent() {
-        val st = TransferMediaUiState(MediaTransferKey.of(phone), MediaRecognizer.recognize(name))
+        val st = TransferMediaUiState(MediaTransferKey.of(local), MediaRecognizer.recognize(name))
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
                 ChunksTheme { Surface {
@@ -429,8 +429,8 @@ class TransferRowArtworkTest {
         assertEquals(emptyList<String>(), rule.smallTouchTargets(density))
     }
 
-    @Test fun phoneCardInspectsOnlyTheCompletedMediaFileOnRequest() {
-        val folder = Files.createTempDirectory("phone-inspect").toFile()
+    @Test fun localCardInspectsOnlyTheCompletedMediaFileOnRequest() {
+        val folder = Files.createTempDirectory("local-inspect").toFile()
         val mkv = javaClass.classLoader!!.getResource("media-fixtures/embedded/tracks.mkv")!!.readBytes()
         val movie = "Example.Movie.2020.mkv"
         File(folder, movie).writeBytes(mkv)
@@ -447,7 +447,7 @@ class TransferRowArtworkTest {
                 }
             } }
         }
-        rule.onNodeWithText("Reads only this file's container headers, on this phone.").performScrollTo().assertExists()
+        rule.onNodeWithText("Reads only this file's container headers, on this device.").performScrollTo().assertExists()
         rule.onNodeWithText("Inspect media").performScrollTo().performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithText("Matroska", substring = true).fetchSemanticsNodes().isNotEmpty() }
         assertTrue("The payload is only read", File(folder, movie).readBytes().contentEquals(mkv))
@@ -459,10 +459,10 @@ class TransferRowArtworkTest {
 
     @Test fun largerListArtworkSettingResizesVisibleRowsWithoutChangingIdentity() {
         val c = controller()
-        c.observe(MediaTransferKey.of(phone), name); c.lookup(MediaTransferKey.of(phone))
+        c.observe(MediaTransferKey.of(local), name); c.lookup(MediaTransferKey.of(local))
         rule.setContent {
             CompositionLocalProvider(LocalTransferMediaController provides c) {
-                ChunksTheme { Surface { TransferRowArtwork(phone, name) } }
+                ChunksTheme { Surface { TransferRowArtwork(local, name) } }
             }
         }
         val node = rule.onNodeWithContentDescription("Artwork: Babylon 5 (automatic). $format")

@@ -10,7 +10,7 @@ import org.junit.Test
 class UniversalAddCoordinatorTest {
     private val hash = "a".repeat(40)
     private val otherHash = "b".repeat(40)
-    private val phone = UniversalAddTarget.Phone
+    private val local = UniversalAddTarget.Local
     private val remote = UniversalAddTarget.AuthenticatedServer("https://host.invalid/RPC2\u0000exact-user")
     private val otherRemote = UniversalAddTarget.AuthenticatedServer("https://host.invalid/RPC2\u0000another-user")
 
@@ -18,9 +18,9 @@ class UniversalAddCoordinatorTest {
         "magnet:?xt=urn:btih:$hash&tr=https://private.invalid/announce?passkey=SECRET", hash)
 
     private fun intent(
-        target: UniversalAddTarget = phone,
-        place: UniversalAddPlace = if (target === phone)
-            UniversalAddPlace.Phone("verified-phone-place")
+        target: UniversalAddTarget = local,
+        place: UniversalAddPlace = if (target === local)
+            UniversalAddPlace.Local("verified-local-place")
         else UniversalAddPlace.ServerCustom("/srv/downloads"),
         start: Boolean = true,
         source: UniversalAddSource = magnet()
@@ -31,7 +31,7 @@ class UniversalAddCoordinatorTest {
         intent: UniversalAddIntent,
         availability: EnvironmentAvailability = EnvironmentAvailability.LIVE
     ) = coordinator.review(intent,
-        if (intent.target === phone) EnvironmentCapabilities.phone()
+        if (intent.target === local) EnvironmentCapabilities.local()
         else EnvironmentCapabilities.unprobed(intent.target.environment), availability)
 
     private fun snapshot(
@@ -75,8 +75,8 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val wrongCapabilities = EnvironmentCapabilities.unprobed(remote.environment)
         assertFalse(state.review(intent(), wrongCapabilities, EnvironmentAvailability.LIVE).accepted)
-        assertFalse(review(state, intent(phone, UniversalAddPlace.ServerCustom("/srv"))).accepted)
-        assertFalse(review(state, intent(remote, UniversalAddPlace.Phone("local-place"))).accepted)
+        assertFalse(review(state, intent(local, UniversalAddPlace.ServerCustom("/srv"))).accepted)
+        assertFalse(review(state, intent(remote, UniversalAddPlace.Local("local-place"))).accepted)
         assertNull(state.beginSubmission(1000))
     }
 
@@ -84,7 +84,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         assertFalse(review(state, intent(), EnvironmentAvailability.STALE).accepted)
         val missing = EnvironmentCapabilitySnapshot(
-            phone.environment, "phone engine", 100L,
+            local.environment, "local engine", 100L,
             mapOf(EnvironmentOperation.ADD_MAGNET to CapabilityEvidence.MISSING))
         assertFalse(state.review(intent(), missing, EnvironmentAvailability.LIVE).accepted)
         assertTrue(review(state, intent()).accepted)
@@ -96,7 +96,7 @@ class UniversalAddCoordinatorTest {
         assertTrue(review(state, intent(start = true)).accepted)
         assertTrue(state.authorizeByUser())
         assertTrue(review(state, intent(start = false,
-            place = UniversalAddPlace.Phone("different-place"))).accepted)
+            place = UniversalAddPlace.Local("different-place"))).accepted)
         assertNull(state.beginSubmission(1000))
         assertTrue(state.authorizeByUser())
         assertFalse(requireNotNull(state.beginSubmission(1000)).intent.startWhenAdded)
@@ -170,13 +170,13 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state)
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1100, started = false),
+            state.reconcile(ticket, snapshot(local, 1100, started = false),
                 true, true, true))
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1100, started = true),
+            state.reconcile(ticket, snapshot(local, 1100, started = true),
                 true, true, false))
         assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1100, started = true),
+            state.reconcile(ticket, snapshot(local, 1100, started = true),
                 true, true, true))
         assertTrue(state.finishVerified())
         assertEquals(UniversalAddCoordinator.Phase.EMPTY, state.phase)
@@ -186,10 +186,10 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state, intent(start = false))
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1100, started = true),
+            state.reconcile(ticket, snapshot(local, 1100, started = true),
                 true, true, false))
         assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1101, started = false),
+            state.reconcile(ticket, snapshot(local, 1101, started = false),
                 true, true, false))
     }
 
@@ -265,7 +265,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state, intent(start = true))
         val waiting = UniversalAddCoordinator.ExactSessionObservation(
-            environment = phone.environment, infoHash = hash,
+            environment = local.environment, infoHash = hash,
             observedAtEpochMillis = 1001L, registered = true,
             reviewedPlaceVerified = true, started = null,
             newRegistrationVerified = true)
@@ -293,7 +293,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state)
         val pending = UniversalAddCoordinator.ExactSessionObservation(
-            environment = phone.environment, infoHash = hash,
+            environment = local.environment, infoHash = hash,
             observedAtEpochMillis = 1001L, registered = true,
             reviewedPlaceVerified = true, started = null,
             newRegistrationVerified = true)
@@ -314,7 +314,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state)
         val pending = UniversalAddCoordinator.ExactSessionObservation(
-            environment = phone.environment, infoHash = hash,
+            environment = local.environment, infoHash = hash,
             observedAtEpochMillis = 1100L, registered = true,
             reviewedPlaceVerified = true, started = null,
             newRegistrationVerified = false)
@@ -364,12 +364,12 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state)
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1100L, started = false),
+            state.reconcile(ticket, snapshot(local, 1100L, started = false),
                 adapterConfirmedNewAdd = true, adapterVerifiedPlace = false,
                 adapterVerifiedStart = false))
         assertFalse(state.acknowledgeObservedJob())
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1101L, started = false),
+            state.reconcile(ticket, snapshot(local, 1101L, started = false),
                 adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
                 adapterVerifiedStart = false))
         assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
@@ -381,7 +381,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state, intent(start = false))
         val unexpected = UniversalAddCoordinator.ExactSessionObservation(
-            environment = phone.environment, infoHash = hash,
+            environment = local.environment, infoHash = hash,
             observedAtEpochMillis = 1010L, registered = true,
             reviewedPlaceVerified = true, started = true,
             newRegistrationVerified = true)
@@ -517,7 +517,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state)
         val observed = UniversalAddCoordinator.ExactSessionObservation(
-            environment = phone.environment, infoHash = hash,
+            environment = local.environment, infoHash = hash,
             observedAtEpochMillis = 1700L, registered = true,
             reviewedPlaceVerified = true, started = null,
             newRegistrationVerified = false)
@@ -537,7 +537,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state)
         fun present(at: Long, placeVerified: Boolean) = state.reconcile(
-            ticket, snapshot(phone, at, started = false),
+            ticket, snapshot(local, at, started = false),
             adapterConfirmedNewAdd = false, adapterVerifiedPlace = placeVerified,
             adapterVerifiedStart = false)
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
@@ -549,7 +549,7 @@ class UniversalAddCoordinatorTest {
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
             present(1900L, true))
         val empty = EnvironmentTransferSnapshot(
-            phone.environment, EnvironmentAvailability.LIVE,
+            local.environment, EnvironmentAvailability.LIVE,
             true, 2000L, emptyList())
         assertEquals(UniversalAddCoordinator.Readback.NOT_OBSERVED,
             state.reconcile(ticket, empty))
@@ -612,12 +612,12 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state)
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1800L, started = false),
+            state.reconcile(ticket, snapshot(local, 1800L, started = false),
                 adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
                 adapterVerifiedStart = false))
         assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
         val exact = UniversalAddCoordinator.ExactSessionObservation(
-            environment = phone.environment, infoHash = hash,
+            environment = local.environment, infoHash = hash,
             observedAtEpochMillis = 1700L, registered = true,
             reviewedPlaceVerified = true, started = true,
             newRegistrationVerified = true)
@@ -633,19 +633,19 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val ticket = attempted(state)
         val pending = UniversalAddCoordinator.ExactSessionObservation(
-            environment = phone.environment, infoHash = hash,
+            environment = local.environment, infoHash = hash,
             observedAtEpochMillis = 1700L, registered = true,
             reviewedPlaceVerified = true, started = null,
             newRegistrationVerified = false)
         assertEquals(UniversalAddCoordinator.Readback.OBSERVED_UNVERIFIED,
             state.reconcileExactSession(ticket, pending))
         assertEquals(UniversalAddCoordinator.Readback.NEEDS_FRESH_INVENTORY,
-            state.reconcile(ticket, snapshot(phone, 1400L, started = true),
+            state.reconcile(ticket, snapshot(local, 1400L, started = true),
                 adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
                 adapterVerifiedStart = true))
         assertEquals(UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, state.phase)
         assertEquals(UniversalAddCoordinator.Readback.VERIFIED,
-            state.reconcile(ticket, snapshot(phone, 1900L, started = true),
+            state.reconcile(ticket, snapshot(local, 1900L, started = true),
                 adapterConfirmedNewAdd = true, adapterVerifiedPlace = true,
                 adapterVerifiedStart = true))
     }
@@ -700,7 +700,7 @@ class UniversalAddCoordinatorTest {
         val state = UniversalAddCoordinator()
         val first = attempted(state)
         val pending = UniversalAddCoordinator.ExactSessionObservation(
-            environment = phone.environment, infoHash = hash,
+            environment = local.environment, infoHash = hash,
             observedAtEpochMillis = 2000L, registered = true,
             reviewedPlaceVerified = true, started = null,
             newRegistrationVerified = true)

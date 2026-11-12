@@ -63,7 +63,7 @@ class CombinedContrastSweepTest {
             CombinedTransfersScreen(server = CombinedServerSource(scope, rows, stale = false, fullView = true,
                 observedAtEpochMillis = System.currentTimeMillis(), lifecycle = CombinedServerLifecycle(
                     begin = { false }, settled = {}, setStarted = { _, _ -> error("no") })),
-                savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {}, onBack = {})
         } } }
         sweep("combined-top")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Small Episode"))

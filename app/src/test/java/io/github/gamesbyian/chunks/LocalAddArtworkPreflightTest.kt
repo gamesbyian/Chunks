@@ -11,7 +11,7 @@ import org.junit.rules.TemporaryFolder
 
 /**
  * Real temporary filesystem and preference callback. No engine write.
- * Exact Add authority is still checked by installed phone journey tests.
+ * Exact Add authority is still checked by installed local journey tests.
  */
 class LocalAddArtworkPreflightTest {
     @get:Rule val temp = TemporaryFolder()

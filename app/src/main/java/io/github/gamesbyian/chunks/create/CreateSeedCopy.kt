@@ -12,7 +12,7 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 
 /**
- * "Seed a copy on this phone" for a created torrent. The phone engine can only
+ * "Seed a copy on this device" for a created torrent. The local engine can only
  * seed real files, and picked files are provider documents, so Chunks copies
  * them into a NEW folder in a verified download Place and seeds that copy.
  * The originals are never touched, and nothing existing is overwritten.
@@ -21,7 +21,7 @@ import java.nio.file.attribute.BasicFileAttributes
  * and (2) the engine has verified every piece. Anything else is refused.
  */
 internal object CreateSeedCopy {
-    /** Kept free beyond the copy itself, so seeding never fills the phone. */
+    /** Kept free beyond the copy itself, so seeding never fills the local device. */
     const val SPACE_MARGIN = 64L * 1024 * 1024
 
     sealed class Outcome {
@@ -221,17 +221,17 @@ internal object CreateSeedCopy {
 
         val added = engine.addStopped(expected.torrent, root)
         if (added !is LocalAddResult.AddedStopped) return Outcome.Refused(
-            ((added as? LocalAddResult.Refused)?.reason ?: "The phone engine did not accept the torrent") +
+            ((added as? LocalAddResult.Refused)?.reason ?: "The local engine did not accept the torrent") +
                 ". The copy is kept at ${target.path}.")
         val hash = added.status.infoHash
         if (engine.resume(hash).outcome != LocalCommandOutcome.VERIFIED) return Outcome.Refused(
-            "The phone engine did not confirm starting. The torrent is added and stopped; start it from On this phone.")
+            "The local engine did not confirm starting. The torrent is added and stopped; start it from On this device.")
         val deadline = System.currentTimeMillis() + verifyTimeoutMs
         while (engine.status(hash)?.progressPpm != 1_000_000) {
             if (System.currentTimeMillis() > deadline) {
                 engine.pause(hash)
-                return Outcome.Refused("The phone engine could not verify every piece of the copy, so it is " +
-                    "not seeding. The torrent is stopped in On this phone.")
+                return Outcome.Refused("The local engine could not verify every piece of the copy, so it is " +
+                    "not seeding. The torrent is stopped in On this device.")
             }
             Thread.sleep(200)
         }

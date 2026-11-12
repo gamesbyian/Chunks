@@ -4,7 +4,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** rTorrent rows use the phone's words, and only observed facts earn "Downloading". */
+/** rTorrent rows use the local device's words, and only observed facts earn "Downloading". */
 class RemoteStatusLabelTest {
     private val base = RemoteTransfer("a".repeat(40), "x", 1000, 500, true, "/d", 0, 0)
 

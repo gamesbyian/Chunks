@@ -60,7 +60,7 @@ class ReturnToTopOverlayLargeTextTest {
         }
     }
 
-    @Test fun tinyPhoneAt200PercentDoesNotCoverTheUnderlyingDetailsClick() {
+    @Test fun tinyLocalAt200PercentDoesNotCoverTheUnderlyingDetailsClick() {
         val clicks = mutableListOf<String>()
         show(width = 320, scale = 2f, clicks)
         val float = rule.onNodeWithContentDescription("Back to top").getUnclippedBoundsInRoot()
@@ -75,7 +75,7 @@ class ReturnToTopOverlayLargeTextTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
-    fun biggerPhoneAlsoCompactsAt200Percent() {
+    fun biggerLocalAlsoCompactsAt200Percent() {
         val clicks = mutableListOf<String>()
         show(width = 412, scale = 2f, clicks)
         val float = rule.onNodeWithContentDescription("Back to top").getUnclippedBoundsInRoot()

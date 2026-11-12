@@ -137,7 +137,7 @@ class RemoteDeleteDataInstalledInstrumentedTest {
                 visible("Transfer details") && visible("Remove from rTorrent…")
             }
             // The actual existing guarded Remove control now lives inside the
-            // same canonical Details as phone, saved-server and All scopes.
+            // same canonical Details as local, saved-server and All scopes.
             rule.onNodeWithText("Remove from rTorrent…").performScrollTo().performClick()
             waitFor("data deletion offered on exact server Details") {
                 visible("Remove transfer and data") &&

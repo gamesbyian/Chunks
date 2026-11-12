@@ -11,7 +11,7 @@ class TransferListSortStoreTest {
         val encoded = TransferListSortStore.encode(TransferOrder.SIZE, UnifiedSortDirection.ASCENDING)
         assertEquals(TransferOrder.SIZE to UnifiedSortDirection.ASCENDING,
             TransferListSortStore.decode(encoded, TransferOrder.entries.toTypedArray()))
-        // A server key that the phone list does not offer falls back, never guesses.
+        // A server key that the local device list does not offer falls back, never guesses.
         assertNull(TransferListSortStore.decode("SPEED:ASCENDING", LocalQueueOrder.entries.toTypedArray()))
         assertNull(TransferListSortStore.decode("SIZE:SIDEWAYS", TransferOrder.entries.toTypedArray()))
         assertNull(TransferListSortStore.decode("SIZE", TransferOrder.entries.toTypedArray()))
@@ -19,7 +19,7 @@ class TransferListSortStoreTest {
     }
 
     @Test fun onlyStableEnvironmentIdentitiesAreAccepted() {
-        assertTrue(TransferListSortStore.validEnvironment("phone"))
+        assertTrue(TransferListSortStore.validEnvironment("local"))
         assertTrue(TransferListSortStore.validEnvironment(
             RememberedRemoteProfileRoster.identityOf("https://example.org/RPC2", "user")))
         assertFalse(TransferListSortStore.validEnvironment(""))

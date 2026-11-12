@@ -9,15 +9,15 @@ import org.junit.Test
 
 /** Pure Transfers presentation rules: environment toggles, compact names and `.meta` titles. */
 class TransfersPresentationRulesTest {
-    private val phone = EnvironmentSnapshots.PHONE
+    private val local = EnvironmentSnapshots.LOCAL
     private val a = EnvironmentId("rtorrent-a")
     private val b = EnvironmentId("rtorrent-b")
-    private val all = setOf(phone, a, b)
+    private val all = setOf(local, a, b)
 
     @Test fun togglesHideAndShowOneEnvironmentAndReturnToDynamicAll() {
         val hidden = toggleEnvironmentVisibility(EnvironmentViewScope.All, a, all)
-        assertEquals(EnvironmentViewScope.Only(setOf(phone, b)), hidden)
-        val none = toggleEnvironmentVisibility(toggleEnvironmentVisibility(hidden, phone, all), b, all)
+        assertEquals(EnvironmentViewScope.Only(setOf(local, b)), hidden)
+        val none = toggleEnvironmentVisibility(toggleEnvironmentVisibility(hidden, local, all), b, all)
         assertEquals(EnvironmentViewScope.Only(emptySet()), none)
         assertEquals(EnvironmentViewScope.Only(setOf(a)), toggleEnvironmentVisibility(none, a, all))
         // Showing every available environment again is dynamic All, so new connections join.
@@ -30,7 +30,7 @@ class TransfersPresentationRulesTest {
     }
 
     @Test fun shortNamesAndMetadataPlaceholders() {
-        assertEquals(PHONE_ENVIRONMENT_LABEL, environmentToggleName(phone, "anything"))
+        assertEquals(LOCAL_ENVIRONMENT_LABEL, environmentToggleName(local, "anything"))
         assertEquals("ianseeds", environmentToggleName(a, "Server · ianseeds"))
         assertEquals("Magnet abcdef01… (fetching metadata)",
             compactTransferTitle("ABCDEF01" + "0".repeat(32) + ".meta"))

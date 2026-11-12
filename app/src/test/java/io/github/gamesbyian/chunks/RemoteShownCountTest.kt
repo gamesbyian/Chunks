@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** A narrowed rTorrent list states how much it hides, like the phone's "Showing X of Y". */
+/** A narrowed rTorrent list states how much it hides, like the local device's "Showing X of Y". */
 class RemoteShownCountTest {
     @Test fun narrowedListsNameTheLoadedTotal() {
         assertEquals("12 shown", remoteShownCount(12, 12))

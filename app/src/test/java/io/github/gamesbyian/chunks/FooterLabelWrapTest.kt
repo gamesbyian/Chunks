@@ -35,13 +35,13 @@ class FooterLabelWrapTest {
         rule.setContent {
             ChunksTheme { Surface {
                 AuthenticatedTransfersFooter(optionsOpen = false, onTransfers = {}, onAdd = {},
-                    onOptions = {}, environmentLabel = "this phone", imeVisible = false)
+                    onOptions = {}, environmentLabel = "this device", imeVisible = false)
             } }
         }
         assertEquals("Transfers", 1, lines("Transfers"))
         assertEquals("+ Add", 1, lines("+ Add"))
         assertEquals("Options", 1, lines("Options"))
-        rule.onNodeWithContentDescription("Show transfers on this phone").assertHeightIsAtLeast(48.dp)
-        rule.onNodeWithContentDescription("Add torrent on this phone").assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithContentDescription("Show transfers on this device").assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithContentDescription("Add torrent on this device").assertHeightIsAtLeast(48.dp)
     }
 }

@@ -75,7 +75,7 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
     private fun enforce(hash: String, policy: SeedingPolicy, assignment: Assignment) {
         val wanted = policy.uploadLimit?.bytesPerSecond?.toInt() ?: 0
         if (engine.uploadLimit(hash) != wanted && !engine.setUploadLimit(hash, policy.uploadLimit?.bytesPerSecond)) {
-            store.put(hash, assignment.copy(note = "The phone engine did not confirm the upload limit."))
+            store.put(hash, assignment.copy(note = "The local engine did not confirm the upload limit."))
         }
         if (assignment.stoppedByRule != null) return
         val observation = engine.observe(hash) ?: return

@@ -85,7 +85,7 @@ class CombinedTransfersScreenTest {
                 server = CombinedServerSource(aliasScope, rows, stale = stale, fullView = true,
                     observedAtEpochMillis = observedAtEpochMillis, lifecycle = gate,
                     authenticatedSession = authenticatedSession),
-                savedProfiles = listOf(other), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                savedProfiles = listOf(other), onOpenLocal = {}, onOpenServer = {}, onBack = {})
         } }
     }
 
@@ -107,7 +107,7 @@ class CombinedTransfersScreenTest {
             ChunksTheme { Surface(color = ChunksColors.Background) {
                 CombinedTransfersScreen(
                     server = null, savedProfiles = emptyList(),
-                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    onOpenLocal = {}, onOpenServer = null, onBack = {},
                     onConnections = { connections++ },
                     enableFirstRunWelcome = true,
                     onWelcomeAdd = { add++ },
@@ -134,7 +134,7 @@ class CombinedTransfersScreenTest {
             ChunksTheme { Surface(color = ChunksColors.Background) {
                 CombinedTransfersScreen(
                     server = null, savedProfiles = emptyList(),
-                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    onOpenLocal = {}, onOpenServer = null, onBack = {},
                     enableFirstRunWelcome = true,
                     hasRememberedRemoteLogin = true,
                     showNavigationFooter = false
@@ -164,7 +164,7 @@ class CombinedTransfersScreenTest {
                         fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
                         lifecycle = gate),
                     savedProfiles = listOf(other),
-                    onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                    onOpenLocal = {}, onOpenServer = {}, onBack = {},
                     scopeFocusRequest = pendingFocus,
                     onScopeFocusConsumed = { pendingFocus = null },
                     showAllEnvironmentsRevision =
@@ -206,7 +206,7 @@ class CombinedTransfersScreenTest {
                         fullView = true, observedAtEpochMillis = System.currentTimeMillis(),
                         lifecycle = gate),
                     savedProfiles = listOf(other),
-                    onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                    onOpenLocal = {}, onOpenServer = {}, onBack = {},
                     returnToCatalogRevision = catalogRevision
                 )
             } }
@@ -318,21 +318,21 @@ class CombinedTransfersScreenTest {
         assertTrue("Switching a list scope never executes a lifecycle command", commands.isEmpty())
     }
 
-    @Test fun phoneOnlyCatalogKeepsExplicitRecoveryWhenNativeEngineIsAbsent() {
-        // A user-selected phone-only filter must stay manageable even with
+    @Test fun localOnlyCatalogKeepsExplicitRecoveryWhenNativeEngineIsAbsent() {
+        // A user-selected local-only filter must stay manageable even with
         // zero native jobs: it is not a pristine first-install state.
         CombinedViewPreferences(context).save(
             io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
                 scope = EnvironmentViewScope.Only(
-                    setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
-        // A view filter must never start the phone engine. If there are no
+                    setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL))))
+        // A view filter must never start the local device engine. If there are no
         // rows, provide an explicit entry to the existing device controls.
         var openedDevice = 0
         rule.setContent {
             ChunksTheme { Surface(color = ChunksColors.Background) {
                 CombinedTransfersScreen(
                     server = null, savedProfiles = emptyList(),
-                    onOpenPhone = { openedDevice++ }, onOpenServer = null,
+                    onOpenLocal = { openedDevice++ }, onOpenServer = null,
                     onBack = {})
             } }
         }
@@ -344,29 +344,29 @@ class CombinedTransfersScreenTest {
         assertTrue("Scope selection or recovery navigation sent no remote commands", commands.isEmpty())
     }
 
-    @Test fun phoneEmptyCopyRequiresAuthoritativeCurrentInventory() {
+    @Test fun localEmptyCopyRequiresAuthoritativeCurrentInventory() {
         assertEquals("No transfers on this device yet. Review a torrent to add one.",
-            phoneOnlyEmptyInventoryMessage(true))
+            localOnlyEmptyInventoryMessage(true))
         assertEquals("No verified transfer list is available yet. Saved transfers may need " +
             "to be restored in device controls.",
-            phoneOnlyEmptyInventoryMessage(false))
+            localOnlyEmptyInventoryMessage(false))
     }
 
-    @Test fun phoneOnlyEmptyCatalogOffersReviewWithoutStartingOrGuessingInventory() {
+    @Test fun localOnlyEmptyCatalogOffersReviewWithoutStartingOrGuessingInventory() {
         // Explicitly narrowed scope preserves recovery and pending-restore
         // warnings rather than showing the unrelated fresh-install Welcome.
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             scope = EnvironmentViewScope.Only(
-                setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
-        assertNull("Fixture must not silently start the phone engine", LocalEngineHolder.current())
+                setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL))))
+        assertNull("Fixture must not silently start the local device engine", LocalEngineHolder.current())
         var addReviews = 0
-        var phoneControls = 0
+        var localControls = 0
         rule.setContent {
             ChunksTheme { Surface(color = ChunksColors.Background) {
                 CombinedTransfersScreen(
                     server = null, savedProfiles = emptyList(),
-                    onOpenPhone = { phoneControls++ }, onOpenServer = null,
-                    onAddToPhone = { addReviews++ }, onBack = {},
+                    onOpenLocal = { localControls++ }, onOpenServer = null,
+                    onAddToLocal = { addReviews++ }, onBack = {},
                     enableFirstRunWelcome = true, onWelcomeAdd = { addReviews++ })
             } }
         }
@@ -383,7 +383,7 @@ class CombinedTransfersScreenTest {
         }
         rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).performClick()
         assertEquals(1, addReviews)
-        assertEquals(0, phoneControls)
+        assertEquals(0, localControls)
         assertNull("Review navigation does not start the native engine", LocalEngineHolder.current())
         assertTrue("Review navigation does not issue lifecycle commands", commands.isEmpty())
     }
@@ -399,7 +399,7 @@ class CombinedTransfersScreenTest {
         assertEquals("a".repeat(40), exact?.infoHash)
     }
 
-    @Test fun showsEveryEnvironmentHonestlyWithoutStartingThePhoneEngine() {
+    @Test fun showsEveryEnvironmentHonestlyWithoutStartingTheLocalEngine() {
         show()
         rule.onNodeWithText("All environments").assertExists()
         // Ordinary list presentation is compact; source-by-source proof is available on request.
@@ -422,7 +422,7 @@ class CombinedTransfersScreenTest {
         seen("Small Episode")
         seen("Stopped · 50% · ↓ not reported · ↑ not reported · Ratio not reported")
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-all.png")
-        // A read-only view must not bring up the phone engine for a remote-only user.
+        // A read-only view must not bring up the local device engine for a remote-only user.
         assertNull(LocalEngineHolder.current())
     }
 
@@ -466,8 +466,8 @@ class CombinedTransfersScreenTest {
         // The view chip shows the compact unique origin; the group heading below
         // retains the exact address-bearing label.
         // Toggle row: hide the device and the other saved server, leaving only this server.
-        reveal(hasContentDescription("Showing " + PHONE_ENVIRONMENT_LABEL, substring = true))
-        rule.onNodeWithContentDescription("Showing " + PHONE_ENVIRONMENT_LABEL, substring = true).performClick()
+        reveal(hasContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true))
+        rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
         rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
         rule.onNodeWithText("On this device: Engine not running; open transfers on this device · 0 transfers").assertDoesNotExist()
         revealText("Showing 2")
@@ -682,7 +682,7 @@ class CombinedTransfersScreenTest {
         rule.setContent {
             ChunksTheme { Surface(color = ChunksColors.Background) {
                 CombinedTransfersScreen(server = active, savedProfiles = emptyList(),
-                    onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                    onOpenLocal = {}, onOpenServer = {}, onBack = {})
             } }
         }
         revealText("Batch tools")
@@ -734,7 +734,7 @@ class CombinedTransfersScreenTest {
                         observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gate,
                         authenticatedSession = "live-session"),
                     savedProfiles = listOf(profile),
-                    onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                    onOpenLocal = {}, onOpenServer = {}, onBack = {})
             } }
         }
         revealText("Batch tools")
@@ -766,8 +766,8 @@ class CombinedTransfersScreenTest {
         rule.waitUntil(5_000) { stored.load().hueOf(serverId) != null }
         val automatic = stored.load().hueOf(serverId)
         assertNotNull(automatic)
-        assertNotEquals("phone and server differ automatically", automatic,
-            EnvironmentColourStore(context).load().hueOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))
+        assertNotEquals("local and server differ automatically", automatic,
+            EnvironmentColourStore(context).load().hueOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL))
         // A completed preference write does not mean its lazy controls have
         // entered the current viewport. Await the real control before one tap.
         revealDescription(serverEnvironmentLabel(aliasScope) + " colour Pink")
@@ -801,7 +801,7 @@ class CombinedTransfersScreenTest {
                     savedProfiles = listOf(other),
                     showNavigationFooter = false,
                     returnToCatalogRevision = returnRevision,
-                    onOpenPhone = {}, onOpenServer = null, onBack = {})
+                    onOpenLocal = {}, onOpenServer = null, onBack = {})
             } }
         }
         val details = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)

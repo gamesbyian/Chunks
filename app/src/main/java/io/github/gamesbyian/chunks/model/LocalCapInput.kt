@@ -28,6 +28,6 @@ object LocalCapInput {
     fun assessment(capBytes: Long?, folder: LocalFolderInventory?, freeBytes: Long?): StorageAssessment {
         val complete = folder?.complete == true && folder.logicalBytes != null
         val used = folder?.logicalBytes?.takeIf { complete }
-        return StorageBudgetAdvisor.assess(StorageBudget("phone-app-download-folder", capBytes, used, freeBytes))
+        return StorageBudgetAdvisor.assess(StorageBudget("local-app-download-folder", capBytes, used, freeBytes))
     }
 }

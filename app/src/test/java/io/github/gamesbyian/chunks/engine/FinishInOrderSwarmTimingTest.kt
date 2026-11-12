@@ -22,7 +22,7 @@ import org.libtorrent4j.TorrentBuilder
  * Asserted: under Finish first, when the first ordered file is hash-verified
  * complete, the other files together hold under three quarters of their bytes.
  * Timings are printed as measurements only; one seeder on loopback says
- * nothing about real swarms, peer churn or a phone's radio.
+ * nothing about real swarms, peer churn or a local's radio.
  */
 class FinishInOrderSwarmTimingTest {
     @get:Rule val temp = TemporaryFolder()

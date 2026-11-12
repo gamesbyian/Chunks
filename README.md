@@ -19,15 +19,15 @@ Chunks is an Android-native BitTorrent client and first-class rTorrent remote co
 
 Chunks supports three intended configurations:
 
-- **On-phone client only:** the default first-run offer, with no rTorrent connection required.
+- **On-local device client only:** the default first-run offer, with no rTorrent connection required.
 - **rTorrent remote only:** control configured seedbox/server profiles without requiring local torrent-engine setup.
-- **Both:** switch among phone and one or more independently configured rTorrent instances while using a consistent Transfers list, details, Add, controls, Collections and settings model.
+- **Both:** switch among local device and one or more independently configured rTorrent instances while using a consistent Transfers list, details, Add, controls, Collections and settings model.
 
-Each environment has its own torrent identities, connection/storage capabilities and appropriate settings. Lists and transfer details identify the active phone/server. Switching is UI navigation and does not move files or torrent jobs. [Binding environment contract](docs/UNIFIED-ENVIRONMENTS.md).
+Each environment has its own torrent identities, connection/storage capabilities and appropriate settings. Lists and transfer details identify the active local device/server. Switching is UI navigation and does not move files or torrent jobs. [Binding environment contract](docs/UNIFIED-ENVIRONMENTS.md).
 
 ## Fundamental concepts
 
-- **Transfer:** one torrent job managed by a specific phone/server engine, with progress, controls and an exact scoped infohash.
+- **Transfer:** one torrent job managed by a specific local device/server engine, with progress, controls and an exact scoped infohash.
 - **Place:** an actual permitted download or library destination, not a cosmetic label.
 - **Collection:** a user-defined semantic group that does not move files merely by including a transfer.
 - **Display alias:** an optional Chunks-only title, distinct from torrent metadata, downloaded files and actual paths.

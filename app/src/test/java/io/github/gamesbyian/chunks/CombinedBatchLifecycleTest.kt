@@ -14,7 +14,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CombinedBatchLifecycleTest {
-    private val phone = EnvironmentSnapshots.PHONE
+    private val local = EnvironmentSnapshots.LOCAL
     private val server = EnvironmentId("a".repeat(64))
     private val other = EnvironmentId("b".repeat(64))
     private val hash = "c".repeat(40)
@@ -37,19 +37,19 @@ class CombinedBatchLifecycleTest {
     @Test fun serverRunsUnderItsOwnLeaseAndSettlesExactlyOnce() = runBlocking {
         val gate = FakeGate(grant = true)
         val onServer = row(server, false)
-        val onPhone = row(phone, false)
-        val report = runCombinedLifecycle(setOf(onServer.key, onPhone.key), true,
-            listOf(source(phone, onPhone), source(server, onServer)), gate.lifecycle, server,
-            phoneEngine = { null })
+        val onLocal = row(local, false)
+        val report = runCombinedLifecycle(setOf(onServer.key, onLocal.key), true,
+            listOf(source(local, onLocal), source(server, onServer)), gate.lifecycle, server,
+            localEngine = { null })
         assertEquals(listOf(hash to true), gate.calls)
         assertEquals(1, gate.begins)
         assertEquals(1, gate.settles)
         val byEnv = report.environments.associate { it.environment to it.items.single() }
         assertEquals(CommandEvidence.VERIFIED, byEnv.getValue(server).evidence)
-        assertEquals(CommandEvidence.REFUSED, byEnv.getValue(phone).evidence)
-        assertEquals("phone engine is not running", byEnv.getValue(phone).reason)
-        // The phone fence was never taken, so it is still free.
-        assertFalse(PhoneMutationFence.revision.blocksMutations())
+        assertEquals(CommandEvidence.REFUSED, byEnv.getValue(local).evidence)
+        assertEquals("local engine is not running", byEnv.getValue(local).reason)
+        // The local fence was never taken, so it is still free.
+        assertFalse(LocalMutationFence.revision.blocksMutations())
     }
 
     @Test fun serverThatDoesNotAdvertiseStartStopRefusesBeforeLeasing() = runBlocking {
@@ -62,7 +62,7 @@ class CombinedBatchLifecycleTest {
         val onServer = row(server, false)
         val missing = runCombinedLifecycle(setOf(onServer.key), true, listOf(source(server, onServer)),
             lifecycle { io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", all - "d.start") }, server,
-            phoneEngine = { null })
+            localEngine = { null })
         assertEquals(0, begins)
         assertTrue(calls.isEmpty())
         assertEquals(CommandEvidence.REFUSED, missing.items.single().evidence)
@@ -72,7 +72,7 @@ class CombinedBatchLifecycleTest {
         for (probe in listOf<suspend () -> io.github.gamesbyian.chunks.rpc.RemoteProbe>(
             { io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", null) }, { error("timeout") })) {
             val report = runCombinedLifecycle(setOf(onServer.key), true, listOf(source(server, onServer)),
-                lifecycle(probe), server, phoneEngine = { null })
+                lifecycle(probe), server, localEngine = { null })
             assertEquals(CommandEvidence.VERIFIED, report.items.single().evidence)
         }
         assertEquals(2, begins)
@@ -83,7 +83,7 @@ class CombinedBatchLifecycleTest {
         val chosen = row(server, true)
         val result = runCombinedLifecycle(setOf(chosen.key), false,
             listOf(source(server, chosen)), gate.lifecycle, server,
-            phoneEngine = { null }, reviewStillCurrent = { false })
+            localEngine = { null }, reviewStillCurrent = { false })
         assertEquals(0, gate.begins)
         assertEquals(0, gate.settles)
         assertTrue(gate.calls.isEmpty())
@@ -105,7 +105,7 @@ class CombinedBatchLifecycleTest {
             })
         val result = runCombinedLifecycle(setOf(chosen.key), false,
             listOf(source(server, chosen)), lifecycle, server,
-            phoneEngine = { null }, reviewStillCurrent = { reviewValid })
+            localEngine = { null }, reviewStillCurrent = { reviewValid })
         assertEquals(0, begins)
         assertEquals(0, writes)
         assertEquals(CommandEvidence.REFUSED, result.items.single().evidence)
@@ -130,7 +130,7 @@ class CombinedBatchLifecycleTest {
                 })
             val result = runCombinedLifecycle(setOf(later.key, first.key), false,
                 listOf(source(server, first, later)), lifecycle, server,
-                phoneEngine = { null }, reviewStillCurrent = { reviewValid })
+                localEngine = { null }, reviewStillCurrent = { reviewValid })
             assertEquals(listOf(first.key.infoHash), writes)
             assertEquals(listOf(CommandEvidence.VERIFIED, CommandEvidence.REFUSED),
                 result.items.map { it.evidence })
@@ -143,7 +143,7 @@ class CombinedBatchLifecycleTest {
     @Test fun busyGateStaleSourceAndUnconnectedProfileNeverReceiveCommands() = runBlocking {
         val busy = FakeGate(grant = false)
         val report = runCombinedLifecycle(setOf(row(server, true).key), false,
-            listOf(source(server, row(server, true))), busy.lifecycle, server, phoneEngine = { null })
+            listOf(source(server, row(server, true))), busy.lifecycle, server, localEngine = { null })
         assertTrue(busy.calls.isEmpty())
         assertEquals(0, busy.settles)
         assertEquals("server is busy or refreshing", report.items.single().reason)
@@ -151,12 +151,12 @@ class CombinedBatchLifecycleTest {
         val gate = FakeGate(grant = true)
         val stale = runCombinedLifecycle(setOf(row(server, true).key), false,
             listOf(source(server, row(server, true), availability = EnvironmentAvailability.STALE)),
-            gate.lifecycle, server, phoneEngine = { null })
+            gate.lifecycle, server, localEngine = { null })
         assertEquals(0, gate.begins)
         assertEquals(CommandEvidence.REFUSED, stale.items.single().evidence)
 
         val offline = runCombinedLifecycle(setOf(row(other, true).key), false,
-            listOf(source(other, row(other, true))), gate.lifecycle, server, phoneEngine = { null })
+            listOf(source(other, row(other, true))), gate.lifecycle, server, localEngine = { null })
         assertTrue(gate.calls.isEmpty())
         assertEquals("only listed here; sign in to this server to change it", offline.items.single().reason)
     }
@@ -171,7 +171,7 @@ class CombinedBatchLifecycleTest {
         )) {
             val result = runCombinedLifecycle(setOf(onServer.key), start = false,
                 sources = listOf(blocked), serverLifecycle = gate.lifecycle,
-                serverId = server, phoneEngine = { null })
+                serverId = server, localEngine = { null })
             assertEquals(CommandEvidence.REFUSED, result.items.single().evidence)
             assertNull(result.haltedOn)
         }
@@ -181,17 +181,17 @@ class CombinedBatchLifecycleTest {
     }
 
     @Test fun previewAndResultsNameEveryEnvironment() = runBlocking {
-        val labels = mapOf(phone to "On this device", server to "Server · ian @ box")
-        val preview = combinedBatchPreview(false, setOf(row(phone, true).key, row(server, true).key), labels)
+        val labels = mapOf(local to "On this device", server to "Server · ian @ box")
+        val preview = combinedBatchPreview(false, setOf(row(local, true).key, row(server, true).key), labels)
         assertTrue(preview, preview.startsWith("Stop 2 selected"))
         assertTrue(preview, preview.contains("On this device: 1; Server · ian @ box: 1"))
         val gate = FakeGate(grant = true)
-        val report = runCombinedLifecycle(setOf(row(server, true).key, row(phone, true).key), false,
-            listOf(source(phone, row(phone, true)), source(server, row(server, true))), gate.lifecycle, server,
-            phoneEngine = { null })
+        val report = runCombinedLifecycle(setOf(row(server, true).key, row(local, true).key), false,
+            listOf(source(local, row(local, true)), source(server, row(server, true))), gate.lifecycle, server,
+            localEngine = { null })
         // Environments run in stable-ID order, independent of selection order.
         assertEquals(listOf("Server · ian @ box: 1 confirmed stopped.",
-            "On this device: 1 not attempted (phone engine is not running)."), report.describe { labels.getValue(it) })
+            "On this device: 1 not attempted (local engine is not running)."), report.describe { labels.getValue(it) })
     }
 
     @Test fun nonV1ServerIdentityIsRefusedBeforeAnyRpcAndDoesNotHaltTheBatch() = runBlocking {
@@ -200,7 +200,7 @@ class CombinedBatchLifecycleTest {
             1, 0, true, null, null, null)
         val v1 = row(server, true)
         val report = runCombinedLifecycle(setOf(v2.key, v1.key), false,
-            listOf(source(server, v1, v2)), gate.lifecycle, server, phoneEngine = { null })
+            listOf(source(server, v1, v2)), gate.lifecycle, server, localEngine = { null })
         assertEquals(listOf(hash to false), gate.calls)
         assertNull(report.haltedOn)
         assertEquals(setOf(CommandEvidence.VERIFIED, CommandEvidence.REFUSED), report.items.map { it.evidence }.toSet())
@@ -222,7 +222,7 @@ class CombinedBatchLifecycleTest {
                 setStarted = { _, on -> commands++; LifecycleOutcome.Verified(on) },
                 probe = { probes++; clock = expired; io.github.gamesbyian.chunks.rpc.RemoteProbe("0.9.8", null) })
             val report = runCombinedLifecycle(setOf(onServer.key), false, listOf(source),
-                lifecycle, server, phoneEngine = { null }, nowEpochMillis = { clock })
+                lifecycle, server, localEngine = { null }, nowEpochMillis = { clock })
             assertEquals(if (expiresDuringProbe) 1 else 0, probes)
             assertEquals(0, begins)
             assertEquals(0, settles)
@@ -250,7 +250,7 @@ class CombinedBatchLifecycleTest {
                 })
             val report = runCombinedLifecycle(setOf(second.key, first.key), false,
                 listOf(source(server, first, second).copy(observedAtEpochMillis = observed)), lifecycle, server,
-                phoneEngine = { null }, nowEpochMillis = { clock })
+                localEngine = { null }, nowEpochMillis = { clock })
             assertEquals(listOf(first.key.infoHash), calls)
             assertEquals(listOf(CommandEvidence.VERIFIED, CommandEvidence.REFUSED), report.items.map { it.evidence })
             assertEquals("Transfer list is out of date; refresh first", report.items.last().reason)

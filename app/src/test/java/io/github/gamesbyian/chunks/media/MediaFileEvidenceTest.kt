@@ -39,7 +39,7 @@ class MediaFileEvidenceTest {
     private val clock = FakeClock()
     private var settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
     private val dir: File = Files.createTempDirectory("media-evidence").toFile()
-    private val phone = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("phone"), "c".repeat(40)))
+    private val local = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("local"), "c".repeat(40)))
     private val server = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("rtorrent-profile"), "c".repeat(40)))
     private val folderName = "Hackers (1995)"
     private val movieFiles = listOf(
@@ -87,16 +87,16 @@ class MediaFileEvidenceTest {
     @Test fun folderNameAloneAbstainsFromOnlineLookup() = runBlocking {
         // The conservative recognizer must not blindly treat every "Title (Year)" as a film.
         assertEquals(MediaKind.UNKNOWN, MediaRecognizer.recognize(folderName).kind)
-        controller(MediaFileEvidenceSource.NONE).enrichInventory(listOf(phone to folderName))
+        controller(MediaFileEvidenceSource.NONE).enrichInventory(listOf(local to folderName))
         assertTrue(providerRequests().isEmpty())
-        assertNull(records().get(phone))
+        assertNull(records().get(local))
     }
 
     @Test fun offscreenInventoryUsesLocalFileCompositionToAutoIdentifyAndCachePoster() = runBlocking {
-        val evidence = CountingEvidence(mapOf(phone to movieFiles))
-        controller(evidence).enrichInventory(listOf(phone to folderName))
+        val evidence = CountingEvidence(mapOf(local to movieFiles))
+        controller(evidence).enrichInventory(listOf(local to folderName))
 
-        val saved = records().get(phone)
+        val saved = records().get(local)
         assertEquals(MediaAssignmentState.AUTOMATIC, saved?.state)
         assertEquals("10428", saved!!.match!!.ref.externalId) // year safeguard excludes the same-title remake
         assertEquals(1995, saved.match!!.year)
@@ -112,30 +112,30 @@ class MediaFileEvidenceTest {
 
         // A fresh process restores identity and art without HTTP, then a row shows it.
         val before = http.requests.size
-        val restored = controller(MediaFileEvidenceSource.NONE).observe(phone, folderName).value
+        val restored = controller(MediaFileEvidenceSource.NONE).observe(local, folderName).value
         assertEquals(MediaAssignmentState.AUTOMATIC, restored.state)
         assertNotNull(restored.artwork)
         assertEquals(before, http.requests.size)
     }
 
     @Test fun evidenceIsReadOncePerExactJobAndNameAcrossInventoryPasses() = runBlocking {
-        val evidence = CountingEvidence(mapOf(phone to movieFiles))
+        val evidence = CountingEvidence(mapOf(local to movieFiles))
         val c = controller(evidence)
         settings = settings.copy(onlineLookupConsent = false)
-        c.enrichInventory(listOf(phone to folderName))
-        c.enrichInventory(listOf(phone to folderName))
+        c.enrichInventory(listOf(local to folderName))
+        c.enrichInventory(listOf(local to folderName))
         assertEquals(1, evidence.reads.get())
         assertTrue(http.requests.isEmpty()) // local evidence never implies provider consent
     }
 
     @Test fun pendingMetadataIsRetriedOnALaterPass() = runBlocking {
         var files: List<MediaFileHint>? = null // magnet metadata not yet known
-        val c = controller { key -> if (key == phone) files else null }
-        c.enrichInventory(listOf(phone to folderName))
+        val c = controller { key -> if (key == local) files else null }
+        c.enrichInventory(listOf(local to folderName))
         assertTrue(providerRequests().isEmpty())
         files = movieFiles
-        c.enrichInventory(listOf(phone to folderName))
-        assertEquals(MediaAssignmentState.AUTOMATIC, records().get(phone)?.state)
+        c.enrichInventory(listOf(local to folderName))
+        assertEquals(MediaAssignmentState.AUTOMATIC, records().get(local)?.state)
     }
 
     @Test fun lateMagnetMetadataRetriesAnUnresolvedResultOnceWhenTheQueryChanges() = runBlocking {
@@ -143,20 +143,20 @@ class MediaFileEvidenceTest {
         val magnetName = "Planet.Earth.II.2160p.UHD.BluRay.x265-TEST"
         assertEquals(MediaKind.VIDEO, MediaRecognizer.recognize(magnetName).kind)
         var files: List<MediaFileHint>? = null
-        val c = controller { key -> if (key == phone) files else null }
-        c.enrichInventory(listOf(phone to magnetName))
-        assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, records().get(phone)?.state)
+        val c = controller { key -> if (key == local) files else null }
+        c.enrichInventory(listOf(local to magnetName))
+        assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, records().get(local)?.state)
         assertTrue(providerRequests().all { it.contains("/search/movie") })
 
         // An unchanged inventory pass must not repeat the negative search.
         val before = http.requests.size
-        c.enrichInventory(listOf(phone to magnetName))
+        c.enrichInventory(listOf(local to magnetName))
         assertEquals(before, http.requests.size)
 
         // Metadata arrives: six episode files reveal a season pack. One retry is now due.
         files = (1..6).map { MediaFileHint("Planet.Earth.II/Planet.Earth.II.S01E0$it.2160p.mkv", 4_000_000_000L) }
-        c.enrichInventory(listOf(phone to magnetName))
-        val saved = records().get(phone)
+        c.enrichInventory(listOf(local to magnetName))
+        val saved = records().get(local)
         assertEquals(MediaAssignmentState.AUTOMATIC, saved?.state)
         assertEquals("68595", saved!!.match!!.ref.externalId)
         val tvQuery = providerRequests().single { it.contains("/search/tv") }
@@ -164,7 +164,7 @@ class MediaFileEvidenceTest {
 
         // Resolved: later passes do not search again.
         val settled = http.requests.size
-        c.enrichInventory(listOf(phone to magnetName))
+        c.enrichInventory(listOf(local to magnetName))
         assertEquals(settled, http.requests.size)
     }
 
@@ -175,10 +175,10 @@ class MediaFileEvidenceTest {
 
         // An already-loaded authorized rTorrent file list, shared by its host.
         c.offerFileEvidence(server, folderName, movieFiles)
-        c.enrichInventory(listOf(server to folderName, phone to folderName))
+        c.enrichInventory(listOf(server to folderName, local to folderName))
         assertEquals(MediaAssignmentState.AUTOMATIC, records().get(server)?.state)
-        // The same hash on the phone is a different job without evidence of its own.
-        assertNull(records().get(phone))
+        // The same hash on the local device is a different job without evidence of its own.
+        assertNull(records().get(local))
         assertEquals(1, providerRequests().size)
         // Exclusion still wins over offered evidence.
         val other = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("rtorrent-profile"), "d".repeat(40)))
@@ -198,15 +198,15 @@ class MediaFileEvidenceTest {
     }
 
     @Test fun nonVideoCompositionIsNeverLookedUpAsAMovie() = runBlocking {
-        controller(CountingEvidence(mapOf(phone to photoFiles))).enrichInventory(listOf(phone to folderName))
+        controller(CountingEvidence(mapOf(local to photoFiles))).enrichInventory(listOf(local to folderName))
         assertTrue(providerRequests().isEmpty())
-        assertNull(records().get(phone)?.match)
+        assertNull(records().get(local)?.match)
     }
 
     @Test fun unauthorizedOrExcludedJobsNeitherReadFilesNorCallProviders() = runBlocking {
-        val evidence = CountingEvidence(mapOf(phone to movieFiles, server to movieFiles))
+        val evidence = CountingEvidence(mapOf(local to movieFiles, server to movieFiles))
         val c = controller(evidence)
-        c.enrichInventory(listOf(phone to folderName)) { false }
+        c.enrichInventory(listOf(local to folderName)) { false }
         assertEquals(0, evidence.reads.get())
         assertTrue(c.setAutomaticLookupEnabled(server, false))
         c.enrichInventory(listOf(server to folderName))
@@ -222,47 +222,47 @@ class MediaFileEvidenceTest {
         var reads = 0
         // The first read races a privacy lock / logout that revokes this exact job.
         val c = controller { _ -> reads++; if (reads == 1) allowed = false; movieFiles }
-        c.enrichInventory(listOf(phone to folderName)) { allowed }
+        c.enrichInventory(listOf(local to folderName)) { allowed }
         assertTrue(providerRequests().isEmpty())
-        assertNull(records().get(phone))
+        assertNull(records().get(local))
         allowed = true
         // Not memoized from the revoked read: the next authorized pass reads again and succeeds.
-        c.enrichInventory(listOf(phone to folderName)) { allowed }
+        c.enrichInventory(listOf(local to folderName)) { allowed }
         assertEquals(2, reads)
-        assertEquals(MediaAssignmentState.AUTOMATIC, records().get(phone)?.state)
+        assertEquals(MediaAssignmentState.AUTOMATIC, records().get(local)?.state)
     }
 
     @Test fun nameOnlyRowDoesNotDowngradeDetailsFileEvidence() {
         settings = settings.copy(onlineLookupConsent = false)
         val c = controller(MediaFileEvidenceSource.NONE)
-        val details = c.observe(phone, folderName, movieFiles)
+        val details = c.observe(local, folderName, movieFiles)
         assertEquals(MediaKind.MOVIE, details.value.recognition.kind)
-        val row = c.observe(phone, folderName)
+        val row = c.observe(local, folderName)
         assertEquals(MediaKind.MOVIE, row.value.recognition.kind)
         assertEquals(MediaKind.MOVIE, details.value.recognition.kind)
     }
 
     @Test fun visibleNameOnlyRowUpgradesFromEngineEvidenceAndAutoIdentifies() {
-        val c = controller(CountingEvidence(mapOf(phone to movieFiles)))
-        val row = c.observe(phone, folderName) { true }
-        c.refreshAutomatic(phone)
+        val c = controller(CountingEvidence(mapOf(local to movieFiles)))
+        val row = c.observe(local, folderName) { true }
+        c.refreshAutomatic(local)
         assertEquals(MediaKind.MOVIE, row.value.recognition.kind)
         assertEquals(MediaAssignmentState.AUTOMATIC, row.value.state)
         assertNotNull(row.value.artwork)
     }
 
-    @Test fun phoneEngineEvidenceIgnoresRemoteAndMalformedKeysAndNeverStartsAnEngine() {
-        assertNull(PhoneEngineMediaFileEvidence.files(server))
-        assertNull(PhoneEngineMediaFileEvidence.files(MediaTransferKey("phone|../../etc")))
+    @Test fun localEngineEvidenceIgnoresRemoteAndMalformedKeysAndNeverStartsAnEngine() {
+        assertNull(LocalEngineMediaFileEvidence.files(server))
+        assertNull(LocalEngineMediaFileEvidence.files(MediaTransferKey("local|../../etc")))
         // No engine has been started in this process: no file list, no side effects.
-        assertNull(PhoneEngineMediaFileEvidence.files(phone))
+        assertNull(LocalEngineMediaFileEvidence.files(local))
         assertNull(io.github.gamesbyian.chunks.LocalEngineHolder.current())
     }
 
     @Test fun evidenceCacheIsBoundedAndNameExact() {
         val cache = MediaFileEvidenceCache(maxEntries = 2)
         val r = MediaRecognizer.recognize(folderName, movieFiles)
-        val keys = (1..3).map { MediaTransferKey("phone|" + it.toString().repeat(40)) }
+        val keys = (1..3).map { MediaTransferKey("local|" + it.toString().repeat(40)) }
         keys.forEach { cache.put(it, folderName, r) }
         assertNull(cache.get(keys[0], folderName))
         assertEquals(r, cache.get(keys[2], folderName))

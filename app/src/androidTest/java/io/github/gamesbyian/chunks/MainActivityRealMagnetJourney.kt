@@ -121,7 +121,7 @@ internal class MainActivityRealMagnetJourney(
         scroll(label)
         rule.onNodeWithText(label).performTextReplacement(text)
         if (label == "Magnet or torrent link" || label == "Custom server folder (optional)") {
-            // Exercise the same Done IME action available to a real phone user
+            // Exercise the same Done IME action available to a real local user
             // instead of leaving the URL editor focused under an unseen IME.
             // Never trigger a Connect/Confirm action from the keyboard.
             runCatching { rule.onNodeWithText(label).performImeAction() }
@@ -526,7 +526,7 @@ internal class MainActivityRealMagnetJourney(
             val originalHashes = readOnly { remote.listTransfers("main").map { it.hash.lowercase() }.toSet() }
             clickTag(ChunksSemantics.FOOTER_TRANSFERS)
             waitTransfersCatalog()
-            // Combined asynchronously loads its phone/remote privacy and
+            // Combined asynchronously loads its local/remote privacy and
             // inventory. The title appearing does not prove that its exact
             // remote transfer row has been composed yet.
             val rowMatch = hasContentDescription("Details for $displayName on", substring = true)
@@ -541,7 +541,7 @@ internal class MainActivityRealMagnetJourney(
             rule.waitUntil(30_000) {
                 visible("Transfer details") && visible("Environment:")
             }
-            assertFalse("Signed-in rTorrent detail opened phone instead",
+            assertFalse("Signed-in rTorrent detail opened local instead",
                 visible("Environment: On this device"))
             rule.onNodeWithText("Show technical details").performScrollTo().performClick()
             assertTrue("Combined Details lost the exact authenticated rTorrent hash",

@@ -5,7 +5,7 @@ import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 
 /**
  * Remembers each environment's own Transfers sort key and direction across
- * navigation and restart. Keyed by stable environment identity ("phone" or
+ * navigation and restart. Keyed by stable environment identity ("local" or
  * a remembered server profile ID), so one server's order never leaks onto
  * another. A presentation preference only: it never targets a command.
  */
@@ -27,10 +27,10 @@ internal class TransferListSortStore(context: Context) {
     }
 
     companion object {
-        const val PHONE = "phone"
+        const val LOCAL = "local"
 
         fun validEnvironment(id: String): Boolean =
-            id == PHONE || id.matches(Regex("[a-f0-9]{64}"))
+            id == LOCAL || id.matches(Regex("[a-f0-9]{64}"))
 
         fun encode(key: Enum<*>, direction: UnifiedSortDirection): String = key.name + ":" + direction.name
 

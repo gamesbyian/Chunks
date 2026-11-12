@@ -61,7 +61,7 @@ class TorrentLinkImportTest {
         assertFalse(TorrentLinkCheck.plausibleTorrentLink("http://archive.org/x.torrent"))
     }
 
-    @Test fun addressPolicyRefusesThisPhoneAndPrivateNetworks() {
+    @Test fun addressPolicyRefusesThisLocalAndPrivateNetworks() {
         for (ip in listOf("127.0.0.1", "10.1.2.3", "172.16.0.1", "192.168.1.10", "169.254.1.1", "100.64.0.1",
             "0.0.0.0", "224.0.0.1", "::1", "fd00::1", "fe80::1", "::ffff:192.168.1.1", "198.18.0.1"))
             assertFalse(ip, TorrentLinkAddressPolicy.allowed(InetAddress.getByName(ip)))
@@ -70,7 +70,7 @@ class TorrentLinkImportTest {
     }
 
     @Test fun ipv6TranslationAndTunnelsCannotSmugglePrivateIpv4Sources() {
-        // NAT64/DNS64 can reach public IPv4 origins on IPv6-only phones.
+        // NAT64/DNS64 can reach public IPv4 origins on IPv6-only locals.
         // Embedded loopback/private IPv4 must still fail the same policy.
         for (ip in listOf(
                 "64:ff9b::a00:1",        // NAT64 -> 10.0.0.1

@@ -39,11 +39,11 @@ import io.github.gamesbyian.chunks.seeding.SeedingRule
 import io.github.gamesbyian.chunks.seeding.SeedingRuleStore
 import java.math.BigDecimal
 
-/** One environment a seeding rule can apply to: the phone, or one saved server profile. */
+/** One environment a seeding rule can apply to: the local device, or one saved server profile. */
 internal data class SeedingEnvironment(val id: String, val label: String, val server: Boolean) {
     companion object {
-        const val PHONE_ID = "phone"
-        fun phone() = SeedingEnvironment(PHONE_ID, PHONE_ENVIRONMENT_LABEL, server = false)
+        const val LOCAL_ID = "local"
+        fun local() = SeedingEnvironment(LOCAL_ID, LOCAL_ENVIRONMENT_LABEL, server = false)
         fun server(endpoint: String, username: String) = SeedingEnvironment(
             "remote:" + RememberedRemoteProfileRoster.identityOf(endpoint, username),
             serverEnvironmentLabel(endpoint + "\u0000" + username), server = true)
@@ -83,7 +83,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Seeding rules", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Phone rules affect new transfers only. Server rules are saved for later and are not applied yet.",
+            "Local device rules affect new transfers only. Server rules are saved for later and are not applied yet.",
             style = MaterialTheme.typography.bodySmall
         )
         OutlinedButton(
@@ -95,7 +95,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         ) { Text(if (explanationOpen) "Hide rule explanation" else "What these rules do today") }
         if (explanationOpen) {
             ChunksBanner("What these rules do today",
-                "On this phone, rules apply to transfers added from now on, while Chunks is running: upload limits " +
+                "On this device, rules apply to transfers added from now on, while Chunks is running: upload limits " +
                     "are set and confirmed, and a reached stop condition pauses the transfer once. Transfers you already " +
                     "have are not changed, and editing a rule does not change transfers it was already applied to. " +
                     "Server rules are saved but not applied yet. Nothing is ever removed or deleted.", ChunksTone.PAUSED)
@@ -106,7 +106,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 "Older server rule targets and defaults are safely preserved but inactive. " +
                     "They may refer to a different account under today's exact server identities. " +
                     "Review and choose each intended server again before relying on those rules. " +
-                    "Phone assignments remain available.",
+                    "Local assignments remain available.",
                 ChunksTone.PAUSED)
         }
         if (snapshot.unreadable) {
@@ -158,8 +158,8 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                             // Keep actual application separate from a saved remote
                             // preference. The same rule may target both environments.
                             val scopeOutcomes = buildList {
-                                if (SeedingEnvironment.PHONE_ID in r.environments)
-                                    add("Phone: matching future additions only")
+                                if (SeedingEnvironment.LOCAL_ID in r.environments)
+                                    add("Local: matching future additions only")
                                 if (r.environments.any { it.startsWith("remote:") })
                                     add("Servers: saved for later, not applied")
                             }
@@ -228,7 +228,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                             " · " + (explicitDefault ?: SeedingPolicy()).describe(),
                             style = MaterialTheme.typography.bodySmall)
                         Text(if (env.server) "Saved here for later remote support; this server is not being changed."
-                            else "Affects future phone transfers, not existing downloads.",
+                            else "Affects future local transfers, not existing downloads.",
                             style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = {
                             editingDefault = env; pendingResetDefault = null; message = null
@@ -272,8 +272,8 @@ internal fun matchingSeedingEnvironments(
     return if (text.isEmpty()) environments
     else environments.filter {
         it.label.contains(text, ignoreCase = true) ||
-            // "On this device" is also what people call their phone or tablet.
-            (!it.server && listOf("phone", "tablet", "device", "local").any { word ->
+            // "On this device" is also what people call their local or tablet.
+            (!it.server && listOf("local", "tablet", "device", "local").any { word ->
                 (text.length >= 3 && word.startsWith(text, ignoreCase = true)) ||
                     text.contains(word, ignoreCase = true) })
     }
@@ -293,7 +293,7 @@ internal fun matchingSeedingRules(
 }
 
 internal fun appliesTo(rule: SeedingRule, labels: Map<String, String>): String {
-    val named = rule.environments.map { labels[it] ?: "a server not saved on this phone" }.sorted()
+    val named = rule.environments.map { labels[it] ?: "a server not saved on this device" }.sorted()
     return "Applies to: " + (if (named.isEmpty()) "no environment" else named.joinToString(", ")) +
         if (rule.includeFutureEnvironments) ", and servers added later" else ""
 }

@@ -30,7 +30,7 @@ internal object RemoteCapabilities {
         // not merely an advertised d.erase setter.
         Feature("Remove from server session", listOf("d.multicall2", "d.hash", "d.erase"), EnvironmentOperation.SESSION_REMOVE),
         // Announced/bound address getters are optional; the web hostname can be a fallback.
-        Feature("Copy files to this phone", listOf("network.listen.port", "d.is_private", "d.is_active"), EnvironmentOperation.COPY_TO_PHONE),
+        Feature("Copy files to this device", listOf("network.listen.port", "d.is_private", "d.is_active"), EnvironmentOperation.COPY_TO_LOCAL),
         Feature("Finish in Order", listOf("d.hash", "f.multicall", "f.priority.set", "d.update_priorities", "d.bitfield", "d.size_chunks"), EnvironmentOperation.FINISH_IN_ORDER)
     )
 

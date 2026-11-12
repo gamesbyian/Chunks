@@ -21,7 +21,7 @@ internal class FinishInOrderRunner(private val port: Port) {
         suspend fun persistNativeState() {}
         /** Engines with only off/normal/high priorities (rTorrent). */
         val twoBands: Boolean get() = false
-        /** Per-transfer in-order piece picking; phone engine only. */
+        /** Per-transfer in-order piece picking; local engine only. */
         val supportsSequential: Boolean get() = false
         /** Fresh observation of the transfer's sequential flag, or null. */
         suspend fun sequential(infoHash: String): Boolean? = null

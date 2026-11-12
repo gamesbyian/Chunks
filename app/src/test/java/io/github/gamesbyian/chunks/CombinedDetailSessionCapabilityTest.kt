@@ -79,7 +79,7 @@ class CombinedDetailSessionCapabilityTest {
         rule.setContent {
             ChunksTheme { Surface {
                 CombinedTransfersScreen(server = server.value, savedProfiles = emptyList(),
-                    onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                    onOpenLocal = {}, onOpenServer = {}, onBack = {})
             } }
         }
         val label = serverEnvironmentLabel(aliasScope)
@@ -135,7 +135,7 @@ class CombinedDetailSessionCapabilityTest {
                             begin = { false }, settled = {},
                             setStarted = { _, _ -> LifecycleOutcome.Verified(true) },
                             probe = { error("Unbound session cannot probe") })),
-                    savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {},
+                    savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {},
                     onBack = {})
             } }
         }

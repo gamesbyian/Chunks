@@ -59,7 +59,7 @@ class LocalTransferAliasInstrumentedTest {
         }
         compose.onNodeWithText("Custom Chunks label").assertExists()
         compose.onNodeWithContentDescription(
-            "More details for Original release name on this phone"
+            "More details for Original release name on this device"
         ).performClick()
         compose.onNodeWithText("Original torrent: " + original).assertExists()
         compose.onNodeWithText("Edit list name").performClick()

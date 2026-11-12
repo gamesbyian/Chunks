@@ -33,7 +33,7 @@ internal class LocalStoppedCheckpointBudget(
     companion object {
         fun warning(unconfirmed: Int): String =
             if (unconfirmed <= 0) "" else
-                " $unconfirmed stopped phone transfer recovery checkpoint(s) could not be " +
+                " $unconfirmed stopped local transfer recovery checkpoint(s) could not be " +
                     "confirmed. Keep Chunks open for the next save; downloaded files remain untouched."
     }
 }

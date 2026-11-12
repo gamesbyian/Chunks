@@ -5,7 +5,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class UnifiedTransferTotalsTest {
-    private val phone = EnvironmentId("phone")
+    private val local = EnvironmentId("local")
     private val live = EnvironmentId("a".repeat(64))
     private val stale = EnvironmentId("b".repeat(64))
 
@@ -14,8 +14,8 @@ class UnifiedTransferTotalsTest {
 
     @Test fun onlyLiveRowsCountAndUnknownRatesAreNotZero() {
         val sources = listOf(
-            EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 1,
-                listOf(row(phone, '1', 1000, 10), row(phone, '2', null, null))),
+            EnvironmentTransferSnapshot(local, EnvironmentAvailability.LIVE, true, 1,
+                listOf(row(local, '1', 1000, 10), row(local, '2', null, null))),
             EnvironmentTransferSnapshot(live, EnvironmentAvailability.LIVE, true, 1, listOf(row(live, '3', 24, 0))),
             EnvironmentTransferSnapshot(stale, EnvironmentAvailability.STALE, true, 1, listOf(row(stale, '4', 999_999, 5))))
         val result = UnifiedTransferCatalog.query(sources, UnifiedTransferQuery())
@@ -33,8 +33,8 @@ class UnifiedTransferTotalsTest {
         val partial = EnvironmentId("c".repeat(64))
         val noTimestamp = EnvironmentId("d".repeat(64))
         val sources = listOf(
-            EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 12,
-                listOf(row(phone, '1', 64, 8))),
+            EnvironmentTransferSnapshot(local, EnvironmentAvailability.LIVE, true, 12,
+                listOf(row(local, '1', 64, 8))),
             EnvironmentTransferSnapshot(partial, EnvironmentAvailability.LIVE, false, 12,
                 listOf(row(partial, '2', 400_000, 300_000))),
             EnvironmentTransferSnapshot(noTimestamp, EnvironmentAvailability.LIVE, true, null,
@@ -59,9 +59,9 @@ class UnifiedTransferTotalsTest {
 
     @Test fun hugeValidRatesCannotWrapToZeroOrClaimExactTotal() {
         val result = UnifiedTransferCatalog.query(listOf(
-            EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 1L, listOf(
-                row(phone, '1', Long.MAX_VALUE, Long.MAX_VALUE),
-                row(phone, '2', 1L, 1L)
+            EnvironmentTransferSnapshot(local, EnvironmentAvailability.LIVE, true, 1L, listOf(
+                row(local, '1', Long.MAX_VALUE, Long.MAX_VALUE),
+                row(local, '2', 1L, 1L)
             ))
         ), UnifiedTransferQuery())
         val totals = UnifiedTransferTotals.of(result)
@@ -77,8 +77,8 @@ class UnifiedTransferTotalsTest {
 
     @Test fun exactLongMaximumIsStillAReportedKnownRate() {
         val result = UnifiedTransferCatalog.query(listOf(
-            EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 1L,
-                listOf(row(phone, '3', Long.MAX_VALUE, 0L)))
+            EnvironmentTransferSnapshot(local, EnvironmentAvailability.LIVE, true, 1L,
+                listOf(row(local, '3', Long.MAX_VALUE, 0L)))
         ), UnifiedTransferQuery())
         val totals = UnifiedTransferTotals.of(result)
         assertEquals(Long.MAX_VALUE, totals.downloadBytesPerSecond)

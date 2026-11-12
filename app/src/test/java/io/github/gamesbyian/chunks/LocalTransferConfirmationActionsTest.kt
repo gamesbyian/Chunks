@@ -27,7 +27,7 @@ import org.robolectric.annotation.GraphicsMode
 class LocalTransferConfirmationActionsTest {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun phoneRemoveAt200PercentKeepsDistinctAdjacentTargetsWithoutCommands() {
+    @Test fun localRemoveAt200PercentKeepsDistinctAdjacentTargetsWithoutCommands() {
         var removes = 0
         var declined = 0
         rule.setContent {
@@ -56,7 +56,7 @@ class LocalTransferConfirmationActionsTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
-    fun phoneToServerReviewFitsTwoAcrossAt200Percent() {
+    fun localToServerReviewFitsTwoAcrossAt200Percent() {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme { Surface {

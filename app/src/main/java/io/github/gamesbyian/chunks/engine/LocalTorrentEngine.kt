@@ -72,7 +72,7 @@ data class LocalEngineConfig(
      * exempts them by default; tests use this to observe throttling over loopback.
      */
     val rateLimitLocalPeers: Boolean = false,
-    /** Phone production uses POSIX for Android FUSE compatibility; DEFAULT remains for comparison tests. */
+    /** Local production uses POSIX for Android FUSE compatibility; DEFAULT remains for comparison tests. */
     val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.DEFAULT
 )
 
@@ -736,10 +736,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         releaseDrainedNativeRetirement(hash)
         if (hash in retiredThisSession)
             return LocalAddResult.Refused(
-                "The previous Remove is still finishing native file I/O. Try Add again when it settles; a full phone-engine restart also drains old work. Downloaded files were kept.")
+                "The previous Remove is still finishing native file I/O. Try Add again when it settles; a full local-engine restart also drains old work. Downloaded files were kept.")
         if (resumeEvents?.canRegister(hash) == false)
             return LocalAddResult.Refused(
-                "The previous saved or removed state of this torrent is not ready for safe reuse. Stop phone transfers and restart the app's engine before re-adding. No files were deleted.")
+                "The previous saved or removed state of this torrent is not ready for safe reuse. Stop local transfers and restart the app's engine before re-adding. No files were deleted.")
 
         val params = AddTorrentParams()
         params.setTorrentInfo(info)
@@ -809,10 +809,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         releaseDrainedNativeRetirement(hash)
         if (hash in retiredThisSession)
             return LocalAddResult.Refused(
-                "The previous Remove is still finishing native file I/O. Try Add again when it settles; a full phone-engine restart also drains old work. Downloaded files were kept.")
+                "The previous Remove is still finishing native file I/O. Try Add again when it settles; a full local-engine restart also drains old work. Downloaded files were kept.")
         if (resumeEvents?.canRegister(hash) == false)
             return LocalAddResult.Refused(
-                "The previous saved or removed state of this torrent is not ready for safe reuse. Stop phone transfers and restart the app's engine before re-adding. No files were deleted.")
+                "The previous saved or removed state of this torrent is not ready for safe reuse. Stop local transfers and restart the app's engine before re-adding. No files were deleted.")
         // The previous handle may have been removed from the visible list
         // while native disk I/O still holds it. Its path claims are tombstoned
         // until session shutdown; do not resurrect the same hash via a magnet.
@@ -1728,7 +1728,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     /**
      * Snapshot-restore *absence* gate. Unlike list(), a failed or unobservable
      * native handle cannot be silently dropped and mistaken for a missing
-     * torrent. Null means this is NOT a complete proof of the phone inventory.
+     * torrent. Null means this is NOT a complete proof of the local device inventory.
      */
     @Synchronized
     fun completeIdentityInventory(): List<String>? {

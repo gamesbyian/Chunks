@@ -70,7 +70,7 @@ internal class TransferAliasStore(context: Context) {
      * overwrite an existing manual alias, even if that alias was edited while
      * the torrent's network readback was pending. No torrent/backend mutation.
      * Caller supplies an independently verified NEW registration exact hash
-     * from the existing phone/remote coordinator. */
+     * from the existing local/remote coordinator. */
     fun saveVerifiedNewAddAlias(scope: String, hash: String, input: String): Boolean =
         synchronized(aliasWriteLock) {
             if (scope.isBlank() || !Regex("[0-9a-fA-F]{40}").matches(hash)) return@synchronized false

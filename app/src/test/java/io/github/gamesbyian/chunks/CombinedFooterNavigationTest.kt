@@ -21,7 +21,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Combined uses the same persistent Transfers / Add / Options footer as the
- * phone and rTorrent lists. Footer actions only move within the view or
+ * local and rTorrent lists. Footer actions only move within the view or
  * reveal view options; they never choose an Add destination or issue a
  * lifecycle command.
  */
@@ -51,7 +51,7 @@ class CombinedFooterNavigationTest {
             CombinedTransfersScreen(
                 server = CombinedServerSource(scope, rows, stale = false, fullView = true,
                     observedAtEpochMillis = System.currentTimeMillis(), lifecycle = gate),
-                savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {}, onBack = {},
                 pendingSharedMagnet = pendingSharedMagnet.value,
                 pendingSharedTorrent = pendingSharedTorrent.value,
                 onConnections = { connections++ })
@@ -93,11 +93,11 @@ class CombinedFooterNavigationTest {
     @Test fun footerAddReturnsToExplicitDestinationsFromDeepInTheList() {
         show()
         reachLastTransfer()
-        rule.onNodeWithContentDescription("Add download on this phone").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Add download on this device").assertDoesNotExist()
         rule.onNodeWithContentDescription("Choose where to add a torrent")
             .assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("Add download on this phone").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Add download on this device").assertIsDisplayed()
         assertTrue("footer navigation must not issue lifecycle commands", commands.isEmpty())
     }
 

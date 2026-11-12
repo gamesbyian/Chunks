@@ -31,9 +31,9 @@ class LocalTransferPageControlsInstrumentedTest {
                 )
             }
         }
-        rule.onNodeWithText("On-phone transfers: 12 · page 1 of 1").assertDoesNotExist()
-        rule.onNodeWithText("Previous phone transfers").assertDoesNotExist()
-        rule.onNodeWithText("Next phone transfers").assertDoesNotExist()
+        rule.onNodeWithText("On-local transfers: 12 · page 1 of 1").assertDoesNotExist()
+        rule.onNodeWithText("Previous local transfers").assertDoesNotExist()
+        rule.onNodeWithText("Next local transfers").assertDoesNotExist()
         assertEquals(0, accidentalActions)
     }
 
@@ -47,11 +47,11 @@ class LocalTransferPageControlsInstrumentedTest {
                 )
             }
         }
-        rule.onNodeWithText("On-phone transfers: 20 · page 1 of 1").assertDoesNotExist()
-        rule.onNodeWithText("Next phone transfers").assertDoesNotExist()
+        rule.onNodeWithText("On-local transfers: 20 · page 1 of 1").assertDoesNotExist()
+        rule.onNodeWithText("Next local transfers").assertDoesNotExist()
     }
 
-    @Test fun onPhonePagesAreReachableWithNativeButtonsAndCorrectDisabledBoundaries() {
+    @Test fun onLocalPagesAreReachableWithNativeButtonsAndCorrectDisabledBoundaries() {
         val items = (0 until 43).toList()
         var selected = 0
         rule.setContent {
@@ -64,14 +64,14 @@ class LocalTransferPageControlsInstrumentedTest {
                     onNext = { pageIndex = page.pageIndex + 1 })
             }
         }
-        rule.onNodeWithText("On-phone transfers: 43 · page 1 of 3").assertExists()
-        rule.onNodeWithText("Next phone transfers").performClick()
-        rule.onNodeWithText("On-phone transfers: 43 · page 2 of 3").assertExists()
-        rule.onNodeWithText("Next phone transfers").performClick()
-        rule.onNodeWithText("On-phone transfers: 43 · page 3 of 3").assertExists()
+        rule.onNodeWithText("On-local transfers: 43 · page 1 of 3").assertExists()
+        rule.onNodeWithText("Next local transfers").performClick()
+        rule.onNodeWithText("On-local transfers: 43 · page 2 of 3").assertExists()
+        rule.onNodeWithText("Next local transfers").performClick()
+        rule.onNodeWithText("On-local transfers: 43 · page 3 of 3").assertExists()
         rule.waitForIdle()
         assertEquals(2, selected)
-        rule.onNodeWithText("Previous phone transfers").performClick()
-        rule.onNodeWithText("On-phone transfers: 43 · page 2 of 3").assertExists()
+        rule.onNodeWithText("Previous local transfers").performClick()
+        rule.onNodeWithText("On-local transfers: 43 · page 2 of 3").assertExists()
     }
 }

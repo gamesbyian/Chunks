@@ -7,7 +7,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class UnifiedTransferCatalogTest {
-    private val phone = EnvironmentId("phone")
+    private val local = EnvironmentId("local")
     private val server1 = EnvironmentId("seedhost-1")
     private val server2 = EnvironmentId("seedhost-2")
     private fun hash(letter: Char) = letter.toString().repeat(40)
@@ -29,9 +29,9 @@ class UnifiedTransferCatalogTest {
         )
         val remote = RemoteTransfer(hash('a').uppercase(), "Episode", 1024, 256, true, "/server",
             downBytesPerSecond = null)
-        val a = UnifiedTransferObservations.fromPhone(phone, local)
+        val a = UnifiedTransferObservations.fromLocal(local, local)
         val b = UnifiedTransferObservations.fromRTorrent(server1, remote)
-        val result = UnifiedTransferCatalog.query(listOf(snapshot(phone, a),
+        val result = UnifiedTransferCatalog.query(listOf(snapshot(local, a),
             snapshot(server1, b)), UnifiedTransferQuery())
         assertEquals(2, result.transfers.size)
         assertEquals(a.key.infoHash, b.key.infoHash)
@@ -43,15 +43,15 @@ class UnifiedTransferCatalogTest {
         assertFalse(result.hasIncompleteOrStaleSource)
     }
 
-    @Test fun unreportedSaveFolderNeverBecomesAClaimAboutServerOrPhoneFiles() {
+    @Test fun unreportedSaveFolderNeverBecomesAClaimAboutServerOrLocalFiles() {
         val remote = RemoteTransfer(hash('a'), "Server", 1000, 500, true, "")
         assertNull(UnifiedTransferObservations.fromRTorrent(server1, remote).reportedSaveFolder)
-        val phoneUnknown = LocalTransferStatus(hash('b'), "Phone", LocalTransferState.UNKNOWN,
+        val localUnknown = LocalTransferStatus(hash('b'), "Local", LocalTransferState.UNKNOWN,
             true, 0, 0, 0, 0, 0, 0, "", null)
-        assertNull(UnifiedTransferObservations.fromPhone(phone, phoneUnknown).reportedSaveFolder)
+        assertNull(UnifiedTransferObservations.fromLocal(local, localUnknown).reportedSaveFolder)
     }
 
-    @Test fun ratioIsOptionalServerEvidenceNeverFabricatedForPhoneOrUnknownRemote() {
+    @Test fun ratioIsOptionalServerEvidenceNeverFabricatedForLocalOrUnknownRemote() {
         val serverReported = RemoteTransfer(hash('b'), "A", 1000, 750, true, "/remote",
             ratioThousandths = 1250)
         val remoteUnknown = serverReported.copy(hash = hash('c'), ratioThousandths = null)
@@ -60,16 +60,16 @@ class UnifiedTransferCatalogTest {
             UnifiedTransferObservations.fromRTorrent(server1, serverReported).ratioThousandths)
         assertNull(UnifiedTransferObservations.fromRTorrent(server1, remoteUnknown).ratioThousandths)
         assertNull(UnifiedTransferObservations.fromRTorrent(server1, invalid).ratioThousandths)
-        val phoneObserved = LocalTransferStatus(hash('e'), "Phone", LocalTransferState.SEEDING,
-            false, 1_000_000, 1000, 1000, 1000, 2000, 0, "/phone", null)
-        assertNull(UnifiedTransferObservations.fromPhone(phone, phoneObserved).ratioThousandths)
+        val localObserved = LocalTransferStatus(hash('e'), "Local", LocalTransferState.SEEDING,
+            false, 1_000_000, 1000, 1000, 1000, 2000, 0, "/local", null)
+        assertNull(UnifiedTransferObservations.fromLocal(local, localObserved).ratioThousandths)
     }
 
     @Test fun allNumericKeysReverseAndKeepUnknownLastInBothDirections() {
-        val first = item(phone, 'a', "Alpha", 10L)
-        val second = item(phone, 'b', "Beta", 20L)
-        val unknown = item(phone, 'c', "Unknown")
-        val source = snapshot(phone, second, unknown, first)
+        val first = item(local, 'a', "Alpha", 10L)
+        val second = item(local, 'b', "Beta", 20L)
+        val unknown = item(local, 'c', "Unknown")
+        val source = snapshot(local, second, unknown, first)
         for (key in UnifiedSortKey.entries.filter { it != UnifiedSortKey.NAME }) {
             val asc = UnifiedTransferCatalog.query(listOf(source),
                 UnifiedTransferQuery(sortKey = key, direction = UnifiedSortDirection.ASCENDING))
@@ -86,18 +86,18 @@ class UnifiedTransferCatalogTest {
     }
 
     @Test fun groupedAndUngroupedApplySameComparatorAndPreserveSelection() {
-        val a = item(phone, 'a', "Zebra", 30L)
-        val b = item(phone, 'b', "Apple", 10L)
+        val a = item(local, 'a', "Zebra", 30L)
+        val b = item(local, 'b', "Apple", 10L)
         val c = item(server1, 'c', "Beta", 40L)
         val d = item(server1, 'd', "Cherry", 20L)
-        val sources = listOf(snapshot(phone, a, b), snapshot(server1, c, d))
+        val sources = listOf(snapshot(local, a, b), snapshot(server1, c, d))
         val sort = UnifiedTransferQuery(sortKey = UnifiedSortKey.SIZE,
             direction = UnifiedSortDirection.DESCENDING)
         assertEquals(listOf(c, a, d, b), UnifiedTransferCatalog.query(sources, sort).transfers)
         val grouped = UnifiedTransferCatalog.query(sources, sort.copy(groupByEnvironment = true,
-            environmentOrder = listOf(server1, phone)))
+            environmentOrder = listOf(server1, local)))
         assertEquals(listOf(c, d, a, b), grouped.transfers)
-        assertEquals(listOf(server1, phone), grouped.groups.map { it.source.environment })
+        assertEquals(listOf(server1, local), grouped.groups.map { it.source.environment })
         val reverse = UnifiedTransferCatalog.query(sources, sort.copy(groupByEnvironment = true,
             direction = UnifiedSortDirection.ASCENDING))
         assertEquals(listOf(b, a, d, c), reverse.transfers)
@@ -136,12 +136,12 @@ class UnifiedTransferCatalogTest {
         val stale = snapshot(server1, item(server1, 'a', "Stale"),
             availability = EnvironmentAvailability.OFFLINE)
         val scope = EnvironmentViewScope.Only(setOf(server1, server2))
-        val result = UnifiedTransferCatalog.query(listOf(snapshot(phone), stale),
+        val result = UnifiedTransferCatalog.query(listOf(snapshot(local), stale),
             UnifiedTransferQuery(scope = scope))
         assertEquals(listOf(server1), result.sources.map { it.environment })
         assertEquals(setOf(server2), result.missingSelectedEnvironments)
         assertTrue(result.hasIncompleteOrStaleSource)
-        val all = UnifiedTransferCatalog.query(listOf(snapshot(phone), stale),
+        val all = UnifiedTransferCatalog.query(listOf(snapshot(local), stale),
             UnifiedTransferQuery(scope = EnvironmentViewScope.All))
         assertEquals(2, all.sources.size)
     }
@@ -151,18 +151,18 @@ class UnifiedTransferCatalogTest {
             hash('b'), "Pending", LocalTransferState.DOWNLOADING_METADATA, true,
             0, 0, 0, 0, 0, 0, "/private", null, metadataKnown = false
         )
-        val a = UnifiedTransferObservations.fromPhone(phone, magnet)
+        val a = UnifiedTransferObservations.fromLocal(local, magnet)
         assertNull(a.sizeBytes)
         assertNull(a.progressPpm)
-        val result = UnifiedTransferCatalog.query(listOf(snapshot(phone, a)),
+        val result = UnifiedTransferCatalog.query(listOf(snapshot(local, a)),
             UnifiedTransferQuery(filter = UnifiedTransferFilter.COMPLETE))
         assertTrue(result.transfers.isEmpty())
     }
 
     @Test fun sameEnvironmentDuplicatesOrCrossScopeRowsAreRefused() {
-        val a = item(phone, 'a', "One")
+        val a = item(local, 'a', "One")
         try {
-            snapshot(phone, a, a.copy(key = UnifiedTransferKey.of(phone, hash('a').uppercase())))
+            snapshot(local, a, a.copy(key = UnifiedTransferKey.of(local, hash('a').uppercase())))
             fail("Expected duplicate identity refusal")
         } catch (_: IllegalArgumentException) {}
         try {
@@ -170,16 +170,16 @@ class UnifiedTransferCatalogTest {
             fail("Expected cross-scope refusal")
         } catch (_: IllegalArgumentException) {}
         try {
-            UnifiedTransferCatalog.query(listOf(snapshot(phone), snapshot(phone)),
+            UnifiedTransferCatalog.query(listOf(snapshot(local), snapshot(local)),
                 UnifiedTransferQuery())
             fail("Expected duplicate environment refusal")
         } catch (_: IllegalArgumentException) {}
     }
 
     @Test fun filteringIsOverSelectedUnionAndDoesNotModifySnapshots() {
-        val running = item(phone, 'a', "Run", 4L)
+        val running = item(local, 'a', "Run", 4L)
         val stopped = item(server1, 'b', "Stop", 5L).copy(started = false)
-        val source1 = snapshot(phone, running)
+        val source1 = snapshot(local, running)
         val source2 = snapshot(server1, stopped)
         val result = UnifiedTransferCatalog.query(listOf(source1, source2),
             UnifiedTransferQuery(filter = UnifiedTransferFilter.STOPPED,

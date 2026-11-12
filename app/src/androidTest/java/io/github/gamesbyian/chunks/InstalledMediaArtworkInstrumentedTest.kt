@@ -176,7 +176,7 @@ class InstalledMediaArtworkInstrumentedTest {
         return ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray()
     }
 
-    /** Connecting remembers the login by default; later tests expect a fresh, phone-first launch. */
+    /** Connecting remembers the login by default; later tests expect a fresh, local-first launch. */
     private fun forgetLogins() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         RememberedRemoteLogin(context).clear()

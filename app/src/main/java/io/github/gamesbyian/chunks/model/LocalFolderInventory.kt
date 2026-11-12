@@ -11,7 +11,7 @@ import java.nio.file.SimpleFileVisitor
 import java.nio.file.attribute.BasicFileAttributes
 
 /**
- * Bounded read-only survey of Chunks' own on-phone download folder.
+ * Bounded read-only survey of Chunks' own on-local download folder.
  *
  * Counts logical file sizes, including payload left behind after session-only
  * removal. This is NOT allocated filesystem blocks, unique inode usage, a

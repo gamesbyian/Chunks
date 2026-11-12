@@ -15,17 +15,17 @@ class SeedingRuleStoreTest {
     private val capped = SeedingPolicy(ratioGoal = BigDecimal("1.00"), maxSeedSeconds = 7 * 86_400,
         uploadLimit = RateLimit.parse("24 kbps").getOrThrow(), combine = SeedingPolicy.Combine.ALL)
     private val rule = SeedingRule("r-1", "Iptorrents · Seed forever", false, setOf("iptorrents.com"),
-        privateOnly = true, policy = SeedingPolicy(), environments = setOf("phone", "rtorrent:7"),
-        includeFutureEnvironments = false, knownEnvironments = setOf("phone", "rtorrent:7", "rtorrent:8"))
+        privateOnly = true, policy = SeedingPolicy(), environments = setOf("local", "rtorrent:7"),
+        includeFutureEnvironments = false, knownEnvironments = setOf("local", "rtorrent:7", "rtorrent:8"))
 
     @Test fun rulesAndDefaultsRoundTripExactly() {
         val store = SeedingRuleStore(context)
-        val snapshot = SeedingRuleStore.Snapshot(listOf(rule), mapOf("phone" to capped))
+        val snapshot = SeedingRuleStore.Snapshot(listOf(rule), mapOf("local" to capped))
         assertTrue(store.save(snapshot))
         val loaded = SeedingRuleStore(context).load()
         assertEquals(snapshot, loaded)
-        assertEquals(RateLimit.Unit.KBIT, loaded.defaults.getValue("phone").uploadLimit!!.unit)
-        assertEquals(3_000L, loaded.defaults.getValue("phone").uploadLimit!!.bytesPerSecond)
+        assertEquals(RateLimit.Unit.KBIT, loaded.defaults.getValue("local").uploadLimit!!.unit)
+        assertEquals(3_000L, loaded.defaults.getValue("local").uploadLimit!!.bytesPerSecond)
     }
 
     @Test fun nothingSavedMeansNoRulesNotAnError() {
@@ -64,13 +64,13 @@ class SeedingRuleStoreTest {
         // This is the old ID for authenticated username " alice " AND the
         // current exact ID of a DIFFERENT username "alice".
         val collision = "remote:" + oldHash
-        val before = rule.copy(environments = setOf("phone", collision),
-            knownEnvironments = setOf("phone", collision),
+        val before = rule.copy(environments = setOf("local", collision),
+            knownEnvironments = setOf("local", collision),
             includeFutureEnvironments = true)
         val policy = SeedingPolicy(ratioGoal = BigDecimal("2.00"))
         val encoded = org.json.JSONObject(SeedingRuleStore.encode(
             SeedingRuleStore.Snapshot(listOf(before),
-                mapOf("phone" to capped, collision to policy))))
+                mapOf("local" to capped, collision to policy))))
         // Reproduce bytes stored before the exact-account identity marker.
         encoded.remove("identityScheme")
         encoded.remove("quarantinedRemoteRules")
@@ -78,11 +78,11 @@ class SeedingRuleStoreTest {
         val legacy = encoded.toString()
         val safe = SeedingRuleStore.decode(legacy)
         val safeRule = safe.rules.single()
-        assertEquals(setOf("phone"), safeRule.environments)
-        assertEquals(setOf("phone"), safeRule.knownEnvironments)
+        assertEquals(setOf("local"), safeRule.environments)
+        assertEquals(setOf("local"), safeRule.knownEnvironments)
         assertFalse(safeRule.includeFutureEnvironments)
         assertFalse(safeRule.appliesTo(collision))
-        assertEquals(mapOf("phone" to capped), safe.defaults)
+        assertEquals(mapOf("local" to capped), safe.defaults)
         assertEquals(policy, safe.quarantinedRemoteDefaults.getValue(collision))
         assertEquals(before.environments, safe.quarantinedRemoteRules.single().environments)
         assertTrue(safe.quarantinedRemoteRules.single().includeFutureEnvironments)
@@ -91,8 +91,8 @@ class SeedingRuleStoreTest {
         assertEquals(safe, SeedingRuleStore.decode(stored))
         // Only an explicit v2 edit can authorize a current exact server.
         val reviewed = safe.copy(rules = listOf(safeRule.copy(
-            environments = setOf("phone", collision))))
-        assertEquals(setOf("phone", collision),
+            environments = setOf("local", collision))))
+        assertEquals(setOf("local", collision),
             SeedingRuleStore.decode(SeedingRuleStore.encode(reviewed)).rules.single().environments)
     }
 
@@ -114,8 +114,8 @@ class SeedingRuleStoreTest {
 
     @Test fun legacyPreferencesAreReadOnlyOnFirstLoadAndArchiveSurvivesRuleDeletion() {
         val id = "remote:" + "f".repeat(64)
-        val old = rule.copy(environments = setOf("phone", id),
-            knownEnvironments = setOf("phone", id), includeFutureEnvironments = true)
+        val old = rule.copy(environments = setOf("local", id),
+            knownEnvironments = setOf("local", id), includeFutureEnvironments = true)
         val root = org.json.JSONObject(SeedingRuleStore.encode(
             SeedingRuleStore.Snapshot(listOf(old), mapOf(id to capped))))
         root.remove("identityScheme")

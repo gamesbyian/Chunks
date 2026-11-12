@@ -73,7 +73,7 @@ class CombinedSavedServersTest {
 
     private fun show(profiles: List<CombinedSavedProfile>) = rule.setContent {
         ChunksTheme { Surface(color = ChunksColors.Background) {
-            CombinedTransfersScreen(server = null, savedProfiles = profiles, onOpenPhone = {},
+            CombinedTransfersScreen(server = null, savedProfiles = profiles, onOpenLocal = {},
                 onOpenServer = null, onBack = {})
         } }
     }
@@ -179,7 +179,7 @@ class CombinedSavedServersTest {
         rule.setContent {
             ChunksTheme { Surface(color = ChunksColors.Background) {
                 CombinedTransfersScreen(server = null, savedProfiles = listOf(current),
-                    onOpenPhone = {}, onOpenServer = null, onBack = {})
+                    onOpenLocal = {}, onOpenServer = null, onBack = {})
             } }
         }
         discloseSourceStatus()
@@ -324,7 +324,7 @@ class CombinedSavedServersTest {
             ChunksTheme { Surface(color = ChunksColors.Background) {
                 CombinedTransfersScreen(server = null,
                     savedProfiles = listOf(profileA, profileB),
-                    onOpenPhone = {}, onOpenServer = null, onBack = {},
+                    onOpenLocal = {}, onOpenServer = null, onBack = {},
                     scopeFocusRequest = requested,
                     onScopeFocusConsumed = { requested = null })
             } }

@@ -29,20 +29,20 @@ class LocalCompletionResumeDurabilityTest {
             // Restore in THIS JVM: restore admission uses Android framework
             // stubs that the bare child classpath does not provide.
             val hash = File(root, "hash.txt").readText().trim()
-            val phone = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
+            val local = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
                 allowMultipleConnectionsPerIp = true, stateDirectory = File(root, "resume-state")))
-            phone.start()
+            local.start()
             try {
-                assertTrue(phone.restoreProblems.toString(), phone.restoreProblems.isEmpty())
+                assertTrue(local.restoreProblems.toString(), local.restoreProblems.isEmpty())
                 val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
-                while (phone.status(hash)?.state == LocalTransferState.CHECKING &&
+                while (local.status(hash)?.state == LocalTransferState.CHECKING &&
                     System.nanoTime() < deadline) Thread.sleep(10)
-                val status = requireNotNull(phone.status(hash)) { "Restored job missing\n$first" }
+                val status = requireNotNull(local.status(hash)) { "Restored job missing\n$first" }
                 assertTrue("Restored jobs never start on their own", status.stopped)
                 assertEquals("Restored complete payload lost its pieces: $status\n$first",
                     1_000_000, status.progressPpm)
             } finally {
-                phone.close()
+                local.close()
             }
         } finally {
             root.deleteRecursively()
@@ -104,15 +104,15 @@ object LocalCompletionResumeWitness {
                 check(seeder.resume(hash).outcome == LocalCommandOutcome.VERIFIED)
                 await(10) { seeder.status(hash)?.state == LocalTransferState.SEEDING }
                 check(destination.mkdirs())
-                val phone = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
+                val local = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0",
                     allowMultipleConnectionsPerIp = true, stateDirectory = state))
-                phone.start()
-                check(phone.addStopped(torrent, destination) is LocalAddResult.AddedStopped)
+                local.start()
+                check(local.addStopped(torrent, destination) is LocalAddResult.AddedStopped)
                 val addGenerations = generations(state, hash)
                 check(addGenerations >= 1) { "Add did not persist its initial record" }
-                check(phone.resume(hash).outcome == LocalCommandOutcome.VERIFIED)
-                check(phone.connectPeer(hash, InetSocketAddress("127.0.0.1", seeder.listenPort())))
-                await(20) { phone.status(hash)?.progressPpm == 1_000_000 }
+                check(local.resume(hash).outcome == LocalCommandOutcome.VERIFIED)
+                check(local.connectPeer(hash, InetSocketAddress("127.0.0.1", seeder.listenPort())))
+                await(20) { local.status(hash)?.progressPpm == 1_000_000 }
                 hashFile.writeText(hash)
                 // No Stop, saveResumeData() or close(): only what the engine
                 // persisted by itself on completion may survive. Bounded wait;

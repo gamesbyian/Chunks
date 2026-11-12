@@ -7,7 +7,7 @@ import java.util.Locale
 
 /**
  * Smart Seeding Rules domain (docs/SMART-SEEDING-RULES.md), shared by the
- * phone engine and every rTorrent profile. Pure and offline: no engine,
+ * local engine and every rTorrent profile. Pure and offline: no engine,
  * tracker API or network. Enforcement belongs to per-engine adapters that
  * must verify what they apply; nothing here claims a policy is active.
  */

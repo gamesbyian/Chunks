@@ -26,7 +26,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The disconnected Connections destination is remote management, not a phone queue. */
+/** The disconnected Connections destination is remote management, not a local queue. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
@@ -71,14 +71,14 @@ class ConnectionsRemoteIntroTest {
         }
     }
 
-    @Test fun remoteIntroOwnsThePurpleCardAndExcludesPhonePromotions() {
+    @Test fun remoteIntroOwnsThePurpleCardAndExcludesLocalPromotions() {
         render()
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
         rule.onNodeWithText("Connect to another computer or server (optional)")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         rule.onNodeWithText("This device").assertDoesNotExist()
-        rule.onNodeWithText("Open phone downloads").assertDoesNotExist()
+        rule.onNodeWithText("Open local downloads").assertDoesNotExist()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
     }
 

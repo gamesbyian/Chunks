@@ -87,7 +87,7 @@ class InstalledRealMediaInstrumentedTest {
         }
     }
     private fun key(index: Int): MediaTransferKey = MediaTransferKey.of(UnifiedTransferKey.of(
-        EnvironmentSnapshots.PHONE, requireNotNull(prefs.getString("hash-$index", null))))
+        EnvironmentSnapshots.LOCAL, requireNotNull(prefs.getString("hash-$index", null))))
     private fun state(index: Int) = media.controller.observe(key(index), fixtures[index].first).value
     private fun awaitMedia(index: Int, step: String, timeout: Long = 60_000, condition: () -> Boolean) {
         try { rule.waitUntil(timeout, condition) } catch (failure: Throwable) {
@@ -172,7 +172,7 @@ class InstalledRealMediaInstrumentedTest {
         try {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
-                rule.waitUntil(30_000) { visible("On this phone (experimental)") }
+                rule.waitUntil(30_000) { visible("On this device (experimental)") }
                 if (index == 0) {
                     val engine = LocalEngineHolder.get(context)
                     fixtures.forEachIndexed { index, f ->
@@ -259,7 +259,7 @@ class InstalledRealMediaInstrumentedTest {
         try {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
-                rule.waitUntil(30_000) { visible("On this phone (experimental)") }
+                rule.waitUntil(30_000) { visible("On this device (experimental)") }
                 assertTrue("Consent persisted", media.settingsStore.load().onlineLookupConsent)
                 type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
                 awaitMedia(index, "offline restoration", 30_000) {

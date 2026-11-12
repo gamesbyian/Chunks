@@ -132,7 +132,7 @@ private data class CombinedBatchViewIdentity(
     val authenticatedSession: Any?,
     val savedScopes: List<Pair<String, String?>>,
     val privacyEpoch: String,
-    val phoneVisible: Boolean,
+    val localVisible: Boolean,
     val serverVisible: Boolean?,
     val savedVisibility: List<Pair<String, Boolean>>
 )
@@ -275,12 +275,12 @@ internal fun savedListingIsStale(listing: SavedServerListing, now: Long): Boolea
     listing.loading || listing.error != null ||
         EnvironmentSnapshots.serverInventoryIsOutOfDate(listing.observedAtEpochMillis, now)
 
-/** A separate single-flight reader so this view never blocks or shares the phone screen's slot. */
-private object CombinedPhoneReader {
+/** A separate single-flight reader so this view never blocks or shares the local device screen's slot. */
+private object CombinedLocalReader {
     /** The list (null if no engine) and the fence revision sampled before the read. */
     val pump = LocalScreenObservationPump<Pair<List<LocalTransferStatus>?, Long>>(
         java.util.concurrent.Executors.newSingleThreadExecutor { task ->
-            Thread(task, "chunks-combined-phone-status").apply { isDaemon = true }
+            Thread(task, "chunks-combined-local-status").apply { isDaemon = true }
         }
     )
 }
@@ -294,7 +294,7 @@ private fun Context.findActivity(): Activity? {
     return null
 }
 
-/** Shared sort keys. Date added is known on the phone only; server rows sort as unknown (last). */
+/** Shared sort keys. Date added is known on the local device only; server rows sort as unknown (last). */
 internal val CombinedSortChoices = listOf(
     UnifiedSortKey.NAME to "Name", UnifiedSortKey.ADDED_AT to "Date added",
     UnifiedSortKey.PROGRESS to "Progress", UnifiedSortKey.SIZE to "Size",
@@ -313,7 +313,7 @@ internal fun UnifiedSortKey.orderingKind(): TransferSortOrdering.Kind = when (th
 internal fun availabilityText(source: EnvironmentTransferSnapshot): String = when (source.availability) {
     EnvironmentAvailability.LIVE -> if (source.canClaimCompleteLiveInventory) "Live" else "Live, list may be incomplete"
     EnvironmentAvailability.STALE -> "Out of date, showing last list"
-    EnvironmentAvailability.OFFLINE -> if (source.environment == EnvironmentSnapshots.PHONE)
+    EnvironmentAvailability.OFFLINE -> if (source.environment == EnvironmentSnapshots.LOCAL)
         "Engine not running; open transfers on this device" else "Not connected"
     EnvironmentAvailability.LOCKED -> "Locked, open it to unlock"
 }
@@ -339,11 +339,11 @@ internal fun combinedRowFreshnessLabel(source: EnvironmentTransferSnapshot?): St
 internal fun CombinedTransfersScreen(
     server: CombinedServerSource?,
     savedProfiles: List<CombinedSavedProfile>,
-    onOpenPhone: () -> Unit,
+    onOpenLocal: () -> Unit,
     onOpenServer: (() -> Unit)?,
     /** Opens the connected, verified server's existing Add review. Never targets a saved-only profile. */
     onAddToServer: (() -> Unit)? = null,
-    /** Opens this exact transfer in its own environment's list; only phone and the signed-in server. */
+    /** Opens this exact transfer in its own environment's list; only local and the signed-in server. */
     onOpenTransfer: (UnifiedTransferKey) -> Unit = {},
     onBack: () -> Unit,
     showNavigationFooter: Boolean = true,
@@ -356,10 +356,10 @@ internal fun CombinedTransfersScreen(
     searchState: androidx.compose.runtime.MutableState<String>? = null,
     /** Caller-supplied verified Add identity, never inferred from a title or an inventory delta. */
     recentlyAddedTransfer: UnifiedTransferKey? = null,
-    /** The same app-wide Connections destination as phone and signed-in-server lists. */
+    /** The same app-wide Connections destination as local and signed-in-server lists. */
     onConnections: (() -> Unit)? = null,
-    /** A distinct Add callback: merely opening the phone inventory must not consume a shared source. */
-    onAddToPhone: (() -> Unit)? = null,
+    /** A distinct Add callback: merely opening the local device inventory must not consume a shared source. */
+    onAddToLocal: (() -> Unit)? = null,
     /** Source content remains in MainActivity process memory; only presence/status reach this list. */
     pendingSharedMagnet: Boolean = false,
     pendingSharedLink: Boolean = false,
@@ -446,18 +446,18 @@ internal fun CombinedTransfersScreen(
         onScopeFocusConsumed()
     }
 
-    // Phone: read only an engine already running in this process. Opening this
-    // view never starts the phone engine or its service (remote-only use).
-    var phoneFrame by remember { mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false)) }
-    var phoneConfirmed by remember { mutableStateOf(false) }
-    var phoneRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
+    // Local: read only an engine already running in this process. Opening this
+    // view never starts the local device engine or its service (remote-only use).
+    var localFrame by remember { mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false)) }
+    var localConfirmed by remember { mutableStateOf(false) }
+    var localRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
     // No native engine can also mean saved torrents waiting for restoration.
     // Positive absence comes from read-only durable discovery, never an empty
     // in-memory list. Repeat after engine stop/list count change to avoid
     // stale absence evidence from a prior Add.
-    var noPersistedPhoneJobs by remember(context) { mutableStateOf<Boolean?>(null) }
-    LaunchedEffect(context, phoneRunning, phoneFrame.entries.size) {
-        noPersistedPhoneJobs = try {
+    var noPersistedLocalJobs by remember(context) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(context, localRunning, localFrame.entries.size) {
+        noPersistedLocalJobs = try {
             withContext(Dispatchers.IO) {
                 !io.github.gamesbyian.chunks.engine.LocalRestoreDiscovery.shouldAttemptRestore(
                     java.io.File(context.filesDir, "local-engine"))
@@ -466,7 +466,7 @@ internal fun CombinedTransfersScreen(
             throw cancel
         } catch (_: Exception) { false }
     }
-    var phoneObservedAt by remember { mutableStateOf<Long?>(null) }
+    var localObservedAt by remember { mutableStateOf<Long?>(null) }
     // Restores only a read-only detail target, never an in-flight command or batch selection.
     var savedDetailTarget by rememberSaveable { mutableStateOf<ArrayList<String>?>(null) }
     LaunchedEffect(returnToCatalogRevision) {
@@ -479,30 +479,30 @@ internal fun CombinedTransfersScreen(
     LaunchedEffect(Unit) { while (true) { delay(10_000); now = System.currentTimeMillis() } }
     LaunchedEffect(Unit) {
         while (true) {
-            when (val outcome = CombinedPhoneReader.pump.takeCompleted()) {
+            when (val outcome = CombinedLocalReader.pump.takeCompleted()) {
                 is LocalScreenPollOutcome.Fresh -> {
                     val (list, sample) = outcome.value
-                    phoneRunning = list != null
+                    localRunning = list != null
                     if (list == null) {
                         // The engine went away: nothing here is live any more.
-                        phoneConfirmed = false
-                        phoneFrame = LocalInventoryFrame(emptyList(), stale = false)
-                        phoneObservedAt = null
+                        localConfirmed = false
+                        localFrame = LocalInventoryFrame(emptyList(), stale = false)
+                        localObservedAt = null
                     }
-                    // A read sampled before or during a phone command cannot clear its readback latch.
-                    if (list != null && PhoneMutationFence.revision.acceptObservation(sample, list)) {
-                        phoneFrame = LocalInventoryFrame(list, stale = false)
-                        phoneConfirmed = true
-                        phoneObservedAt = System.currentTimeMillis()
+                    // A read sampled before or during a local command cannot clear its readback latch.
+                    if (list != null && LocalMutationFence.revision.acceptObservation(sample, list)) {
+                        localFrame = LocalInventoryFrame(list, stale = false)
+                        localConfirmed = true
+                        localObservedAt = System.currentTimeMillis()
                     }
                 }
-                LocalScreenPollOutcome.Unavailable -> phoneFrame = phoneFrame.copy(stale = true)
+                LocalScreenPollOutcome.Unavailable -> localFrame = localFrame.copy(stale = true)
                 null -> Unit
             }
-            if ((CombinedPhoneReader.pump.inFlightMillis() ?: 0L) >= 15_000L)
-                phoneFrame = phoneFrame.copy(stale = true)
-            val sample = PhoneMutationFence.revision.snapshot()
-            CombinedPhoneReader.pump.tryObserve { LocalEngineHolder.current()?.list() to sample }
+            if ((CombinedLocalReader.pump.inFlightMillis() ?: 0L) >= 15_000L)
+                localFrame = localFrame.copy(stale = true)
+            val sample = LocalMutationFence.revision.snapshot()
+            CombinedLocalReader.pump.tryObserve { LocalEngineHolder.current()?.list() to sample }
             delay(1_000)
         }
     }
@@ -512,7 +512,7 @@ internal fun CombinedTransfersScreen(
     // read completes, every environment is locked, including opt-out scopes.
     val privacyRevision = TransferPrivacyRuntime.lifecycleRevision
     val policyRevision = TransferPrivacyPolicyStore.revision
-    val phonePrivacyScope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+    val localPrivacyScope = TransferCollectionStore.LOCAL_ENGINE_SCOPE
     val serverPrivacyScope = remember(server?.aliasScope) {
         server?.aliasScope?.let(RemoteTransferPrivacyScope::fromAuthenticatedAliasScope)
     }
@@ -528,7 +528,7 @@ internal fun CombinedTransfersScreen(
     }
     val requestedPrivacyScopes = remember(serverPrivacyScope, savedPrivacyScopes) {
         buildSet {
-            add(phonePrivacyScope)
+            add(localPrivacyScope)
             serverPrivacyScope?.let { add(it) }
             savedPrivacyScopes.values.filterNotNull().forEach { add(it) }
         }
@@ -556,7 +556,7 @@ internal fun CombinedTransfersScreen(
     }
     val privacySession = TransferPrivacyRuntime.session
     val deviceSecure = activity != null && TransferDeviceAuthenticator.hasSecureLock(activity)
-    val phonePrivacy = privacyEvidence?.decision(phonePrivacyScope, privacySession, deviceSecure)
+    val localPrivacy = privacyEvidence?.decision(localPrivacyScope, privacySession, deviceSecure)
         ?: CombinedPrivacyEvidence.LOCKED
     val serverPrivacy = serverPrivacyScope?.let {
         privacyEvidence?.decision(it, privacySession, deviceSecure) ?: CombinedPrivacyEvidence.LOCKED
@@ -669,7 +669,7 @@ internal fun CombinedTransfersScreen(
         authenticatedSession = server?.authenticatedSession,
         savedScopes = savedProfiles.map { it.id to it.aliasScope }.sortedBy { it.first },
         privacyEpoch = privacyRevision.toString(),
-        phoneVisible = phonePrivacy.mayShow,
+        localVisible = localPrivacy.mayShow,
         serverVisible = serverPrivacy?.mayShow,
         savedVisibility = savedPrivacy.map { (id, decision) -> id.value to decision.mayShow }
             .sortedBy { it.first }
@@ -687,14 +687,14 @@ internal fun CombinedTransfersScreen(
     var quickResults by remember(batchIdentity) {
         mutableStateOf<Map<UnifiedTransferKey, List<String>>>(emptyMap()) }
     val labels = LinkedHashMap<EnvironmentId, String>().apply {
-        put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
+        put(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL)
         if (server != null && serverId != null)
             put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
     }
     val rowLabels = remember(labels, savedProfiles, server?.aliasScope) {
         compactEnvironmentLabels(labels, buildMap {
-        put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
+        put(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL)
         savedProfiles.forEach { profile ->
             profile.shortLabel?.let { put(EnvironmentId(profile.id), "Server · $it") }
         }
@@ -727,27 +727,27 @@ internal fun CombinedTransfersScreen(
     var showingSourceStatus by rememberSaveable { mutableStateOf(false) }
     // Only environments with a live list here can open a row there.
     fun openFor(key: UnifiedTransferKey): (() -> Unit)? =
-        if (key.environment == EnvironmentSnapshots.PHONE || (serverId != null && key.environment == serverId))
+        if (key.environment == EnvironmentSnapshots.LOCAL || (serverId != null && key.environment == serverId))
             ({ onOpenTransfer(key) }) else null
 
     // Keyed on data only: MainActivity rebuilds the server source (and its lifecycle lambdas) each frame.
-    val rawSources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
+    val rawSources = remember(localFrame, localConfirmed, localRunning, localObservedAt, localPrivacy,
         server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
         serverPrivacy, savedPrivacy, activeSavedScopes, listings, now, batchRunning, quickRunning,
-        PhoneMutationFence.revision.blocksMutations()) { buildList {
+        LocalMutationFence.revision.blocksMutations()) { buildList {
         // A quick row command is fenced exactly like a batch run: its pre-command rows are stale.
         val commandInFlight = batchRunning || quickRunning != null
         // The ticker invalidates old reads; use the actual clock when a newer
         // observation arrives between ticks so it is not mistaken for a future read.
         val snapshotNow = System.currentTimeMillis()
-        val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || commandInFlight
-        val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(
-            phoneFrame.copy(stale = phoneStale), phoneConfirmed,
-            locked = !phonePrivacy.mayShow, observedAtEpochMillis = phoneObservedAt)
-        else EnvironmentTransferSnapshot(EnvironmentSnapshots.PHONE,
-            if (phonePrivacy.mayShow) EnvironmentAvailability.OFFLINE else EnvironmentAvailability.LOCKED,
+        val localStale = localFrame.stale || LocalMutationFence.revision.blocksMutations() || commandInFlight
+        val local = if (localRunning || localConfirmed) EnvironmentSnapshots.local(
+            localFrame.copy(stale = localStale), localConfirmed,
+            locked = !localPrivacy.mayShow, observedAtEpochMillis = localObservedAt)
+        else EnvironmentTransferSnapshot(EnvironmentSnapshots.LOCAL,
+            if (localPrivacy.mayShow) EnvironmentAvailability.OFFLINE else EnvironmentAvailability.LOCKED,
             false, null, emptyList())
-        add(phone)
+        add(local)
         if (server != null && serverId != null) {
             add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true,
                 stale = server.stale || commandInFlight,
@@ -773,7 +773,7 @@ internal fun CombinedTransfersScreen(
     // or privacy change makes a previous alias map unusable immediately, even
     // before the new asynchronous read has finished.
     val aliasScopes = buildMap<EnvironmentId, String> {
-        if (phonePrivacy.mayShow) put(EnvironmentSnapshots.PHONE, TransferCollectionStore.LOCAL_ENGINE_SCOPE)
+        if (localPrivacy.mayShow) put(EnvironmentSnapshots.LOCAL, TransferCollectionStore.LOCAL_ENGINE_SCOPE)
         if (serverId != null && server != null && serverPrivacy?.mayShow == true) {
             put(serverId, server.aliasScope)
         }
@@ -813,7 +813,7 @@ internal fun CombinedTransfersScreen(
     val sources = remember(rawSources, aliasScopes, currentAliases) {
         CombinedAliasProjection.apply(rawSources, aliasScopes, currentAliases)
     }
-    // All currently observed, unlocked phone + remote jobs enter one backend, independent
+    // All currently observed, unlocked local + remote jobs enter one backend, independent
     // of the chosen tab, search/filter or composed LazyColumn rows. Exact owner scope,
     // observation generation and transfer identity are captured with each inventory.
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
@@ -884,7 +884,7 @@ internal fun CombinedTransfersScreen(
     // ONE eligibility rule for Details' Start/Stop review and a row's quick Start/Stop.
     fun lifecycleEligible(key: UnifiedTransferKey, readCurrent: Boolean): Boolean = readCurrent &&
         sourcesByEnvironment[key.environment]?.canClaimCompleteLiveInventory == true &&
-        ((key.environment == EnvironmentSnapshots.PHONE && phonePrivacy.mayShow && phoneRunning) ||
+        ((key.environment == EnvironmentSnapshots.LOCAL && localPrivacy.mayShow && localRunning) ||
             (key.environment == serverId && server?.lifecycle != null &&
                 verifiedCombinedLifecycleOwner(server, serverId) != null && serverPrivacy?.mayShow == true &&
                 server.stale == false &&
@@ -892,27 +892,27 @@ internal fun CombinedTransfersScreen(
                 // unsupported remote identities read-only before review.
                 key.infoHash.matches(V1_TRANSFER_HASH)))
     val firstRunVisible = enableFirstRunWelcome && showCanonicalFirstRunWelcome(
-        noPersistedJobs = noPersistedPhoneJobs,
-        nativeRunning = phoneRunning,
-        nativeConfirmed = phoneConfirmed,
-        nativeStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations(),
-        nativeCount = phoneFrame.entries.size,
+        noPersistedJobs = noPersistedLocalJobs,
+        nativeRunning = localRunning,
+        nativeConfirmed = localConfirmed,
+        nativeStale = localFrame.stale || LocalMutationFence.revision.blocksMutations(),
+        nativeCount = localFrame.entries.size,
         hasRemoteProfile = configuredRemoteForWelcome(
             server != null, savedProfiles.isNotEmpty(), hasRememberedRemoteLogin),
         restrictedView = CombinedViewPreferences.narrowingActive(query),
-        privacyAllowed = phonePrivacy.mayShow,
+        privacyAllowed = localPrivacy.mayShow,
         pendingExternalSource = pendingSharedMagnet || pendingSharedLink ||
             pendingSharedTorrent || readingSharedTorrent ||
             sharedTorrentError != null || recentlyAddedTransfer != null
     )
-    val checkingFreshPhone = enableFirstRunWelcome && noPersistedPhoneJobs == null &&
-        !phoneRunning && !phoneConfirmed && savedProfiles.isEmpty() && server == null &&
+    val checkingFreshLocal = enableFirstRunWelcome && noPersistedLocalJobs == null &&
+        !localRunning && !localConfirmed && savedProfiles.isEmpty() && server == null &&
         !hasRememberedRemoteLogin &&
-        !CombinedViewPreferences.narrowingActive(query) && phonePrivacy.mayShow &&
+        !CombinedViewPreferences.narrowingActive(query) && localPrivacy.mayShow &&
         !pendingSharedMagnet && !pendingSharedTorrent && !readingSharedTorrent
 
     // Hide this window from screenshots/recents whenever a protected scope is shown.
-    val secure = (phonePrivacy.needsSecureWindow && phonePrivacy.mayShow) ||
+    val secure = (localPrivacy.needsSecureWindow && localPrivacy.mayShow) ||
         (serverPrivacy?.needsSecureWindow == true && serverPrivacy.mayShow) ||
         savedPrivacy.any { (id, d) -> d.needsSecureWindow && d.mayShow && listings[id]?.observedAtEpochMillis != null }
     DisposableEffect(activity, secure) {
@@ -987,8 +987,8 @@ internal fun CombinedTransfersScreen(
         val snapshot = capabilityEvidence?.takeIf { stillCurrent(it.first) }?.second
         val details = UnifiedTransferDetails.resolve(
             focusedKey, sources,
-            if (focusedKey.environment == EnvironmentSnapshots.PHONE)
-                EnvironmentCapabilities.phone() else snapshot,
+            if (focusedKey.environment == EnvironmentSnapshots.LOCAL)
+                EnvironmentCapabilities.local() else snapshot,
             System.currentTimeMillis()
         )
         val verifiedOwner = verifiedCombinedLifecycleOwner(server, serverId)
@@ -1168,7 +1168,7 @@ internal fun CombinedTransfersScreen(
             }
         )
     } else {
-    // The same measured Transfers / Add / Options footer as the phone and
+    // The same measured Transfers / Add / Options footer as the local device and
     // rTorrent lists. Each action only moves within this view: Add leads to
     // the explicit destination choices, never to an inferred environment.
     // Quick Start/Stop for one expanded row uses the SAME canonical command path as batch
@@ -1181,9 +1181,9 @@ internal fun CombinedTransfersScreen(
         val block = when {
             known == null -> "This transfer's running state is not known yet. Refresh before changing it."
             lifecycleEligible(key, live) -> null
-            key.environment != EnvironmentSnapshots.PHONE && key.environment != serverId ->
+            key.environment != EnvironmentSnapshots.LOCAL && key.environment != serverId ->
                 "Connect to this server in Connections to control its transfers."
-            key.environment == EnvironmentSnapshots.PHONE && !phoneRunning ->
+            key.environment == EnvironmentSnapshots.LOCAL && !localRunning ->
                 "Open this device's transfer controls to start its engine first."
             else -> "This list is not current yet. Refresh or reconnect before changing this transfer."
         }
@@ -1243,11 +1243,11 @@ internal fun CombinedTransfersScreen(
         if (firstRunVisible) {
             item(key = "canonical-fresh-welcome") {
                 NoTransfersWelcome(
-                    onAdd = onWelcomeAdd ?: onAddToPhone ?: onOpenPhone,
+                    onAdd = onWelcomeAdd ?: onAddToLocal ?: onOpenLocal,
                     onConnections = onConnections
                 )
             }
-        } else if (checkingFreshPhone) {
+        } else if (checkingFreshLocal) {
             item(key = "canonical-fresh-probe") {
                 Text("Checking transfers on this device…",
                     style = MaterialTheme.typography.bodyMedium)
@@ -1259,14 +1259,14 @@ internal fun CombinedTransfersScreen(
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
                 hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
-                onOpenPhone = onAddToPhone ?: onOpenPhone,
+                onOpenLocal = onAddToLocal ?: onOpenLocal,
                 onAddToServer = onAddToServer,
                 pendingSharedMagnet = pendingSharedMagnet,
                 pendingSharedLink = pendingSharedLink,
                 pendingSharedTorrent = pendingSharedTorrent,
                 readingSharedTorrent = readingSharedTorrent,
                 sharedTorrentError = sharedTorrentError,
-                phoneHue = palette.hueOf(EnvironmentSnapshots.PHONE),
+                localHue = palette.hueOf(EnvironmentSnapshots.LOCAL),
                 serverHue = serverId?.let { palette.hueOf(it) }
             )
         }
@@ -1298,7 +1298,7 @@ internal fun CombinedTransfersScreen(
             }
             // A scoped Transfers list retains the same catalog and heading.
             // State the effective environment and filter even when the chip
-            // panel is collapsed, so phone/server-only views are not mistaken
+            // panel is collapsed, so local/server-only views are not mistaken
             // for an incomplete global inventory. All/default stays compact.
             if (query.scope != EnvironmentViewScope.All ||
                 query.filter != UnifiedTransferFilter.ALL) {
@@ -1466,18 +1466,18 @@ internal fun CombinedTransfersScreen(
                     batchScope.launch {
                         // Dispatch may be queued behind a server/account switch.
                         if (latestBatchIdentity.value != owner) return@launch
-                        var unconfirmedPhoneStops = 0
+                        var unconfirmedLocalStops = 0
                         try {
                             val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
                                 runCombinedLifecycle(chosen, start, snapshot, lifecycle, targetServer,
                                     serverSource = capturedServer,
                                     reviewStillCurrent = { latestBatchIdentity.value == owner },
-                                    onPhoneStopCheckpointUnconfirmed = { unconfirmedPhoneStops++ })
+                                    onLocalStopCheckpointUnconfirmed = { unconfirmedLocalStops++ })
                             }
                             // A late completion is evidence about the OLD owner only.
                             if (latestBatchIdentity.value == owner) {
                                 val warning = io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget
-                                    .warning(unconfirmedPhoneStops)
+                                    .warning(unconfirmedLocalStops)
                                 batchResult = if (warning.isEmpty()) report else report + warning.trim()
                             }
                         } finally {
@@ -1498,21 +1498,21 @@ internal fun CombinedTransfersScreen(
                 if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
                 style = MaterialTheme.typography.bodySmall)
         }
-        // A phone-only cold launch can have no running native engine, even
+        // A local-only cold launch can have no running native engine, even
         // when saved jobs await explicit restoration. Never call that state
         // "zero transfers". Offer the existing source review without starting
         // an engine, choosing a Place or authorizing an Add.
-        if (server == null && savedProfiles.isEmpty() && onAddToPhone != null &&
+        if (server == null && savedProfiles.isEmpty() && onAddToLocal != null &&
             result.transfers.isEmpty() && !CombinedViewPreferences.narrowingActive(query)) {
-            item(key = "combined-first-phone-intake") {
+            item(key = "combined-first-local-intake") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Transfers on this device",
                         style = MaterialTheme.typography.titleMedium)
-                    Text(phoneOnlyEmptyInventoryMessage(
-                        sourcesByEnvironment[EnvironmentSnapshots.PHONE]
+                    Text(localOnlyEmptyInventoryMessage(
+                        sourcesByEnvironment[EnvironmentSnapshots.LOCAL]
                             ?.canClaimCompleteLiveInventory == true),
                         style = MaterialTheme.typography.bodySmall)
-                    OutlinedButton(onClick = onAddToPhone,
+                    OutlinedButton(onClick = onAddToLocal,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                         Text("Review a new torrent on this device")
                     }
@@ -1686,7 +1686,7 @@ internal fun CombinedTransfersScreen(
             ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
                 OutlinedButton(onClick = {
                     update(query.copy(scope = EnvironmentViewScope.Only(
-                        setOf(EnvironmentSnapshots.PHONE))))
+                        setOf(EnvironmentSnapshots.LOCAL))))
                 }, modifier = actionModifier) {
                     Text("Only this device")
                 }
@@ -1696,10 +1696,10 @@ internal fun CombinedTransfersScreen(
                     Text("Only connected server")
                 }
             }
-            // The phone's explicit operational/restore controls must remain
+            // The local's explicit operational/restore controls must remain
             // reachable whether its engine is running or has not been restored.
             // Scoping the canonical catalog never grants native command authority.
-            OutlinedButton(onClick = onOpenPhone,
+            OutlinedButton(onClick = onOpenLocal,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                 Text("Open device transfer controls")
             }
@@ -1707,7 +1707,7 @@ internal fun CombinedTransfersScreen(
         } // genuine Welcome/probe has no management chrome or list actions
         }
         ReturnToTopControl(
-            visible = showReturnToTop && !firstRunVisible && !checkingFreshPhone,
+            visible = showReturnToTop && !firstRunVisible && !checkingFreshLocal,
             onClick = {
             batchScope.launch {
                 if (ReturnToTopPolicy.animationsEnabled(context)) listState.animateScrollToItem(0)
@@ -1747,7 +1747,7 @@ internal fun combinedBatchItemIndex(
     (if (sortOptionsVisible) 1 else 0)
 
 /** A confirmed empty engine is distinct from a pending or locked read. */
-internal fun phoneOnlyEmptyInventoryMessage(confirmedCurrent: Boolean): String =
+internal fun localOnlyEmptyInventoryMessage(confirmedCurrent: Boolean): String =
     if (confirmedCurrent) "No transfers on this device yet. Review a torrent to add one."
     else "No verified transfer list is available yet. Saved transfers may need " +
         "to be restored in device controls."
@@ -1820,7 +1820,7 @@ internal fun rowKeyText(key: UnifiedTransferKey): String = key.environment.value
 
 /** Compact toggle text: the device, or a server's short profile name without its prefix. */
 internal fun environmentToggleName(id: EnvironmentId, label: String): String =
-    if (id == EnvironmentSnapshots.PHONE) PHONE_ENVIRONMENT_LABEL
+    if (id == EnvironmentSnapshots.LOCAL) LOCAL_ENVIRONMENT_LABEL
     else label.removePrefix("Server · ").trim().ifEmpty { label }
 
 internal fun environmentVisible(scope: EnvironmentViewScope, id: EnvironmentId): Boolean =
@@ -1846,7 +1846,7 @@ internal fun combinedTimeLeft(row: UnifiedTransferObservation): String? {
 
 /** Text summary of one row; unknown facts are said as unknown, never as zero. */
 internal fun combinedRowFacts(row: UnifiedTransferObservation, fresh: Boolean = false): String = listOf(
-    // Same words as the phone and rTorrent rows, from observed facts only.
+    // Same words as the local device and rTorrent rows, from observed facts only.
     if (row.metadataPending == true) "Fetching metadata" else when (row.started) {
         true -> when {
             // Existing exact-path bytes are being hash-verified before any download
@@ -1981,7 +1981,7 @@ private fun CombinedTransferRow(
                         row.key.environment.value, row.key.infoHash),
                     observeFresh = source?.canClaimCompleteLiveInventory == true,
                     observationEpochMillis = source?.observedAtEpochMillis,
-                    // Same colour meaning as the phone and rTorrent cards: green complete, paused stopped.
+                    // Same colour meaning as the local device and rTorrent cards: green complete, paused stopped.
                     tone = combinedProgressTone(row)
                 )
             }
@@ -2010,18 +2010,18 @@ internal suspend fun runCombinedLifecycle(
     serverId: EnvironmentId?,
     /** UI callers must provide the exact authenticated source for command ownership. */
     serverSource: CombinedServerSource? = null,
-    phoneEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
+    localEngine: () -> io.github.gamesbyian.chunks.engine.LocalTorrentEngine? = { LocalEngineHolder.current() },
     nowEpochMillis: () -> Long = { System.currentTimeMillis() },
     /** Old session, privacy or saved-profile review cannot authorize another mutation. */
     reviewStillCurrent: () -> Boolean = { true },
-    /** Phone Stop can be verified while its independent recovery save is still uncertain. */
-    onPhoneStopCheckpointUnconfirmed: (String) -> Unit = {}
+    /** Local Stop can be verified while its independent recovery save is still uncertain. */
+    onLocalStopCheckpointUnconfirmed: (String) -> Unit = {}
 ): UnifiedBatchLifecycle.Report {
     // Confirmation can arrive between clock ticks, after the displayed source
     // expired. Re-evaluate it before acquiring any command lane.
     val currentTime = nowEpochMillis()
     val currentSources = sources.map { source ->
-        if (source.environment != EnvironmentSnapshots.PHONE &&
+        if (source.environment != EnvironmentSnapshots.LOCAL &&
             source.availability == EnvironmentAvailability.LIVE &&
             EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, currentTime))
             source.copy(availability = EnvironmentAvailability.STALE) else source
@@ -2038,11 +2038,11 @@ internal suspend fun runCombinedLifecycle(
         .associate { it.key to "Unsupported rTorrent infohash format; no command was sent" }
     val adapters = HashMap<EnvironmentId, UnifiedBatchLifecycle.Adapter>()
     val refusals = HashMap<EnvironmentId, String>()
-    var phoneLeased = false
+    var localLeased = false
     var serverLeased = false
-    // Start this monotonic budget with the FIRST completed phone Stop, not
+    // Start this monotonic budget with the FIRST completed local Stop, not
     // before slow remote capability checks or unrelated account operations.
-    var phoneStopBudget: io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget? = null
+    var localStopBudget: io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget? = null
     val expiredReview = "Reviewed session, privacy or profile scope changed; select transfers again"
     try {
         // An unavailable, incomplete or unobserved inventory cannot authorize
@@ -2056,23 +2056,23 @@ internal suspend fun runCombinedLifecycle(
                 refusals[environment] = expiredReview
                 continue
             }
-            if (environment == EnvironmentSnapshots.PHONE) {
-                val engine = phoneEngine()
+            if (environment == EnvironmentSnapshots.LOCAL) {
+                val engine = localEngine()
                 when {
-                    engine == null -> refusals[environment] = "phone engine is not running"
-                    !PhoneMutationFence.revision.beginMutation() ->
-                        refusals[environment] = "waiting for a fresh phone list"
+                    engine == null -> refusals[environment] = "local engine is not running"
+                    !LocalMutationFence.revision.beginMutation() ->
+                        refusals[environment] = "waiting for a fresh local list"
                     else -> {
-                        phoneLeased = true
+                        localLeased = true
                         adapters[environment] = UnifiedBatchLifecycle.Adapter { hash, on ->
                             withContext(Dispatchers.IO) {
                                 val outcome = (if (on) engine.resume(hash) else engine.pause(hash)).outcome
                                 if (!on && outcome == io.github.gamesbyian.chunks.engine.LocalCommandOutcome.VERIFIED) {
-                                    val budget = phoneStopBudget
+                                    val budget = localStopBudget
                                         ?: io.github.gamesbyian.chunks.model.LocalStoppedCheckpointBudget()
-                                            .also { phoneStopBudget = it }
+                                            .also { localStopBudget = it }
                                     if (!budget.confirm(hash, engine::saveResumeDataFor))
-                                        onPhoneStopCheckpointUnconfirmed(hash)
+                                        onLocalStopCheckpointUnconfirmed(hash)
                                 }
                                 // Failed persistence never changes a VERIFIED Stop into an
                                 // unknown command or invites replay of that command.
@@ -2135,11 +2135,11 @@ internal suspend fun runCombinedLifecycle(
                 (source.environment != serverId || serverSource == null ||
                     verifiedCombinedLifecycleOwner(serverSource, serverId) ===
                         serverLifecycle?.ownerSession) &&
-                (source.environment == EnvironmentSnapshots.PHONE ||
+                (source.environment == EnvironmentSnapshots.LOCAL ||
                     !EnvironmentSnapshots.serverInventoryIsOutOfDate(source.observedAtEpochMillis, nowEpochMillis())) },
             preflightRefusals = unsupportedServerTargets)
     } finally {
-        if (phoneLeased) PhoneMutationFence.revision.settledMutation()
+        if (localLeased) LocalMutationFence.revision.settledMutation()
         if (serverLeased) serverLifecycle?.settled?.invoke()
     }
 }
@@ -2274,7 +2274,7 @@ internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTran
         (if (t.excludedEnvironments > 0) " · " + (if (t.excludedEnvironments == 1) "1 environment" else "${t.excludedEnvironments} environments") + " excluded (not fully observed)" else "")
 
 
-/** Progress colour shared with the phone and rTorrent cards; colour is never the only signal. */
+/** Progress colour shared with the local device and rTorrent cards; colour is never the only signal. */
 internal fun combinedProgressTone(row: UnifiedTransferObservation): ChunksTone = when {
     row.hasError -> ChunksTone.ERROR
     (row.progressPpm ?: 0) >= 1_000_000 -> ChunksTone.COMPLETE

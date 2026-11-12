@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 /**
  * The accessibility pane title for the visible route. Compose announces a
  * pane-title change to TalkBack as a window-state change, so moving between
- * phone, a server, All environments, Add and Options screens is spoken
+ * local, a server, All environments, Add and Options screens is spoken
  * without stealing focus or announcing scroll positions. Titles name the
  * screen and environment only, never a transfer, path or credential, so a
  * privacy lock still redacts content.

@@ -8,7 +8,7 @@ import java.net.URLDecoder
 import java.net.URLEncoder
 
 /**
- * Chunks-only Finish in Order state for one phone transfer, keyed outside
+ * Chunks-only Finish in Order state for one local transfer, keyed outside
  * this record by local scope + verified infohash. Never sent to a server and
  * never written into torrent metadata.
  *

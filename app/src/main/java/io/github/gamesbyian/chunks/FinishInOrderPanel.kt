@@ -55,7 +55,7 @@ internal fun FinishInOrderReview(
     onCancel: () -> Unit,
     initialMode: Mode = Mode.BALANCED,
     confirmLabel: String = "Start Finish in Order",
-    /** Phone engine only: rTorrent has no verified per-transfer equivalent. */
+    /** Local engine only: rTorrent has no verified per-transfer equivalent. */
     sequentialSupported: Boolean = false
 ) {
     val byIndex = remember(files) { files.associateBy { it.index } }
@@ -149,7 +149,7 @@ internal fun finishInOrderStatus(
 }
 
 /**
- * Finish in Order for one phone transfer: review/enable, live status, resume
+ * Finish in Order for one local transfer: review/enable, live status, resume
  * after an uncertain change, and turn off. Turning off leaves the current
  * native priorities exactly as they are.
  */
@@ -205,7 +205,7 @@ internal fun FinishInOrderPanel(
 
     fun describe(step: FinishInOrderRunner.Step?): String? = when (step) {
         null, FinishInOrderRunner.Step.NotObservable ->
-            "The phone engine is not reporting this transfer yet; Finish in Order will start when it does."
+            "The local engine is not reporting this transfer yet; Finish in Order will start when it does."
         is FinishInOrderRunner.Step.Applied -> "File priorities updated and confirmed by the engine."
         is FinishInOrderRunner.Step.Idle -> null
         is FinishInOrderRunner.Step.Reconciled -> "The last interrupted change was checked; nothing was repeated."

@@ -33,7 +33,7 @@ class SeedingControllerTest {
 
     private val capped = SeedingPolicy(ratioGoal = BigDecimal("1.00"), uploadLimit = RateLimit.parse("24 KiB/s").getOrThrow())
     private val rule = SeedingRule("r", "Example · Ratio 1.00", false, setOf("tracker.example"), policy = capped,
-        environments = setOf("phone"))
+        environments = setOf("local"))
 
     @Test fun onlyTransfersAddedAfterEnablingAreManagedAndRuleEditsNeverRewriteThem() {
         val engine = FakeEngine(); val store = MemStore()
@@ -41,19 +41,19 @@ class SeedingControllerTest {
         engine.facts["new"] = Facts("new", 2_000, listOf("https://tracker.example/a"), false)
         store.epochMs = 1_000
         val controller = SeedingController(engine, store)
-        controller.tick("phone", listOf(rule), SeedingPolicy(), nowMs = 3_000)
+        controller.tick("local", listOf(rule), SeedingPolicy(), nowMs = 3_000)
         assertNull("existing transfers are never managed", store.map.getValue("old").policy)
         assertEquals(capped, store.map.getValue("new").policy)
         assertEquals(listOf("cap new=24576"), engine.log)
         // Editing the rule later does not change the snapshot.
-        controller.tick("phone", listOf(rule.copy(policy = SeedingPolicy())), SeedingPolicy(), nowMs = 4_000)
+        controller.tick("local", listOf(rule.copy(policy = SeedingPolicy())), SeedingPolicy(), nowMs = 4_000)
         assertEquals(capped, store.map.getValue("new").policy)
     }
 
     @Test fun firstRunSetsTheEpochSoEverythingAlreadyThereIsLeftAlone() {
         val engine = FakeEngine(); val store = MemStore()
         engine.facts["a"] = Facts("a", 9_000, listOf("https://tracker.example/a"), false)
-        SeedingController(engine, store).tick("phone", listOf(rule), SeedingPolicy(), nowMs = 10_000)
+        SeedingController(engine, store).tick("local", listOf(rule), SeedingPolicy(), nowMs = 10_000)
         assertEquals(10_000L, store.epochMs)
         assertNull(store.map.getValue("a").policy)
         assertTrue(engine.log.isEmpty())
@@ -64,12 +64,12 @@ class SeedingControllerTest {
         engine.facts["t"] = Facts("t", 10, listOf("https://tracker.example/a"), false)
         engine.observed["t"] = SeedingObservation(uploadedBytes = 1_000, downloadedBytes = 1_000, seedingSeconds = 60, seeding = true)
         val controller = SeedingController(engine, store)
-        controller.tick("phone", listOf(rule), SeedingPolicy(), nowMs = 100)
+        controller.tick("local", listOf(rule), SeedingPolicy(), nowMs = 100)
         assertTrue("t" in engine.paused)
         assertNotNull(store.map.getValue("t").stoppedByRule)
         // The user resumes it: the rule never pauses it again.
         engine.paused.clear(); engine.log.clear()
-        controller.tick("phone", listOf(rule), SeedingPolicy(), nowMs = 200)
+        controller.tick("local", listOf(rule), SeedingPolicy(), nowMs = 200)
         assertTrue(engine.log.none { it.startsWith("pause") })
     }
 
@@ -80,17 +80,17 @@ class SeedingControllerTest {
         val privateRule = rule.copy(privateOnly = true)
         val facts = Facts("same-hash", 10, listOf("https://tracker.example/a"), null)
         engine.facts[facts.infoHash] = facts
-        controller.tick("phone", listOf(privateRule), SeedingPolicy(), nowMs = 100)
+        controller.tick("local", listOf(privateRule), SeedingPolicy(), nowMs = 100)
         assertNull("Private-only rule must await flag evidence", store.get(facts.infoHash))
         assertTrue("No cap, pause or other engine write while private status is unknown", engine.log.isEmpty())
         // The same observed tracker now comes with a verified private flag.
         engine.facts[facts.infoHash] = facts.copy(isPrivate = true)
-        controller.tick("phone", listOf(privateRule), SeedingPolicy(), nowMs = 200)
+        controller.tick("local", listOf(privateRule), SeedingPolicy(), nowMs = 200)
         assertEquals(SeedingResolution.Source.RULE, store.get(facts.infoHash)?.source)
         assertEquals(capped, store.get(facts.infoHash)?.policy)
         assertEquals(listOf("cap same-hash=24576"), engine.log)
         // Existing policy snapshots still remain fixed across later edits.
-        controller.tick("phone", listOf(privateRule.copy(policy = SeedingPolicy())),
+        controller.tick("local", listOf(privateRule.copy(policy = SeedingPolicy())),
             SeedingPolicy(), nowMs = 300)
         assertEquals(capped, store.get(facts.infoHash)?.policy)
     }
@@ -102,10 +102,10 @@ class SeedingControllerTest {
         val facts = Facts("public-hash", 10, listOf("https://tracker.example/a"), null)
         engine.facts[facts.infoHash] = facts
         val controller = SeedingController(engine, store)
-        controller.tick("phone", listOf(privateRule), capped, nowMs = 100)
+        controller.tick("local", listOf(privateRule), capped, nowMs = 100)
         assertNull(store.get(facts.infoHash))
         engine.facts[facts.infoHash] = facts.copy(isPrivate = false)
-        controller.tick("phone", listOf(privateRule), capped, nowMs = 200)
+        controller.tick("local", listOf(privateRule), capped, nowMs = 200)
         assertEquals(SeedingResolution.Source.DEFAULT, store.get(facts.infoHash)?.source)
         assertEquals(capped, store.get(facts.infoHash)?.policy)
     }
@@ -115,7 +115,7 @@ class SeedingControllerTest {
         engine.facts["m"] = Facts("m", 10, null, null)
         engine.facts["t"] = Facts("t", 10, listOf("https://tracker.example/a"), false)
         engine.observed["t"] = SeedingObservation(2_000, 1_000, 60, true)
-        SeedingController(engine, store).tick("phone", listOf(rule), SeedingPolicy(), nowMs = 100)
+        SeedingController(engine, store).tick("local", listOf(rule), SeedingPolicy(), nowMs = 100)
         assertNull("no snapshot before metadata", store.map["m"])
         assertNull(store.map.getValue("t").stoppedByRule)
         assertTrue(store.map.getValue("t").note!!.contains("did not confirm"))

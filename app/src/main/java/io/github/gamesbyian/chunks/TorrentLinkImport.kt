@@ -22,7 +22,7 @@ import java.util.Locale
 /**
  * A typed or pasted torrent web link, before anything is fetched
  * ([ADD-SOURCE-INTAKE]). Only HTTPS is fetched: every hop's host is resolved
- * and refused if it names this phone or a private network, and HTTPS hostname
+ * and refused if it names this device or a private network, and HTTPS hostname
  * verification then stops a DNS answer from silently switching to a local
  * device (it cannot present a certificate for the public name). A plain-HTTP
  * link is refused with a way forward instead of fetched unverified.
@@ -71,7 +71,7 @@ internal sealed class TorrentLinkCheck {
     }
 }
 
-/** Addresses a fetched link may never reach: this phone, private networks and special ranges. */
+/** Addresses a fetched link may never reach: this device, private networks and special ranges. */
 internal object TorrentLinkAddressPolicy {
     fun allowed(address: InetAddress): Boolean {
         if (address.isAnyLocalAddress || address.isLoopbackAddress || address.isLinkLocalAddress ||
@@ -128,7 +128,7 @@ internal sealed class TorrentLinkResult {
     data class Refused(val message: String) : TorrentLinkResult()
 
     companion object {
-        const val LOCAL_NETWORK = "This link points to this phone or a private network. Chunks only fetches torrent links from public HTTPS sites."
+        const val LOCAL_NETWORK = "This link points to this device or a private network. Chunks only fetches torrent links from public HTTPS sites."
         const val NO_HOST = "This link's site could not be found. Check the link or your connection. Nothing was added."
         const val TIMEOUT = "The site did not answer in time. Nothing was added; you can try again."
         const val OFFLINE = "The torrent could not be downloaded. Check your connection and try again. Nothing was added."

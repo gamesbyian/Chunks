@@ -15,16 +15,16 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** A phone transfer's exported .torrent only primes the server Add review. */
+/** A local transfer's exported .torrent only primes the server Add review. */
 @RunWith(AndroidJUnit4::class)
 class ServerHandoffReviewInstrumentedTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
     private val torrent = ("d8:announce32:https://tracker.example/announce4:info" +
-        "d6:lengthi5e4:name14:phone-file.txt12:piece lengthi16384e" +
+        "d6:lengthi5e4:name14:local-file.txt12:piece lengthi16384e" +
         "6:pieces20:01234567890123456789ee").toByteArray()
 
-    @Test fun phoneDocumentIsDisclosedConsumedOnceAndNeverSubmittedAutomatically() {
+    @Test fun localDocumentIsDisclosedConsumedOnceAndNeverSubmittedAutomatically() {
         var pending by mutableStateOf<ByteArray?>(torrent)
         var consumed = 0
         var mutations = 0
@@ -45,8 +45,8 @@ class ServerHandoffReviewInstrumentedTest {
             }
         }
         rule.waitForIdle()
-        rule.onNodeWithText("phone-file.txt", substring = true).assertExists()
-        rule.onNodeWithText("Original .torrent prepared on this phone", substring = true).assertExists()
+        rule.onNodeWithText("local-file.txt", substring = true).assertExists()
+        rule.onNodeWithText("Original .torrent prepared on this device", substring = true).assertExists()
         rule.onNodeWithText("may contain private passkeys", substring = true).assertExists()
         assertEquals(1, consumed)
         assertEquals("Prefilling the review must not start any server mutation", 0, mutations)

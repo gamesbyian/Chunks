@@ -94,7 +94,7 @@ class Android10DownloadsRevocationInstrumentedTest {
             .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
         val target = File(folder, name).apply { writeBytes(original.readBytes()) }
         val engine = LocalEngineHolder.get(context)
-        assertEquals("Other phone sessions must not contaminate this capability test",
+        assertEquals("Other local sessions must not contaminate this capability test",
             emptyList<String>(), engine.completeIdentityInventory())
         val added = engine.addStopped(torrent, folder)
         assertTrue("Native Add must be real and stopped: $added", added is LocalAddResult.AddedStopped)

@@ -137,6 +137,6 @@ class LocalQueueCatalogTest {
         assertEquals(listOf("New", "Old", "Unknown"), order(UnifiedSortDirection.DESCENDING))
         assertEquals(listOf("Old", "New", "Unknown"), order(UnifiedSortDirection.ASCENDING))
         assertEquals("Newest first", LocalQueueOrder.ADDED.directionLabel(UnifiedSortDirection.DESCENDING))
-        assertEquals(9_000L, UnifiedTransferObservations.fromPhone(EnvironmentId("phone"), new).addedAtEpochMillis)
+        assertEquals(9_000L, UnifiedTransferObservations.fromLocal(EnvironmentId("local"), new).addedAtEpochMillis)
     }
 }

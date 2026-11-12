@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 
 /**
- * One status vocabulary shared with the phone ("Downloading", "Sharing",
+ * One status vocabulary shared with the local device ("Downloading", "Sharing",
  * "Stopped", "Fetching metadata"), derived only from what rTorrent reports.
  * rTorrent's started flag is a requested state, so "Downloading" needs an
  * observed download rate from a fresh read; otherwise a started, incomplete

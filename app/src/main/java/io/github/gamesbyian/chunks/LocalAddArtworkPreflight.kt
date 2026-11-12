@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import java.io.File
 
 /**
- * Phone Add pre-write gate. Only an explicit Add confirmation may call this.
+ * Local Add pre-write gate. Only an explicit Add confirmation may call this.
  * Verify the actual selected Place before persisting an opt-out for a torrent
  * that may never be admitted. An opt-out still commits before libtorrent sees
  * the immutable, source/Place/Start-frozen Add ticket.

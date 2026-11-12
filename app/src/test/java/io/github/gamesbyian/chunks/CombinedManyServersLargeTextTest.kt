@@ -62,7 +62,7 @@ class CombinedManyServersLargeTextTest {
                             observedAtEpochMillis = System.currentTimeMillis()
                         ),
                         savedProfiles = profiles,
-                        onOpenPhone = {}, onOpenServer = {}, onBack = {}
+                        onOpenLocal = {}, onOpenServer = {}, onBack = {}
                     )
                 } }
             }

@@ -24,7 +24,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * On-demand, read-only check of a phone transfer's files against disk. The
+ * On-demand, read-only check of a local transfer's files against disk. The
  * result is a snapshot of when it ran; it offers no repair or deletion.
  */
 @Composable

@@ -24,7 +24,7 @@ class RemoteProviderLocaleSafetyTest {
         }
     }
 
-    @Test fun hostAccountPrefixPlanningDoesNotChangeWithPhoneLanguage() {
+    @Test fun hostAccountPrefixPlanningDoesNotChangeWithLocalLanguage() {
         val previous = Locale.getDefault()
         try {
             Locale.setDefault(Locale.forLanguageTag("tr-TR"))

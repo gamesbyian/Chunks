@@ -18,7 +18,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal var selectedBytes by mutableStateOf<ByteArray?>(null)
     internal var textAtFileSelection: String? = null
     internal var useFile by mutableStateOf(false)
-    internal var fromPhone by mutableStateOf(false)
+    internal var fromLocal by mutableStateOf(false)
     internal val finishInOrder = mutableStateOf(false)
     internal var finishInOrderInitialized = false
     internal var finishInOrderHash: String? = null
@@ -36,7 +36,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     /** Frozen optional Chunks list alias, valid only for the retained ticket. */
     internal var frozenAlias: String? = null
     // A completion from an interrupted old draft must not change a newer
-    // phone/server draft's shared metadata choice.
+    // local/server draft's shared metadata choice.
     internal var resetArtworkAfterVerification = true
     internal var observedProgress by mutableStateOf<RemoteAddProgress?>(null)
 
@@ -86,7 +86,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
         selectedBytes = null
         textAtFileSelection = null
         useFile = false
-        fromPhone = false
+        fromLocal = false
         finishInOrderInitialized = false
         alreadyAttempted = false
         attemptSource = null

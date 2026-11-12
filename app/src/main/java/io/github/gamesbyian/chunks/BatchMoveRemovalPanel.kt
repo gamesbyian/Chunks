@@ -22,7 +22,7 @@ import io.github.gamesbyian.chunks.model.TransferMove
 import kotlinx.coroutines.launch
 
 /**
- * Batch step 2 of Move Transfer to server: the phone jobs whose new server
+ * Batch step 2 of Move Transfer to server: the local device jobs whose new server
  * job is already verified, with one separately confirmed removal of only
  * those original jobs. Files stay; each item re-checks the server first.
  */
@@ -40,7 +40,7 @@ internal fun BatchMoveRemovalPanel(
     forget: (TransferMove.Record) -> Boolean,
     onFinished: (String) -> Unit,
     /** Where the original jobs live, for the confirmation text. */
-    sourceLabel: String = "phone",
+    sourceLabel: String = "local",
     /** Remote mutation gate for server-side removals; false means try later. */
     onStarted: () -> Boolean = { true },
     onSettled: () -> Unit = {}

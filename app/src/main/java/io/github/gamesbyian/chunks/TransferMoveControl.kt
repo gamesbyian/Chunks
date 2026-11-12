@@ -162,7 +162,7 @@ internal class TransferMoveStore(context: Context) {
     } catch (_: RuntimeException) { emptyList() }
 
     companion object {
-        // MainActivity and phone/Combined cards instantiate independent Store
+        // MainActivity and local/Combined cards instantiate independent Store
         // wrappers. Serialize read-modify-commit across those instances.
         private val JOURNAL_LOCK = Any()
 
@@ -218,7 +218,7 @@ internal fun TransferMoveControl(
     name: String,
     /** Null when the rTorrent account identity is unknown: Move is not offered. */
     serverAliasScope: String?,
-    /** Exact ephemeral native Add generation for a phone-origin Move. */
+    /** Exact ephemeral native Add generation for a local-origin Move. */
     sourceReviewToken: String? = null,
     /** Exact original rTorrent directory at server-origin Move review. */
     sourceDirectory: String? = null,
@@ -246,8 +246,8 @@ internal fun TransferMoveControl(
     }
     var working by remember(infoHash) { mutableStateOf(false) }
     var message by remember(infoHash) { mutableStateOf<String?>(null) }
-    val destination = if (direction == Direction.PHONE_TO_SERVER) "server" else "phone"
-    val source = if (direction == Direction.PHONE_TO_SERVER) "phone" else "server"
+    val destination = if (direction == Direction.LOCAL_TO_SERVER) "server" else "local"
+    val source = if (direction == Direction.LOCAL_TO_SERVER) "local" else "server"
 
     fun apply(next: TransferMove.Next): Boolean = when (next) {
         is TransferMove.Next.Save -> {
@@ -260,9 +260,9 @@ internal fun TransferMoveControl(
                 // Move model before this stage. Only local Chunks presentation
                 // follows; target user labels always win, source job/files stay.
                 val carried = if (firstConfirmedTarget && serverAliasScope != null) {
-                    val source = if (direction == Direction.PHONE_TO_SERVER)
+                    val source = if (direction == Direction.LOCAL_TO_SERVER)
                         TransferCollectionStore.LOCAL_ENGINE_SCOPE else serverAliasScope
-                    val target = if (direction == Direction.PHONE_TO_SERVER)
+                    val target = if (direction == Direction.LOCAL_TO_SERVER)
                         serverAliasScope else TransferCollectionStore.LOCAL_ENGINE_SCOPE
                     aliasStore.carryVerifiedMoveAlias(source, target, infoHash)
                 } else null
@@ -439,7 +439,7 @@ internal fun TransferMoveControl(
 
 /** Helpers for the two concrete directions. */
 internal object TransferMoveObservations {
-    suspend fun phone(infoHash: String): Observation = withContext(Dispatchers.IO) {
+    suspend fun local(infoHash: String): Observation = withContext(Dispatchers.IO) {
         val engine = LocalEngineHolder.current() ?: return@withContext Observation.Unknown
         try {
             val inventory = engine.completeIdentityInventory() ?: return@withContext Observation.Unknown

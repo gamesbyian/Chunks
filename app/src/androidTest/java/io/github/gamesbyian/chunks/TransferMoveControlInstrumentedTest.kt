@@ -38,14 +38,14 @@ class TransferMoveControlInstrumentedTest {
     private fun show(
         target: () -> Observation, source: () -> Observation,
         removals: AtomicInteger, starts: AtomicInteger, removeFails: Boolean = false,
-        phoneSourceToken: String? = "native-session:17"
+        localSourceToken: String? = "native-session:17"
     ) = rule.setContent {
         MaterialTheme {
             Column {
                 TransferMoveControl(
-                    direction = TransferMove.Direction.PHONE_TO_SERVER,
+                    direction = TransferMove.Direction.LOCAL_TO_SERVER,
                     infoHash = hash, name = "Big Buck Bunny", serverAliasScope = scope,
-                    sourceReviewToken = phoneSourceToken, busy = false,
+                    sourceReviewToken = localSourceToken, busy = false,
                     ports = TransferMovePorts(
                         observeTarget = { target() }, observeSource = { source() },
                         removeSource = { removals.incrementAndGet(); if (removeFails) error("lost reply") },
@@ -73,30 +73,30 @@ class TransferMoveControlInstrumentedTest {
         assertEquals(0, removals.get())
         targetSeen = Observation.Present
         rule.onNodeWithText("Check the server").performClick()
-        waitFor("Remove original job from the phone…")
-        rule.onNodeWithText("Remove original job from the phone…").performClick()
-        rule.onNodeWithText("Downloaded files stay on the phone", substring = true).assertExists()
+        waitFor("Remove original job from the local device…")
+        rule.onNodeWithText("Remove original job from the local device…").performClick()
+        rule.onNodeWithText("Downloaded files stay on the local device", substring = true).assertExists()
         assertEquals(0, removals.get())
         sourceSeen = Observation.Absent
         rule.onNodeWithText("Remove original job").performClick()
         waitFor("Moved: the job now lives on the server")
         assertEquals(1, removals.get())
-        assertNull(TransferMoveStore(context).get(TransferMove.Direction.PHONE_TO_SERVER, hash))
+        assertNull(TransferMoveStore(context).get(TransferMove.Direction.LOCAL_TO_SERVER, hash))
     }
 
-    @Test fun verifiedPhoneToServerMoveCarriesOnlyChunksAliasWithoutRemovingSource() {
+    @Test fun verifiedLocalToServerMoveCarriesOnlyChunksAliasWithoutRemovingSource() {
         val removals = AtomicInteger()
         val starts = AtomicInteger()
         val aliases = TransferAliasStore(context)
-        val phone = TransferCollectionStore.LOCAL_ENGINE_SCOPE
-        assertEquals(true, aliases.save(phone, hash, "Personal favorite"))
+        val local = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+        assertEquals(true, aliases.save(local, hash, "Personal favorite"))
         show({ Observation.Present }, { Observation.Present }, removals, starts)
         rule.onNodeWithText("Move Transfer to server…").performClick()
         rule.onNodeWithText("Review server Add").performClick()
         rule.onNodeWithText("Check the server").performClick()
-        waitFor("Remove original job from the phone…")
+        waitFor("Remove original job from the local device…")
         assertEquals("Personal favorite", aliases.get(scope, hash))
-        assertEquals("Personal favorite", aliases.get(phone, hash))
+        assertEquals("Personal favorite", aliases.get(local, hash))
         assertEquals(0, removals.get())
     }
 
@@ -104,30 +104,30 @@ class TransferMoveControlInstrumentedTest {
         val removals = AtomicInteger()
         val starts = AtomicInteger()
         val aliases = TransferAliasStore(context)
-        val phone = TransferCollectionStore.LOCAL_ENGINE_SCOPE
-        assertEquals(true, aliases.save(phone, hash, "Source title"))
+        val local = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+        assertEquals(true, aliases.save(local, hash, "Source title"))
         assertEquals(true, aliases.save(scope, hash, "Target-specific title"))
         show({ Observation.Present }, { Observation.Present }, removals, starts)
         rule.onNodeWithText("Move Transfer to server…").performClick()
         rule.onNodeWithText("Review server Add").performClick()
         rule.onNodeWithText("Check the server").performClick()
-        waitFor("Remove original job from the phone…")
+        waitFor("Remove original job from the local device…")
         assertEquals("Target-specific title", aliases.get(scope, hash))
-        assertEquals("Source title", aliases.get(phone, hash))
+        assertEquals("Source title", aliases.get(local, hash))
         assertEquals(0, removals.get())
     }
 
-    @Test fun verifiedServerToPhoneMoveCarriesExactAccountAlias() {
+    @Test fun verifiedServerToLocalMoveCarriesExactAccountAlias() {
         val removals = AtomicInteger()
         val starts = AtomicInteger()
         val aliases = TransferAliasStore(context)
-        val phone = TransferCollectionStore.LOCAL_ENGINE_SCOPE
+        val local = TransferCollectionStore.LOCAL_ENGINE_SCOPE
         assertEquals(true, aliases.save(scope, hash, "Server original"))
         rule.setContent {
             MaterialTheme {
                 Column {
                     TransferMoveControl(
-                        direction = TransferMove.Direction.SERVER_TO_PHONE,
+                        direction = TransferMove.Direction.SERVER_TO_LOCAL,
                         infoHash = hash, name = "Big Buck Bunny", serverAliasScope = scope,
                         sourceDirectory = "/seed/Big Buck Bunny", busy = false,
                         ports = TransferMovePorts(
@@ -139,40 +139,40 @@ class TransferMoveControlInstrumentedTest {
                 }
             }
         }
-        rule.onNodeWithText("Move Transfer to phone…").performClick()
-        rule.onNodeWithText("Review phone Add").performClick()
-        rule.onNodeWithText("Check the phone").performClick()
+        rule.onNodeWithText("Move Transfer to the local device…").performClick()
+        rule.onNodeWithText("Review local Add").performClick()
+        rule.onNodeWithText("Check the local device").performClick()
         waitFor("Remove original job from the server…")
-        assertEquals("Server original", aliases.get(phone, hash))
+        assertEquals("Server original", aliases.get(local, hash))
         assertEquals("Server original", aliases.get(scope, hash))
         assertEquals(0, removals.get())
     }
 
-    @Test fun replacementPhoneSourceCannotInheritPersistedMoveRemovalConsent() {
+    @Test fun replacementLocalSourceCannotInheritPersistedMoveRemovalConsent() {
         val removals = AtomicInteger(); val starts = AtomicInteger()
-        val original = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER, hash,
+        val original = TransferMove.start(TransferMove.Direction.LOCAL_TO_SERVER, hash,
             "Big Buck Bunny", TransferMoveStore.scopeDigest(scope), "seed.example",
             sourceReviewToken = "native-session:old")
             .copy(stage = TransferMove.Stage.TARGET_VERIFIED)
         TransferMoveStore(context).save(original)
         show({ Observation.Present }, { Observation.Present }, removals, starts,
-            phoneSourceToken = "native-session:new")
+            localSourceToken = "native-session:new")
         rule.onNodeWithText("The original transfer has changed", substring = true).assertExists()
-        rule.onNodeWithText("Remove original job from the phone…").assertIsNotEnabled()
+        rule.onNodeWithText("Remove original job from the local device…").assertIsNotEnabled()
         assertEquals(0, removals.get())
         rule.onNodeWithText("Cancel Move (keep both jobs)").performClick()
-        assertNull(TransferMoveStore(context).get(TransferMove.Direction.PHONE_TO_SERVER, hash))
+        assertNull(TransferMoveStore(context).get(TransferMove.Direction.LOCAL_TO_SERVER, hash))
     }
 
-    @Test fun oldV1PhoneMoveNeedsFreshReviewBeforeAnySourceRemove() {
+    @Test fun oldV1LocalMoveNeedsFreshReviewBeforeAnySourceRemove() {
         val removals = AtomicInteger(); val starts = AtomicInteger()
-        val legacy = TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER, hash,
+        val legacy = TransferMove.start(TransferMove.Direction.LOCAL_TO_SERVER, hash,
             "Big Buck Bunny", TransferMoveStore.scopeDigest(scope), "seed.example")
             .copy(stage = TransferMove.Stage.TARGET_VERIFIED)
         TransferMoveStore(context).save(legacy)
         show({ Observation.Present }, { Observation.Present }, removals, starts)
         rule.onNodeWithText("cannot identify its original source", substring = true).assertExists()
-        rule.onNodeWithText("Remove original job from the phone…").assertIsNotEnabled()
+        rule.onNodeWithText("Remove original job from the local device…").assertIsNotEnabled()
         assertEquals(0, removals.get())
     }
 
@@ -180,12 +180,12 @@ class TransferMoveControlInstrumentedTest {
         val removals = AtomicInteger(); val starts = AtomicInteger()
         var sourceSeen: Observation = Observation.Unknown
         val store = TransferMoveStore(context)
-        store.save(TransferMove.start(TransferMove.Direction.PHONE_TO_SERVER, hash, "Big Buck Bunny",
+        store.save(TransferMove.start(TransferMove.Direction.LOCAL_TO_SERVER, hash, "Big Buck Bunny",
             TransferMoveStore.scopeDigest(scope), "seed.example",
             sourceReviewToken = "native-session:17")
             .copy(stage = TransferMove.Stage.TARGET_VERIFIED))
         show({ Observation.Present }, { sourceSeen }, removals, starts, removeFails = true)
-        rule.onNodeWithText("Remove original job from the phone…").performClick()
+        rule.onNodeWithText("Remove original job from the local device…").performClick()
         rule.onNodeWithText("Remove original job").performClick()
         waitFor("could not confirm whether the original job was removed")
         assertEquals(1, removals.get())

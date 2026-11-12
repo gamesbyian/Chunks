@@ -31,17 +31,17 @@ class CombinedCompactLabelTest {
 
     @Test fun uniqueFriendlyNamesAreCompactAndCollisionsKeepExactLabels() {
         val exact = mapOf(
-            EnvironmentSnapshots.PHONE to PHONE_ENVIRONMENT_LABEL,
+            EnvironmentSnapshots.LOCAL to LOCAL_ENVIRONMENT_LABEL,
             a to "Server · Wood · host.example/rutorrent/",
             b to "Server · ian @ host.example · host.example/rutorrent/",
             c to "Server · ian @ host.example · host.example/rutorrent2/")
         val compact = mapOf(
-            EnvironmentSnapshots.PHONE to PHONE_ENVIRONMENT_LABEL,
+            EnvironmentSnapshots.LOCAL to LOCAL_ENVIRONMENT_LABEL,
             a to "Server · Wood",
             b to "Server · ian @ host.example",
             c to "Server · ian @ host.example")
         val shown = compactEnvironmentLabels(exact, compact)
-        assertEquals(PHONE_ENVIRONMENT_LABEL, shown[EnvironmentSnapshots.PHONE])
+        assertEquals(LOCAL_ENVIRONMENT_LABEL, shown[EnvironmentSnapshots.LOCAL])
         assertEquals("Server · Wood", shown[a])
         // Two instances on one host must never look identical.
         assertEquals(exact[b], shown[b])
@@ -67,7 +67,7 @@ class CombinedCompactLabelTest {
             CombinedTransfersScreen(
                 server = CombinedServerSource(scope, rows, stale = false, fullView = true,
                     observedAtEpochMillis = System.currentTimeMillis()),
-                savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {}, onBack = {})
         } } }
         val exact = serverEnvironmentLabel(scope)
         val details = "Details for Big Archive on $exact"

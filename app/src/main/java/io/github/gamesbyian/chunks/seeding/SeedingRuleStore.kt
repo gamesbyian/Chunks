@@ -95,21 +95,21 @@ class SeedingRuleStore(context: Context) {
                 // Future-environment matching is also revoked: otherwise it
                 // would silently reach a newly saved server.
                 val archival = rules.filter { old ->
-                    old.environments.any { it != "phone" } ||
-                        old.knownEnvironments.any { it != "phone" } ||
+                    old.environments.any { it != "local" } ||
+                        old.knownEnvironments.any { it != "local" } ||
                         old.includeFutureEnvironments
                 }.map { old -> QuarantinedRemoteRule(
                     old.id, old.environments, old.knownEnvironments,
                     old.includeFutureEnvironments)
                 }
                 val safe = rules.map { old -> old.copy(
-                    environments = old.environments.filterTo(mutableSetOf()) { it == "phone" },
-                    knownEnvironments = old.knownEnvironments.filterTo(mutableSetOf()) { it == "phone" },
+                    environments = old.environments.filterTo(mutableSetOf()) { it == "local" },
+                    knownEnvironments = old.knownEnvironments.filterTo(mutableSetOf()) { it == "local" },
                     includeFutureEnvironments = false)
                 }
-                return Snapshot(safe, defaults.filterKeys { it == "phone" },
+                return Snapshot(safe, defaults.filterKeys { it == "local" },
                     quarantinedRemoteRules = archival,
-                    quarantinedRemoteDefaults = defaults.filterKeys { it != "phone" })
+                    quarantinedRemoteDefaults = defaults.filterKeys { it != "local" })
             }
             val oldRules = root.getJSONArray("quarantinedRemoteRules").let { a ->
                 (0 until a.length()).map { i ->

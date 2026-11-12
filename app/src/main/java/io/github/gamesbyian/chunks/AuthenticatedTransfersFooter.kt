@@ -68,7 +68,7 @@ internal fun AuthenticatedTransfersFooter(
     onOptions: () -> Unit,
     /** A shared Connections destination, independent of current transfer environment. */
     onConnections: (() -> Unit)? = null,
-    /** Supplied by the phone route; a null scope preserves existing remote labels. */
+    /** Supplied by the local device route; a null scope preserves existing remote labels. */
     environmentLabel: String? = null,
     /** Spoken name for Add where no single environment owns it (Combined). */
     addDescription: String? = null,

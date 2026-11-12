@@ -8,7 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 /**
- * Presentation-only cache shared by phone, rTorrent and Combined lists. Each
+ * Presentation-only cache shared by local, rTorrent and Combined lists. Each
  * key is the stable exact environment ID and infohash, never a display name.
  *
  * Read/write only from effects; no SharedPreferences I/O in composition or

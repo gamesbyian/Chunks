@@ -24,15 +24,15 @@ internal fun ReviewedTorrentTargetChooser(
     verifiedTorrentBytes: ByteArray,
     enabled: Boolean,
     onPrepareServerReview: (ByteArray) -> Unit,
-    phonePlaceAvailable: Boolean = true
+    localPlaceAvailable: Boolean = true
 ) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Choose where to add this .torrent",
                 style = MaterialTheme.typography.titleSmall)
-            Text((if (phonePlaceAvailable) "You can use the phone destination below, or prepare this exact "
-                else "The phone download location is unavailable. You can prepare this exact ") +
+            Text((if (localPlaceAvailable) "You can use the local device destination below, or prepare this exact "
+                else "The local download location is unavailable. You can prepare this exact ") +
                 "verified .torrent for the connected rTorrent server. The server " +
                 "will download its own payload: no downloaded files move. " +
                 "Original tracker URLs may contain private passkeys. " +

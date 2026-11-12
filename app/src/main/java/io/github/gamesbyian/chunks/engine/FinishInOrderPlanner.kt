@@ -23,7 +23,7 @@ internal object FinishInOrderPlanner {
         FINISH_FIRST,
         /**
          * Finish first priorities plus the engine's per-transfer in-order
-         * piece picking (phone engine only). Requests the active file's
+         * piece picking (local engine only). Requests the active file's
          * pieces front to back so playback can start sooner; it lowers swarm
          * efficiency and still cannot make unseeded pieces exist.
          */

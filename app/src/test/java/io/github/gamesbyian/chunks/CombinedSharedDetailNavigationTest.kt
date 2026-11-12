@@ -71,7 +71,7 @@ class CombinedSharedDetailNavigationTest {
                                     requests.incrementAndGet()
                                     listOf(saved)
                                 })),
-                            onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                            onOpenLocal = {}, onOpenServer = {}, onBack = {})
                     }
                 }
             }
@@ -127,7 +127,7 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Open Server · $savedLabel transfers").assertDoesNotExist()
         rule.onNodeWithText("Capabilities in this environment").performScrollTo().assertExists()
         assertEquals("Explicit saved-list fetch only", 1, requests.get())
-        assertTrue("Details never mutate, probe or start the phone engine", commands.isEmpty())
+        assertTrue("Details never mutate, probe or start the local device engine", commands.isEmpty())
         assertNull(LocalEngineHolder.current())
     }
 
@@ -138,7 +138,7 @@ class CombinedSharedDetailNavigationTest {
                 CombinedTransfersScreen(
                     server = CombinedServerSource(connectedScope, listOf(connected),
                         stale = true, fullView = true, observedAtEpochMillis = System.currentTimeMillis()),
-                    savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                    savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {}, onBack = {})
             } }
         }
         val origin = serverEnvironmentLabel(connectedScope)

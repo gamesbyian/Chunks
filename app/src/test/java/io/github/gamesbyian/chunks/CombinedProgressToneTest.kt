@@ -6,10 +6,10 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** All environments uses the same progress colour meaning as the phone and rTorrent cards. */
+/** All environments uses the same progress colour meaning as the local device and rTorrent cards. */
 class CombinedProgressToneTest {
     private fun row(ppm: Int?, started: Boolean?, error: Boolean = false) = UnifiedTransferObservation(
-        UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40)), "n", "n", 10, ppm, started, 0, 0, 0, hasError = error)
+        UnifiedTransferKey.of(EnvironmentId("local"), "a".repeat(40)), "n", "n", 10, ppm, started, 0, 0, 0, hasError = error)
 
     @Test fun completeStoppedActiveAndErrorMatchTheOwningLists() {
         assertEquals(ChunksTone.COMPLETE, combinedProgressTone(row(1_000_000, true)))

@@ -19,7 +19,7 @@ class MediaRelationBridgeTest {
         k to TransferMediaAssignment(MediaTransferKey.of(k), st, c)
 
     @Test fun confirmedEpisodesBecomeAdjacentAndSameSeriesRelations() {
-        val e7 = key("phone", 1); val e8 = key("rtorrent:a", 2); val other = key("phone", 3); val suggested = key("phone", 4)
+        val e7 = key("local", 1); val e8 = key("rtorrent:a", 2); val other = key("local", 3); val suggested = key("local", 4)
         val members = MediaRelationBridge.members(listOf(
             assigned(e7, episode("475", 2, 7)), assigned(e8, episode("475", 2, 8), MediaAssignmentState.CHOSEN_BY_USER),
             // Same title, different provider identity (TVmaze 57926): must never relate by title.
@@ -33,7 +33,7 @@ class MediaRelationBridgeTest {
     }
 
     @Test fun unconfirmedOrCategoryOnlyContributesNothing() {
-        val k = key("phone", 9)
+        val k = key("local", 9)
         assertNull(MediaRelationBridge.members(k, null))
         assertNull(MediaRelationBridge.members(k, TransferMediaAssignment(MediaTransferKey.of(k), MediaAssignmentState.CATEGORY_ART_BY_USER,
             episode("475", 1, 1))))

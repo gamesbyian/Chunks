@@ -35,7 +35,7 @@ class CombinedAddAndFreshnessTest {
 
     private fun show(
         serverLabel: String?,
-        onPhone: () -> Unit,
+        onLocal: () -> Unit,
         onServer: (() -> Unit)?,
         otherSavedServers: Boolean = false,
         pendingSharedMagnet: Boolean = false,
@@ -47,7 +47,7 @@ class CombinedAddAndFreshnessTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                 ChunksTheme {
                     Surface {
-                        CombinedAddActions(serverLabel, onPhone, onServer,
+                        CombinedAddActions(serverLabel, onLocal, onServer,
                             hasOtherSavedServers = otherSavedServers,
                             pendingSharedMagnet = pendingSharedMagnet,
                             pendingSharedTorrent = pendingSharedTorrent,
@@ -58,90 +58,90 @@ class CombinedAddAndFreshnessTest {
         }
     }
 
-    @Test fun sharedTorrentIsSourceOnlyUntilExactPhoneOrServerReviewChosen() {
-        val phone = AtomicInteger()
+    @Test fun sharedTorrentIsSourceOnlyUntilExactLocalOrServerReviewChosen() {
+        val local = AtomicInteger()
         val server = AtomicInteger()
         val label = "Server · Personal seedbox #2"
-        show(label, { phone.incrementAndGet() }, { server.incrementAndGet() },
+        show(label, { local.incrementAndGet() }, { server.incrementAndGet() },
             pendingSharedTorrent = true)
         rule.onNodeWithText("Choose a destination for the shared .torrent").assertIsDisplayed()
         rule.onNodeWithText("A shared .torrent is ready. Choose where to review it. Nothing is added until you confirm.")
             .assertExists()
-        assertEquals(0, phone.get())
+        assertEquals(0, local.get())
         assertEquals(0, server.get())
-        rule.onNodeWithContentDescription("Review shared .torrent on this phone").performClick()
-        assertEquals(1, phone.get())
+        rule.onNodeWithContentDescription("Review shared .torrent on this device").performClick()
+        assertEquals(1, local.get())
         assertEquals(0, server.get())
         rule.onNodeWithContentDescription("Review shared .torrent on $label").performClick()
-        assertEquals(1, phone.get())
+        assertEquals(1, local.get())
         assertEquals(1, server.get())
         rule.onNodeWithText("content://", substring = true).assertDoesNotExist()
     }
 
     @Test fun sharedDocumentButtonsRefuseClicksWhileLocalValidationIsRunning() {
-        val phone = AtomicInteger()
+        val local = AtomicInteger()
         val server = AtomicInteger()
         val label = "Server · Personal seedbox #2"
-        show(label, { phone.incrementAndGet() }, { server.incrementAndGet() },
+        show(label, { local.incrementAndGet() }, { server.incrementAndGet() },
             pendingSharedTorrent = true, readingSharedTorrent = true)
-        rule.onNodeWithText("Checking the shared .torrent on this phone…").assertExists()
-        rule.onNodeWithContentDescription("Review shared .torrent on this phone").assertIsNotEnabled()
+        rule.onNodeWithText("Checking the shared .torrent on this device…").assertExists()
+        rule.onNodeWithContentDescription("Review shared .torrent on this device").assertIsNotEnabled()
         rule.onNodeWithContentDescription("Review shared .torrent on $label").assertIsNotEnabled()
-        assertEquals(0, phone.get())
+        assertEquals(0, local.get())
         assertEquals(0, server.get())
     }
 
     @Test fun sharedMagnetRequiresExactDestinationAndDoesNotDisplaySecretSource() {
-        val phone = AtomicInteger()
+        val local = AtomicInteger()
         val server = AtomicInteger()
         val label = "Server · Personal seedbox #2"
-        show(label, { phone.incrementAndGet() }, { server.incrementAndGet() },
+        show(label, { local.incrementAndGet() }, { server.incrementAndGet() },
             pendingSharedMagnet = true)
         rule.onNodeWithText("A shared magnet is ready. Choose where to review it. Nothing is added until you confirm.")
             .assertExists()
-        rule.onNodeWithContentDescription("Review shared magnet on this phone").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Review shared magnet on this device").assertIsDisplayed()
             .performClick()
-        assertEquals(1, phone.get())
+        assertEquals(1, local.get())
         assertEquals(0, server.get())
         rule.onNodeWithContentDescription("Review shared magnet on $label").assertIsDisplayed()
             .performClick()
-        assertEquals(1, phone.get())
+        assertEquals(1, local.get())
         assertEquals(1, server.get())
         rule.onNodeWithText("magnet:?xt=urn", substring = true).assertDoesNotExist()
     }
 
-    @Test fun exactPhoneAndAuthenticatedServerCallbacksStaySeparateAt320And200Percent() {
-        val phone = AtomicInteger()
+    @Test fun exactLocalAndAuthenticatedServerCallbacksStaySeparateAt320And200Percent() {
+        val local = AtomicInteger()
         val server = AtomicInteger()
         val name = "Server · Personal seedbox #2"
-        show(name, { phone.incrementAndGet() }, { server.incrementAndGet() })
+        show(name, { local.incrementAndGet() }, { server.incrementAndGet() })
 
-        rule.onNodeWithContentDescription("Add download on this phone").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Add download on this device").assertIsDisplayed()
             .performClick()
-        assertEquals(1, phone.get())
+        assertEquals(1, local.get())
         assertEquals(0, server.get())
 
         rule.onNodeWithContentDescription("Add download on $name").assertIsDisplayed()
             .performClick()
-        assertEquals(1, phone.get())
+        assertEquals(1, local.get())
         assertEquals(1, server.get())
     }
 
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
     fun savedOnlyServerDoesNotExposeUnverifiedAddRoute() {
-        val phone = AtomicInteger()
+        val local = AtomicInteger()
         val name = "Server · Saved but disconnected"
-        show(name, { phone.incrementAndGet() }, null)
+        show(name, { local.incrementAndGet() }, null)
         rule.onNodeWithContentDescription("Add download on $name").assertDoesNotExist()
-        rule.onNodeWithContentDescription("Add download on this phone").assertIsDisplayed()
+        rule.onNodeWithContentDescription("Add download on this device").assertIsDisplayed()
             .performClick()
-        assertEquals(1, phone.get())
+        assertEquals(1, local.get())
     }
 
-    @Test fun phoneOnlyDoesNotDescribeUnconfiguredSavedServersAt320And200Percent() {
+    @Test fun localOnlyDoesNotDescribeUnconfiguredSavedServersAt320And200Percent() {
         show(null, {}, null)
-        rule.onNodeWithText("Add on this phone").assertIsDisplayed()
+        rule.onNodeWithText("Add on this device").assertIsDisplayed()
         rule.onNodeWithText("Other saved servers need their own connection before adding.")
             .assertDoesNotExist()
         rule.onNodeWithText("Choosing which downloads to view never changes the Add destination.")
@@ -154,7 +154,7 @@ class CombinedAddAndFreshnessTest {
             .assertExists()
         rule.onNodeWithText("Choosing which downloads to view never changes the Add destination.")
             .assertExists()
-        rule.onNodeWithText("Add on this phone").assertIsDisplayed()
+        rule.onNodeWithText("Add on this device").assertIsDisplayed()
         rule.onNodeWithText("Add on Server", substring = true).assertDoesNotExist()
     }
 

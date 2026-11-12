@@ -56,7 +56,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
         List<String>, Long) -> Unit)? = null
 ) = SnapshotRestorePreviewPanel(
     targetHashes = transfers.map { it.infoHash },
-    target = SnapshotRestoreTarget.PHONE,
+    target = SnapshotRestoreTarget.LOCAL,
     inventoryConfirmed = inventoryConfirmed,
     inventoryStale = inventoryStale,
     busyEngine = busyEngine,
@@ -75,9 +75,9 @@ internal data class SnapshotRestoreTarget(
     val addLabel: String
 ) {
     companion object {
-        val PHONE = SnapshotRestoreTarget("phone", "Phone", "phone-engine",
-            "a native operation", "Already on phone (skip)",
-            "Review original .torrent in phone Add")
+        val LOCAL = SnapshotRestoreTarget("local", "Local", "local-engine",
+            "a native operation", "Already on this device (skip)",
+            "Review original .torrent in local Add")
         val SERVER = SnapshotRestoreTarget("rTorrent server", "rTorrent server",
             "rTorrent server (all-transfers view)", "a server operation",
             "Already on this server (skip)", "Review original .torrent in server Add")
@@ -219,7 +219,7 @@ internal fun SnapshotRestorePreviewPanel(
                     style = MaterialTheme.typography.titleMedium)
                 Text("Compares a verified .chunksnap against every torrent in a " +
                     "fresh, complete ${target.observation} observation. It can identify " +
-                    "missing definitions. An explicitly confirmed phone restore adds " +
+                    "missing definitions. An explicitly confirmed local restore adds " +
                     "only a stopped transfer definition: no downloaded payload " +
                     "files are migrated.")
                 Text("The existing ${target.noun} transfers stay untouched. A match means " +

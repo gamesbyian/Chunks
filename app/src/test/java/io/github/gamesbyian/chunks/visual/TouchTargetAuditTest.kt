@@ -55,10 +55,10 @@ internal fun SemanticsNodeInteractionsProvider.smallTouchTargets(density: Float)
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi")
-class PhoneTouchTargetAuditTest {
+class LocalTouchTargetAuditTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
-    @Test fun everyPhoneScreenActionHasA48dpTarget() {
+    @Test fun everyLocalScreenActionHasA48dpTarget() {
         rule.waitForIdle()
         val density = rule.activity.resources.displayMetrics.density
         val small = rule.smallTouchTargets(density).toMutableList()
@@ -67,7 +67,7 @@ class PhoneTouchTargetAuditTest {
         rule.onNodeWithText("Save speed limits").performScrollTo()
         rule.waitForIdle()
         small += rule.smallTouchTargets(density)
-        rule.onNodeWithText("More phone tools").performScrollTo().performClick()
+        rule.onNodeWithText("More local tools").performScrollTo().performClick()
         rule.waitForIdle()
         small += rule.smallTouchTargets(density)
         assertTrue("Touch targets under 48dp: ${small.distinct()}", small.isEmpty())
@@ -87,7 +87,7 @@ class CombinedTouchTargetAuditTest {
             CombinedTransfersScreen(server = CombinedServerSource(
                 "https://box.example/RPC2\u0000ian", rows, stale = false, fullView = true,
                 observedAtEpochMillis = System.currentTimeMillis()),
-                savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {})
+                savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {}, onBack = {})
         } } }
         rule.waitForIdle()
         val density = androidx.test.core.app.ApplicationProvider

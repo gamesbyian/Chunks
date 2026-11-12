@@ -41,7 +41,7 @@ class MediaInventoryHostCompositionTest {
     private val dir: File = Files.createTempDirectory("host-media").toFile()
     private val http = FakeMediaHttp()
     private val settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-    private val phone = EnvironmentId("phone")
+    private val local = EnvironmentId("local")
     private val hash = "d".repeat(40)
 
     private fun controller(): TransferMediaController {
@@ -55,10 +55,10 @@ class MediaInventoryHostCompositionTest {
     }
 
     private fun snapshot(epoch: String) = AuthorizedMediaInventorySnapshot.build(
-        listOf(EnvironmentTransferSnapshot(phone, EnvironmentAvailability.LIVE, true, 1234L,
-            listOf(UnifiedTransferObservation(UnifiedTransferKey.of(phone, hash),
+        listOf(EnvironmentTransferSnapshot(local, EnvironmentAvailability.LIVE, true, 1234L,
+            listOf(UnifiedTransferObservation(UnifiedTransferKey.of(local, hash),
                 "Hackers.1995.mkv", "Hackers.1995.mkv", null, null, null, null, null, null)))),
-        mapOf(phone to "phone"), epoch)
+        mapOf(local to "local"), epoch)
 
     @Test fun hostOutlivesTheFeedingScreenAndEndsWithTheActivityContent() {
         val c = controller()

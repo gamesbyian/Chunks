@@ -35,7 +35,7 @@ internal fun CollectionNameManager(
     var managing by remember(scope) { mutableStateOf(false) }
     var pendingForget by remember(scope) { mutableStateOf<String?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Create a Collection even before it has any transfers. Saved names stay on this phone and are scoped to this engine/account.",
+        Text("Create a Collection even before it has any transfers. Saved names stay on this device and are scoped to this engine/account.",
             style = MaterialTheme.typography.bodySmall)
         OutlinedTextField(
             value = draft,

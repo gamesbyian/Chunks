@@ -131,7 +131,7 @@ data class UnifiedTransferQueryResult(
 
 /** Pure adapters; no network access, mutations, optimistic status or command authority. */
 object UnifiedTransferObservations {
-    fun fromPhone(environment: EnvironmentId, item: LocalTransferStatus) =
+    fun fromLocal(environment: EnvironmentId, item: LocalTransferStatus) =
         UnifiedTransferObservation(
             key = UnifiedTransferKey.of(environment, item.infoHash),
             displayName = item.name,

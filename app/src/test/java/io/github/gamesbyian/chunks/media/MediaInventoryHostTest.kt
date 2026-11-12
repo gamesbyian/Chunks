@@ -21,10 +21,10 @@ import org.junit.Test
  * leaving Transfers must not cancel offscreen work, while a privacy generation change must.
  */
 class MediaInventoryHostTest {
-    private val phone = EnvironmentId("phone")
+    private val local = EnvironmentId("local")
     private val remote = EnvironmentId("rtorrent:profile-2")
     private val hash = "a".repeat(40)
-    private val scopes = mapOf(phone to "phone", remote to "user@profile-2")
+    private val scopes = mapOf(local to "local", remote to "user@profile-2")
 
     private fun source(env: EnvironmentId, name: String) =
         EnvironmentTransferSnapshot(env, EnvironmentAvailability.LIVE, true, 1234L,
@@ -54,7 +54,7 @@ class MediaInventoryHostTest {
 
     @Test fun leavingTheFeedingScreenDoesNotCancelTheRetainedInventory() = runBlocking {
         val h = Harness()
-        h.host.feed(snapshot("epoch-1", phone to "Hackers.1995", remote to "Away.We.Go.2009"))
+        h.host.feed(snapshot("epoch-1", local to "Hackers.1995", remote to "Away.We.Go.2009"))
         h.entered.await()
         // The Transfers screen unmounts: nothing is closed or replaced here, unlike the
         // former DisposableEffect-owned session. The pass continues and commits.
@@ -66,43 +66,43 @@ class MediaInventoryHostTest {
 
     @Test fun privacyGenerationChangeRevokesInFlightWorkUntilTheNextFreshFeed() = runBlocking {
         val h = Harness()
-        h.host.feed(snapshot("epoch-1", phone to "Hackers.1995"))
+        h.host.feed(snapshot("epoch-1", local to "Hackers.1995"))
         h.entered.await()
         h.host.privacyEpoch("epoch-2")
         assertNull("A lock/unlock or policy change empties the retained witness", h.host.retained)
         h.release.complete(Unit)
         assertEquals("Old callbacks must not commit after revocation", emptyList<String>(), h.committed)
         // The stale screen read built under epoch-1 cannot resurrect authority.
-        h.host.feed(snapshot("epoch-1", phone to "Hackers.1995"))
+        h.host.feed(snapshot("epoch-1", local to "Hackers.1995"))
         assertNull(h.host.retained)
         // A fresh observation under the current generation resumes offscreen work.
-        h.host.feed(snapshot("epoch-2", phone to "Hackers.1995"))
+        h.host.feed(snapshot("epoch-2", local to "Hackers.1995"))
         assertEquals(listOf("Hackers.1995"), h.committed)
     }
 
     @Test fun witnessFollowsTheLatestFeedNotTheSnapshotThatStartedThePass() = runBlocking {
         val h = Harness()
-        h.host.feed(snapshot("epoch-1", phone to "Hackers.1995", remote to "Away.We.Go.2009"))
+        h.host.feed(snapshot("epoch-1", local to "Hackers.1995", remote to "Away.We.Go.2009"))
         h.entered.await()
         // The remote profile disappears from the next LIVE read (sign-out, profile removal).
-        // replace() starts a new pass only for the phone row; the old pass's witness now
+        // replace() starts a new pass only for the local device row; the old pass's witness now
         // refuses the remote key even if its blocking request returns late.
-        h.host.feed(snapshot("epoch-1", phone to "Hackers.1995"))
+        h.host.feed(snapshot("epoch-1", local to "Hackers.1995"))
         h.release.complete(Unit)
         assertFalse(h.committed.contains("Away.We.Go.2009"))
         assertTrue(h.committed.contains("Hackers.1995"))
-        assertEquals(setOf(key(phone)), h.host.retained?.entries?.map { it.first }?.toSet())
+        assertEquals(setOf(key(local)), h.host.retained?.entries?.map { it.first }?.toSet())
     }
 
     @Test fun closeEndsTheSessionAndLaterFeedsAreIgnored() = runBlocking {
         val h = Harness()
-        h.host.feed(snapshot("epoch-1", phone to "Hackers.1995"))
+        h.host.feed(snapshot("epoch-1", local to "Hackers.1995"))
         h.entered.await()
         h.host.close()
         assertEquals(1, h.closedSessions)
         h.release.complete(Unit)
         assertEquals(emptyList<String>(), h.committed)
-        h.host.feed(snapshot("epoch-1", phone to "Hackers.1995"))
+        h.host.feed(snapshot("epoch-1", local to "Hackers.1995"))
         assertNull(h.host.retained)
     }
 }

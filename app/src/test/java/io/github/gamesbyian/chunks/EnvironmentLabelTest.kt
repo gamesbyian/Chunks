@@ -8,6 +8,6 @@ class EnvironmentLabelTest {
         assertEquals("Server · ian @ box.example/rutorrent2/plugins/httprpc/action.php",
             serverEnvironmentLabel("https://box.example/rutorrent2/plugins/httprpc/action.php\u0000ian"))
         assertEquals("Server · box.example:8443/RPC2", serverEnvironmentLabel("https://box.example:8443/RPC2\u0000"))
-        assertEquals("On this device", PHONE_ENVIRONMENT_LABEL)
+        assertEquals("On this device", LOCAL_ENVIRONMENT_LABEL)
     }
 }

@@ -17,7 +17,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import org.libtorrent4j.TorrentBuilder
 
-/** The phone engine's per-transfer cap readback and real counters on a loopback swarm. */
+/** The local engine's per-transfer cap readback and real counters on a loopback swarm. */
 class SeedingEngineAdapterTest {
     @get:Rule val temp = TemporaryFolder()
     private val engines = ArrayList<LocalTorrentEngine>()

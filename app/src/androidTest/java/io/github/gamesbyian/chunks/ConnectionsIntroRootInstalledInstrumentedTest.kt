@@ -48,7 +48,7 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
         rule.onNodeWithText(title).assertIsDisplayed()
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
-        rule.onNodeWithText("Open phone downloads").assertDoesNotExist()
+        rule.onNodeWithText("Open local downloads").assertDoesNotExist()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
 
         // Purple Add stays prominent as an action but is not the selected tab.

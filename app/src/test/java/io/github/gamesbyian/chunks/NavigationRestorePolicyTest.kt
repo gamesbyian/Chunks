@@ -10,13 +10,13 @@ class NavigationRestorePolicyTest {
         }
     }
 
-    @Test fun oldPhoneAndRemoteListsMigrateToOneReadOnlyCanonicalCatalog() {
+    @Test fun oldLocalAndRemoteListsMigrateToOneReadOnlyCanonicalCatalog() {
         for (old in listOf("LOCAL", "TRANSFERS")) {
             assertEquals("COMBINED", NavigationRestorePolicy.restorableSection(old))
         }
     }
 
-    @Test fun oldPhoneAddRestoresOnlyEmptyUniversalDestinationShell() {
+    @Test fun oldLocalAddRestoresOnlyEmptyUniversalDestinationShell() {
         assertEquals("ADD_CHOOSE", NavigationRestorePolicy.restorableSection("LOCAL_ADD"))
     }
 

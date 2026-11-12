@@ -10,7 +10,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
- * One shared direction toggle for phone and server Transfers lists. The
+ * One shared direction toggle for local and server Transfers lists. The
  * visible text names the direction in words ("Largest first", "Z–A"), so it
  * does not depend on an arrow glyph or colour.
  */

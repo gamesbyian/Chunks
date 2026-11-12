@@ -67,7 +67,7 @@ class ChunksMainActivityAtlasTest {
     @Volatile private var fixtureProblem: String? = null
 
     /** The dedicated Add destination retains the original review without submitting. */
-    private fun assertPhoneAddEntryIsReachable() {
+    private fun assertLocalAddEntryIsReachable() {
         rule.onNodeWithText("Torrent source").assertExists()
         rule.onNodeWithText("Magnet or HTTP(S) torrent URL").assertExists()
     }
@@ -417,10 +417,10 @@ class ChunksMainActivityAtlasTest {
         // The source-first Add route is shared across footer entries.
         // Changing target is a draft edit, never an RPC mutation.
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
-        assertPhoneAddEntryIsReachable()
+        assertLocalAddEntryIsReachable()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
-        assertPhoneAddEntryIsReachable()
+        assertLocalAddEntryIsReachable()
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
         rule.onNodeWithText("Add a transfer").assertExists()
         rule.onNodeWithText("Magnet or torrent link").assertExists()

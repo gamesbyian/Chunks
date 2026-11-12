@@ -69,22 +69,22 @@ object UnifiedTransferDetails {
 
         val matching = capability?.takeIf { it.environment == key.environment }
         val capabilityFresh = matching?.let { snapshot ->
-            // Bundled phone-engine features are build facts, not an expiring remote probe.
-            (snapshot.environment == EnvironmentSnapshots.PHONE &&
-                snapshot.source == "phone engine") ||
+            // Bundled local-engine features are build facts, not an expiring remote probe.
+            (snapshot.environment == EnvironmentSnapshots.LOCAL &&
+                snapshot.source == "local engine") ||
                 (snapshot.observedAtEpochMillis?.let { it >= 0L && it <= nowEpochMillis &&
                     nowEpochMillis - it <= EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS } == true)
         } == true
         val operations = EnvironmentOperation.entries.map { operation ->
             val candidate = if (capabilityFresh) matching!!.of(operation) else CapabilityEvidence.UNKNOWN
             // A same-ID DTO can still carry a capability from the wrong engine
-            // family. Phone build facts must never become remote authorization,
-            // and an rTorrent advertisement cannot describe a phone operation.
+            // family. Local build facts must never become remote authorization,
+            // and an rTorrent advertisement cannot describe a local operation.
             val wrongProvenance = (candidate == CapabilityEvidence.BUILT_IN &&
-                (key.environment != EnvironmentSnapshots.PHONE ||
-                    matching?.source != "phone engine")) ||
+                (key.environment != EnvironmentSnapshots.LOCAL ||
+                    matching?.source != "local engine")) ||
                 (candidate == CapabilityEvidence.ADVERTISED &&
-                    key.environment == EnvironmentSnapshots.PHONE)
+                    key.environment == EnvironmentSnapshots.LOCAL)
             val evidence = if (wrongProvenance) CapabilityEvidence.UNKNOWN else candidate
             val ready = state == TransferDetailReadState.CURRENT &&
                 (evidence == CapabilityEvidence.BUILT_IN ||
@@ -97,7 +97,7 @@ object UnifiedTransferDetails {
                 wrongProvenance ->
                     "Capability evidence belongs to the wrong engine type; check this environment again."
                 evidence == CapabilityEvidence.BUILT_IN ->
-                    "Built into the phone engine. Any change still needs an observed result."
+                    "Built into the local device engine. Any change still needs an observed result."
                 evidence == CapabilityEvidence.ADVERTISED ->
                     "Advertised by " + matching!!.source + ". Authorization and command results remain unverified."
                 evidence == CapabilityEvidence.MISSING ->

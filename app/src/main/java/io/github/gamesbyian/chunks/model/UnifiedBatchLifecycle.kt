@@ -153,7 +153,7 @@ object UnifiedBatchLifecycle {
     }
 }
 
-/** Maps the phone engine's readback outcome without upgrading it. */
+/** Maps the local device engine's readback outcome without upgrading it. */
 fun LocalCommandOutcome.toLifecycleReply(): LifecycleReply = when (this) {
     LocalCommandOutcome.VERIFIED -> LifecycleReply.VERIFIED
     LocalCommandOutcome.REFUSED -> LifecycleReply.REFUSED

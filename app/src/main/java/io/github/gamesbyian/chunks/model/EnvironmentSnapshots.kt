@@ -6,12 +6,12 @@ import java.security.MessageDigest
 
 /**
  * Builds read-only [EnvironmentTransferSnapshot]s from the observations the
- * phone and server screens already hold. Identity is the stable environment
- * ID: "phone", or the saved server profile ID (SHA-256 of endpoint + NUL +
+ * local and server screens already hold. Identity is the stable environment
+ * ID: "local", or the saved server profile ID (SHA-256 of endpoint + NUL +
  * exact HTTP auth username, the same key remembered profiles and seeding rules use).
  */
 object EnvironmentSnapshots {
-    val PHONE = EnvironmentId("phone")
+    val LOCAL = EnvironmentId("local")
 
     /** Read-on-demand server inventories are not live indefinitely after a successful fetch. */
     const val SERVER_INVENTORY_FRESH_MS = 120_000L
@@ -37,22 +37,22 @@ object EnvironmentSnapshots {
             .joinToString("") { "%02x".format(it.toInt() and 255) })
 
     /**
-     * A privacy-locked phone list reports no rows at all. [confirmed] is false
+     * A privacy-locked local list reports no rows at all. [confirmed] is false
      * until at least one native list read has been accepted; an initial empty
      * list is not an observed empty engine.
      */
-    fun phone(
+    fun local(
         frame: LocalInventoryFrame<LocalTransferStatus>,
         confirmed: Boolean,
         locked: Boolean,
         observedAtEpochMillis: Long?
     ): EnvironmentTransferSnapshot {
-        if (locked) return EnvironmentTransferSnapshot(PHONE, EnvironmentAvailability.LOCKED,
+        if (locked) return EnvironmentTransferSnapshot(LOCAL, EnvironmentAvailability.LOCKED,
             inventoryComplete = false, observedAtEpochMillis = null, transfers = emptyList())
         val (rows, clean) = accept(frame.entries.map { it.infoHash to it }) {
-            UnifiedTransferObservations.fromPhone(PHONE, it)
+            UnifiedTransferObservations.fromLocal(LOCAL, it)
         }
-        return EnvironmentTransferSnapshot(PHONE,
+        return EnvironmentTransferSnapshot(LOCAL,
             if (frame.stale) EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
             inventoryComplete = confirmed && clean && observedAtEpochMillis != null,
             observedAtEpochMillis = observedAtEpochMillis,

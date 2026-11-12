@@ -50,7 +50,7 @@ class CombinedDetailIdentityTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                 ChunksTheme { Surface {
                     CombinedTransfersScreen(CombinedServerSource(scope, listOf(row), false, true,
-                        System.currentTimeMillis()), emptyList(), onOpenPhone = {},
+                        System.currentTimeMillis()), emptyList(), onOpenLocal = {},
                         onOpenServer = {}, onBack = {})
                 } }
             }

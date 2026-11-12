@@ -39,7 +39,7 @@ class SimilarTransfersSectionTest {
 
     @Test fun confirmedIdentitiesProduceLabelledEnvironmentRows() {
         val hash = "a".repeat(40)
-        val src = UnifiedTransferKey.of(EnvironmentId("phone"), hash)
+        val src = UnifiedTransferKey.of(EnvironmentId("local"), hash)
         val sameOnServer = UnifiedTransferKey.of(EnvironmentId("rtorrent:2"), hash)
         val next = UnifiedTransferKey.of(EnvironmentId("rtorrent:2"), "b".repeat(40))
         fun ep(e: Int) = MediaCandidate(MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_EPISODE, "Babylon 5",

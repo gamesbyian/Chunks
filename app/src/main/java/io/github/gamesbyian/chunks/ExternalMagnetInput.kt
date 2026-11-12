@@ -26,7 +26,7 @@ internal object ExternalMagnetInput {
         if (candidate.length > 8192 || !candidate.startsWith("magnet:?", ignoreCase = true))
             return null
         // Android SEND text can use an uppercase URI scheme. The receiving
-        // phone Add entry gate is deliberately strict about "magnet:?".
+        // local Add entry gate is deliberately strict about "magnet:?".
         // Normalize *only* those first eight ASCII characters; preserve
         // xt, dn, private trackers and every query byte for normal review.
         return "magnet:?" + candidate.substring("magnet:?".length)

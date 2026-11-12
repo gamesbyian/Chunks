@@ -52,7 +52,7 @@ class LocalEngineService : Service() {
             try {
                 manager.notify(NOTIFICATION_ID, Notification.Builder(context, CHANNEL_ID)
                     .setSmallIcon(android.R.drawable.stat_sys_download)
-                    .setContentTitle("Chunks on this phone")
+                    .setContentTitle("Chunks on this device")
                     .setContentText("Transfer activity hidden by Chunks privacy lock.")
                     .setVisibility(Notification.VISIBILITY_SECRET)
                     .setOngoing(true).setOnlyAlertOnce(true).setContentIntent(open)
@@ -79,10 +79,10 @@ class LocalEngineService : Service() {
                 // A missing or inaccessible engine is not evidence that zero
                 // torrents were running. Preserve uncertainty in the timeout
                 // notice rather than promising an empty, successfully stopped
-                // phone when the process/engine could not be inspected.
+                // local when the process/engine could not be inspected.
                 ?: return LocalServiceTimeoutNotice.PauseSummary(listed = null, confirmed = 0)
             // Attempt each Stop independently. One uncertain native command
-            // must not prevent pausing the other active phone transfers.
+            // must not prevent pausing the other active local transfers.
             val active = try { engine.list().filter { !it.stopped } }
                 catch (_: Exception) { null }
             var confirmed = 0
@@ -163,8 +163,8 @@ class LocalEngineService : Service() {
     override fun onCreate() {
         super.onCreate()
         getSystemService(NotificationManager::class.java).createNotificationChannel(
-            NotificationChannel(CHANNEL_ID, "Downloads on this phone", NotificationManager.IMPORTANCE_LOW).apply {
-                description = "Shown while Chunks is downloading or sharing on this phone"
+            NotificationChannel(CHANNEL_ID, "Downloads on this device", NotificationManager.IMPORTANCE_LOW).apply {
+                description = "Shown while Chunks is downloading or sharing on this device"
             })
     }
 
@@ -256,7 +256,7 @@ class LocalEngineService : Service() {
             catch (_: Exception) {}
             // Smart Seeding: snapshots for transfers added after it was first
             // enabled; verified caps and pauses only, never removal.
-            try { LocalEngineHolder.current()?.let { io.github.gamesbyian.chunks.seeding.PhoneSeeding.tick(this, it) } }
+            try { LocalEngineHolder.current()?.let { io.github.gamesbyian.chunks.seeding.LocalSeeding.tick(this, it) } }
             catch (_: Exception) {}
         }
         val poll = LocalServicePoll.classify(observed)
@@ -341,7 +341,7 @@ class LocalEngineService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val builder = Notification.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle("Chunks on this phone")
+            .setContentTitle("Chunks on this device")
             .setContentText(LocalServicePrivacyPolicy.notificationText(policy, text))
             .setVisibility(if (policy == TransferLockMode.NEVER)
                 Notification.VISIBILITY_PRIVATE else Notification.VISIBILITY_SECRET)

@@ -14,34 +14,34 @@ class OrphanMoveRecoveryTest {
     private val accountB = "b".repeat(64)
     private fun move(
         scope: String = accountA,
-        direction: Direction = Direction.PHONE_TO_SERVER,
+        direction: Direction = Direction.LOCAL_TO_SERVER,
         stage: Stage = Stage.SOURCE_REMOVAL_UNCERTAIN
     ) = TransferMove.start(direction, hash, "Episode", scope, "seed.example",
-        sourceReviewToken = if (direction == Direction.PHONE_TO_SERVER) "native-123" else null,
-        sourceDirectory = if (direction == Direction.SERVER_TO_PHONE) "/remote/episode" else null
+        sourceReviewToken = if (direction == Direction.LOCAL_TO_SERVER) "native-123" else null,
+        sourceDirectory = if (direction == Direction.SERVER_TO_LOCAL) "/remote/episode" else null
     ).copy(stage = stage)
 
     @Test fun absentCardWithSameHashOnTwoServersCanOnlyShowCurrentAccount() {
         val a = move()
         val b = move(scope = accountB)
-        val otherDirection = move(direction = Direction.SERVER_TO_PHONE)
+        val otherDirection = move(direction = Direction.SERVER_TO_LOCAL)
         val awaiting = move(stage = Stage.AWAITING_TARGET)
         val eligible = OrphanMoveRecovery.candidates(
             listOf(a, b, otherDirection, awaiting),
-            Direction.PHONE_TO_SERVER, accountA, emptySet()
+            Direction.LOCAL_TO_SERVER, accountA, emptySet()
         )
         assertEquals(listOf(a), eligible)
         assertEquals(listOf(b), OrphanMoveRecovery.candidates(
-            listOf(a,b), Direction.PHONE_TO_SERVER, accountB, emptySet()
+            listOf(a,b), Direction.LOCAL_TO_SERVER, accountB, emptySet()
         ))
         assertTrue(OrphanMoveRecovery.candidates(
-            listOf(a), Direction.PHONE_TO_SERVER, "not-an-account", emptySet()
+            listOf(a), Direction.LOCAL_TO_SERVER, "not-an-account", emptySet()
         ).isEmpty())
         assertTrue(OrphanMoveRecovery.candidates(
-            listOf(a), Direction.PHONE_TO_SERVER, accountA, listOf(hash.uppercase())
+            listOf(a), Direction.LOCAL_TO_SERVER, accountA, listOf(hash.uppercase())
         ).isEmpty())
         assertEquals(listOf(otherDirection), OrphanMoveRecovery.candidates(
-            listOf(otherDirection), Direction.SERVER_TO_PHONE, accountA, emptySet()
+            listOf(otherDirection), Direction.SERVER_TO_LOCAL, accountA, emptySet()
         ))
     }
 
@@ -78,7 +78,7 @@ class OrphanMoveRecoveryTest {
         val recovered = requireNotNull(TransferMove.decode(requested.encode()))
         assertEquals(Stage.SOURCE_REMOVAL_UNCERTAIN, recovered.stage)
         assertEquals(listOf(recovered), OrphanMoveRecovery.candidates(
-            listOf(recovered), Direction.PHONE_TO_SERVER, accountA, emptyList()
+            listOf(recovered), Direction.LOCAL_TO_SERVER, accountA, emptyList()
         ))
         assertFalse(OrphanMoveRecovery.mayClear(
             recovered, recovered, accountA, Observation.Unknown

@@ -83,7 +83,7 @@ internal fun TransferCollectionEditor(
             }
             if (expanded) {
                 Text(
-                    "A transfer can belong to several collections. These names stay on this phone; no folders or torrent data change.",
+                    "A transfer can belong to several collections. These names stay on this device; no folders or torrent data change.",
                     style = MaterialTheme.typography.bodySmall
                 )
                 val choices = CollectionChoicePlanner.unassigned(availableCollections, memberships)
@@ -105,7 +105,7 @@ internal fun TransferCollectionEditor(
                             onClick = {
                                 if (store.add(scope, infoHash, name)) {
                                     memberships = store.forTransfer(scope, infoHash)
-                                    message = "Added to $name on this phone. Sharing is unchanged."
+                                    message = "Added to $name on this device. Sharing is unchanged."
                                     onMembershipChanged()
                                 } else {
                                     message = "Collection could not be added. Nothing changed."
@@ -132,7 +132,7 @@ internal fun TransferCollectionEditor(
                         if (saved) {
                             memberships = store.forTransfer(scope, infoHash)
                             draft = ""
-                            message = "Membership saved on this phone. Sharing is unchanged."
+                            message = "Membership saved on this device. Sharing is unchanged."
                             onMembershipChanged()
                         } else {
                             message = "Collection could not be saved. Nothing changed."

@@ -63,7 +63,7 @@ import org.robolectric.annotation.GraphicsMode
 class MediaComponentsRenderTest {
     @get:Rule val rule = createAndroidComposeRule<ComponentActivity>()
 
-    private fun key(n: Int) = MediaTransferKey("phone|" + "%040x".format(n))
+    private fun key(n: Int) = MediaTransferKey("local|" + "%040x".format(n))
     private fun state(n: Int, name: String) = TransferMediaUiState(key(n), MediaRecognizer.recognize(name))
     private val attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null)
     private val b5 = MediaCandidate(MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_EPISODE, "Babylon 5", 1993,

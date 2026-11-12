@@ -43,10 +43,10 @@ class ChunksScreenRenderTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/connect.png")
     }
 
-    @Test fun phoneScreen() {
+    @Test fun localScreen() {
         waitForWelcome()
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/chunks-visual/phone.png")
+        rule.onRoot().captureRoboImage("build/chunks-visual/local.png")
     }
 
     @Test fun offlineScreens() {
@@ -61,7 +61,7 @@ class ChunksScreenRenderTest {
     @Test fun privacyScreen() {
         waitForWelcome()
         rule.waitForIdle()
-        // Privacy & authentication lives in Phone options, reached from the footer.
+        // Privacy & authentication lives in Local options, reached from the footer.
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Privacy & authentication").performScrollTo().performClick()

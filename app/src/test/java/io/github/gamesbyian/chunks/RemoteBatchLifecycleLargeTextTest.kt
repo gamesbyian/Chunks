@@ -95,7 +95,7 @@ class RemoteBatchLifecycleLargeTextTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
-    fun largeTextRetainsLegibleBatchReviewOnWiderPhones() {
+    fun largeTextRetainsLegibleBatchReviewOnWiderLocals() {
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
                 ChunksTheme {

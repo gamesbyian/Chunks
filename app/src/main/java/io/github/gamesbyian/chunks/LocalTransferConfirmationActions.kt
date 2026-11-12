@@ -6,8 +6,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 
 /**
- * Same responsive review/decline presentation for phone Remove and
- * phone-to-server Add review. Callbacks stay with the owning exact transfer
+ * Same responsive review/decline presentation for local Remove and
+ * local-to-server Add review. Callbacks stay with the owning exact transfer
  * controller: this view never executes or retries commands by itself.
  */
 @Composable

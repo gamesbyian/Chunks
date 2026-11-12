@@ -11,7 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AuthorizedMediaInventorySnapshotTest {
-    private val phone = EnvironmentId("phone")
+    private val local = EnvironmentId("local")
     private val remote = EnvironmentId("rtorrent:profile-2")
     private val hash = "a".repeat(40)
     private fun snapshot(env: EnvironmentId, name: String, status: EnvironmentAvailability =
@@ -28,79 +28,79 @@ class AuthorizedMediaInventorySnapshotTest {
         AuthorizedMediaInventorySnapshot.build(sources, scopes, epoch)
 
     @Test fun sameHashOnTwoAuthorizedProfilesNeverBorrowsAnotherProfilesConsent() {
-        val sources = listOf(snapshot(phone, "Hackers.1995"), snapshot(remote, "Away.We.Go.2009"))
-        val scopes = mapOf(phone to "local-engine", remote to "authenticated-account-2")
+        val sources = listOf(snapshot(local, "Hackers.1995"), snapshot(remote, "Away.We.Go.2009"))
+        val scopes = mapOf(local to "local-engine", remote to "authenticated-account-2")
         val initial = build(sources, scopes)
         assertEquals(2, initial.entries.size)
-        assertTrue(initial.stillAuthorizes(key(phone), initial))
+        assertTrue(initial.stillAuthorizes(key(local), initial))
         assertTrue(initial.stillAuthorizes(key(remote), initial))
         val otherAccount = build(sources,
             scopes + (remote to "authenticated-account-3"))
-        assertTrue(initial.stillAuthorizes(key(phone), otherAccount))
+        assertTrue(initial.stillAuthorizes(key(local), otherAccount))
         assertFalse(initial.stillAuthorizes(key(remote), otherAccount))
     }
 
     @Test fun sourceLockStalenessAndMissingAccountRevokeOnlyTheirKeys() {
-        val sources = listOf(snapshot(phone, "Hackers.1995"), snapshot(remote, "Away.We.Go.2009"))
-        val scopes = mapOf(phone to "local", remote to "remote-account")
+        val sources = listOf(snapshot(local, "Hackers.1995"), snapshot(remote, "Away.We.Go.2009"))
+        val scopes = mapOf(local to "local", remote to "remote-account")
         val start = build(sources, scopes)
         for (status in listOf(EnvironmentAvailability.LOCKED,
             EnvironmentAvailability.OFFLINE, EnvironmentAvailability.STALE)) {
             val current = build(
                 listOf(sources.first(), snapshot(remote, "Away.We.Go.2009", status)), scopes)
             assertFalse(start.stillAuthorizes(key(remote), current))
-            assertTrue(start.stillAuthorizes(key(phone), current))
+            assertTrue(start.stillAuthorizes(key(local), current))
         }
-        val missing = build(sources, mapOf(phone to "local"))
+        val missing = build(sources, mapOf(local to "local"))
         assertEquals(1, missing.entries.size)
         assertFalse(start.stillAuthorizes(key(remote), missing))
         assertFalse(start.stillAuthorizes(key(remote),
             build(sources,
-                mapOf(phone to "local", remote to ""))))
+                mapOf(local to "local", remote to ""))))
     }
 
     @Test fun refreshedSourceReadAndReusedHashWithDifferentNameInvalidateOldRequest() {
-        val scopes = mapOf(phone to "local")
-        val initial = build(listOf(snapshot(phone, "Hackers.1995")), scopes)
+        val scopes = mapOf(local to "local")
+        val initial = build(listOf(snapshot(local, "Hackers.1995")), scopes)
         val reread = build(
-            listOf(snapshot(phone, "Hackers.1995", whenRead = 1240L)), scopes)
+            listOf(snapshot(local, "Hackers.1995", whenRead = 1240L)), scopes)
         val renamed = build(
-            listOf(snapshot(phone, "Other.2026")), scopes)
+            listOf(snapshot(local, "Other.2026")), scopes)
         val gone = build(emptyList(), scopes)
         assertTrue("A newer valid read must not starve in-flight offscreen poster lookup",
-            initial.stillAuthorizes(key(phone), reread))
+            initial.stillAuthorizes(key(local), reread))
         assertEquals("Unchanged profile/job across fresh reads should not reschedule work",
             initial, reread)
-        assertFalse(initial.stillAuthorizes(key(phone), renamed))
-        assertFalse(initial.stillAuthorizes(key(phone), gone))
-        assertTrue(initial.stillAuthorizes(key(phone), initial))
+        assertFalse(initial.stillAuthorizes(key(local), renamed))
+        assertFalse(initial.stillAuthorizes(key(local), gone))
+        assertTrue(initial.stillAuthorizes(key(local), initial))
     }
 
     @Test fun relockReopenSameAccountNeverResurrectsPreviousProviderCallback() {
-        val sources = listOf(snapshot(phone, "Hackers.1995"))
-        val scopes = mapOf(phone to "local-engine")
+        val sources = listOf(snapshot(local, "Hackers.1995"))
+        val scopes = mapOf(local to "local-engine")
         val first = build(sources, scopes, epoch = "foreground-1/policy-4")
-        val locked = build(listOf(snapshot(phone, "Hackers.1995",
+        val locked = build(listOf(snapshot(local, "Hackers.1995",
             EnvironmentAvailability.LOCKED)), scopes, epoch = "background-2/policy-4")
-        assertFalse(first.stillAuthorizes(key(phone), locked))
+        assertFalse(first.stillAuthorizes(key(local), locked))
 
         // Same exact account, hash, and filename, but a new unlock generation.
         // The old HTTP callback must never inherit this new user's authorization.
         val reopened = build(sources, scopes, epoch = "foreground-3/policy-4")
-        assertFalse(first.stillAuthorizes(key(phone), reopened))
-        assertTrue(reopened.stillAuthorizes(key(phone), reopened))
+        assertFalse(first.stillAuthorizes(key(local), reopened))
+        assertTrue(reopened.stillAuthorizes(key(local), reopened))
         assertFalse("Stored policy revision must revoke outstanding disclosure",
-            reopened.stillAuthorizes(key(phone),
+            reopened.stillAuthorizes(key(local),
                 build(sources, scopes, epoch = "foreground-3/policy-5")))
         assertEquals("A new complete read of the same account must not starve work",
-            reopened, build(listOf(snapshot(phone, "Hackers.1995",
+            reopened, build(listOf(snapshot(local, "Hackers.1995",
                 whenRead = 9999L)), scopes, epoch = "foreground-3/policy-4"))
     }
 
     @Test fun canceledProviderCallCannotBorrowLaterUnlockOfSameAccountAndHash() =
         kotlinx.coroutines.runBlocking {
-            val scopes = mapOf(phone to "local-engine")
-            val inventory = listOf(snapshot(phone, "Hackers.1995"))
+            val scopes = mapOf(local to "local-engine")
+            val inventory = listOf(snapshot(local, "Hackers.1995"))
             val original = build(inventory, scopes, epoch = "foreground-100/policy-4")
             val current = java.util.concurrent.atomic.AtomicReference(original)
             val firstEntered = kotlinx.coroutines.CompletableDeferred<Unit>()
@@ -125,7 +125,7 @@ class AuthorizedMediaInventorySnapshotTest {
                 })
             lease.replace(original.entries) { id -> original.stillAuthorizes(id, current.get()) }
             firstEntered.await()
-            val locked = build(listOf(snapshot(phone, "Hackers.1995",
+            val locked = build(listOf(snapshot(local, "Hackers.1995",
                 EnvironmentAvailability.LOCKED)), scopes, epoch = "background-101/policy-4")
             current.set(locked)
             lease.replace(locked.entries) { id -> locked.stillAuthorizes(id, current.get()) }
@@ -142,15 +142,15 @@ class AuthorizedMediaInventorySnapshotTest {
         }
 
     @Test fun incompleteOrAmbiguousSourcesCannotAuthorizeInventedJobs() {
-        val live = snapshot(phone, "Hackers.1995")
-        val duplicates = build(listOf(live, live), mapOf(phone to "local"))
+        val live = snapshot(local, "Hackers.1995")
+        val duplicates = build(listOf(live, live), mapOf(local to "local"))
         assertTrue(duplicates.entries.isEmpty())
-        assertFalse(duplicates.stillAuthorizes(key(phone), duplicates))
+        assertFalse(duplicates.stillAuthorizes(key(local), duplicates))
         val noTimestamp = build(
-            listOf(snapshot(phone, "Hackers.1995", whenRead = null)), mapOf(phone to "local"))
+            listOf(snapshot(local, "Hackers.1995", whenRead = null)), mapOf(local to "local"))
         assertTrue(noTimestamp.entries.isEmpty())
         val noRemote = build(
-            listOf(snapshot(remote, "Away.We.Go.2009")), mapOf(phone to "local"))
+            listOf(snapshot(remote, "Away.We.Go.2009")), mapOf(local to "local"))
         assertTrue(noRemote.entries.isEmpty())
         // A LIVE, timestamped but filtered or identity-corrupt rTorrent inventory
         // cannot prove the underlying exact job roster for provider transmission.
@@ -164,8 +164,8 @@ class AuthorizedMediaInventorySnapshotTest {
             partial.entries.isEmpty())
         assertFalse("Becoming incomplete revokes already queued provider requests",
             full.stillAuthorizes(key(remote), partial))
-        val partialPhone = build(
-            listOf(snapshot(phone, "Hackers.1995", complete = false)), mapOf(phone to "local"))
-        assertTrue(partialPhone.entries.isEmpty())
+        val partialLocal = build(
+            listOf(snapshot(local, "Hackers.1995", complete = false)), mapOf(local to "local"))
+        assertTrue(partialLocal.entries.isEmpty())
     }
 }

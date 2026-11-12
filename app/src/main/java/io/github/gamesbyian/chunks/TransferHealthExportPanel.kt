@@ -61,7 +61,7 @@ internal fun LocalTransferHealthExportPanel(
     stale: Boolean
 ) {
     TransferHealthDocumentPanel(
-        scope = "phone",
+        scope = "local",
         stale = stale,
         prepare = { names -> TransferHealthReport.local(transfers, stale, names) }
     )

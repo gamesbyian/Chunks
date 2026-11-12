@@ -71,7 +71,7 @@ class RemoteTransfersPrimaryActionsLargeTextTest {
         show(376, 1f)
         val add = rule.onNodeWithText("+ Add torrent").getUnclippedBoundsInRoot()
         val refresh = rule.onNodeWithText("Refresh").getUnclippedBoundsInRoot()
-        assertEquals("412dp phone must not waste a second row", add.top, refresh.top)
+        assertEquals("412dp local must not waste a second row", add.top, refresh.top)
         assertTrue(add.right < refresh.left)
         assertTrue("Refresh remains within the 376dp content area", refresh.right <= 376.dp)
         assertTrue(add.bottom - add.top >= 48.dp)
@@ -88,7 +88,7 @@ class RemoteTransfersPrimaryActionsLargeTextTest {
 
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
-    fun biggerPhoneStillStacksAt200Percent() {
+    fun biggerLocalStillStacksAt200Percent() {
         show(412, 2f)
         val add = rule.onNodeWithText("+ Add torrent").getUnclippedBoundsInRoot()
         val refresh = rule.onNodeWithText("Refresh").getUnclippedBoundsInRoot()

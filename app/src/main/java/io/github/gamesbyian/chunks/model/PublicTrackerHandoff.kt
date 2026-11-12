@@ -7,7 +7,7 @@ import java.util.Locale
 
 /**
  * Adds a *public* torrent's tracker addresses to an identity-only handoff
- * magnet, so a Copy Transfer to the phone can find peers even when the
+ * magnet, so a Copy Transfer to the local device can find peers even when the
  * server has not finished downloading (and DHT may be off).
  *
  * Only for transfers the server reports as non-private. Defence in depth:

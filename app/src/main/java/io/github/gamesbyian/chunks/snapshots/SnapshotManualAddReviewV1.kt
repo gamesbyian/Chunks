@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks.snapshots
 import java.util.Locale
 
 /**
- * A reviewed snapshot definition may populate the existing phone Add form.
+ * A reviewed snapshot definition may populate the existing local Add form.
  * This never mutates an engine or writes a file, and MUST NOT be mistaken for
  * an authorized journal-backed restore transaction. The user still reviews
  * an actual destination and separately confirms Add.
@@ -20,7 +20,7 @@ internal object SnapshotManualAddReviewV1 {
     ): ByteArray {
         require(completeFreshTarget && frozenGeneration == currentGeneration &&
             frozenTargetHashes == currentTargetHashes) {
-            "Phone inventory changed after snapshot comparison; reopen the archive"
+            "Local inventory changed after snapshot comparison; reopen the archive"
         }
         require(reviewedEntry.decision ==
             SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW &&
@@ -29,7 +29,7 @@ internal object SnapshotManualAddReviewV1 {
         }
         val target = verifiedTargetHashes(currentTargetHashes)
         require(reviewedEntry.infoHashV1 !in target) {
-            "Torrent already exists in the phone inventory"
+            "Torrent already exists in the local device inventory"
         }
         val matched = verified.manifest.items.singleOrNull {
             it.infoHashV1 == reviewedEntry.infoHashV1 &&

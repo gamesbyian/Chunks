@@ -185,7 +185,7 @@ internal fun AccentOutlineCard(accent: Color, modifier: Modifier = Modifier, con
 
 /**
  * Which environment a list, review or confirmation belongs to (UNIFIED-ENVIRONMENTS):
- * "On this phone" or the exact server account and address. Text carries the
+ * "On this device" or the exact server account and address. Text carries the
  * identity; the icon is decorative.
  */
 @Composable
@@ -222,7 +222,7 @@ internal fun EnvironmentBadge(
             .padding(horizontal = 10.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // Library icons are drawn for light fills; tint to the badge accent on this dark chip.
-        Image(painterResource(if (server) R.drawable.chunks_ic_server else R.drawable.chunks_ic_phone),
+        Image(painterResource(if (server) R.drawable.chunks_ic_server else R.drawable.__CHUNKS_PHYSICAL_LOCAL_ICON__),
             contentDescription = null, modifier = Modifier.size(20.dp),
             colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(accent))
         Text(label, style = MaterialTheme.typography.labelLarge, color = ChunksColors.Text)
@@ -237,7 +237,7 @@ internal fun serverEnvironmentLabel(aliasScope: String): String {
     return "Server · " + (if (user.isEmpty()) address else "$user @ $address")
 }
 
-internal const val PHONE_ENVIRONMENT_LABEL = "On this device"
+internal const val LOCAL_ENVIRONMENT_LABEL = "On this device"
 
 /**
  * States exactly which environment a setting applies to (UNIFIED-ENVIRONMENTS

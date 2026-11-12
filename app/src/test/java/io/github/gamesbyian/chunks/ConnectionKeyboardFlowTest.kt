@@ -66,13 +66,13 @@ class ConnectionScreenImeTest {
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Next))
     }
 
-    @Test fun phoneMagnetFieldClosesWithDone() {
+    @Test fun localMagnetFieldClosesWithDone() {
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD)
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
-        rule.onNode(hasSetTextAction() and hasText("Optional phone download subfolder"))
+        rule.onNode(hasSetTextAction() and hasText("Optional local download subfolder"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Done))
     }
 }

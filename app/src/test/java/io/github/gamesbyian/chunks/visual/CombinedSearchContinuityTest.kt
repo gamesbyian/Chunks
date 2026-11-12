@@ -24,7 +24,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Opening the phone list from All environments and coming Back keeps the
+ * Opening the local device list from All environments and coming Back keeps the
  * Combined search. Navigation only; nothing is added or changed.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -37,7 +37,7 @@ class CombinedSearchContinuityTest {
             io.github.gamesbyian.chunks.CombinedViewPreferences(rule.activity).save(
                 io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
                     scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(
-                        setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE))))
+                        setOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL))))
         }
         rule.activityRule.scenario.recreate()
         rule.waitUntil(20_000) {

@@ -48,7 +48,7 @@ class CompactRemoteInventoryHeaderTest {
 
     @Test
     @Config(qualifiers = "w412dp-h892dp-mdpi")
-    fun actual412dpPhoneListGuttersKeepAllEnvironmentsInlineAtNormalType() {
+    fun actual412dpLocalListGuttersKeepAllEnvironmentsInlineAtNormalType() {
         var opens = 0
         rule.setContent {
             ChunksTheme {
@@ -73,7 +73,7 @@ class CompactRemoteInventoryHeaderTest {
 
     @Test
     @Config(qualifiers = "w320dp-h700dp-mdpi")
-    fun actual320dpPhoneGuttersKeepHeaderAndScopeActionStacked() {
+    fun actual320dpLocalGuttersKeepHeaderAndScopeActionStacked() {
         rule.setContent {
             ChunksTheme {
                 Box(Modifier.width(284.dp)) {
@@ -87,7 +87,7 @@ class CompactRemoteInventoryHeaderTest {
         }
         val badge = rule.onNodeWithText("Wood · 32 transfers").getUnclippedBoundsInRoot()
         val all = rule.onNodeWithText("All environments…").getUnclippedBoundsInRoot()
-        assertTrue("On a genuinely narrow phone, stack rather than squeeze", all.top >= badge.bottom)
+        assertTrue("On a genuinely narrow local, stack rather than squeeze", all.top >= badge.bottom)
     }
 
     @Test

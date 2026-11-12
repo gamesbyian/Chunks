@@ -20,7 +20,7 @@ class LocalZipOfflineNavigationInstrumentedTest {
 
     @Test fun offlineZipReviewIsAvailableWithoutCredentialsAndReturnsToConnection() {
         // Offline tools remain available from the optional server-setup route.
-        // New installations correctly start in phone Transfers instead.
+        // New installations correctly start in local Transfers instead.
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
@@ -33,7 +33,7 @@ class LocalZipOfflineNavigationInstrumentedTest {
         rule.onNodeWithText("Choose local ZIP").assertExists()
         rule.onNodeWithText("Read-only limits:", substring = true).assertExists()
         rule.onNodeWithText("Back").performClick()
-        // Return to the approved Connections card, not the removed phone promo.
+        // Return to the approved Connections card, not the removed local promo.
         rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
         rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
         rule.onNodeWithText("Your downloads").assertDoesNotExist()

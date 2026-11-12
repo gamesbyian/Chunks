@@ -146,7 +146,7 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
         stage("ground-truth")
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("launch-failed") { visible("On this phone (experimental)") }
+            waitFor("launch-failed") { visible("On this device (experimental)") }
             rule.onNodeWithText("Back").performScrollTo().performClick()
             connect(primary, counts[0], "primary")
             disconnect("primary")

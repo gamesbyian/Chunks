@@ -68,7 +68,7 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
         }
     }
     private fun hash() = requireNotNull(prefs.getString("hash", null))
-    private fun key() = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentSnapshots.PHONE, hash()))
+    private fun key() = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentSnapshots.LOCAL, hash()))
     private fun exactAssignment() = FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json")).get(key())
     private fun displayed(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun openCanonicalTransfers() {

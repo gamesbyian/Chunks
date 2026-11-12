@@ -10,14 +10,14 @@ class LocalServiceTimeoutNoticeTest {
         LocalServiceTimeoutNotice.text(PauseSummary(listed, confirmed), policy)
 
     @Test fun claimsOnlyReadbackConfirmedPauses() {
-        assertEquals("Android's background time limit was reached. Chunks paused 2 transfers on this phone. " +
+        assertEquals("Android's background time limit was reached. Chunks paused 2 transfers on this device. " +
             "Open Chunks to resume.", text(2, 2))
-        assertEquals("Android's background time limit was reached. Chunks paused 1 transfer on this phone. " +
+        assertEquals("Android's background time limit was reached. Chunks paused 1 transfer on this device. " +
             "Open Chunks to resume.", text(1, 1))
         assertEquals("Android's background time limit was reached. Chunks paused 1 of 3 transfers; " +
             "2 could not be confirmed. Open Chunks to check.", text(3, 1))
         assertEquals("Android's background time limit was reached. " +
-            "Chunks tried to pause transfers on this phone but could not confirm it. " +
+            "Chunks tried to pause transfers on this device but could not confirm it. " +
             "Open Chunks to check.", text(null, 0))
         assertTrue(text(0, 0).contains("No transfers were running"))
     }
@@ -26,7 +26,7 @@ class LocalServiceTimeoutNoticeTest {
         for (mode in TransferLockMode.entries - TransferLockMode.NEVER) {
             val locked = text(4, 4, mode)
             assertFalse(mode.name, locked.any { it.isDigit() })
-            assertEquals("Android's background time limit was reached. Open Chunks to check transfers on this phone.",
+            assertEquals("Android's background time limit was reached. Open Chunks to check transfers on this device.",
                 locked)
         }
     }

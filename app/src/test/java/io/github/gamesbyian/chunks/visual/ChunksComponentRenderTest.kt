@@ -19,7 +19,7 @@ import io.github.gamesbyian.chunks.ChunksColors
 import io.github.gamesbyian.chunks.ChunksTheme
 import io.github.gamesbyian.chunks.ChunksTone
 import io.github.gamesbyian.chunks.LocalFileSelection
-import io.github.gamesbyian.chunks.PhoneStoragePanel
+import io.github.gamesbyian.chunks.LocalStoragePanel
 import io.github.gamesbyian.chunks.model.DeviceSpaceSnapshot
 import io.github.gamesbyian.chunks.model.LocalFolderInventory
 import io.github.gamesbyian.chunks.LocalTransferCard
@@ -105,7 +105,7 @@ class ChunksComponentRenderTest {
         rule.setContent {
             ChunksTheme { androidx.compose.material3.Surface {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    PhoneStoragePanel(readSpace = { DeviceSpaceSnapshot(512_000_000_000, 212_000_000_000, false) },
+                    LocalStoragePanel(readSpace = { DeviceSpaceSnapshot(512_000_000_000, 212_000_000_000, false) },
                         readFolder = { LocalFolderInventory(38_600_000_000, 156, true) })
                 }
             } }

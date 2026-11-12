@@ -29,7 +29,7 @@ import org.junit.runner.RunWith
 
 /**
  * Installed app, real Android clipboard, app in the foreground: an empty
- * phone Add takes a copied magnet as a draft and says where it came from.
+ * local Add takes a copied magnet as a draft and says where it came from.
  * Nothing is added; the Add tile is never pressed.
  */
 @RunWith(AndroidJUnit4::class)
@@ -106,41 +106,41 @@ class ClipboardPrefillInstrumentedTest {
         resolver.openOutputStream(uri)?.use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 
-    @Test fun copiedMagnetPrefillsTheForegroundPhoneAdd() {
+    @Test fun copiedMagnetPrefillsTheForegroundLocalAdd() {
         val link = "magnet:?xt=urn:btih:" + "f".repeat(40) + "&dn=Installed%20clipboard"
-        val phone = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
+        val local = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
         val entry = hasText("Transfers") and hasClickAction()
         // A login remembered by an earlier installed test starts on the server
-        // entry instead; reach the phone the way a person would, from there.
-        waitOrExplain("the phone screen or its entry", 30_000) {
-            rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() ||
+        // entry instead; reach the local device the way a person would, from there.
+        waitOrExplain("the local device screen or its entry", 30_000) {
+            rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty() ||
                 rule.onAllNodes(entry).fetchSemanticsNodes().isNotEmpty() ||
                 rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty() &&
                 runCatching { rule.onNodeWithText("Transfers").assertExists() }.isSuccess
         }
-        if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
+        if (rule.onAllNodes(local).fetchSemanticsNodes().isEmpty()) {
             rule.onNode(entry).performClick()
             waitOrExplain("device or combined transfer list", 15_000) {
-                rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty() ||
+                rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty() ||
                     rule.onAllNodesWithText("Open device transfer controls").fetchSemanticsNodes().isNotEmpty() ||
                     rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()
             }
-            if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
+            if (rule.onAllNodes(local).fetchSemanticsNodes().isEmpty()) {
                 // A remembered server makes Transfers show the combined list.
                 // Explicitly open the device inventory, without changing login.
                 rule.onNode(hasScrollToIndexAction())
                     .performScrollToNode(hasText("Open device transfer controls"))
                 rule.onNodeWithText("Open device transfer controls").performClick()
             }
-            waitOrExplain("the phone screen", 15_000) {
-                rule.onAllNodes(phone).fetchSemanticsNodes().isNotEmpty()
+            waitOrExplain("the local device screen", 15_000) {
+                rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty()
             }
         }
         // The journey under test is "copy, then open Add": if the form is already
         // open on arrival, close it first so opening it is a real transition.
         // Transfers and Add are separate persistent destinations; ensure
         // prefill is tested on a genuinely new Add entry.
-        if (rule.onAllNodes(phone).fetchSemanticsNodes().isEmpty()) {
+        if (rule.onAllNodes(local).fetchSemanticsNodes().isEmpty()) {
             rule.onNodeWithText("Transfers").performClick()
             rule.waitForIdle()
         }

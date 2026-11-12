@@ -65,11 +65,11 @@ internal fun SimilarTransfersHost(
     )
 }
 
-/** The phone's own list as a Similar Transfers source (same-environment scope in phone details). */
-internal fun phoneSimilarSource(transfers: List<io.github.gamesbyian.chunks.engine.LocalTransferStatus>, stale: Boolean): EnvironmentTransferSnapshot {
-    val env = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.PHONE
+/** The local's own list as a Similar Transfers source (same-environment scope in local details). */
+internal fun localSimilarSource(transfers: List<io.github.gamesbyian.chunks.engine.LocalTransferStatus>, stale: Boolean): EnvironmentTransferSnapshot {
+    val env = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
     val rows = transfers.distinctBy { it.infoHash.lowercase() }.mapNotNull {
-        runCatching { io.github.gamesbyian.chunks.model.UnifiedTransferObservations.fromPhone(env, it) }.getOrNull()
+        runCatching { io.github.gamesbyian.chunks.model.UnifiedTransferObservations.fromLocal(env, it) }.getOrNull()
     }
     return EnvironmentTransferSnapshot(env, if (stale) EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
         !stale, System.currentTimeMillis(), rows)

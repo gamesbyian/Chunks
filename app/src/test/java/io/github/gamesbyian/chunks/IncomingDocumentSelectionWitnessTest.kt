@@ -10,12 +10,12 @@ class IncomingDocumentSelectionWitnessTest {
     private val sourceBytes = ("d4:infod6:lengthi5e4:name8:test.txt" +
         "12:piece lengthi16384e6:pieces20:01234567890123456789ee").toByteArray()
     private val preview by lazy { TorrentMetainfoReader.preview(sourceBytes) }
-    private fun phone() = PendingLocalAdd(preview, sourceBytes.copyOf())
+    private fun local() = PendingLocalAdd(preview, sourceBytes.copyOf())
     private fun remote(account: String = "exact-account") = RemoteAddSession(account)
     private val text = ""
 
     @Test fun unchangedOrExplicitlyReviewedOldDraftCanBeReplaced() {
-        val existing = phone()
+        val existing = local()
         val handedOff = sourceBytes.copyOf()
         val session = remote()
         session.selectedBytes = sourceBytes.copyOf()
@@ -27,10 +27,10 @@ class IncomingDocumentSelectionWitnessTest {
             witness.canApply("magnet:?xt=urn:btih:" + "a".repeat(40), existing, handedOff, session))
     }
 
-    @Test fun anotherPhonePickerSelectionWinsEvenWithSameInfohash() {
-        val prior = phone()
+    @Test fun anotherLocalPickerSelectionWinsEvenWithSameInfohash() {
+        val prior = local()
         val witness = IncomingDocumentSelectionWitness(text, prior, null, null)
-        val newer = phone() // same infohash, distinct reviewed metainfo object
+        val newer = local() // same infohash, distinct reviewed metainfo object
         assertFalse("Do not compare only hashes or names of document selections",
             witness.canApply(text, newer, null, null))
         assertTrue(witness.canApply(text, prior, null, null))
@@ -76,9 +76,9 @@ class IncomingDocumentSelectionWitnessTest {
             witness.canApply(text, null, null, second))
     }
 
-    @Test fun shareStartingWithEmptyPhoneDraftCannotOverwriteNewFile() {
+    @Test fun shareStartingWithEmptyLocalDraftCannotOverwriteNewFile() {
         val witness = IncomingDocumentSelectionWitness(text, null, null, null)
-        assertFalse(witness.canApply(text, phone(), null, null))
+        assertFalse(witness.canApply(text, local(), null, null))
         assertTrue(witness.canApply(text, null, null, null))
     }
 }

@@ -36,7 +36,7 @@ class LocalSnapshotStoppedRestoreReviewInstrumentedTest {
             }
         }
         compose.onNodeWithText("Confirm one stopped snapshot restore").assertExists()
-        compose.onNodeWithText("New phone destination: Downloads/Chunks Downloads").assertExists()
+        compose.onNodeWithText("New local destination: Downloads/Chunks Downloads").assertExists()
         compose.onNodeWithText("No historical paths are reused", substring = true).assertExists()
         compose.onNodeWithText("Confirm restore stopped").assertExists()
         compose.runOnIdle { assertEquals(0, calls) }
@@ -50,7 +50,7 @@ class LocalSnapshotStoppedRestoreReviewInstrumentedTest {
         compose.setContent {
             MaterialTheme {
                 LocalSnapshotStoppedRestoreReview(draft(),
-                    "Unknown phone destination", eligible = false,
+                    "Unknown local destination", eligible = false,
                     onConfirm = { submitted = true },
                     onCancel = { cancelled = true })
             }

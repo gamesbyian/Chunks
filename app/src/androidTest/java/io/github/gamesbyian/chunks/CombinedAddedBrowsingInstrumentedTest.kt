@@ -61,7 +61,7 @@ class CombinedAddedBrowsingInstrumentedTest {
                             System.currentTimeMillis(), lifecycle = CombinedServerLifecycle(
                                 begin = { commands.incrementAndGet(); false }, settled = {},
                                 setStarted = { _, _ -> error("Browsing must never issue a command") })),
-                        savedProfiles = emptyList(), onOpenPhone = {}, onOpenServer = {}, onBack = {},
+                        savedProfiles = emptyList(), onOpenLocal = {}, onOpenServer = {}, onBack = {},
                         searchState = search, recentlyAddedTransfer = key)
                 } } }
             }
@@ -101,7 +101,7 @@ class CombinedAddedBrowsingInstrumentedTest {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                 ChunksTheme { Box(Modifier.requiredSize(320.dp, 700.dp).testTag("combined-browsing-viewport")) { Surface {
-                    CombinedTransfersScreen(null, profiles, onOpenPhone = {}, onOpenServer = null, onBack = {})
+                    CombinedTransfersScreen(null, profiles, onOpenLocal = {}, onOpenServer = null, onBack = {})
                 } } }
             }
         }

@@ -12,7 +12,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
-/** A stale phone inventory never presents old rates as live or estimates time left. */
+/** A stale local inventory never presents old rates as live or estimates time left. */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
 class LocalCardStaleRateTest {

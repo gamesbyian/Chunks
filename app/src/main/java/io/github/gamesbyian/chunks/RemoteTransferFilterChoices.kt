@@ -47,7 +47,7 @@ internal fun RemoteTransferFilterChoices(
     }
 }
 
-/** These describe observed server state, not inferred causes or phone-engine state. */
+/** These describe observed server state, not inferred causes or local-engine state. */
 internal fun remoteFilterEvidenceText(filter: TransferFilter): String? = when (filter) {
     TransferFilter.ALL -> null
     TransferFilter.ACTIVE ->

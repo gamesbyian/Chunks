@@ -43,7 +43,7 @@ class CombinedSavedRefreshTest {
             CompositionLocalProvider(LocalDensity provides Density(density.density, 2f)) {
                 ChunksTheme { Surface {
                     CombinedTransfersScreen(null, listOf(profile(2, first), profile(3, second)),
-                        onOpenPhone = {}, onOpenServer = null, onBack = {})
+                        onOpenLocal = {}, onOpenServer = null, onBack = {})
                 } }
             }
         }

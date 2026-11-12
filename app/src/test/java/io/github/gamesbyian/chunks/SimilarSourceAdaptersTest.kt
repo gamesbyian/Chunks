@@ -15,11 +15,11 @@ class SimilarSourceAdaptersTest {
         stopped = false, progressPpm = 1_000_000, wantedBytes = 1, doneBytes = 1, payloadDownloadedBytes = 0,
         payloadUploadedBytes = 0, peers = 0, savePath = "/x", error = null)
 
-    @Test fun phoneSourceDropsDuplicatesAndMalformedHashes() {
-        val s = phoneSimilarSource(listOf(local("a".repeat(40)), local("A".repeat(40)), local("not-a-hash")), stale = false)
+    @Test fun localSourceDropsDuplicatesAndMalformedHashes() {
+        val s = localSimilarSource(listOf(local("a".repeat(40)), local("A".repeat(40)), local("not-a-hash")), stale = false)
         assertEquals(1, s.transfers.size)
         assertEquals(EnvironmentAvailability.LIVE, s.availability)
-        assertEquals(EnvironmentAvailability.STALE, phoneSimilarSource(emptyList(), stale = true).availability)
+        assertEquals(EnvironmentAvailability.STALE, localSimilarSource(emptyList(), stale = true).availability)
     }
 
     @Test fun remoteSourceIsScopedToItsOwnEnvironmentAndMarksStale() {

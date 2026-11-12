@@ -16,17 +16,17 @@ import androidx.compose.ui.unit.dp
 /**
  * Actual entry points to the existing Add flows. The current view subset,
  * last browsed server and remembered-only credentials confer no Add authority.
- * The phone route opens its live Add/list surface; the remote route exists
+ * The local route opens its live Add/list surface; the remote route exists
  * only while MainActivity owns an authenticated server session.
  */
 @Composable
 internal fun CombinedAddActions(
     serverLabel: String?,
-    onOpenPhone: () -> Unit,
+    onOpenLocal: () -> Unit,
     onAddToServer: (() -> Unit)?,
     hasOtherSavedServers: Boolean = false,
     /** Saved palette colours, shown beside the text name; never colour alone. */
-    phoneHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
+    localHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
     serverHue: io.github.gamesbyian.chunks.model.EnvironmentHue? = null,
     /** Never pass raw magnet, document URI or private tracker URLs into the selector. */
     pendingSharedMagnet: Boolean = false,
@@ -49,19 +49,19 @@ internal fun CombinedAddActions(
             "A shared $sharedKind is ready. Choose where to review it. Nothing is added until you confirm.",
             style = MaterialTheme.typography.bodySmall
         )
-        if (readingSharedTorrent) Text("Checking the shared .torrent on this phone…",
+        if (readingSharedTorrent) Text("Checking the shared .torrent on this device…",
             style = MaterialTheme.typography.bodySmall)
         if (sharedTorrentError != null) Text(sharedTorrentError,
             color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         // Always stack exact destinations: full server names (username, host,
         // numbered instance) must never be squeezed into a 412dp two-button
         // row or truncated into a misleading destination identity.
-        OutlinedButton(onClick = onOpenPhone, enabled = !readingSharedTorrent,
+        OutlinedButton(onClick = onOpenLocal, enabled = !readingSharedTorrent,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                contentDescription = if (sharedKind != null) "Review shared $sharedKind on this phone"
-                    else "Add download on this phone"
-            }) { DestinationLabel(phoneHue,
-                if (sharedKind != null) "Review on this phone" else "Add on this phone") }
+                contentDescription = if (sharedKind != null) "Review shared $sharedKind on this device"
+                    else "Add download on this device"
+            }) { DestinationLabel(localHue,
+                if (sharedKind != null) "Review on this device" else "Add on this device") }
         if (!serverLabel.isNullOrBlank() && onAddToServer != null) {
             OutlinedButton(onClick = onAddToServer, enabled = !readingSharedTorrent,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {

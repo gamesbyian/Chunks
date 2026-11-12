@@ -23,7 +23,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Combined presentation-only density proof. The actual remote list supplies
- * 18dp gutters on either side of a 412dp phone, leaving exactly 376dp.
+ * 18dp gutters on either side of a 412dp local, leaving exactly 376dp.
  * Fake callbacks never connect or issue rTorrent RPC commands.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -32,7 +32,7 @@ import org.robolectric.annotation.GraphicsMode
 class RemoteFirstViewportDensityTest {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun scopeHeaderAndAddRefreshShareTwoRowsOnThePrimaryPhone() {
+    @Test fun scopeHeaderAndAddRefreshShareTwoRowsOnThePrimaryLocal() {
         var opens = 0
         var adds = 0
         var refreshes = 0
@@ -65,7 +65,7 @@ class RemoteFirstViewportDensityTest {
             badge.top < all.bottom && all.top < badge.bottom)
         assertEquals("Add and Refresh belong on one row", add.top, refresh.top)
         assertTrue("Primary actions must follow the scope header", add.top >= all.bottom)
-        assertTrue("No extra row above the transfer list on a 412dp phone", refresh.bottom <= 150.dp)
+        assertTrue("No extra row above the transfer list on a 412dp local", refresh.bottom <= 150.dp)
         assertTrue("All controls remain inside 376dp usable content", all.right <= 376.dp
             && refresh.right <= 376.dp)
         rule.onNodeWithText("All environments…").performClick()

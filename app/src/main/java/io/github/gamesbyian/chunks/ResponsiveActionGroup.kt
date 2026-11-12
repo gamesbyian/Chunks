@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.dp
 
 /**
  * Shared compact action layout. The caller still owns each action and its
- * enabled state. Keep two buttons across on narrow phones or enlarged text,
+ * enabled state. Keep two buttons across on narrow locals or enlarged text,
  * and three across where there is room. Further buttons wrap to another row
  * rather than becoming an unnecessarily tall one-button-per-row stack.
  */

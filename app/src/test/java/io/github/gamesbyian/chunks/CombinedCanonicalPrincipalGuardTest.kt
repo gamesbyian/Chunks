@@ -74,7 +74,7 @@ class CombinedCanonicalPrincipalGuardTest {
                 EnvironmentAvailability.LIVE, true, System.currentTimeMillis(),
                 listOf(observation))
             val result = runCombinedLifecycle(setOf(key), true, listOf(snapshot),
-                wrong.lifecycle, aliceId, serverSource = wrong, phoneEngine = { null })
+                wrong.lifecycle, aliceId, serverSource = wrong, localEngine = { null })
             assertEquals(CommandEvidence.REFUSED, result.items.single().evidence)
             assertTrue(result.items.single().reason.orEmpty().contains("Authenticated rTorrent"))
             assertEquals("No foreign account may acquire the command gate", 0, begins)

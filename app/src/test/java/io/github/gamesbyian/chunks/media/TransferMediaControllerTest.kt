@@ -31,7 +31,7 @@ class TransferMediaControllerTest {
     private val clock = FakeClock()
     private var settings = MediaPrivacySettings(onlineLookupConsent = false) // Explicit opt-out fixture; production default is ON.
     private val dir: File = Files.createTempDirectory("media").toFile()
-    private val phone = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40)))
+    private val local = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("local"), "a".repeat(40)))
     private val server = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("rtorrent:seedbox-2"), "a".repeat(40)))
     private val name = "Babylon.5.S02E07.Soul.Mates.1080p.WEB-DL.mkv"
 
@@ -57,7 +57,7 @@ class TransferMediaControllerTest {
 
     @Test fun displayingNeverCallsNetworkAndShowsCategoryArt() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false) // consent alone does not auto-lookup
-        val s = controller().observe(phone, name).value
+        val s = controller().observe(local, name).value
         assertTrue(http.requests.isEmpty())
         assertEquals(MediaKind.TV_EPISODE, s.displayKind); assertEquals(MediaAssignmentState.NOT_LOOKED_UP, s.state); assertNull(s.artwork)
     }
@@ -65,8 +65,8 @@ class TransferMediaControllerTest {
     @Test fun explicitLookupMatchesFetchesArtworkAndPersists() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller()
-        val flow = c.observe(phone, name)
-        c.lookup(phone)
+        val flow = c.observe(local, name)
+        c.lookup(local)
         val s = flow.value
         assertEquals(MediaAssignmentState.AUTOMATIC, s.state)
         assertEquals("Babylon 5", s.match!!.title); assertEquals("Soul Mates", s.match!!.episodeTitle)
@@ -75,40 +75,40 @@ class TransferMediaControllerTest {
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, c.observe(server, name).value.state)
         // New process: assignment and artwork restored from disk without any network.
         val before = http.requests.size
-        val restored = controller().observe(phone, name).value
+        val restored = controller().observe(local, name).value
         assertEquals(MediaAssignmentState.AUTOMATIC, restored.state); assertNotNull(restored.artwork)
         assertEquals(before, http.requests.size)
     }
 
     @Test fun lookupWithoutConsentSendsNothing() {
-        val c = controller(); val flow = c.observe(phone, name)
-        c.lookup(phone)
+        val c = controller(); val flow = c.observe(local, name)
+        c.lookup(local)
         assertTrue(http.requests.isEmpty()); assertEquals(MediaAssignmentState.NOT_LOOKED_UP, flow.value.state)
         assertTrue(flow.value.message!!.contains("off"))
     }
 
     @Test fun userChoiceWinsOverLaterLookupsAndResetRestoresAutomatic() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        val c = controller(); val flow = c.observe(phone, name)
+        val c = controller(); val flow = c.observe(local, name)
         val other = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "57926"), MediaKind.TV_SERIES,
             "Babylon 5", attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
-        c.choose(phone, other)
+        c.choose(local, other)
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, flow.value.state)
-        c.lookup(phone)
+        c.lookup(local)
         assertEquals("57926", flow.value.match!!.ref.externalId) // never overwritten by automatic lookup
         assertTrue(http.requests.isEmpty())
-        c.reset(phone)
+        c.reset(local)
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, flow.value.state)
-        c.lookup(phone)
+        c.lookup(local)
         assertEquals("475", flow.value.match!!.ref.externalId)
     }
 
     @Test fun categoryArtChoiceAndAdultSafety() {
-        val c = controller(); val flow = c.observe(phone, name)
-        c.useCategoryArt(phone, MediaKind.DOCUMENT)
+        val c = controller(); val flow = c.observe(local, name)
+        c.useCategoryArt(local, MediaKind.DOCUMENT)
         assertEquals(MediaKind.DOCUMENT, flow.value.displayKind); assertEquals(MediaAssignmentState.CATEGORY_ART_BY_USER, flow.value.state)
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-        val adultKey = MediaTransferKey("phone|" + "b".repeat(40))
+        val adultKey = MediaTransferKey("local|" + "b".repeat(40))
         val adult = c.observe(adultKey, "Something.XXX.1080p.mp4")
         c.lookup(adultKey)
         assertEquals(MediaKind.ADULT, adult.value.displayKind); assertNull(adult.value.match)
@@ -117,13 +117,13 @@ class TransferMediaControllerTest {
 
     @Test fun automaticLookupForVisibleTransfersOnlyWhenOptedIn() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-        val s = controller().observe(phone, name).value
+        val s = controller().observe(local, name).value
         assertEquals(MediaAssignmentState.AUTOMATIC, s.state)
     }
 
     @Test fun enablingAutomaticLookupRescansAlreadyObservedTransfersAcrossEnvironments() {
         val c = controller()
-        val local = c.observe(phone, name)
+        val local = c.observe(local, name)
         val remote = c.observe(server, name)
         assertTrue(http.requests.isEmpty())
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
@@ -135,7 +135,7 @@ class TransferMediaControllerTest {
     @Test fun disablingAutomaticLookupDoesNotSendRequestsForNewTransfers() {
         settings = MediaPrivacySettings(onlineLookupConsent = false, automaticLookup = true)
         val c = controller()
-        c.observe(phone, name)
+        c.observe(local, name)
         assertTrue(http.requests.isEmpty())
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         c.onSettingsChanged()
@@ -143,37 +143,37 @@ class TransferMediaControllerTest {
         assertTrue(http.requests.isEmpty())
     }
 
-    @Test fun inventoryEnrichesUnrenderedPhoneAndServerAndRestoresFromDisk() =
+    @Test fun inventoryEnrichesUnrenderedLocalAndServerAndRestoresFromDisk() =
         kotlinx.coroutines.runBlocking {
             settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
             val c = controller()
-            c.enrichInventory(listOf(phone to name, server to name))
+            c.enrichInventory(listOf(local to name, server to name))
             val records = FileTransferMediaAssignmentStore(File(dir, "assign.json"))
-            assertEquals(MediaAssignmentState.AUTOMATIC, records.get(phone)?.state)
+            assertEquals(MediaAssignmentState.AUTOMATIC, records.get(local)?.state)
             assertEquals(MediaAssignmentState.AUTOMATIC, records.get(server)?.state)
             val requests = http.requests.size
-            controller().enrichInventory(listOf(phone to name, server to name))
+            controller().enrichInventory(listOf(local to name, server to name))
             assertEquals(requests, http.requests.size)
         }
 
     @Test fun inventoryWithoutConsentSendsNoProviderRequestsAndPreservesUserChoice() =
         kotlinx.coroutines.runBlocking {
             val c = controller()
-            c.enrichInventory(listOf(phone to name, server to name))
+            c.enrichInventory(listOf(local to name, server to name))
             assertTrue(http.requests.isEmpty())
-            c.observe(phone, name)
-            c.useCategoryArt(phone, MediaKind.DOCUMENT)
+            c.observe(local, name)
+            c.useCategoryArt(local, MediaKind.DOCUMENT)
             settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-            c.enrichInventory(listOf(phone to name, server to name))
+            c.enrichInventory(listOf(local to name, server to name))
             assertEquals(MediaAssignmentState.CATEGORY_ART_BY_USER,
-                FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone)?.state)
+                FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(local)?.state)
             assertEquals(MediaAssignmentState.AUTOMATIC,
                 FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(server)?.state)
         }
 
     @Test fun blockedAutomaticLookupExplainsConsentAndGlobalArtworkGatesWithoutRequests() {
         val c = controller()
-        val flow = c.observe(phone, name)
+        val flow = c.observe(local, name)
         assertTrue(flow.value.automaticMessage!!.contains("consent"))
         assertTrue(http.requests.isEmpty())
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true, showArtwork = false)
@@ -225,7 +225,7 @@ class TransferMediaControllerTest {
     @Test fun unavailableConfiguredProviderIsReportedWithoutPretendingANameWasVerified() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true,
             disabledProviders = setOf("tvmaze"))
-        val flow = controller().observe(phone, name)
+        val flow = controller().observe(local, name)
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, flow.value.state)
         assertTrue(flow.value.automaticMessage!!.contains("No enabled provider"))
         assertTrue(http.requests.isEmpty())
@@ -244,9 +244,9 @@ class TransferMediaControllerTest {
                 }
             }
             val c = controller(guarded)
-            c.enrichInventory(listOf(phone to name)) { granted.get() }
+            c.enrichInventory(listOf(local to name)) { granted.get() }
             assertTrue(http.requests.isNotEmpty())
-            assertNull(FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone))
+            assertNull(FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(local))
         }
 
     @Test fun settingTmdbKeyCompletesMissingWikidataMovieArtworkWithoutChangingIdentity() {
@@ -277,7 +277,7 @@ class TransferMediaControllerTest {
             { settings }, { MediaNetworkState(true, false) }, CoroutineScope(Dispatchers.Unconfined),
             Dispatchers.Unconfined, Dispatchers.Unconfined, { clock.now },
             automationStoreFactory = { FileMediaAutomationPreferences(File(dir, "movie-automation.json")) })
-        val flow = c.observe(phone, "Hackers.1995.1080p.BluRay.mkv")
+        val flow = c.observe(local, "Hackers.1995.1080p.BluRay.mkv")
         assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
         assertEquals("wikidata", flow.value.match?.ref?.provider)
         assertEquals(1995, flow.value.match?.year)
@@ -293,22 +293,22 @@ class TransferMediaControllerTest {
         assertNull(flow.value.automaticMessage)
         assertTrue(wire.requests.size > before)
         assertTrue(wire.requests.none { it.contains("1080p") || it.contains("BluRay") ||
-            it.contains("rtorrent") || it.contains(phone.value) })
+            it.contains("rtorrent") || it.contains(local.value) })
     }
 
     @Test fun manualSearchOffersButNeverAutoApplies() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        val c = controller(); val flow = c.observe(phone, "unknown_file")
-        c.search(phone, MediaKind.TV_SERIES, "Babylon 5")
+        val c = controller(); val flow = c.observe(local, "unknown_file")
+        c.search(local, MediaKind.TV_SERIES, "Babylon 5")
         val results = flow.value.searchResults!!
         assertTrue(results.isNotEmpty()); assertEquals(MediaAssignmentState.NOT_LOOKED_UP, flow.value.state)
-        c.search(phone, MediaKind.TV_SERIES, "https://tracker/announce?passkey=1")
+        c.search(local, MediaKind.TV_SERIES, "https://tracker/announce?passkey=1")
         assertTrue(flow.value.message!!.contains("link"))
     }
 
     @Test fun clearAllPurgesAssignmentsCacheAndArtwork() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        val c = controller(); val flow = c.observe(phone, name); c.lookup(phone)
+        val c = controller(); val flow = c.observe(local, name); c.lookup(local)
         val art = ArtworkDiskCache(File(dir, "art"))
         c.clearAllMediaData({ File(dir, "q.json").delete() }, { art.clear() })
         assertNull(flow.value.assignment); assertNull(flow.value.artwork)
@@ -322,28 +322,28 @@ class TransferMediaControllerTest {
     }
 
     @Test fun userImageWorksOfflineWinsOverProviderArtAndSurvivesRestart() {
-        val c = controller(); val flow = c.observe(phone, name)
-        c.importUserImage(phone, png(Color.GREEN))
+        val c = controller(); val flow = c.observe(local, name)
+        c.importUserImage(local, png(Color.GREEN))
         val s = flow.value
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, s.state); assertTrue(s.mayShowRealArt)
         assertEquals(LOCAL_PROVIDER, s.artworkSource!!.provider); assertEquals(Color.GREEN, s.artwork!!.getPixel(192, 192))
         assertTrue(http.requests.isEmpty()) // no consent, no network: local images still work
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        c.lookup(phone)
+        c.lookup(local)
         assertEquals(LOCAL_PROVIDER, flow.value.artworkSource!!.provider) // lookup never overrides the user's choice
         // Restart; the pinned import survives heavy cache churn.
         val art = ArtworkDiskCache(File(dir, "art"), maxBytes = 1)
         art.put("%040x".format(99), ByteArray(4000))
-        val restored = controller().observe(phone, name).value
+        val restored = controller().observe(local, name).value
         assertEquals(LOCAL_PROVIDER, restored.artworkSource!!.provider)
     }
 
     @Test fun sharedImportIsKeptUntilTheLastReferenceIsRemoved() {
         val c = controller()
-        val f1 = c.observe(phone, name); val f2 = c.observe(server, name)
-        c.importUserImage(phone, png(Color.RED)); c.importUserImage(server, png(Color.RED))
+        val f1 = c.observe(local, name); val f2 = c.observe(server, name)
+        c.importUserImage(local, png(Color.RED)); c.importUserImage(server, png(Color.RED))
         assertEquals(f1.value.userArtwork, f2.value.userArtwork)
-        c.removeUserImage(phone)
+        c.removeUserImage(local)
         assertNull(f1.value.userArtwork)
         val reopened = controller().observe(server, name).value
         assertNotNull("other transfer's identical image must survive", reopened.artwork)
@@ -352,37 +352,37 @@ class TransferMediaControllerTest {
     }
 
     @Test fun rejectedImportsExplainWithoutChangingAssignment() {
-        val c = controller(); val flow = c.observe(phone, name)
-        c.importUserImage(phone, "<svg/>".padEnd(500).toByteArray())
+        val c = controller(); val flow = c.observe(local, name)
+        c.importUserImage(local, "<svg/>".padEnd(500).toByteArray())
         assertNull(flow.value.assignment); assertEquals("Unsupported image format", flow.value.message)
     }
 
     @Test fun removingImportedImageRestoresAutomaticProvenance() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        val c = controller(); val flow = c.observe(phone, name)
-        c.lookup(phone); assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
-        c.importUserImage(phone, png(Color.GREEN)); assertEquals(MediaAssignmentState.CHOSEN_BY_USER, flow.value.state)
-        c.removeUserImage(phone)
+        val c = controller(); val flow = c.observe(local, name)
+        c.lookup(local); assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
+        c.importUserImage(local, png(Color.GREEN)); assertEquals(MediaAssignmentState.CHOSEN_BY_USER, flow.value.state)
+        c.removeUserImage(local)
         assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state); assertEquals("475", flow.value.match!!.ref.externalId)
     }
 
     @Test fun explicitLookupOnUserChoiceExplainsInsteadOfSilentlyDoingNothing() {
-        val c = controller(); val flow = c.observe(phone, name)
-        c.useCategoryArt(phone, MediaKind.MOVIE)
-        c.lookup(phone)
+        val c = controller(); val flow = c.observe(local, name)
+        c.useCategoryArt(local, MediaKind.MOVIE)
+        c.lookup(local)
         assertTrue(flow.value.message!!.contains("Reset to automatic"))
     }
 
     @Test fun replacingAChoiceUnpinsTheOldArtwork() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        val c = controller(); val flow = c.observe(phone, name)
-        c.lookup(phone)
+        val c = controller(); val flow = c.observe(local, name)
+        c.lookup(local)
         val first = flow.value.match!!
-        c.choose(phone, first)
+        c.choose(local, first)
         val art = ArtworkDiskCache(File(dir, "art"))
         val k = io.github.gamesbyian.chunks.media.artwork.ArtworkBytesPolicy.cacheKey(first.artwork.first().url, ArtworkRole.SQUARE, 384)
         assertTrue(art.isPinned(k))
-        c.useCategoryArt(phone, MediaKind.TV_SERIES)
+        c.useCategoryArt(local, MediaKind.TV_SERIES)
         assertTrue(!ArtworkDiskCache(File(dir, "art")).isPinned(k))
     }
 
@@ -390,10 +390,10 @@ class TransferMediaControllerTest {
         // Network poster loading requires both provider consent and automatic
         // artwork collection; simply opening Details cannot override Options.
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-        val c = controller(); val flow = c.observe(phone, name)
-        c.lookup(phone)
+        val c = controller(); val flow = c.observe(local, name)
+        c.lookup(local)
         assertNull(flow.value.poster) // never loaded for list rows
-        c.requestPoster(phone)
+        c.requestPoster(local)
         val poster = flow.value.poster!!
         assertTrue(poster.height > poster.width) // 680x1000 source keeps its portrait aspect
         assertTrue(poster.height <= 720)
@@ -401,10 +401,10 @@ class TransferMediaControllerTest {
 
     @Test fun posterRoleDoesNotFetchWhenAutomaticArtworkCollectionIsOff() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        val c = controller(); val flow = c.observe(phone, name)
-        c.lookup(phone)
+        val c = controller(); val flow = c.observe(local, name)
+        c.lookup(local)
         val before = http.requests.size
-        c.requestPoster(phone)
+        c.requestPoster(local)
         assertNull("A Details render must not bypass the global collection opt-out", flow.value.poster)
         assertEquals("No poster HTTP after collection is disabled", before, http.requests.size)
     }
@@ -413,7 +413,7 @@ class TransferMediaControllerTest {
         // External image download requires the same provider consent as ordinary enrichment.
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller()
-        val k = { n: Int -> MediaTransferKey("phone|" + "%040x".format(n)) }
+        val k = { n: Int -> MediaTransferKey("local|" + "%040x".format(n)) }
         c.observe(k(1), "Babylon.5.S02E07.Soul.Mates.mkv"); val e8 = c.observe(k(2), "Babylon 5 - S02E08 - Gropos.mkv")
         val pack = c.observe(k(3), "Babylon.5.S03.1080p.WEB-DL"); val other = c.observe(k(4), "Babylon.Berlin.S01E01.mkv")
         val excluded = c.observe(k(5), "babylon_5_S04E01.mkv"); val decided = c.observe(k(6), "Babylon.5.S01E01.mkv")
@@ -438,7 +438,7 @@ class TransferMediaControllerTest {
 
     @Test fun seasonPostersAndAutomaticMatchesNeverSpreadToOtherTransfers() {
         val c = controller()
-        val k = { n: Int -> MediaTransferKey("phone|" + "%040x".format(n)) }
+        val k = { n: Int -> MediaTransferKey("local|" + "%040x".format(n)) }
         c.observe(k(1), "Babylon.5.S01.1080p.WEB-DL"); val s3 = c.observe(k(2), "Babylon.5.S03.1080p.WEB-DL")
         val season1 = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_SEASON,
             "Babylon 5", 1993, season = 1, attribution = MediaAttribution("TVmaze", "CC", null), artwork = listOf(
@@ -449,18 +449,18 @@ class TransferMediaControllerTest {
         assertEquals(listOf("https://static.tvmaze.com/show.jpg"), s3.value.match!!.artwork.map { it.url })
         // An automatic match under a user image is not a user choice and does not spread.
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        val src = c.observe(phone, name); val target = c.observe(MediaTransferKey("phone|" + "c".repeat(40)), "Babylon.5.S02E09.mkv")
-        c.lookup(phone); c.importUserImage(phone, png(Color.BLUE))
+        val src = c.observe(local, name); val target = c.observe(MediaTransferKey("local|" + "c".repeat(40)), "Babylon.5.S02E09.mkv")
+        c.lookup(local); c.importUserImage(local, png(Color.BLUE))
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, src.value.state)
-        c.applyChoiceTo(phone, listOf(target.value.key))
+        c.applyChoiceTo(local, listOf(target.value.key))
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, target.value.state)
     }
 
     @Test fun manualArtOnExcludedTransferRespectsConsentButNotAutomaticExclusion() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
         val c = controller()
-        assertTrue(c.setAutomaticLookupEnabled(phone, false))
-        val local = c.observe(phone, name)
+        assertTrue(c.setAutomaticLookupEnabled(local, false))
+        val local = c.observe(local, name)
         assertTrue(http.requests.isEmpty())
         val chosen = MediaCandidate(
             io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
@@ -468,10 +468,10 @@ class TransferMediaControllerTest {
             artwork = listOf(ArtworkCandidate("tvmaze",
                 "https://static.tvmaze.com/manual-poster.jpg", ArtworkRole.POSTER)),
             attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
-        c.choose(phone, chosen)
+        c.choose(local, chosen)
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, local.value.state)
         assertNotNull("Manual selection may download artwork despite Add-time opt-out", local.value.artwork)
-        c.requestPoster(phone)
+        c.requestPoster(local)
         assertNotNull("Explicit chosen poster can load for Details", local.value.poster)
         assertTrue(http.requests.any { it.contains("static.tvmaze.com") })
 
@@ -513,15 +513,15 @@ class TransferMediaControllerTest {
                 { assignments }, { settings }, { MediaNetworkState(true, false) },
                 CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
                 { clock.now })
-            c.enrichInventory(listOf(phone to name))
+            c.enrichInventory(listOf(local to name))
             assertTrue(http.requests.any { it.contains("api.tvmaze.com/search") })
             assertNull("Revoked provider may not commit identity or cached metadata",
-                assignments.get(phone))
+                assignments.get(local))
             val queriedBefore = http.requests.size
             settings = settings.copy(disabledProviders = emptySet())
             c.onProviderConfigurationChanged()
-            c.enrichInventory(listOf(phone to name))
-            assertEquals(MediaAssignmentState.AUTOMATIC, assignments.get(phone)?.state)
+            c.enrichInventory(listOf(local to name))
+            assertEquals(MediaAssignmentState.AUTOMATIC, assignments.get(local)?.state)
             assertTrue("Freshly reenabled provider is queried rather than reusing revoked response",
                 http.requests.size > queriedBefore)
         }
@@ -567,8 +567,8 @@ class TransferMediaControllerTest {
         net.set(MediaNetworkState(true, false, powerSaver = true))
         val manual = auto.copy(artwork = listOf(ArtworkCandidate("tvmaze",
             "https://static.tvmaze.com/manual-chosen.jpg", ArtworkRole.POSTER)))
-        val chosen = c.observe(phone, name)
-        c.choose(phone, manual)
+        val chosen = c.observe(local, name)
+        c.choose(local, manual)
         assertEquals(MediaAssignmentState.CHOSEN_BY_USER, chosen.value.state)
         assertNotNull(chosen.value.artwork)
         assertEquals(2, wire.requests.size)
@@ -603,7 +603,7 @@ class TransferMediaControllerTest {
                 { assignments }, { settings }, { MediaNetworkState(true, false) },
                 CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
                 { clock.now })
-            c.enrichInventory(listOf(phone to name))
+            c.enrichInventory(listOf(local to name))
             assertTrue(cleared)
             assertTrue("A late lookup after Clear may not repopulate assignments", assignments.all().isEmpty())
             assertEquals("A late lookup after Clear may not repopulate query cache", 0, queryCache.size)
@@ -620,7 +620,7 @@ class TransferMediaControllerTest {
                     "https://static.tvmaze.com/clearposter.jpg", ArtworkRole.POSTER)),
                 attribution = MediaAttribution("TVmaze", "CC", null))
             val assignments = InMemoryTransferMediaAssignmentStore()
-            assignments.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+            assignments.put(TransferMediaAssignment(local, MediaAssignmentState.AUTOMATIC,
                 match = match, updatedAtMs = clock.now))
             val artCache = ArtworkDiskCache(File(dir, "clear-poster-artwork"))
             val queryCache = InMemoryMediaQueryCache()
@@ -646,7 +646,7 @@ class TransferMediaControllerTest {
                 artworkRepository, { assignments }, { settings }, { MediaNetworkState(true, false) },
                 CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
                 { clock.now })
-            c.enrichInventory(listOf(phone to name))
+            c.enrichInventory(listOf(local to name))
             assertTrue(cleared)
             assertTrue(assignments.all().isEmpty())
             assertFalse("A late image response after Clear may not recreate cached derivatives",
@@ -690,7 +690,7 @@ class TransferMediaControllerTest {
             assertEquals(MediaAssignmentState.CHOSEN_BY_USER, assignments.get(server)?.state)
             assertEquals("475", assignments.get(server)?.match?.ref?.externalId)
             assertTrue("Offline local rule matching never starts a provider request", wire.requests.isEmpty())
-            assertNull("Another environment with the same hash is independent", assignments.get(phone))
+            assertNull("Another environment with the same hash is independent", assignments.get(local))
         }
 
     @Test fun undatedVerifiedTvRecordCanAcquireOwnPosterButNeverBorrowDifferentRecord() =
@@ -706,7 +706,7 @@ class TransferMediaControllerTest {
             val assignments = FileTransferMediaAssignmentStore(File(dir, "yearless-assign.json"))
             assignments.put(TransferMediaAssignment(server, MediaAssignmentState.AUTOMATIC,
                 match = identical, updatedAtMs = clock.now))
-            assignments.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+            assignments.put(TransferMediaAssignment(local, MediaAssignmentState.AUTOMATIC,
                 match = unrelated, updatedAtMs = clock.now))
             val wire = FakeMediaHttp()
                 .on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
@@ -725,13 +725,13 @@ class TransferMediaControllerTest {
                 CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
                 Dispatchers.Unconfined, { clock.now })
             val c = fresh()
-            c.enrichInventory(listOf(server to name, phone to name))
+            c.enrichInventory(listOf(server to name, local to name))
             val own = requireNotNull(FileTransferMediaAssignmentStore(File(dir, "yearless-assign.json")).get(server))
             assertEquals("Only the original provider record is verified", identical.ref, own.match?.ref)
             assertNull("Do not invent a release year on an already verified identity", own.match?.year)
             assertTrue("An undated verified show can gain artwork from its exact provider ID",
                 own.match?.artwork?.isNotEmpty() == true)
-            val other = requireNotNull(FileTransferMediaAssignmentStore(File(dir, "yearless-assign.json")).get(phone))
+            val other = requireNotNull(FileTransferMediaAssignmentStore(File(dir, "yearless-assign.json")).get(local))
             assertEquals("Same title is insufficient for a different provider record", unrelated.ref, other.match?.ref)
             assertTrue("Unknown-year cross-record art must still be refused",
                 other.match?.artwork?.isEmpty() == true)
@@ -742,7 +742,7 @@ class TransferMediaControllerTest {
             assertNotNull("The filled poster must remain available from disk offline", restored.value.artwork)
             assertEquals(before, wire.requests.size)
             assertTrue(wire.requests.none { it.contains("WEB-DL") || it.contains("1080p") ||
-                it.contains(server.value) || it.contains(phone.value) })
+                it.contains(server.value) || it.contains(local.value) })
         }
 
     @Test fun offscreenVerifiedIdentityBackfillsEvictedSquareArtAndRestoresOffline() =
@@ -887,7 +887,7 @@ class TransferMediaControllerTest {
                 MediaKind.MOVIE, "Hackers", 1995,
                 attribution = MediaAttribution("Wikidata", "CC0", null))
             val assignments = InMemoryTransferMediaAssignmentStore()
-            assignments.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+            assignments.put(TransferMediaAssignment(local, MediaAssignmentState.AUTOMATIC,
                 match = previous, updatedAtMs = clock.now))
             val tmdb = io.github.gamesbyian.chunks.media.providers.TmdbProvider {
                 "0123456789abcdef0123456789abcdef"
@@ -907,8 +907,8 @@ class TransferMediaControllerTest {
                 Dispatchers.Unconfined, { clock.now })
             // Simulates first-ever authorized inventory pass after a process restart.
             // No controller.onProviderConfigurationChanged() or Details composition.
-            c.enrichInventory(listOf(phone to "Hackers.1995.1080p.BluRay.mkv"))
-            val got = requireNotNull(assignments.get(phone))
+            c.enrichInventory(listOf(local to "Hackers.1995.1080p.BluRay.mkv"))
+            val got = requireNotNull(assignments.get(local))
             assertEquals(MediaAssignmentState.AUTOMATIC, got.state)
             assertEquals("wikidata", got.match?.ref?.provider)
             assertEquals("Q54321", got.match?.ref?.externalId)
@@ -916,7 +916,7 @@ class TransferMediaControllerTest {
             assertTrue(got.match?.artwork?.any { it.provider == "tmdb" } == true)
             assertTrue(wire.requests.any { it.contains("api.themoviedb.org") })
             assertTrue(wire.requests.none { it.contains("1080p") || it.contains("BluRay") ||
-                it.contains(phone.value) })
+                it.contains(local.value) })
         }
 
     @Test fun cachedNegativeRestartCheckDoesNotPostponeOriginalRetryDeadline() =
@@ -925,11 +925,11 @@ class TransferMediaControllerTest {
             http.routes.removeAll { it.contains == "/search/shows" }
             http.on("/search/shows", status = 404)
             val original = controller()
-            original.enrichInventory(listOf(phone to name))
+            original.enrichInventory(listOf(local to name))
             // Controllers re-open the app-private file on restart. A previously
             // constructed FileTransferMediaAssignmentStore keeps an in-memory
             // snapshot and cannot witness writes by the new controller.
-            fun persisted() = FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone)
+            fun persisted() = FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(local)
             val first = requireNotNull(persisted())
             assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, first.state)
             val requestsBefore = http.requests.size
@@ -937,12 +937,12 @@ class TransferMediaControllerTest {
             http.on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
             clock.now += MediaEnrichmentService.NOT_FOUND_TTL_MS - 1
             val restarted = controller()
-            restarted.enrichInventory(listOf(phone to name))
+            restarted.enrichInventory(listOf(local to name))
             assertEquals(requestsBefore, http.requests.size)
             assertEquals("Cached negative rechecks cannot extend the original TTL",
                 first.updatedAtMs, requireNotNull(persisted()).updatedAtMs)
             clock.now += 2
-            restarted.enrichInventory(listOf(phone to name))
+            restarted.enrichInventory(listOf(local to name))
             assertEquals(MediaAssignmentState.AUTOMATIC, persisted()?.state)
             assertTrue(http.requests.size > requestsBefore)
         }
@@ -972,22 +972,22 @@ class TransferMediaControllerTest {
                 { assignments }, { settings }, { MediaNetworkState(true, false) },
                 CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
                 { clock.now })
-            val inventory = listOf(phone to "Hackers.1995.1080p.BluRay.mkv")
+            val inventory = listOf(local to "Hackers.1995.1080p.BluRay.mkv")
             c.enrichInventory(inventory)
-            assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, assignments.get(phone)?.state)
-            assertEquals(MediaLookupStatus.NOT_FOUND, assignments.get(phone)?.lastStatus)
+            assertEquals(MediaAssignmentState.COULDNT_IDENTIFY, assignments.get(local)?.state)
+            assertEquals(MediaLookupStatus.NOT_FOUND, assignments.get(local)?.lastStatus)
             assertTrue(wire.requests.none { it.contains("api.themoviedb.org") })
             configured.set(true)
             c.onProviderConfigurationChanged()
             // The negative Wikidata receipt is still fresh, but a newly available TMDB
             // provider must be queried now without composing any transfer row or opening Details.
             c.enrichInventory(inventory)
-            assertEquals(MediaAssignmentState.AUTOMATIC, assignments.get(phone)?.state)
-            assertEquals("tmdb", assignments.get(phone)?.match?.ref?.provider)
-            assertTrue(assignments.get(phone)?.match?.artwork?.isNotEmpty() == true)
+            assertEquals(MediaAssignmentState.AUTOMATIC, assignments.get(local)?.state)
+            assertEquals("tmdb", assignments.get(local)?.match?.ref?.provider)
+            assertTrue(assignments.get(local)?.match?.artwork?.isNotEmpty() == true)
             assertTrue(wire.requests.any { it.contains("api.themoviedb.org") })
             assertTrue(wire.requests.none { it.contains("1080p") || it.contains("BluRay") ||
-                it.contains(phone.value) })
+                it.contains(local.value) })
         }
 
     @Test fun newlyConfiguredProviderRechecksOffscreenAmbiguityWithoutFalseConfirmation() =
@@ -1014,9 +1014,9 @@ class TransferMediaControllerTest {
                 { assignments }, { settings }, { MediaNetworkState(true, false) },
                 CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
                 { clock.now })
-            val inventory = listOf(phone to "The.Office.S03.720p.WEB-DL")
+            val inventory = listOf(local to "The.Office.S03.720p.WEB-DL")
             c.enrichInventory(inventory)
-            assertEquals(MediaAssignmentState.SUGGESTED, assignments.get(phone)?.state)
+            assertEquals(MediaAssignmentState.SUGGESTED, assignments.get(local)?.state)
             assertTrue(wire.requests.none { it.contains("api.themoviedb.org") })
             val initialCalls = wire.requests.size
             c.enrichInventory(inventory)
@@ -1025,13 +1025,13 @@ class TransferMediaControllerTest {
             configured.set(true)
             c.onProviderConfigurationChanged()
             c.enrichInventory(inventory)
-            assertEquals(MediaAssignmentState.SUGGESTED, assignments.get(phone)?.state)
+            assertEquals(MediaAssignmentState.SUGGESTED, assignments.get(local)?.state)
             assertNull("A later singleton response does not erase earlier same-title ambiguity",
-                assignments.get(phone)?.match)
-            assertTrue(assignments.get(phone)?.suggestions?.any { it.ref.provider == "tmdb" } == true)
+                assignments.get(local)?.match)
+            assertTrue(assignments.get(local)?.suggestions?.any { it.ref.provider == "tmdb" } == true)
             assertTrue(wire.requests.any { it.contains("api.themoviedb.org") })
             assertTrue(wire.requests.none { it.contains("720p") || it.contains("WEB-DL") ||
-                it.contains(phone.value) })
+                it.contains(local.value) })
         }
 
     @Test fun futureArrivalRuleCannotOverwriteAnAlreadyVerifiedArtlessAssignmentDuringPosterRetry() =
@@ -1045,7 +1045,7 @@ class TransferMediaControllerTest {
                 attribution = MediaAttribution("Wikidata", "CC0", null))
             val unrelatedChoice = verified.copy(
                 ref = io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("other", "movie", "wrong"))
-            assignments.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+            assignments.put(TransferMediaAssignment(local, MediaAssignmentState.AUTOMATIC,
                 match = verified, lastStatus = MediaLookupStatus.MATCHED, updatedAtMs = clock.now))
             rules.put(MediaAssignmentRule("future-rule",
                 MediaText.withoutArticle(MediaText.normalize("Hackers")),
@@ -1065,8 +1065,8 @@ class TransferMediaControllerTest {
                 CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined,
                 { clock.now }, ruleStoreFactory = { rules })
             c.onProviderConfigurationChanged()
-            c.enrichInventory(listOf(phone to "Hackers.1995.1080p.BluRay.mkv"))
-            val actual = assignments.get(phone)
+            c.enrichInventory(listOf(local to "Hackers.1995.1080p.BluRay.mkv"))
+            val actual = assignments.get(local)
             assertEquals(MediaAssignmentState.AUTOMATIC, actual?.state)
             assertEquals("Q9876", actual?.match?.ref?.externalId)
             assertTrue("Artwork retry must never inherit a newly saved future-arrival rule",
@@ -1084,20 +1084,20 @@ class TransferMediaControllerTest {
             { InMemoryTransferMediaAssignmentStore() }, { settings }, { MediaNetworkState(true, false) },
             CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined, { clock.now })
         val files = listOf(MediaFileHint("rip/01.flac", 30_000_000), MediaFileHint("rip/02.flac", 30_000_000))
-        val flow = c.observe(phone, "rip", files)
-        c.inspectLocalAudio(phone, files) { io.github.gamesbyian.chunks.media.inspection.ByteArrayMediaByteSource(tagged) }
+        val flow = c.observe(local, "rip", files)
+        c.inspectLocalAudio(local, files) { io.github.gamesbyian.chunks.media.inspection.ByteArrayMediaByteSource(tagged) }
         assertEquals("OK Computer", flow.value.recognition.title); assertTrue(flow.value.embeddedTags!!.picture != null)
-        c.lookup(phone)
+        c.lookup(local)
         assertEquals(MediaAssignmentState.AUTOMATIC, flow.value.state)
         assertTrue(mbHttp.requests.single().contains("artist%3A%22Radiohead%22"))
-        c.importUserImage(phone, flow.value.embeddedTags!!.picture!!) // "Use album art from the files"
+        c.importUserImage(local, flow.value.embeddedTags!!.picture!!) // "Use album art from the files"
         assertEquals(LOCAL_PROVIDER, flow.value.artworkSource!!.provider)
     }
 
     @Test fun chosenMovieRuleRequiresKnownYearAndRejectsRemakeAndUndatedTransfer() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller()
-        val key = MediaTransferKey("phone|" + "d".repeat(40))
+        val key = MediaTransferKey("local|" + "d".repeat(40))
         c.observe(key, "The.Thing.1080p.BluRay.mkv")
         val chosen = MediaCandidate(
             io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tmdb", "movie", "1091"),
@@ -1120,7 +1120,7 @@ class TransferMediaControllerTest {
     @Test fun contradictoryOrUnknownChosenMovieYearDoesNotSeedFutureRule() {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller()
-        val key = MediaTransferKey("phone|" + "e".repeat(40))
+        val key = MediaTransferKey("local|" + "e".repeat(40))
         c.observe(key, "The.Thing.2011.1080p.BluRay.mkv")
         val film = MediaCandidate(
             io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tmdb", "movie", "1091"),
@@ -1142,7 +1142,7 @@ class TransferMediaControllerTest {
             CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined, Dispatchers.Unconfined, { clock.now },
             ruleStoreFactory = { FileMediaRuleStore(rules) })
         val c = ctl()
-        val k = { n: Int -> MediaTransferKey("phone|" + "%040x".format(n)) }
+        val k = { n: Int -> MediaTransferKey("local|" + "%040x".format(n)) }
         c.observe(k(1), "Babylon.5.S02E07.mkv")
         val show = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"), MediaKind.TV_EPISODE,
             "Babylon 5", 1993, season = 2, episode = 7, attribution = MediaAttribution("TVmaze", "CC", null))
@@ -1180,56 +1180,56 @@ class TransferMediaControllerTest {
 
     @Test fun excludedTransferNeverQueuesProvidersAcrossObservationInventoryAndRestart() {
         val c = controller()
-        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        assertTrue(c.setAutomaticLookupEnabled(local, false))
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-        c.observe(phone, name)
-        kotlinx.coroutines.runBlocking { c.enrichInventory(listOf(phone to name)) }
+        c.observe(local, name)
+        kotlinx.coroutines.runBlocking { c.enrichInventory(listOf(local to name)) }
         c.onSettingsChanged()
-        controller().observe(phone, name)
+        controller().observe(local, name)
         assertTrue(http.requests.isEmpty())
         controller().observe(server, name)
         assertTrue(http.requests.isNotEmpty()) // same hash, independent environment
     }
 
     @Test fun addAdmissionExcludesBeforeTheFirstObservationAndSurvivesRestart() {
-        val key = UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40))
+        val key = UnifiedTransferKey.of(EnvironmentId("local"), "a".repeat(40))
         assertTrue(controller().prepareForAdd(key, allowAutomaticLookup = false))
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-        controller().observe(phone, name)
+        controller().observe(local, name)
         assertTrue(http.requests.isEmpty())
         controller().observe(server, name)
         assertTrue(http.requests.isNotEmpty())
     }
 
     @Test fun defaultAddAdmissionNeverReenablesAnExistingExclusion() {
-        val key = UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40))
+        val key = UnifiedTransferKey.of(EnvironmentId("local"), "a".repeat(40))
         val c = controller()
-        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        assertTrue(c.setAutomaticLookupEnabled(local, false))
         assertTrue(c.prepareForAdd(key, allowAutomaticLookup = true))
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-        controller().observe(phone, name)
+        controller().observe(local, name)
         assertTrue(http.requests.isEmpty())
     }
 
     @Test fun failedOptOutPersistenceRefusesAddAdmissionWithoutProviderRequests() {
         File(dir, "automation.json").writeText("unreadable preferences")
-        val key = UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40))
+        val key = UnifiedTransferKey.of(EnvironmentId("local"), "a".repeat(40))
         assertFalse(controller().prepareForAdd(key, allowAutomaticLookup = false))
         assertTrue(http.requests.isEmpty())
     }
 
     @Test fun togglingAutomaticLookupPreservesManualIdentification() {
         val c = controller()
-        val flow = c.observe(phone, name)
+        val flow = c.observe(local, name)
         val choice = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
             MediaKind.TV_SERIES, "Babylon 5", attribution = MediaAttribution("TVmaze", "CC", null))
-        c.choose(phone, choice)
-        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        c.choose(local, choice)
+        assertTrue(c.setAutomaticLookupEnabled(local, false))
         assertEquals(choice, flow.value.match)
         assertFalse(flow.value.automaticLookupEnabled)
-        c.reset(phone)
-        assertFalse(c.observe(phone, name).value.automaticLookupEnabled)
-        assertTrue(c.setAutomaticLookupEnabled(phone, true))
+        c.reset(local)
+        assertFalse(c.observe(local, name).value.automaticLookupEnabled)
+        assertTrue(c.setAutomaticLookupEnabled(local, true))
         assertTrue(flow.value.automaticLookupEnabled)
     }
 
@@ -1238,17 +1238,17 @@ class TransferMediaControllerTest {
         val gated = object : MediaHttp by http {
             override fun get(url: String, hosts: MediaHostPolicy, headers: Map<String, String>, maxBytes: Int): MediaHttpResponse {
                 val response = http.get(url, hosts, headers, maxBytes)
-                assertTrue(c.setAutomaticLookupEnabled(phone, false))
+                assertTrue(c.setAutomaticLookupEnabled(local, false))
                 return response
             }
         }
         c = controller(gated)
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-        val state = c.observe(phone, name)
+        val state = c.observe(local, name)
         assertEquals(1, http.requests.size)
         assertNull(state.value.match)
         assertFalse(state.value.automaticLookupEnabled)
-        assertNull(FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone))
+        assertNull(FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(local))
     }
 
     @Test fun committedObserverLoadsAnExistingAssignmentAfterInitiallyDeniedAuthorization() {
@@ -1258,11 +1258,11 @@ class TransferMediaControllerTest {
             MediaKind.TV_SERIES, "Babylon 5", artwork = listOf(ArtworkCandidate("tvmaze", "https://static.tvmaze.com/cover.jpg", ArtworkRole.SQUARE)),
             attribution = MediaAttribution("TVmaze", "CC", null))
         var authorized = false
-        val state = c.observe(phone, name, isAuthorized = { authorized })
-        c.choose(phone, choice)
+        val state = c.observe(local, name, isAuthorized = { authorized })
+        c.choose(local, choice)
         assertTrue(http.requests.isEmpty())
         authorized = true
-        c.refreshAutomatic(phone)
+        c.refreshAutomatic(local)
         assertNotNull(state.value.artwork)
         assertEquals(1, http.requests.size)
     }
@@ -1276,12 +1276,12 @@ class TransferMediaControllerTest {
         val c = controller(artDispatcher = dispatcher)
         // A consented automatic match can finish metadata lookup before its image is dispatched.
         // A later exact-job exclusion must fence the queued automatic image request.
-        val state = c.observe(phone, name)
+        val state = c.observe(local, name)
         assertEquals(MediaAssignmentState.AUTOMATIC, state.value.state)
         assertTrue(tasks.isNotEmpty())
         val metadataRequests = http.requests.size
         assertTrue(metadataRequests > 0)
-        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        assertTrue(c.setAutomaticLookupEnabled(local, false))
         while (tasks.isNotEmpty()) tasks.removeFirst().run()
         assertEquals("Queued automatic artwork request was fenced", metadataRequests, http.requests.size)
         assertTrue(http.requests.none { it.contains("static.tvmaze.com") })
@@ -1300,27 +1300,27 @@ class TransferMediaControllerTest {
                 if (!handedOff) {
                     handedOff = true
                     first = false
-                    c.stopObserving(phone, firstPermit)
-                    c.observe(phone, name, isAuthorized = secondPermit)
-                    c.refreshAutomatic(phone)
+                    c.stopObserving(local, firstPermit)
+                    c.observe(local, name, isAuthorized = secondPermit)
+                    c.refreshAutomatic(local)
                 }
                 return response
             }
         }
         c = controller(changing)
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
-        val state = c.observe(phone, name, isAuthorized = firstPermit)
+        val state = c.observe(local, name, isAuthorized = firstPermit)
         assertEquals(MediaAssignmentState.AUTOMATIC, state.value.state)
         assertEquals("Babylon 5", state.value.match!!.title)
     }
 
     @Test fun anUncachedPriorChoiceNeverFetchesArtworkWithoutProviderConsent() {
         val c = controller()
-        val state = c.observe(phone, name)
-        c.choose(phone, MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
+        val state = c.observe(local, name)
+        c.choose(local, MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
             MediaKind.TV_SERIES, "Babylon 5", artwork = listOf(ArtworkCandidate("tvmaze", "https://static.tvmaze.com/cover.jpg", ArtworkRole.SQUARE)),
             attribution = MediaAttribution("TVmaze", "CC", null)))
-        c.requestPoster(phone)
+        c.requestPoster(local)
         assertTrue(http.requests.isEmpty())
         assertNotNull(state.value.match)
         assertNull(state.value.artwork)
@@ -1331,24 +1331,24 @@ class TransferMediaControllerTest {
         http.routes.removeAll { it.contains == "/search/shows" }
         http.on("/search/shows", status = 404)
         val c = controller()
-        kotlinx.coroutines.runBlocking { c.enrichInventory(listOf(phone to name)) }
+        kotlinx.coroutines.runBlocking { c.enrichInventory(listOf(local to name)) }
         assertEquals(MediaAssignmentState.COULDNT_IDENTIFY,
-            FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone)!!.state)
+            FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(local)!!.state)
         val before = http.requests.size
         http.routes.removeAll { it.contains == "/search/shows" }
         http.on("/search/shows", body = fixture("tvmaze-search-babylon5.json"))
         clock.now += MediaEnrichmentService.NOT_FOUND_TTL_MS - 1
-        kotlinx.coroutines.runBlocking { controller().enrichInventory(listOf(phone to name)) }
+        kotlinx.coroutines.runBlocking { controller().enrichInventory(listOf(local to name)) }
         assertEquals(before, http.requests.size)
-        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        assertTrue(c.setAutomaticLookupEnabled(local, false))
         clock.now += 2
-        kotlinx.coroutines.runBlocking { controller().enrichInventory(listOf(phone to name)) }
+        kotlinx.coroutines.runBlocking { controller().enrichInventory(listOf(local to name)) }
         assertEquals(before, http.requests.size)
         val restored = controller()
-        assertTrue(restored.setAutomaticLookupEnabled(phone, true))
-        kotlinx.coroutines.runBlocking { restored.enrichInventory(listOf(phone to name)) }
+        assertTrue(restored.setAutomaticLookupEnabled(local, true))
+        kotlinx.coroutines.runBlocking { restored.enrichInventory(listOf(local to name)) }
         assertEquals(MediaAssignmentState.AUTOMATIC,
-            FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(phone)!!.state)
+            FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(local)!!.state)
         assertTrue(http.requests.size > before)
     }
 
@@ -1384,23 +1384,23 @@ class TransferMediaControllerTest {
             while (parent.children.any()) kotlinx.coroutines.delay(10)
         }
         try {
-            c.observe(phone, name)
+            c.observe(local, name)
             if (!automatic) {
                 kotlinx.coroutines.runBlocking { awaitIdle() }
-                c.lookup(phone)
+                c.lookup(local)
             }
             assertTrue(reachedCommit.await(10, java.util.concurrent.TimeUnit.SECONDS))
             val chosen = MediaCandidate(io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "57926"),
                 MediaKind.TV_SERIES, "Chosen deliberately", attribution = MediaAttribution("TVmaze", "CC", null))
-            c.choose(phone, chosen)
+            c.choose(local, chosen)
             // Either write order must preserve the deliberate edit. The old path permits the
             // edit to finish before its stale lookup commits; an atomic commit serializes them.
             manualStored.await(2, java.util.concurrent.TimeUnit.SECONDS)
             releaseCommit.countDown()
             kotlinx.coroutines.runBlocking { awaitIdle() }
-            assertEquals(MediaAssignmentState.CHOSEN_BY_USER, backing.get(phone)!!.state)
-            assertEquals(chosen, backing.get(phone)!!.match)
-            assertEquals(chosen, c.observe(phone, name).value.match)
+            assertEquals(MediaAssignmentState.CHOSEN_BY_USER, backing.get(local)!!.state)
+            assertEquals(chosen, backing.get(local)!!.match)
+            assertEquals(chosen, c.observe(local, name).value.match)
         } finally {
             releaseCommit.countDown()
             parent.cancel()
@@ -1420,8 +1420,8 @@ class TransferMediaControllerTest {
         }
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val c = controller(changing)
-        val state = c.observe(phone, name, isAuthorized = { authorized })
-        c.search(phone, MediaKind.TV_EPISODE, "Babylon 5", year = 1993, season = 2, episode = 7)
+        val state = c.observe(local, name, isAuthorized = { authorized })
+        c.search(local, MediaKind.TV_EPISODE, "Babylon 5", year = 1993, season = 2, episode = 7)
         assertEquals(1, http.requests.size)
         assertNull(state.value.searchResults)
         assertFalse(state.value.busy)
@@ -1439,12 +1439,12 @@ class TransferMediaControllerTest {
             }
         }
         val c = controller(changing)
-        c.observe(phone, name)
-        c.choose(phone, galleryChoice()) // offline choice; no image fetched yet
+        c.observe(local, name)
+        c.choose(local, galleryChoice()) // offline choice; no image fetched yet
         assertTrue(http.requests.isEmpty())
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
         val result = kotlinx.coroutines.runBlocking {
-            if (posters) c.posterAlternatives(phone) else c.alternatives(phone)
+            if (posters) c.posterAlternatives(local) else c.alternatives(local)
         }
         assertEquals(1, http.requests.size)
         assertTrue(result.isEmpty())
@@ -1452,11 +1452,11 @@ class TransferMediaControllerTest {
 
     @Test fun excludedTransfersStillAllowExplicitArtworkCorrection() {
         val c = controller()
-        val state = c.observe(phone, name)
-        c.choose(phone, galleryChoice())
-        assertTrue(c.setAutomaticLookupEnabled(phone, false))
+        val state = c.observe(local, name)
+        c.choose(local, galleryChoice())
+        assertTrue(c.setAutomaticLookupEnabled(local, false))
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
-        val result = kotlinx.coroutines.runBlocking { c.alternatives(phone) }
+        val result = kotlinx.coroutines.runBlocking { c.alternatives(local) }
         assertEquals(2, result.size)
         assertEquals(2, http.requests.size)
         assertFalse(state.value.automaticLookupEnabled)
@@ -1481,7 +1481,7 @@ class TransferMediaControllerTest {
                 "https://static.tvmaze.com/late-revoked-poster.jpg", ArtworkRole.POSTER)),
             attribution = MediaAttribution("TVmaze", "CC", null))
         val saved = InMemoryTransferMediaAssignmentStore()
-        saved.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+        saved.put(TransferMediaAssignment(local, MediaAssignmentState.AUTOMATIC,
             match = match, updatedAtMs = clock.now))
         val disk = ArtworkDiskCache(File(dir, "provider-revoked-visible"))
         lateinit var controller: TransferMediaController
@@ -1509,13 +1509,13 @@ class TransferMediaControllerTest {
             artworkRepo, { saved }, { settings }, { MediaNetworkState(true, false) },
             CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
             Dispatchers.Unconfined, { clock.now })
-        val visible = controller.observe(phone, name)
+        val visible = controller.observe(local, name)
         assertTrue(disableOnce.not())
         assertEquals(1, wire.requests.size)
         assertFalse("An in-flight response must not repopulate art after provider revocation",
             artworkRepo.hasCachedSquare(match.artwork))
         assertNull(visible.value.artwork)
-        assertEquals(MediaAssignmentState.AUTOMATIC, saved.get(phone)?.state)
+        assertEquals(MediaAssignmentState.AUTOMATIC, saved.get(local)?.state)
 
         settings = settings.copy(disabledProviders = emptySet())
         controller.onProviderConfigurationChanged()
@@ -1546,7 +1546,7 @@ class TransferMediaControllerTest {
             artwork = listOf(ArtworkCandidate(tv.info.id, imageUrl, ArtworkRole.POSTER)),
             attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
         val stored = InMemoryTransferMediaAssignmentStore()
-        stored.put(TransferMediaAssignment(phone, MediaAssignmentState.AUTOMATIC,
+        stored.put(TransferMediaAssignment(local, MediaAssignmentState.AUTOMATIC,
             match = match, updatedAtMs = clock.now))
         val c = TransferMediaController(
             MediaEnrichmentService(listOf(tv), wire, InMemoryMediaQueryCache(),
@@ -1559,19 +1559,19 @@ class TransferMediaControllerTest {
             { stored }, { settings }, { MediaNetworkState(true, false) },
             CoroutineScope(Dispatchers.Unconfined), Dispatchers.Unconfined,
             Dispatchers.Unconfined, { clock.now })
-        val observed = c.observe(phone, name)
+        val observed = c.observe(local, name)
         assertEquals(MediaAssignmentState.AUTOMATIC, observed.value.state)
         assertNull(observed.value.artwork)
         assertTrue("Saved verified identity needs an actionable provider configuration reason",
             observed.value.automaticMessage.orEmpty().contains("disabled or needs configuration"))
         assertTrue("A disabled provider must receive no image HTTP", wire.requests.isEmpty())
-        assertEquals(match.ref, stored.get(phone)?.match?.ref)
+        assertEquals(match.ref, stored.get(local)?.match?.ref)
 
         settings = settings.copy(disabledProviders = emptySet())
         c.onProviderConfigurationChanged()
         assertNotNull("Re-enabling the provider fetches art for the same saved identity",
             observed.value.artwork)
-        assertEquals(match.ref, stored.get(phone)?.match?.ref)
+        assertEquals(match.ref, stored.get(local)?.match?.ref)
         assertEquals(1, wire.requests.size)
         assertNull(observed.value.automaticMessage)
     }

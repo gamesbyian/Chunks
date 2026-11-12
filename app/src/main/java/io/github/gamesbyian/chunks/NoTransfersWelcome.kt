@@ -57,7 +57,7 @@ internal fun configuredRemoteForWelcome(
 ): Boolean = connected || hasRosterProfile || hasRememberedVaultLogin
 
 /** An initial/stale/filtered empty list is not evidence of an unused setup. */
-internal fun showPhoneFirstRunWelcome(
+internal fun showLocalFirstRunWelcome(
     inventoryConfirmed: Boolean,
     inventoryStale: Boolean,
     inventoryEmpty: Boolean,

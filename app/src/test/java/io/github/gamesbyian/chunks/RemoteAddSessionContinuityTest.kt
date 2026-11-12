@@ -134,10 +134,10 @@ class RemoteAddSessionContinuityTest {
         assertFalse(artwork.value)
         rule.runOnIdle { showing.value = false }
         rule.runOnIdle {
-            source.value = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=EditedOnPhone"
+            source.value = "magnet:?xt=urn:btih:" + "b".repeat(40) + "&dn=EditedOnLocal"
             showing.value = true
         }
-        reveal("Magnet for: EditedOnPhone")
+        reveal("Magnet for: EditedOnLocal")
         assertFalse("New shared text selects the new source instead of an old file", session.useFile)
         assertArrayEquals(document, session.selectedBytes)
         // The old file is still an available explicit alternative, not default.

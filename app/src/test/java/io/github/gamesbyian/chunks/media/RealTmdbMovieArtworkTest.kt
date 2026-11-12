@@ -75,7 +75,7 @@ class RealTmdbMovieArtworkTest {
         assumeTrue("Opt in with CHUNKS_REAL_MEDIA_LOOKUP=1 and a personal TMDB credential",
             System.getenv("CHUNKS_REAL_MEDIA_LOOKUP") == "1" &&
                 TmdbProvider.isPlausibleCredential(credential))
-        val local = key("phone", 'a')
+        val local = key("local", 'a')
         val remote = key("rtorrent:seedbox-2", 'b')
         val movies = listOf(
             Triple(local, "Away.We.Go.2009.1080p.BluRay.x264-TEST.mkv", 2009),

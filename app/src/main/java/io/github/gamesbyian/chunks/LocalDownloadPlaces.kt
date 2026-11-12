@@ -8,7 +8,7 @@ import android.os.Environment
 import java.io.File
 
 /**
- * Real POSIX folders the phone engine can save torrents into, with the
+ * Real POSIX folders the local device engine can save torrents into, with the
  * standard shared Downloads/Chunks Downloads preferred where Android lets an
  * app write there: Android 11+ always, Android 10 only after the user grants
  * its storage permission (requested from an explicit button, never on its
@@ -65,7 +65,7 @@ internal object LocalDownloadPlaces {
                 Environment.getExternalStorageState() != Environment.MEDIA_MOUNTED ->
                     "Shared storage is not mounted"
                 // Lazy creation: probe the existing folder, else its parent,
-                // so viewing the phone screen never creates Chunks Downloads.
+                // so viewing the local device screen never creates Chunks Downloads.
                 place.root.exists() -> LocalPlaceWriteProbe.verify(place.root)
                 else -> LocalPlaceWriteProbe.verify(parent)
             }
@@ -75,7 +75,7 @@ internal object LocalDownloadPlaces {
         LocalEngineHolder.appDownloads(context)?.let { root ->
             result += LocalPlaceChoice(LocalDownloadPlace(LocalPlaceKind.APP_STORAGE, root,
                 "Chunks app folder",
-                "Private to Chunks on phone storage. Removed if Chunks is uninstalled."),
+                "Private to Chunks on this device storage. Removed if Chunks is uninstalled."),
                 LocalPlaceWriteProbe.verify(root))
         }
         val removable = try {
@@ -110,7 +110,7 @@ internal object LocalDownloadPlaces {
             .putString(KEY_RESOLVED_ROOT, choice.place.root.absolutePath).commit()
 
     /**
-     * Forget the saved choice so new phone Adds use the automatic default
+     * Forget the saved choice so new local Adds use the automatic default
      * again. Only the preference changes; no folder or file is touched.
      */
     fun forget(context: Context): Boolean =
