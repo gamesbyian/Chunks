@@ -1,0 +1,44 @@
+name: One-shot Local Device terminology migration
+
+on:
+  push:
+    branches:
+      - refactor/local-device-terminology-20261112
+    paths:
+      - tools/refactor_local_device.py
+      - .github/workflows/local-device-migration.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: local-device-one-shot
+  cancel-in-progress: true
+
+jobs:
+  migrate:
+    if: github.repository == 'gamesbyian/Chunks' && github.ref == 'refs/heads/refactor/local-device-terminology-20261112'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+      - name: Apply deterministic terminology refactor
+        run: |
+          python3 tools/refactor_local_device.py --apply
+          python3 tools/refactor_local_device.py --check
+          git status --short | tail -40
+      - name: Commit source and documentation changes to the campaign branch
+        run: |
+          if test -z "$(git status --porcelain)"; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "refactor(local): apply canonical Local Device terms across source, tests and active specifications"
+          git push origin HEAD:refs/heads/refactor/local-device-terminology-20261112
