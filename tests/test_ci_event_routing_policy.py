@@ -8,7 +8,7 @@ import re
 import unittest
 
 from test_ci_trigger_contract import dispatches_for_changed_paths, pull_request_paths
-from tools.ci_workflow_inventory import block, event_block
+from tools.ci_workflow_inventory import block, event_block, collect
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOWS = ROOT / ".github" / "workflows"
@@ -136,6 +136,48 @@ class CiDispatchRelevance(unittest.TestCase):
                     native, (path, "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt")))
                 self.assertTrue(dispatches_for_changed_paths(
                     native, (path, APP_TEST_ROOT + "NewSharedInstrumentedTest.kt")))
+
+    def test_merged_workflow_only_edits_do_not_repeat_pr_validation(self):
+        # A changed font/render tool still selects both PR and main workflows.
+        # Changing only its YAML runs the cheap documentation routing check;
+        # actual execution-command changes need an explicit manual proof.
+        docs = workflow('documentation-validation.yml')
+        font_names = (
+            'chunks-accent-context-audit', 'chunks-cross-family-font-audit',
+            'chunks-font-family', 'chunks-font-visual-stress',
+            'chunks-reference-alphabet', 'chunks-reference-panel-font',
+            'chunks-reference-punctuation', 'reference-layered-latin-coverage',
+            'reference-mixed-mark-studies', 'reference-panel-accent-kerned',
+            'reference-panel-accent-studies', 'reference-panel-consolidated',
+            'reference-panel-dotless-kerned', 'reference-panel-stacked-studies',
+            'reference-panel-weight-studies',
+        )
+        for name in font_names:
+            with self.subTest(name=name):
+                path = '.github/workflows/' + name + '.yml'
+                source = workflow(name + '.yml')
+                self.assertFalse(dispatches_for_changed_paths(source, (path,)))
+                self.assertTrue(dispatches_for_changed_paths(docs, (path,)))
+                push = event_block(block(source, 'on'), 'push')
+                self.assertNotIn(path, push)
+                self.assertIn('    paths:', push)
+        skills = workflow('portable-agent-skills.yml')
+        self.assertNotIn('.github/workflows/portable-agent-skills.yml',
+                         event_block(block(skills, 'on'), 'push'))
+        for name in ('seedhost-android-readonly', 'seedhost-byte-window-readonly',
+                     'seedhost-named-stall-readonly', 'seedhost-reconcile-readonly-once'):
+            with self.subTest(name=name):
+                source = workflow(name + '.yml')
+                self.assertNotIn('  push:', block(source, 'on'))
+                self.assertIn('  workflow_dispatch:', block(source, 'on'))
+                self.assertTrue(dispatches_for_changed_paths(docs,
+                    ('.github/workflows/' + name + '.yml',)))
+        forensic = workflow('seedhost-magnet-readonly-forensics.yml')
+        self.assertNotIn('  push:', block(forensic, 'on'))
+        self.assertIn('  pull_request:', block(forensic, 'on'))
+        # No PR-verified workflow self-update should launch itself again on
+        # a main-branch push. The Pages publisher is push-only intentionally.
+        self.assertEqual([], collect(ROOT)['main_self_trigger_candidates'])
 
     def test_skills_branch_push_is_main_only_and_sensitive_work_manual(self):
         skills = workflow("portable-agent-skills.yml")
