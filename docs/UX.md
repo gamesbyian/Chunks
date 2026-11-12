@@ -1,5 +1,9 @@
 # Chunks interaction and accessibility contract
 
+## Options root visual design and navigation (binding owner direction, 2026-11-11)
+
+Implement the [eight-category solid-colour Options index](design/OPTIONS-SOLID-COLOUR-INDEX.md) based on the owner-provided phone mockup: real Chunks wordmark, Search options, **substantively filled rainbow-category cards rather than black cards with coloured outlines**, icons, bold category names, brief descriptions and one persistent four-tab footer. Use the revised eight destinations in [OPTIONS-INFORMATION-ARCHITECTURE](OPTIONS-INFORMATION-ARCHITECTURE.md); all original widget/integration, security, rule and storage controls remain discoverable through new nested groups and search. No decorative/inert top-level quick switches; any genuine quick switch must have separately accessible hit region, defined persisted meaning and immediate apply. Preserve primary Pixel 6 Pro ergonomics, scrolling below fixed footer, adaptive text, contrast and independent focus/TalkBack semantics. This visual direction supersedes older Options-index drawings, not the underlying setting behaviour.
+
 **Interaction requirements:** Render the same compact transfer row in All/device/server filters and open a dedicated full Details for every transfer. Keep a one-row, always-available four-root footer. Ordinary action groups use two columns, or three where readable; preserve keyboard, TalkBack, 320/412dp, large font and 48dp hit targets. Use one Universal Add form; show the default-checked auto-artwork choice **only there when globally enabled** and never in active Details. Consent, exact authenticated mutations, error recovery and user override persistence remain mandatory. See [current UX/media contract](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md) and [execution queue](WORK-QUEUE.md).
 
 ## Future Chunks-to-Chunks artwork handoff (deferred pending artwork decisions)
