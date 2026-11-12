@@ -140,6 +140,33 @@ class PhoneMagnetDraftCheckTest {
         }
     }
 
+    /**
+     * CI run 43128374172 race: the Options opt-out is committed off the main thread before the
+     * open phone form's cached copy updates. A return to Add in that window must obey the
+     * persisted opt-out. Modelled deterministically by committing it directly.
+     */
+    @Test fun committedOptOutWinsOverTheFormsCachedPreference() {
+        val link = "magnet:?xt=urn:btih:" + "e".repeat(40) + "&dn=raced"
+        val prefs = rule.activity.getSharedPreferences("add-clipboard-prefill", Context.MODE_PRIVATE)
+        val original = prefs.getBoolean("enabled", true)
+        try {
+            org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", true).commit())
+            copy("unrelated text, not a magnet or torrent link")
+            openAdd()
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+            rule.waitForIdle()
+            org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", false).commit())
+            copy(link)
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+            rule.waitForIdle()
+            rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
+        } finally {
+            (rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
+                .clearPrimaryClip()
+            org.junit.Assert.assertTrue(prefs.edit().putBoolean("enabled", original).commit())
+        }
+    }
+
     @Test fun aTypedDraftIsNeverReplacedByTheClipboard() {
         openAdd()
         val typed = "magnet:?xt=urn:btih:" + "c".repeat(40) + "&dn=typed"
