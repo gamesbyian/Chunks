@@ -1,7 +1,7 @@
 # Local portable development Skills snapshot
 
 Canonical package: `GBIDEVELOPMENT/general-purpose/skills/`.
-Verified source commit: `e22ef87354ed8435ef1edfeb19a142880ff4b139` (2026-11-12 rollout).
+Verified source commit: `8813ad35f0c948503539f37b43696bcbf0eee2c7` (2026-11-12 pre-execution test-contract update).
 Source package size: **176 canonical files**. All copied source files are byte-identical to the pinned commit. The project-local `skills/VENDOR-SOURCE.md` records provenance and is not part of the canonical payload.
 
 Use [Skills Architecture](CAPABILITY-ARCHITECTURE.md) for task-matched routing and [Portability](PORTABILITY.md) for installation, update and offline integrity. Supporting references, scripts, schemas, tests and fixtures are local; the canonical repository need not be reachable by agents.

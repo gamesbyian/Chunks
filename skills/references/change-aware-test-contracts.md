@@ -8,6 +8,14 @@
 
 **Output:** a bounded, bidirectional relationship trace, explicit treatment of each affected obligation and its tests/evidence/gates, the smallest adequate checks at the appropriate runtime boundary, and a truthful receipt in the existing PR/issue/queue. A new permanent manifest or graph is optional only when repeated omissions justify its upkeep.
 
+## Pre-execution contract gate (before setup, not just before interpreting red)
+
+**For changes to an accepted requirement, UI journey, identity, schema or evidence format, perform a proportional contract review before spending a Gradle/device/provider run.** Write down the current obligation and classify directly affected assertions, fixtures, screenshot producers, artifact inventories, collectors, test selectors and workflow triggers as KEEP / REWRITE / REPLACE-EVIDENCE / RETIRE / BLOCK. Inspect both new and removed names. A test's previous pass, workflow presence or failure is not independent proof of its authority. Treat an unresolved authority dispute as BLOCK for claims relying on it, not permission to delete a check.
+
+Make cheap, deterministic producer/consumer parity checks run **before** expensive setup where possible. For screenshots, prefer one authoritative source of capture identifiers, with the collector deriving or validating against it; for saved artifacts verify required files are nonempty and in the expected format. Add hostile controls for renamed, missing, duplicate and unexpected evidence. This catches harness drift; it does not certify that the user journey was exercised or that the screenshot satisfies the current design. Preserve the installed and independent oracle at the actual required boundary.
+
+**Bound the overhead:** small edits trace a few assertions; major accepted refactors inspect their affected dependency closure once and reuse that disposition across compatible validation batches. Do not run a full suite to determine whether the suite's own contract is obsolete. Record the preflight disposition in the existing PR, not a new administrative ledger. Legitimate stable security, privacy, identity, accessibility, persistence, and destructive-action oracles must not be weakened just to avoid a red run.
+
 ## A. On an accepted change, reconcile before trusting CI
 
 1. **Pin what changed.** Cite the accepted decision, prior and current requirement wording/status, affected actor/journey/variant, exact source revision, and exclusions. Partition obligations into `PRESERVED | MODIFIED | INTRODUCED | RETIRED | DISPUTED`. A changed screen does not imply its behavioral, accessibility, privacy or recovery obligations have disappeared. Never infer owner permission merely from a merged implementation.
@@ -74,6 +82,12 @@ Correct separation:
 - **Missing libraries:** environment failure; repair setup or report as unexecuted. **Skipped installed tests:** no installed acceptance evidence, whatever the status of the manifest check.
 
 This case is a teaching illustration from a user-provided account. Confirm exact PR heads/logs before using it as a historical ground-truth evaluation key. Separate practice examples from truly unseen, temporally sealed evaluation cases.
+
+## Verified case: Chunks 200% Compose capture mismatch (2026-11-12)
+
+At [Chunks PR #1668](https://github.com/gamesbyian/Chunks/pull/1668), the installed system-font-scale Compose test completed successfully and published eight PNG captures; the downstream shell script failed because it independently demanded seven images with legacy screen names. [The exact-head job](https://github.com/gamesbyian/Chunks/actions/runs/43312421401) reached the device test and then failed at artifact validation. The resulting evidence proves the named navigation test ran, but not that the stale capture list was an authoritative product requirement.
+
+Correct prevention: inspect both the new screenshot producer and its collector before the Android run; eliminate the duplicated list or qualify source-derived filenames with a cheap offline preflight. Verify actual PNGs after the installed run. Keep accessibility and navigation assertions intact. Do not relabel a failing artifact check as an app regression or a passing device test as pixel-design approval. See [Chunks PR #1670](https://github.com/gamesbyian/Chunks/pull/1670) for the concrete source-derived collector/preflight.
 
 ## Adversarial controls and stop condition
 
