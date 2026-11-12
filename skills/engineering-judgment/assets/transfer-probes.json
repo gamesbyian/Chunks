@@ -324,6 +324,150 @@
           "text": "Partial content may exist; preserve evidence and require proven ownership and safe recovery before database admission or cleanup."
         }
       ]
+    },
+    {
+      "id": "J19",
+      "prompt": "The director has explicitly replaced an app's mandatory two-screen import wizard with one source-first page. A CI atlas still requires a PNG named for the removed confirmation screen, but the new page has an installed capture and displays the required exact source ID before Submit. What is the correct change?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Reinstate the obsolete screen because a required screenshot name is authoritative."
+        },
+        {
+          "id": "B",
+          "text": "Reconcile the atlas to the current capture and verify the preserved exact-ID-before-Submit acceptance claim."
+        },
+        {
+          "id": "C",
+          "text": "Delete all screen and source-ID tests because the UX is evolving."
+        }
+      ]
+    },
+    {
+      "id": "J20",
+      "prompt": "During deliberate navigation redesign, a visual snapshot changes and an installed assistive-technology test reports that a destructive Remove control is unreachable by keyboard. The owner never retired keyboard reachability. How should the agent respond?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Keep the accessibility requirement and repair the actual reachable UI path, then rerun an installed relevant test."
+        },
+        {
+          "id": "B",
+          "text": "Accept the new visual snapshot and remove the keyboard assertion as brittle."
+        },
+        {
+          "id": "C",
+          "text": "Re-run only the screenshot count; visually present controls are automatically accessible."
+        }
+      ]
+    },
+    {
+      "id": "J21",
+      "prompt": "An approved public-service notice requires one precise legally reviewed phrase and an approved layout. A redesign changes both, causing exact-text and image regression tests to fail; no authorized decision supersedes those requirements. What follows?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Remove snapshot and literal tests because all string assertions are incidental."
+        },
+        {
+          "id": "B",
+          "text": "Silence the failing tests until the next release candidate."
+        },
+        {
+          "id": "C",
+          "text": "Preserve their current-authority protection, repair the product to the approved copy/layout or obtain a new decision."
+        }
+      ]
+    },
+    {
+      "id": "J22",
+      "prompt": "A reworked upload flow passes JVM tests that mock a successful server response. The app's newly implemented installed path has not been run, and the acceptance claim includes a persisted upload on the exact authenticated account. Which evidence is still needed?",
+      "options": [
+        {
+          "id": "A",
+          "text": "None; a passing isolated mock demonstrates authenticated persistence."
+        },
+        {
+          "id": "B",
+          "text": "Run the real shipping journey against an authorized account and independently read back the exact persisted object."
+        },
+        {
+          "id": "C",
+          "text": "Rename the JVM test to include the word installed."
+        }
+      ]
+    },
+    {
+      "id": "J23",
+      "prompt": "A CI required-file list contains the old filename of a deliberately retired screenshot. Its replacement screenshot generator and semantic checks already run on the same head. The only patch is a manifest entry with no app runtime change. What is a proportionate check?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Run every Android emulator, cloud provider and release migration test after each manifest edit."
+        },
+        {
+          "id": "B",
+          "text": "Remove all screenshot assertions to avoid future list maintenance."
+        },
+        {
+          "id": "C",
+          "text": "Verify manifest references and actual artifact generation, preserve relevant semantic coverage, and avoid an unrelated full-device matrix."
+        }
+      ]
+    },
+    {
+      "id": "J24",
+      "prompt": "In a single CI campaign, a runtime test establishes a real account-specific data regression, while another job fails before test collection because a Python dependency is missing. The UI atlas additionally references an old screen. Which diagnosis is warranted?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Classify each independently: fix product regression, restore test environment, and evaluate screenshot drift against current authority."
+        },
+        {
+          "id": "B",
+          "text": "Group everything as environment flakiness and mark the branch accepted."
+        },
+        {
+          "id": "C",
+          "text": "Rewrite all assertions to match current implementation and rerun only the cheapest job."
+        }
+      ]
+    },
+    {
+      "id": "J25",
+      "prompt": "A refactor renames a serialized field and its tests fail. Developers call the field an internal implementation detail, but older installed clients may consume its stored values and the supported compatibility policy is unchanged. What is the discriminating first step?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Delete compatibility tests because field names are inherently incidental."
+        },
+        {
+          "id": "B",
+          "text": "Restore the entire old architecture without inspecting clients or persisted data."
+        },
+        {
+          "id": "C",
+          "text": "Inspect persisted versions and real supported consumers, then preserve or migrate the compatibility contract before adjusting tests."
+        }
+      ]
+    },
+    {
+      "id": "J26",
+      "prompt": "An agent changes only a nonfunctional theme token in an isolated widget; no text, interaction, screen inventory, accessibility semantics, data or CI-contract dependency changes. Existing targeted rendering check reaches it. What should test reconciliation do?",
+      "options": [
+        {
+          "id": "A",
+          "text": "Construct a permanent requirement-to-test graph and rerun all platform suites."
+        },
+        {
+          "id": "B",
+          "text": "Use the focused existing check and stop; no broader test-contract audit is activated without a consequential dependency."
+        },
+        {
+          "id": "C",
+          "text": "Rewrite all golden screenshots across the product as a precaution."
+        }
+      ]
     }
   ]
 }

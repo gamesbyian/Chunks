@@ -18,6 +18,17 @@ Specify initial state and immutable IDs (including before/after bytes or digest 
 
 Positive: GIVEN actual permitted initial state, WHEN user completes the real entrypoint, THEN independent readback proves intended postcondition and original data invariants. Negative: invert the most decision-relevant reachable boundary, such as revoked grant, wrong returned URI, stale account, timeout-after-write, process death, malformed external input or unreachable control. Show expected truthful recovery or UNCERTAIN state; do not silently retry irreversible commands.
 
+## V4a. Independent claims for user-facing changes
+
+Apply the [experience-conformity contract](../../product-specification-engineering/references/experience-conformity.md) where the result is visible. Do not collapse independent obligations:
+
+- **Function:** actual engine, storage, remote or OS postcondition, with material negative controls.
+- **Interaction:** real UI discovers and operates the intended action with correct identity, labels, keyboard/assistive focus, feedback, navigation and recovery.
+- **Presentation:** compare *actual rendered pixels* in relevant states with the current approved hierarchy, layout, density, typography and visual references. Record image identity, source/viewport, reviewer and observed deviations. Screenshot capture or an atlas entry only proves artifact production.
+- **Pixel regression:** only against a baseline approved by the host. Old filenames, retired screens and speculative mockups are not automatically binding.
+
+For internal-only changes mark interaction/presentation N/A and keep functional proof. For visual-only changes check affected semantics and operations without mandating unrelated engine suites. Batch compatible rendered/installed checks, separating functional verification, interaction verification, presentation review and still-missing owner/handset acceptance. No renderer means PRESENTATION UNVERIFIED, not PASS.
+
 ## V5. Instrument and execute economically
 
 Prefer smallest test that reaches the necessary boundary and preserves normal setup. If several features share expensive emulator/provider boot, batch setup while retaining per-item fixture and assertion IDs. Capture source SHA, APK/artifact hash, environment, executed assertion counts, first failure and last reached state. Classify red as product, test harness, environment or unknown without erasing original evidence.
