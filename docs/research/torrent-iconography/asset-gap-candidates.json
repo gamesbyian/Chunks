@@ -42,7 +42,8 @@
       "priority": "high",
       "visual_metaphors": [
         "turtle",
-        "slow badge"
+        "speed dial / gauge",
+        "slow-mode badge"
       ],
       "notes": "",
       "upstream_visual_refs": [
