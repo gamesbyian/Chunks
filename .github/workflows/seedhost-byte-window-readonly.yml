@@ -10,10 +10,6 @@ name: Protected Seedhost read-only byte, tracker, selection and throttle witness
 # Next accepted slice: review exact-hash file priorities/open flags, aggregate-only.
 # 2026-10-27: inspect global down throttle and server-wide traffic read-only.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-byte-window-readonly.yml"
   workflow_dispatch:
 
 permissions:

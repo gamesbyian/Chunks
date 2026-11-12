@@ -2,10 +2,6 @@ name: Chunks protected two-reported-torrent read-only diagnosis
 # One-time on merge to trusted main. Do not fetch raw torrent details into
 # public logs. No Add/Start/Stop/Remove, tracker commands or filesystem writes.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-named-stall-readonly.yml"
   workflow_dispatch:
 permissions:
   contents: read
