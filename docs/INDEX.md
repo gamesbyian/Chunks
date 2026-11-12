@@ -1,5 +1,7 @@
 # Chunks documentation index
 
+**Visual research:** [Torrent-client iconography atlas](research/torrent-iconography/README.md) compares six clients' source-backed symbols with the existing Chunks SVG drafts. Its [HTML gallery](research/torrent-iconography/gallery.html) and exported choices are non-normative decision aids, not an implementation queue.
+
 **Local Device terminology:** The app's built-in torrent environment is **Local Device** in the UI, `Local` in code, and `local` as its exact environment ID. Older **Phone** wording in dated evidence is historical. Current feature specs, navigation and engine APIs use the canonical identity; see [unified environments](UNIFIED-ENVIRONMENTS.md).
 
 **Current integration:** Determine live main and open PRs from GitHub, not a dated index entry. #1662 and #1663 supplied verified runtime advances; acceptance details, previous red CI and source SHA receipts live in [QUALITY-LEDGER](QUALITY-LEDGER.md). Active work and remaining experience acceptance are governed by [WORK-QUEUE](WORK-QUEUE.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md).

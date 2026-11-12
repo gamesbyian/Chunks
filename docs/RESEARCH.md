@@ -1,5 +1,7 @@
 # Research ledger and upstream references
 
+**Iconography reference (2026-11-12):** [Six-client torrent symbol gallery and Chunks draft-asset gap review](research/torrent-iconography/README.md). Browse the [interactive gallery](research/torrent-iconography/gallery.html) or use its exportable original-asset candidate queue. Descriptive visual research only; it does not change product or UI requirements.
+
 ## 2026-11-01 cross-media provider/API due diligence
 
 The [media provider registry](MEDIA-PROVIDER-REGISTRY.md) records sourced provider candidates across film/TV, music, books/audiobooks, comics/manga, games, applications, periodicals, archives, adult metadata and generic files, with actual expected entity/credit schemas, consent, licences, free-tier limitations, auth, source URLs and required acceptance checks. In particular, GCD issue-level script credits and Metron creator role data enable a potential **Peter David** cross-media regression, but the real API field/identity crosswalk must be proved before Chunks advertises the association. The [shared media relationship engine](SHARED-MEDIA-IDENTITY-AND-SIMILAR-TRANSFERS.md) is the binding product-architecture specification; this dated ledger does not override it. All related work is deferred behind current P0 real transfer reliability.
