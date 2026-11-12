@@ -58,7 +58,8 @@ class VerifiedAddClipboardPrefillRaceInstrumentedTest {
                         enteredRead.complete(Unit)
                         releaseRead.await()
                     },
-                    clipboardTextReader = { clipboardReads++; copied }
+                    clipboardTextReader = { clipboardReads++; copied },
+                    testForegroundClipboardFocus = true
                 )
             }
         }
@@ -96,7 +97,8 @@ class VerifiedAddClipboardPrefillRaceInstrumentedTest {
                     onMutationStarted = { mutations++; false },
                     onMutationSettled = {},
                     clipboardEnabledReader = { true },
-                    clipboardTextReader = { clipboardReads++; copied }
+                    clipboardTextReader = { clipboardReads++; copied },
+                    testForegroundClipboardFocus = true
                 )
             }
         }

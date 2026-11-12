@@ -128,7 +128,9 @@ internal fun VerifiedAddScreen(
     /** Read-only injectable HTTPS intake for deterministic stalled-request UI tests. */
     fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
         withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
-    }
+    },
+    /** Isolated Compose race tests supply actual foreground focus as a fixture; ordinary app uses Android window focus. */
+    testForegroundClipboardFocus: Boolean? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -337,7 +339,7 @@ internal fun VerifiedAddScreen(
     // Android 10+ denies clipboard reads until the window has input focus.
     // Preference loading suspends: a newer typed/shared source or selected
     // document must cancel the stale clipboard suggestion before it can write.
-    val windowFocused = androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
+    val windowFocused = testForegroundClipboardFocus ?: androidx.compose.ui.platform.LocalWindowInfo.current.isWindowFocused
     val clipboardBlocked = sourceText.isNotBlank() || initialTorrent != null ||
         selectedTorrent != null || useFile || alreadyAttempted || submitting || choosing
     val latestClipboardSource = rememberUpdatedState(sourceText)

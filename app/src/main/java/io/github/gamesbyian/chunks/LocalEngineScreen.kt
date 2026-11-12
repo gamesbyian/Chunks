@@ -921,6 +921,9 @@ internal fun LocalEngineScreen(
     val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val createFocus = remember { androidx.compose.ui.focus.FocusRequester() }
     val zipFocus = remember { androidx.compose.ui.focus.FocusRequester() }
+    val seedingReturnIntoView = remember { BringIntoViewRequester() }
+    val createReturnIntoView = remember { BringIntoViewRequester() }
+    val zipReturnIntoView = remember { BringIntoViewRequester() }
     LaunchedEffect(returnFocusTool, pane) {
         val target = when (returnFocusTool) {
             "SEEDING" -> seedingFocus
@@ -934,12 +937,19 @@ internal fun LocalEngineScreen(
             onReturnFocusConsumed()
             return@LaunchedEffect
         }
-        // One frame is not always enough after restoring a long, scrollable
-        // Options tree. FocusRequester may still be unattached and throw, or
-        // requestFocus may return false. Never ACK a focus request that failed.
-        // Bounded retries are presentation-only: no Add, RPC or file action.
-        repeat(12) {
+        // Ensure the entry button is laid out and visible before keyboard focus
+        // is restored. ZIP review may be far below the fold even when the
+        // Options scroll state was retained. A focus request on a detached or
+        // offscreen target can otherwise fail silently.
+        val intoView = when (returnFocusTool) {
+            "SEEDING" -> seedingReturnIntoView
+            "CREATE" -> createReturnIntoView
+            "ARCHIVES" -> zipReturnIntoView
+            else -> null
+        }
+        repeat(18) {
             androidx.compose.runtime.withFrameNanos { }
+            if (intoView != null) runCatching { intoView.bringIntoView() }
             if (runCatching { target.requestFocus() }.getOrDefault(false)) {
                 onReturnFocusConsumed()
                 return@LaunchedEffect
@@ -2595,7 +2605,7 @@ internal fun LocalEngineScreen(
         }
         Text("Automation & media", style = MaterialTheme.typography.titleMedium)
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(seedingFocus)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(seedingReturnIntoView).focusRequester(seedingFocus)) {
             Text("Seeding rules…")
         }
         if (onMediaSettings != null) OutlinedButton(onClick = onMediaSettings,
@@ -2724,11 +2734,11 @@ internal fun LocalEngineScreen(
         )
         } // restore anchor
         if (onCreateTorrent != null) OutlinedButton(onClick = onCreateTorrent,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(createFocus)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(createReturnIntoView).focusRequester(createFocus)) {
             Text("Create a torrent…")
         }
         if (onZipReview != null) OutlinedButton(onClick = onZipReview,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).focusRequester(zipFocus)) {
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(zipReturnIntoView).focusRequester(zipFocus)) {
             Text("Review ZIP archives…")
         }
         OutlinedButton(

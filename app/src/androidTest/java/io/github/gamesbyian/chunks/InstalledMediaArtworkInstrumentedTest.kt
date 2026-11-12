@@ -186,7 +186,7 @@ class InstalledMediaArtworkInstrumentedTest {
     @Before fun freshMediaState() {
         forgetLogins()
         runBlocking { media.clearAllMediaData().join() }
-        media.updateSettings(MediaPrivacySettings())
+        media.updateSettings(MediaPrivacySettings(onlineLookupConsent = false))
     }
 
     @After fun cleanup() {
@@ -194,7 +194,7 @@ class InstalledMediaArtworkInstrumentedTest {
         server?.close()
         forgetLogins()
         runBlocking { media.clearAllMediaData().join() }
-        media.updateSettings(MediaPrivacySettings())
+        media.updateSettings(MediaPrivacySettings(onlineLookupConsent = false))
     }
 
     @Test fun installedRemoteRowShowsUserArtworkAndOptionsSettingTurnsItOff() {

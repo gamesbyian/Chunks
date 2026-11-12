@@ -555,12 +555,11 @@ fun MediaPrivacySettingsPanel(
     var keyText by remember { mutableStateOf("") }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (showHeading) Text("Media artwork & info", style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })
-        SettingSwitch("Online lookup", "Send cleaned-up titles to the providers below. Off by default.", settings.onlineLookupConsent) {
+        SettingSwitch("Online lookup", "Send cleaned-up media titles to enabled providers. On by default; turn off anytime.", settings.onlineLookupConsent) {
             onChange(settings.copy(onlineLookupConsent = it))
         }
-        // The global feature preference is independent from third-party lookup consent.
-        // A user can disable automatic identification before ever consenting to HTTP.
-        SettingSwitch("Identify automatically", "Identify eligible transfers automatically only after separate online consent.",
+        // Identification and online lookup are independently reversible preferences.
+        SettingSwitch("Identify automatically", "Identify eligible transfers automatically while online lookup is enabled.",
             settings.automaticLookup) { onChange(settings.copy(automaticLookup = it)) }
         SettingSwitch("Show artwork", "Off shows built-in category art everywhere.", settings.showArtwork) { onChange(settings.copy(showArtwork = it)) }
         SettingSwitch("Download artwork", "Metadata can be used without downloading images.", settings.downloadArtwork) { onChange(settings.copy(downloadArtwork = it)) }
