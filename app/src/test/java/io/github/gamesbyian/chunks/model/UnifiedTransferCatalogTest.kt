@@ -23,13 +23,13 @@ class UnifiedTransferCatalogTest {
         EnvironmentTransferSnapshot(env, availability, complete, 100L, items.toList())
 
     @Test fun sameHashAcrossEnvironmentsIsDistinctAndNeverDeduplicated() {
-        val local = LocalTransferStatus(
+        val localStatus = LocalTransferStatus(
             hash('a'), "Episode", LocalTransferState.DOWNLOADING, false,
             250_000, 1024, 256, 256, 2, 1, "/private", null
         )
         val remote = RemoteTransfer(hash('a').uppercase(), "Episode", 1024, 256, true, "/server",
             downBytesPerSecond = null)
-        val a = UnifiedTransferObservations.fromLocal(local, local)
+        val a = UnifiedTransferObservations.fromLocal(local, localStatus)
         val b = UnifiedTransferObservations.fromRTorrent(server1, remote)
         val result = UnifiedTransferCatalog.query(listOf(snapshot(local, a),
             snapshot(server1, b)), UnifiedTransferQuery())

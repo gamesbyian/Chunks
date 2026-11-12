@@ -99,22 +99,22 @@
     },
     {
       "image": "local-engine-add-review-real-compose.png",
-      "capability": "phone-add-draft-review",
+      "capability": "local-add-draft-review",
       "requirement": "docs/UX.md"
     },
     {
       "image": "local-engine-remove-confirm-real-compose.png",
-      "capability": "phone-remove-explicit-confirmation",
+      "capability": "local-remove-explicit-confirmation",
       "requirement": "docs/PRODUCT.md"
     },
     {
       "image": "local-engine-file-selection-real-compose.png",
-      "capability": "phone-file-selection",
+      "capability": "local-file-selection",
       "requirement": "docs/UX.md"
     },
     {
       "image": "local-engine-speed-limits-real-compose.png",
-      "capability": "phone-speed-limits",
+      "capability": "local-speed-limits",
       "requirement": "docs/UX.md"
     },
     {
@@ -164,10 +164,10 @@
       "image": "media-settings-installed.png"
     },
     {
-      "image": "phone-storage-low-native-compose.png"
+      "image": "local-storage-low-native-compose.png"
     },
     {
-      "image": "phone-storage-normal-native-compose.png"
+      "image": "local-storage-normal-native-compose.png"
     },
     {
       "image": "seedhost-android-add-ui-draft-failure.png"

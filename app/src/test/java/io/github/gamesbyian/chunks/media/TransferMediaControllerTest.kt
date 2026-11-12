@@ -460,7 +460,7 @@ class TransferMediaControllerTest {
         settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = true)
         val c = controller()
         assertTrue(c.setAutomaticLookupEnabled(local, false))
-        val local = c.observe(local, name)
+        val localFlow = c.observe(local, name)
         assertTrue(http.requests.isEmpty())
         val chosen = MediaCandidate(
             io.github.gamesbyian.chunks.model.MediaMetadataCacheKey("tvmaze", "show", "475"),
@@ -469,10 +469,10 @@ class TransferMediaControllerTest {
                 "https://static.tvmaze.com/manual-poster.jpg", ArtworkRole.POSTER)),
             attribution = MediaAttribution("TVmaze", "CC BY-SA 4.0", null))
         c.choose(local, chosen)
-        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, local.value.state)
-        assertNotNull("Manual selection may download artwork despite Add-time opt-out", local.value.artwork)
+        assertEquals(MediaAssignmentState.CHOSEN_BY_USER, localFlow.value.state)
+        assertNotNull("Manual selection may download artwork despite Add-time opt-out", localFlow.value.artwork)
         c.requestPoster(local)
-        assertNotNull("Explicit chosen poster can load for Details", local.value.poster)
+        assertNotNull("Explicit chosen poster can load for Details", localFlow.value.poster)
         assertTrue(http.requests.any { it.contains("static.tvmaze.com") })
 
         settings = settings.copy(onlineLookupConsent = false)
