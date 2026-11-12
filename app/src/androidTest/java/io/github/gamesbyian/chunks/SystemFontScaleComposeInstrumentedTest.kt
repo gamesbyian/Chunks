@@ -227,8 +227,12 @@ class SystemFontScaleComposeInstrumentedTest {
         // The normal screen now uses the compact wordmark, without the
         // superseded onboarding slogan. The heading must remain exposed.
         rule.onNodeWithText("Chunks").assertExists()
-        // Fresh Chunks shows ConnectionScreen rather than remote tabs until
-        // authentication succeeds. Capture that real 200% screen as well.
+        // Fresh installs now open on the shared Transfers screen. Capture its
+        // real 200% layout first, then follow the persistent Connections root
+        // to the remote login form rather than assuming old startup navigation.
+        savePixels("transfers-before-connection")
+        rule.onNodeWithText("Connections").performClick()
+        rule.waitForIdle()
         savePixels("connection")
         val policy = NetworkSecurityPolicy.getInstance()
         assertTrue("Read-only loopback must remain permitted for test",

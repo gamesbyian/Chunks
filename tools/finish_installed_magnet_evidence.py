@@ -161,8 +161,8 @@ def safe_failure_diagnostic(receipt, peer_valid, control_preserved, journeys_ver
 def required_journey_specs(env):
     required = []
     if env.get("CHUNKS_HTTPS_ADD") == "1":
-        required.append(("chunks-https-phone-digest.json", "https-phone",
-                         "io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest",
+        required.append(("chunks-https-local-digest.json", "https-local",
+                         "io.github.gamesbyian.chunks.HttpsLocalAddJourneyInstrumentedTest",
                          "fetchedHttpsTorrentUsesOneTimePlaceThenNextAddUsesUnchangedDefault"))
     if env.get("CHUNKS_REAL_MEDIA") == "1":
         for method in ("phaseA_tvmazeConsentSelectionAndArtwork", "phaseA_musicbrainzSelectionAndArtwork",
