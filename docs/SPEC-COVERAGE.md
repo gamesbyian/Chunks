@@ -30,3 +30,13 @@
 **Gate rules:** A green unit/mock test is not installed app proof; a remote RPC ACK is not verified transfer/pieces; a red, skipped, cancelled or old-head check cannot qualify a changed PR. Tests must be explicit about source SHA/tree, run ID, artifact digest, test identities and evidence tiers. **Not yet proven by documentation:** owner's new UI/media expectations, latest-main installed APK and separate physical/production/signing tiers. Never silently classify these as accepted.
 
 **Next required checks:** [owner UX implementation/acceptance](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md), [real transfer acceptance](REAL-TRANSFER-ACCEPTANCE.md), [CI evidence](CI-EVIDENCE-AND-RUNTIME-CONTRACT.md), [build](BUILD.md). Maintain one live gate checklist here; append run stories only to [QUALITY-LEDGER](QUALITY-LEDGER.md).
+
+## Local foreign-partial-data recovery (planned, pending evidence)
+
+| Capability / user outcome | Required acceptance | Evidence needed |
+| --- | --- | --- |
+| Existing files reused by local Add/Start | Exact-path existing regular data from stopped/re-added/other-client downloads is hash checked before any claimed completion/seeding; verified pieces reused, missing pieces alone downloaded; preserve explicit stopped vs auto-start choice | Real .torrent/magnet interrupted-transfer, sparse/preallocated, corrupt, full and partial file fixtures; v1 cross-file, v2/hybrid and independent peer/seeding readback; no stale zero-piece fastresume after process death |
+| Recognize foreign temporary layouts | Bounded scan of authorized Chunks Downloads Place identifies alternate .!qB, .part, .!ut, .bc! and documented configured variant candidates without falsely certifying identity; path repair is explicit and reversible | Actual representative client/version on-disk fixtures, ambiguous candidates, filename conflicts, symlink/permission failures, no unrelated mutations or unapproved rename/overwrite |
+| Foreign auxiliary state and recovery durability | Preserve .parts, piece_part.bc!, Tixati fragments, .aria2 and unfamiliar resume state when unsupported; no imported fragment can be trusted without exact-format/identity/offset validation; interruption leaves safe reconcilable state | Unsupported-sidecar non-destruction, optional versioned adapter tests, restart/crash/cancel, native-handle/resume generation fencing and fresh verified snapshot |
+
+Authoritative plan: [FOREIGN-PARTIAL-TORRENT-RECOVERY](FOREIGN-PARTIAL-TORRENT-RECOVERY.md). No implementation or device acceptance is claimed.
