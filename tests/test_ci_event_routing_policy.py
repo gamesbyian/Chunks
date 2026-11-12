@@ -68,7 +68,7 @@ class CiDispatchRelevance(unittest.TestCase):
             with self.subTest(file=file.name):
                 if "  pull_request:" in events:
                     self.assertRegex(pr, r"(?m)^    paths:\s*$")
-                    self.assertRegex(pr, r"(?m)^      - [^\\n]+$")
+                    self.assertRegex(pr, r"(?m)^      - .+$")
                 if "  push:" in events:
                     self.assertRegex(push, r"(?m)^    paths:\s*$")
                     expected = (LEGACY_PUSH_BRANCHES[file.name],) if file.name in LEGACY_PUSH_BRANCHES else ("main",)
