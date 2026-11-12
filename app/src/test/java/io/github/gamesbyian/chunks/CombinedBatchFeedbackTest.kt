@@ -68,7 +68,7 @@ class CombinedBatchFeedbackTest {
 
     @Test fun individualResultsRemainReadableAfterBoundedPoliteSummary() {
         val result = listOf(
-            "On this phone: 1 confirmed started.",
+            "On this device: 1 confirmed started.",
             "Server · account: 1 uncertain, refresh before retry."
         )
         rule.setContent {

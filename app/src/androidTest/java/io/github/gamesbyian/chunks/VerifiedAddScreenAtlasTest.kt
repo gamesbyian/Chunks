@@ -39,6 +39,8 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.rpc.RemoteFile
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertIsNotEnabled
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -380,7 +382,11 @@ class VerifiedAddScreenAtlasTest {
                     onMutationStarted = { true }, onMutationSettled = {})
             }
         }
-        rule.onNodeWithText("Add transfer").assertDoesNotExist()
+        // Requirement: an invalid folder can never be submitted. The one Add action stays
+        // visible but disabled with the reason (UX: never silently omitted).
+        rule.onNode(hasScrollAction()).performScrollToNode(
+            androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
         rule.onNode(hasScrollAction()).performScrollToNode(hasText(
             "Invalid destination: remove repeated slashes, '.' and '..' path segments."
         ))

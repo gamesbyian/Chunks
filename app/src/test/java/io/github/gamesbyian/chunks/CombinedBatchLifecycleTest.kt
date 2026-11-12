@@ -181,17 +181,17 @@ class CombinedBatchLifecycleTest {
     }
 
     @Test fun previewAndResultsNameEveryEnvironment() = runBlocking {
-        val labels = mapOf(phone to "On this phone", server to "Server · ian @ box")
+        val labels = mapOf(phone to "On this device", server to "Server · ian @ box")
         val preview = combinedBatchPreview(false, setOf(row(phone, true).key, row(server, true).key), labels)
         assertTrue(preview, preview.startsWith("Stop 2 selected"))
-        assertTrue(preview, preview.contains("On this phone: 1; Server · ian @ box: 1"))
+        assertTrue(preview, preview.contains("On this device: 1; Server · ian @ box: 1"))
         val gate = FakeGate(grant = true)
         val report = runCombinedLifecycle(setOf(row(server, true).key, row(phone, true).key), false,
             listOf(source(phone, row(phone, true)), source(server, row(server, true))), gate.lifecycle, server,
             phoneEngine = { null })
         // Environments run in stable-ID order, independent of selection order.
         assertEquals(listOf("Server · ian @ box: 1 confirmed stopped.",
-            "On this phone: 1 not attempted (phone engine is not running)."), report.describe { labels.getValue(it) })
+            "On this device: 1 not attempted (phone engine is not running)."), report.describe { labels.getValue(it) })
     }
 
     @Test fun nonV1ServerIdentityIsRefusedBeforeAnyRpcAndDoesNotHaltTheBatch() = runBlocking {

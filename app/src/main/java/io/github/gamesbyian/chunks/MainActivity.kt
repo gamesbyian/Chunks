@@ -242,7 +242,7 @@ internal fun optionsDestinationMatches(label: String, rawQuery: String): Boolean
     if (needle.isEmpty()) return true
     val aliases = when (label) {
         "Transfers" -> "torrent downloads active list search"
-        "On this phone" -> "local phone downloads storage files"
+        "On this device" -> "local phone device downloads storage files"
         "Places" -> "folder destination location save path"
         "Organize" -> "collections categories organize grouping"
         "Server" -> "connection endpoint profile account login settings server"
@@ -626,10 +626,43 @@ internal fun ChunksApp(
         requestedView = "main"
     }
 
+    /**
+     * A new explicit Android Share/Open With source after a FULLY VERIFIED Add begins the
+     * next Add, exactly like the person's own "Start another Add" / "Review another phone
+     * Add". Without this, the finished attempt latch hid the new source and the Add action
+     * (#1650 follow-up: second Open With reached Add with no usable submit). Pending,
+     * uncertain or merely session-confirmed attempts are never released here; they keep
+     * their explicit acknowledgement and no write is ever replayed.
+     */
+    fun releaseVerifiedAttemptsForNewSource() {
+        if (activePhoneAddAttempt.attemptedTicket != null &&
+            activePhoneAddAttempt.coordinator.phase ==
+                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
+            activePhoneAddAttempt.finishReviewedAttempt()) {
+            // The finished source is one shared document: clear both of its halves.
+            phoneReviewedTorrent.value = null
+            serverHandoffTorrent = null
+        }
+        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }?.let { remoteAddSessions.forAccount(it) }
+        if (remoteDraft != null && remoteDraft.alreadyAttempted && !remoteDraft.submitting &&
+            remoteDraft.coordinator.phase ==
+                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
+            canCloseRemoteAddReview(remoteDraft.coordinator.phase, remoteDraft.verifiedHash,
+                remoteDraft.uncertain)) {
+            val oldSource = remoteDraft.attemptSource
+            if (remoteDraft.beginNextDraft()) {
+                if (magnet == oldSource) magnet = ""
+                serverHandoffTorrent = null
+                phoneReviewedTorrent.value = null
+            }
+        }
+    }
+
     // Share/Open With only admits source data, never a phone or remote Add.
     // An occupied draft is held until the user explicitly chooses replacement.
     LaunchedEffect(incomingTorrent) {
         val document = incomingTorrent ?: return@LaunchedEffect
+        releaseVerifiedAttemptsForNewSource()
         sharedTorrentError = null
         pendingSharedMagnet = null
         pendingSharedDocument = null
@@ -722,6 +755,7 @@ internal fun ChunksApp(
     // New Share text retains an existing draft until an explicit replacement.
     LaunchedEffect(sharedMagnet) {
         val proposed = sharedMagnet ?: return@LaunchedEffect
+        releaseVerifiedAttemptsForNewSource()
         sharedTorrentError = null
         pendingSharedDocument = null
         val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
@@ -893,6 +927,9 @@ internal fun ChunksApp(
             enabled = addChoicesEnabled && !sharedTorrentReading,
             aliasDraft = addAliasDraft.value,
             onAliasChange = { addAliasDraft.value = it },
+            // The newest source's own name: reviewed .torrent, else the magnet's dn.
+            sourceName = phoneReviewedTorrent.value?.preview?.name
+                ?: remember(magnet) { (MagnetDraftCheck.inspect(magnet) as? MagnetDraftCheck.Valid)?.displayName },
             incomingSourceWaiting = pendingSharedMagnet != null || pendingSharedDocument != null,
             importingSource = sharedTorrentReading,
             sourceError = sharedTorrentError,
@@ -2167,6 +2204,17 @@ internal fun ChunksApp(
                         onMutationStarted = beginRemoteMutation,
                         onMutationSettled = settledRemoteMutation,
                         recentPlaces = recentPlaces,
+                        savedDefaultPlace = remember(aliasScope, recentPlaceRevision) {
+                            if (aliasScope.isBlank()) null
+                            else runCatching { recentPlaceStore.savedDefault(aliasScope) }.getOrNull()
+                        },
+                        onSaveDefaultPlace = { path ->
+                            val saved = aliasScope.isNotBlank() && runCatching {
+                                recentPlaceStore.setSavedDefault(aliasScope, path)
+                            }.getOrDefault(false)
+                            if (saved) recentPlaceRevision++
+                            saved
+                        },
                         onCustomPlaceVerified = { path ->
                             val saved = runCatching {
                                 recentPlaceStore.recordVerifiedCustom(aliasScope, path)

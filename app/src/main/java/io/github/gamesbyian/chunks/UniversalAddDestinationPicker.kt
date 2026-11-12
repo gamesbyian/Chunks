@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.platform.testTag
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.FilterChip
@@ -44,6 +45,8 @@ internal fun UniversalAddDestinationPicker(
     enabled: Boolean,
     aliasDraft: String = "",
     onAliasChange: (String) -> Unit = {},
+    /** The current source's own name, for filename-derived display-name suggestions. */
+    sourceName: String? = null,
     incomingSourceWaiting: Boolean = false,
     importingSource: Boolean = false,
     sourceError: String? = null,
@@ -107,6 +110,22 @@ internal fun UniversalAddDestinationPicker(
                 isError = !validUniversalAddAlias(aliasDraft),
                 modifier = Modifier.fillMaxWidth()
             )
+            val nameSuggestions = androidx.compose.runtime.remember(sourceName) {
+                sourceName?.let { name -> TransferDisplayNames.suggestions(name)
+                    .filter { it.name != name && validUniversalAddAlias(it.name) } }.orEmpty()
+            }
+            if (nameSuggestions.isNotEmpty()) FlowRow(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                nameSuggestions.forEach { suggestion ->
+                    androidx.compose.material3.FilterChip(selected = aliasDraft == suggestion.name,
+                        onClick = { onAliasChange(suggestion.name) }, enabled = enabled,
+                        label = { Text(suggestion.name) },
+                        modifier = Modifier.heightIn(min = 48.dp).semantics {
+                            contentDescription = "Use display-name suggestion: " + suggestion.name
+                        })
+                }
+            }
             Text("Only the Chunks list label changes after a verified new Add. " +
                 "The torrent name, source, files and server remain untouched.",
                 style = MaterialTheme.typography.bodySmall)

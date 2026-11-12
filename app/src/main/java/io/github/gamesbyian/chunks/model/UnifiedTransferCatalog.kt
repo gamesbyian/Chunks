@@ -85,9 +85,8 @@ data class EnvironmentTransferSnapshot(
 sealed class EnvironmentViewScope {
     /** Dynamic All includes environments added after this view was saved. */
     object All : EnvironmentViewScope()
-    data class Only(val ids: Set<EnvironmentId>) : EnvironmentViewScope() {
-        init { require(ids.isNotEmpty()) { "A saved subset must be nonempty" } }
-    }
+    /** An exact chosen subset. Empty is an explicit "show none" choice from the toggle row. */
+    data class Only(val ids: Set<EnvironmentId>) : EnvironmentViewScope()
 }
 
 enum class UnifiedTransferFilter { ALL, STARTED, STOPPED, COMPLETE, TRANSFERRING, ATTENTION }

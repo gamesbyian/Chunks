@@ -70,7 +70,7 @@ class SeedingRulesScreenTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/seeding-editor.png")
         rule.onNodeWithText("Save rule").performScrollTo().assertIsEnabled().performClick()
         rule.onNodeWithText("1. Iptorrents · Ratio 1.00 · 24 kbit/s").assertExists()
-        rule.onNodeWithText("Applies to: On this phone").assertExists()
+        rule.onNodeWithText("Applies to: On this device").assertExists()
         rule.onNodeWithText("Phone: matching future additions only").assertExists()
         rule.onNodeWithText("Servers: saved for later", substring = true).assertDoesNotExist()
 
@@ -103,7 +103,7 @@ class SeedingRulesScreenTest {
         rule.onNodeWithText("Review defaults", substring = true).performClick()
         rule.onNodeWithText("Using your saved preference", substring = true).assertExists()
         rule.onNodeWithText("Reset to automatic").performScrollTo().performClick()
-        rule.onNodeWithText("Restore the automatic default for On this phone?", substring = true).assertExists()
+        rule.onNodeWithText("Restore the automatic default for On this device?", substring = true).assertExists()
         rule.onNodeWithText("Keep default").performClick()
         assertTrue(store.load().defaults.containsKey(SeedingEnvironment.PHONE_ID))
         rule.onNodeWithText("Reset to automatic").performScrollTo().performClick()
@@ -119,7 +119,7 @@ class SeedingRulesScreenTest {
         assertTrue(store.save(SeedingRuleStore.Snapshot(
             emptyList(), mapOf(SeedingEnvironment.PHONE_ID to saved))))
         assertEquals(listOf(SeedingEnvironment.phone()),
-            matchingSeedingEnvironments(environments, "On THIS phone"))
+            matchingSeedingEnvironments(environments, "On THIS device"))
         assertEquals(environments,
             matchingSeedingEnvironments(environments, "  "))
         rule.setContent {

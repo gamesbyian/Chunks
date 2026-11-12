@@ -1341,6 +1341,20 @@ internal fun LocalEngineScreen(
                 validUniversalAddAlias(addAliasState?.value.orEmpty()) &&
                 phoneAddAttemptSession?.attemptedTicket == null,
                 modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_SUBMIT))
+        } else if (pending == null) {
+            // The one Add action is never silently missing: without a usable source it is
+            // shown disabled with the exact next step.
+            val reason = when {
+                phoneAddAttemptSession?.attemptedTicket != null ->
+                    "Finish the previous Add above before adding another."
+                isLink -> "Get the .torrent from this link first (Get torrent from link above)."
+                else -> "Add a magnet or torrent link, or open a .torrent, to continue."
+            }
+            Button(onClick = {}, enabled = false,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                    .testTag(ChunksSemantics.ADD_SUBMIT)
+                    .semantics { stateDescription = "Unavailable: $reason" }) { Text("Add transfer") }
+            Text(reason, style = MaterialTheme.typography.bodySmall)
         }
         // Engine/network explanation is optional, after actual Add selections.
         PhoneEngineAbout()

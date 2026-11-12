@@ -12,6 +12,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
+import androidx.compose.ui.test.assertIsNotEnabled
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -180,7 +181,11 @@ class RemoteMagnetDraftCheckTest {
         show("magnet:?xt=urn:btih:" + "ab".repeat(19))
         reveal(MagnetDraftCheck.BAD_HASH)
         rule.onNodeWithText(MagnetDraftCheck.BAD_HASH).assertExists()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
+        // Requirement: no submission from an invalid source. The one Add action stays
+        // visible but disabled (UX: never silently omitted).
+        rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
+            .performScrollToNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
     }
 
     @Test fun copiedMagnetFillsAnEmptyServerAddWithItsNote() {
@@ -210,7 +215,11 @@ class RemoteMagnetDraftCheckTest {
         reveal("Torrent link: archive.org · x_archive.torrent")
         rule.onNodeWithText("Get torrent from link").assertExists()
         rule.onNodeWithText(MagnetDraftCheck.NOT_A_MAGNET).assertDoesNotExist()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
+        // A link must be fetched and validated on this phone before it can be added.
+        rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
+            .performScrollToNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
+        rule.onNodeWithText("Get the .torrent from this link first", substring = true).assertExists()
     }
 
     /** Opt-in real public HTTPS fetch with a redirect: the fetched .torrent is reviewed by its verified hash. */

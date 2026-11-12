@@ -73,8 +73,8 @@ class CombinedCompactLabelTest {
         val details = "Details for Big Archive on $exact"
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(details))
         rule.onNodeWithContentDescription(details).assertExists()
-        assertTrue("row shows the compact origin",
-            rule.onAllNodesWithText("Server · ian @ box.example", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
+        assertTrue("row shows the short profile origin beside its colour",
+            rule.onAllNodesWithText("ian @ box.example", useUnmergedTree = true).fetchSemanticsNodes().isNotEmpty())
         assertTrue("the RPC path is not repeated in the row",
             rule.onAllNodesWithText(exact, useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
     }

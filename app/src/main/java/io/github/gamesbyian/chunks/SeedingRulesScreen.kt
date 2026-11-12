@@ -270,7 +270,13 @@ internal fun matchingSeedingEnvironments(
 ): List<SeedingEnvironment> {
     val text = query.trim()
     return if (text.isEmpty()) environments
-    else environments.filter { it.label.contains(text, ignoreCase = true) }
+    else environments.filter {
+        it.label.contains(text, ignoreCase = true) ||
+            // "On this device" is also what people call their phone or tablet.
+            (!it.server && listOf("phone", "tablet", "device", "local").any { word ->
+                (text.length >= 3 && word.startsWith(text, ignoreCase = true)) ||
+                    text.contains(word, ignoreCase = true) })
+    }
 }
 
 /** Search is read-only; never updates rule scopes or persisted policies. */

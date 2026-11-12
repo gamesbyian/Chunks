@@ -412,7 +412,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // its first full snapshot has been rendered. Wait for the
                 // actual phone row to become scrollable, not just the title.
                 val phoneRow = hasContentDescription("Details for ", substring = true) and
-                    hasContentDescription(" on On this phone", substring = true)
+                    hasContentDescription(" on On this device", substring = true)
                 rule.waitUntil(45_000) {
                     runCatching {
                         if (visible("Show all transfers")) click("Show all transfers")
@@ -423,7 +423,7 @@ class HttpsPhoneAddJourneyInstrumentedTest {
                 // No intermediate expansion or All-details CTA.
                 rule.onNode(phoneRow).performClick()
                 rule.waitUntil(30_000) {
-                    visible("Transfer details") && visible("Environment: On this phone")
+                    visible("Transfer details") && visible("Environment: On this device")
                 }
                 rule.onNodeWithText("Show technical details").performScrollTo().performClick()
                 assertTrue("Phone Details lost the exact observed hash",

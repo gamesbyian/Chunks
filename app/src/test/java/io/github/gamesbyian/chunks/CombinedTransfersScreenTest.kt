@@ -403,7 +403,7 @@ class CombinedTransfersScreenTest {
         show()
         rule.onNodeWithText("All environments").assertExists()
         // Ordinary list presentation is compact; source-by-source proof is available on request.
-        rule.onNodeWithText("On this phone: Engine not running", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("On this device: Engine not running", substring = true).assertDoesNotExist()
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-compact-first-viewport.png")
         revealText("Environment status")
         rule.onNodeWithText("Environment status", substring = true).performClick()
@@ -413,7 +413,7 @@ class CombinedTransfersScreenTest {
                 .performScrollToNode(androidx.compose.ui.test.hasText(text))
             rule.onNodeWithText(text).assertExists()
         }
-        seen("On this phone: Engine not running; open transfers on this device · 0 transfers")
+        seen("On this device: Engine not running; open transfers on this device · 0 transfers")
         seen("Server · seed @ other.example/RPC2: Not connected · 0 transfers")
         seen(serverEnvironmentLabel(aliasScope) + ": Live · 2 transfers")
         seen("Showing 2 · some environments are missing or out of date")
@@ -465,9 +465,11 @@ class CombinedTransfersScreenTest {
         // Refinement is already disclosed; use the existing exact-source scope controls.
         // The view chip shows the compact unique origin; the group heading below
         // retains the exact address-bearing label.
-        revealText(compactServerLabel(aliasScope))
-        rule.onAllNodesWithText(compactServerLabel(aliasScope))[0].performClick()
-        rule.onNodeWithText("On this phone: Engine not running; open transfers on this device · 0 transfers").assertDoesNotExist()
+        // Toggle row: hide the device and the other saved server, leaving only this server.
+        reveal(hasContentDescription("Showing " + PHONE_ENVIRONMENT_LABEL, substring = true))
+        rule.onNodeWithContentDescription("Showing " + PHONE_ENVIRONMENT_LABEL, substring = true).performClick()
+        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
+        rule.onNodeWithText("On this device: Engine not running; open transfers on this device · 0 transfers").assertDoesNotExist()
         revealText("Showing 2")
         rule.onNodeWithText("Showing 2").assertExists()
         revealText("Group by environment")
