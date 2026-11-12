@@ -11,6 +11,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -86,7 +89,8 @@ class EnduringCapabilityAccessibilityTest {
     @Test fun connectionCreationIsNamedReachableAndTouchSized() {
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
-        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performScrollTo()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.CONNECTION_ADD))
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD)
             .assertHasClickAction().assertNamedAndTouchSized()
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).performScrollTo()

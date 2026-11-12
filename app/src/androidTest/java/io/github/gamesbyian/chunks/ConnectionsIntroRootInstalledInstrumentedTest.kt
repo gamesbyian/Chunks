@@ -85,6 +85,7 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
             // Test only: an encrypted remembered account differs from the unsent new draft.
             // No network call or real server identity is claimed by this restore negative.
             assertTrue(vault.setRememberingEnabled(true))
+            assertTrue(roster.clearAll())
             assertTrue(vault.save(RemoteCredentials("https://saved.invalid/RPC2", "saved", "saved-secret")))
             assertTrue(roster.saveVerified(requireNotNull(vault.load()), "Saved account"))
             connectionsFooter().performClick()
