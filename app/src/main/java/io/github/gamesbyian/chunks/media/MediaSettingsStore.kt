@@ -20,7 +20,7 @@ class MediaSettingsStore(context: Context) {
     @Volatile private var volatileCredential: String? = null
 
     fun load(): MediaPrivacySettings = MediaPrivacySettings(
-        onlineLookupConsent = prefs.getBoolean(K_CONSENT, false),
+        onlineLookupConsent = prefs.getBoolean(K_CONSENT, true),
         automaticLookup = prefs.getBoolean(K_AUTO, true),
         disabledProviders = prefs.getStringSet(K_DISABLED, emptySet())?.toSet() ?: emptySet(),
         enabledProviders = prefs.getStringSet(K_ENABLED, emptySet())?.toSet() ?: emptySet(),
