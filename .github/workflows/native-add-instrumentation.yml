@@ -31,7 +31,7 @@ on:
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"
-      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/storage/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10DownloadsRevocationInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/Android10StoragePermissionDialogInstrumentedTest.kt"
       - "app/build.gradle.kts"

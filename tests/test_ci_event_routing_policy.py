@@ -21,7 +21,7 @@ DEDICATED = {
     "RemoteDeleteDataInstalledInstrumentedTest.kt": "installed-remote-delete-data.yml",
     "ChunksLauncherIconInstrumentedTest.kt": "native-visual-atlas.yml",
     "ChunksBrandHeaderInstrumentedTest.kt": "native-visual-atlas.yml",
-    "OwnedMediaStoreDocumentPublicationInstrumentedTest.kt": "storage-owned-mediastore-documents.yml",
+    "storage/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt": "storage-owned-mediastore-documents.yml",
     "Android10DownloadsRevocationInstrumentedTest.kt": "android10-downloads-instrumentation.yml",
     "Android10StoragePermissionDialogInstrumentedTest.kt": "android10-downloads-instrumentation.yml",
 }
@@ -68,7 +68,7 @@ class CiDispatchRelevance(unittest.TestCase):
             with self.subTest(file=file.name):
                 if "  pull_request:" in events:
                     self.assertRegex(pr, r"(?m)^    paths:\s*$")
-                    self.assertTrue(pull_request_paths(source))
+                    self.assertRegex(pr, r"(?m)^      - [^\\n]+$")
                 if "  push:" in events:
                     self.assertRegex(push, r"(?m)^    paths:\s*$")
                     expected = (LEGACY_PUSH_BRANCHES[file.name],) if file.name in LEGACY_PUSH_BRANCHES else ("main",)
