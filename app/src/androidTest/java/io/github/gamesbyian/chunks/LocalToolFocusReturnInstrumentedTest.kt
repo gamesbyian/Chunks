@@ -40,6 +40,12 @@ class LocalToolFocusReturnInstrumentedTest {
     private fun keyboardReturn(button: String, paneTitle: String) {
         waitForLocal()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+        val category = when (button) {
+            "Seeding rules…" -> io.github.gamesbyian.chunks.OptionsCategory.SEEDING
+            "Review ZIP archives…" -> io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS
+            else -> io.github.gamesbyian.chunks.OptionsCategory.ABOUT
+        }
+        rule.onNodeWithTag(category.tag).performScrollTo().performClick()
         InstrumentationRegistry.getInstrumentation().sendKeyDownUpSync(KeyEvent.KEYCODE_TAB)
         rule.waitForIdle()
         rule.onNode(hasText(button) and hasClickAction()).performScrollTo()

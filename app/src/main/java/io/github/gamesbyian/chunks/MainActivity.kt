@@ -421,6 +421,9 @@ internal fun ChunksApp(
     val localOptionsScroll = rememberScrollState()
     val localSearch = rememberSaveable { mutableStateOf("") }
     val localOptionsSearch = rememberSaveable { mutableStateOf("") }
+    val localOptionsCategory = rememberSaveable { mutableStateOf<OptionsCategory?>(null) }
+    val localOptionsReturnQuery = rememberSaveable { mutableStateOf("") }
+    val localOptionsIndexScroll = rememberSaveable { mutableStateOf(0) }
     // The single Add source draft belongs to the app, never to the currently
     // displayed local/server Add form. Both adapters edit the same source;
     // neither browsing filters nor opening a screen silently authorizes Add.
@@ -1289,6 +1292,9 @@ internal fun ChunksApp(
                         Section.OPTIONS -> localOptionsScroll
                         else -> localListScroll
                     }, searchState = localSearch, optionsSearchState = localOptionsSearch,
+                    optionsCategoryState = localOptionsCategory,
+                    optionsReturnQueryState = localOptionsReturnQuery,
+                    optionsIndexScrollState = localOptionsIndexScroll,
                     magnetDraftState = addSourceDraft,
                     addPlaceState = localAddPlace, addFolderState = localAddFolder, addStartState = localAddStart,
                     addArtworkState = addArtworkChoices.onLocal(),
@@ -1785,6 +1791,9 @@ internal fun ChunksApp(
                         Section.OPTIONS -> localOptionsScroll
                         else -> localListScroll
                     }, searchState = localSearch, optionsSearchState = localOptionsSearch,
+                    optionsCategoryState = localOptionsCategory,
+                    optionsReturnQueryState = localOptionsReturnQuery,
+                    optionsIndexScrollState = localOptionsIndexScroll,
                         magnetDraftState = addSourceDraft,
                         addPlaceState = localAddPlace, addFolderState = localAddFolder, addStartState = localAddStart,
                         addArtworkState = addArtworkChoices.onLocal(),
@@ -2320,6 +2329,14 @@ internal fun ChunksApp(
             },
             onOptions = {
                 savedAddReconnect.abandon()
+                if (localOptionsCategory.value != null) {
+                    localOptionsCategory.value = null
+                    localOptionsSearch.value = localOptionsReturnQuery.value
+                    scope.launch {
+                        androidx.compose.runtime.withFrameNanos { }
+                        localOptionsScroll.scrollTo(localOptionsIndexScroll.value)
+                    }
+                }
                 section = Section.OPTIONS
             },
             onConnections = { section = Section.SERVER },

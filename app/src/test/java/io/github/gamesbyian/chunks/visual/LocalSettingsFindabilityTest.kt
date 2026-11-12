@@ -36,18 +36,13 @@ class LocalSettingsFindabilityTest {
             speedLimitSummary(LocalRateLimits(2048 * 1024, 0)))
     }
 
-    @Test fun speedLimitsPrecedeOccasionalLocalTools() {
+    @Test fun speedLimitsAndOccasionalToolsRemainDiscoverableInTheirCategories() {
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
-        val value = rule.onNodeWithText("Now: unlimited download and upload (default).")
-            .performScrollTo()
-        val speedTop = value.getUnclippedBoundsInRoot().top
-        val toolsTop = rule.onNodeWithText("More local tools").performScrollTo()
-            .getUnclippedBoundsInRoot().top
-        // performScrollTo moved the viewport down; the summary is now above it.
-        assertTrue("speed limits ($speedTop) should come before tools ($toolsTop)",
-            rule.onNodeWithText("Now: unlimited download and upload (default).")
-                .getUnclippedBoundsInRoot().top < toolsTop)
-        rule.onNodeWithText("Options · this device").assertExists()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.SEEDING.tag).performScrollTo().performClick()
+        rule.onNodeWithText("Now: unlimited download and upload (default).").performScrollTo().assertExists()
+        rule.onNodeWithText("All options").performScrollTo().performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.ABOUT.tag).performScrollTo().performClick()
+        rule.onNodeWithText("More local tools").performScrollTo().assertExists()
     }
 }

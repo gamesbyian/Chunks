@@ -577,6 +577,7 @@ class ChunksMainActivityAtlasTest {
         // The root Options destination is searchable and routes to the
         // existing exact-account tools. No remote write is issued by navigation.
         rule.onNodeWithContentDescription("Options").performClick()
+        save("options-filled-index-real-compose")
         rule.onNodeWithText("Search options").performTextReplacement("server")
         // Result titles are also shown as standing section headings below the
         // filtered cards. Assert each exact search-result description, scrolling

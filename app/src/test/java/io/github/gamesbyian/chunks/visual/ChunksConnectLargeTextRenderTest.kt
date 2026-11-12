@@ -59,6 +59,7 @@ class ChunksConnectLargeTextRenderTest {
     @Test fun createAt200Percent() {
         waitForWelcome()
         rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.ABOUT.tag).performScrollTo().performClick()
         rule.onNodeWithText("Create a torrent…").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/create-200pct.png")

@@ -34,6 +34,12 @@ class LocalToolReturnTest {
     private fun openAndReturn(button: String, paneTitle: String) {
         rule.waitForIdle()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+        val category = when (button) {
+            "Seeding rules…" -> io.github.gamesbyian.chunks.OptionsCategory.SEEDING
+            "Review ZIP archives…" -> io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS
+            else -> io.github.gamesbyian.chunks.OptionsCategory.ABOUT
+        }
+        rule.onNodeWithTag(category.tag).performScrollTo().performClick()
         rule.onNodeWithText(button).performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, paneTitle)).assertExists()

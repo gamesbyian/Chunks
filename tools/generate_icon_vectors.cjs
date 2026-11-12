@@ -13,6 +13,10 @@ const root = path.resolve(__dirname, "..");
 // near-black outline for off-white so the icon reads on dark surfaces; fills
 // are unchanged. Add entries here, then regenerate.
 const ICONS = {
+  chunks_ic_options_notifications: "docs/design/svg/icons/connectivity/broadcast.svg",
+  chunks_ic_options_appearance: "docs/design/svg/icons/navigation/settings.svg",
+  chunks_ic_options_privacy: "docs/design/svg/icons/connectivity/globe.svg",
+  chunks_ic_options_info: "docs/design/svg/icons/system/info.svg",
   chunks_ic_play: "docs/design/svg/icons/transfers/play.svg",
   chunks_ic_stop: "docs/design/svg/icons/transfers/stop.svg",
   chunks_ic_remove: "docs/design/svg/icons/transfers/remove-transfer.svg",

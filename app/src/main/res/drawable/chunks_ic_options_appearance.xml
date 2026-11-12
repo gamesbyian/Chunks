@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- GENERATED from docs/design/svg/icons/navigation/settings.svg by tools/generate_icon_vectors.cjs (sha256 1ee503262655ef6f); edit the SVG, then regenerate. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="64" android:viewportHeight="64">
+  <path android:pathData="M27 7 H37 L39 14 L45 17 L51 14 L57 24 L52 29 V35 L57 40 L51 50 L44 47 L38 50 L37 57 H27 L25 50 L19 47 L13 50 L7 40 L12 35 V29 L7 24 L13 14 L19 17 L25 14 Z" android:fillColor="#FFE5E7EB" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+  <path android:pathData="M23 32 A9 9 0 1 1 41 32 A9 9 0 1 1 23 32 Z" android:fillColor="#FFF8FAFC" android:strokeColor="#FF0B0F17" android:strokeWidth="5" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>

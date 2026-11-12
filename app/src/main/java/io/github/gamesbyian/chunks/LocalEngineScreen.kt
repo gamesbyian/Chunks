@@ -52,6 +52,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
@@ -324,6 +325,9 @@ internal fun LocalEngineScreen(
     listScroll: androidx.compose.foundation.ScrollState? = null,
     searchState: androidx.compose.runtime.MutableState<String>? = null,
     optionsSearchState: androidx.compose.runtime.MutableState<String>? = null,
+    optionsCategoryState: androidx.compose.runtime.MutableState<OptionsCategory?>? = null,
+    optionsReturnQueryState: androidx.compose.runtime.MutableState<String>? = null,
+    optionsIndexScrollState: androidx.compose.runtime.MutableState<Int>? = null,
     /**
      * Typed magnet draft held by the caller in process memory, so visiting All
      * environments or Seeding rules does not discard it. Never saved to
@@ -916,6 +920,33 @@ internal fun LocalEngineScreen(
     val namesRequester = remember { BringIntoViewRequester() }
     val optionsSearchHolder = optionsSearchState ?: rememberSaveable { mutableStateOf("") }
     var localOptionsSearch by optionsSearchHolder
+    val categoryHolder = optionsCategoryState ?: rememberSaveable { mutableStateOf<OptionsCategory?>(null) }
+    var optionsCategory by categoryHolder
+    val returnQueryHolder = optionsReturnQueryState ?: rememberSaveable { mutableStateOf("") }
+    var optionsReturnQuery by returnQueryHolder
+    val indexScrollHolder = optionsIndexScrollState ?: rememberSaveable { mutableStateOf(0) }
+    var optionsIndexScroll by indexScrollHolder
+    var optionsLaunchError by remember { mutableStateOf<String?>(null) }
+    fun returnToOptionsIndex() {
+        optionsLaunchError = null
+        optionsCategory = null
+        localOptionsSearch = optionsReturnQuery
+        scope.launch {
+            androidx.compose.runtime.withFrameNanos { }
+            scrollState.scrollTo(optionsIndexScroll)
+        }
+    }
+    fun openOptionsCategory(category: OptionsCategory) {
+        optionsLaunchError = null
+        optionsIndexScroll = scrollState.value
+        optionsReturnQuery = localOptionsSearch
+        localOptionsSearch = ""
+        optionsCategory = category
+        scope.launch { scrollState.scrollTo(0) }
+    }
+    androidx.activity.compose.BackHandler(pane == LocalPane.OPTIONS && optionsCategory != null) {
+        returnToOptionsIndex()
+    }
     var showBatchTools by rememberSaveable { mutableStateOf(false) }
     // Back from a local tool returns keyboard focus to the button that opened it.
     val seedingFocus = remember { androidx.compose.ui.focus.FocusRequester() }
@@ -2497,13 +2528,31 @@ internal fun LocalEngineScreen(
         } // Transfers presentation
         if (pane == LocalPane.OPTIONS) {
         // App-wide settings live behind a real Options destination.
-        Text("Options · this device", style = MaterialTheme.typography.titleLarge,
+        Text(optionsCategory?.title ?: "Options", style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 12.dp)
                 .bringIntoViewRequester(optionsRequester)
                 .semantics { heading() })
+        if (optionsCategory != null) OutlinedButton(onClick = ::returnToOptionsIndex,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("All options") }
         ClearableTransferSearchField(value = localOptionsSearch, onValueChange = { localOptionsSearch = it },
             label = "Search options")
+        optionsLaunchError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
+        }
+        if (optionsCategory == null || localOptionsSearch.isNotBlank()) {
+            OptionsCategory.entries.filter { localOptionsSearch.isBlank() || it.matches(localOptionsSearch) }
+                .forEach { category ->
+                    OptionsCategoryCard(category) {
+                        when (category) {
+                            OptionsCategory.CONNECTIONS -> onConnections?.invoke()
+                            OptionsCategory.ARTWORK -> onMediaSettings?.invoke()
+                            else -> openOptionsCategory(category)
+                        }
+                    }
+                }
+        }
         val privacyControlsHosted = io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current != null
         if (localOptionsSearch.isNotBlank()) {
             // Only entries whose screen or panel exists here; a result never changes a value.
@@ -2522,12 +2571,21 @@ internal fun LocalEngineScreen(
                     else -> true
                 }
             }
-            if (results.isEmpty()) Text("No matching option. Clear search to see all settings and tools.",
+            if (results.isEmpty() && OptionsCategory.entries.none { it.matches(localOptionsSearch) })
+                Text("No matching option. Clear search to see all settings and tools.",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
             results.forEach { shortcut ->
                 OutlinedButton(onClick = {
-                    localOptionsSearch = ""
+                    val external = shortcut in setOf(LocalOptionsShortcut.CONNECTIONS,
+                        LocalOptionsShortcut.SEEDING_RULES, LocalOptionsShortcut.MEDIA,
+                        LocalOptionsShortcut.CREATE_TORRENT, LocalOptionsShortcut.ZIP_REVIEW,
+                        LocalOptionsShortcut.DOWNLOAD_LOCATION, LocalOptionsShortcut.SERVER_PLACES,
+                        LocalOptionsShortcut.SERVER_ORGANIZE, LocalOptionsShortcut.SERVER_NAMES,
+                        LocalOptionsShortcut.SERVER_BACKUP)
+                    if (!external || shortcut in setOf(LocalOptionsShortcut.SEEDING_RULES,
+                            LocalOptionsShortcut.CREATE_TORRENT, LocalOptionsShortcut.ZIP_REVIEW))
+                        openOptionsCategory(shortcut.category)
                     when (shortcut) {
                         LocalOptionsShortcut.SEEDING_RULES -> onSeedingRules?.invoke()
                         LocalOptionsShortcut.MEDIA -> onMediaSettings?.invoke()
@@ -2569,16 +2627,11 @@ internal fun LocalEngineScreen(
         // comparisons) composed while filtering. Only the presentation and
         // accessibility tree are hidden; searching never destroys a draft.
         Column(
-            modifier = Modifier.fillMaxWidth().then(if (localOptionsSearch.isBlank()) Modifier
-                else Modifier.height(0.dp).clipToBounds().clearAndSetSemantics { }),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.fillMaxWidth().then(if (localOptionsSearch.isBlank() && optionsCategory != null) Modifier
+                else Modifier.height(0.dp).clipToBounds().focusProperties { canFocus = false }
+                    .clearAndSetSemantics { })
         ) {
-        if (onConnections != null) {
-            Text("Clients & environments", style = MaterialTheme.typography.titleMedium)
-            OutlinedButton(onClick = onConnections, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Manage connections and environments")
-            }
-        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.ABOUT) {
         if (remoteEnvironmentLabel != null && onRemotePlaces != null &&
             onRemoteOrganize != null && onRemoteNames != null && onRemoteSnapshot != null) {
             // The local Options route is independently privacy-gated from
@@ -2603,16 +2656,14 @@ internal fun LocalEngineScreen(
                 Text("Server inventory backup")
             }
         }
-        Text("Automation & media", style = MaterialTheme.typography.titleMedium)
+        } // server tools remain scoped to the authenticated account
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.SEEDING) {
         if (onSeedingRules != null) OutlinedButton(onClick = onSeedingRules,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(seedingReturnIntoView).focusRequester(seedingFocus)) {
             Text("Seeding rules…")
         }
-        if (onMediaSettings != null) OutlinedButton(onClick = onMediaSettings,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Artwork & media info…")
         }
-        Text("Privacy, security & bandwidth", style = MaterialTheme.typography.titleMedium)
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.PRIVACY) {
         io.github.gamesbyian.chunks.privacy.LocalPrivacyControls.current?.let { controls ->
             Column(Modifier.fillMaxWidth().bringIntoViewRequester(privacyRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { controls() }
         }
@@ -2663,7 +2714,13 @@ internal fun LocalEngineScreen(
                     style = MaterialTheme.typography.bodySmall)
             }
         }
-        Column(Modifier.fillMaxWidth().bringIntoViewRequester(speedRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { LocalSpeedLimits() }
+        } // privacy and network
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.SEEDING) {
+            Column(Modifier.fillMaxWidth().bringIntoViewRequester(speedRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) { LocalSpeedLimits() }
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.DOWNLOADS) {
+            if (onOpenAdd != null) OutlinedButton(onClick = onOpenAdd,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Download location and Save to…") }
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(restoreRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         LocalSnapshotRestorePreviewPanel(
             transfers = transfers,
@@ -2733,14 +2790,20 @@ internal fun LocalEngineScreen(
             }
         )
         } // restore anchor
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.ABOUT) {
         if (onCreateTorrent != null) OutlinedButton(onClick = onCreateTorrent,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(createReturnIntoView).focusRequester(createFocus)) {
             Text("Create a torrent…")
         }
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.DOWNLOADS) {
         if (onZipReview != null) OutlinedButton(onClick = onZipReview,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).bringIntoViewRequester(zipReturnIntoView).focusRequester(zipFocus)) {
             Text("Review ZIP archives…")
         }
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.ABOUT) {
         OutlinedButton(
             onClick = { showLocalTools = !showLocalTools },
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -2767,6 +2830,8 @@ internal fun LocalEngineScreen(
         )
         } // exports anchor
         }
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.DOWNLOADS) {
         Column(Modifier.fillMaxWidth().bringIntoViewRequester(namesRequester), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         CollectionNameManager(
             scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
@@ -2776,6 +2841,44 @@ internal fun LocalEngineScreen(
         )
         } // names anchor
         LocalZipInterruptedExtractions()
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.NOTIFICATIONS) {
+            val notificationsEnabled = remember(resumeTick, optionsCategory) {
+                androidx.core.app.NotificationManagerCompat.from(context).areNotificationsEnabled()
+            }
+            Text(if (notificationsEnabled) "Android allows notifications from Chunks."
+                else "Notifications are disabled in Android settings.")
+            Text("Android controls notification permissions and the Downloads on this device channel.",
+                style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = {
+                try {
+                    context.startActivity(android.content.Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
+                } catch (_: android.content.ActivityNotFoundException) {
+                    optionsLaunchError = "Android notification settings could not be opened."
+                }
+            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open Android notification settings") }
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.APPEARANCE) {
+            if (onCombined != null) OutlinedButton(onClick = onCombined,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Environment colours in Transfers…") }
+            if (onMediaSettings != null) OutlinedButton(onClick = onMediaSettings,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Artwork size and display…") }
+            Text("Chunks follows Android's text size. Transfer environment names remain visible alongside colours.",
+                style = MaterialTheme.typography.bodySmall)
+        }
+        OptionsSettingsGroup(optionsCategory == OptionsCategory.ABOUT) {
+            val appVersion = remember(context) {
+                context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+            }
+            Text("Chunks Torrent Client & Remote", style = MaterialTheme.typography.titleMedium)
+            Text("Version $appVersion", style = MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick = {
+                try { context.startActivity(android.content.Intent(android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://github.com/gamesbyian/Chunks"))) }
+                catch (_: android.content.ActivityNotFoundException) { optionsLaunchError = "No browser is available to open Chunks help." }
+            }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Help and project information") }
+        }
         } // full Options controls retained but visually hidden while searching
         } // Options presentation
     }

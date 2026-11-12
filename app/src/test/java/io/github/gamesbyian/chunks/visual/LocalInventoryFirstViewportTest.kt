@@ -57,7 +57,8 @@ class LocalInventoryFirstViewportTest {
         waitForWelcome()
         rule.onNodeWithContentDescription("Options").assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Options · this device").assertIsDisplayed()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.CONNECTIONS.tag).assertIsDisplayed()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.PRIVACY.tag).performScrollTo().performClick()
         // Privacy settings are an Option on this screen, not a pinned top row.
         rule.onNodeWithText("Privacy & authentication").performScrollTo().assertIsDisplayed()
         // The footer now enters the single canonical catalog in every mode.
