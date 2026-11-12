@@ -2,6 +2,10 @@
 
 **Use this file as instructions, not a CI diary.** Historical measurements, PRs, cost analyses and failed attempts are preserved in [CI-POLICY-HISTORY-2026-11-09.md](CI-POLICY-HISTORY-2026-11-09.md). Run-level results belong in [QUALITY-LEDGER](QUALITY-LEDGER.md). Required receipt schema and classification live in [CI-EVIDENCE-AND-RUNTIME-CONTRACT](CI-EVIDENCE-AND-RUNTIME-CONTRACT.md).
 
+## Batched exact-source validation (mandatory)
+
+Map each test to authoritative requirement, test intent, changed boundary and independent positive/negative witness. Batch cheap docs/static/affected JVM and compile checks; run targeted API29/API35/R8 or authorized real-peer tests for impacted Add, JNI, auth, identity, privacy, navigation, storage and lifecycle. One reconciled assembled candidate receives full native verifier, Android foundation, R8 and real-peer assurance, re-running gates invalidated by later changes. Build once and reuse only identical verified APK bytes. No emulator for docs-only and no duplicated full cross-branch WIP fanout. Diagnose red cases as product defect, obsolete literal/screenshot expectation, fixture or infrastructure without removing enduring assertions; a rerun alone never confers acceptance. Measure time to actionable failure, queue/setup/compile/emulator and redundant runner minutes separately. [Completion order](COMPLETION-ROADMAP.md).
+
 ## Select the smallest sufficient truthful checks
 
 1. Determine actual changed source files, runtime surface and dependency graph. Run offline format/docs/JVM tests first, then targeted instrumented Android/real disposable server and applicable R8 checks. Do not launch every emulator for a documentation-only change or add new workflows when an existing shard can carry the case.
