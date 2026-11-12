@@ -49,7 +49,7 @@ class LocalInventoryFirstViewportTest {
         rule.onNodeWithText("Search transfers on this device").assertDoesNotExist()
         rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
         rule.onNodeWithText("Batch tools").assertDoesNotExist()
-        rule.onNodeWithText("Options · this device").assertDoesNotExist()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.CONNECTIONS.tag).assertDoesNotExist()
         rule.onNodeWithText("Privacy & authentication").assertDoesNotExist()
     }
 
