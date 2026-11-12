@@ -1,5 +1,11 @@
 # Chunks active work queue
 
+## G-options. Solid-colour Options index (owner-approved visual target; planned)
+
+**Action:** Implement [the visual design contract](design/OPTIONS-SOLID-COLOUR-INDEX.md) for a compact rainbow **filled-card** index with eight ordered destinations (Connections, Downloads & storage, Seeding & limits, Artwork & metadata, Notifications, Appearance & accessibility, Privacy & network, About Chunks). Inventory and map every former top-level setting to the revised nesting and search aliases without duplicating underlying state or Connections administration. Preserve the wordmark/search, footer selection, scrolling, immediate-apply preferences and access semantics. Treat the reference image as visual inspiration; do not copy speculative quick toggles or framed wallpaper into app UI.
+
+**Dependencies:** Coordinate with current Options/navigation/Connections work; do not compete for those shared files. Prioritize alongside the next planned cohesive UX sweep after genuine P0 blockers; no fixed agent lane. **Exit:** installed primary-phone dark/light screenshots show filled cards, functional eight-destination/navigation/search mapping, contrast/TalkBack/IME/footer and persistence acceptance per [SPEC-COVERAGE](SPEC-COVERAGE.md). No implementation acceptance is implied by this documentation.
+
 **Execute the next unblocked task.** This file contains ranked tasks, owners, blockers, dependencies and exits, not historical progress. Put run/PR narrative in [QUALITY-LEDGER](QUALITY-LEDGER.md) and [work-queue history](WORK-QUEUE-HISTORY-2026-11-09.md). Re-fetch live main and all PR heads before acting. Follow the owner's current dispatch; [dispatch coordination](AGENT-LANES.md) prevents only actual concurrent edit conflicts. **Task categories below are not permanent agent assignments.**
 
 ## Current state and next unblocked work (12 November UTC)
