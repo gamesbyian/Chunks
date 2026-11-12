@@ -11,6 +11,18 @@ class XmlRpcCodecTest {
         assertEquals(4, "<param>".toRegex().findAll(request).count())
     }
 
+    @Test fun requestPreservesCarriageReturnAndRefusesUnrepresentableUnicode() {
+        val cr = XmlRpcCodec.request("d.custom1.set", listOf("a\rb"))
+        assertTrue(cr.contains("a&#13;b"))
+        assertEquals("a\rb", XmlRpcCodec.response(
+            "<methodResponse><params><param>" + cr.substringAfter("<param>").substringBefore("</param>") +
+                "</param></params></methodResponse>"))
+        assertTrue(XmlRpcCodec.request("x", listOf("\uD83D\uDE00")).contains("\uD83D\uDE00"))
+        for (bad in listOf("a\uFFFEb", "a\uFFFFb", "a\uD800b", "a\uDC00b", "a\u0000b")) {
+            assertThrows(IllegalArgumentException::class.java) { XmlRpcCodec.request("x", listOf(bad)) }
+        }
+    }
+
     @Test fun requestSerializesActualBinaryTorrentBytesNotUtf8Text() {
         val bytes = byteArrayOf(0, 1, 2, -1, -128, 65)
         val xml = XmlRpcCodec.request("load.raw_verbose", listOf("", bytes, "d.directory_base.set=/tmp"))
