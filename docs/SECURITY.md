@@ -55,7 +55,7 @@ Credentialed feeds, private torrents, QR/URLs, imported settings, certificate bu
 2. Chunks ↔ rTorrent RPC: the endpoint may permit execution as the torrent user's OS account. Do not expose generic RPC method invocation through UI, intents, external deep links, logs or plugins. Authenticate and minimize methods.
 3. Chunks ↔ companion or alternative remote filesystem provider: default deny outside configured roots. Authorize each operation by server-side identity, permission and current target state, not by client-supplied classification suggestions.
 4. User storage: active torrent backing bytes, resume/session state, library copies and metadata catalogs have distinct ownership and deletion rights.
-5. Third-party metadata, crash reports and telemetry: potentially reveal private content, trackers, file paths and behaviors. Local-first, opt-in and with inspectable redacted output.
+5. Third-party metadata, crash reports and telemetry: potentially reveal private content, trackers, file paths and behaviors. Local-first and explicitly user-controllable with inspectable redacted output; owner-authorized media title lookup is ON on fresh installs (with saved OFF respected), while crash telemetry, publication and other third-party disclosures retain their separate opt-in/authorization policies.
 
 ## Connection and credentials
 

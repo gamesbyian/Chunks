@@ -6,7 +6,7 @@
 
 1. Remove `TransferAutomaticMetadataToggle` from `TransferMediaDetailSection.kt` for **active transfers**. Keep the full Details correction and manual artwork picker.
 2. Put one default-checked “Automatically identify and fetch artwork & metadata” choice in the **single Universal Add** workflow, only when both global collection and display are enabled. Hide it when globally off. Reuse `AddArtworkChoice` and `TransferMediaController.prepareForAdd`; persist explicit exclusion *before admission* under exact `UnifiedTransferKey`.
-3. Make the **global artwork collection/display feature preference enabled by default** in Options, while keeping `onlineLookupConsent=false` until informed, revocable permission is obtained. An enabled global preference must never be mistaken for authorization to contact external providers.
+3. Make the **global artwork collection/display feature preference enabled by default** in Options, and sanitized online title lookup enabled by default for new installs, without an extra permission dialog. Respect explicitly saved OFF, privacy lock, provider configuration, network restrictions, sanitization and immediate revocation.
 4. Add phone/remote Add, Share/Open With, restore and rejection tests for checkbox placement, default, opt-out, commit failure and durable exact-job semantics.
 
 ## Trace why recognizable items have no posters
@@ -21,7 +21,7 @@
 
 - Native installed phone and authenticated rTorrent Add: default checked, disabled global hides choice, opt-out persists across process restart and saved server reconnect; active Details has **no toggle**.
 - Real authorized movie/year lookup: confidently matched media and actual poster appear in All/device/server lists and full Details without Identify taps. Repeat after restart, cached offline restore, and manual poster replacement.
-- Negative controls: no global consent, explicit exclusion, locked/offline/ambiguous title, unavailable provider, metered/power-saver policy, provider 401/429/cooldown, stale observation and two environments with same hash. Confirm no unauthorized outbound calls and no mutation of BitTorrent jobs or backing data.
+- Negative controls: explicit global online lookup OFF, exact-job exclusion, locked/offline/ambiguous title, unavailable provider, metered/power-saver policy, provider 401/429/cooldown, stale observation and two environments with same hash. Confirm no unauthorized outbound calls and no mutation of BitTorrent jobs or backing data.
 - Unit/provider fixture + real external-provider + installed screenshot/semantics tiers must be distinguished; test exact changed head and document outcomes in [QUALITY-LEDGER](QUALITY-LEDGER.md).
 
 ## Dispatch-based ownership and integration boundaries
