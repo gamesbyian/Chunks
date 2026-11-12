@@ -106,3 +106,5 @@ A user-facing promise goes in PRODUCT or its linked feature contract; screen beh
 - [Per-transfer home-screen widgets](PER-TRANSFER-HOME-WIDGETS.md): deferred P3, independent live indicator per transfer, launcher removal feasibility gate.
 
 - [Cross-media real-record/API verification](research/MEDIA-API-RECORD-EVIDENCE-2026-11-02.md): dated public credits and provider-specific API schema/quality caveats, with explicit gaps before live JSON and installed integration acceptance.
+
+**Local recovery:** [Foreign incomplete data at Add/Start](FOREIGN-PARTIAL-TORRENT-RECOVERY.md) governs automatic exact-path verification and optional safe cross-client filename recovery, distinct from [repair of an existing transfer's moved files](TRANSFER-FILE-RECOVERY.md). Implementation is planned; consult [WORK-QUEUE](WORK-QUEUE.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md) for current priority and acceptance.
