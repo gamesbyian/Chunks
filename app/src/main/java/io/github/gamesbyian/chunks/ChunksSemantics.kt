@@ -32,6 +32,11 @@ internal object ChunksSemantics {
     const val ADD_TARGET_DEVICE = "chunks.add.target.device"
     /** Inline Add-to choice for the one authenticated remote profile. */
     const val ADD_TARGET_REMOTE = "chunks.add.target.remote"
+    /** Remote Add effective Save to status (custom, saved default, rTorrent default or why none). */
+    /** The always-visible row of per-environment show/hide toggles above Transfers. */
+    const val TRANSFERS_ENVIRONMENT_TOGGLES = "chunks.transfers.environmentToggles"
+    const val ADD_REMOTE_SAVE_TO = "chunks.add.remote.saveTo"
+    const val ADD_REMOTE_SAVE_DEFAULT = "chunks.add.remote.saveDefault"
 
     /** The canonical Transfers list title. It also hosts the first-install Welcome. */
     const val TRANSFERS_HEADING = "chunks.transfers.heading"

@@ -165,7 +165,7 @@ class CombinedTransfersLargeTextTest {
         val list = rule.onNode(hasScrollToIndexAction())
         list.performScrollToNode(hasText("Environment colours…"))
         rule.onNodeWithText("Environment colours…").performClick()
-        val lastColour = "On this phone colour " + EnvironmentHue.entries.last().label
+        val lastColour = "On this device colour " + EnvironmentHue.entries.last().label
         list.performScrollToNode(hasContentDescription(lastColour))
         val swatch = rule.onNodeWithContentDescription(lastColour)
         val bounds = swatch.getUnclippedBoundsInRoot()

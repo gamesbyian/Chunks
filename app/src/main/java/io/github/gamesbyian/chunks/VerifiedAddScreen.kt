@@ -83,6 +83,10 @@ internal fun VerifiedAddScreen(
     onMutationStarted: () -> Boolean,
     onMutationSettled: () -> Unit,
     recentPlaces: List<String> = emptyList(),
+    /** The person's saved default Add folder for this exact account, if any. */
+    savedDefaultPlace: String? = null,
+    /** Saves (or with null clears) that per-account default. False when it could not be saved. */
+    onSaveDefaultPlace: (String?) -> Boolean = { false },
     /** Read-only paths observed on this exact current server; not a writable-folder probe. */
     observedPlaces: List<String> = emptyList(),
     /** Return whether the already-verified custom Place shortcut was persisted. */
@@ -242,17 +246,19 @@ internal fun VerifiedAddScreen(
     var finishInOrderAfterAdd by draft.finishInOrder
     var rechecking by remember { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
-    var configuredDefault by remember(remote) { mutableStateOf<String?>(null) }
-    var defaultReadComplete by remember(remote) { mutableStateOf(false) }
-
-    LaunchedEffect(remote) {
-        configuredDefault = try {
-            withContext(Dispatchers.IO) { remote.defaultDirectory() }
-        } catch (_: Exception) {
-            null
-        }
-        defaultReadComplete = true
+    // Typed, read-only discovery of rTorrent's own default. A late reply only fills this
+    // report; it never writes the person's per-Add folder or their saved default.
+    var defaultReport by remember(remote) {
+        mutableStateOf<io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport?>(null)
     }
+    var defaultReadRevision by remember(remote) { mutableStateOf(0) }
+    LaunchedEffect(remote, defaultReadRevision) {
+        defaultReport = null
+        defaultReport = withContext(Dispatchers.IO) { remote.defaultDirectoryReport() }
+    }
+    val configuredDefault = (defaultReport as?
+        io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Absolute)?.path
+    val defaultReadComplete = defaultReport != null
 
     var fromPhone by draft::fromPhone
     LaunchedEffect(initialTorrent, alreadyAttempted) {
@@ -353,12 +359,23 @@ internal fun VerifiedAddScreen(
         }
     }
     var invalidDestination = false
-    val useServerDefault = destination.isBlank()
-    val effectiveDestination = if (useServerDefault) configuredDefault.orEmpty() else destination
+    // Precedence: this Add's folder > the person's saved default for this exact account >
+    // rTorrent's reported absolute default. Never a guessed or fabricated path.
+    val usingSavedDefault = destination.isBlank() && savedDefaultPlace != null
+    val useServerDefault = destination.isBlank() && savedDefaultPlace == null
+    val effectiveDestination = when {
+        destination.isNotBlank() -> destination
+        savedDefaultPlace != null -> savedDefaultPlace
+        else -> configuredDefault.orEmpty()
+    }
+    val linkNeedsFetch = !useFile && sourceText.isNotBlank() &&
+        TorrentLinkCheck.inspect(sourceText) !is TorrentLinkCheck.NotALink
     var addGuidance = when {
-        useServerDefault && !defaultReadComplete -> "Checking the server's configured download folder…"
+        sourceText.isBlank() && !useFile -> "Add a magnet or torrent link, or open a .torrent, to continue."
+        linkNeedsFetch -> "Get the .torrent from this link first (Get torrent from link above)."
+        useServerDefault && !defaultReadComplete -> "Checking the server's default download folder…"
         useServerDefault && configuredDefault == null ->
-            "This server did not expose a usable default download folder. Enter an absolute server folder to proceed."
+            "Choose a server folder below to continue. " + remoteDefaultUnavailableReason(defaultReport)
         else -> "Enter a valid v1 magnet or select a .torrent file. The Place override is optional."
     }
     val plan = try {
@@ -572,21 +589,51 @@ internal fun VerifiedAddScreen(
             Text(when {
                 destination.isNotBlank() ->
                     "Using a custom folder for this Add only. The server's configured default remains unchanged."
+                usingSavedDefault ->
+                    "Using this server's saved default folder: " + savedDefaultPlace + "."
                 !defaultReadComplete -> "Reading rTorrent's configured default Place…"
                 configuredDefault != null ->
                     "Using rTorrent default Place: " + configuredDefault + ". No directory override will be sent."
                 else ->
-                    "No usable default Place was reported. Enter a custom absolute server folder before adding."
-            }, style = MaterialTheme.typography.bodySmall)
+                    "No usable default Place was reported. " + remoteDefaultUnavailableReason(defaultReport)
+            }, style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
+            if (destination.isBlank() && savedDefaultPlace == null && defaultReport ==
+                io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed) TextButton(
+                onClick = { defaultReadRevision++ }, enabled = !submitting && !alreadyAttempted,
+                modifier = Modifier.heightIn(min = 48.dp)
+            ) { Text("Check the server's default folder again") }
             RemoteDefaultPlaceResetControl(
-                show = destination.isNotBlank() && configuredDefault != null,
+                show = destination.isNotBlank() && (configuredDefault != null || savedDefaultPlace != null),
                 enabled = !submitting && !alreadyAttempted,
+                label = if (savedDefaultPlace != null) "Use this server's saved default folder"
+                    else "Reset to rTorrent default folder",
                 onReset = {
                     onDestination("")
                     // Re-review the resolved server default; no server mutation.
                     awaitingConfirmation = false
                 }
             )
+            val typedValid = destination.isNotBlank() && destination != savedDefaultPlace &&
+                runCatching { StoppedRemoteAddPlan.fromMagnet(
+                    "magnet:?xt=urn:btih:" + "0".repeat(40), destination) }.isSuccess
+            var defaultSaveProblem by remember { mutableStateOf<String?>(null) }
+            if (typedValid && !alreadyAttempted) TextButton(
+                onClick = {
+                    defaultSaveProblem = if (onSaveDefaultPlace(destination)) null
+                        else "That folder could not be saved as this server's default."
+                    if (defaultSaveProblem == null) { onDestination(""); awaitingConfirmation = false }
+                }, enabled = !submitting,
+                modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_REMOTE_SAVE_DEFAULT)
+            ) { Text("Always use this folder on this server") }
+            if (usingSavedDefault && !alreadyAttempted) TextButton(
+                onClick = {
+                    defaultSaveProblem = if (onSaveDefaultPlace(null)) null
+                        else "The saved default folder could not be cleared."
+                }, enabled = !submitting, modifier = Modifier.heightIn(min = 48.dp)
+            ) { Text("Stop using a saved default folder") }
+            defaultSaveProblem?.let { Text(it, color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall) }
         }
 
         if (!alreadyAttempted && plan != null) item {
@@ -679,18 +726,12 @@ internal fun VerifiedAddScreen(
                 awaitingConfirmation = false
             }
         }
-        if (!alreadyAttempted && plan == null) {
-            item {
-                Text(addGuidance,
-                    color = if (invalidDestination) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.bodyMedium)
-            }
-        }
-        if (plan != null && !alreadyAttempted) {
+        // The one Add action is ALWAYS present before an attempt. When it cannot be used yet it
+        // is shown disabled with the exact unmet requirement, never silently omitted.
+        if (!alreadyAttempted) {
             // Finish-in-order is eligible only for multi-file .torrent sources.
             val fioStore = finishInOrderStore
-            if (fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2) item {
+            if (plan != null && fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2) item {
                 FinishInOrderAddChoice(
                     "Finish in Order: the first episode or numbered file gets High, then the next " +
                         "(set before downloading starts; advances while Chunks is open and connected)",
@@ -703,6 +744,7 @@ internal fun VerifiedAddScreen(
                     Button(
                         onClick = addClick@{
                             if (externalSourceReading) return@addClick
+                            val plan = plan ?: return@addClick
                             // Both authorization and the one-shot ticket are acquired
                             // synchronously on the explicit Add click, before any
                             // suspending source, metadata or network operation.
@@ -873,11 +915,17 @@ internal fun VerifiedAddScreen(
                                 outcome = "Add could not be authorized for this exact server. Refresh the connection and review again; nothing was submitted."
                             }
                         },
-                        enabled = !submitting && !choosing && !externalSourceReading &&
+                        enabled = plan != null && !submitting && !choosing && !externalSourceReading &&
                             validUniversalAddAlias(addAliasState?.value.orEmpty()),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                             .testTag(ChunksSemantics.ADD_SUBMIT)
+                            .semantics { if (plan == null) stateDescription = "Unavailable: " + addGuidance }
                     ) { Text("Add transfer") }
+                    if (plan == null) Text(addGuidance,
+                        color = if (invalidDestination) MaterialTheme.colorScheme.error
+                                else MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 6.dp))
                 }
         }
         if (outcome != null) {
@@ -1175,13 +1223,32 @@ internal fun RecentRemotePlaces(
 internal fun RemoteDefaultPlaceResetControl(
     show: Boolean,
     enabled: Boolean,
+    label: String = "Reset to rTorrent default folder",
     onReset: () -> Unit
 ) {
     if (show) TextButton(
         onClick = onReset, enabled = enabled,
         modifier = Modifier.heightIn(min = 48.dp)
-            .semantics { contentDescription = "Use rTorrent default save folder for this Add" }
-    ) { Text("Reset to rTorrent default folder") }
+            .semantics { contentDescription = if (label == "Reset to rTorrent default folder")
+                "Use rTorrent default save folder for this Add"
+                else "Use this server's saved default folder for this Add" }
+    ) { Text(label) }
+}
+
+/** Why no default folder can be used, distinguishing unset, relative, unsupported and failed. */
+internal fun remoteDefaultUnavailableReason(
+    report: io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport?
+): String = when (report) {
+    io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unset ->
+        "rTorrent has no default download folder configured. Choose a folder once and tap " +
+            "\"Always use this folder on this server\"."
+    io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.NotAbsolute ->
+        "rTorrent's default folder is a relative path, so Chunks cannot confirm where files would go. Choose an absolute folder."
+    io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unsupported ->
+        "This rTorrent does not report a default download folder. Choose a folder."
+    io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed ->
+        "The server's default folder could not be read (connection or permission). Check again, or choose a folder."
+    else -> "Choose an absolute server folder."
 }
 
 /** Scope stays visible before someone chooses a magnet, file or destination. */

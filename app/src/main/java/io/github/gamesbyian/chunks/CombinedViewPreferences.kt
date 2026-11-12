@@ -52,7 +52,8 @@ internal class CombinedViewPreferences(context: Context) {
         fun encode(query: UnifiedTransferQuery): String {
             val scope = when (val s = query.scope) {
                 EnvironmentViewScope.All -> "*"
-                is EnvironmentViewScope.Only -> s.ids.map { it.value }.sorted().joinToString(",")
+                is EnvironmentViewScope.Only ->
+                    if (s.ids.isEmpty()) "-" else s.ids.map { it.value }.sorted().joinToString(",")
             }
             return listOf(scope, query.sortKey.name, query.direction.name,
                 if (query.groupByEnvironment) "1" else "0", query.filter.name).joinToString(";")
@@ -62,7 +63,8 @@ internal class CombinedViewPreferences(context: Context) {
         fun decode(raw: String?): UnifiedTransferQuery {
             val parts = raw?.split(';')?.takeIf { it.size == 4 || it.size == 5 }
                 ?: return UnifiedTransferQuery()
-            val scope = if (parts[0] == "*") EnvironmentViewScope.All else {
+            val scope = if (parts[0] == "*") EnvironmentViewScope.All
+            else if (parts[0] == "-") EnvironmentViewScope.Only(emptySet()) else {
                 val raw = parts[0].split(',')
                 // One unreadable ID means the saved subset is not what was chosen: use the default.
                 if (raw.isEmpty() || raw.any { !TransferListSortStore.validEnvironment(it) } ||

@@ -2,6 +2,8 @@ package io.github.gamesbyian.chunks
 
 import android.app.Activity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import android.content.Context
 import android.content.ContextWrapper
 import android.view.WindowManager
@@ -1237,23 +1239,38 @@ internal fun CombinedTransfersScreen(
                 )
             }
         }
-        if (showingViewOptions) item {
-            Text("Show", style = MaterialTheme.typography.labelLarge)
-            FlowRow(Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                FilterChip(selected = query.scope == EnvironmentViewScope.All,
-                    onClick = { update(query.copy(scope = EnvironmentViewScope.All)) },
-                    label = { Text("All") }, modifier = Modifier.heightIn(min = 48.dp))
+        // One persistent row of environment toggles, always visible above the list: no
+        // Filters panel, Apply or Hide step. Each toggles only its own environment.
+        if (!firstRunVisible) item(key = "environment-toggles") {
+            val available = labels.keys.toSet()
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                .testTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 labels.forEach { (id, label) ->
-                    val scope = query.scope
-                    val selected = scope is EnvironmentViewScope.Only && id in scope.ids
-                    FilterChip(selected = selected, onClick = {
-                        update(query.copy(scope = toggleScope(scope, id)))
-                    }, label = { Text(rowLabels[id] ?: label) }, leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
-                        modifier = Modifier.heightIn(min = 48.dp))
+                    val visible = environmentVisible(query.scope, id)
+                    val availability = sourcesByEnvironment[id]?.availability
+                    val unavailable = availability == EnvironmentAvailability.OFFLINE ||
+                        availability == EnvironmentAvailability.LOCKED
+                    val shortName = environmentToggleName(id, rowLabels[id] ?: label)
+                    FilterChip(selected = visible,
+                        onClick = { update(query.copy(scope =
+                            toggleEnvironmentVisibility(query.scope, id, available))) },
+                        label = { Text(shortName + when (availability) {
+                            EnvironmentAvailability.OFFLINE -> " · offline"
+                            EnvironmentAvailability.LOCKED -> " · locked"
+                            else -> ""
+                        }, maxLines = 1) },
+                        leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
+                        modifier = Modifier.heightIn(min = 48.dp).semantics {
+                            contentDescription = (if (visible) "Showing " else "Hidden: ") + label +
+                                (if (unavailable) ", currently unavailable" else "")
+                        })
                 }
             }
+            if (query.scope == EnvironmentViewScope.Only(emptySet())) Text(
+                "No environments are selected. Tap one above to show its transfers.",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 4.dp))
         }
         item {
             ClearableTransferSearchField(
@@ -1652,6 +1669,31 @@ internal fun restoreCombinedDetailTarget(saved: List<String>?): UnifiedTransferK
     saved?.takeIf { it.size == 2 }?.let { parts ->
         runCatching { UnifiedTransferKey.of(EnvironmentId(parts[0]), parts[1]) }.getOrNull()
     }
+
+/**
+ * The persistent environment toggle row: every available environment is shown under All;
+ * tapping one hides or shows only that environment. Re-selecting every available one returns
+ * to dynamic All (so a newly added connection joins it); hiding all is an explicit empty view.
+ */
+internal fun toggleEnvironmentVisibility(
+    scope: EnvironmentViewScope, id: EnvironmentId, available: Set<EnvironmentId>
+): EnvironmentViewScope {
+    val visible = when (scope) {
+        EnvironmentViewScope.All -> available
+        is EnvironmentViewScope.Only -> scope.ids
+    }
+    val next = if (id in visible) visible - id else visible + id
+    return if (available.isNotEmpty() && next.containsAll(available)) EnvironmentViewScope.All
+        else EnvironmentViewScope.Only(next)
+}
+
+/** Compact toggle text: the device, or a server's short profile name without its prefix. */
+internal fun environmentToggleName(id: EnvironmentId, label: String): String =
+    if (id == EnvironmentSnapshots.PHONE) PHONE_ENVIRONMENT_LABEL
+    else label.removePrefix("Server · ").trim().ifEmpty { label }
+
+internal fun environmentVisible(scope: EnvironmentViewScope, id: EnvironmentId): Boolean =
+    scope == EnvironmentViewScope.All || (scope is EnvironmentViewScope.Only && id in scope.ids)
 
 /** All → only the tapped environment; otherwise toggle, and an emptied subset returns to All. */
 internal fun toggleScope(scope: EnvironmentViewScope, id: EnvironmentId): EnvironmentViewScope = when (scope) {

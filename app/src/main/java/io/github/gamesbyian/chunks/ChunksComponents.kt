@@ -237,7 +237,7 @@ internal fun serverEnvironmentLabel(aliasScope: String): String {
     return "Server · " + (if (user.isEmpty()) address else "$user @ $address")
 }
 
-internal const val PHONE_ENVIRONMENT_LABEL = "On this phone"
+internal const val PHONE_ENVIRONMENT_LABEL = "On this device"
 
 /**
  * States exactly which environment a setting applies to (UNIFIED-ENVIRONMENTS

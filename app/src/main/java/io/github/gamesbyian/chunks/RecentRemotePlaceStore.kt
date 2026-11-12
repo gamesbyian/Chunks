@@ -42,6 +42,23 @@ internal class RecentRemotePlaceStore(context: Context) {
         prefs.edit().putString(prefKey, packed).commit()
     }
 
+    /**
+     * The person's saved default Add folder for this exact account, used when they leave
+     * the per-Add folder empty. It outranks rTorrent's own `directory.default` and is still
+     * sent as an explicit `d.directory.set` with the ordinary exact readback.
+     */
+    fun savedDefault(scope: String): String? = synchronized(lock) {
+        prefs.getString(key(scope) + "_default", null)?.takeIf(::validParent)
+    }
+
+    /** Null clears it. Returns false on an invalid path or persistence failure. */
+    fun setSavedDefault(scope: String, parent: String?): Boolean = synchronized(lock) {
+        val prefKey = key(scope) + "_default"
+        if (parent == null) prefs.edit().remove(prefKey).commit()
+        else if (!validParent(parent)) false
+        else prefs.edit().putString(prefKey, parent).commit()
+    }
+
     private fun decode(value: String?): List<String> {
         if (value == null || value.length !in 2..(MAX_RECENT * 1150)) return emptyList()
         return try {

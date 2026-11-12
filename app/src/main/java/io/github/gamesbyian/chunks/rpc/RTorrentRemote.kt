@@ -212,6 +212,42 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      * The server's configured default download directory (read-only). Used only
      * to *suggest* a Place; Adds still require an explicit user-confirmed path.
      */
+    /** What rTorrent reported for `directory.default`, kept distinct for honest Add guidance. */
+    sealed class DefaultDirectoryReport {
+        /** A literal absolute path Chunks can send nothing for and verify exactly after Add. */
+        data class Absolute(val path: String) : DefaultDirectoryReport()
+        /** Empty: rTorrent has no configured default download folder (seen on hosted seedboxes). */
+        object Unset : DefaultDirectoryReport()
+        /** Relative or `~`-prefixed: rTorrent resolves it itself, so Chunks cannot verify it. */
+        object NotAbsolute : DefaultDirectoryReport()
+        /** This rTorrent does not offer the getter. */
+        object Unsupported : DefaultDirectoryReport()
+        /** Transport, authentication or permission failure: unknown, retryable. */
+        object Failed : DefaultDirectoryReport()
+    }
+
+    /** Read-only classification of `directory.default`; never throws except cancellation. */
+    suspend fun defaultDirectoryReport(): DefaultDirectoryReport {
+        val value = try {
+            call("directory.default")
+        } catch (cancel: kotlinx.coroutines.CancellationException) {
+            throw cancel
+        } catch (fault: RpcFault) {
+            return if (fault.isUnsupportedOptionalGetter()) DefaultDirectoryReport.Unsupported
+                else DefaultDirectoryReport.Failed
+        } catch (_: Exception) {
+            return DefaultDirectoryReport.Failed
+        }
+        val raw = value as? String ?: return DefaultDirectoryReport.Failed
+        if (raw.isEmpty()) return DefaultDirectoryReport.Unset
+        val path = raw.takeIf {
+            it.startsWith("/") && it.length <= 4096 &&
+                it.none { ch -> ch.code < 32 || ch.code == 127 }
+        } ?: return if (raw.none { it.code < 32 || it.code == 127 })
+            DefaultDirectoryReport.NotAbsolute else DefaultDirectoryReport.Failed
+        return DefaultDirectoryReport.Absolute(path.trimEnd('/').ifEmpty { "/" })
+    }
+
     suspend fun defaultDirectory(): String? {
         val value = try {
             call("directory.default")

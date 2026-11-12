@@ -8,7 +8,7 @@ import org.junit.Test
 /** Tests only existing screen discovery; there is no new settings authority. */
 class OptionsDestinationSearchTest {
     private val routes = listOf(
-        "Transfers", "On this phone", "Places", "Organize", "Server",
+        "Transfers", "On this device", "Places", "Organize", "Server",
         "ZIP review", "Create"
     )
 
@@ -21,7 +21,7 @@ class OptionsDestinationSearchTest {
         assertEquals(listOf("Places"), routes.filter { optionsDestinationMatches(it, "folder") })
         assertEquals(listOf("ZIP review"), routes.filter { optionsDestinationMatches(it, "archive") })
         assertEquals(listOf("Organize"), routes.filter { optionsDestinationMatches(it, "collections") })
-        assertTrue(optionsDestinationMatches("On this phone", "local storage"))
+        assertTrue(optionsDestinationMatches("On this device", "local storage"))
         assertTrue(optionsDestinationMatches("Transfers", "torrent list"))
     }
 
