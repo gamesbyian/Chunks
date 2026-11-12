@@ -46,11 +46,22 @@ def verify_dir(folder: Path, names: tuple[str, ...]) -> None:
             raise ContractError(f"Bad PNG header: {name}")
 
 
-def preflight() -> tuple[str, ...]:
-    names = capture_names(PRODUCER.read_text(encoding="utf-8"))
-    runner = (ROOT / "tools/run_compose_system_font_200pct.sh").read_text(encoding="utf-8")
+def verify_wiring(source: str, runner: str) -> None:
+    if '"chunks-compose-200pct-$name.png"' not in source:
+        raise ContractError("Screenshot producer filename prefix changed")
+    if 'Environment.DIRECTORY_PICTURES + "/ChunksCompose200Pct"' not in source:
+        raise ContractError("Screenshot producer directory changed")
+    if "adb pull /sdcard/Pictures/ChunksCompose200Pct/." not in runner:
+        raise ContractError("Screenshot collector directory changed")
     if "check_compose_capture_contract.py --verify-dir" not in runner:
         raise ContractError("Artifact consumer is detached from producer contract")
+
+
+def preflight() -> tuple[str, ...]:
+    source = PRODUCER.read_text(encoding="utf-8")
+    names = capture_names(source)
+    runner = (ROOT / "tools/run_compose_system_font_200pct.sh").read_text(encoding="utf-8")
+    verify_wiring(source, runner)
     return names
 
 
