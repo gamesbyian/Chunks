@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.model
 
+import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import java.util.Locale
@@ -46,7 +47,13 @@ data class UnifiedTransferObservation(
     /** Optional server-reported all-time ratio. Unknown is never treated as zero. */
     val ratioThousandths: Long? = null,
     /** Engine-reported save folder only. Not proof of file existence or write authority. */
-    val reportedSaveFolder: String? = null
+    val reportedSaveFolder: String? = null,
+    /**
+     * The engine is hash-checking already-present payload bytes before downloading
+     * (libtorrent checking state). True only while that check runs; null when the source
+     * cannot report it. Never a claim about how many bytes will prove reusable.
+     */
+    val checkingExistingData: Boolean? = null
 ) {
     init {
         require(sizeBytes == null || sizeBytes >= 0)
@@ -138,7 +145,8 @@ object UnifiedTransferObservations {
             addedAtEpochMillis = item.addedAtEpochMillis,
             hasError = !item.error.isNullOrBlank(),
             metadataPending = !item.metadataKnown,
-            reportedSaveFolder = item.savePath.takeIf { it.isNotBlank() }
+            reportedSaveFolder = item.savePath.takeIf { it.isNotBlank() },
+            checkingExistingData = item.state == LocalTransferState.CHECKING
         )
 
     fun fromRTorrent(environment: EnvironmentId, item: RemoteTransfer) =

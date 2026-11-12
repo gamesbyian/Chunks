@@ -429,6 +429,85 @@ class LocalTorrentEngineTest {
         }
     }
 
+    /**
+     * FOREIGN-PARTIAL-TORRENT-RECOVERY P0: a pre-existing exact-path payload whose
+     * first half is valid and whose tail is absent (a short file left by another client or
+     * an interrupted download) must be hash-verified and reused, never re-downloaded or
+     * trusted by size. One corrupted piece inside the valid half must be re-fetched.
+     */
+    private class PartialFixture(val fixture: Fixture, val destination: File, val payload: File,
+                                 val pieceSize: Int, val reusablePieces: Int, val corruptedPiece: Int)
+
+    private fun partialExactPathFixture(name: String): PartialFixture {
+        val fixture = fixture()
+        val destination = temp.newFolder(name)
+        val original = fixture.files.getValue("episode.bin")
+        val pieceSize = 64 * 1024
+        // The first half of episode.bin, whole pieces only, is already present.
+        val keptPieces = original.size / pieceSize / 2
+        val kept = original.copyOf(keptPieces * pieceSize)
+        val corruptedPiece = keptPieces / 2
+        for (i in 0 until 64) kept[corruptedPiece * pieceSize + 100 + i] = (kept[corruptedPiece * pieceSize + 100 + i] + 1).toByte()
+        val payload = File(destination, "Chunks public fixture/episode.bin")
+        assertTrue(payload.parentFile.mkdirs())
+        payload.writeBytes(kept)
+        return PartialFixture(fixture, destination, payload, pieceSize, keptPieces - 1, corruptedPiece)
+    }
+
+    private fun assertPartialReused(engine: LocalTorrentEngine, hash: String, partial: PartialFixture,
+                                    seederPort: Int) {
+        assertTrue(engine.connectPeer(hash, InetSocketAddress("127.0.0.1", seederPort)))
+        requireFlushed(engine, hash)
+        val original = partial.fixture.files.getValue("episode.bin")
+        assertArrayEquals("Missing tail and the corrupted piece must be fetched; valid pieces kept",
+            original, partial.payload.readBytes())
+        assertArrayEquals(partial.fixture.files.getValue("extras/notes.txt"),
+            File(partial.destination, "Chunks public fixture/extras/notes.txt").readBytes())
+        val done = requireNotNull(engine.status(hash))
+        val reusable = partial.reusablePieces.toLong() * partial.pieceSize
+        val total = partial.fixture.files.values.sumOf { it.size.toLong() }
+        waitFor { (engine.status(hash)?.payloadDownloadedBytes ?: 0L) > 0L }
+        val downloaded = requireNotNull(engine.status(hash)).payloadDownloadedBytes
+        assertTrue("Verified existing pieces must not be downloaded again: " +
+            "downloaded=$downloaded total=$total reusable=$reusable",
+            downloaded <= total - reusable + partial.pieceSize)
+        assertEquals(1_000_000, done.progressPpm)
+    }
+
+    @Test fun checkedAddReusesVerifiedExistingPartialPayloadAndRefetchesOnlyMissingPieces() {
+        val partial = partialExactPathFixture("partial-exact-path-in-session")
+        val seeder = engine()
+        val source = added(seeder.addStopped(partial.fixture.torrent, partial.fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(source.infoHash).outcome)
+        waitFor { seeder.status(source.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val receiver = engine()
+        val checked = added(receiver.addStoppedChecked(partial.fixture.torrent, partial.destination))
+        assertEquals("Add stopped must not download or claim progress by size", 0, checked.progressPpm)
+        assertEquals(LocalCommandOutcome.VERIFIED, receiver.resume(checked.infoHash).outcome)
+        assertPartialReused(receiver, checked.infoHash, partial, seeder.listenPort())
+    }
+
+    @Test fun restartedCheckedAddStillVerifiesExistingPartialPayloadInsteadOfTrustingInitialResume() {
+        val partial = partialExactPathFixture("partial-exact-path-restart")
+        val seeder = engine()
+        val source = added(seeder.addStopped(partial.fixture.torrent, partial.fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(source.infoHash).outcome)
+        waitFor { seeder.status(source.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val state = temp.newFolder("partial-exact-path-state")
+        val first = persistentEngine(state)
+        val checked = added(first.addStoppedChecked(partial.fixture.torrent, partial.destination))
+        // Process death right after Add: only the initial zero-piece resume snapshot exists.
+        first.close()
+        val restarted = persistentEngine(state)
+        assertTrue(restarted.restoreProblems.isEmpty())
+        val restored = requireNotNull(restarted.status(checked.infoHash))
+        assertTrue(restored.stopped)
+        assertEquals(LocalCommandOutcome.VERIFIED, restarted.resume(checked.infoHash).outcome)
+        assertPartialReused(restarted, checked.infoHash, partial, seeder.listenPort())
+    }
+
     @Test fun refusesDuplicatesInvalidMetadataAndUnchosenFolders() {
         val fixture = fixture()
         val engine = engine()

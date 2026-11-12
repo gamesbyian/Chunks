@@ -2956,7 +2956,7 @@ internal fun LocalAddReview(
 private fun stateLabel(transfer: LocalTransferStatus): String = when {
     transfer.error != null -> "Error"
     transfer.stopped -> "Stopped"
-    transfer.state == LocalTransferState.CHECKING -> "Checking files"
+    transfer.state == LocalTransferState.CHECKING -> "Checking existing data"
     !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching metadata"
     transfer.state == LocalTransferState.DOWNLOADING -> "Downloading"
     transfer.state == LocalTransferState.SEEDING || transfer.state == LocalTransferState.FINISHED -> "Sharing"

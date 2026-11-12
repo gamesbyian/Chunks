@@ -18,7 +18,9 @@ import io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot
  */
 class AuthorizedMediaInventorySnapshot private constructor(
     val entries: List<Pair<MediaTransferKey, String>>,
-    private val witnesses: Map<MediaTransferKey, Witness>
+    private val witnesses: Map<MediaTransferKey, Witness>,
+    /** The privacy lifecycle/policy generation every witness in this snapshot was built under. */
+    val privacyEpoch: String
 ) {
     // A privacy lifecycle/policy revision invalidates every old provider request.
     // Reopening the identical account/title cannot resurrect pre-lock authority.
@@ -32,8 +34,10 @@ class AuthorizedMediaInventorySnapshot private constructor(
     // must NOT restart on every periodic read of the same authenticated account.
     override fun equals(other: Any?): Boolean =
         other is AuthorizedMediaInventorySnapshot &&
-            entries == other.entries && witnesses == other.witnesses
-    override fun hashCode(): Int = 31 * entries.hashCode() + witnesses.hashCode()
+            entries == other.entries && witnesses == other.witnesses &&
+            privacyEpoch == other.privacyEpoch
+    override fun hashCode(): Int =
+        31 * (31 * entries.hashCode() + witnesses.hashCode()) + privacyEpoch.hashCode()
 
     fun stillAuthorizes(key: MediaTransferKey, current: AuthorizedMediaInventorySnapshot): Boolean =
         witnesses[key]?.let { it == current.witnesses[key] } ?: false
@@ -46,7 +50,7 @@ class AuthorizedMediaInventorySnapshot private constructor(
             // Multiple snapshots claiming one environment would make profile identity
             // ambiguous. Fail the entire projection closed rather than guess.
             if (sources.map { it.environment }.toSet().size != sources.size)
-                return AuthorizedMediaInventorySnapshot(emptyList(), emptyMap())
+                return AuthorizedMediaInventorySnapshot(emptyList(), emptyMap(), privacyEpoch)
             val found = LinkedHashMap<MediaTransferKey, Witness>()
             val names = LinkedHashMap<MediaTransferKey, String>()
             for (source in sources) {
@@ -64,7 +68,7 @@ class AuthorizedMediaInventorySnapshot private constructor(
                     names[key] = job.originalName
                 }
             }
-            return AuthorizedMediaInventorySnapshot(names.map { it.key to it.value }, found)
+            return AuthorizedMediaInventorySnapshot(names.map { it.key to it.value }, found, privacyEpoch)
         }
     }
 }
