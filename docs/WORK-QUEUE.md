@@ -17,6 +17,13 @@
 
 **Exit for this section:** each item merged with exact-head evidence or recorded as blocked with its reason.
 
+
+## G-local. Recover existing partial bytes during local Add/Start (planned, not accepted)
+
+**Action:** Implement [foreign partial-data recovery](FOREIGN-PARTIAL-TORRENT-RECOVERY.md) without launching another engine or weakening the current Add, resume and storage gates. First (P0) guarantee native piece verification and correct fresh resume authority for ordinary pre-existing exact-path files on Add/re-add/Start, including sparse/preallocated, corrupt and state-loss cases. Next (P1) recognize common other-client temporary suffixes/incomplete directories and gate any mapping or filename mutation on capability/explicit approval. Later (P2) consider version-proven auxiliary partfiles/control-state import. Preserve user's Start when added choice and default Chunks Downloads root; no automatic cross-client scanning outside the authorized Place.
+
+**Dependency:** Coordinate with live native Add/SQLite resume and Universal Add owners; do not alter shared execution paths from documentation alone. **Exit:** verified pieces reused, only missing pieces downloaded, no incorrect seeding or lost existing data, restart and stopped-state correctness, exact-head real-peer and installed API29/API35 plus physical acceptance separately recorded in [SPEC-COVERAGE](SPEC-COVERAGE.md). This is a queued feature, not a newly declared G0 release blocker or a permanent agent assignment.
+
 ## G0. Protect merged naming and release identity
 
 **Action:** Treat qualified #1457 branding as integrated; enforce Android short **Chunks**, full **Chunks Torrent Client & Remote**, visual **chunks.** and distinct preview labels in all *future* changes. Check actual merged-manifest labels on the next assembled installed APK; a source-level naming change does not create a Play listing.
