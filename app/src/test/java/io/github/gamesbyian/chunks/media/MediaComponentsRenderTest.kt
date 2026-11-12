@@ -193,7 +193,7 @@ class MediaComponentsRenderTest {
     }
 
     @Test fun privacySettingsPanel() {
-        var latest by androidx.compose.runtime.mutableStateOf(MediaPrivacySettings())
+        var latest by androidx.compose.runtime.mutableStateOf(MediaPrivacySettings(onlineLookupConsent = false))
         val providers = listOf(TvMazeProvider(), TmdbProvider { null }, MusicBrainzProvider(), OpenLibraryProvider()).map { it.info }
         rule.setContent { ChunksTheme { Surface { Column(Modifier.background(ChunksColors.Background).padding(12.dp).verticalScroll(rememberScrollState())) {
             MediaPrivacySettingsPanel(latest, providers, configured = { false }, onChange = { latest = it }, onSetProviderKey = { _, _ -> },

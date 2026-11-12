@@ -165,6 +165,21 @@ class ClickStageDiagnosticTests(unittest.TestCase):
                       "click-", "magnet:?xt=urn:btih:abc", "stop-transfer"):
             self.assertFalse(_SAFE_CLICK_STAGE.fullmatch(stage), stage)
 
+    def test_details_timeout_state_is_reported_only_in_its_fixed_vocabulary(self):
+        data = {
+            "runner": {"failed_tests": 1, "runner_finished": True},
+            "app_stage_evidence": ["click-back-to-transfers", "click-details-row",
+                                   "details-timeout-rows=1-expanded=0-catalog=1"],
+        }
+        detail = safe_failure_diagnostic(data, peer_valid=True, control_preserved=True)
+        self.assertEqual("details-timeout-rows=1-expanded=0-catalog=1", detail["last_ui_stage"])
+        for stage in ("details-timeout-rows=1-expanded=0-catalog=1/private",
+                      "details-timeout-rows=abcd-expanded=0-catalog=1",
+                      "details-timeout-rows=1-expanded=2-catalog=1", "details-timeout"):
+            data["app_stage_evidence"] = ["click-details-row", stage]
+            self.assertEqual("click-details-row",
+                             safe_failure_diagnostic(data, peer_valid=True, control_preserved=True)["last_ui_stage"], stage)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -23,7 +23,11 @@ POM = (
 def fake_jar():
     content = BytesIO()
     with zipfile.ZipFile(content, "w") as z:
-        z.writestr("android/Build.class", b"bytecode-fixture")
+        # A fixed entry timestamp keeps every fixtures() call byte-identical: ZipFile
+        # otherwise stamps the local DOS time, so two calls that straddle a two-second
+        # boundary differ by one header byte (check run 43229912086 on 12 November).
+        entry = zipfile.ZipInfo("android/Build.class", date_time=(2026, 1, 1, 0, 0, 0))
+        z.writestr(entry, b"bytecode-fixture")
     return content.getvalue()
 
 

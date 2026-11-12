@@ -454,6 +454,13 @@ class PhoneIntakeJourneyInstrumentedTest {
         assumeTrue("Run with tools/phone_intake_journey.sh",
             arguments.getString("chunksIntakePhase") == "delete")
         configurePermissions()
+        // Fixed-vocabulary progress markers: an intermittent process crash (Compose
+        // measure/layout during draw, run 43169696534) otherwise leaves only
+        // "Process crashed" with no indication of which production step was active.
+        fun deleteStage(stage: String) {
+            require(stage.matches(Regex("[a-z-]+")))
+            android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_DELETE_STAGE $stage")
+        }
         assertNull("Harness must begin in a fresh process", LocalEngineHolder.current())
         work.deleteRecursively()
         assertTrue(work.mkdir())
@@ -491,6 +498,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                 val target = File(publicRoot, name)
                 ActivityScenario.launch<MainActivity>(input).use {
                     waitForText("Saves to: Downloads/Chunks Downloads")
+                    deleteStage("share-review")
                     assertFalse("Review cannot create payload", target.exists())
                     click("Add transfer")
                     await("real UI registered the exact native job", 30) {
@@ -504,17 +512,21 @@ class PhoneIntakeJourneyInstrumentedTest {
                     }
                     assertTrue(phone.flushCompletedForLibraryRead(hash, 30_000))
                     assertPublicBytes(target, payload, "before delete-data")
+                    deleteStage("downloaded")
                     // The Share review stays on Add; the verified job and
                     // lifecycle controls live only in device Transfers.
                     click("Transfers")
                     enterDeviceControlsFromCatalog()
                     waitForText("100% ·", substring = true)
+                    deleteStage("device-controls")
                     click("Stop")
                     await("UI Stop readback") { phone.status(hash)?.stopped == true }
+                    deleteStage("stopped")
                     // L5 first: keep-data Remove, then re-add the SAME hash.
                     click("Remove…")
                     click("Remove transfer, keep data")
                     await("keep-data session removal") { phone.status(hash) == null }
+                    deleteStage("keep-data-removed")
                     assertPublicBytes(target, payload, "after keep-data Remove")
                 }
                 val phone = requireNotNull(LocalEngineHolder.current())
@@ -533,6 +545,7 @@ class PhoneIntakeJourneyInstrumentedTest {
                         }
                         if (phone.status(hash) == null) return@use
                         readded = true
+                        deleteStage("readd-admitted")
                         android.util.Log.i("ChunksIntake", "CHUNKS_INTAKE_READD attempt=$attempt")
                         await("re-added same hash rechecks kept bytes to 100%",
                             failure = { "phone=${phone.status(hash)}" }) {
@@ -542,14 +555,19 @@ class PhoneIntakeJourneyInstrumentedTest {
                         assertTrue("Re-add must reuse kept bytes, not download them again: $reused",
                             reused.payloadDownloadedBytes < payload.size)
                         assertPublicBytes(target, payload, "after same-hash re-add")
+                        deleteStage("readd-rechecked")
                         click("Transfers")
                         enterDeviceControlsFromCatalog()
                         waitForText("100% ·", substring = true)
+                        deleteStage("readd-device-controls")
                         click("Stop")
                         await("UI Stop readback after re-add") { phone.status(hash)?.stopped == true }
+                        deleteStage("readd-stopped")
                         // L6 on the NEW session generation.
                         click("Remove…")
+                        deleteStage("remove-menu")
                         click("Remove transfer and data")
+                        deleteStage("delete-data-confirmed")
                         await("verified native deletion message", failure = {
                             "status=${phone.status(hash)} exists=${target.exists()}"
                         }) {

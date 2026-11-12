@@ -36,9 +36,30 @@ if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   args+=(-e chunks_https_add authorized)
 fi
 url64=$(printf %s "$CHUNKS_LIVE_RUTORRENT_URL" | base64 -w 0)
+# The emulator reaches the runner's SCGI proxy (18080) and fixture controller
+# (18081) only through adb reverse. A rule dropped by an adbd reconnect shows up
+# inside the app as a bare ConnectException (run 43171621341) and would be
+# misread as an Add or test defect. Re-assert and verify right before every
+# instrumentation; a missing rule or dead controller fails closed by name.
+tunnel() {
+  adb reverse tcp:18080 tcp:18080 >/dev/null
+  adb reverse tcp:18081 tcp:18081 >/dev/null
+  local rules port
+  rules=$(adb reverse --list)
+  for port in 18080 18081; do
+    grep -Eq "tcp:${port} tcp:${port}" <<< "$rules" || {
+      echo "CHUNKS_INSTALLED_MAGNET_TUNNEL: adb reverse rule missing for loopback port ${port}"
+      return 1
+    }
+  done
+  curl -fsS --max-time 5 -o /dev/null http://127.0.0.1:18081/ready || {
+    echo 'CHUNKS_INSTALLED_MAGNET_TUNNEL: fixture controller unreachable on the runner'
+    return 1
+  }
+  echo 'CHUNKS_INSTALLED_MAGNET_TUNNEL: verified reverse rules and live controller'
+}
 milestone 'configuring emulator and installing APKs'
-adb reverse tcp:18080 tcp:18080 >/dev/null
-adb reverse tcp:18081 tcp:18081 >/dev/null
+tunnel
 adb shell wm size 1080x2400
 adb shell wm density 420
 adb install -r app/build/outputs/apk/debug/app-debug.apk >/dev/null
@@ -62,6 +83,7 @@ bash tools/verify_installed_apk_bytes.sh \
 unset installed_apk
 if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   milestone 'running production phone HTTPS and one-time Place journey'
+  tunnel
   adb logcat -c
   adb shell am instrument -w -r \
     -e class io.github.gamesbyian.chunks.HttpsPhoneAddJourneyInstrumentedTest \
@@ -83,6 +105,7 @@ if [[ "${CHUNKS_HTTPS_ADD:-0}" = 1 ]]; then
   adb shell am force-stop "$candidate_package"
 fi
 milestone 'starting Android instrumentation'
+tunnel
 acceptance_started=$(date +%s)
 set +e
 adb shell am instrument -w -r \
