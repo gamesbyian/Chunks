@@ -7,6 +7,8 @@ import android.os.PowerManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import io.github.gamesbyian.chunks.media.artwork.ArtworkDiskCache
@@ -92,6 +94,15 @@ class ChunksMedia private constructor(context: Context) {
         inventorySessions.add(session)
         return session
     }
+
+    /**
+     * The activity-lifetime inventory owner (#1453). Open it once per activity, feed it from the
+     * canonical Transfers source, and close it when the activity's composition ends; leaving the
+     * Transfers screen no longer cancels offscreen lookups.
+     */
+    fun openInventoryHost(ownerScope: CoroutineScope,
+                          forController: TransferMediaController = controller): MediaInventoryHost =
+        MediaInventoryHost(openInventorySession(ownerScope, forController))
 
     /** Recheck offscreen inventory following settings/credentials changes without UI composition. */
     private fun refreshInventorySessions() {
@@ -192,6 +203,55 @@ class ChunksMedia private constructor(context: Context) {
  * high in the tree. When absent, components fall back to name-only category art without any I/O.
  */
 val LocalTransferMediaController = staticCompositionLocalOf<TransferMediaController?> { null }
+
+/** The activity-lifetime inventory owner; null when a screen is composed without one (tests). */
+val LocalMediaInventoryHost = staticCompositionLocalOf<MediaInventoryHost?> { null }
+
+/**
+ * Owns one [MediaInventoryHost] for the lifetime of the enclosing composition (the activity
+ * content), provides it to descendants, and runs the sparse connectivity/retry heartbeat and
+ * the privacy-generation revocation that previously lived only inside the Transfers screen.
+ * Composition itself does no I/O: the host is created in an effect, the network snapshot is
+ * read off the main thread, and no provider call happens here.
+ */
+@androidx.compose.runtime.Composable
+fun ProvideMediaInventoryHost(
+    privacyEpoch: String,
+    content: @androidx.compose.runtime.Composable () -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val controller = LocalTransferMediaController.current
+    val graph = androidx.compose.runtime.remember(context) { ChunksMedia.get(context) }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var host by androidx.compose.runtime.remember(graph, controller) {
+        androidx.compose.runtime.mutableStateOf<MediaInventoryHost?>(null)
+    }
+    androidx.compose.runtime.DisposableEffect(graph, controller, scope) {
+        val owned = controller?.let { graph.openInventoryHost(scope, it) }
+        host = owned
+        onDispose {
+            owned?.close()
+            if (host === owned) host = null
+        }
+    }
+    androidx.compose.runtime.LaunchedEffect(host, privacyEpoch) { host?.privacyEpoch(privacyEpoch) }
+    // One sparse foreground heartbeat for the whole activity, not per screen. Connectivity,
+    // metering and power changes retry immediately; a 30-minute heartbeat notices expired
+    // provider negative-cache and image-failure TTLs when nothing else changed.
+    androidx.compose.runtime.LaunchedEffect(host) {
+        val active = host ?: return@LaunchedEffect
+        val changes = MediaNetworkChangeTracker()
+        val heartbeat = MediaInventoryRetryHeartbeat()
+        while (true) {
+            val net = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { graph.currentNetworkState() }
+            val networkChanged = changes.changedAfterFirstObservation(net)
+            val retryDue = heartbeat.shouldRefresh(android.os.SystemClock.elapsedRealtime())
+            if (networkChanged || retryDue) active.refresh()
+            kotlinx.coroutines.delay(10_000)
+        }
+    }
+    androidx.compose.runtime.CompositionLocalProvider(LocalMediaInventoryHost provides host, content = content)
+}
 
 /**
  * Observe one transfer's media state. Pure local reads; never starts a network lookup unless the

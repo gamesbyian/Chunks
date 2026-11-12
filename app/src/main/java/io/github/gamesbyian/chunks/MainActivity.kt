@@ -183,6 +183,14 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.runtime.CompositionLocalProvider(
                     io.github.gamesbyian.chunks.media.LocalTransferMediaController provides mediaController
                 ) {
+                // The full-inventory media witness lives for the whole activity content, so
+                // Details, Options, Add and Connections no longer cancel offscreen lookups
+                // (#1453). The canonical Transfers source feeds it; a privacy lifecycle or
+                // policy generation change revokes it until the next fresh feed.
+                io.github.gamesbyian.chunks.media.ProvideMediaInventoryHost(
+                    privacyEpoch = "${TransferPrivacyRuntime.lifecycleRevision}/" +
+                        "${io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore.revision}"
+                ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChunksApp(
                         sharedMagnet = incomingMagnet,
@@ -194,6 +202,7 @@ class MainActivity : ComponentActivity() {
                         phoneAddAttemptSession = phoneAddAttemptOwner.session,
                         retainedAddOwner = phoneAddAttemptOwner
                     )
+                }
                 }
                 }
             }

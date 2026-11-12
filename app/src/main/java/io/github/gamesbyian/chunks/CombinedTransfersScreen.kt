@@ -826,30 +826,37 @@ internal fun CombinedTransfersScreen(
         io.github.gamesbyian.chunks.media.AuthorizedMediaInventorySnapshot.build(
             sources, aliasScopes, mediaPrivacyEpoch)
     }
+    // The activity-lifetime host (#1453) keeps working on the last fed inventory after this
+    // screen unmounts and runs the connectivity/retry heartbeat itself. This screen only
+    // feeds it. Without a host (isolated screen tests), fall back to a screen-owned session
+    // with the same witness so no second executor or unauthorized pass can appear.
+    val mediaHost = io.github.gamesbyian.chunks.media.LocalMediaInventoryHost.current
     val currentMediaSnapshot = rememberUpdatedState(mediaSnapshot)
-    var mediaSession by remember(mediaGraph, mediaController) {
+    var mediaSession by remember(mediaGraph, mediaController, mediaHost) {
         mutableStateOf<io.github.gamesbyian.chunks.media.MediaInventoryEnrichmentSession?>(null)
     }
-    // Creating/closing the session is an effect; composition itself does no I/O.
-    DisposableEffect(mediaGraph, mediaController, batchScope) {
-        val owned = mediaController?.let { mediaGraph.openInventorySession(batchScope, it) }
+    // Creating/closing the fallback session is an effect; composition itself does no I/O.
+    DisposableEffect(mediaGraph, mediaController, mediaHost, batchScope) {
+        val owned = if (mediaHost == null) mediaController?.let {
+            mediaGraph.openInventorySession(batchScope, it)
+        } else null
         mediaSession = owned
         onDispose {
             owned?.close()
             if (mediaSession === owned) mediaSession = null
         }
     }
-    LaunchedEffect(mediaSession, mediaSnapshot) {
-        mediaSession?.replace(mediaSnapshot.entries) { key ->
+    LaunchedEffect(mediaHost, mediaSession, mediaSnapshot) {
+        if (mediaHost != null) mediaHost.feed(mediaSnapshot)
+        else mediaSession?.replace(mediaSnapshot.entries) { key ->
             // Never accept the historical lookup's cached authorization: compare against
             // the current privacy/profile scope, fresh source and exact job membership.
             mediaSnapshot.stillAuthorizes(key, currentMediaSnapshot.value)
         }
     }
-    // Reuse the existing 10s source-status ticker, without creating a second
-    // inventory worker. Connectivity/metering/power changes retry immediately;
-    // a sparse 30-minute heartbeat also notices expired provider negative-cache
-    // and image-failure TTLs when all transfers remain otherwise unchanged.
+    // Fallback only: reuse the existing 10s source-status ticker, without creating a second
+    // inventory worker. Connectivity/metering/power changes retry immediately; a sparse
+    // 30-minute heartbeat also notices expired provider negative-cache and image-failure TTLs.
     val mediaNetworkChanges = remember(mediaSession) {
         io.github.gamesbyian.chunks.media.MediaNetworkChangeTracker()
     }
