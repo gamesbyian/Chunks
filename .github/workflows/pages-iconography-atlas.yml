@@ -1,0 +1,49 @@
+name: Publish Chunks iconography atlas to Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/research/torrent-iconography/**'
+      - '.github/workflows/pages-iconography-atlas.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-iconography-atlas
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Build and deploy icon atlas
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare static Pages artifact
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          cp docs/research/torrent-iconography/gallery.html _site/index.html
+          cp docs/research/torrent-iconography/gallery.html _site/gallery.html
+          cp docs/research/torrent-iconography/observations.json _site/observations.json
+          cp docs/research/torrent-iconography/asset-gap-candidates.json _site/asset-gap-candidates.json
+          touch _site/.nojekyll
+          test -s _site/index.html
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload static site artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
