@@ -99,7 +99,13 @@ printf '%s\n' "$out_d"
 log_d="$(adb logcat -d -v raw -s ChunksIntake:I)"
 if [[ "$(grep -Fxc 'OK (1 test)' <<< "$out_d" || true)" != 1 ]] ||
    grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' <<< "$out_d"; then
-  echo 'CHUNKS_INTAKE: delete-data journey did not execute exactly one passing test'; exit 1
+  echo 'CHUNKS_INTAKE: delete-data journey did not execute exactly one passing test'
+  # Disposable emulator, phone-only fixture, no account: name the last production step
+  # reached and the process crash frames (URLs redacted) so an intermittent Compose or
+  # native crash (run 43169696534) can be located instead of reported as "Process crashed".
+  grep -E '^CHUNKS_INTAKE_DELETE_STAGE [a-z-]+$' <<< "$log_d" | tail -n 3 || true
+  adb logcat -d -b crash 2>/dev/null | sed -E 's#[a-zA-Z][a-zA-Z0-9+.-]*://[^ "]*#<url>#g' | head -n 120 || true
+  exit 1
 fi
 grep -E '^CHUNKS_INTAKE_READD attempt=[1-6]$' <<< "$log_d" || {
   echo 'CHUNKS_INTAKE: missing same-hash re-add witness'; exit 1;

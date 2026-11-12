@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
+import androidx.compose.ui.test.hasStateDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
@@ -15,6 +16,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performImeAction
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
@@ -469,8 +471,24 @@ internal class MainActivityRealMagnetJourney(
             rule.waitUntil(60_000) { rule.onAllNodes(anyRow).fetchSemanticsNodes().isNotEmpty() }
             assertEquals("The exact-hash search must leave exactly one row", 1,
                 rule.onAllNodes(anyRow).fetchSemanticsNodes().size)
-            rule.onNode(anyRow).performClick()
-            rule.waitUntil(30_000) { visible("Transfer details") }
+            report("chunks_real_add_app_stage", "click-details-row")
+            // Same rule as click(): a touch can land between two layouts of the lazy list
+            // (run 43169696559 reached this step and Details never appeared), while the
+            // semantics action cannot miss. The outcome below is unchanged: full Details.
+            val node = rule.onNode(anyRow)
+            if (androidx.compose.ui.semantics.SemanticsActions.OnClick in node.fetchSemanticsNode().config)
+                node.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+            else node.performClick()
+            try {
+                rule.waitUntil(30_000) { visible("Transfer details") }
+            } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+                // Bounded, fixed-vocabulary state for the receipt: no name, hash, path or URL.
+                val rows = rule.onAllNodes(anyRow).fetchSemanticsNodes().size
+                val expanded = rule.onAllNodes(hasStateDescription("Expanded")).fetchSemanticsNodes().isNotEmpty()
+                report("chunks_real_add_app_stage",
+                    "details-timeout-rows=$rows-expanded=${if (expanded) 1 else 0}-catalog=${if (hasTag(ChunksSemantics.TRANSFERS_HEADING)) 1 else 0}")
+                throw timeout
+            }
         }
         fun lifecycle(hash: String, start: Boolean) {
             refreshAndFind(hash)
