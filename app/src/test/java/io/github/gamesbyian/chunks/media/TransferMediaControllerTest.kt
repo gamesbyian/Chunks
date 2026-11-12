@@ -29,7 +29,7 @@ import java.nio.file.Files
 @Config(sdk = [35])
 class TransferMediaControllerTest {
     private val clock = FakeClock()
-    private var settings = MediaPrivacySettings()
+    private var settings = MediaPrivacySettings(onlineLookupConsent = false) // Explicit opt-out fixture; production default is ON.
     private val dir: File = Files.createTempDirectory("media").toFile()
     private val phone = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("phone"), "a".repeat(40)))
     private val server = MediaTransferKey.of(UnifiedTransferKey.of(EnvironmentId("rtorrent:seedbox-2"), "a".repeat(40)))
@@ -1159,7 +1159,7 @@ class TransferMediaControllerTest {
         val excludedArrival = c2.observe(k(6), "Babylon 5 S04E04.mkv")
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, excludedArrival.value.state)
         assertEquals(MediaKind.TV_EPISODE, excludedArrival.value.recognition.kind)
-        settings = MediaPrivacySettings()
+        settings = MediaPrivacySettings(onlineLookupConsent = false)
         val unrelated = c2.observe(k(3), "Babylon.Berlin.S01E01.mkv"); assertEquals(MediaAssignmentState.NOT_LOOKED_UP, unrelated.value.state)
         assertTrue(http.requests.none { it.contains("search/shows") })
         // Existing decisions are never overridden; removing the rule stops future inheritance.

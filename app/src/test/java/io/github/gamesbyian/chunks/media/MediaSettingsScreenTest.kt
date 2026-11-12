@@ -26,7 +26,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Options → Artwork & info at 320dp and 200% text: reachable, 48dp, consent-gated, persistent. JVM tier. */
+/** Options → Artwork & info at 320dp and 200% text: reachable, 48dp, default-on and opt-out, persistent. JVM tier. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [35], qualifiers = "w320dp-h700dp-xxhdpi")
@@ -48,14 +48,13 @@ class MediaSettingsScreenTest {
         assertEquals(emptyList<String>(), rule.smallTouchTargets(density))
         rule.onRoot().captureRoboImage("build/chunks-visual/media-settings-320dp-200pct.png")
 
-        // Turning lookup on needs informed consent; "Not now" changes nothing.
+        // Fresh-install online lookup is ON; the existing toggle must still persist OFF and ON.
+        assertTrue(media.settingsStore.load().onlineLookupConsent)
         rule.onNodeWithText("Online lookup").performClick()
-        rule.onNodeWithText("Turn on online lookup?").assertExists()
-        rule.onNodeWithText("Not now").performClick()
-        assertFalse(media.settingsStore.load().onlineLookupConsent)
+        rule.waitUntil(5_000) { !media.settingsStore.load().onlineLookupConsent }
         rule.onNodeWithText("Online lookup").performClick()
-        rule.onNodeWithText("Turn on").performClick()
         rule.waitUntil(5_000) { media.settingsStore.load().onlineLookupConsent }
+        rule.onNodeWithText("Turn on online lookup?").assertDoesNotExist()
 
         // A switch below the fold is reachable and persists to the same store the lists use.
         rule.onNodeWithText("Show artwork").performScrollTo().performClick()

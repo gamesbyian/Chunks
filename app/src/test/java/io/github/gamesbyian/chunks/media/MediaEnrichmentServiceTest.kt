@@ -22,10 +22,20 @@ class MediaEnrichmentServiceTest {
 
     private fun rec(name: String) = MediaRecognizer.recognize(name)
 
-    @Test fun noRequestsWithoutConsent() {
+    @Test fun explicitlyDisabledOnlineLookupNeverSendsRequests() {
         val http = FakeMediaHttp()
-        val r = service(http, TvMazeProvider()).lookup(rec("Babylon.5.S02E07.mkv"), MediaPrivacySettings(), online)
+        val r = service(http, TvMazeProvider()).lookup(rec("Babylon.5.S02E07.mkv"),
+            MediaPrivacySettings(onlineLookupConsent = false), online)
         assertEquals(MediaLookupStatus.BLOCKED_CONSENT, r.status); assertTrue(http.requests.isEmpty())
+    }
+
+    @Test fun onlineLookupIsEnabledByDefaultWithoutEnablingMobileData() {
+        val settings = MediaPrivacySettings()
+        assertTrue(settings.onlineLookupConsent)
+        assertTrue(settings.automaticLookup)
+        assertTrue(settings.showArtwork)
+        assertTrue(settings.downloadArtwork)
+        assertEquals(false, settings.artworkOnMeteredNetwork)
     }
 
     @Test fun backgroundLookupNeedsAutomaticOptInAndUnmeteredNetwork() {
