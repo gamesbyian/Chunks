@@ -66,9 +66,13 @@ class MediaInventoryHostCompositionTest {
         var screenMounted by mutableStateOf(true)
         var epoch by mutableStateOf("1/0")
         var seen: MediaInventoryHost? = null
+        var siblingCompositions = 0
         rule.setContent {
             CompositionLocalProvider(LocalTransferMediaController provides c) {
-                if (rootMounted) ProvideMediaInventoryHost(privacyEpoch = epoch) {
+                if (rootMounted) ProvideMediaInventoryHost(privacyEpoch = { epoch }) {
+                    // A screen that never reads the host (Connections, Add, Options) must not
+                    // recompose when the privacy generation or the host value changes.
+                    SiblingThatIgnoresTheHost { siblingCompositions++ }
                     val host = LocalMediaInventoryHost.current
                     seen = host
                     // Stand-in for CombinedTransfersScreen: feed once when composed.
@@ -85,13 +89,22 @@ class MediaInventoryHostCompositionTest {
         rule.waitForIdle()
         assertEquals("Leaving Transfers must not drop the authorized inventory", 1, host.retained?.entries?.size)
 
+        val siblingBefore = siblingCompositions
         epoch = "2/0"
         rule.waitForIdle()
         assertNull("A privacy generation change revokes it until the next fresh feed", host.retained)
+        assertEquals("Other screens must not recompose on a privacy generation change",
+            siblingBefore, siblingCompositions)
 
         rootMounted = false
         rule.waitForIdle()
         assertNull(host.retained)
         assertTrue("Display and lifetime handling must not contact a provider", http.requests.isEmpty())
     }
+}
+
+@androidx.compose.runtime.Composable
+private fun SiblingThatIgnoresTheHost(onCompose: () -> Unit) {
+    androidx.compose.runtime.SideEffect(onCompose)
+    androidx.compose.material3.Text("sibling")
 }

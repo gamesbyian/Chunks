@@ -205,7 +205,9 @@ class ChunksMedia private constructor(context: Context) {
 val LocalTransferMediaController = staticCompositionLocalOf<TransferMediaController?> { null }
 
 /** The activity-lifetime inventory owner; null when a screen is composed without one (tests). */
-val LocalMediaInventoryHost = staticCompositionLocalOf<MediaInventoryHost?> { null }
+// Dynamic, not static: the value changes once (null -> host) after the first composition, and
+// only the screens that read it may recompose; the rest of the activity content must not.
+val LocalMediaInventoryHost = androidx.compose.runtime.compositionLocalOf<MediaInventoryHost?> { null }
 
 /**
  * Owns one [MediaInventoryHost] for the lifetime of the enclosing composition (the activity
@@ -216,7 +218,8 @@ val LocalMediaInventoryHost = staticCompositionLocalOf<MediaInventoryHost?> { nu
  */
 @androidx.compose.runtime.Composable
 fun ProvideMediaInventoryHost(
-    privacyEpoch: String,
+    /** Read inside an effect only: a lifecycle or policy change must not recompose the activity content. */
+    privacyEpoch: () -> String,
     content: @androidx.compose.runtime.Composable () -> Unit
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -234,7 +237,11 @@ fun ProvideMediaInventoryHost(
             if (host === owned) host = null
         }
     }
-    androidx.compose.runtime.LaunchedEffect(host, privacyEpoch) { host?.privacyEpoch(privacyEpoch) }
+    val currentEpoch = androidx.compose.runtime.rememberUpdatedState(privacyEpoch)
+    androidx.compose.runtime.LaunchedEffect(host) {
+        val active = host ?: return@LaunchedEffect
+        androidx.compose.runtime.snapshotFlow { currentEpoch.value() }.collect { active.privacyEpoch(it) }
+    }
     // One sparse foreground heartbeat for the whole activity, not per screen. Connectivity,
     // metering and power changes retry immediately; a 30-minute heartbeat notices expired
     // provider negative-cache and image-failure TTLs when nothing else changed.

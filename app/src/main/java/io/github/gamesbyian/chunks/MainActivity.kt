@@ -188,8 +188,12 @@ class MainActivity : ComponentActivity() {
                 // (#1453). The canonical Transfers source feeds it; a privacy lifecycle or
                 // policy generation change revokes it until the next fresh feed.
                 io.github.gamesbyian.chunks.media.ProvideMediaInventoryHost(
-                    privacyEpoch = "${TransferPrivacyRuntime.lifecycleRevision}/" +
-                        "${io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore.revision}"
+                    // Snapshot-read inside the host's effect, never in this composition: a
+                    // foreground/background or policy revision must not recompose the whole app.
+                    privacyEpoch = {
+                        "${TransferPrivacyRuntime.lifecycleRevision}/" +
+                            "${io.github.gamesbyian.chunks.privacy.TransferPrivacyPolicyStore.revision}"
+                    }
                 ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ChunksApp(
