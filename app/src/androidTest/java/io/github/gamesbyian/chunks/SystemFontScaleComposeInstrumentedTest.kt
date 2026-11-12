@@ -224,8 +224,9 @@ class SystemFontScaleComposeInstrumentedTest {
         assertTrue("Android app must run with real system font scale at least 190%, got $actual",
             actual >= 1.9f)
         rule.waitForIdle()
-        rule.onNodeWithContentDescription("chunks. Your downloads have places to be.")
-            .assertExists()
+        // The normal screen now uses the compact wordmark, without the
+        // superseded onboarding slogan. The heading must remain exposed.
+        rule.onNodeWithText("Chunks").assertExists()
         // Fresh Chunks shows ConnectionScreen rather than remote tabs until
         // authentication succeeds. Capture that real 200% screen as well.
         savePixels("connection")
