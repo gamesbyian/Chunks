@@ -1,5 +1,7 @@
 # Chunks documentation index
 
+**Integration disposition 12 November (live):** #1660 merged in `670bbe59` with all #1655 and #1657 binding documentation; originals #1655/#1657 closed as superseded (no requirements lost). #1653 closed as superseded **only** by open #1659, now rebased cleanly onto this main as code-only `3c5edde4`. #1659 has not merged. Latest earlier combined source `b65054a`: docs, JVM/foundation, R8 and native Add green; API29 delete-data Compose measure/layout crash and installed authenticated rTorrent Details return red. Fresh source-exact CI on `3c5edde4` must qualify separately; never borrow earlier green. Preserve authentic evidence and repair these gates before a safe final merge.
+
 **New binding design and recovery contracts:** [Eight solid-colour Options cards](design/OPTIONS-SOLID-COLOUR-INDEX.md) and [Options information architecture](OPTIONS-INFORMATION-ARCHITECTURE.md); [existing and foreign partial-data reuse](FOREIGN-PARTIAL-TORRENT-RECOVERY.md), [local collision policy](LOCAL-TORRENT-COLLISION-POLICY.md), and [existing-transfer file repair](TRANSFER-FILE-RECOVERY.md). These are planned product requirements, not implementation evidence.
 
 **Current completion:** [ordered cohorts, dependencies and batched validation](COMPLETION-ROADMAP.md) → [one ranked work queue](WORK-QUEUE.md) → [next dispatch handoff](NEXT-PUSH-HANDOFF-2026-11-08.md) → [acceptance](SPEC-COVERAGE.md). [12 November source audit](archive/COMPLETION-AUDIT-2026-11-12.md) is historical.
