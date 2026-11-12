@@ -67,6 +67,9 @@ internal class FakeRTorrent(
         fun job() = p.firstOrNull()?.lowercase()?.let { jobs[it] }
         val value: String = when (method) {
             "system.client_version" -> str("0.9.8")
+            "system.listMethods" -> array(listOf("d.open", "d.start", "d.resume", "d.stop", "d.close", "d.erase", "d.hash", "d.state",
+                "d.is_active", "d.directory", "load.start", "load.raw_start", "load.verbose",
+                "load.raw_verbose", "f.multicall", "f.priority.set", "d.check_hash").map(::str))
             "directory.default" -> directoryDefault?.let(::str)
                 ?: return fault(-503, "Permission denied")
             "d.multicall2" -> {
@@ -88,9 +91,12 @@ internal class FakeRTorrent(
             "d.is_multi_file", "d.is_meta", "d.is_hash_checking", "d.is_private" ->
                 job()?.let { num(0) } ?: return fault(-501, "Could not find info-hash.")
             "d.tracker_size" -> job()?.let { num(1) } ?: return fault(-501, "Could not find info-hash.")
-            "d.start", "d.stop" -> {
+            "d.start", "d.stop", "d.open", "d.resume", "d.close" -> {
                 val j = job() ?: return fault(-501, "Could not find info-hash.")
-                j.started = method == "d.start"
+                when (method) {
+                    "d.start", "d.resume" -> j.started = true
+                    "d.stop", "d.close" -> j.started = false
+                }
                 num(0)
             }
             "f.multicall", "t.multicall" -> array(emptyList())

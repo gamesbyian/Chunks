@@ -35,6 +35,8 @@ internal object ChunksSemantics {
     /** Remote Add effective Save to status (custom, saved default, rTorrent default or why none). */
     /** The always-visible row of per-environment show/hide toggles above Transfers. */
     const val TRANSFERS_ENVIRONMENT_TOGGLES = "chunks.transfers.environmentToggles"
+    /** An expanded Transfers row's quick operations (Start/Stop). */
+    const val TRANSFER_ROW_QUICK_CONTROLS = "chunks.transfers.row.quickControls"
     const val ADD_REMOTE_SAVE_TO = "chunks.add.remote.saveTo"
     const val ADD_REMOTE_SAVE_DEFAULT = "chunks.add.remote.saveDefault"
 

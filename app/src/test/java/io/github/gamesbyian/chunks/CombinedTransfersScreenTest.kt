@@ -465,8 +465,10 @@ class CombinedTransfersScreenTest {
         // Refinement is already disclosed; use the existing exact-source scope controls.
         // The view chip shows the compact unique origin; the group heading below
         // retains the exact address-bearing label.
-        revealText(compactServerLabel(aliasScope))
-        rule.onAllNodesWithText(compactServerLabel(aliasScope))[0].performClick()
+        // Toggle row: hide the device and the other saved server, leaving only this server.
+        reveal(hasContentDescription("Showing " + PHONE_ENVIRONMENT_LABEL, substring = true))
+        rule.onNodeWithContentDescription("Showing " + PHONE_ENVIRONMENT_LABEL, substring = true).performClick()
+        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
         rule.onNodeWithText("On this device: Engine not running; open transfers on this device · 0 transfers").assertDoesNotExist()
         revealText("Showing 2")
         rule.onNodeWithText("Showing 2").assertExists()

@@ -680,6 +680,12 @@ internal fun CombinedTransfersScreen(
     var selected by remember(batchIdentity) { mutableStateOf<Set<UnifiedTransferKey>>(emptySet()) }
     var batchRunning by remember(batchIdentity) { mutableStateOf(false) }
     var batchResult by remember(batchIdentity) { mutableStateOf<List<String>>(emptyList()) }
+    // Rows are compact by default; one tap expands a row in place for quick controls.
+    // Exact env|hash keys, so a recycled lazy row never expands a different transfer.
+    var expandedRows by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var quickRunning by remember(batchIdentity) { mutableStateOf<UnifiedTransferKey?>(null) }
+    var quickResults by remember(batchIdentity) {
+        mutableStateOf<Map<UnifiedTransferKey, List<String>>>(emptyMap()) }
     val labels = LinkedHashMap<EnvironmentId, String>().apply {
         put(EnvironmentSnapshots.PHONE, PHONE_ENVIRONMENT_LABEL)
         if (server != null && serverId != null)
@@ -1141,6 +1147,59 @@ internal fun CombinedTransfersScreen(
     // The same measured Transfers / Add / Options footer as the phone and
     // rTorrent lists. Each action only moves within this view: Add leads to
     // the explicit destination choices, never to an inferred environment.
+    // Quick Start/Stop for one expanded row uses the SAME canonical command path as batch
+    // tools (exact key, per-environment gate, readback, no blind retry) and reports truthfully.
+    val quickControlsFor: @Composable (UnifiedTransferObservation) -> Unit = { row ->
+        val key = row.key
+        val owningSource = sourcesByEnvironment[key.environment]
+        val known = row.started
+        val block = when {
+            known == null -> "This transfer's running state is not known yet. Refresh before changing it."
+            owningSource == null || owningSource.availability != EnvironmentAvailability.LIVE ->
+                "This environment is not currently live. Refresh or reconnect before changing this transfer."
+            key.environment == EnvironmentSnapshots.PHONE -> null
+            key.environment == serverId && server?.lifecycle != null -> null
+            else -> "Connect to this server in Connections to control its transfers."
+        }
+        val running = quickRunning == key
+        val label = if (known == true) "Stop" else "Start"
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.testTag(ChunksSemantics.TRANSFER_ROW_QUICK_CONTROLS)) {
+            // Plain layout: rows measure intrinsically for their environment accent bar.
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = {
+                    val start = known != true
+                    quickRunning = key
+                    quickResults = quickResults - key
+                    val snapshot = sources
+                    val owner = batchIdentity
+                    val lifecycle = server?.lifecycle
+                    val capturedServer = server
+                    val targetServer = serverId
+                    batchScope.launch {
+                        if (latestBatchIdentity.value != owner) return@launch
+                        try {
+                            val report = describeCombinedBatchSafely({ labels[it] ?: it.value }) {
+                                runCombinedLifecycle(setOf(key), start, snapshot, lifecycle, targetServer,
+                                    serverSource = capturedServer,
+                                    reviewStillCurrent = { latestBatchIdentity.value == owner })
+                            }
+                            if (latestBatchIdentity.value == owner) quickResults = quickResults + (key to report)
+                        } finally {
+                            if (latestBatchIdentity.value == owner) quickRunning = null
+                        }
+                    }
+                }, enabled = block == null && quickRunning == null && !batchRunning,
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics {
+                        contentDescription = "$label ${row.displayName}"
+                    }) {
+                    Text(if (running) (if (known == true) "Stopping…" else "Starting…") else label)
+                }
+            }
+            block?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+            quickResults[key]?.forEach { line -> Text(line, style = MaterialTheme.typography.bodySmall) }
+        }
+    }
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f)) {
         LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
@@ -1477,7 +1536,13 @@ internal fun CombinedTransfersScreen(
                     source = sourcesByEnvironment[row.key.environment],
                         selection = if (selecting) row.key in selected else null,
                         onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
+                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) },
+                        expanded = rowKeyText(row.key) in expandedRows,
+                        onToggleExpanded = if (selecting) null else ({
+                            val id = rowKeyText(row.key)
+                            expandedRows = if (id in expandedRows) expandedRows - id else expandedRows + id
+                        }),
+                        quickControls = { quickControlsFor(row) })
                 }
             }
         } else {
@@ -1487,7 +1552,13 @@ internal fun CombinedTransfersScreen(
                     source = sourcesByEnvironment[row.key.environment],
                     selection = if (selecting) row.key in selected else null,
                     onSelect = { on -> selected = if (on) selected + row.key else selected - row.key },
-                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) })
+                        onDetails = { savedDetailTarget = arrayListOf(row.key.environment.value, row.key.infoHash) },
+                        expanded = rowKeyText(row.key) in expandedRows,
+                        onToggleExpanded = if (selecting) null else ({
+                            val id = rowKeyText(row.key)
+                            expandedRows = if (id in expandedRows) expandedRows - id else expandedRows + id
+                        }),
+                        quickControls = { quickControlsFor(row) })
             }
         }
         // Detailed environment status is available after the inventory, rather
@@ -1687,6 +1758,8 @@ internal fun toggleEnvironmentVisibility(
         else EnvironmentViewScope.Only(next)
 }
 
+internal fun rowKeyText(key: UnifiedTransferKey): String = key.environment.value + "|" + key.infoHash
+
 /** Compact toggle text: the device, or a server's short profile name without its prefix. */
 internal fun environmentToggleName(id: EnvironmentId, label: String): String =
     if (id == EnvironmentSnapshots.PHONE) PHONE_ENVIRONMENT_LABEL
@@ -1769,10 +1842,15 @@ private fun CombinedTransferRow(
     selection: Boolean? = null,
     onSelect: (Boolean) -> Unit = {},
     /** Read-only details are available even for saved, unsigned-in profiles. */
-    onDetails: () -> Unit
+    onDetails: () -> Unit,
+    /** Tapping the row body expands it in place; Details stays one tap away. */
+    expanded: Boolean = false,
+    onToggleExpanded: (() -> Unit)? = null,
+    /** Quick operations shown only while expanded (Start/Stop through the canonical command path). */
+    quickControls: (@Composable () -> Unit)? = null
 ) {
-    // The row opens one full Details destination, with exact environment/hash
-    // identity. No expanding card or implicit environment switch is retained.
+    // The compact row expands in place to expose quick controls. Its header Details
+    // button opens the one full Details destination for the exact environment/hash.
     val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
     val labelColour = if (hue != null && EnvironmentPalette.labelIsReadable(
         hue, ChunksColors.Surface.toArgbLong())) accent else ChunksColors.Text
@@ -1784,20 +1862,31 @@ private fun CombinedTransferRow(
             modifier = Modifier.padding(start = 4.dp).align(Alignment.CenterVertically).semantics {
                 contentDescription = "Select ${row.displayName} on $environmentLabel"
             })
-        Column(Modifier.weight(1f).padding(horizontal = 10.dp, vertical = 8.dp)
+        val toggle = onToggleExpanded ?: onDetails
+        Column(Modifier.weight(1f).padding(start = 10.dp, end = 4.dp, top = 4.dp, bottom = 8.dp)
             .clickable(role = Role.Button,
-                onClickLabel = "Open full transfer details",
-                onClick = onDetails)
+                onClickLabel = if (onToggleExpanded == null) "Open full transfer details"
+                    else if (expanded) "Collapse transfer" else "Expand transfer controls",
+                onClick = toggle)
             .semantics {
-                contentDescription = "Details for ${row.displayName} on $environmentLabel"
+                contentDescription = if (onToggleExpanded == null)
+                    "Details for ${row.displayName} on $environmentLabel"
+                    else "${row.displayName} on $environmentLabel"
+                if (onToggleExpanded != null) stateDescription = if (expanded) "Expanded" else "Collapsed"
             },
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            // The body of the transfer is its single expansion target. No permanent
-            // Details/More button bank takes space away from actual progress.
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelMedium,
-                    color = labelColour, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                Text("Details", style = MaterialTheme.typography.labelSmall,
+                EnvironmentDot(hue, size = 8)
+                Text(visibleEnvironmentLabel ?: environmentLabel, style = MaterialTheme.typography.labelSmall,
+                    color = labelColour, fontWeight = FontWeight.Bold, maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f).padding(start = 6.dp))
+                // A nested control: opening Details never toggles the row.
+                if (onToggleExpanded != null) androidx.compose.material3.TextButton(onClick = onDetails,
+                    modifier = Modifier.heightIn(min = 48.dp).semantics {
+                        contentDescription = "Details for ${row.displayName} on $environmentLabel"
+                    }) { Text("Details", style = MaterialTheme.typography.labelMedium) }
+                else Text("Details", style = MaterialTheme.typography.labelSmall,
                     color = ChunksColors.TextSecondary)
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
@@ -1832,7 +1921,7 @@ private fun CombinedTransferRow(
             }
             if (row.hasError) Text("Needs attention in its own list",
                 color = ChunksColors.Red, style = MaterialTheme.typography.bodySmall)
-
+            if (expanded) quickControls?.invoke()
         }
     }
 }

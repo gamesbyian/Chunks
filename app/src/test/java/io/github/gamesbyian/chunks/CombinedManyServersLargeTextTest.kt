@@ -89,16 +89,16 @@ class CombinedManyServersLargeTextTest {
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
     fun finalSavedSourceChipCanBeSelectedWithoutFetchingOrExecuting() {
         show()
-        // Disclose chips only on request, preserving the 200% text vertical route.
+        // The environment toggles are always visible (no Filters step). With many servers the
+        // row scrolls horizontally; the final server stays reachable and toggles in place.
         rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Filters"))
-        rule.onNodeWithText("Filters").performClick()
-        // The final server remains scroll-reachable without a horizontal gesture.
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Server · Seedbox 12"))
-        rule.onNodeWithText("Server · Seedbox 12").performClick()
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("No transfers are visible", substring = true))
+            .performScrollToNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
+        val last = androidx.compose.ui.test.hasContentDescription("Showing Server · Seedbox 12", substring = true)
+        rule.onNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
+            .performScrollToNode(last)
+        rule.onNode(last).performClick()
+        rule.waitForIdle()
+        rule.onNode(androidx.compose.ui.test.hasContentDescription("Hidden: Server · Seedbox 12", substring = true)).assertExists()
         assertEquals(0, savedReads.get())
         assertNull(LocalEngineHolder.current())
     }
