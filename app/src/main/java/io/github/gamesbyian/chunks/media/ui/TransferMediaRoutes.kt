@@ -45,7 +45,6 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
     val controller = LocalTransferMediaController.current ?: media.controller
     val state by io.github.gamesbyian.chunks.media.rememberTransferMedia(key, originalName, files, controller)
     var settings by remember { mutableStateOf(MediaPrivacySettings()) }
-    var askConsent by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var ruleVersion by remember { mutableStateOf(0) }
     val localCover = remember(files) { io.github.gamesbyian.chunks.media.LocalCoverFinder.pick(files) }
@@ -65,7 +64,13 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
     var posters by remember(key, state.match?.ref) { mutableStateOf<List<io.github.gamesbyian.chunks.media.TransferMediaController.ArtworkAlternative>?>(null) }
     var postersLoading by remember(key, state.match?.ref) { mutableStateOf(false) }
     MediaIdentifyPanel(state, settings,
-        onEnableLookup = { askConsent = true },
+        onEnableLookup = {
+            scope.launch {
+                settings = withContext(Dispatchers.IO) {
+                    media.loadSettings().copy(onlineLookupConsent = true).also { media.updateSettings(it) }
+                }
+            }
+        },
         onLookup = { controller.lookup(key) },
         onSearch = { kind, text, year -> controller.search(key, kind, text, year) },
         onChoose = { controller.choose(key, it) },
@@ -101,18 +106,6 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
             }
         } })
 
-    if (askConsent) MediaLookupConsentDialog(
-        providerNames = media.providers.map { it.info.displayName },
-        onConfirm = {
-            askConsent = false
-            // Build from the stored preferences, never from a not-yet-loaded default copy.
-            scope.launch {
-                settings = withContext(Dispatchers.IO) {
-                    media.loadSettings().copy(onlineLookupConsent = true).also { media.updateSettings(it) }
-                }
-            }
-        },
-        onDismiss = { askConsent = false })
 }
 
 /** Detail header block wired to [ChunksMedia]; loads the poster role for the header on demand. */
@@ -155,24 +148,18 @@ fun MediaSettingsRoute(modifier: Modifier = Modifier, showHeading: Boolean = tru
             keySet = media.settingsStore.tmdbCredential()?.let { TmdbProvider.isPlausibleCredential(it) } == true
         }
     }
-    var askConsent by remember { mutableStateOf<MediaPrivacySettings?>(null) }
     // Render nothing editable until stored preferences are loaded, so no default can overwrite them.
     val settings = loaded ?: return
     MediaPrivacySettingsPanel(settings, media.providers.map { it.info },
         configured = { id -> id == TmdbProvider.ID && keySet },
         onChange = { next ->
-            if (next.onlineLookupConsent && !settings.onlineLookupConsent) askConsent = next
-            else { loaded = next; scope.launch(Dispatchers.IO) { media.updateSettings(next) } }
+            loaded = next
+            scope.launch(Dispatchers.IO) { media.updateSettings(next) }
         },
         onSetProviderKey = { id, value -> scope.launch(Dispatchers.IO) { media.setProviderKey(id, value); generation++ } },
         cacheSummary = summary,
         onClearData = { scope.launch { media.clearAllMediaData().join(); generation++ } },
         modifier = modifier, showHeading = showHeading)
-    askConsent?.let { pending ->
-        MediaLookupConsentDialog(media.providers.map { it.info.displayName },
-            onConfirm = { askConsent = null; loaded = pending; scope.launch(Dispatchers.IO) { media.updateSettings(pending) } },
-            onDismiss = { askConsent = null })
-    }
 }
 
 /** Reads at most [limit] bytes; an over-limit image is passed on and rejected by the size policy. */
