@@ -26,3 +26,7 @@ Normal Add is decision-light: show **Save to** and an optional **Change**; do no
 ## Reclassification
 
 The historical three-of-four native overwrite witnesses show ordinary *same-path regular-file replacement* under the former blanket ownership premise. That result alone is **no longer a G0 blocker**. Other failures (path escape, wrongly targeted output, unauthorized deletion, mismatched fastresume integrity, simultaneous native writers, permission/access loss) are independently testable, actionable bugs and must not be hidden under the old #568 label. Historical evidence is retained, not falsified or retroactively marked green.
+
+## Cross-client partial-data recovery boundary
+
+For an explicitly selected local destination, ordinary exact-path payload files remain eligible for native torrent hash verification and normal subsequent missing-piece writes under this policy. [Foreign partial-data recovery](FOREIGN-PARTIAL-TORRENT-RECOVERY.md) additionally recognizes foreign suffixes, incomplete directories and auxiliary fragments: inspecting those candidates does **not** authorize renaming, overwriting, deleting, linking or copying them automatically. Require actual piece validation and a reviewed path-mapping/file-operation plan when the file is not at its torrent-declared location; keep all unrelated and unsupported sidecars intact. New Chunks resume snapshots must never turn unverified foreign payload into trusted completion.

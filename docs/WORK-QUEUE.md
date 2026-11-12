@@ -5,7 +5,7 @@
 ## R0. Reconcile and diagnose now
 
 1. **#1653 owner default-on online lookup:** code PR unqualified: 15 failed of 2,313 JVM tests, 57 skipped; one real installed failure in each native shard, R8 green. Diagnose by requirement; distinguish changed consent/default assumptions from real profile/privacy/provider/Options errors. Respect new-install ON, saved explicit OFF, no redundant dialog, sanitized metadata and zero-HTTP locked/disabled/off negatives. Re-run affected deterministic tests then necessary installed checks and full exact-head profile before merge.
-2. **#1655 + #1657 docs:** Both documentation runs green individually, but overlap in WORK-QUEUE/SPEC-COVERAGE/INDEX. Preserve all safe partial-data recovery and solid-colour eight-category Options requirements in one reconciled current-main source. Docs-only tests; don't dispatch emulators for this step.
+2. **Retain #1655 + #1657 unique contracts:** The exact-path/foreign-file recovery rules and solid-colour Options taxonomy have been reconciled into this integration candidate. Review their authoritative linked files and validate docs; neither feature's implementation is claimed by document integration.
 3. **#1656 assembled regression pass:** repeat Android Open With submit, remote Save to, row Start/Stop/expanded state, transfer rename, environment-toggle row, source precedence and first-install/Connections/footer/nav contracts. Verify actual installed latest main; component-JVM pass doesn't replace the owner APK.
 4. **Crashes and test stability:** reproduce API29 SlotWriter disposal/measure-layout crash (#901), keyboard-focus and installed media/Options failures, intermittent Compose/JVM stall. Classify failure phase and scope; preserve original reds, no retry-to-green.
 5. Exit only when all live PRs have an accurate reviewed merge/blocked/superseded disposition and a clear next unblocked integrated candidate.
@@ -19,7 +19,7 @@
 ## R2. Media and Options
 
 - One complete LIVE authorized inventory host independent of mounted Transfers, with offscreen/Connect/Options/Add/reconnect enrichment, exact hash/profile and privacy-epoch revocation, persisted overrides and offline cache. Real HTTP and zero-request controls. [#1453](https://github.com/gamesbyian/Chunks/issues/1453).
-- Genuine square artwork in rows, portrait posters in Details, square derivative only fallback [#1654](https://github.com/gamesbyian/Chunks/issues/1654). After #1657 reconciliation implement eight **filled-colour** Options cards, nested legacy settings, search/deep links, working toggles, contrast/large text and Pixel visual proof.
+- Genuine square artwork in rows, portrait posters in Details, square derivative only fallback [#1654](https://github.com/gamesbyian/Chunks/issues/1654). Implement the merged #1657 [Options filled-card design](design/OPTIONS-SOLID-COLOUR-INDEX.md): eight **filled-colour** Options cards, nested legacy settings, search/deep links, working toggles, contrast/large text and Pixel visual proof.
 - **Exit:** assembled installed real provider/scope proof, no accidental requests, restored state and visually accepted Options.
 
 ## R3. Reliability, data safety and remote integrity
