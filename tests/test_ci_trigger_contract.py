@@ -111,8 +111,11 @@ class AndroidCiTriggerContract(unittest.TestCase):
                     native, (changed_test, "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt")))
                 self.assertTrue(dispatches_for_changed_paths(
                     native, (changed_test, "app/src/androidTest/java/AnotherInstrumentedTest.kt")))
-        self.assertTrue(dispatches_for_changed_paths(
+        docs = (ROOT / ".github/workflows/documentation-validation.yml").read_text()
+        self.assertFalse(dispatches_for_changed_paths(
             native, (".github/workflows/native-add-instrumentation.yml",)))
+        self.assertTrue(dispatches_for_changed_paths(
+            docs, (".github/workflows/native-add-instrumentation.yml",)))
 
     def test_remote_real_peer_helper_is_compiled_in_its_own_installed_journey(self):
         # It has no independent Android @Test. All its actual execution is
@@ -158,7 +161,10 @@ class AndroidCiTriggerContract(unittest.TestCase):
         source = WORKFLOW.read_text(encoding="utf-8")
         allowed = pull_request_paths(source)
         self.assertIn("app/**", allowed)
-        self.assertIn(".github/workflows/android-check.yml", allowed)
+        self.assertNotIn(".github/workflows/android-check.yml", allowed)
+        docs = (ROOT / ".github/workflows/documentation-validation.yml").read_text()
+        self.assertTrue(dispatches_for_changed_paths(
+            docs, (".github/workflows/android-check.yml",)))
 
     def test_synthetic_event_dispatch_decisions(self):
         android = WORKFLOW.read_text(encoding="utf-8")

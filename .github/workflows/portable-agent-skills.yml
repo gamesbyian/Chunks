@@ -5,6 +5,8 @@ on:
       - 'skills/**'
       - '.github/workflows/portable-agent-skills.yml'
   push:
+    # Avoid feature-branch push plus PR duplicate work.
+    branches: [main]
     paths:
       - 'skills/**'
       - '.github/workflows/portable-agent-skills.yml'

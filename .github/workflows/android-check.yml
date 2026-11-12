@@ -16,7 +16,6 @@ on:
       - "gradle.properties"
       - "tools/ci_jvm_two_forks.init.gradle"
       - "tools/prefetch_robolectric_sdk.py"
-      - ".github/workflows/android-check.yml"
   workflow_dispatch:
 
 permissions:
@@ -41,10 +40,6 @@ jobs:
         run: bash tools/test_physical_android_preflight.sh
       - name: Verify Android CI trigger coverage (offline)
         run: python3 -m unittest discover -s tests -p test_ci_trigger_contract.py
-      - name: Preflight current Compose screenshot contract (offline)
-        run: |
-          python3 tools/check_compose_capture_contract.py --preflight
-          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_compose_capture_contract.py
       - name: Check Local Device terminology contract
         run: python3 tools/check_local_terminology.py
       - uses: actions/setup-node@v4

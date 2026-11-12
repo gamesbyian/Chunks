@@ -10,6 +10,10 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/check_compose_capture_contract.py'
+      - 'tests/test_compose_capture_contract.py'
+      - 'tests/test_ci_event_routing_policy.py'
+      - '.github/workflows/portable-agent-skills.yml'
       - 'tools/check_docs_dispatch_contract.py'
       - 'tests/test_docs_dispatch_contract.py'
       - 'tests/test_owner_torrent_fixture_policy.py'
@@ -115,6 +119,10 @@ on:
       - 'AGENTS.md'
       - 'assets/fonts/README.md'
       - 'tools/check_docs.py'
+      - 'tools/check_compose_capture_contract.py'
+      - 'tests/test_compose_capture_contract.py'
+      - 'tests/test_ci_event_routing_policy.py'
+      - '.github/workflows/portable-agent-skills.yml'
       - 'tools/check_docs_dispatch_contract.py'
       - 'tests/test_docs_dispatch_contract.py'
       - 'tests/test_owner_torrent_fixture_policy.py'
@@ -258,6 +266,11 @@ jobs:
           if-no-files-found: warn
       - name: Refuse writable tokens in font verification and unreachable publish steps
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_font_permissions.py
+      - name: Verify workflow routing and Compose capture contracts offline
+        run: |
+          python3 tools/check_compose_capture_contract.py --preflight
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_compose_capture_contract.py
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_event_routing_policy.py
       - name: Verify explicit main-only debug publication and immutable actions
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_debug_publish_gate.py
       - name: Verify native superseded-run cancellation cannot cross PRs or manual runs

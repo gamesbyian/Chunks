@@ -6,6 +6,20 @@
 
 Map each test to authoritative requirement, test intent, changed boundary and independent positive/negative witness. Batch cheap docs/static/affected JVM and compile checks; run targeted API29/API35/R8 or authorized real-peer tests for impacted Add, JNI, auth, identity, privacy, navigation, storage and lifecycle. One reconciled assembled candidate receives full native verifier, Android foundation, R8 and real-peer assurance, re-running gates invalidated by later changes. Build once and reuse only identical verified APK bytes. No emulator for docs-only and no duplicated full cross-branch WIP fanout. Diagnose red cases as product defect, obsolete literal/screenshot expectation, fixture or infrastructure without removing enduring assertions; a rerun alone never confers acceptance. Measure time to actionable failure, queue/setup/compile/emulator and redundant runner minutes separately. [Completion order](COMPLETION-ROADMAP.md).
 
+## CI event routing and relevance
+
+**Trigger audit:** GitHub pull_request path filters apply to the *whole PR diff*, not merely the newest commit. Thus a docs-only amendment to a ready PR containing earlier production changes still qualifies its production CI; the current exact-head requirement means the relevant gate needs an executed result on the accepted revision. Batch work on draft PRs, mark ready once integration is stable, and avoid changing ready PRs without a reason. Do not disable synchronize events, claim skipped checks passed, or silently reuse older-head proof.
+
+**Cheap routing-only changes:** Editing the Android foundation or native Add workflow's path filters no longer automatically launches a full build or emulator suite. Documentation validation owns those definitions and runs offline routing/contract checks. Changes to executable build commands, dependencies, emulator configuration, sharding or acceptance assertions **still require explicit workflow_dispatch of the affected suite on the candidate ref** before merge. A routing-only PR must say why a device run is irrelevant; the absence of a workflow is not a pass.
+
+**Dedicated test ownership:** Native Add excludes only exact instrumented test source files with a dedicated installed Android workflow (e.g. Compose 200% font scale, real combined-server, storage/source archive, launcher/font). An edit to the owning test must be accepted by its own installed workflow. Production changes, mixed changes and any new shared instrumented test still route to native Add. Negative exclusions must not match shared code or package folders.
+
+**Push / merge controls:** Every automatic push workflow must specify both a bounded branch filter and relevant path filters. Ordinary feature-branch pushes should not run a second portable Skills job beside the PR check; push verification of merged Skills on main remains intentional. Historical named-branch workflows are exceptions only for their exact old branch. Protected remote mutations, release builds and APK publishing retain explicit manual authorization.
+
+**Local audit:** The offline routing policy test inspects all GitHub Actions workflow files, verifies every PR/push filter and exercises synthetic examples for docs, Skills, dedicated tests, new shared tests, production code and mixed PRs. Run: python3 -m unittest discover -s tests -p test_ci_event_routing_policy.py. It runs in Documentation validation and proves dispatch eligibility, not actual GitHub scheduling, source-matched Android execution or visual acceptance.
+
+GitHub may evaluate only the first 300 paths in some PR comparisons and treat huge changes differently; absence of an automatically selected check is never accepted as proof that a required gate is irrelevant.
+
 ## Select the smallest sufficient truthful checks
 
 1. Determine actual changed source files, runtime surface and dependency graph. Run offline format/docs/JVM tests first, then targeted instrumented Android/real disposable server and applicable R8 checks. Do not launch every emulator for a documentation-only change or add new workflows when an existing shard can carry the case.
