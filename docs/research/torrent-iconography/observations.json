@@ -1448,7 +1448,8 @@
       "group": "Speed & seeding",
       "metaphors": [
         "turtle",
-        "slow badge"
+        "speed dial / gauge",
+        "slow-mode badge"
       ],
       "asset_status": "missing",
       "chunks_assets": [],
@@ -1456,7 +1457,7 @@
         {
           "client": "q",
           "asset": "slow.svg",
-          "meaning": "Alternative rate enabled",
+          "meaning": "Speed-dial / gauge icon for alternative rate mode",
           "evidence": "asset",
           "sprite_x": null
         },
