@@ -1,5 +1,7 @@
 # Chunks documentation index
 
+**Options visual reference:** [solid-colour eight-card Options design contract](design/OPTIONS-SOLID-COLOUR-INDEX.md) defines filled rainbow cards, revised group mapping, quick-toggle limits, appearance and accessibility acceptance; [Options information architecture](OPTIONS-INFORMATION-ARCHITECTURE.md) remains the settings/authority owner.
+
 **Start work in this order:** [AGENTS](../AGENTS.md) → [WORK-QUEUE](WORK-QUEUE.md) → [NEXT-PUSH-HANDOFF](NEXT-PUSH-HANDOFF-2026-11-08.md) → [dispatch coordination](AGENT-LANES.md) → [SPEC-COVERAGE](SPEC-COVERAGE.md). Consult [QUALITY-LEDGER](QUALITY-LEDGER.md) for evidence, **never as a second task queue**.
 
 **Branding:** [Android and full product naming contract](BRANDING-AND-APP-IDENTITY.md) covers the concise Android label, full store title, in-app wordmark and QA preview names.
