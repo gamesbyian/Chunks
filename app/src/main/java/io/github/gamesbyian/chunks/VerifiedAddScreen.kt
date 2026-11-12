@@ -294,9 +294,13 @@ internal fun VerifiedAddScreen(
                     }
                     selectedTorrent = result.first
                     selectedBytes = result.second
-                    draft.textAtFileSelection = magnet
+                    // An explicitly opened .torrent is the newest source and replaces
+                    // older typed text, exactly as phone Add and HTTPS intake do. A
+                    // lingering magnet would otherwise win a later Add-target switch.
+                    draft.textAtFileSelection = ""
                     fromPhone = false
                     useFile = true
+                    onMagnet("")
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
