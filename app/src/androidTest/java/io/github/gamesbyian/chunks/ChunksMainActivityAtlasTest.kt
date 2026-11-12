@@ -395,13 +395,12 @@ class ChunksMainActivityAtlasTest {
         rule.onNodeWithText("A deliberately very long test filename", substring = true)
             .assertIsDisplayed()
         save("app-transfers-populated-real-compose")
-        // The complete server inventory (3 transfers) is reported in the live total.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("3 transfers", substring = true))
-        rule.onNodeWithText("3 transfers", substring = true).assertExists()
-
         // Real combined navigation keeps the signed-in server identity, and
         // the four root destinations never imply an Add or a server mutation.
         rule.onNodeWithTag(ChunksSemantics.TRANSFERS_HEADING).assertExists()
+        // The complete server inventory (3 transfers) is reported in the live total.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("3 transfers", substring = true))
+        rule.onNodeWithText("3 transfers", substring = true).assertExists()
         // The canonical catalog routes to the authenticated owner's controls through
         // the one full Details screen, without changing connection identity.
         val serverRow = androidx.compose.ui.test.hasContentDescription(

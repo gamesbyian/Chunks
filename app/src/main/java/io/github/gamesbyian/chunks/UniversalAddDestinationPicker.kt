@@ -111,7 +111,8 @@ internal fun UniversalAddDestinationPicker(
                 modifier = Modifier.fillMaxWidth()
             )
             val nameSuggestions = androidx.compose.runtime.remember(sourceName) {
-                sourceName?.let { TransferDisplayNames.suggestions(it) }.orEmpty()
+                sourceName?.let { name -> TransferDisplayNames.suggestions(name)
+                    .filter { it.name != name && validUniversalAddAlias(it.name) } }.orEmpty()
             }
             if (nameSuggestions.isNotEmpty()) FlowRow(Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

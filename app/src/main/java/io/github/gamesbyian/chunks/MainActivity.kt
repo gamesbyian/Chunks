@@ -639,7 +639,9 @@ internal fun ChunksApp(
             activePhoneAddAttempt.coordinator.phase ==
                 io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED &&
             activePhoneAddAttempt.finishReviewedAttempt()) {
+            // The finished source is one shared document: clear both of its halves.
             phoneReviewedTorrent.value = null
+            serverHandoffTorrent = null
         }
         val remoteDraft = aliasScope.takeIf { it.isNotBlank() }?.let { remoteAddSessions.forAccount(it) }
         if (remoteDraft != null && remoteDraft.alreadyAttempted && !remoteDraft.submitting &&
@@ -651,6 +653,7 @@ internal fun ChunksApp(
             if (remoteDraft.beginNextDraft()) {
                 if (magnet == oldSource) magnet = ""
                 serverHandoffTorrent = null
+                phoneReviewedTorrent.value = null
             }
         }
     }
@@ -926,9 +929,7 @@ internal fun ChunksApp(
             onAliasChange = { addAliasDraft.value = it },
             // The newest source's own name: reviewed .torrent, else the magnet's dn.
             sourceName = phoneReviewedTorrent.value?.preview?.name
-                ?: aliasScope.takeIf { it.isNotBlank() }?.let { remoteAddSessions.forAccount(it) }
-                    ?.takeIf { it.useFile }?.selectedTorrent?.name
-                ?: (MagnetDraftCheck.inspect(magnet) as? MagnetDraftCheck.Valid)?.displayName,
+                ?: remember(magnet) { (MagnetDraftCheck.inspect(magnet) as? MagnetDraftCheck.Valid)?.displayName },
             incomingSourceWaiting = pendingSharedMagnet != null || pendingSharedDocument != null,
             importingSource = sharedTorrentReading,
             sourceError = sharedTorrentError,

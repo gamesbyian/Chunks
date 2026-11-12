@@ -598,7 +598,7 @@ internal fun VerifiedAddScreen(
                     "No usable default Place was reported. " + remoteDefaultUnavailableReason(defaultReport)
             }, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
-            if (destination.isBlank() && savedDefaultPlace == null && defaultReport ==
+            if (destination.isBlank() && savedDefaultPlace == null && defaultReport is
                 io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed) TextButton(
                 onClick = { defaultReadRevision++ }, enabled = !submitting && !alreadyAttempted,
                 modifier = Modifier.heightIn(min = 48.dp)
@@ -615,8 +615,7 @@ internal fun VerifiedAddScreen(
                 }
             )
             val typedValid = destination.isNotBlank() && destination != savedDefaultPlace &&
-                runCatching { StoppedRemoteAddPlan.fromMagnet(
-                    "magnet:?xt=urn:btih:" + "0".repeat(40), destination) }.isSuccess
+                RecentRemotePlaceStore.isValidParent(destination)
             var defaultSaveProblem by remember { mutableStateOf<String?>(null) }
             if (typedValid && !alreadyAttempted) TextButton(
                 onClick = {
@@ -1246,7 +1245,7 @@ internal fun remoteDefaultUnavailableReason(
         "rTorrent's default folder is a relative path, so Chunks cannot confirm where files would go. Choose an absolute folder."
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unsupported ->
         "This rTorrent does not report a default download folder. Choose a folder."
-    io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed ->
+    is io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed ->
         "The server's default folder could not be read (connection or permission). Check again, or choose a folder."
     else -> "Choose an absolute server folder."
 }

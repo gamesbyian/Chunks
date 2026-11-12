@@ -21,6 +21,10 @@ internal class RecentRemotePlaceStore(context: Context) {
         private const val PREFS = "chunks_recent_remote_places_v1"
         private const val VALIDATION_MAGNET =
             "magnet:?xt=urn:btih:0000000000000000000000000000000000000000"
+
+        /** The one rule for an acceptable remote parent folder (recent, saved default, typed). */
+        fun isValidParent(value: String): Boolean =
+            runCatching { StoppedRemoteAddPlan.fromMagnet(VALIDATION_MAGNET, value) }.isSuccess
     }
 
     private val prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -72,8 +76,7 @@ internal class RecentRemotePlaceStore(context: Context) {
         }
     }
 
-    private fun validParent(value: String): Boolean =
-        runCatching { StoppedRemoteAddPlan.fromMagnet(VALIDATION_MAGNET, value) }.isSuccess
+    private fun validParent(value: String): Boolean = isValidParent(value)
 
     private fun key(scope: String): String {
         require(scope.isNotBlank() && scope.length <= 8192) { "Invalid remote profile scope" }

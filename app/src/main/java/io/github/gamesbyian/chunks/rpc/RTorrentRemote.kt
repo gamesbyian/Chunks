@@ -208,22 +208,18 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return RemoteProbe(serverVersion, methods)
     }
 
-    /**
-     * The server's configured default download directory (read-only). Used only
-     * to *suggest* a Place; Adds still require an explicit user-confirmed path.
-     */
     /** What rTorrent reported for `directory.default`, kept distinct for honest Add guidance. */
     sealed class DefaultDirectoryReport {
         /** A literal absolute path Chunks can send nothing for and verify exactly after Add. */
         data class Absolute(val path: String) : DefaultDirectoryReport()
         /** Empty: rTorrent has no configured default download folder (seen on hosted seedboxes). */
         object Unset : DefaultDirectoryReport()
-        /** Relative or `~`-prefixed: rTorrent resolves it itself, so Chunks cannot verify it. */
+        /** Relative, `~`-prefixed or otherwise not a literal absolute path Chunks can verify. */
         object NotAbsolute : DefaultDirectoryReport()
         /** This rTorrent does not offer the getter. */
         object Unsupported : DefaultDirectoryReport()
         /** Transport, authentication or permission failure: unknown, retryable. */
-        object Failed : DefaultDirectoryReport()
+        class Failed(val cause: Exception) : DefaultDirectoryReport()
     }
 
     /** Read-only classification of `directory.default`; never throws except cancellation. */
@@ -234,39 +230,28 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             throw cancel
         } catch (fault: RpcFault) {
             return if (fault.isUnsupportedOptionalGetter()) DefaultDirectoryReport.Unsupported
-                else DefaultDirectoryReport.Failed
-        } catch (_: Exception) {
-            return DefaultDirectoryReport.Failed
+                else DefaultDirectoryReport.Failed(fault)
+        } catch (failure: Exception) {
+            return DefaultDirectoryReport.Failed(failure)
         }
-        val raw = value as? String ?: return DefaultDirectoryReport.Failed
+        val raw = value as? String ?: return DefaultDirectoryReport.NotAbsolute
         if (raw.isEmpty()) return DefaultDirectoryReport.Unset
-        val path = raw.takeIf {
-            it.startsWith("/") && it.length <= 4096 &&
-                it.none { ch -> ch.code < 32 || ch.code == 127 }
-        } ?: return if (raw.none { it.code < 32 || it.code == 127 })
-            DefaultDirectoryReport.NotAbsolute else DefaultDirectoryReport.Failed
+        // Never silently normalize a control-tainted or oversized reply into a Place.
+        if (raw.any { it.code < 32 || it.code == 127 } || raw.length > 4096) return DefaultDirectoryReport.NotAbsolute
+        val path = raw.takeIf { it.startsWith("/") } ?: return DefaultDirectoryReport.NotAbsolute
         return DefaultDirectoryReport.Absolute(path.trimEnd('/').ifEmpty { "/" })
     }
 
-    suspend fun defaultDirectory(): String? {
-        val value = try {
-            call("directory.default")
-        } catch (fault: RpcFault) {
-            // No usable default is a valid old-server capability, but a
-            // permission or busy error cannot silently become that state.
-            if (!fault.isUnsupportedOptionalGetter()) throw fault
-            return null
-        }
-        // Unix directory names may end in spaces. Trimming the RPC value
-        // silently changes the exact Place, making a valid server-default
-        // Add appear to target a different directory at readback. Preserve
-        // the server's literal path; refuse malformed leading whitespace or
-        // control-tainted replies rather than inventing a "clean" location.
-        val path = (value as? String)?.takeIf {
-            it.startsWith("/") && it.length <= 4096 &&
-                it.none { ch -> ch.code < 32 || ch.code == 127 }
-        } ?: return null
-        return path.trimEnd('/').ifEmpty { "/" }
+    /**
+     * The server's configured default download directory (read-only). Used only
+     * to *suggest* a Place; Adds still require an explicit user-confirmed path.
+     */
+    suspend fun defaultDirectory(): String? = when (val report = defaultDirectoryReport()) {
+        is DefaultDirectoryReport.Absolute -> report.path
+        DefaultDirectoryReport.Unset, DefaultDirectoryReport.NotAbsolute,
+        DefaultDirectoryReport.Unsupported -> null
+        // A permission, busy or transport error must never silently become "no default".
+        is DefaultDirectoryReport.Failed -> throw report.cause
     }
 
     /**

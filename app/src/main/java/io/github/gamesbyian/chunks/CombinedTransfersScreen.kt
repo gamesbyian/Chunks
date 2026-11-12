@@ -733,12 +733,14 @@ internal fun CombinedTransfersScreen(
     // Keyed on data only: MainActivity rebuilds the server source (and its lifecycle lambdas) each frame.
     val rawSources = remember(phoneFrame, phoneConfirmed, phoneRunning, phoneObservedAt, phonePrivacy,
         server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
-        serverPrivacy, savedPrivacy, activeSavedScopes, listings, now, batchRunning,
+        serverPrivacy, savedPrivacy, activeSavedScopes, listings, now, batchRunning, quickRunning,
         PhoneMutationFence.revision.blocksMutations()) { buildList {
+        // A quick row command is fenced exactly like a batch run: its pre-command rows are stale.
+        val commandInFlight = batchRunning || quickRunning != null
         // The ticker invalidates old reads; use the actual clock when a newer
         // observation arrives between ticks so it is not mistaken for a future read.
         val snapshotNow = System.currentTimeMillis()
-        val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || batchRunning
+        val phoneStale = phoneFrame.stale || PhoneMutationFence.revision.blocksMutations() || commandInFlight
         val phone = if (phoneRunning || phoneConfirmed) EnvironmentSnapshots.phone(
             phoneFrame.copy(stale = phoneStale), phoneConfirmed,
             locked = !phonePrivacy.mayShow, observedAtEpochMillis = phoneObservedAt)
@@ -748,7 +750,7 @@ internal fun CombinedTransfersScreen(
         add(phone)
         if (server != null && serverId != null) {
             add(EnvironmentSnapshots.server(serverId, server.transfers, connected = true,
-                stale = server.stale || batchRunning,
+                stale = server.stale || commandInFlight,
                 locked = serverPrivacy?.mayShow != true, fullView = server.fullView,
                 observedAtEpochMillis = server.observedAtEpochMillis, nowEpochMillis = snapshotNow)
             )
@@ -872,6 +874,16 @@ internal fun CombinedTransfersScreen(
     val addedHidden = combinedAddedTransferHidden(recentlyAddedTransfer, sources,
         result.transfers.map { it.key })
     val sourcesByEnvironment = result.sources.associateBy { it.environment }
+    // ONE eligibility rule for Details' Start/Stop review and a row's quick Start/Stop.
+    fun lifecycleEligible(key: UnifiedTransferKey, readCurrent: Boolean): Boolean = readCurrent &&
+        sourcesByEnvironment[key.environment]?.canClaimCompleteLiveInventory == true &&
+        ((key.environment == EnvironmentSnapshots.PHONE && phonePrivacy.mayShow && phoneRunning) ||
+            (key.environment == serverId && server?.lifecycle != null &&
+                verifiedCombinedLifecycleOwner(server, serverId) != null && serverPrivacy?.mayShow == true &&
+                server.stale == false &&
+                // rTorrent Start/Stop only supports exact v1 hashes. Keep
+                // unsupported remote identities read-only before review.
+                key.infoHash.matches(V1_TRANSFER_HASH)))
     val firstRunVisible = enableFirstRunWelcome && showCanonicalFirstRunWelcome(
         noPersistedJobs = noPersistedPhoneJobs,
         nativeRunning = phoneRunning,
@@ -990,16 +1002,7 @@ internal fun CombinedTransfersScreen(
         // authorization, exact-account lease, readback and uncertain-write
         // refusal. Saved-only, locked, stale and disconnected rows stay read-only.
         val canReviewLifecycle = details.observation != null &&
-            details.readState == TransferDetailReadState.CURRENT &&
-            sourcesByEnvironment[focusedKey.environment]?.canClaimCompleteLiveInventory == true &&
-            ((focusedKey.environment == EnvironmentSnapshots.PHONE &&
-                phonePrivacy.mayShow && phoneRunning) ||
-                (focusedKey.environment == serverId && server?.lifecycle != null &&
-                    verifiedOwner != null && serverPrivacy?.mayShow == true &&
-                    server?.stale == false &&
-                    // rTorrent Start/Stop only supports exact v1 hashes. Keep
-                    // unsupported remote identities read-only before review.
-                    focusedKey.infoHash.matches(Regex("[0-9a-f]{40}"))))
+            lifecycleEligible(focusedKey, details.readState == TransferDetailReadState.CURRENT)
         // Reuse the existing exact-account rTorrent Remove control inside
         // canonical Details. It owns separate destructive approval, session
         // readback, uncertain-write latch and non-force ruTorrent data cleanup.
@@ -1167,13 +1170,15 @@ internal fun CombinedTransfersScreen(
         val key = row.key
         val owningSource = sourcesByEnvironment[key.environment]
         val known = row.started
+        val live = owningSource?.availability == EnvironmentAvailability.LIVE
         val block = when {
             known == null -> "This transfer's running state is not known yet. Refresh before changing it."
-            owningSource == null || owningSource.availability != EnvironmentAvailability.LIVE ->
-                "This environment is not currently live. Refresh or reconnect before changing this transfer."
-            key.environment == EnvironmentSnapshots.PHONE -> null
-            key.environment == serverId && server?.lifecycle != null -> null
-            else -> "Connect to this server in Connections to control its transfers."
+            lifecycleEligible(key, live) -> null
+            key.environment != EnvironmentSnapshots.PHONE && key.environment != serverId ->
+                "Connect to this server in Connections to control its transfers."
+            key.environment == EnvironmentSnapshots.PHONE && !phoneRunning ->
+                "Open this device's transfer controls to start its engine first."
+            else -> "This list is not current yet. Refresh or reconnect before changing this transfer."
         }
         val running = quickRunning == key
         val label = if (known == true) "Stop" else "Start"
@@ -1262,7 +1267,8 @@ internal fun CombinedTransfersScreen(
             val scopeName = when (val scope = query.scope) {
                 EnvironmentViewScope.All -> "All environments"
                 is EnvironmentViewScope.Only ->
-                    if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One environment"
+                    if (scope.ids.isEmpty()) "No environments"
+                    else if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One environment"
                     else "${scope.ids.size} environments"
             }
             val filterName = when (query.filter) {
@@ -1321,7 +1327,8 @@ internal fun CombinedTransfersScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 labels.forEach { (id, label) ->
                     val visible = environmentVisible(query.scope, id)
-                    val availability = sourcesByEnvironment[id]?.availability
+                    // From ALL sources: a hidden environment still shows if it is offline/locked.
+                    val availability = sources.firstOrNull { it.environment == id }?.availability
                     val unavailable = availability == EnvironmentAvailability.OFFLINE ||
                         availability == EnvironmentAvailability.LOCKED
                     val shortName = environmentToggleName(id, rowLabels[id] ?: label)
@@ -1437,7 +1444,7 @@ internal fun CombinedTransfersScreen(
                 selected = selected,
                 visible = result.transfers.map { it.key }.toSet(),
                 labels = labels,
-                running = batchRunning,
+                running = batchRunning || quickRunning != null,
                 result = batchResult,
                 onClear = { selected = emptySet() },
                 onRun = { start ->
@@ -1556,7 +1563,7 @@ internal fun CombinedTransfersScreen(
                             val id = rowKeyText(row.key)
                             expandedRows = if (id in expandedRows) expandedRows - id else expandedRows + id
                         }),
-                        quickControls = { quickControlsFor(row) })
+                        quickControls = if (selecting) null else ({ quickControlsFor(row) }))
                 }
             }
         } else {
@@ -1572,7 +1579,7 @@ internal fun CombinedTransfersScreen(
                             val id = rowKeyText(row.key)
                             expandedRows = if (id in expandedRows) expandedRows - id else expandedRows + id
                         }),
-                        quickControls = { quickControlsFor(row) })
+                        quickControls = if (selecting) null else ({ quickControlsFor(row) }))
             }
         }
         // Detailed environment status is available after the inventory, rather
@@ -1794,8 +1801,11 @@ internal fun identifiedMediaNameSuggestions(
  * legitimate state, so it is shown, but as a short readable title instead of 45 characters
  * of hex; the full name stays in the accessible label and Details.
  */
+private val META_PLACEHOLDER = Regex("(?i)^([0-9a-f]{40})\\.meta$")
+private val V1_TRANSFER_HASH = Regex("[0-9a-f]{40}")
+
 internal fun compactTransferTitle(name: String): String {
-    val meta = Regex("(?i)^([0-9a-f]{40})\\.meta$").matchEntire(name.trim()) ?: return name
+    val meta = META_PLACEHOLDER.matchEntire(name.trim()) ?: return name
     return "Magnet " + meta.groupValues[1].take(8).lowercase() + "… (fetching metadata)"
 }
 

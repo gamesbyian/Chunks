@@ -56,7 +56,7 @@ class RemoteDestinationResolutionTest {
         server.directoryDefault = "./"
         assertEquals(DefaultDirectoryReport.NotAbsolute, remote.defaultDirectoryReport())
         server.directoryDefault = null // permission-style fault
-        assertEquals(DefaultDirectoryReport.Failed, remote.defaultDirectoryReport())
+        assertTrue(remote.defaultDirectoryReport() is DefaultDirectoryReport.Failed)
     }
 
     private fun show(saved: androidx.compose.runtime.MutableState<String?>,

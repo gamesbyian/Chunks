@@ -96,12 +96,6 @@ class RepeatedAndroidIntakeTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
     }
 
-    private fun useNewSourceIfOffered() {
-        if (rule.onAllNodesWithText("Use new source").fetchSemanticsNodes().isNotEmpty())
-            rule.onNodeWithText("Use new source").performScrollTo().performClick()
-        rule.waitForIdle()
-    }
-
     @Test fun secondOpenWithAfterAVerifiedAddGetsAUsableAddForTheNewTorrent() {
         connect()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
@@ -116,8 +110,10 @@ class RepeatedAndroidIntakeTest {
         assertTrue(server.jobs.containsKey(first))
 
         val second = openWith("second-torrent.mkv")
-        useNewSourceIfOffered()
+        // A finished, verified Add is not an occupied draft: no "Use new source" detour.
         waitForText("second-torrent.mkv")
+        assertTrue("A verified finished source must not hold the new one as pending",
+            rule.onAllNodesWithText("Use new source").fetchSemanticsNodes().isEmpty())
         // The defect: the finished attempt hid the new source and the Add action.
         submitEnabled()
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
