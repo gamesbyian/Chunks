@@ -495,7 +495,23 @@ class CombinedTwoRealServersInstrumentedTest {
         // Fresh activity in the same app process: the remembered verified
         // login reconnects read-only once the Connection screen is entered,
         // without retyping any address or credential. Not process-death proof.
+        // Explicitly save a canonical Transfers scope that is NOT "only server B".
+        val viewPreferences = CombinedViewPreferences(
+            InstrumentationRegistry.getInstrumentation().targetContext)
+        assertTrue(viewPreferences.save(viewPreferences.load().copy(
+            scope = io.github.gamesbyian.chunks.model.EnvironmentViewScope.All)))
         ActivityScenario.launch(MainActivity::class.java).use {
+            // UX "restore connections": an automatic reconnect is not a scope choice and
+            // must not overwrite the person's saved environment selection. Check once the
+            // reconnect has reached canonical Transfers, before this test itself narrows it.
+            waitFor("automatic reconnect reaches canonical Transfers", 90_000) {
+                connectedQueue() || visible("Only connected server")
+            }
+            // "Only connected server" requires the authenticated server; let the same frame's
+            // scope effects (the old code's startup focus) run before reading the preference.
+            rule.waitForIdle()
+            assertEquals(io.github.gamesbyian.chunks.model.EnvironmentViewScope.All,
+                viewPreferences.load().scope)
             // Run 41789912090: with a remembered verified server, launch opens
             // that server's queue directly. Accept either entry route, but the
             // queue must appear with no address or credential retyped.

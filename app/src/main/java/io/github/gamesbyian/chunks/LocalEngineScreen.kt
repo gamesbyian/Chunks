@@ -601,6 +601,13 @@ internal fun LocalEngineScreen(
         if ((pane != PhonePane.ADD && !addExpanded) ||
             clipboardPrefillOn != true || !windowFocused ||
             busy || phoneAddAttemptSession?.attemptedTicket != null) return@LaunchedEffect
+        // The persisted choice is authoritative. An Options opt-out commits off the main
+        // thread before this screen's cached copy updates; never fill against it. The
+        // preference file is already in memory from the IO read that set the cached copy.
+        if (!ClipboardMagnetPrefill.enabled(context)) {
+            clipboardPrefillOn = false
+            return@LaunchedEffect
+        }
         val filled = ClipboardMagnetPrefill.decide(
             enabled = true, currentDraft = magnet,
             otherSourcePresent = pending != null || initialMagnet != null || initialTorrentUri != null,

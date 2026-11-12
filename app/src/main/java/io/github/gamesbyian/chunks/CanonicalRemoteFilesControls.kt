@@ -38,9 +38,22 @@ internal fun canonicalRemoteFilesEligible(
     aliasScope: String,
     snapshotStale: Boolean,
     mainView: Boolean
-): Boolean = !snapshotStale && mainView &&
-    remote.addAccountScope() == aliasScope &&
-    transfer.hash.matches(Regex("[0-9a-fA-F]{40}"))
+): Boolean = !snapshotStale && canonicalRemoteFilesIdentityMatches(remote, transfer, aliasScope, mainView)
+
+private val V1_HASH = Regex("[0-9a-fA-F]{40}")
+
+/**
+ * The exact account, complete main view and v1 job still match, independent of whether
+ * the inventory is momentarily being re-read. A mismatch discards any displayed file list;
+ * a merely stale inventory keeps it visible but read-only until the next accepted read.
+ */
+internal fun canonicalRemoteFilesIdentityMatches(
+    remote: RTorrentRemote,
+    transfer: RemoteTransfer,
+    aliasScope: String,
+    mainView: Boolean
+): Boolean = mainView && remote.addAccountScope() == aliasScope &&
+    transfer.hash.matches(V1_HASH)
 
 /**
  * On-demand file/priorities and Finish in Order inside ONE canonical Details
@@ -58,45 +71,67 @@ internal fun CanonicalRemoteFilesControls(
     mainView: Boolean,
     snapshotRevision: Long,
     onMutationStarted: () -> Boolean,
-    onSettled: () -> Unit
+    onSettled: () -> Unit,
+    /**
+     * The owner reports only a transient out-of-date read (an ordinary refresh). An offline,
+     * locked, missing or no-longer-listed job never keeps a previously read file list.
+     */
+    retainDuringRefresh: Boolean = false
 ) {
-    val permitted = canonicalRemoteFilesEligible(
-        remote, transfer, aliasScope, snapshotStale, mainView)
+    val identityMatches = canonicalRemoteFilesIdentityMatches(remote, transfer, aliasScope, mainView)
+    val permitted = !snapshotStale && identityMatches
     var expanded by rememberSaveable(remote, aliasScope, transfer.hash) { mutableStateOf(false) }
     var refreshRevision by remember(remote, aliasScope, transfer.hash) { mutableIntStateOf(0) }
+    // Keyed by exact identity: another account, job, name or Place never inherits this list.
     var files by remember(remote, aliasScope, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf<List<RemoteFile>?>(null)
     }
     var loading by remember(remote, aliasScope, transfer.hash) { mutableStateOf(false) }
     var problem by remember(remote, aliasScope, transfer.hash) { mutableStateOf<String?>(null) }
 
-    // A new accepted inventory revision invalidates any prior file association.
-    // A canceled read may finish inside the network transport, but the effect
-    // cannot publish its result under a new account, name, Place or privacy gate.
+    // Each new accepted inventory revision re-reads this job's files (priority readback
+    // after a change included). Like ruTorrent/Transdroid, the previous exact-job list stays
+    // visible meanwhile, so page, search and selected file survive an ordinary refresh;
+    // writes stay disabled until the fresh read lands. A canceled read may finish inside the
+    // network transport, but it cannot publish under a new account, name, Place or gate.
     LaunchedEffect(remote, aliasScope, transfer.hash, transfer.name, transfer.directory,
         expanded, refreshRevision, snapshotRevision, permitted) {
-        files = null
         problem = null
         loading = false
-        if (!expanded || !permitted) return@LaunchedEffect
+        if (!expanded || !identityMatches || (!permitted && !retainDuringRefresh)) {
+            files = null
+            return@LaunchedEffect
+        }
+        if (!permitted) return@LaunchedEffect
+        val previous = files
         loading = true
         try {
             val observed = withContext(Dispatchers.IO) {
                 withTimeoutOrNull(15_000L) { remote.listFiles(transfer.hash) }
             }
             when {
-                observed == null ->
-                    problem = "Server file-list read timed out. No action was attempted."
-                observed.size > 12_000 ->
+                observed == null -> {
+                    // A transient timeout keeps the previous exact-job list, read-only.
+                    files = previous
+                    problem = "Server file-list read timed out. No action was attempted." +
+                        if (previous != null) " The list shown is the previous verified read." else ""
+                }
+                observed.size > 12_000 -> {
+                    files = null
                     problem = "The server returned too many file records to present safely."
-                remote.addAccountScope() != aliasScope ->
+                }
+                remote.addAccountScope() != aliasScope -> {
+                    files = null
                     problem = "This connection changed while reading files. Reopen Details."
+                }
                 else -> files = observed
             }
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            problem = "The authenticated server file list could not be read. No action was attempted."
+            files = previous
+            problem = "The authenticated server file list could not be read. No action was attempted." +
+                if (previous != null) " The list shown is the previous verified read." else ""
         } finally {
             loading = false
         }
@@ -109,27 +144,33 @@ internal fun CanonicalRemoteFilesControls(
                 .semantics { stateDescription = if (expanded) "Expanded" else "Collapsed" }
         ) { Text(if (expanded) "Hide files & priorities" else "Files & priorities…") }
         if (expanded) {
-            if (!permitted) {
+            if (!identityMatches) {
                 Text("Refresh the exact authenticated main server inventory before reading or changing file priorities.",
                     style = MaterialTheme.typography.bodySmall)
             } else {
                 if (loading) Text("Reading this transfer's files from the verified server…",
+                    style = MaterialTheme.typography.bodySmall)
+                else if (!permitted) Text(if (files != null) "The server inventory is not current. The file " +
+                    "list below is the last verified read; changes wait for a fresh read."
+                    else "Waiting for a current server inventory before reading this transfer's files.",
                     style = MaterialTheme.typography.bodySmall)
                 problem?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error)
                 }
                 files?.let { currentFiles ->
+                    // Read-only while the inventory or this list is being re-read.
+                    val readOnly = !permitted || loading || problem != null
                     TransferFilePager(
                         remote = remote, hash = transfer.hash, files = currentFiles,
-                        snapshotStale = snapshotStale, mainView = mainView,
+                        snapshotStale = readOnly, mainView = mainView,
                         onMutationStarted = onMutationStarted, onSettled = onSettled)
                     RemoteFinishInOrderPanel(
                         remote = remote, transfer = transfer, scope = aliasScope,
-                        files = currentFiles, stale = snapshotStale,
+                        files = currentFiles, stale = readOnly,
                         onMutationStarted = onMutationStarted, onSettled = onSettled)
                 }
-                if (!loading) OutlinedButton(
+                if (!loading && permitted) OutlinedButton(
                     onClick = { refreshRevision++ },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text("Refresh this transfer's file list") }

@@ -499,8 +499,13 @@ internal fun ChunksApp(
         if (server == null || aliasScope.isBlank() ||
             RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) == null) return
         val remoteReview = remoteAddSessions.forAccount(aliasScope)
+        // The person explicitly chose this account's .torrent while the current text
+        // was already present (the Add screen's own `.torrent file` choice). A target
+        // switch is not a newer source and must not revert that choice to the magnet.
+        val fileChosenOverCurrentText = remoteReview.useFile &&
+            remoteReview.selectedBytes != null && remoteReview.textAtFileSelection == magnet
         if (MagnetDraftCheck.inspect(magnet) is MagnetDraftCheck.Valid &&
-            !remoteReview.alreadyAttempted) {
+            !remoteReview.alreadyAttempted && !fileChosenOverCurrentText) {
             serverHandoffTorrent = null
             phoneReviewedTorrent.value = null
             remoteReview.preferMagnet()
@@ -508,7 +513,7 @@ internal fun ChunksApp(
         if (magnet.isBlank() && !remoteReview.alreadyAttempted &&
             phoneReviewedTorrent.value != null) {
             serverHandoffTorrent = requireNotNull(phoneReviewedTorrent.value).bytes.copyOf()
-        } else if (magnet.isNotBlank()) {
+        } else if (magnet.isNotBlank() && !fileChosenOverCurrentText) {
             remoteReview.preferMagnet()
         }
         addUsingAuthenticatedRemote = true
@@ -1559,9 +1564,11 @@ internal fun ChunksApp(
                                     val verifiedId = io.github.gamesbyian.chunks.model
                                         .EnvironmentSnapshots.serverIdOfAliasScope(aliasScope)?.value
                                     if (startupReturn) {
-                                        // Read-only startup catalog focus. No Add target.
+                                        // An automatic cold-start reconnect is not a person's scope
+                                        // choice: restore canonical Transfers in its SAVED view
+                                        // (All, device, one or several servers). Focusing this one
+                                        // server here overwrote that saved selection every launch.
                                         consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
-                                        savedProfileCatalogFocus = verifiedId
                                         combinedFromConnections = true
                                     } else {
                                         verifiedConnectionNotice = VerifiedConnectionNotice(
@@ -2112,6 +2119,13 @@ internal fun ChunksApp(
                         observedPlaces = observedPlaces,
                         initialTorrent = serverHandoffTorrent,
                         onInitialTorrentConsumed = { serverHandoffTorrent = null },
+                        // The newest explicit server-form .torrent replaces any older phone
+                        // review, so a target switch can never resurrect the superseded file.
+                        onTorrentAdopted = { preview, bytes ->
+                            phoneReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf())
+                            serverHandoffTorrent = null
+                            phoneHandoffTorrentUri = null
+                        },
                         finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
                         environmentLabel = serverEnvironmentLabel(aliasScope),
                         onMagnet = { magnet = it }, onDestination = { addSession.destination = it },

@@ -116,6 +116,11 @@ internal fun VerifiedAddScreen(
     clipboardTextReader: (android.content.Context) -> String? = { context ->
         ClipboardMagnetPrefill.readText(context)
     },
+    /**
+     * A .torrent the person explicitly chose here (picker or HTTPS intake) becomes the app's
+     * ONE reviewed document, so another Add target reviews the same newest file.
+     */
+    onTorrentAdopted: (TorrentMetainfoPreview, ByteArray) -> Unit = { _, _ -> },
     /** Read-only injectable HTTPS intake for deterministic stalled-request UI tests. */
     fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
         withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
@@ -294,9 +299,14 @@ internal fun VerifiedAddScreen(
                     }
                     selectedTorrent = result.first
                     selectedBytes = result.second
-                    draft.textAtFileSelection = magnet
+                    // An explicitly opened .torrent is the newest source and replaces
+                    // older typed text, exactly as phone Add and HTTPS intake do. A
+                    // lingering magnet would otherwise win a later Add-target switch.
+                    draft.textAtFileSelection = ""
                     fromPhone = false
                     useFile = true
+                    onMagnet("")
+                    onTorrentAdopted(result.first, result.second)
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
@@ -462,6 +472,7 @@ internal fun VerifiedAddScreen(
                                     awaitingConfirmation = false
                                     clipboardFilled = null
                                     onMagnet("")
+                                    onTorrentAdopted(result.preview, result.bytes)
                                 }
                                 is TorrentLinkResult.Refused -> {
                                     // A refused old URL must not pollute a newer
