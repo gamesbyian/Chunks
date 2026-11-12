@@ -8,7 +8,6 @@ on:
       - 'tools/render_reference_mixed_marks.py'
       - 'tests/test_reference_mixed_marks.py'
       - 'assets/fonts/experimental/mixed-mark-studies/**'
-      - '.github/workflows/reference-mixed-mark-studies.yml'
       - 'docs/design/CHUNKS-REFERENCE-MIXED-MARKS.md'
   pull_request:
     paths:
@@ -16,7 +15,6 @@ on:
       - 'tools/render_reference_mixed_marks.py'
       - 'tests/test_reference_mixed_marks.py'
       - 'assets/fonts/experimental/mixed-mark-studies/**'
-      - '.github/workflows/reference-mixed-mark-studies.yml'
       - 'docs/design/CHUNKS-REFERENCE-MIXED-MARKS.md'
   workflow_dispatch:
 permissions:

@@ -12,7 +12,6 @@ on:
       - 'assets/fonts/experimental/accent-studies/**'
       - 'assets/fonts/experimental/dotless-kerned/**'
       - 'assets/fonts/chunks/**'
-      - '.github/workflows/reference-panel-dotless-kerned.yml'
       - 'docs/design/CHUNKS-REFERENCE-DOTLESS-ACCENTS.md'
   pull_request:
     paths:
@@ -24,7 +23,6 @@ on:
       - 'assets/fonts/experimental/accent-studies/**'
       - 'assets/fonts/experimental/dotless-kerned/**'
       - 'assets/fonts/chunks/**'
-      - '.github/workflows/reference-panel-dotless-kerned.yml'
       - 'docs/design/CHUNKS-REFERENCE-DOTLESS-ACCENTS.md'
   workflow_dispatch:
 permissions:

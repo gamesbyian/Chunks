@@ -20,7 +20,6 @@ on:
       - 'assets/fonts/experimental/dotless-kerned/**'
       - 'assets/fonts/experimental/consolidated/**'
       - 'tools/reference_weight_profiles.json'
-      - '.github/workflows/reference-panel-consolidated.yml'
       - 'docs/design/CHUNKS-REFERENCE-CONSOLIDATED-FAMILY.md'
   pull_request:
     paths:
@@ -40,7 +39,6 @@ on:
       - 'assets/fonts/experimental/dotless-kerned/**'
       - 'assets/fonts/experimental/consolidated/**'
       - 'tools/reference_weight_profiles.json'
-      - '.github/workflows/reference-panel-consolidated.yml'
       - 'docs/design/CHUNKS-REFERENCE-CONSOLIDATED-FAMILY.md'
   workflow_dispatch:
 permissions:

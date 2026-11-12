@@ -11,7 +11,6 @@ on:
       - 'assets/fonts/experimental/weight-studies/**'
       - 'assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf'
       - 'docs/design/CHUNKS-REFERENCE-ACCENT-STUDIES.md'
-      - '.github/workflows/reference-panel-accent-studies.yml'
   pull_request:
     paths:
       - 'tools/build_reference_accent_studies.py'
@@ -20,7 +19,6 @@ on:
       - 'assets/fonts/chunks/**'
       - 'assets/fonts/experimental/weight-studies/**'
       - 'assets/fonts/experimental/accent-studies/**'
-      - '.github/workflows/reference-panel-accent-studies.yml'
   workflow_dispatch:
 permissions:
   contents: read

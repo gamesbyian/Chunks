@@ -13,10 +13,6 @@ name: Protected Seedhost Android read-only journey
 # non-secret UI error category on a second trusted-main read-only pass.
 # Reuse identical authorized primary endpoint, credentials, emulator and RPC methods.
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-android-readonly.yml"
   workflow_dispatch:
 
 permissions:

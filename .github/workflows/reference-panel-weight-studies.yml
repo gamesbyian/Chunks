@@ -15,7 +15,6 @@ on:
       - 'assets/fonts/chunks/**'
       - 'assets/fonts/experimental/ChunksReferencePanel-ExtraBold-Optical.otf'
       - 'assets/fonts/experimental/weight-studies/**'
-      - '.github/workflows/reference-panel-weight-studies.yml'
   pull_request:
     paths:
       - 'tools/build_reference_panel_weight_studies.py'
@@ -28,7 +27,6 @@ on:
       - 'assets/fonts/source/reference-alphabet/**'
       - 'assets/fonts/chunks/**'
       - 'assets/fonts/experimental/weight-studies/**'
-      - '.github/workflows/reference-panel-weight-studies.yml'
   workflow_dispatch:
 permissions:
   contents: read

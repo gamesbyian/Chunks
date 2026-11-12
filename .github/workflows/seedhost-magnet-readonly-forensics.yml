@@ -7,10 +7,6 @@ on:
     paths:
       - "tools/seedhost_magnet_readonly_forensics.py"
       - ".github/workflows/seedhost-magnet-readonly-forensics.yml"
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/seedhost-magnet-readonly-forensics.yml"
   workflow_dispatch:
 
 permissions:

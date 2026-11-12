@@ -13,7 +13,6 @@ on:
       - 'assets/fonts/chunks/**'
       - 'assets/fonts/experimental/consolidated/**'
       - 'assets/fonts/experimental/stacked-studies/**'
-      - '.github/workflows/reference-panel-stacked-studies.yml'
       - 'docs/design/CHUNKS-REFERENCE-STACKED-ACCENTS.md'
   pull_request:
     paths:
@@ -26,7 +25,6 @@ on:
       - 'assets/fonts/chunks/**'
       - 'assets/fonts/experimental/consolidated/**'
       - 'assets/fonts/experimental/stacked-studies/**'
-      - '.github/workflows/reference-panel-stacked-studies.yml'
       - 'docs/design/CHUNKS-REFERENCE-STACKED-ACCENTS.md'
   workflow_dispatch:
 permissions:
