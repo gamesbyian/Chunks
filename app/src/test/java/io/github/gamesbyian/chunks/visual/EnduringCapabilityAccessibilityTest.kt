@@ -82,4 +82,14 @@ class EnduringCapabilityAccessibilityTest {
         assertEquals(0, rule.onAllNodesWithTag(ChunksSemantics.ADD_TARGET_REMOTE)
             .fetchSemanticsNodes().size)
     }
+
+    @Test fun connectionCreationIsNamedReachableAndTouchSized() {
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performScrollTo()
+            .assertHasClickAction().assertNamedAndTouchSized()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).performScrollTo()
+            .assertIsDisplayed().assertNamedAndTouchSized()
+    }
 }

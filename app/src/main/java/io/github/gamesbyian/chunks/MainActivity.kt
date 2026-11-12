@@ -69,6 +69,7 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -297,11 +298,17 @@ internal fun ChunksApp(
     var savedProfiles by remember(profileRoster) {
         mutableStateOf(if (vault.rememberingEnabled()) profileRoster.list() else emptyList())
     }
-    var endpoint by remember { mutableStateOf(remembered?.endpoint.orEmpty()) }
+    var endpoint by rememberSaveable { mutableStateOf(remembered?.endpoint.orEmpty()) }
     // Advanced manual endpoint path; joined with a hostname-only address.
-    var rpcPath by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf(remembered?.username.orEmpty()) }
-    var password by remember { mutableStateOf(remembered?.password.orEmpty()) }
+    var rpcPath by rememberSaveable { mutableStateOf("") }
+    var username by rememberSaveable { mutableStateOf(remembered?.username.orEmpty()) }
+    var connectionName by rememberSaveable { mutableStateOf("") }
+    // Restore nonsecret drafts together, NEVER refill a restored draft with a
+    // different remembered account's password or automatically submit that draft.
+    var connectionDraftEdited by rememberSaveable { mutableStateOf(false) }
+    var password by remember {
+        mutableStateOf(if (connectionDraftEdited) "" else remembered?.password.orEmpty())
+    }
     // Remembering is the default. Every user can opt out before Connect.
     var rememberLogin by remember { mutableStateOf(vault.rememberingEnabled()) }
     // A cold launch may attempt ONE read-only authenticated connection using the last
@@ -351,13 +358,13 @@ internal fun ChunksApp(
     // Delegate exactly one eligible cold-start attempt to existing Connections,
     // preserving its identity/credential epoch, cancel and read-only contracts.
     LaunchedEffect(section, remembered, rememberLogin, startupReconnectAttempted,
-        explicitDisconnectSuppressed, server) {
+        explicitDisconnectSuppressed, connectionDraftEdited, server) {
         if (NavigationRestorePolicy.requiresColdReconnectHandoff(
                 section = section.name,
                 savedCredentialPresent = remembered != null,
                 rememberingEnabled = rememberLogin,
                 alreadyAttempted = startupReconnectAttempted ||
-                    explicitDisconnectSuppressed,
+                    explicitDisconnectSuppressed || connectionDraftEdited,
                 authenticated = server != null
             )) {
             section = Section.SERVER
@@ -842,7 +849,7 @@ internal fun ChunksApp(
     }
 
     /** Disconnect does not forget credentials, transfer bytes or Add draft. */
-    fun disconnectCurrentRemote() {
+    fun disconnectCurrentRemote(restoreSavedLogin: Boolean = true) {
         // Retire pending automatic restoration BEFORE server becomes null.
         // No Compose effect may turn a deliberate Disconnect into reconnect.
         startupReconnectAttempted = true
@@ -868,7 +875,9 @@ internal fun ChunksApp(
         requestedView = "main"
         verifiedConnectionNotice = null
         returnFromStartupConnectToCanonical = false
+        connectionName = ""
         section = Section.SERVER
+        if (!restoreSavedLogin) return
         val oldEndpoint = endpoint
         val oldUsername = username
         val oldPassword = password
@@ -997,6 +1006,8 @@ internal fun ChunksApp(
                         rpcPath = ""
                         username = profile.credentials.username
                         password = profile.credentials.password
+                        connectionName = profile.label
+                        connectionDraftEdited = true
                         credentialNotice = "Authenticate this saved connection before remote Add. Your Add source is retained."
                         section = Section.SERVER
                     }
@@ -1364,18 +1375,40 @@ internal fun ChunksApp(
                         }
                 },
                 onDisconnectCurrent = { disconnectCurrentRemote() },
+                onAddConnection = {
+                    // Retire only the UI session; saved profiles and server jobs remain intact.
+                    // Suppress the ordinary Disconnect credential refill for a NEW profile.
+                    savedAddReconnect.abandon()
+                    disconnectCurrentRemote(restoreSavedLogin = false)
+                    endpoint = ""
+                    rpcPath = ""
+                    username = ""
+                    password = ""
+                    connectionName = ""
+                    connectionDraftEdited = true
+                    credentialNotice = null
+                    connectDiagnostics = ConnectionDiagnostics()
+                },
                 startupReconnectEligible = RemoteStartupReconnectPolicy.shouldAttempt(
                     rememberingEnabled = rememberLogin,
                     hasSavedVerifiedLogin = remembered != null,
                     alreadyAttempted = startupReconnectAttempted ||
-                        explicitDisconnectSuppressed
+                        explicitDisconnectSuppressed || connectionDraftEdited
                 ),
                 onStartupReconnectConsumed = {
                     startupReconnectAttempted = true
                     returnFromStartupConnectToCanonical = section == Section.SERVER && server == null
                 },
                 endpoint = endpoint, username = username, password = password,
-                rpcPath = rpcPath, onRpcPath = { rpcPath = it },
+                connectionName = connectionName, onConnectionName = {
+                    connectionName = it
+                    connectionDraftEdited = true
+                },
+                rpcPath = rpcPath, onRpcPath = {
+                    if (rpcPath != it) password = ""
+                    rpcPath = it
+                    connectionDraftEdited = true
+                },
                 error = error, loading = loading,
                 diagnostics = connectDiagnostics,
                 onCancelConnect = {
@@ -1403,6 +1436,8 @@ internal fun ChunksApp(
                     rpcPath = ""
                     username = profile.credentials.username
                     password = profile.credentials.password
+                    connectionName = profile.label
+                    connectionDraftEdited = true
                     error = null
                     credentialNotice = "Selected saved profile. Connect to authenticate."
                 },
@@ -1516,8 +1551,16 @@ internal fun ChunksApp(
                     section = Section.LOCAL
                 },
                 onCreateTorrent = { openTool(Section.CREATE, Section.SERVER) },
-                onEndpoint = { endpoint = it }, onUsername = { username = it },
-                onPassword = { password = it },
+                onEndpoint = {
+                    if (endpoint != it) password = ""
+                    endpoint = it
+                    connectionDraftEdited = true
+                }, onUsername = {
+                    if (username != it) password = ""
+                    username = it
+                    connectionDraftEdited = true
+                },
+                onPassword = { password = it; connectionDraftEdited = true },
                 onConnect = {
                     // An advanced RPC path makes this one exact address: no discovery.
                     val target = try { RemoteSmartConnect.withExactPath(endpoint, rpcPath) }
@@ -1536,6 +1579,8 @@ internal fun ChunksApp(
                         // Freeze credentials for this one connection attempt.
                         // A later edit or lifecycle reset cannot redirect it.
                         val settings = RemoteCredentials(target, username, password)
+                        val preferredConnectionName = connectionName.trim()
+                            .takeIf { it.isNotEmpty() && !returnFromStartupConnectToCanonical }
                         connectDiagnostics = ConnectionDiagnostics()
                         connectJob = scope.launch {
                             try {
@@ -1592,6 +1637,7 @@ internal fun ChunksApp(
                                     // The full address now carries the path.
                                     rpcPath = ""
                                     server = candidate
+                                    connectionDraftEdited = false
                                     // Only an authenticated, positively verified
                                     // manual/new session clears deliberate Disconnect.
                                     // A failed login cannot re-enable auto retry.
@@ -1622,7 +1668,8 @@ internal fun ChunksApp(
                                         combinedFromConnections = true
                                     } else {
                                         verifiedConnectionNotice = VerifiedConnectionNotice(
-                                            savedProfiles.firstOrNull { it.id == verifiedId }?.label
+                                            preferredConnectionName
+                                                ?: savedProfiles.firstOrNull { it.id == verifiedId }?.label
                                                 ?: RememberedRemoteProfileRoster.addressOf(verifiedSettings.endpoint),
                                             saved = null // persistence has not been observed yet
                                         )
@@ -1638,7 +1685,7 @@ internal fun ChunksApp(
                                             if (saveThisLogin) {
                                                 RemoteCredentialLock.saveVerifiedPairIfCurrent(
                                                     vault, profileRoster, verifiedSettings,
-                                                    credentialTicket
+                                                    credentialTicket, preferredConnectionName
                                                 )
                                             } else {
                                                 // A superseded or canceled Connect must not
@@ -2334,16 +2381,21 @@ internal fun ConnectionScreen(
     onLoadConnectedView: () -> Unit = {},
     onConnectedSeedingRules: () -> Unit = {},
     onViewConnectedTransfers: () -> Unit = {},
-    onDisconnectCurrent: () -> Unit = {}
+    onDisconnectCurrent: () -> Unit = {},
+    connectionName: String = "",
+    onConnectionName: (String) -> Unit = {},
+    onAddConnection: () -> Unit = {}
 ) {
     // Submitting the form closes the keyboard, as forms conventionally do,
     // so the next screen's persistent footer is not waiting on an IME hide.
     val connectKeyboard = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
     val connectFocus = androidx.compose.ui.platform.LocalFocusManager.current
+    val validName = connectionName.isBlank() ||
+        RememberedRemoteProfileRoster.validFriendlyName(connectionName)
     val submitConnect: () -> Unit = {
         connectKeyboard?.hide()
         connectFocus.clearFocus()
-        if (connectedSessionName == null) onConnect()
+        if (!loading && validName && connectedSessionName == null) onConnect()
     }
     var pendingForget by remember { mutableStateOf<String?>(null) }
     var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
@@ -2353,6 +2405,19 @@ internal fun ConnectionScreen(
     var renameBusy by remember { mutableStateOf(false) }
     var renameNotice by remember { mutableStateOf<String?>(null) }
     val renameScope = rememberCoroutineScope()
+    val connectionList = rememberLazyListState()
+    var showNewConnectionForm by remember { mutableStateOf(false) }
+    LaunchedEffect(showNewConnectionForm, connectedSessionName) {
+        if (showNewConnectionForm && connectedSessionName == null) {
+            showNewConnectionForm = false
+            // Intro, Add connection, then the optional roster and rename result.
+            // Bring the NEW profile form into view even with a long saved roster.
+            val formIndex = 2 +
+                (if (rememberLogin && savedProfiles.isNotEmpty()) 1 + savedProfiles.size else 0) +
+                (if (renameNotice != null) 1 else 0)
+            connectionList.scrollToItem(formIndex)
+        }
+    }
     // Reuse the exact existing verified Connect operation. No saved password or
     // endpoint is broadcast to an unverified profile, and no torrent mutation
     // occurs merely because the app opened. Consume before invoking the action
@@ -2364,6 +2429,7 @@ internal fun ConnectionScreen(
     )
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = connectionList,
         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
@@ -2374,6 +2440,16 @@ internal fun ConnectionScreen(
                 "Manage a seedbox or other rTorrent client from a secure endpoint. " +
                     "Checking a connection never changes its transfers; each transfer action " +
                     "requires separate review.", Lilac, titleAsHeading = true)
+        }
+        item {
+            OutlinedButton(onClick = {
+                onAddConnection()
+                showNewConnectionForm = true
+            }, enabled = !loading,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .testTag(ChunksSemantics.CONNECTION_ADD)) {
+                Text("Add connection")
+            }
         }
         if (connectedSessionName != null) item {
             Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
@@ -2581,6 +2657,18 @@ internal fun ConnectionScreen(
         if (connectedSessionName == null) {
         item {
             OutlinedTextField(
+                value = connectionName, onValueChange = onConnectionName,
+                label = { Text("Connection name (optional)") },
+                supportingText = { Text(if (validName) "Leave blank to use the account and server name."
+                    else "Use up to 100 characters without control characters.") },
+                isError = !validName, enabled = !loading, singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Next),
+                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.CONNECTION_NAME)
+            )
+        }
+        item {
+            OutlinedTextField(
                 value = endpoint, onValueChange = onEndpoint,
                 label = { Text("Seedbox hostname, ruTorrent URL or RPC address") },
                 placeholder = { Text("server.example or https://server.example/rutorrent/") },
@@ -2589,7 +2677,7 @@ internal fun ConnectionScreen(
                     keyboardType = androidx.compose.ui.text.input.KeyboardType.Uri,
                     autoCorrectEnabled = false,
                     imeAction = androidx.compose.ui.text.input.ImeAction.Next),
-                singleLine = true, modifier = Modifier.fillMaxWidth()
+                singleLine = true, enabled = !loading, modifier = Modifier.fillMaxWidth()
             )
             val providerHint = remember(endpoint) { RemoteProviderCatalog.hint(endpoint) }
             if (providerHint != null) Text(providerHint, style = MaterialTheme.typography.bodySmall,
@@ -2625,12 +2713,13 @@ internal fun ConnectionScreen(
                     capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.None,
                     autoCorrectEnabled = false,
                     imeAction = androidx.compose.ui.text.input.ImeAction.Next),
-                singleLine = true, modifier = Modifier.fillMaxWidth()
+                singleLine = true, enabled = !loading, modifier = Modifier.fillMaxWidth()
             )
         }
         item {
             SecurePasswordInput(
                 value = password, onValueChange = onPassword,
+                enabled = !loading,
                 modifier = Modifier.fillMaxWidth(),
                 // Go runs the same read-only Connect as the button, under its rules.
                 onGo = { if (!loading && endpoint.isNotBlank()) submitConnect() }
@@ -2664,7 +2753,7 @@ internal fun ConnectionScreen(
         if (connectedSessionName == null) item {
             Button(
                 onClick = submitConnect,
-                enabled = !loading && endpoint.isNotBlank(),
+                enabled = !loading && endpoint.isNotBlank() && validName,
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }

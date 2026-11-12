@@ -3,6 +3,14 @@ package io.github.gamesbyian.chunks
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.input.ImeAction
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -24,18 +32,23 @@ class ConnectionsScreenPresentationTest {
         connected: String? = null,
         onProfile: (RememberedRemoteProfileRoster.Profile) -> Unit = {},
         onViewCurrent: () -> Unit = {},
-        onDisconnect: () -> Unit = {}
+        onDisconnect: () -> Unit = {},
+        onAdd: () -> Unit = {},
+        name: String = "",
+        loading: Boolean = false
     ) {
         rule.setContent {
             ChunksTheme {
                 ConnectionScreen(
                     endpoint = "", username = "", password = "",
-                    error = null, loading = false,
+                    error = null, loading = loading,
                     rememberLogin = true, savedLoginPresent = profiles.isNotEmpty(),
                     savedProfiles = profiles, credentialNotice = null,
                     connectedSessionName = connected,
                     onViewConnectedTransfers = onViewCurrent,
                     onDisconnectCurrent = onDisconnect,
+                    onAddConnection = onAdd,
+                    connectionName = name,
                     onOpenProfileTransfers = onProfile,
                     onRememberLogin = {},
                     onForgetLogin = {},
@@ -84,5 +97,39 @@ class ConnectionsScreenPresentationTest {
         rule.onNodeWithText("View transfers").performClick()
         assertEquals(1, views)
         assertEquals(0, disconnects)
+    }
+
+    @Test fun newConnectionRemainsReachableDuringAnActiveSession() {
+        var adds = 0
+        var disconnects = 0
+        render(connected = "Studio", onAdd = { adds++ }, onDisconnect = { disconnects++ })
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).assertIsEnabled().performClick()
+        assertEquals(1, adds)
+        assertEquals(0, disconnects)
+    }
+
+    @Test fun blankOptionalNameKeepsTheNextKeyboardActionAndNewProfileEntry() {
+        render()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME)
+            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Next))
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).assertIsEnabled()
+    }
+
+    @Test fun runningVerificationCannotStartAnotherProfileOrEditItsName() {
+        render(name = "Studio", loading = true)
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).assertIsNotEnabled()
+    }
+
+    @Test fun newProfileFormIsBroughtIntoViewPastThreeSavedProfiles() {
+        val profiles = (1..3).map { index ->
+            val endpoint = "https://example.test/rutorrent$index/RPC2"
+            RememberedRemoteProfileRoster.Profile(
+                id = RememberedRemoteProfileRoster.identityOf(endpoint, "one"),
+                label = "Studio", credentials = RemoteCredentials(endpoint, "one", "example-only"))
+        }
+        render(profiles = profiles)
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).assertIsDisplayed()
     }
 }

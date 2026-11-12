@@ -24,6 +24,9 @@ internal object ChunksSemantics {
     const val FOOTER_CONNECTIONS = "chunks.footer.connections"
     const val FOOTER_OPTIONS = "chunks.footer.options"
 
+    const val CONNECTION_ADD = "chunks.connection.add"
+    const val CONNECTION_NAME = "chunks.connection.name"
+
     // Universal Add: one source, one submission action, one Start preference.
     const val ADD_SOURCE_FIELD = "chunks.add.source"
     const val ADD_SUBMIT = "chunks.add.submit"
