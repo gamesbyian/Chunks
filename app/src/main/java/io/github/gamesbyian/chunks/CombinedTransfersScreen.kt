@@ -366,12 +366,6 @@ internal fun CombinedTransfersScreen(
     sharedTorrentError: String? = null,
     /** A one-shot view-only request keyed to immutable saved profile ID. */
     scopeFocusRequest: String? = null,
-    /**
-     * App-level continuity for the one media session: leaving Transfers detaches rather
-     * than closes it; the app owner revokes it on any authority change. Null closes on leave.
-     */
-    mediaHostLease: io.github.gamesbyian.chunks.media.MediaInventoryHostLease? = null,
-    mediaHostScope: kotlinx.coroutines.CoroutineScope? = null,
     onScopeFocusConsumed: () -> Unit = {},
     /** Root Transfers returns from full Details without changing filters or identity. */
     returnToCatalogRevision: Long = 0L,
@@ -827,18 +821,11 @@ internal fun CombinedTransfersScreen(
         mutableStateOf<io.github.gamesbyian.chunks.media.MediaInventoryEnrichmentSession?>(null)
     }
     // Creating/closing the session is an effect; composition itself does no I/O.
-    DisposableEffect(mediaGraph, mediaController, batchScope, mediaHostLease, mediaHostScope) {
-        val lease = mediaHostLease?.takeIf { mediaHostScope != null }
-        val owned = mediaController?.let { controller ->
-            if (lease != null) lease.attach {
-                mediaGraph.openInventorySession(requireNotNull(mediaHostScope), controller)
-            } else mediaGraph.openInventorySession(batchScope, controller)
-        }
+    DisposableEffect(mediaGraph, mediaController, batchScope) {
+        val owned = mediaController?.let { mediaGraph.openInventorySession(batchScope, it) }
         mediaSession = owned
         onDispose {
-            if (lease != null && owned != null)
-                lease.detach(owned, android.os.SystemClock.elapsedRealtime())
-            else owned?.close()
+            owned?.close()
             if (mediaSession === owned) mediaSession = null
         }
     }
