@@ -1,6 +1,6 @@
 # Verified source-.torrent archive: implementation boundary
 
-**Status: implemented private-copy primitive, NOT wired to Universal Add and NOT owner-accepted.** This is a non-overlapping foundation slice for #1517. Source file actions in [the binding lifecycle specification](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) remain incomplete. Do not mark Keep/Archive/Delete or Smart Routing as delivered.
+**Status (2026-11-13): wired into the Local Device Universal Add only; remote Add, Archive-as-move and restart recovery remain open; NOT owner-accepted.** Local wiring: `OriginalTorrentHandlingUi.kt` (Options default Archive under Downloads & storage; per-Add Keep/Archive/Delete shown only for a user `content://` document; archive after this ticket's read-back new native registration; Delete only after a separate confirmation, SHA-256 revalidation of the reviewed bytes, provider delete and a fresh absence read). Installed proof: `OriginalTorrentHandlingInstrumentedTest`. Earlier status: implemented private-copy primitive, NOT wired to Universal Add and NOT owner-accepted. This is a non-overlapping foundation slice for #1517. Source file actions in [the binding lifecycle specification](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md) remain incomplete. Do not mark Keep/Archive/Delete or Smart Routing as delivered.
 
 ## Caller contract
 

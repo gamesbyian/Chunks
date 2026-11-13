@@ -728,7 +728,7 @@ internal fun ChunksApp(
             if (incomingDocumentRead == document && witness.canApply(
                     magnet, localReviewedTorrent.value, serverHandoffTorrent,
                     currentRemoteDraft)) {
-                localReviewedTorrent.value = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+                localReviewedTorrent.value = PendingLocalAdd(reviewed.preview, reviewed.bytes, document)
                 serverHandoffTorrent = if (addUsingAuthenticatedRemote && server != null &&
                     RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
                     reviewed.bytes.copyOf() else null

@@ -1862,6 +1862,7 @@ internal fun combinedRowFacts(row: UnifiedTransferObservation, fresh: Boolean = 
         true -> when {
             // Existing exact-path bytes are being hash-verified before any download
             // (FOREIGN-PARTIAL-TORRENT-RECOVERY P0); the percentage is check progress.
+            row.checkingExistingData == true && row.stopsAfterCheck == true -> CHECKING_STAYS_STOPPED
             row.checkingExistingData == true -> "Checking existing data"
             row.progressPpm == 1_000_000 -> "Sharing"
             fresh && (row.downloadBytesPerSecond ?: 0L) > 0L -> "Downloading"
@@ -1889,6 +1890,7 @@ internal fun combinedCompactRowFacts(row: UnifiedTransferObservation, fresh: Boo
         true -> when {
             // Existing exact-path bytes are being hash-verified before any download
             // (FOREIGN-PARTIAL-TORRENT-RECOVERY P0); the percentage is check progress.
+            row.checkingExistingData == true && row.stopsAfterCheck == true -> CHECKING_STAYS_STOPPED
             row.checkingExistingData == true -> "Checking existing data"
             row.progressPpm == 1_000_000 -> "Sharing"
             fresh && (row.downloadBytesPerSecond ?: 0L) > 0L -> "Downloading"

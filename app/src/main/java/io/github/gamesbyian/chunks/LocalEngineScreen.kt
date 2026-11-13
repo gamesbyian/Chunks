@@ -250,7 +250,11 @@ private object LocalScreenReader {
  * only the v1 infohash, so a changed same-host tracker URL cannot silently
  * acquire the user's authorization for the previously reviewed document.
  */
-internal class PendingLocalAdd(val preview: TorrentMetainfoPreview, val bytes: ByteArray) {
+internal class PendingLocalAdd(
+    val preview: TorrentMetainfoPreview, val bytes: ByteArray,
+    /** The user's own Android document, when the bytes came from one (never a fetched URL). */
+    val originalDocument: Uri? = null
+) {
     private val reviewedSourceSha256 =
         java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
 
@@ -481,6 +485,11 @@ internal fun LocalEngineScreen(
         problemOutcome = text
     }
     var busy by remember { mutableStateOf(false) }
+    // Separately approved deletion of a verified Add's original document; RAM only.
+    var originalDeletion by remember { mutableStateOf<OriginalDeletionRequest?>(null) }
+    var originalDeleting by remember { mutableStateOf(false) }
+    // The outcome of that separate action; the Add's own result message stays intact.
+    var originalNote by remember { mutableStateOf<String?>(null) }
     // Parent-owned private source is available to all intake callbacks, including
     // the asynchronous picker. Keep it in RAM rather than Android SavedState.
     val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
@@ -508,7 +517,7 @@ internal fun LocalEngineScreen(
             androidx.compose.runtime.snapshotFlow { busy }.first { !it }
             val reviewed = withContext(Dispatchers.IO) { SharedTorrentDocument.read(context.contentResolver, uri) }
             if (sourceReadJob !== read) return null
-            pending = PendingLocalAdd(reviewed.preview, reviewed.bytes)
+            pending = PendingLocalAdd(reviewed.preview, reviewed.bytes, uri)
             // The independently validated user-selected document supersedes
             // a previously typed URL/magnet only after a successful read.
             magnet = ""
@@ -1543,6 +1552,33 @@ internal fun LocalEngineScreen(
                 color = MaterialTheme.colorScheme.error)
         }
 
+        originalDeletion?.let { request ->
+            OriginalDeletionPrompt(request, busy = originalDeleting,
+                onDelete = {
+                    if (!originalDeleting) {
+                        originalDeleting = true
+                        scope.launch {
+                            try {
+                                val outcome = withContext(Dispatchers.IO) {
+                                    OriginalTorrentDocuments.deleteReviewed(context.contentResolver, request)
+                                }
+                                originalNote = originalDeletionMessage(outcome)
+                            } finally {
+                                originalDeleting = false
+                                if (originalDeletion === request) originalDeletion = null
+                            }
+                        }
+                    }
+                },
+                onKeep = {
+                    if (originalDeletion === request) originalDeletion = null
+                    originalNote = "The original .torrent file was kept."
+                })
+        }
+        originalNote?.let { note ->
+            Text(note, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+        }
         val add = pending
         if (add != null && magnet.isNotBlank()) {
             Text("A newer torrent source is entered. Resolve or clear it before adding the previously selected .torrent.",
@@ -1578,6 +1614,27 @@ internal fun LocalEngineScreen(
                 onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
             )
         }
+        // Null until the saved default and the provider's delete support are read on IO;
+        // an Add confirmed before then keeps the original untouched.
+        var originalHandling by remember(add) { mutableStateOf<OriginalTorrentHandling?>(null) }
+        var originalDeletable by remember(add) { mutableStateOf(false) }
+        LaunchedEffect(add) {
+            val document = add?.originalDocument ?: return@LaunchedEffect
+            val (saved, deletable) = withContext(Dispatchers.IO) {
+                OriginalTorrentHandlingStore(context).default to
+                    OriginalTorrentDocuments.supportsDelete(context, document)
+            }
+            originalDeletable = deletable
+            originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
+                OriginalTorrentHandling.ARCHIVE else saved
+        }
+        val shownHandling = originalHandling
+        if (add?.originalDocument != null && destination != null && shownHandling != null)
+            OriginalTorrentHandlingChoice(
+                "Original .torrent file", selected = shownHandling,
+                enabled = !busy && localAddAttemptSession?.attemptedTicket == null,
+                deleteAvailable = originalDeletable,
+                onSelect = { originalHandling = it })
         val seedingPreview = remember(add?.preview?.infoHashV1) {
             add?.preview?.let { localSeedingPreview(context, it) }
         }
@@ -1620,6 +1677,13 @@ internal fun LocalEngineScreen(
                 val reviewedRecovery = addRecovery?.takeIf { useRecovery && it.first == add.preview.infoHashV1 }?.second
                 var recoveryNote: String? = null
                 var orderNote: String? = null
+                var verifyAfterAdd: String? = null
+                // Frozen with the Add click: only the reviewed user document, never a URL.
+                val frozenOriginal = add.originalDocument
+                val frozenHandling = if (frozenOriginal != null) originalHandling ?: OriginalTorrentHandling.KEEP
+                    else OriginalTorrentHandling.KEEP
+                originalNote = null
+                var submittedBytes: ByteArray? = null
                 performLocalMutation localDocument@{
                     val selected = selectedPlace ?: run {
                         noteProblem("Choose a verified local download location before Add. Nothing was sent.")
@@ -1678,6 +1742,7 @@ internal fun LocalEngineScreen(
                                             "Partial files were not reused: " + adoption.problem +
                                                 ". Nothing was added. Review the folder and try again.") to null
                                     enteredNative.set(true)
+                                    submittedBytes = authorizedBytes
                                     val added = engine.addStoppedChecked(authorizedBytes, preflight.folder)
                                         .also(nativeResult::set)
                                     if (adoption is io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.Adoption.Renamed) {
@@ -1696,7 +1761,15 @@ internal fun LocalEngineScreen(
                                     }
                                     if (autoStart && added is LocalAddResult.AddedStopped)
                                         added to engine.resume(added.status.infoHash)
-                                    else added to null
+                                    else {
+                                        // "Stopped after verification": inside this Add's own change,
+                                        // libtorrent starts checking files already at the exact torrent
+                                        // paths and stops the job itself before any peer traffic.
+                                        if (added is LocalAddResult.AddedStopped &&
+                                            engine.beginStoppedVerification(added.status.infoHash))
+                                            verifyAfterAdd = added.status.infoHash
+                                        added to null
+                                    }
                                 }
                             }
                         }
@@ -1725,7 +1798,10 @@ internal fun LocalEngineScreen(
                                 }
                                 LocalCommandOutcome.NOT_FOUND ->
                                     "Added but could not locate the torrent for Start. Inspect the list before retrying."
-                                null -> "Added stopped. Start manually from its transfer card."
+                                null -> if (verifyAfterAdd != null)
+                                    "Added stopped. Checking the files already in this folder; it stops by itself " +
+                                        "when the check ends and downloads nothing until you press Start."
+                                else "Added stopped. Start manually from its transfer card."
                             }
                         }
                         recoveryNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
@@ -1747,6 +1823,28 @@ internal fun LocalEngineScreen(
                                     }
                                 } else message = message.orEmpty() +
                                     " The transfer was added but its Chunks display name was not saved."
+                            }
+                            // Source file handling only after THIS ticket's positively read-back
+                            // new native registration; a refused, duplicate or uncertain Add keeps it.
+                            val original = frozenOriginal
+                            val verifiedBytes = submittedBytes
+                            if (original != null && verifiedBytes != null && session != null && ticket != null &&
+                                frozenHandling != OriginalTorrentHandling.KEEP &&
+                                added.status.infoHash.equals(add.preview.infoHashV1, ignoreCase = true)) {
+                                val outcome = withContext(Dispatchers.IO) {
+                                    SourceTorrentArchive(context.filesDir).apply(frozenHandling,
+                                        OriginalTorrentOrigin.ANDROID_DOCUMENT, verifiedBytes,
+                                        SourceAddVerification(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value,
+                                            added.status.infoHash, verifiedNew = true))
+                                }
+                                if (outcome == SourceArchiveOutcome.OriginalDeletionRequiresApproval) {
+                                    originalDeletion = OriginalDeletionRequest(original,
+                                        withContext(Dispatchers.IO) {
+                                            OriginalTorrentDocuments.displayName(context.contentResolver, original)
+                                        }, OriginalTorrentDocuments.sha256(verifiedBytes), add.preview.name)
+                                } else archiveOutcomeMessage(outcome, frozenHandling)?.let { note ->
+                                    message = listOfNotNull(message, note).joinToString(" ")
+                                }
                             }
                             rememberAdded(added.status.infoHash, message)
                         }
@@ -2894,6 +2992,24 @@ internal fun LocalEngineScreen(
             onNamesChanged = { registeredNames = it }
         )
         } // names anchor
+        var defaultHandling by remember { mutableStateOf<OriginalTorrentHandling?>(null) }
+        LaunchedEffect(optionsCategory) {
+            if (optionsCategory == OptionsCategory.DOWNLOADS) defaultHandling =
+                withContext(Dispatchers.IO) { OriginalTorrentHandlingStore(context).default }
+        }
+        defaultHandling?.let { shown ->
+            OriginalTorrentHandlingChoice("Original .torrent file after Add (default)",
+                selected = shown, enabled = true,
+                onSelect = { choice ->
+                    scope.launch {
+                        if (withContext(Dispatchers.IO) { OriginalTorrentHandlingStore(context).setDefault(choice) })
+                            defaultHandling = choice
+                        else message = "The default for original .torrent files could not be saved."
+                    }
+                })
+        }
+        Text("Applies when you open or share a .torrent file from another app. Each Add can choose differently.",
+            style = MaterialTheme.typography.bodySmall)
         LocalZipInterruptedExtractions()
         }
         OptionsSettingsGroup(optionsCategory == OptionsCategory.NOTIFICATIONS) {
@@ -3118,6 +3234,7 @@ internal fun LocalAddReview(
 private fun stateLabel(transfer: LocalTransferStatus): String = when {
     transfer.error != null -> "Error"
     transfer.stopped -> "Stopped"
+    transfer.state == LocalTransferState.CHECKING && transfer.stopsAfterCheck -> CHECKING_STAYS_STOPPED
     transfer.state == LocalTransferState.CHECKING -> "Checking existing data"
     !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching metadata"
     transfer.state == LocalTransferState.DOWNLOADING -> "Downloading"

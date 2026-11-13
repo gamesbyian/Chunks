@@ -107,7 +107,7 @@ if [[ "$ready" -ne 1 || "$instrument_status" -ne 0 ]] ||
    [[ "$(grep -Fxc 'OK (1 test)' "$log" || true)" != 1 ]] ||
    grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' "$log" ||
    grep -Fq 'CHUNKS_SWARM_DOZE: INCONCLUSIVE' <<< "$receipts"; then
-  grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
+  awk '/^INSTRUMENTATION_STATUS: stack=/{p=1} p && /^INSTRUMENTATION_STATUS(_CODE)?: / && !/stack=/{p=0} p' "$log" | head -200 || true
   echo "::error::Doze test did not complete with actual native idle proof" >&2
   exit 1
 fi

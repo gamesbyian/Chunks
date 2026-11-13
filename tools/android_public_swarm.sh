@@ -77,7 +77,7 @@ if [[ "$status" -ne 0 ]] ||
    [[ "$(grep -Fxc 'OK (1 test)' "$log" || true)" != 1 ]] ||
    grep -Eq '^INSTRUMENTATION_STATUS_CODE: -[1-9]|^FAILURES|AssumptionViolatedException' "$log" ||
    grep -Fq 'CHUNKS_ANDROID_SWARM: INCONCLUSIVE' <<< "$native_receipts"; then
-  grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -40 || true
+  awk '/^INSTRUMENTATION_STATUS: stack=/{p=1} p && /^INSTRUMENTATION_STATUS(_CODE)?: / && !/stack=/{p=0} p' "$log" | head -200 || true
   echo "::error::Android swarm execution failed, was skipped or had an inconclusive peer result" >&2
   exit 1
 fi

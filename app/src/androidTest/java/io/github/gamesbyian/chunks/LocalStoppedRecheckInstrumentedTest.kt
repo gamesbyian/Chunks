@@ -96,4 +96,42 @@ class LocalStoppedRecheckInstrumentedTest {
         Thread.sleep(1_500)
         assertFalse("Start after a recheck keeps running", local.status(job.infoHash)!!.stopped)
     }
+
+    /** WORK-QUEUE R3: a stopped checked Add over exact-path partial data verifies and stays stopped. */
+    @Test fun stoppedCheckedAddOverPartialDataVerifiesWithoutDownloading() {
+        val seedParent = File(work, "partial-seed").apply { mkdirs() }
+        val root = File(seedParent, "Chunks partial fixture").apply { mkdirs() }
+        val payload = ByteArray(1_300_000).also { Random(11).nextBytes(it) }
+        File(root, "episode.bin").writeBytes(payload)
+        val torrent = TorrentBuilder().path(root).pieceSize(64 * 1024).generate().entry().bencode()
+        val seeder = engine()
+        val seed = (seeder.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        // Ten whole valid pieces already at the exact torrent path, nothing else.
+        val destination = File(work, "partial-destination").apply { mkdirs() }
+        val episode = File(destination, "${root.name}/episode.bin").apply { parentFile!!.mkdirs() }
+        val kept = payload.copyOf(10 * 65536)
+        episode.writeBytes(kept)
+        val local = engine()
+        val job = (local.addStoppedChecked(torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))) as LocalAddResult.AddedStopped).status
+        assertTrue(local.beginStoppedVerification(job.infoHash))
+        waitFor { local.status(job.infoHash)?.let { it.stopped && !it.stopsAfterCheck &&
+            it.state != LocalTransferState.CHECKING } == true }
+        assertEquals(10L * 65536, requireNotNull(local.status(job.infoHash)).doneBytes)
+        Thread.sleep(2_000)
+        val idle = requireNotNull(local.status(job.infoHash))
+        assertTrue("still stopped: $idle", idle.stopped)
+        assertEquals("no payload downloaded while stopped", 0L, idle.payloadDownloadedBytes)
+        assertArrayEquals("verification never writes payload", kept, episode.readBytes())
+
+        assertEquals(LocalCommandOutcome.VERIFIED, local.resume(job.infoHash).outcome)
+        waitFor { local.status(job.infoHash)?.progressPpm == 1_000_000 }
+        assertTrue(local.flushCompletedForLibraryRead(job.infoHash, timeoutMs = 30_000L))
+        assertArrayEquals("Start fetches only the missing tail", payload, episode.readBytes())
+        assertTrue("verified pieces were not downloaded again",
+            local.status(job.infoHash)!!.payloadDownloadedBytes <= payload.size - 10L * 65536 + 65536)
+    }
 }

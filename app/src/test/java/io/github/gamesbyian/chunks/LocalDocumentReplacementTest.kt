@@ -265,4 +265,19 @@ class LocalDocumentReplacementTest {
         handoff()
         assertArrayEquals(replacement, prepared.get())
     }
+
+    /** Source file handling applies only to the user's own document, never to fetched bytes. */
+    @Test fun onlyAUserDocumentCarriesAnOriginalForSourceFileHandling() {
+        source.value = uri("first")
+        val replacement = metainfo("next.txt")
+        fetchLink = { link -> TorrentLinkResult.Fetched(replacement, TorrentMetainfoReader.preview(replacement), link.display) }
+        show()
+        waitFor("kept.txt")
+        assertEquals(uri("first"), draft.value?.originalDocument)
+        requestHttpsReplacement("https://example.org/next.torrent")
+        waitFor("Torrent from example.org")
+        assertArrayEquals(replacement, draft.value?.bytes)
+        assertNull("A fetched .torrent has no deletable original", draft.value?.originalDocument)
+        rule.onNodeWithText("Original .torrent file").assertDoesNotExist()
+    }
 }

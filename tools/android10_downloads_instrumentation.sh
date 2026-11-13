@@ -50,7 +50,7 @@ trap 'rm -f "$log"' EXIT
 fail_if_skipped_or_failed() { # $1 status, $2 expected "OK (N tests)", $3 label
  if [ "$1" -ne 0 ] || ! grep -q "^$2" "$log" ||
     grep -qE '^INSTRUMENTATION_STATUS_CODE: -(1|2|3|4)' "$log"; then
-  grep -A12 '^INSTRUMENTATION_STATUS: stack=' "$log" | head -60 || true
+  awk '/^INSTRUMENTATION_STATUS: stack=/{p=1} p && /^INSTRUMENTATION_STATUS(_CODE)?: / && !/stack=/{p=0} p' "$log" | head -200 || true
   echo "::error::$3 failed, or a test was skipped"
   exit 1
  fi

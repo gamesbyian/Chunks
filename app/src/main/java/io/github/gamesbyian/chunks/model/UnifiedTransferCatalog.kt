@@ -53,7 +53,9 @@ data class UnifiedTransferObservation(
      * (libtorrent checking state). True only while that check runs; null when the source
      * cannot report it. Never a claim about how many bytes will prove reusable.
      */
-    val checkingExistingData: Boolean? = null
+    val checkingExistingData: Boolean? = null,
+    /** That check stops the job by itself when it ends; nothing downloads. Null when unreported. */
+    val stopsAfterCheck: Boolean? = null
 ) {
     init {
         require(sizeBytes == null || sizeBytes >= 0)
@@ -146,7 +148,8 @@ object UnifiedTransferObservations {
             hasError = !item.error.isNullOrBlank(),
             metadataPending = !item.metadataKnown,
             reportedSaveFolder = item.savePath.takeIf { it.isNotBlank() },
-            checkingExistingData = item.state == LocalTransferState.CHECKING
+            checkingExistingData = item.state == LocalTransferState.CHECKING,
+            stopsAfterCheck = item.stopsAfterCheck
         )
 
     fun fromRTorrent(environment: EnvironmentId, item: RemoteTransfer) =

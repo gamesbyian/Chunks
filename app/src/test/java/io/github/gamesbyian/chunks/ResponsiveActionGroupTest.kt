@@ -114,4 +114,24 @@ class ResponsiveActionGroupTest {
         assertTrue(bounds[0].right < bounds[1].left)
         assertTrue(bounds[1].right < bounds[2].left)
     }
+
+    /** Details' environment-named actions cap at two across even with room for three. */
+    @Test fun longLabelActionsCapAtTwoAcrossOnAWidePhone() {
+        val labels = listOf("Review Start / Stop", "Open Seedbox two transfers", "Refresh Seedbox two")
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 1f)) {
+                ChunksTheme {
+                    Box(Modifier.width(380.dp)) {
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            labels.forEach { OutlinedButton(onClick = {}, modifier = cell) { Text(it) } }
+                        }
+                    }
+                }
+            }
+        }
+        val b = labels.map { rule.onNodeWithText(it).getUnclippedBoundsInRoot() }
+        assertEquals(b[0].top, b[1].top)
+        assertTrue(b[0].right <= b[1].left)
+        assertTrue("third wraps", b[2].top >= maxOf(b[0].bottom, b[1].bottom))
+    }
 }
