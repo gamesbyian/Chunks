@@ -1040,16 +1040,20 @@ internal fun CombinedTransfersScreen(
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
+            // A Remove's outcome is retained after its job leaves the list (incomplete or
+            // uncertain deletions must stay visible), so Details keeps showing it.
             localOperations = if (focusedKey.environment == EnvironmentSnapshots.LOCAL &&
-                details.readState == TransferDetailReadState.CURRENT && localPrivacy?.mayShow != false) ({
+                localPrivacy?.mayShow != false &&
+                (details.readState == TransferDetailReadState.CURRENT ||
+                    LocalDetailsRuns.outcomes[focusedKey.infoHash] != null)) ({
+                val current = details.readState == TransferDetailReadState.CURRENT
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (details.observation?.started == false) {
+                    if (current && details.observation?.started == false) {
                         LocalStoppedRecheckControl(focusedKey.infoHash)
                         LocalForeignPartialStartRecovery(focusedKey.infoHash)
                     }
                     // Full Details parity with server jobs: files & priorities and Remove.
-                    LocalDetailsOperations(focusedKey.infoHash,
-                        stale = localFrame.stale || LocalMutationFence.revision.blocksMutations())
+                    LocalDetailsOperations(focusedKey.infoHash, current = current, stale = localFrame.stale)
                 }
             }) else null,
             exactServerOperations = if (canShowExactRemoval) ({

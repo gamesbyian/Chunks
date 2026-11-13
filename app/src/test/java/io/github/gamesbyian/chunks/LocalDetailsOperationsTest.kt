@@ -53,6 +53,8 @@ class LocalDetailsOperationsTest {
             LocalFileBatchOutcome.VERIFIED.also { calls += "priority" }
         override fun setFilesWantedBatch(infoHash: String, reviewed: List<LocalTransferFile>, wanted: Boolean) =
             LocalFileBatchOutcome.VERIFIED.also { calls += "batch" }
+        override fun focusEpisodesOnce(infoHash: String, plan: io.github.gamesbyian.chunks.engine.LocalEpisodeFocusPlanner.Plan) =
+            LocalFileBatchOutcome.VERIFIED.also { calls += "focus" }
         override fun removeKeepingDataIfMatching(infoHash: String, name: String, savePath: String, token: String): Boolean {
             calls += "remove:$infoHash:$name:$savePath:$token"
             current = null
@@ -63,12 +65,20 @@ class LocalDetailsOperationsTest {
     }
 
     @Before fun freshLocalReadback() {
-        val fence = LocalMutationFence.revision
-        fence.acceptObservation(fence.snapshot(), emptyList<Any>())
+        LocalDetailsRuns.outcomes.clear()
+        settleFence()
     }
 
-    private fun show(port: FakePort, stale: Boolean = false) = rule.setContent {
-        ChunksTheme { LocalDetailsOperations(hash, stale = stale, engine = { port }) }
+    /** Wait for the in-flight change's own settle, then accept a fresh readback (no race with finally). */
+    private fun settleFence() {
+        val fence = LocalMutationFence.revision
+        rule.waitUntil(5_000) {
+            LocalDetailsRuns.running.isEmpty() && fence.acceptObservation(fence.snapshot(), emptyList<Any>())
+        }
+    }
+
+    private fun show(port: FakePort, stale: Boolean = false, current: Boolean = true) = rule.setContent {
+        ChunksTheme { LocalDetailsOperations(hash, current = current, stale = stale, engine = { port }) }
     }
     private fun waitText(text: String) = rule.waitUntil(5_000) {
         rule.onAllNodes(androidx.compose.ui.test.hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()
@@ -83,8 +93,7 @@ class LocalDetailsOperationsTest {
         rule.onNodeWithText("Remove transfer, keep data").performClick()
         waitText("Removed from this device. Downloaded files were kept.")
         assertEquals(listOf("remove:$hash:Show S01:/storage/Download/Chunks Downloads:gen-7"), port.calls.toList())
-        val fence = LocalMutationFence.revision
-        fence.acceptObservation(fence.snapshot(), emptyList<Any>())
+        settleFence()
     }
 
     @Test fun removeWithDataReportsARefusalAndNeverRetries() {
@@ -95,8 +104,7 @@ class LocalDetailsOperationsTest {
         rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE_DATA).assertHeightIsAtLeast(48.dp).performClick()
         waitText("Deletion was not requested: Folder changed")
         assertEquals(listOf("removeData:gen-7"), port.calls.toList())
-        val fence = LocalMutationFence.revision
-        fence.acceptObservation(fence.snapshot(), emptyList<Any>())
+        settleFence()
     }
 
     @Test fun aStaleListOrHeldLockWritesNothing() {
@@ -115,12 +123,18 @@ class LocalDetailsOperationsTest {
         val fence = LocalMutationFence.revision
         assertTrue(fence.beginMutation())
         try {
-            rule.onNodeWithText("Remove transfer, keep data").performClick()
-            waitText("Another change to this device's transfers is in progress")
+            // The observed lock disables the confirmation itself.
+            rule.waitUntil(5_000) { runCatching {
+                rule.onNodeWithText("Remove transfer, keep data").assertIsNotEnabled() }.isSuccess }
+            // A run that races the lock is refused without invoking any engine call.
+            var invoked = false
+            assertTrue(!LocalDetailsRuns.run(hash) { invoked = true; "x" })
+            assertEquals(LocalDetailsRuns.LOCKED, LocalDetailsRuns.outcomes[hash])
+            assertTrue(!invoked)
             assertTrue("nothing written while another change holds the lock", port.calls.isEmpty())
         } finally {
             fence.settledMutation()
-            fence.acceptObservation(fence.snapshot(), emptyList<Any>())
+            settleFence()
         }
     }
 
@@ -131,5 +145,27 @@ class LocalDetailsOperationsTest {
         waitText("e02.mkv")
         rule.onNodeWithText("Hide files & priorities").assertExists()
         assertTrue("reading files writes nothing", port.calls.isEmpty())
+    }
+
+    @Test fun anOutcomeOutlivesItsJobLeavingTheList() {
+        // After Remove the job is gone: Details is no longer CURRENT but must still say what happened.
+        LocalDetailsRuns.outcomes[hash] = "Native deletion finished but at least one reviewed payload file remains."
+        show(FakePort(null), current = false)
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_OUTCOME).assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_FILES).assertDoesNotExist()
+    }
+
+    @Test fun controlsFollowTheSharedLockAsItIsTakenAndReleased() {
+        show(FakePort(status))
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).assertIsEnabled()
+        val fence = LocalMutationFence.revision
+        assertTrue(fence.beginMutation())
+        rule.waitUntil(5_000) { runCatching {
+            rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).assertIsNotEnabled() }.isSuccess }
+        fence.settledMutation()
+        settleFence()
+        rule.waitUntil(5_000) { runCatching {
+            rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).assertIsEnabled() }.isSuccess }
     }
 }

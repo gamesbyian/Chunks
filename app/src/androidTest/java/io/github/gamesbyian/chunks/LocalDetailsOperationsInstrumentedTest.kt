@@ -65,7 +65,7 @@ class LocalDetailsOperationsInstrumentedTest {
     }
 
     private fun show(engine: LocalTorrentEngine, hash: String) = rule.setContent {
-        ChunksTheme { LocalDetailsOperations(hash, stale = false, engine = { EngineLocalDetailsPort(engine) }) }
+        ChunksTheme { LocalDetailsOperations(hash, current = true, stale = false, engine = { EngineLocalDetailsPort(engine) }) }
     }
 
     private fun waitText(text: String) = rule.waitUntil(30_000) {
@@ -93,7 +93,7 @@ class LocalDetailsOperationsInstrumentedTest {
         rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).performScrollTo().performClick()
         waitText("Remove from this device:")
         rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE_DATA).performScrollTo().performClick()
-        waitText("Verified: the transfer was removed")
+        waitText("Verified: the reviewed transfer was removed")
         assertNull(engine.status(hash))
         assertFalse(File(root, "a.bin").exists())
         assertFalse(File(root, "b.bin").exists())
