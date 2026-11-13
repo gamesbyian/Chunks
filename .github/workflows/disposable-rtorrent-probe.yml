@@ -265,9 +265,28 @@ jobs:
           CHUNKS_DISPOSABLE_RT_PEER_PORT: "6890"
           CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
         run: |
-          gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest'
-          # The test skips itself outside the rig: a green step must mean both ran.
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest.xml
+          if ! gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.interop.RTorrentLibtorrentInteropTest'; then
+            # Same bounded nonsecret extraction as the mutation step, plus the
+            # first in-class frame (coroutine tests otherwise report only the
+            # runBlocking declaration line).
+            python3 - "$report" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          path=pathlib.Path(sys.argv[1])
+          if path.exists():
+              for case in ET.parse(path).getroot().findall(".//testcase"):
+                  failure=case.find("failure")
+                  if failure is None:
+                      failure=case.find("error")
+                  if failure is not None:
+                      frame=next((l.strip() for l in (failure.text or "").splitlines()
+                                  if "RTorrentLibtorrentInteropTest.kt:" in l), "no-frame")
+                      print("CHUNKS_INTEROP_FAILURE: "+case.attrib.get("name","unknown")+" "+
+                            failure.attrib.get("message","unknown")[:500]+" @ "+frame[:200])
+          PY
+            exit 1
+          fi
+          # The test skips itself outside the rig: a green step must mean both ran.
           grep -o 'tests="[0-9]*" skipped="[0-9]*" failures="[0-9]*" errors="[0-9]*"' "$report" | head -1
           grep -q 'tests="5" skipped="0" failures="0" errors="0"' "$report"
           echo "CHUNKS_INTEROP: real rTorrent <-> local exact-byte transfers AND rTorrent magnet metadata + verified peer bytes passed" >> "$GITHUB_STEP_SUMMARY"
