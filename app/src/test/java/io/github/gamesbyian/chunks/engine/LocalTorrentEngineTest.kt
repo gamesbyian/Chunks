@@ -1383,6 +1383,47 @@ class LocalTorrentEngineTest {
         }
     }
 
+    /**
+     * Real ENOSPC recovery, opt-in like the test above, and additionally needs
+     * permission to `mount -o remount,size=` that filesystem (root), standing in
+     * for the person freeing space. Stop, free space, Start must resume the
+     * SAME job to exact bytes: the ordinary qBittorrent-style recovery.
+     */
+    @Test fun startAfterFreeingSpaceRecoversADiskFullTransfer() {
+        val tiny = System.getenv("CHUNKS_TINY_FS_DIR")?.let(::File)
+        org.junit.Assume.assumeTrue("CHUNKS_TINY_FS_DIR not set", tiny != null && tiny.isDirectory)
+        fun resize(size: String) = ProcessBuilder("mount", "-o", "remount,size=$size", tiny!!.absolutePath)
+            .redirectErrorStream(true).start().let { it.waitFor(20, java.util.concurrent.TimeUnit.SECONDS) && it.exitValue() == 0 }
+        org.junit.Assume.assumeTrue("cannot remount CHUNKS_TINY_FS_DIR", resize("512k"))
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = File(requireNotNull(tiny), "recover-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val leecher = engine()
+            val leech = added(leecher.addStopped(fixture.torrent, destination,
+                listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+            leecher.resume(leech.infoHash)
+            waitFor(60_000) { leecher.status(leech.infoHash)?.error != null }
+            assertEquals(LocalCommandOutcome.VERIFIED, leecher.pause(leech.infoHash).outcome)
+            assertTrue("remount larger", resize("8m"))
+            val restarted = leecher.resume(leech.infoHash)
+            assertEquals(restarted.toString(), LocalCommandOutcome.VERIFIED, restarted.outcome)
+            waitFor(120_000) {
+                leecher.status(leech.infoHash)?.let { it.progressPpm == 1_000_000 && it.error == null } == true
+            }
+            requireFlushed(leecher, leech.infoHash)
+            for ((name, bytes) in fixture.files)
+                assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
+        } finally {
+            destination.deleteRecursively()
+            resize("512k")
+        }
+    }
+
     @Test fun dhtIsOffByDefaultAndTogglesOnlyOnRequest() {
         val engine = engine()
         assertFalse(engine.isDhtEnabled())

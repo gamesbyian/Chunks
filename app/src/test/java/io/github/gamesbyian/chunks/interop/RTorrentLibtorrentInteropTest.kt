@@ -172,7 +172,7 @@ class RTorrentLibtorrentInteropTest {
             val added = local.addStopped(torrent, leechRoot, listOf(rig.peer))
             val status = (added as LocalAddResult.AddedStopped).status
             assertEquals(hash.lowercase(), status.infoHash.lowercase())
-            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(status.infoHash).outcome)
+            local.resume(status.infoHash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
             waitFor("local engine to download from rTorrent") {
                 val s = local.status(status.infoHash)
                 s?.error?.let { fail("Local engine error: $it") }
@@ -204,7 +204,7 @@ class RTorrentLibtorrentInteropTest {
             val torrent = torrentFor(root)
             val local = engine()
             val seed = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
-            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(seed.infoHash).outcome)
+            local.resume(seed.infoHash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
             waitFor("local engine to verify its seed") {
                 local.status(seed.infoHash)?.state == LocalTransferState.SEEDING
             }
@@ -282,7 +282,7 @@ class RTorrentLibtorrentInteropTest {
             val torrent = torrentFor(root)
             val local = engine()
             val seed = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
-            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(seed.infoHash).outcome)
+            local.resume(seed.infoHash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
             waitFor("local engine to verify its seed") {
                 local.status(seed.infoHash)?.state == LocalTransferState.SEEDING
             }
@@ -424,7 +424,7 @@ class RTorrentLibtorrentInteropTest {
             val local = engine()
             val seeded = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
             assertEquals(hash.lowercase(), seeded.infoHash.lowercase())
-            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(hash).outcome)
+            local.resume(hash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
             waitFor("real magnet seeder to hash-check the source") {
                 local.status(hash)?.state == LocalTransferState.SEEDING
             }
