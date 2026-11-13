@@ -49,6 +49,8 @@ internal interface LocalDetailsPort {
     fun focusEpisodesOnce(infoHash: String, plan: LocalEpisodeFocusPlanner.Plan): LocalFileBatchOutcome
     fun removeKeepingDataIfMatching(infoHash: String, name: String, savePath: String, token: String): Boolean
     fun removeWithDataIfMatching(infoHash: String, name: String, savePath: String, token: String): LocalDeleteDataReceipt
+    /** Read-only: whether DHT can supply peers (for the tracker line). */
+    fun dhtEnabled(): Boolean = false
 }
 
 internal class EngineLocalDetailsPort(private val engine: LocalTorrentEngine) : LocalDetailsPort {
@@ -66,6 +68,7 @@ internal class EngineLocalDetailsPort(private val engine: LocalTorrentEngine) : 
         engine.removeKeepingDataIfMatching(infoHash, name, savePath, token)
     override fun removeWithDataIfMatching(infoHash: String, name: String, savePath: String, token: String) =
         engine.removeWithDataIfMatching(infoHash, name, savePath, token)
+    override fun dhtEnabled() = engine.isDhtEnabled()
 }
 
 /**
@@ -146,7 +149,7 @@ internal fun LocalDetailsOperations(
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (current) {
             LocalDetailsFiles(infoHash, locked, engine, ::change)
-            LocalDetailsLibraryCopy(infoHash, stale || !current, engine)
+            LocalDetailsStatusExtras(infoHash, stale || !current, engine)
             LocalDetailsRemove(infoHash, locked, engine, ::change)
         }
         outcome?.let {
@@ -217,15 +220,28 @@ private fun LocalDetailsFiles(
     }
 }
 
-/** Device-screen parity: for a complete job, the verified copy into the device's library. */
+/**
+ * Device-screen parity: the plain-language tracker line (never URLs) and, for a complete
+ * job, the verified copy into the device's library. Status is re-read every few seconds
+ * while shown, because tracker health changes after Start.
+ */
 @Composable
-private fun LocalDetailsLibraryCopy(infoHash: String, stale: Boolean, engine: () -> LocalDetailsPort?) {
-    val revision = LocalDetailsRuns.revisions[infoHash] ?: 0
+private fun LocalDetailsStatusExtras(infoHash: String, stale: Boolean, engine: () -> LocalDetailsPort?) {
     var status by remember(infoHash) { mutableStateOf<LocalTransferStatus?>(null) }
-    LaunchedEffect(infoHash, revision) {
-        status = withContext(Dispatchers.IO) { runCatching { engine()?.status(infoHash) }.getOrNull() }
+    var dht by remember(infoHash) { mutableStateOf(false) }
+    LaunchedEffect(infoHash) {
+        while (true) {
+            val port = withContext(Dispatchers.IO) { engine() }
+            status = withContext(Dispatchers.IO) { runCatching { port?.status(infoHash) }.getOrNull() }
+            dht = withContext(Dispatchers.IO) { runCatching { port?.dhtEnabled() }.getOrNull() } == true
+            delay(2_000)
+        }
     }
     val shown = status ?: return
+    LocalTrackerSummaryText.describe(shown.trackers, shown.stopped, dht)?.let {
+        Text(it, style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.testTag(ChunksSemantics.DETAILS_LOCAL_TRACKERS))
+    }
     if (!stale && shown.metadataKnown && shown.progressPpm == 1_000_000) LocalLibraryCopyPanel(shown)
 }
 
