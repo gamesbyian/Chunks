@@ -364,7 +364,11 @@ class HttpsLocalAddJourneyInstrumentedTest {
                     "file=${firstPieceFile.isFile} read=${head.size} expected=${piece.size} " +
                         "matchingPrefix=$matchingPrefix done=${observed?.doneBytes} " +
                         "downloaded=${observed?.payloadDownloadedBytes} " +
-                        "stopped=${observed?.stopped}"
+                        "stopped=${observed?.stopped} " +
+                        // #5: was piece 0 hash-verified while its bytes on disk differed?
+                        "piece0Verified=${local.hasVerifiedPiece(preview.infoHashV1, 0)} " +
+                        "mismatchByte=${head.getOrNull(matchingPrefix)?.toInt()} " +
+                        "zeroRunFromMismatch=${head.drop(matchingPrefix).takeWhile { it.toInt() == 0 }.size}"
                 }) {
                     firstPieceFile.isFile && firstPieceFile.inputStream().use { it.readNBytes(piece.size) }.contentEquals(piece)
                 }

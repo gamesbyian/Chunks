@@ -1942,6 +1942,18 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
+     * Read-only diagnostic: libtorrent's own have-bit for one piece of the exact
+     * job (true only after its hash was verified). Null when the job, its metadata
+     * or the piece index is unknown. Never a substitute for independent byte readback.
+     */
+    fun hasVerifiedPiece(infoHash: String, piece: Int): Boolean? = try {
+        val handle = synchronized(handles) { handles[normal(infoHash)] }
+            ?.takeIf { started && it.isValid } ?: return null
+        val pieces = handle.torrentFile()?.numPieces() ?: return null
+        if (piece !in 0 until pieces) null else handle.havePiece(piece)
+    } catch (_: Exception) { null }
+
+    /**
      * Completion status alone does not mean libtorrent's asynchronous disk
      * cache has been flushed. Before an independent SAF library publication,
      * wait for the native cache_flushed_alert for THIS exact infohash.
