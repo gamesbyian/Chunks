@@ -56,19 +56,36 @@ object XmlRpcCodec {
         else -> throw IllegalArgumentException("Unsupported XML-RPC value type")
     }
 
+    /**
+     * Escapes a parameter for XML 1.0 text. A literal CR would be normalized to LF by the
+     * server's XML parser, silently altering names/paths, so it is sent as a character
+     * reference. Characters that XML 1.0 cannot represent (NUL/C0 controls, lone surrogates,
+     * U+FFFE/U+FFFF) are refused locally rather than producing a request the server rejects.
+     */
     private fun escape(text: String): String = buildString(text.length) {
-        for (c in text) when (c) {
-            '&' -> append("&amp;")
-            '<' -> append("&lt;")
-            '>' -> append("&gt;")
-            '"' -> append("&quot;")
-            '\'' -> append("&apos;")
-            else -> {
-                require(c == '\n' || c == '\t' || c == '\r' || c.code >= 0x20) {
-                    "Control character in RPC parameter"
+        var i = 0
+        while (i < text.length) {
+            val c = text[i]
+            when {
+                c == '&' -> append("&amp;")
+                c == '<' -> append("&lt;")
+                c == '>' -> append("&gt;")
+                c == '"' -> append("&quot;")
+                c == '\'' -> append("&apos;")
+                c == '\r' -> append("&#13;")
+                c == '\n' || c == '\t' -> append(c)
+                c.code < 0x20 -> throw IllegalArgumentException("Control character in RPC parameter")
+                Character.isHighSurrogate(c) -> {
+                    require(i + 1 < text.length && Character.isLowSurrogate(text[i + 1])) {
+                        "Invalid Unicode in RPC parameter"
+                    }
+                    append(c).append(text[i + 1]); i++
                 }
-                append(c)
+                Character.isLowSurrogate(c) || c == '\uFFFE' || c == '\uFFFF' ->
+                    throw IllegalArgumentException("Invalid Unicode in RPC parameter")
+                else -> append(c)
             }
+            i++
         }
     }
 
