@@ -99,6 +99,18 @@ class CombinedTwoRealServersInstrumentedTest {
         else rule.onNode(match).performScrollTo()
     }
 
+    /** [scrollTo] for a single required step: a miss reports the visible screen. */
+    private fun requireScrollTo(text: String) {
+        try {
+            scrollTo(text)
+        } catch (failure: AssertionError) {
+            // Disposable loopback fixture only: report the visible screen like waitFor does.
+            val ui = runCatching { rule.onRoot(useUnmergedTree = true).printToString().take(6_000) }
+                .getOrDefault("semantics unavailable")
+            throw AssertionError("Could not scroll to \"$text\"\n$ui", failure)
+        }
+    }
+
     private fun waitFor(what: String, timeoutMs: Long = 60_000, condition: () -> Boolean) {
         try {
             rule.waitUntil(timeoutMs, condition)
@@ -433,9 +445,9 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("source-first Universal Add") { visible("Add a transfer") }
             val preservedDraft = "magnet:?xt=urn:btih:$sharedHash"
             typeInto("Magnet or HTTP(S) torrent URL", preservedDraft)
-            scrollTo("Other saved connections")
+            requireScrollTo("Other saved connections")
             rule.onNodeWithText("Other saved connections", substring = true).performClick()
-            scrollTo("Connect to ")
+            requireScrollTo("Connect to ")
             rule.onNodeWithText("Connect to ", substring = true).performClick()
             // This must show an ACTUAL login, not B's already authenticated
             // server UI with A's address painted into editable fields.
