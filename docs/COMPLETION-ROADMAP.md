@@ -1,5 +1,8 @@
 # Chunks: dependency-ordered completion and validation
 
+> **Remote deletion capability integration (2026-11-13):** Follow [capability discovery and deletion contract](REMOTE-CAPABILITY-DISCOVERY-AND-DELETION.md). R1 reproduces and diagnoses the original hosted owner-path ruTorrent erasedata failure without changing credentials or issuing speculative destructive commands. R3 implements evidence-bound per-profile backend capability states and safe UI gating plus differentiated endpoint outcomes; standalone rTorrent retains session-only Remove even if data deletion is unavailable. No new platform/CI lane, no arbitrary execute/hook fallback. R4 qualification includes disposable real plugin collector, missing/restricted endpoint negatives and installed Details presentation, with physical data deletion distinct from queued acceptance.
+
+
 > **Owner-approved list-first presentation (2026-11-13):** During R1 canonical Transfers UX and coordinated screenshot refinement, satisfy [compact Transfers design](design/TRANSFERS-COMPACT-LIST-FIRST.md): conditional unnumbered All at >=4 configured environments, bracketed Local/remote counts, compact search/filter/sort/batch, above-list aggregate count/speeds, removal/relocation of redundant panels, colour controls in Connections and Options. Validate rendered Pixel UX and behavior as distinct gates; no separate release-blocking lane or docs-only emulator work.
 
 
