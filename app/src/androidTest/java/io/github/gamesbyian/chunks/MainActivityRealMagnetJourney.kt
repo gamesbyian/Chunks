@@ -5,6 +5,7 @@ import android.os.SystemClock
 import android.util.Base64
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasStateDescription
@@ -395,12 +396,20 @@ internal class MainActivityRealMagnetJourney(
                     }.getOrDefault(false)
                 }
                 report("chunks_real_add_app_stage", "artwork-choice")
-                // This must remain present, reachable and actionable for
-                // EVERY Add; do not silently omit an opt-out after navigation.
-                // Reuse the existing settled read/scroll checks. A lazy option
-                // observed above may be recycled on the next layout frame.
-                // click() still dispatches the actual choice exactly once.
-                click(artworkChoice)
+                // An acknowledged uncertain Add may retain the person's OFF
+                // draft choice. Select OFF explicitly rather than toggling it
+                // back ON on the next Add. A click is dispatched at most once,
+                // and the exact-scoped persisted exclusion is still required.
+                scroll(artworkChoice)
+                rule.waitForIdle()
+                rule.onNodeWithText(artworkChoice).assertIsEnabled().assertIsDisplayed()
+                when (rule.onNodeWithText(artworkChoice).fetchSemanticsNode()
+                    .config[androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]) {
+                    androidx.compose.ui.state.ToggleableState.On -> click(artworkChoice)
+                    androidx.compose.ui.state.ToggleableState.Off -> Unit
+                    else -> fail("Remote Add artwork choice must have a definite state")
+                }
+                rule.onNodeWithText(artworkChoice).assertIsOff()
                 report("chunks_real_add_app_stage", "artwork-chosen")
             }
             // The source-first form has one explicit "Add transfer" submission action and no
