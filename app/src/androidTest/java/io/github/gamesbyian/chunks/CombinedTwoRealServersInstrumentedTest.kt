@@ -100,6 +100,30 @@ class CombinedTwoRealServersInstrumentedTest {
     }
 
     /**
+     * The focused field's bring-into-view keeps moving the lazy list while the
+     * IME animates, disposing a row between a successful lookup and the tap.
+     * Hide the keyboard and wait (bounded) for the window to report it hidden,
+     * the same mechanism ChunksMainActivityAtlasTest uses before scroll-then-tap.
+     */
+    private fun dismissKeyboard(scenario: ActivityScenario<MainActivity>) {
+        scenario.onActivity { activity ->
+            (activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)
+                as android.view.inputmethod.InputMethodManager)
+                .hideSoftInputFromWindow(activity.window.decorView.windowToken, 0)
+            activity.currentFocus?.clearFocus()
+        }
+        rule.waitUntil(5_000) {
+            var hidden = true
+            scenario.onActivity { activity ->
+                hidden = androidx.core.view.ViewCompat.getRootWindowInsets(activity.window.decorView)
+                    ?.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime()) != true
+            }
+            hidden
+        }
+        rule.waitForIdle()
+    }
+
+    /**
      * Lazy rows can be disposed between a scroll and the next lookup while the
      * IME and insets settle. Re-scroll until the exact node is composed and
      * enabled; the caller then acts on it ONCE (never a retried Connect).
@@ -491,6 +515,7 @@ class CombinedTwoRealServersInstrumentedTest {
             typeInto("Seedbox hostname, ruTorrent URL or RPC address", urlA)
             typeInto("Username, if required", userA)
             typeInto("Password", passA)
+            dismissKeyboard(scenario)
             requireEnabled("Connect to rTorrent")
             rule.onNodeWithText("Connect to rTorrent").performClick()
             waitFor("source-first draft resumes after exact authenticated A", 90_000) {
