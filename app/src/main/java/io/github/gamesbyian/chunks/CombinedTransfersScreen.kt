@@ -1043,7 +1043,10 @@ internal fun CombinedTransfersScreen(
             localOperations = if (focusedKey.environment == EnvironmentSnapshots.LOCAL &&
                 details.readState == TransferDetailReadState.CURRENT &&
                 details.observation?.started == false && localPrivacy?.mayShow != false) ({
-                LocalForeignPartialStartRecovery(focusedKey.infoHash)
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    LocalStoppedRecheckControl(focusedKey.infoHash)
+                    LocalForeignPartialStartRecovery(focusedKey.infoHash)
+                }
             }) else null,
             exactServerOperations = if (canShowExactRemoval) ({
                 val owner = requireNotNull(server)

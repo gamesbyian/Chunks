@@ -947,6 +947,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // An explicit Start is the retry after the person freed space or
             // fixed access; a new failed write records a fresh error.
             storageFileErrors.remove(key)
+            // An ordinary Start must never inherit a recheck's auto-stop.
+            handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
             handle.resume()
             // Only after native Start submission: an exception keeps the gate.
             // Future Stop/Start and process restoration remain separate P0.
@@ -1048,11 +1050,77 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
+    /**
+     * Explicit "Recheck" of a STOPPED job with metadata, using libtorrent's own
+     * mechanism: force_recheck, then stop_when_ready, then resume. libtorrent
+     * reads every piece and pauses itself inside the same network-thread state
+     * transition that leaves checking, before any peer download or upload.
+     * Read-only for payload bytes; the job ends stopped again.
+     *
+     * VERIFIED means the check ran and the job is stopped again, with
+     * [LocalCommandResult.status] carrying the re-measured progress. UNCERTAIN
+     * means it is still checking (or could not be observed) within the timeout;
+     * the person can keep watching or Stop it. Never retried automatically.
+     */
+    fun recheckStopped(infoHash: String, timeoutMs: Long = 60_000): LocalCommandResult {
+        require(timeoutMs in 0L..600_000L)
+        val key = normal(infoHash)
+        val handle = synchronized(this) {
+            synchronized(handles) {
+                val exact = handles[key]?.takeIf { started && runCatching { it.isValid }.getOrDefault(false) }
+                    ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+                val state = exact.status(TorrentHandle.QUERY_NAME)
+                val paused = state.flags().and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero()
+                if (!paused || !state.hasMetadata() || awaitingMetadata.contains(key) ||
+                    startWhenMetadataArrives.contains(key))
+                    return LocalCommandResult(LocalCommandOutcome.REFUSED, snapshot(key, exact))
+                // A stopped Add over existing files (or an adopted partial set)
+                // already holds a queued check that libtorrent runs only once
+                // unpaused; let that one run rather than queueing another.
+                val pendingCheck = state.state() == TorrentStatus.State.CHECKING_FILES ||
+                    state.state() == TorrentStatus.State.CHECKING_RESUME_DATA
+                try {
+                    // Order matters: once CHECKING, stop_when_ready waits for the
+                    // transition out of checking instead of pausing immediately.
+                    if (!pendingCheck) exact.forceRecheck()
+                    exact.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
+                    exact.resume()
+                } catch (_: Exception) {
+                    runCatching { exact.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); exact.pause() }
+                    return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, exact))
+                }
+                exact
+            }
+        }
+        val deadline = System.nanoTime() + timeoutMs * 1_000_000
+        while (true) {
+            val current = synchronized(handles) { handles[key] }
+            if (current != handle) return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, null)
+            val native = try { handle.status(TorrentHandle.QUERY_NAME) } catch (_: Exception) { null }
+            if (native != null) {
+                val flags = native.flags()
+                val paused = flags.and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero()
+                val armed = flags.and_(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY).non_zero()
+                val checking = native.state() == TorrentStatus.State.CHECKING_FILES ||
+                    native.state() == TorrentStatus.State.CHECKING_RESUME_DATA
+                // libtorrent clears stop_when_ready exactly when it auto-pauses
+                // on leaving checking. A Stop during the check also clears it,
+                // but leaves the paused job in a checking state: not done.
+                if (paused && !armed && !checking)
+                    return LocalCommandResult(LocalCommandOutcome.VERIFIED, snapshot(key, handle))
+            }
+            if (System.nanoTime() >= deadline)
+                return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, handle))
+            Thread.sleep(50)
+        }
+    }
+
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
         command(infoHash, wantStopped = true, readbackTimeoutMs) {
             // User Stop overrides any earlier Add-and-start consent while
-            // magnet metadata is in flight.
+            // magnet metadata is in flight, and any pending recheck auto-stop.
             startWhenMetadataArrives.remove(normal(infoHash))
+            it.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
             it.pause()
             true
         }

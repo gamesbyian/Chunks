@@ -1372,7 +1372,12 @@ class LocalTorrentEngineTest {
             val leech = added(leecher.addStopped(fixture.torrent, destination,
                 listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
             leecher.resume(leech.infoHash)
-            waitFor(60_000) { leecher.status(leech.infoHash)?.error != null }
+            try {
+                waitFor(60_000) { leecher.status(leech.infoHash)?.error != null }
+            } catch (timeout: AssertionError) {
+                throw AssertionError("No storage error; tiny fs total=${tiny!!.totalSpace} " +
+                    "usable=${tiny.usableSpace}; status=${leecher.status(leech.infoHash)}", timeout)
+            }
             val failed = requireNotNull(leecher.status(leech.infoHash))
             assertFalse(failed.toString(), failed.error.isNullOrBlank())
             assertTrue(failed.toString(), failed.progressPpm < 1_000_000)
@@ -1422,6 +1427,54 @@ class LocalTorrentEngineTest {
             destination.deleteRecursively()
             resize("512k")
         }
+    }
+
+    @Test fun recheckOfAStoppedJobReadsPiecesAndStaysStoppedUntilAnOrdinaryStart() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        // An independent copy of the complete payload, registered stopped,
+        // with the real seeder offered as a peer the whole time.
+        val destination = temp.newFolder("recheck destination")
+        fixture.root.copyRecursively(File(destination, fixture.root.name))
+        val engine = engine()
+        val job = added(engine.addStopped(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertEquals(0, job.progressPpm)
+
+        val full = engine.recheckStopped(job.infoHash)
+        assertEquals(full.toString(), LocalCommandOutcome.VERIFIED, full.outcome)
+        assertTrue(full.toString(), full.status!!.stopped)
+        assertEquals(1_000_000, full.status!!.progressPpm)
+
+        // Damage one whole piece on disk; a recheck must find it missing and
+        // must not repair it, because the job never leaves Stopped.
+        val episode = File(destination, "${fixture.root.name}/episode.bin")
+        val damaged = episode.readBytes().also { bytes -> for (i in 3 * 65536 until 4 * 65536) bytes[i] = 0 }
+        episode.writeBytes(damaged)
+        val partial = engine.recheckStopped(job.infoHash)
+        assertEquals(partial.toString(), LocalCommandOutcome.VERIFIED, partial.outcome)
+        assertTrue(partial.toString(), partial.status!!.stopped)
+        assertTrue(partial.toString(), partial.status!!.progressPpm in 1 until 1_000_000)
+        Thread.sleep(2_000)
+        val idle = requireNotNull(engine.status(job.infoHash))
+        assertTrue("still stopped: $idle", idle.stopped)
+        assertEquals("no payload downloaded while stopped", 0L, idle.payloadDownloadedBytes)
+        assertArrayEquals("recheck never writes payload", damaged, episode.readBytes())
+
+        // A running job is refused.
+        assertEquals(LocalCommandOutcome.REFUSED, seeder.recheckStopped(seed.infoHash).outcome)
+
+        // The ordinary Start repairs the piece and does not auto-stop.
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(job.infoHash).outcome)
+        requireFlushed(engine, job.infoHash)
+        for ((name, bytes) in fixture.files)
+            assertArrayEquals(name, bytes, File(destination, "${fixture.root.name}/$name").readBytes())
+        Thread.sleep(1_500)
+        assertFalse("Start after a recheck keeps running", engine.status(job.infoHash)!!.stopped)
     }
 
     @Test fun dhtIsOffByDefaultAndTogglesOnlyOnRequest() {
