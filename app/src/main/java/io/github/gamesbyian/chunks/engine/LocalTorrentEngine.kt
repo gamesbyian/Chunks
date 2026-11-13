@@ -84,7 +84,10 @@ data class LocalEngineConfig(
 enum class LocalTransferState { CHECKING, DOWNLOADING_METADATA, DOWNLOADING, FINISHED, SEEDING, UNKNOWN }
 
 data class LocalTransferStatus(
-    /** 40 hex (v1) or 64 hex (v2-only) lower-case identity. */
+    /**
+     * 40 hex lower-case identity: the v1 hash, or for a v2-only torrent libtorrent's
+     * best hash, the SHA-256 info hash truncated to 160 bits (BEP 52).
+     */
     val infoHash: String,
     val name: String,
     val state: LocalTransferState,
