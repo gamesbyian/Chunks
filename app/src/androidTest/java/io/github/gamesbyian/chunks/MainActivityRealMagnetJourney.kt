@@ -46,6 +46,14 @@ internal class MainActivityRealMagnetJourney(
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(match)
     }
     private fun hasTag(tag: String) = rule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+    /** Enduring operation status, unaffected by the owner-approved heading/copy. */
+    private fun scrollOutcome() {
+        val target = hasTestTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)
+        try { rule.onNode(target).performScrollTo() }
+        catch (_: AssertionError) {
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(target)
+        }
+    }
     /** Stable-id click for persistent roots; waits for composition, never retries a click. */
     private fun clickTag(tag: String) {
         rule.waitUntil(45_000) { hasTag(tag) }
@@ -76,10 +84,11 @@ internal class MainActivityRealMagnetJourney(
                 if (count == 0) "-absent" else if (count > 1) "-ambiguous" else "-unusable")
             // Which well-known screen parts were showing (1/0 flags only, no app text):
             // outcome, verified result, Add form infohash, checking, Add button, Transfers search.
-            val flags = listOf("Operation outcome", "View verified transfer in rTorrent", "Infohash:",
-                "Checking server", "Add transfer", "Search names or hashes", "Torrent link:",
-                "A new source is waiting")
-                .joinToString("") { if (visible(it)) "1" else "0" }
+            val flags = (if (hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)) "1" else "0") +
+                listOf("View transfer", "Infohash:",
+                    "Checking server", "Add transfer", "Search names or hashes", "Torrent link:",
+                    "A new source is waiting")
+                    .joinToString("") { if (visible(it)) "1" else "0" }
             // Flags first, then the control being clicked (bounded slug), so one stage names both.
             report("chunks_real_add_app_stage", "click-seen-$flags-" +
                 text.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').take(13))
@@ -291,7 +300,7 @@ internal class MainActivityRealMagnetJourney(
         rule.onNodeWithText("Password").assertDoesNotExist()
         report("chunks_real_add_app_stage", "queue")
 
-        fun remoteAddShowing() = visible("Magnet or torrent link") || visible("View verified transfer in rTorrent")
+        fun remoteAddShowing() = visible("Magnet or torrent link") || visible("View transfer")
         fun openRemoteAdd() {
             clickTag(ChunksSemantics.FOOTER_ADD)
             rule.waitUntil(30_000) { visible("Add a transfer") || remoteAddShowing() }
@@ -452,7 +461,10 @@ internal class MainActivityRealMagnetJourney(
             rule.onNode(submit).performScrollTo()
             rule.waitForIdle()
             rule.onNode(submit).performClick()
-            rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
+            rule.waitUntil(60_000) {
+                runCatching { scrollOutcome() }.isSuccess &&
+                    hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)
+            }
             // The outcome is published before optional diagnostic reads finish.
             // Await the existing settlement-gated Back action before testing a
             // settled result across navigation. Leaving during the optional
@@ -465,7 +477,7 @@ internal class MainActivityRealMagnetJourney(
                     true
                 }.getOrDefault(false)
             }
-            scroll("Operation outcome")
+            scrollOutcome()
             val awaitingNativeMetadata = !visible("Verified: added and started on rTorrent.")
             if (awaitingNativeMetadata) {
                 // The old absolute-folder fixture could certify the reviewed parent
@@ -500,15 +512,15 @@ internal class MainActivityRealMagnetJourney(
             waitTransfersCatalog()
             openRemoteAdd()
             if (awaitingNativeMetadata) {
-                scroll("Operation outcome")
+                scrollOutcome()
                 assertTrue("Returning must retain the truthful pending native Place",
                     visible("Start after Add was not verified.") ||
                         visible("its payload folder and final Add result are not yet verified.") ||
                         visible("Metadata is available. Check server state below"))
-                rule.onNodeWithText("View verified transfer in rTorrent").assertDoesNotExist()
+                rule.onNodeWithText("View transfer").assertDoesNotExist()
             } else {
-                scroll("View verified transfer in rTorrent")
-                rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
+                scroll("View transfer")
+                rule.onNodeWithText("View transfer").assertExists()
             }
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
                 runCatching {
@@ -707,7 +719,7 @@ internal class MainActivityRealMagnetJourney(
                         resolved.directory in setOf(parent, "$parent/${preview.name}"))
                     click("Check server state (read only)")
                     rule.waitUntil(60_000) {
-                        runCatching { scroll("Operation outcome") }
+                        runCatching { scrollOutcome() }
                         visible("Server now confirms this exact hash, destination and active engine.")
                     }
                     assertTrue("Read-only recovery must not claim attribution after an incomplete Add result",
@@ -769,7 +781,7 @@ internal class MainActivityRealMagnetJourney(
                 }
                 traffic(label, "initial", readOnly { remote.readTrafficSample(hash) })
                 stage(label, "peer-progress"); stage(label, "bytes-verified")
-                rule.waitUntil(15_000) { runCatching { scroll("Operation outcome") }
+                rule.waitUntil(15_000) { runCatching { scrollOutcome() }
                     visible("Payload:") && (visible("Downloading payload from peers.") ||
                         (publicDiscovery && visible("Download complete. All payload pieces verified by rTorrent."))) }
                 stage(label, "ui-progress")
@@ -913,7 +925,7 @@ internal class MainActivityRealMagnetJourney(
         try {
             add(negative)
             report("chunks_real_add_negative_stage", "registered")
-            rule.waitUntil(15_000) { runCatching { scroll("Operation outcome") }
+            rule.waitUntil(15_000) { runCatching { scrollOutcome() }
                 visible("Fetching magnet metadata. Waiting for peers.") }
             assertFalse(visible("Downloading payload from peers."))
             assertFalse(visible("Download complete."))

@@ -146,8 +146,12 @@ open class ChunksServerRenderTest {
         rule.waitForIdle()
         rule.onNodeWithText("Add a transfer").assertExists()
         // The authenticated server is an inline Add-to choice; selecting it only edits the draft.
-        rule.onNode(hasText("On ", substring = true) and hasClickAction() and
-            !hasText("On this", substring = true)).performScrollTo().performClick()
+        // The source-first selector is a vertically scrollable Compose
+        // column. The remote lazy list is created only AFTER this click.
+        // Scroll directly to the selected tagged chip, never look for
+        // ScrollToIndex on a not-yet-mounted remote form.
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE)
+            .performScrollTo().performClick()
         rule.waitForIdle()
         val addList = rule.onNode(hasScrollToIndexAction())
         addList.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD))

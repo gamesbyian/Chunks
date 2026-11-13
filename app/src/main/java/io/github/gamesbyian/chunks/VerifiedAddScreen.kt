@@ -569,8 +569,78 @@ internal fun VerifiedAddScreen(
         if (!alreadyAttempted && addDestinationPicker != null) item {
             addDestinationPicker()
         }
-        item {
-            RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
+        // The same position owns the target and subsequent operation status.
+        // A result replaces the intro rather than creating a second status card.
+        if (outcome == null) item {
+            if (submitting) Card(colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    Text("Adding to " + (draft.submittedDisplayName ?: environmentLabel ?: "rTorrent"),
+                        fontWeight = FontWeight.Bold)
+                    Text("Submitting and checking the exact transfer. Do not submit again.")
+                }
+            } else RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
+        }
+        if (outcome != null) {
+            item {
+                // A fresh active metadata session is ordinary progress. The
+                // native payload Place still needs read-only confirmation,
+                // so retain the uncertain-write fence without presenting a
+                // healthy metadata wait as a storage/Start failure.
+                val nativePlaceAwaitingConfirmation = uncertain &&
+                    attemptedTicket?.intent?.startWhenAdded == true &&
+                    attemptedTicket?.intent?.place is UniversalAddPlace.ServerDefault &&
+                    (attemptedTicket?.intent?.place as? UniversalAddPlace.ServerDefault)
+                        ?.observedDefaultPath?.isEmpty() == true &&
+                    observedProgress?.registered == true && observedProgress?.started == true &&
+                    observedProgress?.traffic?.active == true &&
+                    observedProgress?.metadataPending != null && !progressReading && !progressReadFailed
+                Card(modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS),
+                    colors = CardDefaults.cardColors(containerColor =
+                        if (uncertain && !nativePlaceAwaitingConfirmation) MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.secondaryContainer)) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        val targetName = draft.submittedDisplayName ?: environmentLabel?.takeIf(String::isNotBlank) ?: "rTorrent"
+                        Text(when {
+                            nativePlaceAwaitingConfirmation -> "Checking $targetName"
+                            uncertain -> "Couldn't confirm Add on $targetName"
+                            draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED ->
+                                "Added to $targetName"
+                            draft.coordinator.phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED ->
+                                "Confirmed on $targetName"
+                            outcome.orEmpty().contains("refused", ignoreCase = true) ->
+                                "Couldn't add to $targetName"
+                            else -> "Add result on $targetName"
+                        }, fontWeight = FontWeight.Bold)
+                        Text(if (nativePlaceAwaitingConfirmation) {
+                            if (observedProgress?.metadataPending == true)
+                                "Waiting for magnet metadata. rTorrent reports this exact transfer active; its payload folder and final Add result are not yet verified. No Add or Start will be repeated."
+                            else "Metadata is available. Check server state below to confirm the actual payload folder and requested Start. No Add or Start will be repeated."
+                        } else outcome.orEmpty())
+                        observedProgress?.let { progress ->
+                            if (progressReading || progressReadFailed) {
+                                Text("Last observed (not current): " + progress.summary())
+                            } else {
+                                Text(progress.summary())
+                                val total = progress.payloadSizeBytes
+                                val verified = progress.payloadVerifiedBytes
+                                if (total != null && verified != null)
+                                    Text("Payload: ${Units.bytes(verified)} verified of ${Units.bytes(total)}")
+                            }
+                        }
+                        if (progressReading) Text("Reading exact transfer status…")
+                        else if (progressReadFailed) Text(
+                            "Transfer status could not be refreshed. Check the server state before another action.")
+                        verifiedHash?.let { hash ->
+                            OutlinedButton(
+                                onClick = { onViewVerifiedTransfer(hash) },
+                                enabled = !submitting && !rechecking,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
+                            ) { Text("View transfer") }
+                        }
+                    }
+                }
+            }
         }
         item {
             OutlinedTextField(
@@ -798,6 +868,7 @@ internal fun VerifiedAddScreen(
                             outcome = null
                             observedProgress = null
                             draft.attemptTicket = ticket
+                            draft.submittedDisplayName = environmentLabel?.trim()?.takeIf(String::isNotBlank)
                             draft.attemptSource = magnet
                             draft.frozenAlias = aliasAtClick
                             val artworkEnvironment = ticket.intent.target.environment
@@ -953,57 +1024,6 @@ internal fun VerifiedAddScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(top = 6.dp))
                 }
-        }
-        if (outcome != null) {
-            item {
-                // A fresh active metadata session is ordinary progress. The
-                // native payload Place still needs read-only confirmation,
-                // so retain the uncertain-write fence without presenting a
-                // healthy metadata wait as a storage/Start failure.
-                val nativePlaceAwaitingConfirmation = uncertain &&
-                    attemptedTicket?.intent?.startWhenAdded == true &&
-                    attemptedTicket?.intent?.place is UniversalAddPlace.ServerDefault &&
-                    (attemptedTicket?.intent?.place as? UniversalAddPlace.ServerDefault)
-                        ?.observedDefaultPath?.isEmpty() == true &&
-                    observedProgress?.registered == true && observedProgress?.started == true &&
-                    observedProgress?.traffic?.active == true &&
-                    observedProgress?.metadataPending != null && !progressReading && !progressReadFailed
-                Card(colors = CardDefaults.cardColors(containerColor =
-                    if (uncertain && !nativePlaceAwaitingConfirmation) MaterialTheme.colorScheme.errorContainer
-                    else MaterialTheme.colorScheme.secondaryContainer)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                        Text("Operation outcome", fontWeight = FontWeight.Bold)
-                        Text(if (nativePlaceAwaitingConfirmation) {
-                            if (observedProgress?.metadataPending == true)
-                                "Waiting for magnet metadata. rTorrent reports this exact transfer active; its payload folder and final Add result are not yet verified. No Add or Start will be repeated."
-                            else "Metadata is available. Check server state below to confirm the actual payload folder and requested Start. No Add or Start will be repeated."
-                        } else outcome.orEmpty())
-                        observedProgress?.let { progress ->
-                            if (progressReading || progressReadFailed) {
-                                Text("Last observed (not current): " + progress.summary())
-                            } else {
-                                Text(progress.summary())
-                                val total = progress.payloadSizeBytes
-                                val verified = progress.payloadVerifiedBytes
-                                if (total != null && verified != null)
-                                    Text("Payload: ${Units.bytes(verified)} verified of ${Units.bytes(total)}")
-                            }
-                        }
-                        if (progressReading) Text("Reading exact transfer status…")
-                        else if (progressReadFailed) Text(
-                            "Transfer status could not be refreshed. Check the server state before another action.")
-                    }
-                }
-            }
-            verifiedHash?.let { hash ->
-                item {
-                    OutlinedButton(
-                        onClick = { onViewVerifiedTransfer(hash) },
-                        enabled = !submitting && !rechecking,
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
-                    ) { Text("View verified transfer in rTorrent") }
-                }
-            }
         }
         // Read-only recovery can prove the exact hash, Place and Start
         // without proving that Chunks originally registered the job. Never

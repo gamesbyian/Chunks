@@ -30,6 +30,8 @@ internal object ChunksSemantics {
     // Universal Add: one source, one submission action, one Start preference.
     const val ADD_SOURCE_FIELD = "chunks.add.source"
     const val ADD_SUBMIT = "chunks.add.submit"
+    /** In-place remote Add status: submitting, verified, refused or uncertain. */
+    const val ADD_REMOTE_OPERATION_STATUS = "chunks.add.remote.operationStatus"
     const val ADD_FOREIGN_PARTIAL = "chunks.add.foreign_partial"
     const val ADD_ORIGINAL_HANDLING = "chunks.add.original_handling"
     const val ADD_FILE_CHOICE = "chunks.add.file_choice"

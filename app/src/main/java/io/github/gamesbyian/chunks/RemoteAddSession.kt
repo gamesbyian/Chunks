@@ -35,6 +35,8 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal var reportedVerifiedHash: String? = null
     /** Frozen optional Chunks list alias, valid only for the retained ticket. */
     internal var frozenAlias: String? = null
+    /** The submitted UI label, retained for the exact account's result across renames. */
+    internal var submittedDisplayName by mutableStateOf<String?>(null)
     // A completion from an interrupted old draft must not change a newer
     // local/server draft's shared metadata choice.
     internal var resetArtworkAfterVerification = true
@@ -96,6 +98,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
         verifiedHash = null
         reportedVerifiedHash = null
         frozenAlias = null
+        submittedDisplayName = null
         resetArtworkAfterVerification = true
         observedProgress = null
         destination = ""
