@@ -530,6 +530,19 @@ class LocalTorrentEngineTest {
         assertPartialReused(receiver, checked.infoHash, partial, seeder.listenPort())
     }
 
+    @Test fun verifiedPieceDiagnosticReportsLibtorrentsHaveBitForTheExactJob() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        assertEquals(false, seeder.hasVerifiedPiece(seed.infoHash, 0))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+        assertEquals(true, seeder.hasVerifiedPiece(seed.infoHash.uppercase(), 0))
+        assertNull("out of range", seeder.hasVerifiedPiece(seed.infoHash, 1_000_000))
+        assertNull("negative", seeder.hasVerifiedPiece(seed.infoHash, -1))
+        assertNull("unknown job", seeder.hasVerifiedPiece("d".repeat(40), 0))
+    }
+
     @Test fun stoppedVerificationRunsOnlyForReadableExistingDataInsideThePlace() {
         val fixture = fixture()
         val engine = engine()
