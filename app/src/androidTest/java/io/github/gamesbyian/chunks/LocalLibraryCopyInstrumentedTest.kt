@@ -3,7 +3,7 @@ package io.github.gamesbyian.chunks
 import androidx.activity.ComponentActivity
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -58,6 +58,8 @@ class LocalLibraryCopyInstrumentedTest {
         val deadline = System.currentTimeMillis() + 30_000
         while (!condition()) {
             if (System.currentTimeMillis() > deadline) fail("Timed out waiting for $what")
+            // The v2 rule advances app coroutines only while the test idles through it (#901).
+            runCatching { rule.waitForIdle() }
             Thread.sleep(100)
         }
     }

@@ -163,4 +163,16 @@ class OriginalTorrentHandlingTest {
         assertTrue(text, text.contains("original .torrent file was kept"))
         assertTrue(text, !text.contains("archive"))
     }
+
+    @Test fun archiveAsMoveAsksToRemoveAndReportsTheMoveOnlyOnVerifiedAbsence() {
+        val moved = OriginalDeletionRequest(uri("m.torrent"), "m.torrent",
+            OriginalTorrentDocuments.sha256(metainfo), "Show", archived = true)
+        rule.setContent { ChunksTheme { OriginalDeletionPrompt(moved, busy = false, onDelete = {}, onKeep = {}) } }
+        rule.onNodeWithTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM).assertHeightIsAtLeast(48.dp)
+        rule.onNode(androidx.compose.ui.test.hasText("Remove original .torrent")).assertExists()
+        assertTrue(originalDeletionMessage(OriginalDeletionOutcome.DELETED, archived = true).contains("moved into Chunks"))
+        for (other in listOf(OriginalDeletionOutcome.CHANGED, OriginalDeletionOutcome.REFUSED,
+                OriginalDeletionOutcome.UNCONFIRMED))
+            assertTrue(!originalDeletionMessage(other, archived = true).contains("moved"))
+    }
 }

@@ -134,6 +134,12 @@ class OriginalTorrentHandlingInstrumentedTest {
             addStoppedFromShare(document, OriginalTorrentHandling.ARCHIVE)
             waitForExactStoppedJob(hash)
             waitForText("archived in Chunks; the original was kept")
+            // Archive prefers a move: removing the original is a separate question.
+            waitFor { rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_ORIGINAL_DELETE_PROMPT))
+                .fetchSemanticsNodes().isNotEmpty() }
+            assertTrue("Nothing is removed before the separate confirmation", stillReadable(document))
+            rule.onNode(hasText("Keep it") and hasClickAction()).performScrollTo().performClick()
+            waitForText("Chunks also keeps its archived copy")
         }
         val archived = File(context.filesDir, SourceTorrentArchive.DIRECTORY).listFiles().orEmpty()
             .filter { it.name.startsWith("$hash-") && it.name.endsWith(".torrent") }
@@ -208,5 +214,24 @@ class OriginalTorrentHandlingInstrumentedTest {
         } finally {
             placed?.delete()
         }
+    }
+
+    @Test fun archiveThenConfirmedRemovalMovesTheOriginalIntoChunks() {
+        val (bytes, hash) = torrent()
+        hashes += hash
+        val document = shareDocument(bytes, "move-me.torrent")
+        ActivityScenario.launch<MainActivity>(intent(document)).use {
+            addStoppedFromShare(document, OriginalTorrentHandling.ARCHIVE)
+            waitForExactStoppedJob(hash)
+            waitFor { rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM))
+                .fetchSemanticsNodes().isNotEmpty() }
+            rule.onNodeWithTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM).performScrollTo().performClick()
+            waitForText("moved into Chunks")
+        }
+        if (stillReadable(document)) fail("The confirmed original must be gone")
+        val archived = File(context.filesDir, SourceTorrentArchive.DIRECTORY).listFiles().orEmpty()
+            .filter { it.name.startsWith("$hash-") && it.name.endsWith(".torrent") }
+        assertEquals("the verified private copy remains", 1, archived.size)
+        assertArrayEquals(bytes, archived.single().readBytes())
     }
 }
