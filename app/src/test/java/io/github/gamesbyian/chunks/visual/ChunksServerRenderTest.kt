@@ -146,9 +146,12 @@ open class ChunksServerRenderTest {
         rule.waitForIdle()
         rule.onNodeWithText("Add a transfer").assertExists()
         // The authenticated server is an inline Add-to choice; selecting it only edits the draft.
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE))
-        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performClick()
+        // The remote chip is nested within the source-first Add item.
+        // Scroll the lazy list to its persistent section heading first; a
+        // nested FilterChip tag is not itself a LazyList item matcher.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Add to"))
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE)
+            .performScrollTo().performClick()
         rule.waitForIdle()
         val addList = rule.onNode(hasScrollToIndexAction())
         addList.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD))
