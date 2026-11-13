@@ -201,6 +201,14 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertEqual(receipt["app_stage_evidence"], sanitized["app_stage_evidence"])
         self.assertNotIn("SECRET", str(sanitized))
 
+    def test_native_place_stages_are_fixed_diagnostics_without_certifying_the_journey(self):
+        raw = "\n".join("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=" + stage for stage in
+                        ["native-default-ready", "native-place-awaits-metadata", "https://private.invalid/path"])
+        result = parse(raw, 0, self.env)
+        self.assertEqual(["native-default-ready", "native-place-awaits-metadata"], result["app_stage_evidence"])
+        self.assertNotEqual("passed", result["result"])
+        self.assertNotIn("private.invalid", str(result))
+
     def test_connect_click_attempt_does_not_claim_authenticated_submit(self):
         raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=runner-ready\n"
                "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=connect-click-attempt\n"

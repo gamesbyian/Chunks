@@ -62,7 +62,7 @@ class RemoteDestinationResolutionTest {
     }
 
     private fun show(saved: androidx.compose.runtime.MutableState<String?>,
-                     destination: androidx.compose.runtime.MutableState<String>) {
+                     destination: androidx.compose.runtime.MutableState<String>, start: Boolean = true) {
         val remote = RTorrentRemote(RemoteCredentials(server.endpoint, "", ""))
         val account = remote.addAccountScope()
         val session = RemoteAddSession(account)
@@ -71,6 +71,7 @@ class RemoteDestinationResolutionTest {
                 onDestination = { destination.value = it }, onBack = {}, onComplete = {},
                 onMutationStarted = { true }, onMutationSettled = {},
                 finishInOrderScope = account, session = session,
+                addStartState = mutableStateOf(start),
                 savedDefaultPlace = saved.value,
                 onSaveDefaultPlace = { saved.value = it; true })
         } } }
@@ -130,6 +131,55 @@ class RemoteDestinationResolutionTest {
         assertEquals(2, load.second.size)
         assertEquals("/home/user", server.jobs.getValue("c".repeat(40)).directory)
         assertTrue(server.methods.contains("d.directory"))
+    }
+
+    /** Ordinary native magnet journey: the unknown payload Place cannot be certified until BEP9. */
+    @Test fun nativeMetadataWaitsForPayloadPlaceThenReadOnlyRecoveryConfirmsWithoutAnotherWrite() {
+        server.directoryDefault = ""
+        server.metadataPending = true
+        show(mutableStateOf(null), mutableStateOf(""))
+        reveal(ChunksSemantics.ADD_SUBMIT)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled().performClick()
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Waiting for magnet metadata. rTorrent reports this exact transfer active", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Verified: added and started", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("View verified transfer in rTorrent").assertDoesNotExist()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Waiting for magnet metadata.", substring = true))
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-native-metadata-pending.png")
+        val hash = "c".repeat(40)
+        assertTrue(server.jobs.getValue(hash).started)
+        server.metadataPending = false // independently supplied metadata, not another Add
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Check server state (read only)"))
+        rule.onNodeWithText("Check server state (read only)").performClick()
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Server now confirms this exact hash, destination and active engine.", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(1, server.loads().size)
+        assertTrue(server.methods.none { it in setOf("d.open", "d.start", "d.resume", "d.erase") })
+        assertEquals("/home/user", server.jobs.getValue(hash).directory)
+    }
+
+    @Test fun anExternallyStartedStoppedIntentKeepsItsMismatchInsteadOfHealthyStartGuidance() {
+        server.directoryDefault = ""
+        server.metadataPending = true
+        server.startStoppedLoads = true
+        show(mutableStateOf(null), mutableStateOf(""), start = false)
+        reveal(ChunksSemantics.ADD_SUBMIT)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Fetching magnet metadata.", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("The Add was not fully verified; no Start was sent.", substring = true).assertExists()
+        rule.onNodeWithText("Waiting for magnet metadata. rTorrent reports this exact transfer active", substring = true)
+            .assertDoesNotExist()
+        rule.onNodeWithText("View verified transfer in rTorrent").assertDoesNotExist()
+        assertEquals("load.verbose", server.loads().single())
+        assertTrue(server.methods.none { it in setOf("d.open", "d.start", "d.resume") })
     }
 
     /** Behavioral/presentation: engine refusal reaches Add without a false success or repeated lifecycle command. */

@@ -948,12 +948,28 @@ internal fun VerifiedAddScreen(
         }
         if (outcome != null) {
             item {
+                // A fresh active metadata session is ordinary progress. The
+                // native payload Place still needs read-only confirmation,
+                // so retain the uncertain-write fence without presenting a
+                // healthy metadata wait as a storage/Start failure.
+                val nativePlaceAwaitingConfirmation = uncertain &&
+                    attemptedTicket?.intent?.startWhenAdded == true &&
+                    attemptedTicket?.intent?.place is UniversalAddPlace.ServerDefault &&
+                    (attemptedTicket?.intent?.place as? UniversalAddPlace.ServerDefault)
+                        ?.observedDefaultPath?.isEmpty() == true &&
+                    observedProgress?.registered == true && observedProgress?.started == true &&
+                    observedProgress?.traffic?.active == true &&
+                    observedProgress?.metadataPending != null && !progressReading && !progressReadFailed
                 Card(colors = CardDefaults.cardColors(containerColor =
-                    if (uncertain) MaterialTheme.colorScheme.errorContainer
+                    if (uncertain && !nativePlaceAwaitingConfirmation) MaterialTheme.colorScheme.errorContainer
                     else MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Operation outcome", fontWeight = FontWeight.Bold)
-                        Text(outcome.orEmpty())
+                        Text(if (nativePlaceAwaitingConfirmation) {
+                            if (observedProgress?.metadataPending == true)
+                                "Waiting for magnet metadata. rTorrent reports this exact transfer active; its payload folder and final Add result are not yet verified. No Add or Start will be repeated."
+                            else "Metadata is available. Check server state below to confirm the actual payload folder and requested Start. No Add or Start will be repeated."
+                        } else outcome.orEmpty())
                         observedProgress?.let { progress ->
                             if (progressReading || progressReadFailed) {
                                 Text("Last observed (not current): " + progress.summary())

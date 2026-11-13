@@ -23,12 +23,15 @@ internal class FakeRTorrent(
     private val unsetDefaultLandsIn: String = "/home/user",
     private val workingDirectory: String? = null,
     @Volatile var activationBlocked: Boolean = false,
-    private val untrustedWorkingDirectory: Boolean = false
+    private val untrustedWorkingDirectory: Boolean = false,
+    @Volatile var metadataPending: Boolean = false
 ) : AutoCloseable {
     data class Job(val hash: String, val name: String, @Volatile var directory: String,
                    @Volatile var started: Boolean)
 
     val jobs = ConcurrentHashMap<String, Job>()
+    /** Simulate another client starting a job that this Add explicitly requested stopped. */
+    @Volatile var startStoppedLoads: Boolean = false
     val calls = CopyOnWriteArrayList<Pair<String, List<String>>>()
     private val socket = ServerSocket(0, 32, InetAddress.getByName("127.0.0.1"))
     val endpoint = "http://127.0.0.1:${socket.localPort}/RPC2"
@@ -85,7 +88,7 @@ internal class FakeRTorrent(
                     when (view) { "started" -> it.started; "stopped" -> !it.started; else -> true }
                 }.map { j ->
                     array(listOf(str(j.hash), str(j.name), num(1000), num(0), num(if (j.started) 1 else 0),
-                        str(j.directory), num(0), num(0), num(0)) + if (metadata) listOf(num(0)) else emptyList())
+                        str(j.directory), num(0), num(0), num(0)) + if (metadata) listOf(num(if (metadataPending) 1 else 0)) else emptyList())
                 }
                 array(rows)
             }
@@ -101,7 +104,9 @@ internal class FakeRTorrent(
             "d.message" -> str("")
             "d.down.total", "d.completed_bytes", "d.peers_connected", "d.down.rate" -> num(0)
             "d.size_bytes" -> num(1000)
-            "d.is_multi_file", "d.is_meta", "d.is_hash_checking", "d.is_private" ->
+            "d.is_meta" -> job()?.let { num(if (metadataPending) 1 else 0) }
+                ?: return fault(-501, "Could not find info-hash.")
+            "d.is_multi_file", "d.is_hash_checking", "d.is_private" ->
                 job()?.let { num(0) } ?: return fault(-501, "Could not find info-hash.")
             "d.tracker_size" -> job()?.let { num(1) } ?: return fault(-501, "Could not find info-hash.")
             "d.start", "d.stop", "d.open", "d.resume", "d.close" -> {
@@ -127,7 +132,7 @@ internal class FakeRTorrent(
                     ?.removePrefix("d.directory.set=")
                 val default = directoryDefault?.takeIf { it.startsWith("/") }
                 if (hash.isNotEmpty()) jobs[hash] = Job(hash, name, explicit ?: default ?: unsetDefaultLandsIn,
-                    started = method == "load.start" || method == "load.raw_start")
+                    started = method == "load.start" || method == "load.raw_start" || startStoppedLoads)
                 num(0)
             }
             else -> return fault(-506, "not in fixture")

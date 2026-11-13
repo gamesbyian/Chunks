@@ -426,6 +426,8 @@ class RTorrentLibtorrentInteropTest {
     @Test fun realRTorrentNativeMagnetAddResolvesMetadataAndDownloadsVerifiedBytes() = runBlocking {
         val rig = rig()
         val seedParent = kotlin.io.path.createTempDirectory("chunks-magnet-seed").toFile()
+        val originalDefault = rig.remote.call("directory.default") as String
+        val originalCwd = rig.remote.call("system.cwd") as String
         try {
             val (root, files) = fixture(seedParent, "Interop via magnet", System.nanoTime())
             val torrent = torrentFor(root)
@@ -449,9 +451,14 @@ class RTorrentLibtorrentInteropTest {
 
             val trackerUrl = java.net.URLEncoder.encode(tracker.announceUrl, "UTF-8")
             val magnet = "magnet:?xt=urn:btih:$hash&tr=$trackerUrl"
-            val started = rig.remote.loadStarted(
-                StoppedRemoteAddPlan.fromMagnet(magnet, leechParent.absolutePath)
-            )
+            // Exercise the owner's blank optional folder with real metadata
+            // and pieces. These administrative changes target ONLY rig()'s
+            // exact disposable localhost daemon and are always restored.
+            rig.remote.call("system.cwd.set", listOf("", leechParent.absolutePath))
+            rig.remote.call("directory.default.set", listOf("", ""))
+            assertEquals("", rig.remote.call("directory.default"))
+            val plan = StoppedRemoteAddPlan.fromMagnetAtServerDefault(magnet, "")
+            val started = rig.remote.loadStarted(plan)
             assertTrue("Actual magnet native load refused: $started",
                 started is RemoteAddAndStart.Started ||
                     started is RemoteAddAndStart.StartNotVerified)
@@ -466,6 +473,10 @@ class RTorrentLibtorrentInteropTest {
                     } == true
                 }
             }
+            assertTrue("Read-only native Place/Start recovery must verify the resolved job",
+                rig.remote.reconcileStartedAdd(plan) is RemoteAddAndStart.Started)
+            assertEquals(File(leechParent, root.name).absolutePath,
+                requireNotNull(remoteRow(rig.remote, hash)).directory)
 
             waitFor("rTorrent to download all peer pieces from magnet", 150) {
                 runBlocking {
@@ -492,6 +503,8 @@ class RTorrentLibtorrentInteropTest {
                 (local.status(hash)?.payloadUploadedBytes ?: 0L) >= total
             }
         } finally {
+            rig.remote.call("directory.default.set", listOf("", originalDefault))
+            rig.remote.call("system.cwd.set", listOf("", originalCwd))
             seedParent.deleteRecursively()
         }
     }
