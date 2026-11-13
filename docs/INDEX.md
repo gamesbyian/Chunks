@@ -1,5 +1,8 @@
 # Chunks documentation index
 
+**Approved Transfers redesign (2026-11-13):** [Compact list-first Transfers UI contract](design/TRANSFERS-COMPACT-LIST-FIRST.md) binds screen hierarchy, conditional All/individual count chips, search/filter/sort/batch compactness, above-list live summary, removal of bottom dashboard and placement of environment colours under Connections/Options. Design approved; implementation and Pixel acceptance remain pending. The ranked work is integrated into [WORK-QUEUE](WORK-QUEUE.md), not a separate backlog.
+
+
 **Remote Save to directory browsing (approved, planned):** [canonical rTorrent directory browser / New folder feature contract](REMOTE-DIRECTORY-BROWSER.md) and [UI design](design/REMOTE-DIRECTORY-BROWSER.md) cover true per-profile filesystem listing, capability-gated creation, exact account isolation and graceful manual fallback. [Issue #1680](https://github.com/gamesbyian/Chunks/issues/1680) tracks implementation; no release acceptance is claimed.
 
 **Visual research:** [Torrent-client iconography atlas](research/torrent-iconography/README.md) compares six clients' source-backed symbols with the existing Chunks SVG drafts. Its [HTML gallery](research/torrent-iconography/gallery.html) and exported choices are non-normative decision aids, not an implementation queue.
