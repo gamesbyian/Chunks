@@ -1,6 +1,9 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.printToString
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -46,6 +49,10 @@ class LocalDetailsOperationsInstrumentedTest {
     }
 
     @After fun tearDown() {
+        // Let this test's own change settle, then accept a readback so the next test starts unlocked.
+        runCatching { rule.waitUntil(30_000) { LocalDetailsRuns.running.isEmpty() } }
+        LocalMutationFence.revision.let { it.acceptObservation(it.snapshot(), emptyList<Any>()) }
+        LocalDetailsRuns.outcomes.clear()
         engines.forEach { it.close() }
         work.deleteRecursively()
     }
@@ -64,8 +71,27 @@ class LocalDetailsOperationsInstrumentedTest {
         return Triple(engine, job.infoHash, root)
     }
 
+    // Hosted in a vertical scroll, as canonical Details is.
     private fun show(engine: LocalTorrentEngine, hash: String) = rule.setContent {
-        ChunksTheme { LocalDetailsOperations(hash, current = true, stale = false, engine = { EngineLocalDetailsPort(engine) }) }
+        ChunksTheme {
+            androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier
+                .verticalScroll(androidx.compose.foundation.rememberScrollState())) {
+                LocalDetailsOperations(hash, current = true, stale = false, engine = { EngineLocalDetailsPort(engine) })
+            }
+        }
+    }
+
+    /** Wait for an enabled control, then tap it once; a timeout reports the semantics tree. */
+    private fun tap(tag: String) {
+        try {
+            rule.waitUntil(30_000) { rule.onAllNodes(androidx.compose.ui.test.hasTestTag(tag)).fetchSemanticsNodes()
+                .any { it.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Disabled) { null } == null } }
+        } catch (timeout: Throwable) {
+            throw AssertionError("$tag never became actionable; fence=${LocalMutationFence.revision.blocksMutations()} " +
+                "running=${LocalDetailsRuns.running.keys} tree=" +
+                runCatching { rule.onRoot(useUnmergedTree = true).printToString() }.getOrDefault("?"), timeout)
+        }
+        rule.onNodeWithTag(tag).performScrollTo().performClick()
     }
 
     private fun waitText(text: String) = rule.waitUntil(30_000) {
@@ -76,9 +102,9 @@ class LocalDetailsOperationsInstrumentedTest {
         val (engine, hash, root) = seededJob("keep")
         val before = root.listFiles()!!.associate { it.name to it.readBytes() }
         show(engine, hash)
-        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_FILES).performScrollTo().performClick()
+        tap(ChunksSemantics.DETAILS_LOCAL_FILES)
         waitText("b.bin")
-        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).performScrollTo().performClick()
+        tap(ChunksSemantics.DETAILS_LOCAL_REMOVE)
         waitText("Remove from this device:")
         rule.onNodeWithText("Remove transfer, keep data").performScrollTo().performClick()
         waitText("Downloaded files were kept")
@@ -90,9 +116,9 @@ class LocalDetailsOperationsInstrumentedTest {
         val (engine, hash, root) = seededJob("data")
         val sibling = File(root.parentFile, "unrelated.txt").apply { writeText("keep me") }
         show(engine, hash)
-        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).performScrollTo().performClick()
+        tap(ChunksSemantics.DETAILS_LOCAL_REMOVE)
         waitText("Remove from this device:")
-        rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE_DATA).performScrollTo().performClick()
+        tap(ChunksSemantics.DETAILS_LOCAL_REMOVE_DATA)
         waitText("Verified: the reviewed transfer was removed")
         assertNull(engine.status(hash))
         assertFalse(File(root, "a.bin").exists())
