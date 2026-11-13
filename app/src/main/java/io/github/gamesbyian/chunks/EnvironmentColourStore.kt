@@ -36,6 +36,19 @@ internal class EnvironmentColourStore(context: Context) {
         EnvironmentPalette.State(read("auto_"), read("user_"))
     }
 
+    /** Global presentation preference, independent of per-profile saved hues. */
+    fun showEnvironmentColours(): Boolean = synchronized(persistenceLock) {
+        preferences.getBoolean("show_environment_colours", true)
+    }
+
+    /** Immediately invalidates all observing screens only after a durable save. */
+    fun setShowEnvironmentColours(show: Boolean): Boolean = synchronized(persistenceLock) {
+        if (!preferences.edit().putBoolean("show_environment_colours", show).commit())
+            return@synchronized false
+        changed()
+        true
+    }
+
     /** Assigns and saves automatic colours for any newly seen environment. */
     fun ensure(configured: List<EnvironmentId>): EnvironmentPalette.State = synchronized(persistenceLock) {
         val before = load()

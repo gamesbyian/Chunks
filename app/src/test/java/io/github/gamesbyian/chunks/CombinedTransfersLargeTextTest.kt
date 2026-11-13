@@ -1,6 +1,11 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
@@ -96,8 +101,8 @@ class CombinedTransfersLargeTextTest {
         rule.onNodeWithText("Done selecting").assertExists()
         rule.onNodeWithText("Done selecting").performClick()
 
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open device transfer controls"))
-        val open = rule.onNodeWithText("Open device transfer controls")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Device transfer controls"))
+        val open = rule.onNodeWithText("Device transfer controls")
         val openBounds = open.getUnclippedBoundsInRoot()
         assertTrue("Device recovery entry keeps a 48dp touch target", openBounds.bottom - openBounds.top >= 48.dp)
         open.performClick()
@@ -121,13 +126,14 @@ class CombinedTransfersLargeTextTest {
         val bounds = grouping.getUnclippedBoundsInRoot()
         assertTrue("Group toggle retains its minimum touch target", bounds.bottom - bounds.top >= 48.dp)
 
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Environment colours…"))
-        val colours = rule.onNodeWithText("Environment colours…")
-        val colourBounds = colours.getUnclippedBoundsInRoot()
-        assertTrue("Colour chooser remains scroll-reachable", colourBounds.bottom - colourBounds.top >= 48.dp)
-        colours.performClick()
-        rule.onNodeWithText("Done with colours").assertExists()
-        rule.onNodeWithText("Done with colours").performClick()
+        // The old chooser must not remain below the transfer inventory.
+        rule.onNodeWithText("Environment colours…").assertDoesNotExist()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Device transfer controls"))
+        val recovery = rule.onNodeWithText("Device transfer controls")
+        val recoveryBounds = recovery.getUnclippedBoundsInRoot()
+        assertTrue("Advanced device recovery entry remains 48dp tall",
+            recoveryBounds.bottom - recoveryBounds.top >= 48.dp)
         assertEquals(0, opened[0])
         assertEquals(0, backed[0])
         assertNull(LocalEngineHolder.current())
@@ -159,22 +165,32 @@ class CombinedTransfersLargeTextTest {
     @Test
     @Config(sdk = [35], qualifiers = "w412dp-h892dp-mdpi")
     fun at412And200PercentLastPaletteChoiceIsVerticallyReachableAnd48dp() {
-        val opened = intArrayOf(0)
-        val backed = intArrayOf(0)
-        show(opened, backed)
-        val list = rule.onNode(hasScrollToIndexAction())
-        list.performScrollToNode(hasText("Environment colours…"))
-        rule.onNodeWithText("Environment colours…").performClick()
-        val lastColour = "On this device colour " + EnvironmentHue.entries.last().label
-        list.performScrollToNode(hasContentDescription(lastColour))
+        val local = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
+        rule.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(1f, 2f)) {
+                ChunksTheme {
+                    Surface(color = ChunksColors.Background) {
+                        Column(Modifier.verticalScroll(rememberScrollState())) {
+                            EnvironmentColourPreference(local, "Local")
+                        }
+                    }
+                }
+            }
+        }
+        rule.onNodeWithContentDescription("Choose colour for Local").performClick()
+        val lastColour = "Local colour " + EnvironmentHue.entries.last().label
+        rule.onNodeWithContentDescription(lastColour).performScrollTo()
         val swatch = rule.onNodeWithContentDescription(lastColour)
         val bounds = swatch.getUnclippedBoundsInRoot()
-        assertTrue("Every palette option retains a 48dp target",
+        assertTrue("Every palette choice retains a 48dp target",
             bounds.bottom - bounds.top >= 48.dp)
         swatch.performClick()
-        assertEquals(0, opened[0])
-        assertEquals(0, backed[0])
+        rule.waitUntil(5_000) {
+            EnvironmentColourStore(ApplicationProvider.getApplicationContext())
+                .load().hueOf(local) == EnvironmentHue.entries.last()
+        }
         assertNull(LocalEngineHolder.current())
+
     }
 
 }

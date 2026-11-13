@@ -2683,6 +2683,14 @@ internal fun ConnectionScreen(
                             }
                         }
                     }
+                    // Saved profile colour belongs with the exact connection, not
+                    // in the Transfers catalog. The immutable profile ID is authority.
+                    EnvironmentColourPreference(
+                        id = io.github.gamesbyian.chunks.model.EnvironmentId(profile.id),
+                        label = profile.label,
+                        configuredIds = listOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL) +
+                            savedProfiles.map { io.github.gamesbyian.chunks.model.EnvironmentId(it.id) },
+                        accessibilityLabel = profile.label + " on " + profile.address)
                 }
             }
         }
