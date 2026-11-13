@@ -1,5 +1,7 @@
 # Chunks documentation index
 
+**Remote Save to directory browsing (approved, planned):** [canonical rTorrent directory browser / New folder feature contract](REMOTE-DIRECTORY-BROWSER.md) and [UI design](design/REMOTE-DIRECTORY-BROWSER.md) cover true per-profile filesystem listing, capability-gated creation, exact account isolation and graceful manual fallback. [Issue #1680](https://github.com/gamesbyian/Chunks/issues/1680) tracks implementation; no release acceptance is claimed.
+
 **Visual research:** [Torrent-client iconography atlas](research/torrent-iconography/README.md) compares six clients' source-backed symbols with the existing Chunks SVG drafts. Its [HTML gallery](research/torrent-iconography/gallery.html) and exported choices are non-normative decision aids, not an implementation queue.
 
 **Local Device terminology:** The app's built-in torrent environment is **Local Device** in the UI, `Local` in code, and `local` as its exact environment ID. Older **Phone** wording in dated evidence is historical. Current feature specs, navigation and engine APIs use the canonical identity; see [unified environments](UNIFIED-ENVIRONMENTS.md).

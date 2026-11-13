@@ -1,5 +1,9 @@
 # Chunks: canonical decision ledger
 
+## D-REMOTE-DIRECTORY-BROWSER-20261113 | Owner, binding scope; planned
+
+Authenticated rTorrent **Save to → Change** must support browsing the actual folders exposed by that exact server and **New folder** only with separately verified safe permission. Preserve automatic default Add without mandatory picker or custom text, profile-scoped recents/defaults, a fully usable manual-path fallback, and independent Add submit authority. No speculative shell/`execute.*` privilege or remote `Chunks Downloads` creation. Reuse a single picker in Add and per-profile default setting. [Canonical spec](REMOTE-DIRECTORY-BROWSER.md), [UI design](design/REMOTE-DIRECTORY-BROWSER.md), [queue](WORK-QUEUE.md), [#1680](https://github.com/gamesbyian/Chunks/issues/1680).
+
 ## D-BRANDING-NAME-SURFACES-20261109 | Owner, binding
 
 Use **Chunks Torrent Client & Remote** as the full public product and planned Google Play title, **Chunks** as the short ordinary Android launcher/application/Settings/notification attribution label, and **chunks.** as the in-app visual wordmark. Keep distinct side-by-side preview build labels and the existing package identity. Store listing publication remains an independent release operation. Binding procedures and verification: [BRANDING-AND-APP-IDENTITY](BRANDING-AND-APP-IDENTITY.md).

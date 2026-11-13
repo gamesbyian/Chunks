@@ -1,0 +1,82 @@
+# Remote rTorrent directory browser and New folder
+
+**Status: owner-approved product requirement; planned implementation, no acceptance claimed.** [Issue #1680](https://github.com/gamesbyian/Chunks/issues/1680). This is the **canonical feature contract** for browsing the *actual* directories visible to an exact rTorrent server and, only where separately authorized, creating a child folder. [UI design](design/REMOTE-DIRECTORY-BROWSER.md) owns presentation; [UX](UX.md), [PRODUCT](PRODUCT.md), [SECURITY](SECURITY.md), [REMOTE-BACKEND-ADAPTERS](REMOTE-BACKEND-ADAPTERS.md), [WORK-QUEUE](WORK-QUEUE.md) and [SPEC-COVERAGE](SPEC-COVERAGE.md) retain their separate authorities.
+
+## User outcome and non-negotiable boundaries
+
+1. In the **single Universal Add** form, **Save to** displays the exact chosen remote profile and effective absolute parent directory, with **Change** opening a genuine, server-backed directory picker. Browse parent/child folders and **Use this folder**; **New folder** is offered when the specific account/server/provider has a verified create capability. On choosing a folder, return to the *same Add draft*, retaining source, Start state, target, file choices and other options. Folder selection is not an Add submission.
+2. The folder picker is **optional**. When a valid resolved remote Place exists, a blank **Custom server folder (optional)** must **not** hide/disable **Add torrent**. Effective precedence remains: this Add's explicit override > saved default for this exact authenticated account > valid absolute `directory.default`. An absent/relative/unknown server default is explained; never invent a path or pretend a relative path is verified. Read-only retry is offered. Preserve the existing source-first single-submit Add flow.
+3. Do not create a remote `Chunks Downloads` directory, change the server default, or create any directory merely by opening the picker. Selecting a one-off directory changes only this Add. **Always use this folder on this server** is a separately explicit saved-default action, scoped to the exact profile/account; recents remain suggestions from verified successful Adds, not proof of current access.
+4. Reuse the same remote picker from the exact profile's **default download folder** configuration when implemented, and from a contextual transfer destination action **only if** that operation has its own independent, separately accepted safe relocation/rebind contract. Browsing/choosing a directory never grants payload move/delete or generic file management. Local Device storage continues using Android's authorized picker, not this remote provider.
+
+## Capability modes and discovery
+
+| Mode | User experience | Requirement |
+| --- | --- | --- |
+| `BROWSE_AND_CREATE` | Real directory listing, Up/breadcrumbs, Use this folder, New folder | A verified read-only list capability and a **separate, narrowly authorized** mkdir/create capability |
+| `BROWSE_ONLY` | Real directory listing and selection; create unavailable with explanation | Verified list but no safe create capability |
+| `MANUAL_ONLY` | Editable absolute remote path, existing default/recents if valid, accurate limitation and retry | Missing/blocked/unsupported browse; no false folder tree or forced server setup |
+| `UNKNOWN` / `UNAVAILABLE` | Loading/probing or reasoned offline/auth/permission failure; user draft preserved | Never automatically grant a capability from an advertised XML-RPC method or cached positive |
+
+- rTorrent's `directory.default` and transfer `d.directory` are **path values**, not a general filesystem API. `d.directory`, observed parent paths, cached recents and `system.listMethods` cannot certify that a directory exists or is writable. On the documented Seedhost instance `directory.default` has been observed empty; this **does not** authorize guessing `/downloads` or an HTTP-RPC URL as the destination.
+- Prefer a reviewed, same-origin, same-account **ruTorrent `_getdir`** adapter for listing when present and allowed. It is a PHP/ruTorrent plugin and **not** an rTorrent XML-RPC method; rTorrent authentication does not prove this PHP endpoint has the same user/tenant permissions. Verify actual deployment URLs, browser plugin semantics, authentication and response shapes in a disposable integration test rather than assuming all ruTorrent versions expose identical APIs. Existing ruTorrent browse may support **listing only**, never infer mkdir from its presence.
+- A trusted, explicitly configured narrowly scoped service/Companion can offer typed listing and mkdir in a later adapter. **Never automatically probe or expose rTorrent `execute.*`, `execute.capture`, shell commands, arbitrary URLs, generic command interpreters, SSH or server-side scripts to achieve this feature.** Potential arbitrary-execution availability is *not* consent to use it. Do not install or request increased server permissions silently.
+- Probe per authenticated **exact profile instance** (host+port+path, principal, identity generation), cache short-lived capability status separately for list and create, invalidate on reconnect, auth change, profile forget/switch, lock, endpoint edit, permission error or server restart. A successful connection does not imply filesystem support; a failed browse capability must not break ordinary torrent controls.
+
+## Data contract and typed integration seam
+
+Add a narrow adapter abstraction behind the existing rTorrent remote integration, **not another torrent executor, Add screen or shared catalog**. Suggested conceptual contracts (names can conform to current Kotlin code):
+
+```kotlin
+data class RemoteDirectoryCapability(
+  val list: CapabilityState, val create: CapabilityState,
+  val allowedRoot: String?, val verifiedAccountScope: String, val revision: String?
+)
+data class RemoteDirectoryEntry(val name: String, val canonicalPath: String,
+  val isDirectory: Boolean, val canEnter: Boolean, val canSelect: Boolean)
+data class RemoteDirectoryPage(val parent: String, val entries: List<RemoteDirectoryEntry>,
+  val nextPageToken: String?, val revision: String?)
+sealed interface DirectoryResult // Loading, Ready, Empty, Refused, Unsupported, AuthExpired, Offline, Uncertain
+interface RemoteDirectoryProvider {
+  suspend fun capabilities(profile: ExactProfile): RemoteDirectoryCapability
+  suspend fun list(profile: ExactProfile, parent: String, cursor: String?): DirectoryResult
+  suspend fun createChild(profile: ExactProfile, parent: String, leafName: String,
+    userIntentId: String): DirectoryResult
+}
+```
+
+- Use exact existing profile/session/credential identity from Smart Connect, RemoteAddSession/Universal Add coordination and `RecentRemotePlaceStore`. Maintain a stable `Place` representation with profile, provider kind, allowed root, absolute canonical parent path and verification provenance; do not equate an HTTP endpoint path or `d.directory` with a safe filesystem handle.
+- Normalize input without silently moving between unrelated roots; preserve Unicode names accurately. Validate every server-provided entry as a **single child** of the requested canonical parent. Require bounded response/depth/entry/path lengths, bounded pagination, safe sort (directories only, readable names), and cancellation; no recursive walk, arbitrary host root enumeration or unsanctioned file contents.
+- Navigation is read-only and idempotent. Fence every response to exact profile/account, generation, requested parent and current picker open state. Late replies cannot replace user edits, switch target, overwrite a selected path or leak a different account's tree. Auth or transport failure clears protected directory data from the visible state; closing the picker must not lose the Add draft.
+- **Select** a folder only if the provider can justify its accessible/writable state (or explicitly identifies writeability as unknown and the ordinary Add preflight will verify). Resolve `Use this folder` to a concrete absolute parent. Revalidate at Add submission against current exact profile and existing per-Add destination/readback rules. Browser selection never itself starts, stops, moves, copies or removes a torrent.
+- Persist only deliberate scoped saved defaults and verified successful recents using existing storage; transient list caches expire and are in-memory/account-isolated, not synced/exported. Hide server paths while their profile is privacy-locked and redact paths, usernames, credentials, tenant IDs and secrets from logs/CI evidence.
+
+## New folder transaction
+
+1. Show `New folder` only for a *verified* create capability, **within the currently selected canonical parent**. Open a small input/dialog named **Create folder in [current folder]**. Never allow top-level filesystem mutation from a generic path input.
+2. Accept one nonempty child-name component only: no slash/backslash separators, `.`, `..`, NUL/control characters, empty/whitespace-only names, or provider-disallowed names/lengths. Preserve user names while rejecting dangerous normalization/case-folding ambiguities. The UI provides exact proposed path and **Create folder** affirmative action; Cancel writes nothing.
+3. Send a typed, narrowly permitted server operation tied to exact authenticated principal, parent, allowed-root authority, client intent ID and current capability revision. **Server side**, resolve parent/child atomically within the allowed root with symlink-resistant traversal and real permission checks. Do not accept a client-only lexical `startsWith` containment test; symlink/mount and TOCTOU attacks are real. Deny paths outside the authorized root, traversal, links/special files and unexpected mount/container translations.
+4. Observe after create by **fresh read-only parent listing/stat** and canonical/writable containment confirmation. Only verified success inserts/selects the actual child; report already-exists distinctly and allow choosing it only if it is a valid permitted directory. HTTP/RPC acceptance by itself is not proof. A timeout/disconnect after submission is **uncertain**: perform read-only reconciliation, do not auto-replay mkdir or assert it succeeded; allow a new explicit action after state is established.
+5. No implicit chmod, chown, recursive create, rename, deletion, data migration, parent auto-creation, default changes or torrent Add. If create is unsupported, omit or disable with a clear explanation and retain manual path entry.
+
+## Interaction and states
+
+- Open at **the currently effective per-Add Place** if browsable; otherwise at a **server-reported allowed root** if verified, with a clear warning that the missing/invalid default was not replaced. Never default to `/`, user's home, a sibling tenant or a guessed provider folder. If no safe starting point exists, use manual mode with explicit support text.
+- Header identifies **Save to · [exact connection display name]** and current canonical path; breadcrumb/Up navigation cannot escape the verified scope. Folder rows are tappable to enter; a distinct **Use this folder** action commits the current parent, not the last highlighted child. A folder with known no-write permission is visible only if safely listable, but not selectable as a download destination.
+- Show `Loading directories`, `No subfolders`, `Cannot list this folder`, `Read-only folder`, `Create not supported`, `Connection required`, `Permission denied`, `Directory changed`, and `Result uncertain; check folder` with contextual read-only Retry or manual-entry path. Do not confuse an empty directory with a failed request.
+- Device back, Cancel, IME dismissal, recreation and a second inbound Share/Open With retain the frozen Add draft and prevent stray mkdir/Add. The profile/account label remains visible; the picker resets/re-probes on selected server change.
+- All controls follow [feature experience](FEATURE-EXPERIENCE-CONTRACT.md) and [visual contract](design/REMOTE-DIRECTORY-BROWSER.md): primary Pixel 6 Pro, portrait/landscape, large type, 48dp targets, TalkBack readout of connection/path/writeability, keyboard/IME focus, scroll and reduced-motion semantics.
+
+## Delivery sequence and acceptance
+
+**Slice A, integration audit (read-only):** Inspect current `VerifiedAddScreen`, `UniversalAddDestinationPicker`, `RemoteAddSession`, `RecentRemotePlaceStore`, `RTorrentRemote`, and actual ruTorrent `_getdir` protocol/credentials. Record Seedhost exact-instance support only from authorized read-only probing. Confirm optional-blank folder and default precedence regression is fixed **before** making a picker mandatory. Build pure-model fake list/permission cases.
+
+**Slice B, server-backed browse:** typed provider + exact-profile capability probing and list states; no generic execution; UI Change/Up/breadcrumb/Use/Cancel; safe manual fallback. Test on one disposable authenticated rTorrent+ruTorrent instance, then same-host multi-instance and no-plugin installations.
+
+**Slice C, folder creation:** only if a separately verified safe typed server operation exists; otherwise mark create blocked/unsupported and ship browse/manual honestly. Add narrow create dialog and independent postcondition; refusal, exists, symlink, traversal, 401, wrong principal, stale root, race, disconnect and uncertain-result tests.
+
+**Slice D, reuse and experience:** per-profile saved-default entrypoint, stale recent handling, regression tests for ordinary Add, installed Android screenshots/semantics and actual remote filesystem readback. No new general filesystem-management pane or premature remote Move feature.
+
+**Required evidence:** functional and presentation acceptance **separately**, specific profile/backend/version and auth route, source SHA, read-only folder list with verified provenance, mkdir outcome and post-readback if available, exact resulting Add `d.directory`/torrent hash, negative fixtures and actual Pixel-rendered/semantic interaction. Never mark create accepted from list-only evidence or a mock. Docs-only contract changes use cheap docs/static validation; no automatic emulator/seedbox CI for documentation. The single live queue is [WORK-QUEUE](WORK-QUEUE.md) and acceptance is [SPEC-COVERAGE](SPEC-COVERAGE.md).
+
+**Upstream evidence for adapter evaluation:** [ruTorrent _getdir plugin wiki](https://github-wiki-see.page/m/Novik/ruTorrent/wiki/Plugin_GetDir) (listable/writable directories), [ruTorrent mobile plugin wiki](https://github-wiki-see.page/m/novik/rutorrent/wiki/PluginMobile) (optional _getdir), [rTorrent command reference](https://kannibalox.github.io/rtorrent-docs/cmd-ref.html) (`execute.*` exists but is intentionally disallowed as an automatic browsing mechanism). These document possibilities, not this Seedhost account's verified privileges.

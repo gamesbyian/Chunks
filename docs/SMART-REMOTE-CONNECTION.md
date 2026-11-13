@@ -36,6 +36,8 @@ independent and never depend on a server connection.
    substitute primary `/rutorrent/` for `/rutorrent2/` or `/rutorrent3/`.
    Credential retries must not be sprayed across instances.
 
+**Optional remote folder capability after Connect (planned):** Successful XML-RPC/SCGI authentication authorizes torrent controls only. The [remote directory browser](REMOTE-DIRECTORY-BROWSER.md) probes ruTorrent `_getdir` or an explicitly configured narrow filesystem provider **independently**, for the same exact HTTPS origin, instance and verified account. Per-profile list and create are different capabilities; unavailable filesystem functionality does not fail Smart Connect or ordinary Add. No cross-tenant/numbered-instance substitution, automatic `execute.*` probe or credential spray. Show the folder-browser capability in optional Connection details only after verification. [#1680](https://github.com/gamesbyian/Chunks/issues/1680).
+
 ## Provider pattern catalog (documented, never exclusive)
 
 | Family | Reference | Candidate(s) (same HTTPS host supplied by user) |
