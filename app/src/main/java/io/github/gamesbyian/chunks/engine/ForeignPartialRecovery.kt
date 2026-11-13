@@ -1,7 +1,6 @@
 package io.github.gamesbyian.chunks.engine
 
 import java.io.File
-import org.libtorrent4j.TorrentInfo
 
 /**
  * Metadata-aware entry point for foreign partial recovery. Derives the exact
@@ -13,15 +12,8 @@ import org.libtorrent4j.TorrentInfo
  * nothing here ever claims progress.
  */
 internal object ForeignPartialRecovery {
-    fun declaredPaths(torrentBytes: ByteArray): List<String>? = try {
-        val info = TorrentInfo.bdecode(torrentBytes)
-        if (!info.isValid) null else {
-            val files = info.files()
-            val count = files.numFiles()
-            if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count)) null
-            else (0 until count).filterNot { files.padFileAt(it) }.map { files.filePath(it) }
-        }
-    } catch (_: Exception) { null }
+    fun declaredPaths(torrentBytes: ByteArray): List<String>? =
+        io.github.gamesbyian.chunks.AddFileChoices.declared(torrentBytes)?.map { it.path }
 
     fun scan(torrentBytes: ByteArray, saveDirectory: File): ForeignPartialLayoutScanner.Result {
         val paths = declaredPaths(torrentBytes)

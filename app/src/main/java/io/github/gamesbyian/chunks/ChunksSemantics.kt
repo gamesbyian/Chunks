@@ -32,6 +32,7 @@ internal object ChunksSemantics {
     const val ADD_SUBMIT = "chunks.add.submit"
     const val ADD_FOREIGN_PARTIAL = "chunks.add.foreign_partial"
     const val ADD_ORIGINAL_HANDLING = "chunks.add.original_handling"
+    const val ADD_FILE_CHOICE = "chunks.add.file_choice"
     const val ADD_ORIGINAL_DELETE_PROMPT = "chunks.add.original_delete.prompt"
     const val ADD_ORIGINAL_DELETE_CONFIRM = "chunks.add.original_delete.confirm"
     const val ADD_FOREIGN_PARTIAL_REUSE = "chunks.add.foreign_partial.reuse"

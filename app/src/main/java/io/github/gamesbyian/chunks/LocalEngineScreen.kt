@@ -1603,6 +1603,21 @@ internal fun LocalEngineScreen(
                 }
             )
         }
+        // Files to download, chosen before Add (multi-file .torrent only); read off the UI thread.
+        var addFiles by remember(add) { mutableStateOf<List<DeclaredAddFile>?>(null) }
+        var skippedFiles by remember(add) { mutableStateOf<Set<Int>>(emptySet()) }
+        var fileChoiceOpen by remember(add) { mutableStateOf(false) }
+        LaunchedEffect(add) {
+            val reviewedAdd = add?.takeIf { it.preview.fileCount >= 2 } ?: return@LaunchedEffect
+            addFiles = withContext(Dispatchers.Default) { AddFileChoices.declared(reviewedAdd.bytes.copyOf()) }
+        }
+        val declaredFiles = addFiles
+        if (add != null && destination != null && declaredFiles != null && declaredFiles.size >= 2)
+            AddFileChoice(declaredFiles, skippedFiles, fileChoiceOpen,
+                enabled = !busy && !inventoryStale && localAddAttemptSession?.attemptedTicket == null,
+                onExpanded = { fileChoiceOpen = it },
+                localOnlyNote = canReviewOnConnectedServer && onPrepareRemoteTorrent != null,
+                onSkippedChange = { skippedFiles = it })
         var finishInOrderAfterAdd by remember(add?.preview?.infoHashV1) { mutableStateOf(finishInOrderDefault) }
         if (add != null && destination != null && add.preview.fileCount >= 2) {
             FinishInOrderAddChoice(
@@ -1679,6 +1694,14 @@ internal fun LocalEngineScreen(
                 var recoveryNote: String? = null
                 var orderNote: String? = null
                 var verifyAfterAdd: String? = null
+                // Frozen at the click: native index -> reviewed path of each file to skip.
+                val frozenSkips = addFiles.orEmpty().filter { it.index in skippedFiles }.associate { it.index to it.path }
+                var skipNote: String? = null
+                var skipConfirmed = true
+                if (addFiles != null && frozenSkips.size >= addFiles.orEmpty().size && frozenSkips.isNotEmpty()) {
+                    noteProblem("Choose at least one file to download. Nothing was added.")
+                    return@confirm
+                }
                 // Frozen with the Add click: only the reviewed user document, never a URL.
                 val frozenOriginal = add.originalDocument
                 val frozenHandling = if (frozenOriginal != null) originalHandling ?: OriginalTorrentHandling.KEEP
@@ -1758,16 +1781,28 @@ internal fun LocalEngineScreen(
                                     }
                                     // Configure file order while stopped, before any
                                     // explicitly requested payload Start.
-                                    if (orderAfterAdd && added is LocalAddResult.AddedStopped) {
+                                    // Apply the reviewed file skips first, while still stopped, matched to
+                                    // the registered job's own index and path; no Start unless confirmed.
+                                    if (frozenSkips.isNotEmpty() && added is LocalAddResult.AddedStopped) {
+                                        val reviewed = runCatching { engine.files(added.status.infoHash) }.getOrNull()
+                                            ?.let { AddFileChoices.reviewedSkips(it, frozenSkips) }
+                                        val outcome = reviewed?.let {
+                                            runCatching { engine.setFilesWantedBatch(added.status.infoHash, it, false) }.getOrNull()
+                                        }
+                                        skipConfirmed = AddFileChoices.confirmed(outcome)
+                                        skipNote = AddFileChoices.outcomeNote(outcome, frozenSkips.size, autoStart)
+                                    }
+                                    // Finish in Order plans over the files actually wanted after the skips.
+                                    if (orderAfterAdd && added is LocalAddResult.AddedStopped && skipConfirmed) {
                                         orderNote = enableFinishInOrderAfterAdd(context, engine, added.status.infoHash)
                                     }
-                                    if (autoStart && added is LocalAddResult.AddedStopped)
+                                    if (autoStart && added is LocalAddResult.AddedStopped && skipConfirmed)
                                         added to engine.resume(added.status.infoHash)
                                     else {
                                         // "Stopped after verification": inside this Add's own change,
                                         // libtorrent starts checking files already at the exact torrent
                                         // paths and stops the job itself before any peer traffic.
-                                        if (added is LocalAddResult.AddedStopped &&
+                                        if (added is LocalAddResult.AddedStopped && skipConfirmed &&
                                             engine.beginStoppedVerification(added.status.infoHash))
                                             verifyAfterAdd = added.status.infoHash
                                         added to null
@@ -1808,8 +1843,10 @@ internal fun LocalEngineScreen(
                         }
                         recoveryNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
+                        skipNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         if (added is LocalAddResult.Refused || (added is LocalAddResult.AddedStopped &&
-                                started != null && started.outcome != LocalCommandOutcome.VERIFIED))
+                                started != null && started.outcome != LocalCommandOutcome.VERIFIED) ||
+                            (added is LocalAddResult.AddedStopped && !skipConfirmed))
                             problemOutcome = message
                         if (added is LocalAddResult.AddedStopped && (session == null ||
                             (ticket != null && session.announceNativeRegistrationOnce(ticket)))) {
