@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.StateRestorationTester
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -56,6 +57,39 @@ class TransferSessionRemoveLargeTextTest {
         directory = "/downloads/specific-profile"
     )
     private var mutations = 0
+
+    /** Data-integrity: saved UI consent/results cannot cross accounts with duplicate labels and identical jobs. */
+    @Test fun restoredConsentAndResultsAreBoundToTheActualAccountNotItsFriendlyLabel() {
+        val restoration = StateRestorationTester(rule)
+        fun account(user: String) = RTorrentRemote(RemoteCredentials("http://127.0.0.1:1/RPC2", user, ""))
+        var mounted = account("account-a")
+        var erases = 0
+        restoration.setContent { ChunksTheme { Surface {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                TransferSessionRemoveControl(mounted, transfer, false, true, { true }, {},
+                    environmentLabel = "Same friendly label", performErase = { _, _, _ ->
+                        erases++
+                        SessionEraseOutcome.VerifiedRemoved(transfer.hash)
+                    })
+            }
+        } } }
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        // Change the non-state owner while the saved registry is restored: inputs alone
+        // are deliberately not a restoration fence in rememberSaveable.
+        mounted = account("account-b")
+        restoration.emulateSavedInstanceStateRestore()
+        rule.onNodeWithText("Remove transfer, keep data").assertDoesNotExist()
+        assertEquals(0, erases)
+        rule.onNodeWithText("Remove from rTorrent…").performClick()
+        rule.onNodeWithText("Remove transfer, keep data").performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals(1, erases)
+        mounted = account("account-c")
+        restoration.emulateSavedInstanceStateRestore()
+        rule.onNodeWithText("Removal result").assertDoesNotExist()
+        rule.onNodeWithText("Remove from rTorrent…").assertExists()
+        assertEquals("A restored account change never sends another erase", 1, erases)
+    }
 
     private fun show() {
         rule.setContent {

@@ -83,7 +83,8 @@ fun TransferSessionRemoveControl(
     // rememberSaveable restores a disposed lazy row without comparing its old
     // inputs. Persist the actual reviewed identity as well, so a refreshed or
     // changed row cannot resurrect an earlier confirmation after scrolling.
-    val currentReview = listOf(transfer.hash, transfer.name, transfer.directory,
+    val accountScope = remote.addAccountScope()
+    val currentReview = listOf(accountScope, transfer.hash, transfer.name, transfer.directory,
         environmentLabel.orEmpty(), snapshotRevision.toString())
         .joinToString("") { "${it.length}:$it" }
     var reviewedIdentity by rememberSaveable { mutableStateOf<String?>(null) }
@@ -92,6 +93,10 @@ fun TransferSessionRemoveControl(
     var attempted by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
+    val currentAttemptIdentity = listOf(accountScope, transfer.hash, transfer.name, transfer.directory)
+        .joinToString("") { "${it.length}:$it" }
+    var attemptedIdentity by rememberSaveable { mutableStateOf<String?>(null) }
+    val attemptedForThisTarget = attempted && attemptedIdentity == currentAttemptIdentity
     var pending by remember(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
@@ -116,7 +121,7 @@ fun TransferSessionRemoveControl(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!attempted && !reviewCurrent) {
+        if (!attemptedForThisTarget && !reviewCurrent) {
             ActionTile("Remove from rTorrent…", ChunksColors.Orange,
                 onClick = { reviewedIdentity = currentReview; confirming = true },
                 enabled = environmentLabel != null && mainView && !snapshotStale && !pending && !checking,
@@ -156,6 +161,7 @@ fun TransferSessionRemoveControl(
                                 onMutationStarted()) {
                                 confirming = false
                                 attempted = true
+                                attemptedIdentity = currentAttemptIdentity
                                 dataRemoval = true
                                 verified = false
                                 pending = true
@@ -213,7 +219,9 @@ fun TransferSessionRemoveControl(
                                     onMutationStarted()) {
                                     confirming = false
                                     attempted = true
+                                    attemptedIdentity = currentAttemptIdentity
                                     dataRemoval = false
+                                    verified = false
                                     pending = true
                                     stage = RemoteRemovalStage.TARGET
                                     scope.launch {
@@ -261,7 +269,7 @@ fun TransferSessionRemoveControl(
                 }
             }
         }
-        if (attempted) {
+        if (attemptedForThisTarget) {
             Card(colors = CardDefaults.cardColors(
                 containerColor = if (pending || verified) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.errorContainer

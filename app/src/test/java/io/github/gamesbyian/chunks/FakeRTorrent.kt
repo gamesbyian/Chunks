@@ -72,6 +72,7 @@ internal class FakeRTorrent(
                 "load.raw_verbose", "f.multicall", "f.priority.set", "d.check_hash").map(::str))
             "directory.default" -> directoryDefault?.let(::str)
                 ?: return fault(-503, "Permission denied")
+            "system.cwd" -> return fault(-506, "Method not found")
             "d.multicall2" -> {
                 val view = p.getOrNull(1) ?: "main"
                 val metadata = xml.contains("d.is_meta=")
@@ -99,6 +100,7 @@ internal class FakeRTorrent(
                 }
                 num(0)
             }
+            "d.erase" -> { jobs.remove(p.firstOrNull()?.lowercase()); num(0) }
             "f.multicall", "t.multicall" -> array(emptyList())
             "load.start", "load.verbose", "load.raw_start", "load.raw_verbose" -> {
                 val source = p.getOrNull(1).orEmpty()

@@ -435,32 +435,47 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return resolveInventoryDirectories(requireUniqueIdentities(transfers))
     }
 
+    private class UnresolvedServerDirectory : IllegalStateException("Server directory could not be resolved")
+
     /** Relative rTorrent roots are relative to THIS server process, never to Android. */
     private suspend fun resolveServerDirectory(raw: String): String {
         if (raw.startsWith('/')) return raw
-        require(raw.isNotEmpty() && raw.length <= 4096 &&
-            raw.none { it.code < 32 || it.code == 127 || it == '\\' }) { "Invalid relative server root" }
+        if (raw.isEmpty() || raw.length > 4096 ||
+            raw.any { it.code < 32 || it.code == 127 || it == '\\' }) throw UnresolvedServerDirectory()
         val relative = raw.removePrefix("./").removeSuffix("/")
         // '..' through a symlink is not equivalent to lexical normalization.
         // Only ordinary child components and the conventional '.' are provable here.
-        require(raw in setOf(".", "./") || relative.split('/').all {
+        if (!(raw in setOf(".", "./") || relative.split('/').all {
             it.isNotEmpty() && it != "." && it != ".."
-        }) { "Ambiguous relative server root" }
-        val cwd = call("system.cwd") as? String ?: error("Unknown server working directory")
-        check(RuTorrentDeleteData.safeDirectory(cwd, allowRoot = true)) { "Unknown server working directory" }
+        })) throw UnresolvedServerDirectory()
+        val cwd = try { call("system.cwd") as? String }
+        catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            throw UnresolvedServerDirectory()
+        } ?: throw UnresolvedServerDirectory()
+        if (!RuTorrentDeleteData.safeDirectory(cwd, allowRoot = true)) throw UnresolvedServerDirectory()
         val directory = if (raw in setOf(".", "./")) cwd else cwd.trimEnd('/') + "/" + relative
-        check(RuTorrentDeleteData.safeDirectory(directory, allowRoot = true) && call("system.cwd") == cwd) {
-            "Server working directory changed"
-        }
+        if (!RuTorrentDeleteData.safeDirectory(directory, allowRoot = true) || call("system.cwd") != cwd)
+            throw UnresolvedServerDirectory()
         return directory
     }
 
     private suspend fun observedDirectory(hash: String): String =
         resolveServerDirectory(call("d.directory", listOf(hash)) as? String ?: error("Missing server directory"))
 
+    /** A session-only operation can compare a raw relative root without authorizing any file access. */
+    private suspend fun sessionDirectoryMatches(hash: String, reviewed: String): Boolean =
+        if (reviewed.startsWith('/')) observedDirectory(hash) == reviewed
+        else call("d.directory", listOf(hash)) == reviewed
+
     private suspend fun resolveInventoryDirectories(rows: List<RemoteTransfer>): List<RemoteTransfer> =
         rows.map { row -> if (row.directory.startsWith('/')) row
-            else row.copy(directory = resolveServerDirectory(row.directory)) }
+            else try { row.copy(directory = resolveServerDirectory(row.directory)) }
+            catch (_: UnresolvedServerDirectory) {
+                // Keep a readable unresolved row. Path-sensitive operations still refuse it;
+                // another job's unsupported cwd must not block a valid custom-folder Add.
+                row
+            } }
 
     private suspend fun readViewIdentities(view: String): List<String> {
         val hashes = extractRows(call("download_list", listOf("", view))).map {
@@ -609,6 +624,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     suspend fun loadStoppedTorrentBytes(
         torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false
     ): RemoteAddOutcome {
+        val newMetainfo = TorrentMetainfoReader.forNewRemoteAdd(torrentBytes)
         val inspected = TorrentMetainfoReader.preview(torrentBytes)
         val hash = inspected.infoHashV1
         val link = "magnet:?xt=urn:btih:" + hash
@@ -620,8 +636,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (lookupName(hash) != null) return RemoteAddOutcome.AlreadyPresent(hash)
         requireCurrentServerDefault(plan)
         try {
-            val params: List<Any> = if (plan.useServerDefault) listOf("", torrentBytes)
-                else listOf("", torrentBytes, "d.directory.set=" + plan.destination)
+            val params: List<Any> = if (plan.useServerDefault) listOf("", newMetainfo)
+                else listOf("", newMetainfo, "d.directory.set=" + plan.destination)
             call("load.raw_verbose", params)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
@@ -666,6 +682,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     internal suspend fun loadStartedTorrentBytes(
         torrentBytes: ByteArray, destination: String, useServerDefault: Boolean = false
     ): RemoteAddAndStart {
+        val newMetainfo = TorrentMetainfoReader.forNewRemoteAdd(torrentBytes)
         val hash = TorrentMetainfoReader.preview(torrentBytes).infoHashV1
         val link = "magnet:?xt=urn:btih:" + hash
         val plan = if (useServerDefault) StoppedRemoteAddPlan.fromMagnetAtServerDefault(link, destination)
@@ -676,8 +693,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         }
         requireCurrentServerDefault(plan)
         try {
-            val params: List<Any> = if (plan.useServerDefault) listOf("", torrentBytes)
-                else listOf("", torrentBytes, "d.directory.set=" + plan.destination)
+            val params: List<Any> = if (plan.useServerDefault) listOf("", newMetainfo)
+                else listOf("", newMetainfo, "d.directory.set=" + plan.destination)
             call("load.raw_start", params)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
@@ -1112,8 +1129,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) {
             "Only exact 40-character torrent hashes can be erased"
         }
-        require(expectedName.isNotBlank() && expectedDirectory.startsWith("/")) {
-            "Expected current torrent name and absolute directory"
+        require(expectedName.isNotBlank() && expectedDirectory.isNotBlank() && expectedDirectory.length <= 4096) {
+            "Expected current torrent name and directory"
         }
         val matching = listTransfers("main").filter {
             it.hash.equals(hash, ignoreCase = true)
@@ -1136,8 +1153,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // These reads narrow the race; rTorrent exposes no atomic compare/erase.
         check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
         val latestName = lookupName(hash)
-        val latestDirectory = observedDirectory(hash)
-        check(latestName == expectedName && latestDirectory == expectedDirectory) {
+        val directoryMatches = sessionDirectoryMatches(hash, expectedDirectory)
+        check(latestName == expectedName && directoryMatches) {
             "Torrent name or location changed; refresh before removal"
         }
         check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
@@ -1262,9 +1279,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 overlapping += other
             }
             for (page in overlapping.chunked(25)) {
-                val paths = try { readDeletionFilePaths(page.map { it.hash }) }
-                catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-                catch (_: Exception) { return false }
+                val paths = readDeletionFilePaths(page.map { it.hash })
                 for ((other, filesForOther) in page.zip(paths)) {
                     if (!RuTorrentDeleteData.safeFilePaths(filesForOther) ||
                         filesForOther.any { full(other.directory, it.path) in selectedPaths }) return false
@@ -1272,7 +1287,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             }
             return true
         }
-        if (!noSharedSessionFiles(allSession)) return refused(RemoteDeleteRefusal.SHARED_FILES)
+        val unshared = try { noSharedSessionFiles(allSession) }
+        catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+        catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.FILES_UNAVAILABLE) }
+        if (!unshared) return refused(RemoteDeleteRefusal.SHARED_FILES)
 
         // Recheck both the exact target and session membership immediately
         // before the one permitted erasedata POST. If another client adds,
@@ -1284,17 +1302,21 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 observedDirectory(hash) == expectedDirectory &&
                 sessionContainsExactHash(hash)
         } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-          catch (_: Exception) { false }
+          catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.TARGET_CHANGED) }
         if (!fresh) return refused(RemoteDeleteRefusal.TARGET_CHANGED)
         val latestSession = try { fullSession() }
         catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
         catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.INCOMPLETE_SESSION) }
         if (identityRows(allSession) != identityRows(latestSession) ||
-            !coversMain(inventory, latestSession) || !noSharedSessionFiles(latestSession))
+            !coversMain(inventory, latestSession))
             return refused(RemoteDeleteRefusal.SESSION_CHANGED)
+        val stillUnshared = try { noSharedSessionFiles(latestSession) }
+        catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+        catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.FILES_UNAVAILABLE) }
+        if (!stillUnshared) return refused(RemoteDeleteRefusal.SHARED_FILES)
         val latestFiles = try { listFiles(hash) }
         catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
-        catch (_: Exception) { return refused(RemoteDeleteRefusal.SESSION_CHANGED) }
+        catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.SESSION_CHANGED) }
         if (latestFiles != files) return refused(RemoteDeleteRefusal.SESSION_CHANGED)
 
         onStage(RemoteRemovalStage.AUTHORIZATION)
@@ -1363,7 +1385,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         hash: String, expectedName: String, expectedDirectory: String
     ): SessionEraseRecheck {
         require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid torrent identity" }
-        require(expectedName.isNotBlank() && expectedDirectory.startsWith("/")) {
+        require(expectedName.isNotBlank() && expectedDirectory.isNotBlank() && expectedDirectory.length <= 4096) {
             "Invalid reviewed transfer identity"
         }
         // A magnet's metadata-only session can briefly disappear while
@@ -1386,10 +1408,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 return if (sessionContainsExactHash(hash)) SessionEraseRecheck.Unavailable
                 else independentlyConfirmAbsence()
             }
-            val currentDirectory = observedDirectory(hash)
-                ?: return SessionEraseRecheck.Unavailable
+            val directoryMatches = sessionDirectoryMatches(hash, expectedDirectory)
             if (!sessionContainsExactHash(hash)) return independentlyConfirmAbsence()
-            if (currentName == expectedName && currentDirectory == expectedDirectory)
+            if (currentName == expectedName && directoryMatches)
                 SessionEraseRecheck.PresentMatching
             else SessionEraseRecheck.Changed
         } catch (cancel: kotlinx.coroutines.CancellationException) {

@@ -636,9 +636,11 @@ internal fun VerifiedAddScreen(
 
         if (!alreadyAttempted && plan != null) item {
             Text("Infohash: " + plan.expectedInfoHash, style = MaterialTheme.typography.bodySmall)
-            Text("Destination: " + plan.destination.ifEmpty { "Server default (folder not yet observed)" } +
-                if (plan.useServerDefault) " (server default; no directory override)"
-                else " (custom parent folder)", style = MaterialTheme.typography.bodySmall)
+            Text("Destination: " + when {
+                plan.destination.isEmpty() -> "Server default; actual folder checked after Add."
+                plan.useServerDefault -> plan.destination + " (server default; no directory override)"
+                else -> plan.destination + " (custom parent folder)"
+            }, style = MaterialTheme.typography.bodySmall)
             // Restored from the former confirmation card: the one-click Add must still warn,
             // before submission, that a trackerless source can only find peers by DHT/web seeds.
             val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
@@ -872,6 +874,17 @@ internal fun VerifiedAddScreen(
                                             is RemoteAddOutcome.Uncertain ->
                                                 "Add uncertain; no Start was sent. Check the server before another operation."
                                         }
+                                    }
+                                    if (result is RemoteAddAndStart.StartNotVerified) {
+                                        // One exact-hash READ-ONLY diagnosis, never a remedial Start/Add.
+                                        // The inspector returns fixed categories, not private d.message text.
+                                        try {
+                                            val diagnosis = io.github.gamesbyian.chunks.rpc.RemoteStallInspector.inspect(
+                                                remote, plan.expectedInfoHash)
+                                            outcome = outcome.orEmpty() + " " + diagnosis.explanation()
+                                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) { /* Keep the original uncertain result. */ }
                                     }
                                     orderNote?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (!plan.useServerDefault &&

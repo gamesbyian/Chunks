@@ -36,4 +36,29 @@ class NativeDefaultAddTest {
             assertTrue(fixture.methods.contains("system.cwd"))
         }
     }
+
+    /** Data-integrity/behavioral: unresolved old roots stay readable without blocking another exact custom Add. */
+    @Test fun anUnsupportedCwdOnAnotherJobDoesNotBlockAnExplicitAbsoluteDestination() = runBlocking {
+        FakeRTorrent().use { fixture ->
+            val other = "ac".repeat(20)
+            fixture.seed(other, "Existing", ".")
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            assertEquals(".", remote.listTransfers().single().directory)
+            assertEquals(RemoteAddOutcome.VerifiedStopped(hash, "/chosen"),
+                remote.loadStopped(StoppedRemoteAddPlan.fromMagnet(magnet, "/chosen")))
+            assertEquals(1, fixture.loads().size)
+            assertEquals(".", fixture.jobs.getValue(other).directory)
+        }
+    }
+    @Test fun sessionOnlyRemoveCanMatchAnUnresolvedRawRootWithoutFileAuthority() = runBlocking {
+        FakeRTorrent().use { fixture ->
+            fixture.seed(hash, "Relative", ".")
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            assertEquals(SessionEraseOutcome.VerifiedRemoved(hash), remote.eraseFromSession(hash, "Relative", "."))
+            assertFalse(fixture.jobs.containsKey(hash))
+            assertEquals(1, fixture.methods.count { it == "d.erase" })
+            assertEquals(SessionEraseRecheck.Absent, remote.recheckSessionErase(hash, "Relative", "."))
+        }
+    }
+
 }

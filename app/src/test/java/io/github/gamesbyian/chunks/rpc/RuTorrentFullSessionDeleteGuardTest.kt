@@ -48,8 +48,11 @@ class RuTorrentFullSessionDeleteGuardTest {
         mount: String = "/rutorrent",
         invisibleDefaultJobs: Long = 0,
         pluginStatus: Int = 200,
+        denyRead: String? = null,
+        denyReadAfter: Int = 1,
         check: suspend (RTorrentRemote, AtomicInteger, AtomicInteger, AtomicInteger) -> Unit
     ) = runBlocking {
+        val deniedReads = AtomicInteger()
         val defaultReads = AtomicInteger()
         val hiddenCandidate = (defaultFirst + defaultLater).firstOrNull {
             it.hash.equals(hidden.hash, true)
@@ -62,6 +65,11 @@ class RuTorrentFullSessionDeleteGuardTest {
             val request = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>")
                 .find(request)?.groupValues?.get(1).orEmpty()
+            if (method == denyRead && deniedReads.incrementAndGet() >= denyReadAfter) {
+                exchange.sendResponseHeaders(401, -1)
+                exchange.close()
+                return@createContext
+            }
             val value = when (method) {
                 "view.size_not_visible" -> number(invisibleDefaultJobs)
                 "d.multicall2" -> {
@@ -228,6 +236,19 @@ class RuTorrentFullSessionDeleteGuardTest {
             assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.SHARED_FILES),
                 remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
             assertEquals(0, posts.get())
+        }
+    }
+
+    /** Data-integrity: expiry at any preflight stage remains an authentication refusal with no destructive request. */
+    @Test fun authenticationExpiryDuringSharedFilesAndFinalIdentityNeverMasqueradesAsAChangedJob() {
+        val others = listOf(hidden.copy(file = "different.bin"),
+            hidden.copy(hash = "ef".repeat(20), file = "another.bin"))
+        for ((method, after) in listOf("system.multicall" to 1, "d.hash" to 1, "f.multicall" to 1, "f.multicall" to 2)) {
+            fixture(defaultFirst = listOf(selected) + others, denyRead = method, denyReadAfter = after) { remote, _, _, posts ->
+                assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.AUTHENTICATION),
+                    remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+                assertEquals(0, posts.get())
+            }
         }
     }
 

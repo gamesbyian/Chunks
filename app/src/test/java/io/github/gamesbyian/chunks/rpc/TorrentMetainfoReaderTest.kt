@@ -189,4 +189,19 @@ class TorrentMetainfoReaderTest {
                 TorrentMetainfoReader.preview(bytes).trackerCount)
         }
     }
+    /** Data-integrity: new remote Add drops foreign resume, retaining byte-exact info and trackers. */
+    @Test fun newRemoteAddKeepsOriginalInfoAndTrackersButNotForeignSessionState() {
+        val original = ("d8:announce14:http://ignored4:info" + singleInfo +
+            "17:libtorrent_resumed5:filesld8:priorityi0eeee" +
+            "8:rtorrentd5:statei0eee").toByteArray()
+        val before = original.copyOf()
+        val prepared = TorrentMetainfoReader.forNewRemoteAdd(original)
+        assertArrayEquals(torrent(singleInfo), prepared)
+        assertEquals(TorrentMetainfoReader.preview(original).infoHashV1,
+            TorrentMetainfoReader.preview(prepared).infoHashV1)
+        assertArrayEquals("Source document remains unchanged", before, original)
+        assertArrayEquals("Ordinary metainfo is not reencoded", torrent(singleInfo),
+            TorrentMetainfoReader.forNewRemoteAdd(torrent(singleInfo)))
+    }
+
 }

@@ -25,6 +25,8 @@ internal data class RemoteStallEvidence(
     fun explanation(): String = when {
         messageClass == MessageClass.STORAGE ->
             "The server reports a storage-related problem. Inspect the exact destination, available space and account permissions in ruTorrent."
+        hashCheckFailed == true && !open ->
+            "rTorrent could not open or hash-check this transfer. Check the destination's permissions, available space and file access in ruTorrent. Start, Stop and Recheck cannot repair unavailable storage."
         hashCheckFailed == true || messageClass == MessageClass.HASH_CHECK ->
             "The server reports a hash-check problem. Inspect this transfer's recheck state in ruTorrent."
         hashingPhase != null && hashingPhase > 0 || hashChecking == true ->

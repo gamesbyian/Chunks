@@ -90,7 +90,7 @@ enum class RemoteDeleteRefusal(val explanation: String) {
     INVALID_REVIEW("The reviewed name or directory is invalid. Refresh this transfer."),
     TARGET_CHANGED("The exact transfer's name or directory changed. Refresh and review it again."),
     INVENTORY_UNAVAILABLE("The server session inventory could not be read. Check the connection and account permissions."),
-    INCOMPLETE_SESSION("The server session inventory omits jobs. Deletion cannot safely check for shared files."),
+    INCOMPLETE_SESSION("Complete session coverage could not be confirmed: the view is filtered or its coverage getter is unavailable. Deletion cannot safely check for shared files."),
     FILES_UNAVAILABLE("The exact payload file list could not be read. Check this transfer in ruTorrent."),
     UNSAFE_FILES("The payload paths could not be safely validated. Inspect this transfer's files in ruTorrent."),
     SHARED_FILES("Another server transfer shares these payload files, or its file mapping could not be verified."),
