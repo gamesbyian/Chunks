@@ -10,7 +10,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -72,9 +72,17 @@ class LocalIntakeJourneyInstrumentedTest {
         val deadline = System.nanoTime() + seconds * 1_000_000_000L
         while (!condition()) {
             if (System.nanoTime() >= deadline) fail("Timed out waiting for $what; ${failure()}")
+            idle()
             Thread.sleep(100)
         }
     }
+
+    /**
+     * The v2 rule advances app composition coroutines only while the test idles
+     * through it (the v1 rule resumed them off the main thread: #901). Native
+     * waits therefore idle the UI on each poll; no Activity is not an error.
+     */
+    private fun idle() { runCatching { rule.waitForIdle() } }
 
     private fun sha(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes)
         .joinToString("") { (it.toInt() and 255).toString(16).padStart(2, '0') }
@@ -587,6 +595,7 @@ class LocalIntakeJourneyInstrumentedTest {
                             "session_absent=true canary_intact=true bytes=${payload.size}")
                     }
                     if (readded) break
+                    idle()
                     Thread.sleep(3_000)
                 }
                 assertTrue("Same-hash re-add was never admitted", readded)
