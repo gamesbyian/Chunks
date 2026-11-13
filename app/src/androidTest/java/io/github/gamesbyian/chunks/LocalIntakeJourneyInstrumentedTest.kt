@@ -161,17 +161,26 @@ class LocalIntakeJourneyInstrumentedTest {
         node.assertIsEnabled().performClick()
     }
 
-    /** Footer Transfers opens the unified catalog. The explicit device
-     * entry reaches the same native Start/Stop/Remove controls as before. */
+    /** Footer Transfers opens the unified catalog. Device maintenance is now
+     * disclosed under Filters, never as a bottom-of-list dashboard button. */
     private fun enterDeviceControlsFromCatalog() {
         rule.waitUntil(30_000) {
             runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-                    hasText("Open device transfer controls"))
+                rule.onNode(hasScrollToIndexAction())
+                    .performScrollToNode(hasText("Filters", substring = true))
                 true
             }.getOrDefault(false)
         }
-        click("Open device transfer controls")
+        if (rule.onAllNodesWithText("Hide filters").fetchSemanticsNodes().isEmpty())
+            click("Filters")
+        rule.waitUntil(30_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction())
+                    .performScrollToNode(hasText("Device transfer controls"))
+                true
+            }.getOrDefault(false)
+        }
+        click("Device transfer controls")
     }
 
     @Test fun phaseA_externalReviewDownloadsThroughUiStopsThenProcessDies() {

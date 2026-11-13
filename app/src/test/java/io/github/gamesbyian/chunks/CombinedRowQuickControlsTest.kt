@@ -146,10 +146,10 @@ class CombinedRowQuickControlsTest {
         show()
         reveal(hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
         // All available environments are shown by default.
-        rule.onNodeWithContentDescription("Showing $label").assertExists()
+        rule.onNodeWithContentDescription("Showing $label", substring = true).assertExists()
         rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).assertExists()
         // Hide this server: its rows leave the list immediately, no Apply step.
-        rule.onNodeWithContentDescription("Showing $label").performClick()
+        rule.onNodeWithContentDescription("Showing $label", substring = true).performClick()
         rule.waitForIdle()
         assertTrue(rule.onAllNodes(hasContentDescription("Big Archive on $label")).fetchSemanticsNodes().isEmpty())
         val serverId = requireNotNull(EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
@@ -164,15 +164,16 @@ class CombinedRowQuickControlsTest {
         rule.onNodeWithText("Started").performClick()
         rule.waitUntil(5_000) { CombinedViewPreferences(context).load().filter == UnifiedTransferFilter.STARTED }
         assertTrue(serverId !in ((CombinedViewPreferences(context).load().scope as EnvironmentViewScope.Only).ids))
-        // Hide everything: an explicit, explained empty view.
+        // The last selected source cannot be hidden; avoid a blank catalog.
         rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
         rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
-        reveal(hasText("No environments are selected", substring = true))
-        assertEquals(EnvironmentViewScope.Only(emptySet()), CombinedViewPreferences(context).load().scope)
-        // Showing every environment again returns to dynamic All.
+        assertEquals(EnvironmentViewScope.Only(setOf(io.github.gamesbyian.chunks.model.EnvironmentId(other.id))),
+            CombinedViewPreferences(context).load().scope)
+        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true)
+            .assertExists()
+        // Re-including each previously hidden source restores dynamic All.
         rule.onNodeWithContentDescription("Hidden: " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
-        rule.onNodeWithContentDescription("Hidden: Server · " + other.label, substring = true).performClick()
-        rule.onNodeWithContentDescription("Hidden: $label").performClick()
+        rule.onNodeWithContentDescription("Hidden: $label", substring = true).performClick()
         rule.waitUntil(5_000) { CombinedViewPreferences(context).load().scope == EnvironmentViewScope.All }
         assertTrue(commands.isEmpty())
     }

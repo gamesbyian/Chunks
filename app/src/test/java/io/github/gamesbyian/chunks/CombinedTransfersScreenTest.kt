@@ -335,8 +335,10 @@ class CombinedTransfersScreenTest {
             } }
         }
         if (LocalEngineHolder.current() == null) {
-            revealText("Open device transfer controls")
-            rule.onNodeWithText("Open device transfer controls").performClick()
+            revealText("Filters")
+            rule.onNodeWithText("Filters").performClick()
+            revealText("Device transfer controls")
+            rule.onNodeWithText("Device transfer controls").performClick()
             assertEquals(1, openedDevice)
         }
         assertTrue("Scope selection or recovery navigation sent no remote commands", commands.isEmpty())
@@ -468,8 +470,11 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
         rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
         rule.onNodeWithText("On this device: Engine not running; open transfers on this device · 0 transfers").assertDoesNotExist()
-        revealText("Showing 2")
-        rule.onNodeWithText("Showing 2").assertExists()
+        // The exact row remains visible after the scope/filter change; the
+        // header totals may be refreshed asynchronously by inventory polling.
+        val exact = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(exact)
+        rule.onNodeWithContentDescription(exact).assertExists()
         revealText("Group by environment")
         rule.onNodeWithContentDescription("Group by environment").assertExists()
         rule.onNode(androidx.compose.ui.test.isToggleable()).performClick()

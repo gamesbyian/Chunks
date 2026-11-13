@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
@@ -60,33 +61,78 @@ class CombinedTwoRealServersInstrumentedTest {
     private fun visible(text: String) =
         rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
 
-    // The authenticated-only scope control is the session witness; a saved label
-    // or a read-only cached row cannot provide it. All scopes use this ONE browser.
+    /** The compact selector is canonical; actual client authority remains
+     * proved by authenticated Connect and independent XML-RPC job readback. */
     private fun authenticatedCanonicalBrowser(): Boolean = runCatching {
-        scrollTo("Only connected server")
-        visible("Only connected server") && !visible("+ Add torrent")
+        val row = hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
+        rule.onAllNodes(row).fetchSemanticsNodes().isNotEmpty() &&
+            rule.onAllNodes(hasContentDescription("Showing Server", substring = true))
+                .fetchSemanticsNodes().isNotEmpty() && !visible("+ Add torrent")
     }.getOrDefault(false)
+
+    /** Selection is a read-only view operation. Mutations still require their
+     * separate exact server/job review and an independent witness. */
+    private fun clickScope(matcher: androidx.compose.ui.test.SemanticsMatcher) {
+        rule.waitUntil(20_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(matcher)
+                true
+            }.getOrDefault(false)
+        }
+        rule.onAllNodes(matcher).onFirst().performScrollTo().performClick()
+    }
 
     private fun enterConnectedCanonicalTransfers(expectedUrl: String? = null, expectedUser: String = "") {
         waitFor("authenticated canonical Transfers", 90_000) { authenticatedCanonicalBrowser() }
-        if (expectedUrl != null) {
-            rule.onNodeWithText("Only connected server").performClick()
-            val expectedId = requireNotNull(io.github.gamesbyian.chunks.model.EnvironmentSnapshots
-                .serverIdOfAliasScope(RemoteVerifiedUiIdentity.aliasScopeOf(
-                    RemoteCredentials(expectedUrl, expectedUser, ""))))
-            assertEquals("Canonical scope must follow the exact authenticated principal",
-                io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(setOf(expectedId)),
-                CombinedViewPreferences(InstrumentationRegistry.getInstrumentation().targetContext).load().scope)
+        if (expectedUrl == null) return
+        val expectedId = requireNotNull(io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+            .serverIdOfAliasScope(RemoteVerifiedUiIdentity.aliasScopeOf(
+                RemoteCredentials(expectedUrl, expectedUser, ""))))
+        val preferences = CombinedViewPreferences(InstrumentationRegistry.getInstrumentation().targetContext)
+        val only = io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(setOf(expectedId))
+        val port = expectedUrl.substringAfter("127.0.0.1:").substringBefore('/')
+        val hiddenTarget = hasContentDescription("Hidden: Server", substring = true) and
+            hasContentDescription(":$port", substring = true)
+        if (rule.onAllNodes(hiddenTarget).fetchSemanticsNodes().isNotEmpty()) {
+            val previous = preferences.load().scope
+            clickScope(hiddenTarget)
+            rule.waitUntil(15_000) { preferences.load().scope != previous }
         }
+        val otherVisible = hasContentDescription("Showing ", substring = true) and
+            !hasContentDescription(":$port", substring = true)
+        repeat(10) {
+            if (preferences.load().scope != only) {
+                val previous = preferences.load().scope
+                clickScope(otherVisible)
+                rule.waitUntil(15_000) { preferences.load().scope != previous }
+            }
+        }
+        assertEquals("Canonical scope follows the exact authenticated principal", only,
+            preferences.load().scope)
     }
 
     private fun showAllCanonicalTransfers() {
-        val context = InstrumentationRegistry.getInstrumentation().targetContext
-        if (CombinedViewPreferences(context).load().scope !=
-            io.github.gamesbyian.chunks.model.EnvironmentViewScope.All) {
-            scrollTo("Show all transfers")
-            rule.onNodeWithText("Show all transfers").performClick()
+        val preferences = CombinedViewPreferences(InstrumentationRegistry.getInstrumentation().targetContext)
+        val all = io.github.gamesbyian.chunks.model.EnvironmentViewScope.All
+        if (preferences.load().scope == all) return
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
+        val allChip = hasContentDescription("Show all environments")
+        if (rule.onAllNodes(allChip).fetchSemanticsNodes().isNotEmpty()) {
+            clickScope(allChip)
+        } else {
+            // Two/three configured clients have no All chip. Re-include each
+            // hidden environment to regain the complete combined scope.
+            repeat(10) {
+                if (preferences.load().scope != all) {
+                    val previous = preferences.load().scope
+                    clickScope(hasContentDescription("Hidden:", substring = true))
+                    rule.waitUntil(15_000) { preferences.load().scope != previous }
+                }
+            }
         }
+        assertEquals("UI controls must restore complete scope", all, preferences.load().scope)
     }
 
     private fun scrollTo(text: String) {
@@ -568,13 +614,11 @@ class CombinedTwoRealServersInstrumentedTest {
             // UX "restore connections": an automatic reconnect is not a scope choice and
             // must not overwrite the person's saved environment selection. Check once the
             // reconnect has reached canonical Transfers, before this test itself narrows it.
-            // The authenticated-only control may be below the lazy viewport: scroll, don't
-            // depend on its position (the environment toggle row sits above it).
+            // The compact client row can be below the viewport; locate its stable tag.
             waitFor("automatic reconnect reaches canonical Transfers", 90_000) {
-                authenticatedCanonicalBrowser() || runCatching { scrollTo("Only connected server"); true }.getOrDefault(false)
+                authenticatedCanonicalBrowser()
             }
-            // "Only connected server" requires the authenticated server; let the same frame's
-            // scope effects (the old code's startup focus) run before reading the preference.
+            // Let the current composition settle before reading persisted scope.
             rule.waitForIdle()
             assertEquals(io.github.gamesbyian.chunks.model.EnvironmentViewScope.All,
                 viewPreferences.load().scope)
