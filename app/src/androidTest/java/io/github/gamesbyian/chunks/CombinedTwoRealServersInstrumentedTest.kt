@@ -99,6 +99,22 @@ class CombinedTwoRealServersInstrumentedTest {
         else rule.onNode(match).performScrollTo()
     }
 
+    /**
+     * Lazy rows can be disposed between a scroll and the next lookup while the
+     * IME and insets settle. Re-scroll until the exact node is composed and
+     * enabled; the caller then acts on it ONCE (never a retried Connect).
+     */
+    private fun requireEnabled(text: String, timeoutMs: Long = 20_000) {
+        waitFor("enabled \"$text\"", timeoutMs) {
+            runCatching {
+                scrollTo(text)
+                rule.waitForIdle()
+                rule.onNodeWithText(text).assertIsEnabled()
+                true
+            }.getOrDefault(false)
+        }
+    }
+
     /** [scrollTo] for a single required step: a miss reports the visible screen. */
     private fun requireScrollTo(text: String) {
         try {
@@ -462,8 +478,7 @@ class CombinedTwoRealServersInstrumentedTest {
                     true
                 }.getOrDefault(false)
             }
-            scrollTo("Connect to rTorrent")
-            rule.onNodeWithText("Connect to rTorrent").assertIsEnabled()
+            requireEnabled("Connect to rTorrent")
             assertTrue("Choosing a saved Add target must not add to A",
                 runBlocking { RTorrentRemote(credsFor(urlA)).listTransfers("main") }
                     .map { it.hash to it.started }.toSet() ==
@@ -476,8 +491,8 @@ class CombinedTwoRealServersInstrumentedTest {
             typeInto("Seedbox hostname, ruTorrent URL or RPC address", urlA)
             typeInto("Username, if required", userA)
             typeInto("Password", passA)
-            scrollTo("Connect to rTorrent")
-            rule.onNodeWithText("Connect to rTorrent").assertIsEnabled().performClick()
+            requireEnabled("Connect to rTorrent")
+            rule.onNodeWithText("Connect to rTorrent").performClick()
             waitFor("source-first draft resumes after exact authenticated A", 90_000) {
                 visible("Add a transfer") && visible("Magnet or torrent link")
             }
