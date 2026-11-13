@@ -463,11 +463,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
     /** Relative rTorrent roots are relative to THIS server process, never to Android. */
+    private fun directoryAt(cwd: String, suffix: String): String {
+        val directory = if (suffix.isEmpty()) cwd else cwd.trimEnd('/') + "/" + suffix
+        if (directory.length > 4096) throw UnresolvedServerDirectory()
+        return directory
+    }
+
     private suspend fun resolveServerDirectory(raw: String): String {
         if (raw.startsWith('/')) return raw
         val suffix = relativeDirectorySuffix(raw)
         val cwd = serverWorkingDirectory()
-        val directory = if (suffix.isEmpty()) cwd else cwd.trimEnd('/') + "/" + suffix
+        val directory = directoryAt(cwd, suffix)
         if (serverWorkingDirectory() != cwd) throw UnresolvedServerDirectory()
         return directory
     }
@@ -492,7 +498,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val cwd = serverWorkingDirectory()
             val resolved = rows.map { row ->
                 val suffix = suffixes[row.directory] ?: return@map row
-                row.copy(directory = if (suffix.isEmpty()) cwd else cwd.trimEnd('/') + "/" + suffix)
+                try { row.copy(directory = directoryAt(cwd, suffix)) }
+                catch (_: UnresolvedServerDirectory) { row }
             }
             if (serverWorkingDirectory() != cwd) rows else resolved
         } catch (_: UnresolvedServerDirectory) {

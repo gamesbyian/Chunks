@@ -175,23 +175,29 @@ internal fun VerifiedAddScreen(
     // the exact-account session above navigation and reauthentication.
     val attemptedTicket = draft.attemptTicket
     var observedProgress by draft::observedProgress
-    var progressReadFailed by remember { mutableStateOf(false) }
+    var progressReadFailed by remember(remote, attemptedTicket) { mutableStateOf(false) }
+    var progressReading by remember(remote, attemptedTicket) { mutableStateOf(attemptedTicket != null) }
     var progressRevision by remember { mutableStateOf(0) }
     LaunchedEffect(remote, attemptedTicket, outcome, progressRevision) {
-        val ticket = attemptedTicket ?: return@LaunchedEffect
+        val ticket = attemptedTicket ?: run { progressReading = false; return@LaunchedEffect }
         // A freshly authorized ticket is not yet proof that any Add RPC was
         // attempted. Source-policy or artwork opt-out can still refuse it
         // before the wire. Do not probe remote job progress until the engine
         // adapter has returned a result, including an ambiguous result.
-        if (outcome == null || !draft.alreadyAttempted) return@LaunchedEffect
+        if (outcome == null || !draft.alreadyAttempted) {
+            progressReading = false
+            return@LaunchedEffect
+        }
         // A session-owned prior read is historical until this exact screen/account
         // obtains another positive result. Never show cached bytes as current
         // during the initial request or a reconnect.
-        progressReadFailed = true
+        progressReading = true
+        progressReadFailed = false
         pollRemoteAddReadOnlyProgress(
             read = { RemoteUniversalAddAdapter(remote).progress(ticket) },
             onFresh = { progress ->
                 observedProgress = progress
+                progressReading = false
                 progressReadFailed = false
             },
             onReadError = {
@@ -199,6 +205,7 @@ internal fun VerifiedAddScreen(
                 // observation loop while the independently registered job runs.
                 // Never replay Add/Start or claim current payload from a stale sample.
                 progressReadFailed = true
+                progressReading = false
             }
         )
     }
@@ -948,7 +955,7 @@ internal fun VerifiedAddScreen(
                         Text("Operation outcome", fontWeight = FontWeight.Bold)
                         Text(outcome.orEmpty())
                         observedProgress?.let { progress ->
-                            if (progressReadFailed) {
+                            if (progressReading || progressReadFailed) {
                                 Text("Last observed (not current): " + progress.summary())
                             } else {
                                 Text(progress.summary())
@@ -958,7 +965,8 @@ internal fun VerifiedAddScreen(
                                     Text("Payload: ${Units.bytes(verified)} verified of ${Units.bytes(total)}")
                             }
                         }
-                        if (progressReadFailed) Text(
+                        if (progressReading) Text("Reading exact transfer status…")
+                        else if (progressReadFailed) Text(
                             "Transfer status could not be refreshed. Check the server state before another action.")
                     }
                 }

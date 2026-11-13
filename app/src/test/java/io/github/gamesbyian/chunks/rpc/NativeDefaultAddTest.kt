@@ -85,4 +85,13 @@ class NativeDefaultAddTest {
         }
     }
 
+    @Test fun aJoinedDirectoryBeyondTheInventoryBoundRemainsExplicitlyUnresolved() = runBlocking {
+        val relative = "r".repeat(200)
+        FakeRTorrent(workingDirectory = "/" + "dir/".repeat(1000) + "end").use { fixture ->
+            fixture.seed(hash, "Long root", relative)
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            assertEquals(relative, remote.listTransfers().single().directory)
+        }
+    }
+
 }

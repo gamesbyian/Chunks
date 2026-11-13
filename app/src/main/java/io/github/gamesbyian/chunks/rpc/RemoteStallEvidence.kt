@@ -32,7 +32,8 @@ internal data class RemoteStallEvidence(
         hashingPhase != null && hashingPhase > 0 || hashChecking == true ->
             "rTorrent is checking pieces. This read alone does not establish when activation will complete."
         awaitingMetadata == true ->
-            "This transfer is still a metadata placeholder. An inactive engine cannot retrieve magnet metadata."
+            if (active) "Magnet metadata is still pending. The engine is active; wait for peers and metadata before verifying the payload folder."
+            else "This transfer is still a metadata placeholder. Its inactive engine cannot retrieve magnet metadata."
         started && !active ->
             "Start is requested but this exact torrent engine remains inactive. Inspect the server's storage, queue and per-transfer error state."
         !open -> "This torrent is not open. Check server-side destination and storage conditions."
