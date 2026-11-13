@@ -5,7 +5,6 @@ import android.os.SystemClock
 import android.util.Base64
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasStateDescription
@@ -400,16 +399,29 @@ internal class MainActivityRealMagnetJourney(
                 // draft choice. Select OFF explicitly rather than toggling it
                 // back ON on the next Add. A click is dispatched at most once,
                 // and the exact-scoped persisted exclusion is still required.
-                scroll(artworkChoice)
-                rule.waitForIdle()
-                rule.onNodeWithText(artworkChoice).assertIsEnabled().assertIsDisplayed()
-                when (rule.onNodeWithText(artworkChoice).fetchSemanticsNode()
-                    .config[androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]) {
+                // Lazy disclosure children can be recycled between separate
+                // successful semantics lookups. Settle the complete read,
+                // including enabled/visible/toggle state, before choosing one
+                // click; retries here perform only reads and scrolling.
+                var choice: androidx.compose.ui.state.ToggleableState? = null
+                fun readReadyChoice(): Boolean = runCatching {
+                    scroll(artworkChoice)
+                    val node = rule.onNodeWithText(artworkChoice)
+                    node.assertIsEnabled().assertIsDisplayed()
+                    choice = node.fetchSemanticsNode()
+                        .config[androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]
+                    choice in setOf(androidx.compose.ui.state.ToggleableState.On,
+                        androidx.compose.ui.state.ToggleableState.Off)
+                }.getOrDefault(false)
+                rule.waitUntil(45_000) { readReadyChoice() }
+                when (choice) {
                     androidx.compose.ui.state.ToggleableState.On -> click(artworkChoice)
                     androidx.compose.ui.state.ToggleableState.Off -> Unit
                     else -> fail("Remote Add artwork choice must have a definite state")
                 }
-                rule.onNodeWithText(artworkChoice).assertIsOff()
+                rule.waitUntil(45_000) {
+                    readReadyChoice() && choice == androidx.compose.ui.state.ToggleableState.Off
+                }
                 report("chunks_real_add_app_stage", "artwork-chosen")
             }
             // The source-first form has one explicit "Add transfer" submission action and no
