@@ -181,7 +181,8 @@ class RTorrentDisposableAuthenticatedTest {
         assertTrue("Authenticated real Recheck was refused or ambiguous: $recheck",
             recheck is RemoteHashRecheckOutcome.HashingObserved ||
                 recheck is RemoteHashRecheckOutcome.SubmittedUnobserved ||
-                recheck is RemoteHashRecheckOutcome.AlreadyChecking)
+                recheck is RemoteHashRecheckOutcome.AlreadyChecking ||
+                recheck is RemoteHashRecheckOutcome.AlreadyQueued)
         // A quickly cleared hashing flag, even after an accepted command,
         // does not prove that all pieces passed a hash check.
         assertEquals("Authenticated Recheck changed exact source name", target.name,

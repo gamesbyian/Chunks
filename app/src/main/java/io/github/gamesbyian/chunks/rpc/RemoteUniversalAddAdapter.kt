@@ -177,13 +177,17 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
                 val stopped = verified.result as? RemoteAddOutcome.VerifiedStopped ?: return null
                 if (ticket.intent.startWhenAdded ||
                     !stopped.hash.equals(plan.expectedInfoHash, ignoreCase = true)) return null
-                if (stopped.destination != plan.destination) {
+                if (plan.useServerDefault && plan.destination.isEmpty()) {
+                    val fresh = remote.reconcileStoppedAdd(plan)
+                        as? RemoteAddOutcome.VerifiedStopped ?: return null
+                    if (fresh != stopped) return null
+                } else if (stopped.destination != plan.destination) {
                     // A multi-file torrent is stored under the reviewed
                     // parent PLUS the exact torrent-name root. The engine
                     // already verifies this shape before returning
                     // VerifiedStopped; a fresh read-only verification prevents
                     // a fabricated or stale child root from settling Add.
-                    val prefix = plan.destination + "/"
+                    val prefix = plan.destination.trimEnd('/') + "/"
                     val child = stopped.destination.takeIf { it.startsWith(prefix) }
                         ?.removePrefix(prefix) ?: return null
                     if (child.isBlank() || child == "." || child == ".." ||

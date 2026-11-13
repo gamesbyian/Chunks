@@ -97,6 +97,7 @@ class RemoteCombinedAuthenticatedActionsTest {
                     "d.hash" -> "<string>$hash</string>"
                     "d.name" -> "<string>$title</string>"
                     "d.directory" -> "<string>$directory</string>"
+                    "d.hashing" -> "<i8>0</i8>"
                     "d.is_hash_checking" -> number(if (checking) 1 else 0).removePrefix("<value>").removeSuffix("</value>")
                     "f.priority.set" -> {
                         assertTrue("Never target an unrelated job", body.contains("$hash:f0"))

@@ -20,12 +20,19 @@ internal class FakeRTorrent(
     /** Literal `directory.default` reply; null answers with a permission-style fault. */
     @Volatile var directoryDefault: String? = "/srv",
     /** Where a job lands when Add sends no directory and the default is unusable. */
-    private val unsetDefaultLandsIn: String = "/home/user"
+    private val unsetDefaultLandsIn: String = "/home/user",
+    private val workingDirectory: String? = null,
+    @Volatile var activationBlocked: Boolean = false,
+    private val untrustedWorkingDirectory: Boolean = false,
+    @Volatile var metadataPending: Boolean = false
 ) : AutoCloseable {
     data class Job(val hash: String, val name: String, @Volatile var directory: String,
                    @Volatile var started: Boolean)
 
     val jobs = ConcurrentHashMap<String, Job>()
+    /** Simulate another client starting a job that this Add explicitly requested stopped. */
+    @Volatile var startStoppedLoads: Boolean = false
+    @Volatile var diagnosticReplyGate: java.util.concurrent.CountDownLatch? = null
     val calls = CopyOnWriteArrayList<Pair<String, List<String>>>()
     private val socket = ServerSocket(0, 32, InetAddress.getByName("127.0.0.1"))
     val endpoint = "http://127.0.0.1:${socket.localPort}/RPC2"
@@ -72,6 +79,9 @@ internal class FakeRTorrent(
                 "load.raw_verbose", "f.multicall", "f.priority.set", "d.check_hash").map(::str))
             "directory.default" -> directoryDefault?.let(::str)
                 ?: return fault(-503, "Permission denied")
+            "system.cwd" -> if (untrustedWorkingDirectory)
+                return fault(-507, "Command &quot;system.cwd&quot; is not allowed for untrusted connections.")
+                else workingDirectory?.let(::str) ?: return fault(-506, "Method not found")
             "d.multicall2" -> {
                 val view = p.getOrNull(1) ?: "main"
                 val metadata = xml.contains("d.is_meta=")
@@ -79,16 +89,28 @@ internal class FakeRTorrent(
                     when (view) { "started" -> it.started; "stopped" -> !it.started; else -> true }
                 }.map { j ->
                     array(listOf(str(j.hash), str(j.name), num(1000), num(0), num(if (j.started) 1 else 0),
-                        str(j.directory), num(0), num(0), num(0)) + if (metadata) listOf(num(0)) else emptyList())
+                        str(j.directory), num(0), num(0), num(0)) + if (metadata) listOf(num(if (metadataPending) 1 else 0)) else emptyList())
                 }
                 array(rows)
             }
             "d.hash" -> job()?.let { str(it.hash) } ?: return fault(-501, "Could not find info-hash.")
             "d.name" -> job()?.let { str(it.name) } ?: return fault(-501, "Could not find info-hash.")
             "d.directory" -> job()?.let { str(it.directory) } ?: return fault(-501, "Could not find info-hash.")
-            "d.state", "d.is_active" -> job()?.let { num(if (it.started) 1 else 0) }
+            "d.state" -> job()?.let { num(if (it.started) 1 else 0) }
                 ?: return fault(-501, "Could not find info-hash.")
-            "d.is_multi_file", "d.is_meta", "d.is_hash_checking", "d.is_private" ->
+            "d.is_active", "d.is_open" -> job()?.let { num(if (it.started && !activationBlocked) 1 else 0) }
+                ?: return fault(-501, "Could not find info-hash.")
+            "d.hashing_failed" -> num(if (activationBlocked) 1 else 0)
+            "d.hashing" -> num(0)
+            "d.message" -> {
+                diagnosticReplyGate?.await(10, java.util.concurrent.TimeUnit.SECONDS)
+                str("")
+            }
+            "d.down.total", "d.completed_bytes", "d.peers_connected", "d.down.rate" -> num(0)
+            "d.size_bytes" -> num(1000)
+            "d.is_meta" -> job()?.let { num(if (metadataPending) 1 else 0) }
+                ?: return fault(-501, "Could not find info-hash.")
+            "d.is_multi_file", "d.is_hash_checking", "d.is_private" ->
                 job()?.let { num(0) } ?: return fault(-501, "Could not find info-hash.")
             "d.tracker_size" -> job()?.let { num(1) } ?: return fault(-501, "Could not find info-hash.")
             "d.start", "d.stop", "d.open", "d.resume", "d.close" -> {
@@ -99,6 +121,7 @@ internal class FakeRTorrent(
                 }
                 num(0)
             }
+            "d.erase" -> { jobs.remove(p.firstOrNull()?.lowercase()); num(0) }
             "f.multicall", "t.multicall" -> array(emptyList())
             "load.start", "load.verbose", "load.raw_start", "load.raw_verbose" -> {
                 val source = p.getOrNull(1).orEmpty()
@@ -113,7 +136,7 @@ internal class FakeRTorrent(
                     ?.removePrefix("d.directory.set=")
                 val default = directoryDefault?.takeIf { it.startsWith("/") }
                 if (hash.isNotEmpty()) jobs[hash] = Job(hash, name, explicit ?: default ?: unsetDefaultLandsIn,
-                    started = method == "load.start" || method == "load.raw_start")
+                    started = method == "load.start" || method == "load.raw_start" || startStoppedLoads)
                 num(0)
             }
             else -> return fault(-506, "not in fixture")

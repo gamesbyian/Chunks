@@ -145,7 +145,8 @@ class RTorrentDisposableMutationTest {
         assertTrue("One real d.check_hash must be accepted or already in progress: $result",
             result is RemoteHashRecheckOutcome.HashingObserved ||
                 result is RemoteHashRecheckOutcome.SubmittedUnobserved ||
-                result is RemoteHashRecheckOutcome.AlreadyChecking)
+                result is RemoteHashRecheckOutcome.AlreadyChecking ||
+                result is RemoteHashRecheckOutcome.AlreadyQueued)
         assertEquals("Recheck must preserve exact session identity", item.name,
             rtorrent.lookupName(hash))
         // The acknowledged scheduling request deliberately does NOT prove

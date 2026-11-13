@@ -19,7 +19,7 @@ class RemoteHashRecheckFixtureTest {
     private val directory = "/srv/disposable"
 
     private enum class Scenario {
-        OBSERVED, QUEUED, ALREADY_CHECKING,
+        OBSERVED, UNOBSERVED, ALREADY_CHECKING, ALREADY_QUEUED, AUTH_EXPIRED, INVALID_PHASE,
         WRONG_HASH, WRONG_NAME, WRONG_DIRECTORY, LATE_RENAME, LATE_MOVE, INVALID_FLAG,
         LOST_ACK_AFTER_APPLY, WRONG_HASH_AFTER_APPLY
     }
@@ -39,6 +39,11 @@ class RemoteHashRecheckFixtureTest {
                 val method = Regex("<methodName>([^<]+)</methodName>")
                     .find(raw)?.groupValues?.get(1).orEmpty()
                 methods += method
+                if (scenario == Scenario.AUTH_EXPIRED) {
+                    exchange.sendResponseHeaders(403, -1)
+                    exchange.close()
+                    return@createContext
+                }
                 val payload = when (method) {
                     "d.hash" -> {
                         hashReads++
@@ -59,6 +64,11 @@ class RemoteHashRecheckFixtureTest {
                             else -> 0
                         }}</i8>"
                     }
+                    "d.hashing" -> "<i8>${when (scenario) {
+                        Scenario.ALREADY_QUEUED -> 2
+                        Scenario.INVALID_PHASE -> 4
+                        else -> 0
+                    }}</i8>"
                     "d.check_hash" -> {
                         writes++
                         if (scenario == Scenario.LOST_ACK_AFTER_APPLY) {
@@ -85,7 +95,7 @@ class RemoteHashRecheckFixtureTest {
 
     @Test fun recheckRequiresFreshExactHashNameDirectoryAndBooleanBeforeAnyWrite() = runBlocking {
         for (scenario in listOf(Scenario.WRONG_HASH, Scenario.WRONG_NAME,
-                Scenario.WRONG_DIRECTORY, Scenario.INVALID_FLAG)) {
+                Scenario.WRONG_DIRECTORY, Scenario.INVALID_FLAG, Scenario.INVALID_PHASE)) {
             Gateway(scenario).use { gateway ->
                 try {
                     remote(gateway).requestHashRecheck(hash, name, directory)
@@ -140,12 +150,17 @@ class RemoteHashRecheckFixtureTest {
                 remote(gateway).requestHashRecheck(hash, name, directory))
             assertEquals(0, gateway.writes)
         }
+        Gateway(Scenario.ALREADY_QUEUED).use { gateway ->
+            assertEquals(RemoteHashRecheckOutcome.AlreadyQueued(hash),
+                remote(gateway).requestHashRecheck(hash, name, directory))
+            assertEquals("A queued hash check must not be scheduled again", 0, gateway.writes)
+        }
     }
 
     @Test fun acceptedRequestNeverClaimsCompletedPiecesWithoutHashingReadback() = runBlocking {
         for ((scenario, expected) in listOf(
                 Scenario.OBSERVED to RemoteHashRecheckOutcome.HashingObserved(hash),
-                Scenario.QUEUED to RemoteHashRecheckOutcome.SubmittedUnobserved(hash))) {
+                Scenario.UNOBSERVED to RemoteHashRecheckOutcome.SubmittedUnobserved(hash))) {
             Gateway(scenario).use { gateway ->
                 assertEquals(expected, remote(gateway).requestHashRecheck(hash, name, directory))
                 assertEquals(1, gateway.writes)
@@ -157,11 +172,16 @@ class RemoteHashRecheckFixtureTest {
 
     @Test fun readOnlyReconciliationNeverClaimsCompletionOrSchedulesAWrite() = runBlocking {
         val expected = listOf(
-            Scenario.QUEUED to RemoteHashRecheckObservation.NotChecking,
+            Scenario.UNOBSERVED to RemoteHashRecheckObservation.NotChecking,
             Scenario.ALREADY_CHECKING to RemoteHashRecheckObservation.Checking,
+            Scenario.ALREADY_QUEUED to RemoteHashRecheckObservation.Queued,
+            Scenario.AUTH_EXPIRED to RemoteHashRecheckObservation.AuthenticationRequired,
+            Scenario.INVALID_PHASE to RemoteHashRecheckObservation.Unavailable,
             Scenario.WRONG_HASH to RemoteHashRecheckObservation.Changed,
             Scenario.WRONG_NAME to RemoteHashRecheckObservation.Changed,
             Scenario.WRONG_DIRECTORY to RemoteHashRecheckObservation.Changed,
+            Scenario.LATE_RENAME to RemoteHashRecheckObservation.Changed,
+            Scenario.LATE_MOVE to RemoteHashRecheckObservation.Changed,
             Scenario.INVALID_FLAG to RemoteHashRecheckObservation.Unavailable
         )
         for ((scenario, observation) in expected) {

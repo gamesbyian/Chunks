@@ -1068,6 +1068,12 @@ internal fun CombinedTransfersScreen(
                     sourcesByEnvironment[focusedKey.environment]
                         ?.canClaimCompleteLiveInventory != true
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    RemoteHashRecheckControl(
+                        remote = boundRemote, transfer = boundRow,
+                        aliasScope = owner.aliasScope,
+                        snapshotStale = operationsStale, mainView = owner.fullView,
+                        onMutationStarted = mutation.begin, onSettled = mutation.settled
+                    )
                     TransferSessionRemoveControl(
                         remote = boundRemote, transfer = boundRow,
                         snapshotStale = operationsStale,

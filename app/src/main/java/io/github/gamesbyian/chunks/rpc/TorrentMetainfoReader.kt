@@ -32,6 +32,28 @@ object TorrentMetainfoReader {
     private const val MAX_NODES = 100_000
     private const val MAX_DEPTH = 32
 
+    /**
+     * A NEW remote Add imports metainfo, not another client's resume settings.
+     * Match ruTorrent's ordinary new-Add behavior: drop only its top-level
+     * session/resume dictionaries (which can carry all-files-OFF priorities).
+     * Copy every retained entry verbatim, especially the original info bytes,
+     * trackers and private flag. The source document itself is never modified.
+     */
+    internal fun forNewRemoteAdd(bytes: ByteArray): ByteArray {
+        preview(bytes)
+        val reader = Reader(bytes)
+        reader.readRoot()
+        val omitted = setOf("rtorrent", "libtorrent_resume")
+        if (reader.rootEntries.keys.none { it in omitted }) return bytes.copyOf()
+        return java.io.ByteArrayOutputStream(bytes.size).apply {
+            write('d'.code)
+            reader.rootEntries.forEach { (key, range) ->
+                if (key !in omitted) write(bytes, range.first, range.last - range.first + 1)
+            }
+            write('e'.code)
+        }.toByteArray()
+    }
+
     fun preview(bytes: ByteArray): TorrentMetainfoPreview {
         require(bytes.isNotEmpty() && bytes.size <= MAX_BYTES) { "Torrent metadata must be at most 2 MiB" }
         val reader = Reader(bytes)
@@ -187,6 +209,7 @@ object TorrentMetainfoReader {
         var infoStart = -1
         var infoEnd = -1
         var nodes = 0
+        val rootEntries = LinkedHashMap<String, IntRange>()
         fun readRoot(): Map<String, Any> {
             val root = parse(0, true) as? Map<String, Any> ?: error("Torrent root is not a dictionary")
             require(index == source.size) { "Extra bytes after torrent metadata" }
@@ -225,6 +248,7 @@ object TorrentMetainfoReader {
                     index++
                     val values = LinkedHashMap<String, Any>()
                     while (index < source.size && source[index].toInt().toChar() != 'e') {
+                        val entryStart = index
                         val keyBytes = readBytes()
                         val key = keyBytes.toString(Charsets.UTF_8)
                         require(key !in values) { "Duplicate torrent dictionary key" }
@@ -235,6 +259,7 @@ object TorrentMetainfoReader {
                             infoEnd = index
                         }
                         values[key] = value
+                        if (root) rootEntries[key] = entryStart until index
                     }
                     require(index < source.size) { "Unterminated torrent dictionary" }
                     index++

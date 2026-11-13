@@ -80,7 +80,30 @@ internal object RuTorrentDeleteData {
 /** Accepted queue != verified remote file deletion. */
 sealed class RemoteDeleteDataOutcome {
     data object Unsupported : RemoteDeleteDataOutcome()
-    data object Refused : RemoteDeleteDataOutcome()
+    data class Refused(val reason: RemoteDeleteRefusal) : RemoteDeleteDataOutcome()
     data class QueuedForCleanup(val hash: String) : RemoteDeleteDataOutcome()
     data class Uncertain(val hash: String) : RemoteDeleteDataOutcome()
+}
+
+/** Fixed, privacy-safe diagnostics. Never include server text, paths or credentials. */
+enum class RemoteDeleteRefusal(val explanation: String) {
+    INVALID_REVIEW("The reviewed name or directory is invalid. Refresh this transfer."),
+    TARGET_CHANGED("The exact transfer's name or directory changed. Refresh and review it again."),
+    INVENTORY_UNAVAILABLE("The server session inventory could not be read. Check the connection and account permissions."),
+    INCOMPLETE_SESSION("Complete session coverage could not be confirmed: the view is filtered or its coverage getter is unavailable. Deletion cannot safely check for shared files."),
+    FILES_UNAVAILABLE("The exact payload file list could not be read. Check this transfer in ruTorrent."),
+    UNSAFE_FILES("The payload paths could not be safely validated. Inspect this transfer's files in ruTorrent."),
+    SHARED_FILES("Another server transfer shares these payload files, or its file mapping could not be verified."),
+    SESSION_CHANGED("The server jobs or file mappings changed during review. Refresh before a new review."),
+    AUTHENTICATION("The server rejected authentication or access. Reconnect this exact profile."),
+    PLUGIN_UNAVAILABLE("The ruTorrent erasedata endpoint is unavailable on this exact server route.")
+}
+
+enum class RemoteRemovalStage(val label: String) {
+    TARGET("Checking the reviewed transfer…"),
+    SESSION("Checking complete server session coverage…"),
+    FILES("Checking payload paths and shared files…"),
+    AUTHORIZATION("Checking access to this server's deletion plugin…"),
+    SUBMITTING("Sending the approved removal once…"),
+    VERIFYING("Checking exact server session after removal…")
 }

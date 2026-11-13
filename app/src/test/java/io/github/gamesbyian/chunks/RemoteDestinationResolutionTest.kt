@@ -11,6 +11,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
@@ -60,7 +62,7 @@ class RemoteDestinationResolutionTest {
     }
 
     private fun show(saved: androidx.compose.runtime.MutableState<String?>,
-                     destination: androidx.compose.runtime.MutableState<String>) {
+                     destination: androidx.compose.runtime.MutableState<String>, start: Boolean = true) {
         val remote = RTorrentRemote(RemoteCredentials(server.endpoint, "", ""))
         val account = remote.addAccountScope()
         val session = RemoteAddSession(account)
@@ -69,6 +71,7 @@ class RemoteDestinationResolutionTest {
                 onDestination = { destination.value = it }, onBack = {}, onComplete = {},
                 onMutationStarted = { true }, onMutationSettled = {},
                 finishInOrderScope = account, session = session,
+                addStartState = mutableStateOf(start),
                 savedDefaultPlace = saved.value,
                 onSaveDefaultPlace = { saved.value = it; true })
         } } }
@@ -76,7 +79,7 @@ class RemoteDestinationResolutionTest {
 
     private fun reveal(tag: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(tag))
 
-    @Test fun unsetServerDefaultNeedsOneChoiceThenTheSavedDefaultIsUsedWithoutTyping() {
+    @Test fun anExplicitSavedDefaultStillTakesPrecedenceOverAnUnknownNativeDefault() {
         server.directoryDefault = ""
         val saved = mutableStateOf<String?>(null)
         val destination = mutableStateOf("")
@@ -85,9 +88,9 @@ class RemoteDestinationResolutionTest {
             rule.onAllNodesWithText("rTorrent has no default download folder configured", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        // Add is visible but blocked only because no folder is knowable yet.
+        // Unknown default is an explicit native selection; optional means optional.
         reveal(ChunksSemantics.ADD_SUBMIT)
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
 
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Custom server folder (optional)"))
         rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/home/ian/torrents")
@@ -106,6 +109,132 @@ class RemoteDestinationResolutionTest {
             "/home/ian/torrents", server.jobs.getValue("c".repeat(40)).directory)
         assertTrue(server.calls.single { it.first.startsWith("load.") }.second
             .contains("d.directory.set=/home/ian/torrents"))
+    }
+
+    /** Behavioral + data-integrity: blank optional folder sends one native Add and verifies actual Place. */
+    @Test fun blankOptionalFolderSubmitsAtNativeDefaultWithoutInventingAnOverride() {
+        server.directoryDefault = ""
+        show(mutableStateOf(null), mutableStateOf(""))
+        reveal(ChunksSemantics.ADD_REMOTE_SAVE_TO)
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("actual folder must be confirmed after Add", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-native-default-unknown.png")
+        reveal(ChunksSemantics.ADD_SUBMIT)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled().performClick()
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Verified: added and started", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        val load = server.calls.single { it.first.startsWith("load.") }
+        assertEquals(2, load.second.size)
+        assertEquals("/home/user", server.jobs.getValue("c".repeat(40)).directory)
+        assertTrue(server.methods.contains("d.directory"))
+    }
+
+    /** Ordinary native magnet journey: the unknown payload Place cannot be certified until BEP9. */
+    @Test fun nativeMetadataWaitsForPayloadPlaceThenReadOnlyRecoveryConfirmsWithoutAnotherWrite() {
+        server.directoryDefault = ""
+        server.metadataPending = true
+        show(mutableStateOf(null), mutableStateOf(""))
+        reveal(ChunksSemantics.ADD_SUBMIT)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled().performClick()
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Waiting for magnet metadata. rTorrent reports this exact transfer active", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("Verified: added and started", substring = true).assertDoesNotExist()
+        rule.onNodeWithText("View verified transfer in rTorrent").assertDoesNotExist()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Waiting for magnet metadata.", substring = true))
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-native-metadata-pending.png")
+        val hash = "c".repeat(40)
+        assertTrue(server.jobs.getValue(hash).started)
+        server.metadataPending = false // independently supplied metadata, not another Add
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Check server state (read only)"))
+        rule.onNodeWithText("Check server state (read only)").performClick()
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Server now confirms this exact hash, destination and active engine.", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        assertEquals(1, server.loads().size)
+        assertTrue(server.methods.none { it in setOf("d.open", "d.start", "d.resume", "d.erase") })
+        assertEquals("/home/user", server.jobs.getValue(hash).directory)
+    }
+
+    @Test fun anExternallyStartedStoppedIntentKeepsItsMismatchInsteadOfHealthyStartGuidance() {
+        server.directoryDefault = ""
+        server.metadataPending = true
+        server.startStoppedLoads = true
+        show(mutableStateOf(null), mutableStateOf(""), start = false)
+        reveal(ChunksSemantics.ADD_SUBMIT)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Fetching magnet metadata.", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithText("The Add was not fully verified; no Start was sent.", substring = true).assertExists()
+        rule.onNodeWithText("Waiting for magnet metadata. rTorrent reports this exact transfer active", substring = true)
+            .assertDoesNotExist()
+        rule.onNodeWithText("View verified transfer in rTorrent").assertDoesNotExist()
+        assertEquals("load.verbose", server.loads().single())
+        assertTrue(server.methods.none { it in setOf("d.open", "d.start", "d.resume") })
+    }
+
+    @Test fun leavingDuringOptionalDiagnosisPreservesTheAlreadyRecordedEngineOutcomeAndLatch() {
+        server.directoryDefault = ""
+        server.metadataPending = true
+        val gate = java.util.concurrent.CountDownLatch(1)
+        server.diagnosticReplyGate = gate
+        val remote = RTorrentRemote(RemoteCredentials(server.endpoint, "", ""))
+        val account = remote.addAccountScope()
+        val draft = RemoteAddSession(account)
+        val showing = mutableStateOf(true)
+        var settled = 0
+        rule.setContent { ChunksTheme { Surface {
+            if (showing.value) VerifiedAddScreen(remote, magnet, "", {}, {}, {}, {},
+                onMutationStarted = { true }, onMutationSettled = { settled++ },
+                finishInOrderScope = account, session = draft)
+        } } }
+        try {
+            reveal(ChunksSemantics.ADD_SUBMIT)
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+            rule.waitUntil(15_000) { server.methods.contains("d.message") }
+            assertTrue(draft.submitting)
+            assertTrue(draft.outcome.orEmpty().startsWith("Start after Add was not verified."))
+            rule.runOnIdle { showing.value = false }
+            rule.waitForIdle() // commit disposal/cancellation before releasing the blocked HTTP read
+            gate.countDown()
+            rule.waitUntil(15_000) { settled == 1 }
+            assertTrue("Cancelling later read-only diagnosis must not replace a recorded engine outcome",
+                draft.outcome.orEmpty().startsWith("Start after Add was not verified."))
+            assertTrue(draft.alreadyAttempted)
+            assertTrue(draft.uncertain)
+            rule.runOnIdle { showing.value = true }
+            reveal(ChunksSemantics.ADD_REMOTE_SAVE_TO)
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
+            rule.onNodeWithText("View verified transfer in rTorrent").assertDoesNotExist()
+            assertEquals(1, server.loads().size)
+            assertTrue(server.methods.none { it in setOf("d.open", "d.start", "d.resume", "d.erase") })
+        } finally { gate.countDown() }
+    }
+
+    /** Behavioral/presentation: engine refusal reaches Add without a false success or repeated lifecycle command. */
+    @Test fun anUnopenedHashFailureExplainsStorageRecoveryOnTheActualAddResult() {
+        server.activationBlocked = true
+        show(mutableStateOf(null), mutableStateOf("/srv/blocked"))
+        reveal(ChunksSemantics.ADD_SUBMIT)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        rule.waitUntil(15_000) {
+            runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                hasText("could not open or hash-check", substring = true)) }.isSuccess
+        }
+        rule.onNodeWithText("Start, Stop and Recheck cannot repair unavailable storage", substring = true).assertExists()
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-add-storage-refusal.png")
+        assertEquals(1, server.loads().size)
+        assertTrue("Diagnosis must not repair/retry by issuing lifecycle writes",
+            server.methods.none { it in setOf("d.open", "d.start", "d.resume", "d.erase") })
     }
 
     @Test fun anAbsoluteServerDefaultIsUsedAndAnExplicitFolderIsNeverOverwrittenByLateDiscovery() {

@@ -173,6 +173,9 @@ internal class MainActivityRealMagnetJourney(
             try { if (condition()) return } catch (fault: RpcFault) {
                 if (!fault.isUnknownInfoHash()) throw fault
             }
+            // Advance app composition on the v2 rule's main dispatcher while
+            // waiting for independent engine state; never replay a mutation.
+            rule.waitForIdle()
             Thread.sleep(300)
         }
         fail("Required exact-server checkpoint missing: $what")
@@ -190,6 +193,7 @@ internal class MainActivityRealMagnetJourney(
                 if (transient is io.github.gamesbyian.chunks.rpc.RpcReplyTooLarge) throw transient
                 last = transient
                 android.util.Log.i("ChunksRealMagnet", "CHUNKS_READ_RETRY attempt=${attempt + 1} type=${transient.javaClass.simpleName}")
+                rule.waitForIdle()
                 Thread.sleep(1_000)
             }
         }
@@ -248,7 +252,9 @@ internal class MainActivityRealMagnetJourney(
         val before = beforeRows.map { it.hash.lowercase() }.toSet()
         val skippedSessions = mutableMapOf<String, Pair<String, RemoteTransfer?>>()
         val default = readOnly { remote.defaultDirectory() }
-        val parent = default ?: requireNotNull(runBlocking { corroboratedParent(remote, beforeRows) }) {
+        val parent = default ?: requireNotNull(runBlocking {
+            if (disposable) remote.call("system.cwd") as? String else corroboratedParent(remote, beforeRows)
+        }) {
             "No independently corroborated server Place; no Add allowed"
         }
         val groups = listOf((if (disposable && !publicDiscovery) listOf("magnet0") else emptyList()) +
@@ -299,7 +305,9 @@ internal class MainActivityRealMagnetJourney(
             }
             rule.waitUntil(30_000) { remoteAddShowing() }
         }
-        fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}) {
+        // Returns true only when an unknown native Place is waiting for BEP9.
+        // This is not permission to call the initial Add fully verified.
+        fun add(hash: String, label: String? = null, onSubmit: () -> Unit = {}): Boolean {
             report("chunks_real_add_app_stage", "add-open-requested")
             openRemoteAdd()
             report("chunks_real_add_app_stage", "add-open")
@@ -347,9 +355,15 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
                 runCatching { scroll("Custom server folder (optional)") }
-                visible("Using rTorrent default Place:") || visible("No usable default Place was reported.")
+                hasTag(ChunksSemantics.ADD_REMOTE_SAVE_TO)
             }
-            if (default == null) type("Custom server folder (optional)", parent)
+            if (default == null && !disposable) type("Custom server folder (optional)", parent)
+            if (disposable && default == null) {
+                assertEquals("Blank optional folder must remain a native-default selection", "",
+                    rule.onNodeWithText("Custom server folder (optional)").fetchSemanticsNode()
+                        .config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
+                report("chunks_real_add_app_stage", "native-default-ready")
+            }
             report("chunks_real_add_app_stage", "place-ready")
             if (disposable) {
                 val artworkChoice = "Automatically identify and fetch artwork & metadata"
@@ -381,10 +395,33 @@ internal class MainActivityRealMagnetJourney(
                     }.getOrDefault(false)
                 }
                 report("chunks_real_add_app_stage", "artwork-choice")
-                // This must remain present, reachable and actionable for
-                // EVERY Add; do not silently omit an opt-out after navigation.
-                rule.onNodeWithText(artworkChoice).performScrollTo()
-                rule.onNodeWithText(artworkChoice).assertIsEnabled().performClick()
+                // An acknowledged uncertain Add may retain the person's OFF
+                // draft choice. Select OFF explicitly rather than toggling it
+                // back ON on the next Add. A click is dispatched at most once,
+                // and the exact-scoped persisted exclusion is still required.
+                // Lazy disclosure children can be recycled between separate
+                // successful semantics lookups. Settle the complete read,
+                // including enabled/visible/toggle state, before choosing one
+                // click; retries here perform only reads and scrolling.
+                var choice: androidx.compose.ui.state.ToggleableState? = null
+                fun readReadyChoice(): Boolean = runCatching {
+                    scroll(artworkChoice)
+                    val node = rule.onNodeWithText(artworkChoice)
+                    node.assertIsEnabled().assertIsDisplayed()
+                    choice = node.fetchSemanticsNode()
+                        .config[androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]
+                    choice in setOf(androidx.compose.ui.state.ToggleableState.On,
+                        androidx.compose.ui.state.ToggleableState.Off)
+                }.getOrDefault(false)
+                rule.waitUntil(45_000) { readReadyChoice() }
+                when (choice) {
+                    androidx.compose.ui.state.ToggleableState.On -> click(artworkChoice)
+                    androidx.compose.ui.state.ToggleableState.Off -> Unit
+                    else -> fail("Remote Add artwork choice must have a definite state")
+                }
+                rule.waitUntil(45_000) {
+                    readReadyChoice() && choice == androidx.compose.ui.state.ToggleableState.Off
+                }
                 report("chunks_real_add_app_stage", "artwork-chosen")
             }
             // The source-first form has one explicit "Add transfer" submission action and no
@@ -416,7 +453,38 @@ internal class MainActivityRealMagnetJourney(
             rule.waitForIdle()
             rule.onNode(submit).performClick()
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
-            assertTrue("Actual app did not verify Add+Start", visible("Verified: added and started on rTorrent."))
+            // The outcome is published before optional diagnostic reads finish.
+            // Await the existing settlement-gated Back action before testing a
+            // settled result across navigation. Leaving during the optional
+            // diagnosis cancels that read but preserves a recorded engine result;
+            // the separate dispose/remount regression covers that boundary.
+            rule.waitUntil(60_000) {
+                runCatching {
+                    scroll("Back to transfers")
+                    rule.onNodeWithText("Back to transfers").assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+            }
+            scroll("Operation outcome")
+            val awaitingNativeMetadata = !visible("Verified: added and started on rTorrent.")
+            if (awaitingNativeMetadata) {
+                // The old absolute-folder fixture could certify the reviewed parent
+                // before BEP9. An unknown native default cannot certify a metadata
+                // scratch folder. Require that truthful pending result, the exact
+                // active placeholder, then supply metadata below before requiring
+                // the app's read-only Place/Start confirmation. Never resend Add.
+                assertTrue("Only the disposable unknown native Place may await metadata",
+                    disposable && default == null)
+                assertTrue("A pending native Place must remain explicitly unverified",
+                    visible("Start after Add was not verified.") ||
+                        visible("its payload folder and final Add result are not yet verified."))
+                val metadata = readOnly { remote.call("d.is_meta", listOf(hash)) }
+                if (!publicDiscovery) assertEquals(1L, metadata)
+                else assertTrue("Public metadata may resolve during the initial status read", metadata in setOf(0L, 1L))
+                assertEquals(1L, readOnly { remote.call("d.state", listOf(hash)) })
+                assertEquals(true, readOnly { remote.readActivity(hash).active })
+                report("chunks_real_add_app_stage", "native-place-awaits-metadata")
+            }
             if (disposable) {
                 val key = io.github.gamesbyian.chunks.media.MediaTransferKey.of(
                     io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
@@ -427,12 +495,21 @@ internal class MainActivityRealMagnetJourney(
                             "media/automation.json")).isExcluded(key))
             }
             // Exercise the production app owner, not a directly composed form:
-            // leaving/reopening must retain the exact verified result and latch.
+            // leaving/reopening must retain the exact outcome and submission latch.
             clickTag(ChunksSemantics.FOOTER_TRANSFERS)
             waitTransfersCatalog()
             openRemoteAdd()
-            scroll("View verified transfer in rTorrent")
-            rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
+            if (awaitingNativeMetadata) {
+                scroll("Operation outcome")
+                assertTrue("Returning must retain the truthful pending native Place",
+                    visible("Start after Add was not verified.") ||
+                        visible("its payload folder and final Add result are not yet verified.") ||
+                        visible("Metadata is available. Check server state below"))
+                rule.onNodeWithText("View verified transfer in rTorrent").assertDoesNotExist()
+            } else {
+                scroll("View verified transfer in rTorrent")
+                rule.onNodeWithText("View verified transfer in rTorrent").assertExists()
+            }
             assertTrue("Returning to Add must retain the submitted latch, even outside the viewport",
                 runCatching {
                     rule.onNode(hasScrollToIndexAction())
@@ -454,6 +531,7 @@ internal class MainActivityRealMagnetJourney(
                     })
             }
             report("chunks_real_add_app_stage", "add-registered")
+            return awaitingNativeMetadata
         }
         fun refreshAndFind(hash: String) {
             // Footer Transfers is the one canonical list; searching an exact hash narrows it
@@ -521,6 +599,7 @@ internal class MainActivityRealMagnetJourney(
         // chain once per installed journey. Separate two-server coverage also
         // checks identity collisions on different authenticated accounts.
         var combinedDetailsVerified = false
+        var recheckVerified = false
         fun inspectCombinedDetails(hash: String, displayName: String, expectedPlace: String) {
             val original = requireNotNull(row(hash))
             val originalHashes = readOnly { remote.listTransfers("main").map { it.hash.lowercase() }.toSet() }
@@ -580,11 +659,11 @@ internal class MainActivityRealMagnetJourney(
             var removed = false
             var cleanupAttempted = false
             try {
-                add(hash, label) { submitted = true }
-                verifiedAdded = true
-                stage(label, "ui-verified")
+                val awaitingNativeMetadata = add(hash, label) { submitted = true }
+                verifiedAdded = !awaitingNativeMetadata
                 val placeholder = requireNotNull(row(hash))
-                assertTrue(placeholder.directory in setOf(parent, "$parent/${preview.name}"))
+                if (!awaitingNativeMetadata)
+                    assertTrue(placeholder.directory in setOf(parent, "$parent/${preview.name}"))
                 val initialMetaFlag = (readOnly { remote.call("d.is_meta", listOf(hash)) } as Number).toInt()
                 require(initialMetaFlag == 0 || initialMetaFlag == 1) { "Invalid exact metadata state" }
                 if (!publicDiscovery) {
@@ -619,6 +698,23 @@ internal class MainActivityRealMagnetJourney(
                         (readOnly { remote.call("d.is_meta", listOf(hash)) } as Number).toInt() == 0
                 }
                 stage(label, "metadata")
+                if (awaitingNativeMetadata) {
+                    // Exact metadata and actual absolute payload Place now exist.
+                    // Reconcile through the production read-only control, retaining
+                    // its truthful distinction between observed state and Add origin.
+                    val resolved = requireNotNull(row(hash))
+                    assertTrue("Native payload Place must resolve to this disposable server's CWD",
+                        resolved.directory in setOf(parent, "$parent/${preview.name}"))
+                    click("Check server state (read only)")
+                    rule.waitUntil(60_000) {
+                        runCatching { scroll("Operation outcome") }
+                        visible("Server now confirms this exact hash, destination and active engine.")
+                    }
+                    assertTrue("Read-only recovery must not claim attribution after an incomplete Add result",
+                        visible("No Start or Add was resent."))
+                    verifiedAdded = true
+                }
+                stage(label, "ui-verified")
                 class PrecompletedFixture : RuntimeException()
                 fun rejectPrecompleted(sample: RemoteTrafficSample) {
                     if (sample.expectedBytes == preview.sizeBytes && preview.sizeBytes > 0 &&
@@ -717,6 +813,33 @@ internal class MainActivityRealMagnetJourney(
                 assertEquals("Stop altered reviewed remote Place", payload.directory, stoppedRow.directory)
                 assertEquals("Stop altered registered transfer name", preview.name, stoppedRow.name)
                 stage(label, "stopped")
+                if (disposable && !recheckVerified) {
+                    refreshAndFind(hash)
+                    openDetails(hash)
+                    click("Recheck files")
+                    rule.waitUntil(60_000) {
+                        visible("Recheck acknowledged; checking was not observed.") ||
+                            visible("Hash checking observed for this exact transfer.") ||
+                            visible("The server reported this exact transfer already checking.") ||
+                            visible("The server reported a pending hash check for this exact transfer.")
+                    }
+                    // Neither scheduling nor an idle sample proves files intact.
+                    // Independently wait for both the queue and checking flags,
+                    // keeping the original exact stopped job and Place throughout.
+                    await(90, "exact stopped Recheck settles without starting the transfer") {
+                        val checked = row(hash)
+                        checked?.name == preview.name && checked.directory == payload.directory &&
+                            !checked.started && readOnly { remote.readActivity(hash).active } == false &&
+                            readOnly { remote.call("d.hashing", listOf(hash)) } == 0L &&
+                            readOnly { remote.call("d.is_hash_checking", listOf(hash)) } == 0L
+                    }
+                    click("Check Recheck status (read-only)")
+                    rule.waitUntil(30_000) {
+                        visible("This does not prove the request completed or that files are intact.")
+                    }
+                    assertFalse("A read-only status check cannot start the transfer", requireNotNull(row(hash)).started)
+                    recheckVerified = true
+                }
                 val stopped = readOnly { remote.readTrafficSample(hash) }
                 lifecycle(hash, true)
                 // A successful Start readback cannot justify silently moving
@@ -778,6 +901,7 @@ internal class MainActivityRealMagnetJourney(
           assertTrue("All genuine candidates in a publisher group were unavailable or precompleted", groupPassed)
         }
         assertTrue("No real added rTorrent job completed Combined Details acceptance", combinedDetailsVerified)
+        if (disposable) assertTrue("No actual disposable candidate exercised canonical Recheck", recheckVerified)
         val run = requireNotNull(arg("chunks_acceptance_run"))
         require(run.matches(Regex("[0-9]{5,20}")))
         val negative = MessageDigest.getInstance("SHA-1").digest("chunks-peerless-$run".toByteArray())

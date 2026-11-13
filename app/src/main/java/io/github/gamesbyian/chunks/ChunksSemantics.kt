@@ -44,6 +44,8 @@ internal object ChunksSemantics {
     const val DETAILS_LOCAL_REMOVE_DATA = "chunks.details.local.remove-data"
     const val DETAILS_LOCAL_OUTCOME = "chunks.details.local.outcome"
     const val DETAILS_LOCAL_TRACKERS = "chunks.details.local.trackers"
+    const val DETAILS_REMOTE_RECHECK = "chunks.details.remote.recheck"
+    const val REMOTE_RECHECK_STATUS = "chunks.remote.recheck.status"
     const val ADD_START_PREFERENCE = "chunks.add.start-preference"
     /** Inline Add-to choice for this device. Selected state is a Compose semantic. */
     const val ADD_TARGET_DEVICE = "chunks.add.target.device"
@@ -57,6 +59,8 @@ internal object ChunksSemantics {
     const val ADD_REMOTE_SAVE_TO = "chunks.add.remote.saveTo"
     /** Remote Add "Always use this folder on this server" (saved per-account default). */
     const val ADD_REMOTE_SAVE_DEFAULT = "chunks.add.remote.saveDefault"
+    /** Observable pending/settled state for the existing exact-server removal control. */
+    const val REMOTE_REMOVAL_STATUS = "chunks.remote.removal.status"
 
     /** The canonical Transfers list title. It also hosts the first-install Welcome. */
     const val TRANSFERS_HEADING = "chunks.transfers.heading"

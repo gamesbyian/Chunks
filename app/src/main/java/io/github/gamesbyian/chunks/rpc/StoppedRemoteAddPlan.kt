@@ -10,7 +10,7 @@ class StoppedRemoteAddPlan private constructor(
     val expectedInfoHash: String,
     val destination: String,
     val kind: Kind,
-    /** True means omit d.directory.set after re-reading this server default. */
+    /** True means omit d.directory.set. Empty destination means a native default not yet observed. */
     val useServerDefault: Boolean = false
 ) {
     enum class Kind { MAGNET, ARCHIVE_TORRENT_URL }
@@ -30,7 +30,7 @@ class StoppedRemoteAddPlan private constructor(
             return path
         }
 
-        fun fromMagnet(magnet: String, destination: String): StoppedRemoteAddPlan {
+        private fun magnetIdentity(magnet: String): String {
             require(magnet.startsWith("magnet:?", ignoreCase = true) && magnet.length <= 8192 &&
                 magnet.none { it.code < 32 }) { "Expected a bounded magnet link" }
             val xt = magnet.substringAfter('?').split('&')
@@ -42,19 +42,24 @@ class StoppedRemoteAddPlan private constructor(
             require(xt.size == 1) { "Use exactly one v1 magnet identity" }
             val hash = xt.single().substring(9)
             require(hashPattern.matches(hash)) { "Only 40-character v1 info hashes supported" }
-            return StoppedRemoteAddPlan(magnet, hash.lowercase(Locale.ROOT),
-                validatePath(destination), Kind.MAGNET)
+            return hash.lowercase(Locale.ROOT)
         }
+
+        fun fromMagnet(magnet: String, destination: String): StoppedRemoteAddPlan =
+            StoppedRemoteAddPlan(magnet, magnetIdentity(magnet), validatePath(destination), Kind.MAGNET)
 
         /**
          * Leave the server's configured destination untouched. The observed
-         * default must still be a concrete valid absolute parent for exact
-         * post-Add readback; the remote adapter rechecks it before writing.
+         * default, when available, is frozen and rechecked before writing.
+         * Empty explicitly selects the native default without inventing a path;
+         * exact-session readback must discover the actual payload directory.
          */
-        fun fromMagnetAtServerDefault(magnet: String, observedDefault: String): StoppedRemoteAddPlan {
-            val validated = fromMagnet(magnet, observedDefault)
-            return StoppedRemoteAddPlan(validated.source, validated.expectedInfoHash,
-                validated.destination, validated.kind, useServerDefault = true)
+        fun fromMagnetAtServerDefault(magnet: String, observedDefault: String = ""): StoppedRemoteAddPlan {
+            require(observedDefault.isEmpty() || RuTorrentDeleteData.safeDirectory(observedDefault, allowRoot = true)) {
+                "Invalid observed server default"
+            }
+            return StoppedRemoteAddPlan(magnet, magnetIdentity(magnet),
+                observedDefault, Kind.MAGNET, useServerDefault = true)
         }
 
         /** The expected hash MUST come from validated fixture metainfo, never a filename. */

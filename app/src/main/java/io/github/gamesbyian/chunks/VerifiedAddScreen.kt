@@ -175,23 +175,29 @@ internal fun VerifiedAddScreen(
     // the exact-account session above navigation and reauthentication.
     val attemptedTicket = draft.attemptTicket
     var observedProgress by draft::observedProgress
-    var progressReadFailed by remember { mutableStateOf(false) }
+    var progressReadFailed by remember(remote, attemptedTicket) { mutableStateOf(false) }
+    var progressReading by remember(remote, attemptedTicket) { mutableStateOf(attemptedTicket != null) }
     var progressRevision by remember { mutableStateOf(0) }
     LaunchedEffect(remote, attemptedTicket, outcome, progressRevision) {
-        val ticket = attemptedTicket ?: return@LaunchedEffect
+        val ticket = attemptedTicket ?: run { progressReading = false; return@LaunchedEffect }
         // A freshly authorized ticket is not yet proof that any Add RPC was
         // attempted. Source-policy or artwork opt-out can still refuse it
         // before the wire. Do not probe remote job progress until the engine
         // adapter has returned a result, including an ambiguous result.
-        if (outcome == null || !draft.alreadyAttempted) return@LaunchedEffect
+        if (outcome == null || !draft.alreadyAttempted) {
+            progressReading = false
+            return@LaunchedEffect
+        }
         // A session-owned prior read is historical until this exact screen/account
         // obtains another positive result. Never show cached bytes as current
         // during the initial request or a reconnect.
-        progressReadFailed = true
+        progressReading = true
+        progressReadFailed = false
         pollRemoteAddReadOnlyProgress(
             read = { RemoteUniversalAddAdapter(remote).progress(ticket) },
             onFresh = { progress ->
                 observedProgress = progress
+                progressReading = false
                 progressReadFailed = false
             },
             onReadError = {
@@ -199,6 +205,7 @@ internal fun VerifiedAddScreen(
                 // observation loop while the independently registered job runs.
                 // Never replay Add/Start or claim current payload from a stale sample.
                 progressReadFailed = true
+                progressReading = false
             }
         )
     }
@@ -375,14 +382,10 @@ internal fun VerifiedAddScreen(
     var addGuidance = when {
         sourceText.isBlank() && !useFile -> "Add a magnet or torrent link, or open a .torrent, to continue."
         linkNeedsFetch -> "Get the .torrent from this link first (Get torrent from link above)."
-        useServerDefault && !defaultReadComplete -> "Checking the server's default download folder…"
-        useServerDefault && configuredDefault == null ->
-            "Choose a server folder below to continue. " + remoteDefaultUnavailableReason(defaultReport)
         else -> "Enter a valid v1 magnet or select a .torrent file. The Place override is optional."
     }
     val plan = try {
-        if (useServerDefault && (!defaultReadComplete || configuredDefault == null)) null
-        else {
+        run {
             val link = if (useFile && selectedTorrent != null && selectedBytes != null)
                 "magnet:?xt=urn:btih:" + selectedTorrent!!.infoHashV1
             else (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: sourceText
@@ -593,11 +596,12 @@ internal fun VerifiedAddScreen(
                     "Using a custom folder for this Add only. The server's configured default remains unchanged."
                 usingSavedDefault ->
                     "Using this server's saved default folder: " + savedDefaultPlace + "."
-                !defaultReadComplete -> "Reading rTorrent's configured default Place…"
+                !defaultReadComplete -> "Using the server default. Reading its folder; Add remains available."
                 configuredDefault != null ->
                     "Using rTorrent default Place: " + configuredDefault + ". No directory override will be sent."
                 else ->
-                    "No usable default Place was reported. " + remoteDefaultUnavailableReason(defaultReport)
+                    "Using the server default without a folder override. " + remoteDefaultUnavailableReason(defaultReport) +
+                        " The actual folder must be confirmed after Add."
             }, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
             if (destination.isBlank() && savedDefaultPlace == null && defaultReport is
@@ -639,9 +643,11 @@ internal fun VerifiedAddScreen(
 
         if (!alreadyAttempted && plan != null) item {
             Text("Infohash: " + plan.expectedInfoHash, style = MaterialTheme.typography.bodySmall)
-            Text("Destination: " + plan.destination +
-                if (plan.useServerDefault) " (server default; no directory override)"
-                else " (custom parent folder)", style = MaterialTheme.typography.bodySmall)
+            Text("Destination: " + when {
+                plan.destination.isEmpty() -> "Server default; actual folder checked after Add."
+                plan.useServerDefault -> plan.destination + " (server default; no directory override)"
+                else -> plan.destination + " (custom parent folder)"
+            }, style = MaterialTheme.typography.bodySmall)
             // Restored from the former confirmation card: the one-click Add must still warn,
             // before submission, that a trackerless source can only find peers by DHT/web seeds.
             val trackers = if (useFile) selectedTorrent?.trackerCount ?: 0
@@ -796,6 +802,7 @@ internal fun VerifiedAddScreen(
                             draft.frozenAlias = aliasAtClick
                             val artworkEnvironment = ticket.intent.target.environment
                             scope.launch {
+                                var engineOutcomeRecorded = false
                                 try {
                                     if (!allowArtwork && withContext(Dispatchers.IO) {
                                         artworkEnvironment == null || mediaController?.prepareForAdd(
@@ -876,6 +883,18 @@ internal fun VerifiedAddScreen(
                                                 "Add uncertain; no Start was sent. Check the server before another operation."
                                         }
                                     }
+                                    engineOutcomeRecorded = true
+                                    if (result is RemoteAddAndStart.StartNotVerified) {
+                                        // One exact-hash READ-ONLY diagnosis, never a remedial Start/Add.
+                                        // The inspector returns fixed categories, not private d.message text.
+                                        try {
+                                            val diagnosis = io.github.gamesbyian.chunks.rpc.RemoteStallInspector.inspect(
+                                                remote, plan.expectedInfoHash)
+                                            outcome = outcome.orEmpty() + " " + diagnosis.explanation()
+                                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) { /* Keep the original uncertain result. */ }
+                                    }
                                     orderNote?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (!plan.useServerDefault &&
                                         verifiedCustomPlaceOutcome(result, priorityBeforeStart = orderScope != null)) {
@@ -894,9 +913,15 @@ internal fun VerifiedAddScreen(
                                     uncertain = false
                                     outcome = "The server refused the Add preflight before any write. Reconnect or refresh and review again. Nothing was added."
                                 } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                    draft.coordinator.requireReadback(ticket)
-                                    uncertain = true
-                                    outcome = "Add was interrupted; inspect the exact server state. No retry was sent."
+                                    // Navigating away during the optional read-only
+                                    // diagnosis does not invalidate the engine result
+                                    // already recorded above. Cancellation before
+                                    // that point still requires uncertain recovery.
+                                    if (!engineOutcomeRecorded) {
+                                        draft.coordinator.requireReadback(ticket)
+                                        uncertain = true
+                                        outcome = "Add was interrupted; inspect the exact server state. No retry was sent."
+                                    }
                                     throw cancel
                                 } catch (_: Exception) {
                                     draft.coordinator.requireReadback(ticket)
@@ -931,14 +956,30 @@ internal fun VerifiedAddScreen(
         }
         if (outcome != null) {
             item {
+                // A fresh active metadata session is ordinary progress. The
+                // native payload Place still needs read-only confirmation,
+                // so retain the uncertain-write fence without presenting a
+                // healthy metadata wait as a storage/Start failure.
+                val nativePlaceAwaitingConfirmation = uncertain &&
+                    attemptedTicket?.intent?.startWhenAdded == true &&
+                    attemptedTicket?.intent?.place is UniversalAddPlace.ServerDefault &&
+                    (attemptedTicket?.intent?.place as? UniversalAddPlace.ServerDefault)
+                        ?.observedDefaultPath?.isEmpty() == true &&
+                    observedProgress?.registered == true && observedProgress?.started == true &&
+                    observedProgress?.traffic?.active == true &&
+                    observedProgress?.metadataPending != null && !progressReading && !progressReadFailed
                 Card(colors = CardDefaults.cardColors(containerColor =
-                    if (uncertain) MaterialTheme.colorScheme.errorContainer
+                    if (uncertain && !nativePlaceAwaitingConfirmation) MaterialTheme.colorScheme.errorContainer
                     else MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Text("Operation outcome", fontWeight = FontWeight.Bold)
-                        Text(outcome.orEmpty())
+                        Text(if (nativePlaceAwaitingConfirmation) {
+                            if (observedProgress?.metadataPending == true)
+                                "Waiting for magnet metadata. rTorrent reports this exact transfer active; its payload folder and final Add result are not yet verified. No Add or Start will be repeated."
+                            else "Metadata is available. Check server state below to confirm the actual payload folder and requested Start. No Add or Start will be repeated."
+                        } else outcome.orEmpty())
                         observedProgress?.let { progress ->
-                            if (progressReadFailed) {
+                            if (progressReading || progressReadFailed) {
                                 Text("Last observed (not current): " + progress.summary())
                             } else {
                                 Text(progress.summary())
@@ -948,7 +989,8 @@ internal fun VerifiedAddScreen(
                                     Text("Payload: ${Units.bytes(verified)} verified of ${Units.bytes(total)}")
                             }
                         }
-                        if (progressReadFailed) Text(
+                        if (progressReading) Text("Reading exact transfer status…")
+                        else if (progressReadFailed) Text(
                             "Transfer status could not be refreshed. Check the server state before another action.")
                     }
                 }
@@ -1236,20 +1278,19 @@ internal fun RemoteDefaultPlaceResetControl(
     ) { Text(label) }
 }
 
-/** Why no default folder can be used, distinguishing unset, relative, unsupported and failed. */
+/** Explain an unknown preview without making the optional override mandatory. */
 internal fun remoteDefaultUnavailableReason(
     report: io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport?
 ): String = when (report) {
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unset ->
-        "rTorrent has no default download folder configured. Choose a folder once and tap " +
-            "\"Always use this folder on this server\"."
+        "rTorrent has no default download folder configured; its native working directory will be used."
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.NotAbsolute ->
-        "rTorrent's default folder is a relative path, so Chunks cannot confirm where files would go. Choose an absolute folder."
+        "rTorrent reports a relative default folder; its server working directory must also be observed."
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unsupported ->
-        "This rTorrent does not report a default download folder. Choose a folder."
+        "This rTorrent does not expose its default-folder getter."
     is io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed ->
-        "The server's default folder could not be read (connection or permission). Check again, or choose a folder."
-    else -> "Choose an absolute server folder."
+        "The server's default folder could not be read (connection or permission). You can check again."
+    else -> "The server's default folder has not yet been observed."
 }
 
 /** Scope stays visible before someone chooses a magnet, file or destination. */

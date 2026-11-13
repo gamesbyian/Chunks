@@ -143,3 +143,32 @@ not proof of absence. Feral's account segment is not necessarily its
 HTTP authentication username. Pasted numbered `/rutorrent2/` or
 `/rutorrent3/` must never be replaced by `/rutorrent/` just to obtain
 a successful response.
+## Native defaults and removal coverage (#1679, November 13, 2026)
+
+New remote Adds follow ruTorrent's native `load.start` / `load.raw_start` lifecycle.
+Imported top-level `rtorrent` and `libtorrent_resume` state is removed for a NEW
+metainfo Add, matching ruTorrent; original info bytes, trackers and source
+files remain unchanged. No lifecycle workaround or blind mutation retry is added.
+
+An unreadable default getter does not prevent an explicitly selected native-default
+Add. The eventual payload directory must be observed under exact hash guards;
+magnet scratch directories do not qualify. Legacy relative roots such as `.`
+require a stable server `system.cwd` to become absolute observations. An inventory
+shares one CWD read pair; an unavailable getter leaves readable unresolved rows.
+Session-only removal can compare an exact raw root without acquiring file authority.
+
+Remove + data checks both main/default coverage, including
+`view.size_not_visible`, and shared payload paths before one non-force erasedata
+request. A queued cleanup response and exact session absence do not prove that
+physical bytes have been deleted; independent filesystem/collector proof is separate.
+
+**Compatibility limitation:** modern rTorrent's untrusted RPC mode does not mark
+`system.cwd` or `view.size_not_visible` safe, and the pinned ruTorrent proxy may
+forward them untrusted. An exact method-scoped CWD denial preserves unresolved
+inventory. Unprovable complete coverage refuses data deletion with a fixed reason.
+Upstream `download_list` and `d.multicall.filtered` both iterate only visible view
+entries; they cannot supply a safe complete-session fallback when that coverage
+getter is denied. No command-expression or trust-mode bypass is introduced.
+Legacy/direct-SCGI evidence does not qualify modern ruTorrent for these capabilities.
+See [QUALITY-LEDGER](QUALITY-LEDGER.md) for source-bound campaign evidence; installed,
+protected-host and physical acceptance must be reported separately.

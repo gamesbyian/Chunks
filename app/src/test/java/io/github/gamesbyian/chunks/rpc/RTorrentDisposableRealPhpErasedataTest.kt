@@ -34,7 +34,7 @@ class RTorrentDisposableRealPhpErasedataTest {
         assertEquals("chunks-erasedata-adapter-positive.bin", matching!!.name)
         assertEquals(destination, matching.directory)
         assertEquals("A mismatched review cannot delete an existing server job",
-            RemoteDeleteDataOutcome.Refused,
+            RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.TARGET_CHANGED),
             rtorrent.removeWithDataViaRuTorrent(hash, "different name", destination))
         assertNotNull("A refused mutation must leave the exact session intact",
             rtorrent.lookupName(hash))
