@@ -1,5 +1,16 @@
 # rTorrent read/write compatibility proof matrix
 
+## Planned directory browser capability matrix (not test evidence)
+
+| Server/route | List real folders | Create new folder | Required proof |
+| --- | --- | --- | --- |
+| rTorrent XML-RPC alone | **Unknown/unsupported by default**; `directory.default` and `d.directory` are not list APIs | **Unsupported until independently proven safe typed operation** | Do not enable generic `execute.*` merely because method is advertised |
+| Exact authenticated ruTorrent `_getdir` plugin | Candidate for **browse only**, per-instance version and principal verification | **Not implied by `_getdir`** | Same-origin exact tenant, bounded response, authorized allowed root, real readable folders |
+| Narrow authorized server-side directory provider | Candidate | Candidate if separately implemented/authorized | Server-enforced root, symlink-resistant read/write, distinct method permissions, readback after mkdir |
+| No/blocked plugin, offline, 401/403 | Manual-only (truthful error) | Disabled | Preserve existing Add and editable path; no cross-profile fallback |
+
+The documented development Seedhost's empty `directory.default` remains an unresolved automatic default, **not** directory-browser evidence. Never infer browse/mkdir from a successful torrent Add or advertised RPC method. [Canonical spec](REMOTE-DIRECTORY-BROWSER.md); [issue #1680](https://github.com/gamesbyian/Chunks/issues/1680).
+
 ## Pending 0C exact-session Add readback outside main view (2026-11-01)
 
 The existing production `reconcileStoppedAdd` could return Pending indefinitely

@@ -45,6 +45,10 @@ This is a semantic contract, **not** a mandate to add seven methods or create pa
 
 Keep the local device-local backend as another environment in the same observation/query/rules architecture while preserving its distinct native engine lifecycle and filesystem grants. The same shared Add/Details/Transfers/Options presentation must work in local-only, remote-only, Combined and no-profile states.
 
+## Remote directory provider extension (planned, rTorrent first)
+
+A profile may independently support `directory.list` and `directory.createChild`; absence must not break Add, defaults or ordinary remote torrent controls. Expose an exact-profile, typed `RemoteDirectoryProvider` returning server-verified canonical parent/root/child directory entries and permission/provenance, with bounded pages and response-generation fencing. Route ruTorrent `_getdir` only when that exact authenticated instance/tenant's plugin is proven accessible; it is separate from XML-RPC and generally **does not prove** folder creation. For create, require a separate narrowly authorized typed provider, server-side root/symlink containment, one-child validation, fresh read-only postcondition and uncertain-write reconciliation. `execute.*` and shell command execution are prohibited as automatic browse/mkdir fallbacks. Unknown/unsupported modes retain manual absolute path entry and the original per-profile default resolver. [Canonical feature contract](REMOTE-DIRECTORY-BROWSER.md), [design](design/REMOTE-DIRECTORY-BROWSER.md) and [#1680](https://github.com/gamesbyian/Chunks/issues/1680).
+
 ## Initial protocol and compatibility research matrix
 
 These are **investigation targets, not claims of shipped support**. Version ranges must be pinned by tests before advertising compatibility.

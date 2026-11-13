@@ -170,6 +170,8 @@ Opening a `.torrent` file, sharing it to Chunks, or pasting a magnet link must l
 
 ### 2a. Additional destination controls
 
+**Remote directory navigation (owner-approved, planned):** **Save to → Change** on an authenticated rTorrent profile opens actual server-backed folders, with **New folder** only where that server independently permits safe creation. A real directory picker must not become an Add prerequisite; an empty optional custom-folder field is valid whenever the exact account's effective absolute default is valid. Preserve the existing per-Add override > per-account saved default > absolute rTorrent `directory.default` precedence, independent manual-path fallback, one Add submission, and no automatically created server folder. Detailed [feature specification](REMOTE-DIRECTORY-BROWSER.md) and [screen design](design/REMOTE-DIRECTORY-BROWSER.md); [issue #1680](https://github.com/gamesbyian/Chunks/issues/1680).
+
 Start/Add prominently shows the current default destination and an optional Change action; users need not select a folder to proceed when the default is valid. Show device/server and full human-readable destination, with recent/favorite folders and a new-folder action only when supported. Validate destination scope, permissions and collisions before submission; show pending/unknown server response honestly. The action is not complete merely because an RPC returned success.
 
 ### 3. Move any time it can be done safely
