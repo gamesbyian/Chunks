@@ -110,3 +110,56 @@ class ForeignPartialAddPlanTest {
         assertEquals(3L * pieceSize, verified)
     }
 }
+
+/** Start-time recovery for an already registered stopped job. */
+class ForeignPartialStartRecoveryTest {
+    @get:Rule val temp = TemporaryFolder()
+    private val engines = ArrayList<LocalTorrentEngine>()
+    @Before fun native() = DesktopLibtorrent.ensureLoaded()
+    @After fun stop() { engines.forEach { it.close() } }
+    private val pieceSize = 64 * 1024
+    private val data = ByteArray(640 * 1024).also { Random(5).nextBytes(it) }
+
+    private fun setup(): Triple<LocalTorrentEngine, String, File> {
+        val root = File(temp.newFolder("src"), "Film").apply { mkdirs() }
+        File(root, "film.mkv").writeBytes(data)
+        val t = TorrentBuilder().path(root).pieceSize(pieceSize).generate().entry().bencode()
+        val dest = temp.newFolder("dest")
+        val engine = LocalTorrentEngine(LocalEngineConfig(listenInterfaces = "127.0.0.1:0")).also { it.start(); engines += it }
+        val hash = (engine.addStoppedChecked(t, dest) as LocalAddResult.AddedStopped).status.infoHash
+        return Triple(engine, hash, dest)
+    }
+
+    @Test fun stoppedJobAdoptsReviewedPartialStaysStoppedAndVerifiesOnStart() {
+        val (engine, hash, dest) = setup()
+        assertNull("Nothing to offer before another client's file exists", engine.foreignPartialOffer(hash))
+        File(dest, "Film").mkdirs()
+        File(dest, "Film/film.mkv.part").writeBytes(data.copyOf(5 * pieceSize))
+        val offer = requireNotNull(engine.foreignPartialOffer(hash))
+        assertEquals(listOf("Film/film.mkv"), offer.reusable.map { it.declaredPath })
+        assertTrue(File(dest, "Film/film.mkv.part").isFile) // the offer is read-only
+        val adoption = engine.adoptForeignPartialsForStart(hash, offer)
+        assertTrue(adoption.toString(), adoption is ForeignPartialAddPlan.Adoption.Renamed)
+        assertTrue(File(dest, "Film/film.mkv").isFile)
+        Thread.sleep(500)
+        val queued = requireNotNull(engine.status(hash))
+        assertTrue("Adoption never starts the transfer", queued.stopped)
+        assertEquals("No piece is claimed before the check runs", 0L, queued.doneBytes)
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(hash).outcome)
+        val end = System.currentTimeMillis() + 60_000
+        while (System.currentTimeMillis() < end && engine.status(hash)?.doneBytes != 5L * pieceSize) Thread.sleep(100)
+        assertEquals(5L * pieceSize, engine.status(hash)?.doneBytes)
+        assertEquals(0L, engine.status(hash)?.payloadDownloadedBytes)
+    }
+
+    @Test fun runningJobIsNeverOfferedOrRenamed() {
+        val (engine, hash, dest) = setup()
+        File(dest, "Film").mkdirs()
+        File(dest, "Film/film.mkv.!qB").writeBytes(data.copyOf(pieceSize))
+        val offer = requireNotNull(engine.foreignPartialOffer(hash))
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(hash).outcome)
+        assertNull(engine.foreignPartialOffer(hash))
+        assertTrue(engine.adoptForeignPartialsForStart(hash, offer) is ForeignPartialAddPlan.Adoption.Refused)
+        assertTrue(File(dest, "Film/film.mkv.!qB").isFile)
+    }
+}

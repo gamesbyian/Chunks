@@ -32,6 +32,8 @@ internal object ChunksSemantics {
     const val ADD_SUBMIT = "chunks.add.submit"
     const val ADD_FOREIGN_PARTIAL = "chunks.add.foreign_partial"
     const val ADD_FOREIGN_PARTIAL_REUSE = "chunks.add.foreign_partial.reuse"
+    const val DETAILS_FOREIGN_PARTIAL = "chunks.details.foreign_partial"
+    const val DETAILS_FOREIGN_PARTIAL_REUSE = "chunks.details.foreign_partial.reuse"
     const val ADD_START_PREFERENCE = "chunks.add.start-preference"
     /** Inline Add-to choice for this device. Selected state is a Compose semantic. */
     const val ADD_TARGET_DEVICE = "chunks.add.target.device"

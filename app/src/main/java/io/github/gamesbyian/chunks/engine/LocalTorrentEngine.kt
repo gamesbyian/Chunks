@@ -977,6 +977,55 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
+    /** Declared non-pad payload paths of a stopped job with metadata, with its save folder. */
+    private fun stoppedJobLayout(key: String): Pair<File, List<String>>? {
+        val handle = handles[key]?.takeIf { started && it.isValid } ?: return null
+        val status = handle.status(TorrentHandle.QUERY_NAME)
+        if (!status.flags().and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero() || !status.hasMetadata()) return null
+        val info = handle.torrentFile() ?: return null
+        val files = info.files()
+        val count = files.numFiles()
+        if (!LocalPayloadCollisionSurvey.supportsNativeFileCount(count)) return null
+        return File(handle.savePath()) to (0 until count).filterNot { files.padFileAt(it) }.map { files.filePath(it) }
+    }
+
+    /**
+     * Read-only: other clients' partial files beside a STOPPED job's declared names
+     * (FOREIGN-PARTIAL-TORRENT-RECOVERY P1). Covers a magnet once its metadata arrived.
+     */
+    internal fun foreignPartialOffer(infoHash: String): ForeignPartialAddPlan.Offer? = try {
+        val layout = synchronized(this) { synchronized(handles) { stoppedJobLayout(normal(infoHash)) } }
+        layout?.let { (folder, paths) -> ForeignPartialAddPlan.offerForPaths(paths, folder) }
+    } catch (_: Exception) { null }
+
+    /**
+     * Explicit approval: rename exactly the reviewed, unchanged candidates (never replacing),
+     * then queue libtorrent's full recheck. libtorrent4j keeps a paused job in CHECKING_FILES
+     * without reading until Start, so the job stays stopped and the next ordinary Start
+     * verifies every piece before any download. If the recheck cannot be queued the original
+     * names are restored.
+     */
+    internal fun adoptForeignPartialsForStart(
+        infoHash: String, reviewed: ForeignPartialAddPlan.Offer
+    ): ForeignPartialAddPlan.Adoption = synchronized(this) {
+        synchronized(handles) {
+            val key = normal(infoHash)
+            val layout = try { stoppedJobLayout(key) } catch (_: Exception) { null }
+                ?: return ForeignPartialAddPlan.Adoption.Refused("The transfer is not stopped with known files")
+            val (folder, paths) = layout
+            val adoption = ForeignPartialAddPlan.adoptReviewedPaths(paths, folder, reviewed)
+            if (adoption is ForeignPartialAddPlan.Adoption.Renamed) {
+                val queued = try { handles[key]?.forceRecheck(); handles[key] != null } catch (_: Exception) { false }
+                if (!queued) {
+                    val restored = ForeignPartialAddPlan.undo(folder, adoption)
+                    return ForeignPartialAddPlan.Adoption.Refused("The piece check could not be queued" +
+                        if (restored) "; original names restored" else "; some names could not be restored")
+                }
+            }
+            adoption
+        }
+    }
+
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
         command(infoHash, wantStopped = true, readbackTimeoutMs) {
             // User Stop overrides any earlier Add-and-start consent while

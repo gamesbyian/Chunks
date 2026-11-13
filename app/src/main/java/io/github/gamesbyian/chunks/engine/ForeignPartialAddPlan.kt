@@ -35,9 +35,13 @@ internal object ForeignPartialAddPlan {
     }
 
     /** Null when nothing recognisable is present or the layout cannot be inspected safely. */
-    fun offer(torrentBytes: ByteArray, folder: File): Offer? {
-        if (!folder.isDirectory) return null
-        val found = ForeignPartialRecovery.scan(torrentBytes, folder)
+    fun offer(torrentBytes: ByteArray, folder: File): Offer? =
+        ForeignPartialRecovery.declaredPaths(torrentBytes)?.let { offerForPaths(it, folder) }
+
+    /** Same as [offer] for an existing job whose declared paths come from native metadata. */
+    fun offerForPaths(declaredPaths: List<String>, folder: File): Offer? {
+        if (!folder.isDirectory || declaredPaths.isEmpty()) return null
+        val found = ForeignPartialLayoutScanner.scan(folder, declaredPaths)
             as? ForeignPartialLayoutScanner.Result.Found ?: return null
         val reusable = found.candidates.filter { it.kind.importable && it.declaredPath !in found.ambiguous }
         val offer = Offer(
@@ -51,9 +55,16 @@ internal object ForeignPartialAddPlan {
 
     fun adoptReviewed(torrentBytes: ByteArray, folder: File, reviewed: Offer?): Adoption {
         if (reviewed == null || reviewed.reusable.isEmpty()) return Adoption.NotRequested
+        val paths = ForeignPartialRecovery.declaredPaths(torrentBytes)
+            ?: return Adoption.Refused("Torrent file paths could not be inspected")
+        return adoptReviewedPaths(paths, folder, reviewed)
+    }
+
+    fun adoptReviewedPaths(declaredPaths: List<String>, folder: File, reviewed: Offer?): Adoption {
+        if (reviewed == null || reviewed.reusable.isEmpty()) return Adoption.NotRequested
         if (canonical(folder) != reviewed.folder)
             return Adoption.Refused("The download folder changed after review")
-        val live = offer(torrentBytes, folder)
+        val live = offerForPaths(declaredPaths, folder)
             ?: return Adoption.Refused("The partial files are no longer present")
         // Exactly the reviewed set, unchanged in kind and size; anything else needs a new review.
         if (live.reusable.toSet() != reviewed.reusable.toSet())

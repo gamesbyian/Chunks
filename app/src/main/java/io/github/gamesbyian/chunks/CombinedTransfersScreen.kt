@@ -1040,6 +1040,11 @@ internal fun CombinedTransfersScreen(
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
+            localOperations = if (focusedKey.environment == EnvironmentSnapshots.LOCAL &&
+                details.readState == TransferDetailReadState.CURRENT &&
+                details.observation?.started == false && localPrivacy?.mayShow != false) ({
+                LocalForeignPartialStartRecovery(focusedKey.infoHash)
+            }) else null,
             exactServerOperations = if (canShowExactRemoval) ({
                 val owner = requireNotNull(server)
                 val mutation = requireNotNull(owner.lifecycle)
