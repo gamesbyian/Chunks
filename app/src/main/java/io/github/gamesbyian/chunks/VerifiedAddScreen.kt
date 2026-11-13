@@ -802,6 +802,7 @@ internal fun VerifiedAddScreen(
                             draft.frozenAlias = aliasAtClick
                             val artworkEnvironment = ticket.intent.target.environment
                             scope.launch {
+                                var engineOutcomeRecorded = false
                                 try {
                                     if (!allowArtwork && withContext(Dispatchers.IO) {
                                         artworkEnvironment == null || mediaController?.prepareForAdd(
@@ -882,6 +883,7 @@ internal fun VerifiedAddScreen(
                                                 "Add uncertain; no Start was sent. Check the server before another operation."
                                         }
                                     }
+                                    engineOutcomeRecorded = true
                                     if (result is RemoteAddAndStart.StartNotVerified) {
                                         // One exact-hash READ-ONLY diagnosis, never a remedial Start/Add.
                                         // The inspector returns fixed categories, not private d.message text.
@@ -911,9 +913,15 @@ internal fun VerifiedAddScreen(
                                     uncertain = false
                                     outcome = "The server refused the Add preflight before any write. Reconnect or refresh and review again. Nothing was added."
                                 } catch (cancel: kotlinx.coroutines.CancellationException) {
-                                    draft.coordinator.requireReadback(ticket)
-                                    uncertain = true
-                                    outcome = "Add was interrupted; inspect the exact server state. No retry was sent."
+                                    // Navigating away during the optional read-only
+                                    // diagnosis does not invalidate the engine result
+                                    // already recorded above. Cancellation before
+                                    // that point still requires uncertain recovery.
+                                    if (!engineOutcomeRecorded) {
+                                        draft.coordinator.requireReadback(ticket)
+                                        uncertain = true
+                                        outcome = "Add was interrupted; inspect the exact server state. No retry was sent."
+                                    }
                                     throw cancel
                                 } catch (_: Exception) {
                                     draft.coordinator.requireReadback(ticket)

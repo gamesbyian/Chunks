@@ -182,6 +182,44 @@ class RemoteDestinationResolutionTest {
         assertTrue(server.methods.none { it in setOf("d.open", "d.start", "d.resume") })
     }
 
+    @Test fun leavingDuringOptionalDiagnosisPreservesTheAlreadyRecordedEngineOutcomeAndLatch() {
+        server.directoryDefault = ""
+        server.metadataPending = true
+        val gate = java.util.concurrent.CountDownLatch(1)
+        server.diagnosticReplyGate = gate
+        val remote = RTorrentRemote(RemoteCredentials(server.endpoint, "", ""))
+        val account = remote.addAccountScope()
+        val draft = RemoteAddSession(account)
+        val showing = mutableStateOf(true)
+        var settled = 0
+        rule.setContent { ChunksTheme { Surface {
+            if (showing.value) VerifiedAddScreen(remote, magnet, "", {}, {}, {}, {},
+                onMutationStarted = { true }, onMutationSettled = { settled++ },
+                finishInOrderScope = account, session = draft)
+        } } }
+        try {
+            reveal(ChunksSemantics.ADD_SUBMIT)
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+            rule.waitUntil(15_000) { server.methods.contains("d.message") }
+            assertTrue(draft.submitting)
+            assertTrue(draft.outcome.orEmpty().startsWith("Start after Add was not verified."))
+            rule.runOnIdle { showing.value = false }
+            rule.waitForIdle() // commit disposal/cancellation before releasing the blocked HTTP read
+            gate.countDown()
+            rule.waitUntil(15_000) { settled == 1 }
+            assertTrue("Cancelling later read-only diagnosis must not replace a recorded engine outcome",
+                draft.outcome.orEmpty().startsWith("Start after Add was not verified."))
+            assertTrue(draft.alreadyAttempted)
+            assertTrue(draft.uncertain)
+            rule.runOnIdle { showing.value = true }
+            reveal(ChunksSemantics.ADD_REMOTE_SAVE_TO)
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertDoesNotExist()
+            rule.onNodeWithText("View verified transfer in rTorrent").assertDoesNotExist()
+            assertEquals(1, server.loads().size)
+            assertTrue(server.methods.none { it in setOf("d.open", "d.start", "d.resume", "d.erase") })
+        } finally { gate.countDown() }
+    }
+
     /** Behavioral/presentation: engine refusal reaches Add without a false success or repeated lifecycle command. */
     @Test fun anUnopenedHashFailureExplainsStorageRecoveryOnTheActualAddResult() {
         server.activationBlocked = true

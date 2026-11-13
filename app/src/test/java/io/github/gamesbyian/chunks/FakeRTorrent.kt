@@ -32,6 +32,7 @@ internal class FakeRTorrent(
     val jobs = ConcurrentHashMap<String, Job>()
     /** Simulate another client starting a job that this Add explicitly requested stopped. */
     @Volatile var startStoppedLoads: Boolean = false
+    @Volatile var diagnosticReplyGate: java.util.concurrent.CountDownLatch? = null
     val calls = CopyOnWriteArrayList<Pair<String, List<String>>>()
     private val socket = ServerSocket(0, 32, InetAddress.getByName("127.0.0.1"))
     val endpoint = "http://127.0.0.1:${socket.localPort}/RPC2"
@@ -101,7 +102,10 @@ internal class FakeRTorrent(
                 ?: return fault(-501, "Could not find info-hash.")
             "d.hashing_failed" -> num(if (activationBlocked) 1 else 0)
             "d.hashing" -> num(0)
-            "d.message" -> str("")
+            "d.message" -> {
+                diagnosticReplyGate?.await(10, java.util.concurrent.TimeUnit.SECONDS)
+                str("")
+            }
             "d.down.total", "d.completed_bytes", "d.peers_connected", "d.down.rate" -> num(0)
             "d.size_bytes" -> num(1000)
             "d.is_meta" -> job()?.let { num(if (metadataPending) 1 else 0) }

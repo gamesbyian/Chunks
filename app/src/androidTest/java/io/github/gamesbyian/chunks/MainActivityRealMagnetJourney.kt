@@ -432,6 +432,19 @@ internal class MainActivityRealMagnetJourney(
             rule.waitForIdle()
             rule.onNode(submit).performClick()
             rule.waitUntil(60_000) { runCatching { scroll("Operation outcome") }; visible("Operation outcome") }
+            // The outcome is published before optional diagnostic reads finish.
+            // Await the existing settlement-gated Back action before testing a
+            // settled result across navigation. Leaving during the optional
+            // diagnosis cancels that read but preserves a recorded engine result;
+            // the separate dispose/remount regression covers that boundary.
+            rule.waitUntil(60_000) {
+                runCatching {
+                    scroll("Back to transfers")
+                    rule.onNodeWithText("Back to transfers").assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+            }
+            scroll("Operation outcome")
             val awaitingNativeMetadata = !visible("Verified: added and started on rTorrent.")
             if (awaitingNativeMetadata) {
                 // The old absolute-folder fixture could certify the reviewed parent
