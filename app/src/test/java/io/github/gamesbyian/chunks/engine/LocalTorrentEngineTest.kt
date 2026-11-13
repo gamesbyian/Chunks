@@ -1174,6 +1174,34 @@ class LocalTorrentEngineTest {
         assertEquals(destination.absolutePath, restored.savePath)
     }
 
+    /** A Start-off magnet over exact-path partial data is verified when metadata arrives and stays stopped. */
+    @Test fun stoppedMagnetVerifiesExistingPartialPayloadWhenMetadataArrives() {
+        val partial = partialExactPathFixture("partial-magnet-stopped")
+        val seeder = engine()
+        val seed = added(seeder.addStopped(partial.fixture.torrent, partial.fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+        val before = partial.payload.readBytes()
+
+        val receiver = engine()
+        assertTrue(receiver.addMagnet("magnet:?xt=urn:btih:" + seed.infoHash, partial.destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
+            autoStartAfterMetadata = false) is LocalAddResult.FetchingMetadata)
+        val reusable = partial.reusablePieces.toLong() * partial.pieceSize
+        waitFor { receiver.status(seed.infoHash)?.let {
+            it.metadataKnown && it.stopped && !it.stopsAfterCheck && it.state != LocalTransferState.CHECKING &&
+                it.doneBytes == reusable } == true }
+        Thread.sleep(1_500)
+        val idle = requireNotNull(receiver.status(seed.infoHash))
+        assertTrue("still stopped: $idle", idle.stopped)
+        assertEquals("only metadata, no payload, while stopped", 0L, idle.payloadDownloadedBytes)
+        assertArrayEquals("verification never writes payload", before, partial.payload.readBytes())
+
+        // The ordinary Start still reuses the verified pieces and fetches only what is missing.
+        assertEquals(LocalCommandOutcome.VERIFIED, receiver.resume(seed.infoHash).outcome)
+        assertPartialReused(receiver, seed.infoHash, partial, seeder.listenPort())
+    }
+
     @Test fun metadataReadyMagnetRechecksExistingRegularPayloadAndRestoresVerifiedSeeding() {
         val fixture = fixture()
         val seeder = engine()
