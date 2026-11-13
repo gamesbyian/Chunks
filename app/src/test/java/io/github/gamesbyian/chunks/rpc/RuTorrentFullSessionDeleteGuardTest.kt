@@ -20,6 +20,8 @@ class RuTorrentFullSessionDeleteGuardTest {
         val file: String
     )
 
+    private var batchReads = 0
+
     private val selected = Torrent("ab".repeat(20), "Selected", "/downloads", "shared.bin")
     private val hidden = Torrent("cd".repeat(20), "Hidden", "/downloads", "shared.bin")
 
@@ -44,6 +46,8 @@ class RuTorrentFullSessionDeleteGuardTest {
         defaultFirst: List<Torrent>,
         defaultLater: List<Torrent> = defaultFirst,
         mount: String = "/rutorrent",
+        invisibleDefaultJobs: Long = 0,
+        pluginStatus: Int = 200,
         check: suspend (RTorrentRemote, AtomicInteger, AtomicInteger, AtomicInteger) -> Unit
     ) = runBlocking {
         val defaultReads = AtomicInteger()
@@ -59,6 +63,7 @@ class RuTorrentFullSessionDeleteGuardTest {
             val method = Regex("<methodName>([^<]+)</methodName>")
                 .find(request)?.groupValues?.get(1).orEmpty()
             val value = when (method) {
+                "view.size_not_visible" -> number(invisibleDefaultJobs)
                 "d.multicall2" -> {
                     val rows = if (request.contains("<string>default</string>")) {
                         if (defaultReads.incrementAndGet() == 1) defaultFirst else defaultLater
@@ -68,6 +73,20 @@ class RuTorrentFullSessionDeleteGuardTest {
                         listOf(selected)
                     }
                     array(rows.map(::torrentRow))
+                }
+                "system.multicall" -> {
+                    batchReads++
+                    val jobs = (defaultFirst + defaultLater).associateBy { it.hash }
+                    val results = Regex("<value><struct>(.*?)</struct></value>", RegexOption.DOT_MATCHES_ALL)
+                        .findAll(request).map { entry ->
+                            val h = Regex("<string>([0-9a-fA-F]{40})</string>")
+                                .find(entry.value)!!.groupValues[1]
+                            val job = jobs.getValue(h)
+                            val result = if (entry.value.contains("<string>d.hash</string>")) string(h)
+                                else array(listOf(array(listOf(string(job.file)))))
+                            array(listOf(result))
+                        }.toList()
+                    array(results)
                 }
                 "f.multicall" -> {
                     val t = if (request.contains("<string>" + hidden.hash + "</string>")) {
@@ -87,7 +106,7 @@ class RuTorrentFullSessionDeleteGuardTest {
             pluginPosts.incrementAndGet()
             exchange.requestBody.use { it.readBytes() }
             val bytes = "[0,0,0]".toByteArray(Charsets.UTF_8)
-            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.sendResponseHeaders(pluginStatus, bytes.size.toLong())
             exchange.responseBody.use { it.write(bytes) }
         }
         server.start()
@@ -115,7 +134,7 @@ class RuTorrentFullSessionDeleteGuardTest {
     @Test fun hiddenJobSharingSelectedPayloadRefusesBeforeAnyPluginPost() =
         fixture(defaultFirst = listOf(selected, hidden)) {
                 remote, defaultReads, hiddenFileReads, posts ->
-            assertEquals(RemoteDeleteDataOutcome.Refused,
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.SHARED_FILES),
                 remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
             assertTrue("The default session, not just main, must be inspected",
                 defaultReads.get() >= 1)
@@ -127,7 +146,7 @@ class RuTorrentFullSessionDeleteGuardTest {
         fixture(defaultFirst = listOf(selected,
             hidden.copy(directory = "/", file = "downloads/shared.bin"))) {
                 remote, _, hiddenFileReads, posts ->
-            assertEquals(RemoteDeleteDataOutcome.Refused,
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.SHARED_FILES),
                 remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
             assertEquals("A root-owned file must be compared against selected paths",
                 1, hiddenFileReads.get())
@@ -138,14 +157,14 @@ class RuTorrentFullSessionDeleteGuardTest {
         fixture(defaultFirst = listOf(selected,
             hidden.copy(directory = "/other/../downloads"))) {
                 remote, _, _, posts ->
-            assertEquals(RemoteDeleteDataOutcome.Refused,
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.SHARED_FILES),
                 remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
             assertEquals(0, posts.get())
         }
 
     @Test fun defaultSessionMissingMainJobRefusesDestructiveAction() =
         fixture(defaultFirst = emptyList()) { remote, defaultReads, _, posts ->
-            assertEquals(RemoteDeleteDataOutcome.Refused,
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.INCOMPLETE_SESSION),
                 remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
             assertEquals(1, defaultReads.get())
             assertEquals(0, posts.get())
@@ -155,7 +174,7 @@ class RuTorrentFullSessionDeleteGuardTest {
         fixture(defaultFirst = listOf(selected),
             defaultLater = listOf(selected, hidden)) {
                 remote, defaultReads, hiddenFileReads, posts ->
-            assertEquals(RemoteDeleteDataOutcome.Refused,
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.SESSION_CHANGED),
                 remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
             assertEquals(2, defaultReads.get())
             // The changed membership itself forbids the POST. Reading the new
@@ -174,4 +193,42 @@ class RuTorrentFullSessionDeleteGuardTest {
             assertEquals("Authorized non-idempotent plugin request must be sent once",
                 1, posts.get())
         }
+    /** Data-integrity: default is filterable in actual rTorrent; a partial view cannot authorize data deletion. */
+    @Test fun aFilteredDefaultViewRefusesBeforeReadingPayloadsOrPosting() =
+        fixture(defaultFirst = listOf(selected), invisibleDefaultJobs = 1) { remote, _, fileReads, posts ->
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.INCOMPLETE_SESSION),
+                remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+            assertEquals(0, fileReads.get())
+            assertEquals(0, posts.get())
+        }
+
+    /** Behavioral: an auth denial and missing plugin are actionable refusals, not uncertain cleanup. */
+    @Test fun pluginAuthAndUnavailableRoutesHaveDistinctFixedDiagnostics() {
+        for ((status, reason) in listOf(401 to RemoteDeleteRefusal.AUTHENTICATION,
+                403 to RemoteDeleteRefusal.AUTHENTICATION, 404 to RemoteDeleteRefusal.PLUGIN_UNAVAILABLE)) {
+            fixture(defaultFirst = listOf(selected), pluginStatus = status) { remote, _, _, posts ->
+                assertEquals(RemoteDeleteDataOutcome.Refused(reason),
+                    remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+                assertEquals(1, posts.get())
+            }
+        }
+    }
+
+    /** Data-integrity/latency: fixed read-only batches preserve shared-file checks on larger accounts. */
+    @Test fun overlappingSessionsAreBatchedAndAConflictStillPreventsTheOnlyPost() {
+        val others = (1..55).map { n -> Torrent("%040x".format(n), "Other$n", "/downloads", "other$n.bin") }
+        fixture(defaultFirst = listOf(selected) + others) { remote, _, _, posts ->
+            assertTrue(remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory)
+                is RemoteDeleteDataOutcome.Uncertain)
+            assertEquals("55 jobs in three bounded pages, revalidated twice", 6, batchReads)
+            assertEquals(1, posts.get())
+        }
+        batchReads = 0
+        fixture(defaultFirst = listOf(selected) + others + hidden) { remote, _, _, posts ->
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.SHARED_FILES),
+                remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+            assertEquals(0, posts.get())
+        }
+    }
+
 }

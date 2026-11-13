@@ -248,7 +248,9 @@ internal class MainActivityRealMagnetJourney(
         val before = beforeRows.map { it.hash.lowercase() }.toSet()
         val skippedSessions = mutableMapOf<String, Pair<String, RemoteTransfer?>>()
         val default = readOnly { remote.defaultDirectory() }
-        val parent = default ?: requireNotNull(runBlocking { corroboratedParent(remote, beforeRows) }) {
+        val parent = default ?: requireNotNull(runBlocking {
+            if (disposable) remote.call("system.cwd") as? String else corroboratedParent(remote, beforeRows)
+        }) {
             "No independently corroborated server Place; no Add allowed"
         }
         val groups = listOf((if (disposable && !publicDiscovery) listOf("magnet0") else emptyList()) +
@@ -347,9 +349,15 @@ internal class MainActivityRealMagnetJourney(
             report("chunks_real_add_app_stage", "magnet-entered")
             rule.waitUntil(30_000) {
                 runCatching { scroll("Custom server folder (optional)") }
-                visible("Using rTorrent default Place:") || visible("No usable default Place was reported.")
+                hasTag(ChunksSemantics.ADD_REMOTE_SAVE_TO)
             }
-            if (default == null) type("Custom server folder (optional)", parent)
+            if (default == null && !disposable) type("Custom server folder (optional)", parent)
+            if (disposable && default == null) {
+                assertEquals("Blank optional folder must remain a native-default selection", "",
+                    rule.onNodeWithText("Custom server folder (optional)").fetchSemanticsNode()
+                        .config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
+                report("chunks_real_add_native_default", "blank-override-empty-server-default")
+            }
             report("chunks_real_add_app_stage", "place-ready")
             if (disposable) {
                 val artworkChoice = "Automatically identify and fetch artwork & metadata"

@@ -28,12 +28,21 @@ class RTorrentDisposableNativeDefaultTest {
         val hash = TorrentMetainfoReader.preview(bytes).infoHashV1
         val payload = parent.resolve(name)
         check(!Files.exists(payload) && remote.lookupName(hash) == null)
+        // Administration is confined to this exact disposable loopback daemon.
+        // Exercise a genuinely empty default and its raw '.' session directory.
+        val admin = RTorrentRemote(RemoteCredentials("http://127.0.0.1:18080/RPC2", "", ""))
+        val previousDefault = admin.call("directory.default") as String
+        val previousCwd = admin.call("system.cwd") as String
+        admin.call("system.cwd.set", listOf("", parent.toString()))
+        admin.call("directory.default.set", listOf("", ""))
         Files.write(payload, data)
         try {
             // Empty observed path models a denied/empty default getter. No setter is sent.
             val result = remote.loadStoppedTorrentBytes(bytes, "", useServerDefault = true)
             assertEquals(RemoteAddOutcome.VerifiedStopped(hash, parent.toString()), result)
+            assertEquals("The daemon really uses a relative native root", ".", remote.call("d.directory", listOf(hash)))
             val row = remote.listTransfers().single { it.hash.equals(hash, true) }
+            assertEquals("Inventory must expose the same observed absolute Place", parent.toString(), row.directory)
             assertFalse(row.started)
             remote.setStarted(hash, true)
             var verified = 0L
@@ -44,11 +53,19 @@ class RTorrentDisposableNativeDefaultTest {
             }
             assertEquals("Real engine must hash-verify actual payload", data.size.toLong(), verified)
             assertEquals(LifecycleOutcome.Verified(false), remote.setStarted(hash, false))
+            assertFalse("Recheck must remain usable for a native relative root",
+                remote.requestHashRecheck(hash, row.name, row.directory) is RemoteHashRecheckOutcome.Uncertain)
+            remote.setStarted(hash, true)
+            assertNull("Native default is not a wrong-Place contradiction",
+                remote.readExactAddContradiction(StoppedRemoteAddPlan.fromMagnetAtServerDefault(
+                    "magnet:?xt=urn:btih:$hash")))
             assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
                 remote.eraseFromSession(hash, row.name, row.directory))
             assertArrayEquals("Session-only Remove preserves exact data", data, Files.readAllBytes(payload))
             assertNull(remote.lookupName(hash))
         } finally {
+            admin.call("directory.default.set", listOf("", previousDefault))
+            admin.call("system.cwd.set", listOf("", previousCwd))
             // No cleanup mutation on failure: preserve the disposable session for diagnosis.
             if (remote.lookupName(hash) == null) Files.deleteIfExists(payload)
         }

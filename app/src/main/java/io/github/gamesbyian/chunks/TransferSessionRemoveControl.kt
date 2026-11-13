@@ -20,15 +20,23 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.RemoteRemovalStage
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import io.github.gamesbyian.chunks.rpc.SessionEraseRecheck
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * Postconditions are exact-session hash reads, not membership of the named
@@ -60,7 +68,7 @@ fun TransferSessionRemoveControl(
     onMutationStarted: () -> Boolean,
     onSettled: () -> Unit,
     performErase: suspend (String, String, String) -> SessionEraseOutcome = remote::eraseFromSession,
-    performDataErase: suspend (String, String, String) -> RemoteDeleteDataOutcome = remote::removeWithDataViaRuTorrent,
+    performDataErase: (suspend (String, String, String) -> RemoteDeleteDataOutcome)? = null,
     recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase,
     environmentLabel: String? = "rTorrent",
     snapshotRevision: Long = 0L
@@ -90,6 +98,8 @@ fun TransferSessionRemoveControl(
     var checking by remember(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf(false)
     }
+    var stage by remember(remote, transfer.hash) { mutableStateOf(RemoteRemovalStage.TARGET) }
+    var dataRemoval by rememberSaveable(remote, transfer.hash) { mutableStateOf(false) }
     var feedback by rememberSaveable(remote, transfer.hash, transfer.name, transfer.directory) {
         mutableStateOf<String?>(null)
     }
@@ -146,22 +156,34 @@ fun TransferSessionRemoveControl(
                                 onMutationStarted()) {
                                 confirming = false
                                 attempted = true
+                                dataRemoval = true
                                 verified = false
                                 pending = true
+                                stage = RemoteRemovalStage.TARGET
                                 scope.launch {
                                     try {
-                                        feedback = when (performDataErase(
-                                            transfer.hash, transfer.name, transfer.directory)) {
+                                        val response = withTimeout(45_000L) {
+                                            if (performDataErase != null) performDataErase(
+                                                transfer.hash, transfer.name, transfer.directory)
+                                            else remote.removeWithDataViaRuTorrent(
+                                                transfer.hash, transfer.name, transfer.directory,
+                                                onStage = { stage = it })
+                                        }
+                                        feedback = when (response) {
                                             is RemoteDeleteDataOutcome.QueuedForCleanup ->
                                                 "Verified: this exact rTorrent session is absent after ruTorrent accepted a nonforce delete-data request. The plugin cleans up files asynchronously; physical data deletion is NOT yet verified."
                                             RemoteDeleteDataOutcome.Unsupported ->
                                                 "No deletion command was sent. This server route does not expose the required ruTorrent erasedata plugin."
-                                            RemoteDeleteDataOutcome.Refused ->
-                                                "No deletion command was sent: the reviewed transfer, files or destination could not be confirmed."
+                                            is RemoteDeleteDataOutcome.Refused ->
+                                                "No deletion was accepted. " + response.reason.explanation
                                             is RemoteDeleteDataOutcome.Uncertain ->
                                                 "Data deletion outcome is uncertain. No request will be retried automatically. Inspect the exact rTorrent session and server files."
                                         }
+                                    } catch (_: TimeoutCancellationException) {
+                                        feedback = "Removal timed out during: " + stage.label +
+                                            " No request will be retried. Check the current session before another review; physical files were not verified."
                                     } catch (cancel: CancellationException) {
+                                        feedback = "Removal was interrupted. Check the current session and server files; no request will be retried."
                                         throw cancel
                                     } catch (_: Exception) {
                                         feedback = "Delete-data outcome could not be verified. The request may have reached the server. No automatic retry."
@@ -191,15 +213,21 @@ fun TransferSessionRemoveControl(
                                     onMutationStarted()) {
                                     confirming = false
                                     attempted = true
+                                    dataRemoval = false
                                     pending = true
+                                    stage = RemoteRemovalStage.TARGET
                                     scope.launch {
                                         try {
-                                            val response = performErase(
-                                                transfer.hash, transfer.name, transfer.directory)
+                                            val response = withTimeout(45_000L) { performErase(
+                                                transfer.hash, transfer.name, transfer.directory) }
                                             verified = response is SessionEraseOutcome.VerifiedRemoved ||
                                                 response is SessionEraseOutcome.AlreadyAbsent
                                             feedback = sessionEraseFeedback(response)
+                                        } catch (_: TimeoutCancellationException) {
+                                            verified = false
+                                            feedback = "Session removal timed out. The request may have reached the server. Check the current session; no automatic retry."
                                         } catch (cancel: CancellationException) {
+                                            feedback = "Removal was interrupted. Check the current session; no automatic retry."
                                             throw cancel
                                         } catch (_: Exception) {
                                             verified = false
@@ -235,14 +263,18 @@ fun TransferSessionRemoveControl(
         }
         if (attempted) {
             Card(colors = CardDefaults.cardColors(
-                containerColor = if (verified) MaterialTheme.colorScheme.secondaryContainer
+                containerColor = if (pending || verified) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.errorContainer
             )) {
                 Column(Modifier.fillMaxWidth().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Removal result", fontWeight = FontWeight.Bold)
-                    Text(if (pending) "Checking exact server session…" else
-                        feedback ?: "Result unavailable. Inspect the server.")
+                    Text(if (pending) stage.label else
+                        feedback ?: "Result unavailable. Inspect the server.",
+                        modifier = Modifier.testTag(ChunksSemantics.REMOTE_REMOVAL_STATUS).semantics {
+                            liveRegion = LiveRegionMode.Polite
+                            stateDescription = if (pending) "Removal in progress" else "Removal result available"
+                        })
                     // A removed exact hash may later be re-added to the same
                     // account with the same name/path. Remembered UI state is
                     // never proof that the NEW session is still absent.
@@ -262,8 +294,9 @@ fun TransferSessionRemoveControl(
                                                 feedback = "The same transfer is still in this server's session. You can review a new Remove attempt."
                                             }
                                             SessionEraseRecheck.Absent -> {
-                                                verified = true
-                                                feedback = "The exact transfer is now absent from rTorrent's session. No new Remove was sent; downloaded files were not inspected."
+                                                verified = !dataRemoval
+                                                feedback = "The exact transfer is now absent from rTorrent's session. No new Remove was sent; downloaded files were not inspected." +
+                                                    if (dataRemoval) " The earlier data-cleanup request still requires file-level verification in ruTorrent or server storage." else ""
                                             }
                                             SessionEraseRecheck.Changed ->
                                                 feedback = "That hash now has a different name or directory. No retry is allowed from this old review. Refresh the transfer list."

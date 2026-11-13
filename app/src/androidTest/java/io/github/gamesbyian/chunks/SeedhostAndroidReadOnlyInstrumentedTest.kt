@@ -204,7 +204,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         rule.waitUntil(30_000) {
             val hasDefault = rule.onAllNodesWithText("Using rTorrent default Place:", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
-            val unavailable = rule.onAllNodesWithText("No usable default Place was reported.", substring = true)
+            val unavailable = rule.onAllNodesWithText("Using the server default without a folder override.", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
             hasDefault || unavailable
         }

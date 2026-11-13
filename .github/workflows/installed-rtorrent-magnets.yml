@@ -124,7 +124,9 @@ jobs:
           bash tools/apt_install_retry.sh rtorrent nginx
           mkdir -p "$RUNNER_TEMP/chunks-disposable/data" "$RUNNER_TEMP/chunks-disposable/session"
           cat > "$RUNNER_TEMP/chunks-disposable/rtorrent.rc" <<EOF
-          directory.default.set = $RUNNER_TEMP/chunks-disposable/data
+          # Real empty native default reproduces #1679; cwd independently anchors its '.' root.
+          system.cwd.set = $RUNNER_TEMP/chunks-disposable/data
+          directory.default.set = ""
           session.path.set = $RUNNER_TEMP/chunks-disposable/session
           network.scgi.open_port = 127.0.0.1:5000
           network.port_range.set = 6890-6890

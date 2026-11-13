@@ -187,7 +187,7 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
                     // already verifies this shape before returning
                     // VerifiedStopped; a fresh read-only verification prevents
                     // a fabricated or stale child root from settling Add.
-                    val prefix = plan.destination + "/"
+                    val prefix = plan.destination.trimEnd('/') + "/"
                     val child = stopped.destination.takeIf { it.startsWith(prefix) }
                         ?.removePrefix(prefix) ?: return null
                     if (child.isBlank() || child == "." || child == ".." ||

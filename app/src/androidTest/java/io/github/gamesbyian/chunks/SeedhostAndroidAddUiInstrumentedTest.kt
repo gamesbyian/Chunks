@@ -213,7 +213,7 @@ class SeedhostAndroidAddUiInstrumentedTest {
                 // focused field can pull the list back, so re-scroll while waiting.
                 rule.waitUntil(30_000) {
                     runCatching { scrollTo("Custom server folder (optional)") }
-                    visible("Using rTorrent default Place:") || visible("No usable default Place was reported.")
+                    visible("Using rTorrent default Place:") || visible("Using the server default without a folder override.")
                 }
                 // The app must agree with the preflight about the server default.
                 assertEquals(serverDefault != null, visible("Using rTorrent default Place:"))

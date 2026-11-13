@@ -16,6 +16,12 @@ import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.assert
+import com.github.takahirom.roborazzi.captureRoboImage
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.unit.Density
@@ -296,7 +302,9 @@ class TransferSessionRemoveLargeTextTest {
         rule.runOnIdle { label = "Changed display label"; stale = true }
         rule.runOnIdle { stale = false }
         rule.onNodeWithText("Remove from rTorrent…").assertDoesNotExist()
-        rule.onNodeWithText("Checking exact server session…").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.REMOTE_REMOVAL_STATUS).assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Removal in progress"))
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-removal-pending.png")
         assertEquals(1, eraseCalls)
         rule.runOnIdle { result.complete(SessionEraseOutcome.Uncertain(transfer.hash)) }
         rule.waitForIdle()
