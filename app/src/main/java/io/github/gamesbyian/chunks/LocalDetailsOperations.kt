@@ -146,6 +146,7 @@ internal fun LocalDetailsOperations(
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (current) {
             LocalDetailsFiles(infoHash, locked, engine, ::change)
+            LocalDetailsLibraryCopy(infoHash, stale || !current, engine)
             LocalDetailsRemove(infoHash, locked, engine, ::change)
         }
         outcome?.let {
@@ -214,6 +215,18 @@ private fun LocalDetailsFiles(
         io.github.gamesbyian.chunks.media.ui.MediaTechnicalDetails(
             fileName = hint.path.substringAfterLast('/'), open = { inspectable.open(hint) })
     }
+}
+
+/** Device-screen parity: for a complete job, the verified copy into the device's library. */
+@Composable
+private fun LocalDetailsLibraryCopy(infoHash: String, stale: Boolean, engine: () -> LocalDetailsPort?) {
+    val revision = LocalDetailsRuns.revisions[infoHash] ?: 0
+    var status by remember(infoHash) { mutableStateOf<LocalTransferStatus?>(null) }
+    LaunchedEffect(infoHash, revision) {
+        status = withContext(Dispatchers.IO) { runCatching { engine()?.status(infoHash) }.getOrNull() }
+    }
+    val shown = status ?: return
+    if (!stale && shown.metadataKnown && shown.progressPpm == 1_000_000) LocalLibraryCopyPanel(shown)
 }
 
 /** The job's engine-reported folder, read off the UI thread; null until known. */

@@ -39,7 +39,7 @@ internal fun TransferCollectionEditor(
     onMembershipChanged: () -> Unit
 ) {
     TransferCollectionEditor(transfer.hash, transfer.name, scope, store,
-        availableCollections, onMembershipChanged)
+        availableCollections, onMembershipChanged = onMembershipChanged)
 }
 
 /**
@@ -53,6 +53,8 @@ internal fun TransferCollectionEditor(
     scope: String,
     store: TransferCollectionStore,
     availableCollections: List<String> = emptyList(),
+    /** Card title; screens that already name the transfer (canonical Details) pass "Collections". */
+    title: String = displayName,
     onMembershipChanged: () -> Unit
 ) {
     var expanded by rememberSaveable(scope, infoHash) { mutableStateOf(false) }
@@ -68,7 +70,7 @@ internal fun TransferCollectionEditor(
             modifier = Modifier.fillMaxWidth().padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(displayName, fontWeight = FontWeight.SemiBold,
+            Text(title, fontWeight = FontWeight.SemiBold,
                 style = MaterialTheme.typography.bodyLarge)
             Text(
                 if (memberships.isEmpty()) "No manual collections"

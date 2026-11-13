@@ -1036,6 +1036,8 @@ internal fun CombinedTransfersScreen(
                             .getOrDefault(false)
                     },
                     identifiedSuggestions = identifiedMediaNameSuggestions(media.assignment))
+                // Collection membership in the same authorized display-name scope.
+                DetailsCollections(renameScope, transfer.key.infoHash, transfer.displayName)
             }),
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
             environmentHue = palette.hueOf(focusedKey.environment),
