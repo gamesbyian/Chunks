@@ -437,26 +437,38 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
 
     private class UnresolvedServerDirectory : IllegalStateException("Server directory could not be resolved")
 
-    /** Relative rTorrent roots are relative to THIS server process, never to Android. */
-    private suspend fun resolveServerDirectory(raw: String): String {
-        if (raw.startsWith('/')) return raw
+    /** Only lexical child components are resolvable without server realpath/symlink evidence. */
+    private fun relativeDirectorySuffix(raw: String): String {
         if (raw.isEmpty() || raw.length > 4096 ||
             raw.any { it.code < 32 || it.code == 127 || it == '\\' }) throw UnresolvedServerDirectory()
+        if (raw in setOf(".", "./")) return ""
         val relative = raw.removePrefix("./").removeSuffix("/")
-        // '..' through a symlink is not equivalent to lexical normalization.
-        // Only ordinary child components and the conventional '.' are provable here.
-        if (!(raw in setOf(".", "./") || relative.split('/').all {
-            it.isNotEmpty() && it != "." && it != ".."
-        })) throw UnresolvedServerDirectory()
+        if (!relative.split('/').all { it.isNotEmpty() && it != "." && it != ".." })
+            throw UnresolvedServerDirectory()
+        return relative
+    }
+
+    private suspend fun serverWorkingDirectory(): String {
         val cwd = try { call("system.cwd") as? String }
         catch (fault: RpcFault) {
-            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            // Modern ruTorrent may forward this optional getter untrusted. This
+            // exact method-scoped denial does not mean inventory authentication failed.
+            val untrustedCwd = fault.code == "-507" && fault.message ==
+                "Command \"system.cwd\" is not allowed for untrusted connections."
+            if (!fault.isUnsupportedOptionalGetter() && !untrustedCwd) throw fault
             throw UnresolvedServerDirectory()
         } ?: throw UnresolvedServerDirectory()
         if (!RuTorrentDeleteData.safeDirectory(cwd, allowRoot = true)) throw UnresolvedServerDirectory()
-        val directory = if (raw in setOf(".", "./")) cwd else cwd.trimEnd('/') + "/" + relative
-        if (!RuTorrentDeleteData.safeDirectory(directory, allowRoot = true) || call("system.cwd") != cwd)
-            throw UnresolvedServerDirectory()
+        return cwd
+    }
+
+    /** Relative rTorrent roots are relative to THIS server process, never to Android. */
+    private suspend fun resolveServerDirectory(raw: String): String {
+        if (raw.startsWith('/')) return raw
+        val suffix = relativeDirectorySuffix(raw)
+        val cwd = serverWorkingDirectory()
+        val directory = if (suffix.isEmpty()) cwd else cwd.trimEnd('/') + "/" + suffix
+        if (serverWorkingDirectory() != cwd) throw UnresolvedServerDirectory()
         return directory
     }
 
@@ -468,14 +480,26 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         if (reviewed.startsWith('/')) observedDirectory(hash) == reviewed
         else call("d.directory", listOf(hash)) == reviewed
 
-    private suspend fun resolveInventoryDirectories(rows: List<RemoteTransfer>): List<RemoteTransfer> =
-        rows.map { row -> if (row.directory.startsWith('/')) row
-            else try { row.copy(directory = resolveServerDirectory(row.directory)) }
-            catch (_: UnresolvedServerDirectory) {
-                // Keep a readable unresolved row. Path-sensitive operations still refuse it;
-                // another job's unsupported cwd must not block a valid custom-folder Add.
-                row
-            } }
+    private suspend fun resolveInventoryDirectories(rows: List<RemoteTransfer>): List<RemoteTransfer> {
+        val suffixes = rows.mapNotNull { row ->
+            if (row.directory.startsWith('/')) null
+            else try { row.directory to relativeDirectorySuffix(row.directory) }
+            catch (_: UnresolvedServerDirectory) { null }
+        }.toMap()
+        if (suffixes.isEmpty()) return rows
+        return try {
+            // One shared read pair per snapshot, not two sequential RPCs per job.
+            val cwd = serverWorkingDirectory()
+            val resolved = rows.map { row ->
+                val suffix = suffixes[row.directory] ?: return@map row
+                row.copy(directory = if (suffix.isEmpty()) cwd else cwd.trimEnd('/') + "/" + suffix)
+            }
+            if (serverWorkingDirectory() != cwd) rows else resolved
+        } catch (_: UnresolvedServerDirectory) {
+            // Keep unresolved rows readable. Auth/network/operational errors still propagate.
+            rows
+        }
+    }
 
     private suspend fun readViewIdentities(view: String): List<String> {
         val hashes = extractRows(call("download_list", listOf("", view))).map {

@@ -132,6 +132,23 @@ class RemoteDestinationResolutionTest {
         assertTrue(server.methods.contains("d.directory"))
     }
 
+    /** Behavioral/presentation: engine refusal reaches Add without a false success or repeated lifecycle command. */
+    @Test fun anUnopenedHashFailureExplainsStorageRecoveryOnTheActualAddResult() {
+        server.activationBlocked = true
+        show(mutableStateOf(null), mutableStateOf("/srv/blocked"))
+        reveal(ChunksSemantics.ADD_SUBMIT)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        rule.waitUntil(15_000) {
+            runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                hasText("could not open or hash-check", substring = true)) }.isSuccess
+        }
+        rule.onNodeWithText("Start, Stop and Recheck cannot repair unavailable storage", substring = true).assertExists()
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-add-storage-refusal.png")
+        assertEquals(1, server.loads().size)
+        assertTrue("Diagnosis must not repair/retry by issuing lifecycle writes",
+            server.methods.none { it in setOf("d.open", "d.start", "d.resume", "d.erase") })
+    }
+
     @Test fun anAbsoluteServerDefaultIsUsedAndAnExplicitFolderIsNeverOverwrittenByLateDiscovery() {
         server.directoryDefault = "/srv/default"
         val saved = mutableStateOf<String?>(null)

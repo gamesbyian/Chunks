@@ -20,7 +20,10 @@ internal class FakeRTorrent(
     /** Literal `directory.default` reply; null answers with a permission-style fault. */
     @Volatile var directoryDefault: String? = "/srv",
     /** Where a job lands when Add sends no directory and the default is unusable. */
-    private val unsetDefaultLandsIn: String = "/home/user"
+    private val unsetDefaultLandsIn: String = "/home/user",
+    private val workingDirectory: String? = null,
+    @Volatile var activationBlocked: Boolean = false,
+    private val untrustedWorkingDirectory: Boolean = false
 ) : AutoCloseable {
     data class Job(val hash: String, val name: String, @Volatile var directory: String,
                    @Volatile var started: Boolean)
@@ -72,7 +75,9 @@ internal class FakeRTorrent(
                 "load.raw_verbose", "f.multicall", "f.priority.set", "d.check_hash").map(::str))
             "directory.default" -> directoryDefault?.let(::str)
                 ?: return fault(-503, "Permission denied")
-            "system.cwd" -> return fault(-506, "Method not found")
+            "system.cwd" -> if (untrustedWorkingDirectory)
+                return fault(-507, "Command &quot;system.cwd&quot; is not allowed for untrusted connections.")
+                else workingDirectory?.let(::str) ?: return fault(-506, "Method not found")
             "d.multicall2" -> {
                 val view = p.getOrNull(1) ?: "main"
                 val metadata = xml.contains("d.is_meta=")
@@ -87,8 +92,15 @@ internal class FakeRTorrent(
             "d.hash" -> job()?.let { str(it.hash) } ?: return fault(-501, "Could not find info-hash.")
             "d.name" -> job()?.let { str(it.name) } ?: return fault(-501, "Could not find info-hash.")
             "d.directory" -> job()?.let { str(it.directory) } ?: return fault(-501, "Could not find info-hash.")
-            "d.state", "d.is_active" -> job()?.let { num(if (it.started) 1 else 0) }
+            "d.state" -> job()?.let { num(if (it.started) 1 else 0) }
                 ?: return fault(-501, "Could not find info-hash.")
+            "d.is_active", "d.is_open" -> job()?.let { num(if (it.started && !activationBlocked) 1 else 0) }
+                ?: return fault(-501, "Could not find info-hash.")
+            "d.hashing_failed" -> num(if (activationBlocked) 1 else 0)
+            "d.hashing" -> num(0)
+            "d.message" -> str("")
+            "d.down.total", "d.completed_bytes", "d.peers_connected", "d.down.rate" -> num(0)
+            "d.size_bytes" -> num(1000)
             "d.is_multi_file", "d.is_meta", "d.is_hash_checking", "d.is_private" ->
                 job()?.let { num(0) } ?: return fault(-501, "Could not find info-hash.")
             "d.tracker_size" -> job()?.let { num(1) } ?: return fault(-501, "Could not find info-hash.")

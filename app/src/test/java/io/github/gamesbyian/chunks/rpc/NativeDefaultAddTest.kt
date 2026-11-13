@@ -61,4 +61,28 @@ class NativeDefaultAddTest {
         }
     }
 
+    /** Behavioral/latency: native-default accounts require one CWD read pair per inventory, not per row. */
+    @Test fun anInventoryResolvesAllRelativeJobsWithOneWorkingDirectoryObservation() = runBlocking {
+        for (cwd in listOf(null, "/server/work")) {
+            FakeRTorrent(workingDirectory = cwd).use { fixture ->
+                repeat(55) { fixture.seed("%040x".format(it), "Job$it", ".") }
+                val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+                val rows = remote.listTransfers()
+                assertEquals(55, rows.size)
+                assertTrue(rows.all { it.directory == (cwd ?: ".") })
+                assertEquals(if (cwd == null) 1 else 2, fixture.methods.count { it == "system.cwd" })
+            }
+        }
+    }
+
+    @Test fun modernMethodScopedUntrustedCwdDenialDoesNotHideTheInventory() = runBlocking {
+        FakeRTorrent(untrustedWorkingDirectory = true).use { fixture ->
+            fixture.seed(hash, "Existing", ".")
+            val remote = RTorrentRemote(RemoteCredentials(fixture.endpoint, "", ""))
+            assertEquals(".", remote.listTransfers().single().directory)
+            assertEquals(1, fixture.methods.count { it == "system.cwd" })
+            assertEquals(SessionEraseOutcome.VerifiedRemoved(hash), remote.eraseFromSession(hash, "Existing", "."))
+        }
+    }
+
 }
