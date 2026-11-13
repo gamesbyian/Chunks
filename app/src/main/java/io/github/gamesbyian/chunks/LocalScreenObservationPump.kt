@@ -66,12 +66,17 @@ internal class LocalScreenObservationRevision {
     private var revision = 0L
     private var commandPending = false
     private var awaitingReadback = false
+    /** Compose-observable mirror of [blocksMutations], so controls re-enable when it clears. */
+    private val blocking = androidx.compose.runtime.mutableStateOf(false)
+
+    private fun publish() { blocking.value = commandPending || awaitingReadback }
 
     @Synchronized fun beginMutation(): Boolean {
         if (commandPending || awaitingReadback) return false
         commandPending = true
         awaitingReadback = true
         ++revision
+        publish()
         return true
     }
 
@@ -79,6 +84,7 @@ internal class LocalScreenObservationRevision {
         if (commandPending) {
             commandPending = false
             ++revision
+            publish()
         }
     }
 
@@ -88,10 +94,14 @@ internal class LocalScreenObservationRevision {
     @Synchronized fun <T> acceptObservation(sampleRevision: Long, list: List<T>?): Boolean {
         if (commandPending || sampleRevision != revision) return false
         if (list != null) awaitingReadback = false
+        publish()
         return true
     }
 
     @Synchronized fun blocksMutations(): Boolean = commandPending || awaitingReadback
+
+    /** Read in composition: recomposes when the lock is taken or released. */
+    val blockingState: androidx.compose.runtime.State<Boolean> get() = blocking
 }
 
 /**

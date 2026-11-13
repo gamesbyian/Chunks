@@ -2401,12 +2401,7 @@ internal fun LocalEngineScreen(
                             if (outcome != LocalCommandOutcome.VERIFIED) {
                                 inventoryFrame = inventoryFrame.copy(stale = true)
                             }
-                            message = when (outcome) {
-                                LocalCommandOutcome.VERIFIED -> null
-                                LocalCommandOutcome.REFUSED -> "File selection was refused. Inspect the transfer before changing files."
-                                LocalCommandOutcome.NOT_FOUND -> "This transfer or file is no longer available."
-                                LocalCommandOutcome.UNCERTAIN -> "File selection is unconfirmed. Wait for fresh status before trying again."
-                            }
+                            message = localFileWantedFeedback(outcome)
                             files = withContext(Dispatchers.IO) { LocalEngineHolder.current()?.files(transfer.infoHash) }
                         } catch (cancel: kotlinx.coroutines.CancellationException) {
                             throw cancel
@@ -2446,22 +2441,7 @@ internal fun LocalEngineScreen(
                                     LocalFileBatchOutcome.UNCHANGED)) {
                                 inventoryFrame = inventoryFrame.copy(stale = true)
                             }
-                            message = when (result) {
-                                LocalFileBatchOutcome.VERIFIED ->
-                                    "Episode-first priorities verified. The first unfinished " +
-                                    "episode is High; later episodes receive background priority. " +
-                                    "This is a one-time focus, not automatic completion scheduling."
-                                LocalFileBatchOutcome.UNCHANGED ->
-                                    "Episodes already have this focus. No priorities changed."
-                                LocalFileBatchOutcome.STALE_REVIEW ->
-                                    "Episode files or priorities changed. Refresh the file list " +
-                                    "and review the order again."
-                                LocalFileBatchOutcome.NOT_FOUND ->
-                                    "Transfer is no longer available on the local device."
-                                LocalFileBatchOutcome.UNCERTAIN ->
-                                    "Some episode priorities may have changed. Refresh the exact " +
-                                    "file list before taking another action; no automatic retry."
-                            }
+                            message = localEpisodeFocusFeedback(result)
                             files = withContext(Dispatchers.IO) {
                                 LocalEngineHolder.current()?.files(transfer.infoHash)
                             }
@@ -2486,18 +2466,7 @@ internal fun LocalEngineScreen(
                                     LocalFileBatchOutcome.UNCHANGED)) {
                                 inventoryFrame = inventoryFrame.copy(stale = true)
                             }
-                            message = when (outcome) {
-                                LocalFileBatchOutcome.VERIFIED ->
-                                    "Native file download priority verified. No downloaded data was deleted."
-                                LocalFileBatchOutcome.UNCHANGED ->
-                                    "This file already has that priority. Nothing changed."
-                                LocalFileBatchOutcome.STALE_REVIEW ->
-                                    "File identity or priority changed during review. Refresh files first."
-                                LocalFileBatchOutcome.NOT_FOUND ->
-                                    "The target file or transfer was not found."
-                                LocalFileBatchOutcome.UNCERTAIN ->
-                                    "Native file priority change not confirmed. Refresh status before another change."
-                            }
+                            message = localFilePriorityFeedback(outcome)
                             files = withContext(Dispatchers.IO) {
                                 LocalEngineHolder.current()?.files(transfer.infoHash)
                             }
@@ -2522,19 +2491,7 @@ internal fun LocalEngineScreen(
                                     LocalFileBatchOutcome.UNCHANGED)) {
                                 inventoryFrame = inventoryFrame.copy(stale = true)
                             }
-                            message = when (result) {
-                                LocalFileBatchOutcome.VERIFIED ->
-                                    "Page-level file selection verified. Previously downloaded bytes were kept."
-                                LocalFileBatchOutcome.UNCHANGED ->
-                                    "The selected files already have that priority. Nothing was changed."
-                                LocalFileBatchOutcome.STALE_REVIEW ->
-                                    "File selection changed since review. No batch write was submitted; refresh the file list."
-                                LocalFileBatchOutcome.NOT_FOUND ->
-                                    "Torrent metadata unavailable. No file batch was submitted."
-                                LocalFileBatchOutcome.UNCERTAIN ->
-                                    "Batch selection outcome uncertain: some priorities may have changed. " +
-                                        "Wait for fresh file readback before considering another action."
-                            }
+                            message = localFileBatchFeedback(result)
                             files = withContext(Dispatchers.IO) {
                                 LocalEngineHolder.current()?.files(transfer.infoHash)
                             }
@@ -2591,39 +2548,8 @@ internal fun LocalEngineScreen(
                         } catch (_: Exception) {
                             LocalDeleteDataReceipt(LocalDeleteDataDispatch.UNCERTAIN)
                         }
-                        val deletion = if (receipt.dispatch in setOf(
-                                LocalDeleteDataDispatch.REQUESTED,
-                                LocalDeleteDataDispatch.UNCERTAIN) &&
-                            receipt.nativeCompletion != null) {
-                            withContext(Dispatchers.IO) {
-                                val deadline = System.nanoTime() + 15_000_000_000L
-                                var value = receipt.payloadReadback()
-                                while (value == LocalDeleteDataReadback.UNAVAILABLE &&
-                                    System.nanoTime() < deadline) {
-                                    Thread.sleep(150)
-                                    value = receipt.payloadReadback()
-                                }
-                                value
-                            }
-                        } else LocalDeleteDataReadback.UNAVAILABLE
-                        message = when (receipt.dispatch) {
-                            LocalDeleteDataDispatch.REFUSED ->
-                                "Deletion was not requested: " +
-                                    (receipt.reason ?: "The transfer or its destination needs fresh review.")
-                            LocalDeleteDataDispatch.NOT_FOUND ->
-                                "Deletion was not requested: this transfer is no longer in the local device engine."
-                            LocalDeleteDataDispatch.REQUESTED, LocalDeleteDataDispatch.UNCERTAIN ->
-                                when (deletion) {
-                                    LocalDeleteDataReadback.ABSENT ->
-                                        "Verified: the reviewed transfer was removed, native deletion completed and all its exact payload files are absent. Unrelated folder contents were not requested for deletion."
-                                    LocalDeleteDataReadback.STILL_PRESENT ->
-                                        "Native deletion finished but at least one reviewed payload file remains. The operation is incomplete. Recheck the folder before any new action."
-                                    LocalDeleteDataReadback.NATIVE_FAILED ->
-                                        "Native deletion failed. No retry was sent; inspect the remaining files and transfer state before trying again."
-                                    LocalDeleteDataReadback.UNAVAILABLE ->
-                                        "Deletion outcome is still uncertain. The transfer may already be removed. No automatic retry will be sent; refresh the folder and engine state before acting."
-                                }
-                        }
+                        val deletion = withContext(Dispatchers.IO) { awaitDeleteReadback(receipt) }
+                        message = localDeleteDataFeedback(receipt, deletion)
                         inventoryFrame = inventoryFrame.copy(stale = true)
                     }
                 } } else null,
