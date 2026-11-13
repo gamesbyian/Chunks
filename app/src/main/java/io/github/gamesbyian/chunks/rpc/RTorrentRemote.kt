@@ -117,6 +117,7 @@ sealed class LifecycleOutcome {
  */
 sealed class RemoteHashRecheckOutcome {
     data class AlreadyChecking(val hash: String) : RemoteHashRecheckOutcome()
+    data class AlreadyQueued(val hash: String) : RemoteHashRecheckOutcome()
     data class HashingObserved(val hash: String) : RemoteHashRecheckOutcome()
     data class SubmittedUnobserved(val hash: String) : RemoteHashRecheckOutcome()
     data class Uncertain(val hash: String) : RemoteHashRecheckOutcome()
@@ -125,9 +126,11 @@ sealed class RemoteHashRecheckOutcome {
 /** Read-only recheck reconciliation: NotChecking NEVER proves completion. */
 sealed class RemoteHashRecheckObservation {
     data object Checking : RemoteHashRecheckObservation()
+    data object Queued : RemoteHashRecheckObservation()
     data object NotChecking : RemoteHashRecheckObservation()
     data object Changed : RemoteHashRecheckObservation()
     data object Unavailable : RemoteHashRecheckObservation()
+    data object AuthenticationRequired : RemoteHashRecheckObservation()
 }
 
 
@@ -1727,14 +1730,24 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val checking = call("d.is_hash_checking", listOf(hash)) as? Long
                 ?: return RemoteHashRecheckObservation.Unavailable
             if (checking !in 0L..1L) return RemoteHashRecheckObservation.Unavailable
+            val phase = call("d.hashing", listOf(hash)) as? Long
+                ?: return RemoteHashRecheckObservation.Unavailable
+            if (phase !in 0L..3L) return RemoteHashRecheckObservation.Unavailable
+            if (call("d.name", listOf(hash)) != expectedName ||
+                observedDirectory(hash) != expectedDirectory)
+                return RemoteHashRecheckObservation.Changed
             val last = call("d.hash", listOf(hash)) as? String
                 ?: return RemoteHashRecheckObservation.Unavailable
             if (!last.equals(hash, ignoreCase = true))
                 RemoteHashRecheckObservation.Changed
             else if (checking == 1L) RemoteHashRecheckObservation.Checking
+            else if (phase > 0L) RemoteHashRecheckObservation.Queued
             else RemoteHashRecheckObservation.NotChecking
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
+        } catch (failure: RpcHttpStatusException) {
+            if (failure.status in setOf(401, 403, 407)) RemoteHashRecheckObservation.AuthenticationRequired
+            else RemoteHashRecheckObservation.Unavailable
         } catch (_: Exception) {
             RemoteHashRecheckObservation.Unavailable
         }
@@ -1771,12 +1784,15 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // view row or matching infohash on a different account is inadequate.
         currentIdentity()
         val alreadyChecking = exactFlag(call("d.is_hash_checking", listOf(hash)))
+        val phase = call("d.hashing", listOf(hash))
+        require(phase is Long && phase in 0L..3L) { "Invalid rTorrent hashing phase" }
         // The hash can remain unchanged while another client renames or moves
         // its session. Recheck the entire reviewed identity AFTER the flag
         // read, immediately before the only permitted scheduling write.
         // Any contradiction here is known-before-mutation, never retryable.
         currentIdentity()
         if (alreadyChecking) return RemoteHashRecheckOutcome.AlreadyChecking(hash)
+        if (phase > 0L) return RemoteHashRecheckOutcome.AlreadyQueued(hash)
 
         try {
             // Never retry this non-idempotent scheduling command. Even an
@@ -1792,7 +1808,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             RemoteHashRecheckObservation.Checking -> RemoteHashRecheckOutcome.HashingObserved(hash)
             RemoteHashRecheckObservation.NotChecking ->
                 RemoteHashRecheckOutcome.SubmittedUnobserved(hash)
-            RemoteHashRecheckObservation.Changed, RemoteHashRecheckObservation.Unavailable ->
+            RemoteHashRecheckObservation.Queued -> RemoteHashRecheckOutcome.SubmittedUnobserved(hash)
+            RemoteHashRecheckObservation.Changed, RemoteHashRecheckObservation.Unavailable,
+            RemoteHashRecheckObservation.AuthenticationRequired ->
                 RemoteHashRecheckOutcome.Uncertain(hash)
         }
     }

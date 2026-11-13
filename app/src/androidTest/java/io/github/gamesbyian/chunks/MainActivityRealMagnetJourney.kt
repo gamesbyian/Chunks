@@ -587,6 +587,7 @@ internal class MainActivityRealMagnetJourney(
         // chain once per installed journey. Separate two-server coverage also
         // checks identity collisions on different authenticated accounts.
         var combinedDetailsVerified = false
+        var recheckVerified = false
         fun inspectCombinedDetails(hash: String, displayName: String, expectedPlace: String) {
             val original = requireNotNull(row(hash))
             val originalHashes = readOnly { remote.listTransfers("main").map { it.hash.lowercase() }.toSet() }
@@ -800,6 +801,33 @@ internal class MainActivityRealMagnetJourney(
                 assertEquals("Stop altered reviewed remote Place", payload.directory, stoppedRow.directory)
                 assertEquals("Stop altered registered transfer name", preview.name, stoppedRow.name)
                 stage(label, "stopped")
+                if (disposable && !recheckVerified) {
+                    refreshAndFind(hash)
+                    openDetails(hash)
+                    click("Recheck files")
+                    rule.waitUntil(60_000) {
+                        visible("Recheck acknowledged; checking was not observed.") ||
+                            visible("Hash checking observed for this exact transfer.") ||
+                            visible("The server reported this exact transfer already checking.") ||
+                            visible("The server reported a pending hash check for this exact transfer.")
+                    }
+                    // Neither scheduling nor an idle sample proves files intact.
+                    // Independently wait for both the queue and checking flags,
+                    // keeping the original exact stopped job and Place throughout.
+                    await(90, "exact stopped Recheck settles without starting the transfer") {
+                        val checked = row(hash)
+                        checked?.name == preview.name && checked.directory == payload.directory &&
+                            !checked.started && readOnly { remote.readActivity(hash).active } == false &&
+                            readOnly { remote.call("d.hashing", listOf(hash)) } == 0L &&
+                            readOnly { remote.call("d.is_hash_checking", listOf(hash)) } == 0L
+                    }
+                    click("Check Recheck status (read-only)")
+                    rule.waitUntil(30_000) {
+                        visible("This does not prove the request completed or that files are intact.")
+                    }
+                    assertFalse("A read-only status check cannot start the transfer", requireNotNull(row(hash)).started)
+                    recheckVerified = true
+                }
                 val stopped = readOnly { remote.readTrafficSample(hash) }
                 lifecycle(hash, true)
                 // A successful Start readback cannot justify silently moving
@@ -861,6 +889,7 @@ internal class MainActivityRealMagnetJourney(
           assertTrue("All genuine candidates in a publisher group were unavailable or precompleted", groupPassed)
         }
         assertTrue("No real added rTorrent job completed Combined Details acceptance", combinedDetailsVerified)
+        if (disposable) assertTrue("No actual disposable candidate exercised canonical Recheck", recheckVerified)
         val run = requireNotNull(arg("chunks_acceptance_run"))
         require(run.matches(Regex("[0-9]{5,20}")))
         val negative = MessageDigest.getInstance("SHA-1").digest("chunks-peerless-$run".toByteArray())
