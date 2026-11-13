@@ -21,6 +21,10 @@ on:
       - 'tools/check_compose_capture_contract.py'
       - 'tests/test_compose_capture_contract.py'
       - 'tests/test_ci_event_routing_policy.py'
+      - 'tests/test_installed_remote_delete_provenance.py'
+      - 'tests/test_installed_apk_identity.py'
+      - 'tools/installed_remote_delete_data.sh'
+      - 'tools/verify_installed_apk_bytes.sh'
       - '.github/workflows/portable-agent-skills.yml'
       - 'tools/check_docs_dispatch_contract.py'
       - 'tests/test_docs_dispatch_contract.py'
@@ -138,6 +142,10 @@ on:
       - 'tools/check_compose_capture_contract.py'
       - 'tests/test_compose_capture_contract.py'
       - 'tests/test_ci_event_routing_policy.py'
+      - 'tests/test_installed_remote_delete_provenance.py'
+      - 'tests/test_installed_apk_identity.py'
+      - 'tools/installed_remote_delete_data.sh'
+      - 'tools/verify_installed_apk_bytes.sh'
       - '.github/workflows/portable-agent-skills.yml'
       - 'tools/check_docs_dispatch_contract.py'
       - 'tests/test_docs_dispatch_contract.py'
@@ -323,6 +331,10 @@ jobs:
         run: python3 tools/check_docs.py
       - name: Test documentation validator
         run: python3 -m unittest discover -s tests -p 'test_docs_check.py'
+      - name: Preserve installed deletion APK provenance before failures (offline)
+        run: |
+          python3 -m unittest discover -s tests -p 'test_installed_apk_identity.py'
+          python3 -m unittest discover -s tests -p 'test_installed_remote_delete_provenance.py'
       - name: Verify release APK identity negative controls (offline)
         run: python3 -m unittest discover -s tests -p 'test_verify_release_apk_identity.py'
       - name: Refuse stale, cancelled and mismatched PR CI receipts (offline)
