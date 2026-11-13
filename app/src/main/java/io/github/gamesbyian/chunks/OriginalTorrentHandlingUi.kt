@@ -73,23 +73,28 @@ internal fun OriginalTorrentHandlingChoice(
     title: String,
     selected: OriginalTorrentHandling,
     enabled: Boolean,
+    /** False when the providing app does not let Chunks delete this document. */
+    deleteAvailable: Boolean = true,
     onSelect: (OriginalTorrentHandling) -> Unit
 ) {
     Column(Modifier.fillMaxWidth().selectableGroup(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
         for (choice in OriginalTorrentHandling.entries) {
+            val available = enabled && (choice != OriginalTorrentHandling.DELETE || deleteAvailable)
             Row(
                 Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .selectable(selected = choice == selected, enabled = enabled,
+                    .selectable(selected = choice == selected, enabled = available,
                         role = Role.RadioButton, onClick = { onSelect(choice) })
                     .testTag(originalHandlingTag(choice)),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 // The row owns the click and semantics; the radio is visual only.
-                RadioButton(selected = choice == selected, onClick = null, enabled = enabled)
+                RadioButton(selected = choice == selected, onClick = null, enabled = available)
                 Column(Modifier.padding(start = 12.dp)) {
                     Text(choice.label, fontWeight = FontWeight.Medium)
-                    Text(choice.explanation, style = MaterialTheme.typography.bodySmall)
+                    Text(if (choice == OriginalTorrentHandling.DELETE && !deleteAvailable)
+                        "Not available: the app that holds this file does not let Chunks delete it."
+                        else choice.explanation, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -115,6 +120,20 @@ internal fun originalDeletionMessage(outcome: OriginalDeletionOutcome): String =
 
 internal object OriginalTorrentDocuments {
     fun sha256(bytes: ByteArray): ByteArray = MessageDigest.getInstance("SHA-256").digest(bytes)
+
+    /**
+     * The document's own provider advertises deletion (DocumentsContract
+     * FLAG_SUPPORTS_DELETE). Most shared-content URIs are not documents or carry only a
+     * read grant, so Delete is not offered for them. Read-only; call off the UI thread.
+     */
+    fun supportsDelete(context: Context, document: Uri): Boolean = try {
+        DocumentsContract.isDocumentUri(context, document) &&
+            context.contentResolver.query(document, arrayOf(DocumentsContract.Document.COLUMN_FLAGS),
+                null, null, null)?.use {
+                it.moveToFirst() &&
+                    (it.getInt(0) and DocumentsContract.Document.FLAG_SUPPORTS_DELETE) != 0
+            } == true
+    } catch (_: Exception) { false }
 
     /** Display name only, for the confirmation; never logged or persisted. */
     fun displayName(resolver: ContentResolver, document: Uri): String = try {
@@ -182,7 +201,13 @@ internal fun OriginalDeletionPrompt(
     }
 }
 
-internal fun archiveOutcomeMessage(outcome: SourceArchiveOutcome): String? = when (outcome) {
+internal fun archiveOutcomeMessage(
+    outcome: SourceArchiveOutcome,
+    handling: OriginalTorrentHandling = OriginalTorrentHandling.ARCHIVE
+): String? = if (handling == OriginalTorrentHandling.DELETE &&
+    outcome != SourceArchiveOutcome.OriginalDeletionRequiresApproval) {
+    "The original .torrent file was kept: Chunks could not confirm it is the file that was added."
+} else when (outcome) {
     is SourceArchiveOutcome.ArchivedCopy -> "A private copy of the .torrent is archived in Chunks; the original was kept."
     SourceArchiveOutcome.OriginalKept, SourceArchiveOutcome.OriginalDeletionRequiresApproval -> null
     SourceArchiveOutcome.NeedsReconciliation ->
@@ -191,3 +216,6 @@ internal fun archiveOutcomeMessage(outcome: SourceArchiveOutcome): String? = whe
         "The Chunks .torrent archive is full, so no copy was made. The original was kept."
     else -> "No archive copy of the .torrent was made. The original was kept."
 }
+
+/** Row and device-screen state while a stopped Add's file check runs. */
+internal const val CHECKING_STAYS_STOPPED = "Checking existing data, stays stopped"

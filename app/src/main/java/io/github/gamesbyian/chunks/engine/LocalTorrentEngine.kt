@@ -527,11 +527,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     }
 
     /**
-     * True when a checked Add that was never started is stopped over readable
-     * existing files at its exact torrent paths, so a stopped verification
-     * ([recheckStopped]) would measure real reusable pieces. Read-only.
+     * "Stopped after verification" for a checked Add that was never started:
+     * when readable existing files sit at its exact torrent paths, queue
+     * libtorrent's own check with stop_when_ready and return at once. libtorrent
+     * reads every piece and pauses itself as it leaves checking, before any peer
+     * download or upload; [LocalTransferStatus.stopsAfterCheck] reports the run.
+     * Stop overrides it as usual. False (nothing changed) when there is nothing
+     * to verify or the first-Start survey refuses the paths. Never retried.
      */
-    fun hasExistingPayloadToVerify(infoHash: String): Boolean = try {
+    fun beginStoppedVerification(infoHash: String): Boolean = try {
         synchronized(this) {
             synchronized(handles) {
                 val key = normal(infoHash)
@@ -539,9 +543,22 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 val pending = checkedFirstStarts[key] ?: return false
                 val state = handle.status(TorrentHandle.QUERY_NAME)
                 if (!state.flags().and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero() ||
-                    !state.hasMetadata()) return false
+                    !state.hasMetadata() || awaitingMetadata.contains(key)) return false
                 val (survey, problem) = firstStartSurvey(pending, handle)
-                problem == null && survey is LocalPayloadCollisionSurvey.Result.ExistingPaths
+                if (problem != null || survey !is LocalPayloadCollisionSurvey.Result.ExistingPaths)
+                    return false
+                val pendingCheck = state.state() == TorrentStatus.State.CHECKING_FILES ||
+                    state.state() == TorrentStatus.State.CHECKING_RESUME_DATA
+                try {
+                    // Same order as recheckStopped: check queued, then auto-stop, then run.
+                    if (!pendingCheck) handle.forceRecheck()
+                    handle.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
+                    handle.resume()
+                    true
+                } catch (_: Exception) {
+                    runCatching { handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); handle.pause() }
+                    false
+                }
             }
         }
     } catch (_: Exception) { false }

@@ -505,12 +505,13 @@ class LocalTorrentEngineTest {
         val checked = added(receiver.addStoppedChecked(partial.fixture.torrent, partial.destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
         assertFalse("Not a payload Start before any check", checked.stopsAfterCheck)
-        assertTrue(receiver.hasExistingPayloadToVerify(checked.infoHash.uppercase()))
         val before = partial.payload.readBytes()
-
-        val verified = receiver.recheckStopped(checked.infoHash)
-        assertEquals(verified.toString(), LocalCommandOutcome.VERIFIED, verified.outcome)
-        val status = requireNotNull(verified.status)
+        // Non-blocking: libtorrent checks and stops the job by itself.
+        assertTrue(receiver.beginStoppedVerification(checked.infoHash.uppercase()))
+        assertFalse("not a second concurrent verification", receiver.beginStoppedVerification(checked.infoHash))
+        waitFor { receiver.status(checked.infoHash)?.let { it.stopped && !it.stopsAfterCheck &&
+            it.state != LocalTransferState.CHECKING } == true }
+        val status = requireNotNull(receiver.status(checked.infoHash))
         assertTrue(status.toString(), status.stopped)
         assertFalse(status.toString(), status.stopsAfterCheck)
         val total = partial.fixture.files.values.sumOf { it.size.toLong() }
@@ -529,12 +530,13 @@ class LocalTorrentEngineTest {
         assertPartialReused(receiver, checked.infoHash, partial, seeder.listenPort())
     }
 
-    @Test fun stoppedVerificationIsOfferedOnlyForReadableExistingDataInsideThePlace() {
+    @Test fun stoppedVerificationRunsOnlyForReadableExistingDataInsideThePlace() {
         val fixture = fixture()
         val engine = engine()
         val empty = added(engine.addStoppedChecked(fixture.torrent, temp.newFolder("verify-empty")))
         assertFalse("An empty destination has nothing to verify",
-            engine.hasExistingPayloadToVerify(empty.infoHash))
+            engine.beginStoppedVerification(empty.infoHash))
+        assertTrue("and nothing changed", requireNotNull(engine.status(empty.infoHash)).stopped)
         assertTrue(engine.removeKeepingData(empty.infoHash))
 
         val other = TorrentBuilder().path(File(temp.newFolder("verify-symlink-source"), "Other").apply {
@@ -548,11 +550,11 @@ class LocalTorrentEngineTest {
         assertTrue(payload.parentFile.isDirectory || payload.parentFile.mkdirs())
         Files.createSymbolicLink(payload.toPath(), outside.toPath())
         assertFalse("A symlinked payload path is never read",
-            engine.hasExistingPayloadToVerify(job.infoHash))
+            engine.beginStoppedVerification(job.infoHash))
         val refused = engine.recheckStopped(job.infoHash)
         assertEquals(refused.toString(), LocalCommandOutcome.REFUSED, refused.outcome)
         assertTrue(requireNotNull(engine.status(job.infoHash)).stopped)
-        assertFalse(engine.hasExistingPayloadToVerify("c".repeat(40)))
+        assertFalse(engine.beginStoppedVerification("c".repeat(40)))
     }
 
     @Test fun restartedCheckedAddStillVerifiesExistingPartialPayloadInsteadOfTrustingInitialResume() {

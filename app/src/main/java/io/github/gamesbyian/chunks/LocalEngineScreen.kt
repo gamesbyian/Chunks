@@ -488,6 +488,8 @@ internal fun LocalEngineScreen(
     // Separately approved deletion of a verified Add's original document; RAM only.
     var originalDeletion by remember { mutableStateOf<OriginalDeletionRequest?>(null) }
     var originalDeleting by remember { mutableStateOf(false) }
+    // The outcome of that separate action; the Add's own result message stays intact.
+    var originalNote by remember { mutableStateOf<String?>(null) }
     // Parent-owned private source is available to all intake callbacks, including
     // the asynchronous picker. Keep it in RAM rather than Android SavedState.
     val magnetHolder = magnetDraftState ?: remember { mutableStateOf("") }
@@ -1560,7 +1562,7 @@ internal fun LocalEngineScreen(
                                 val outcome = withContext(Dispatchers.IO) {
                                     OriginalTorrentDocuments.deleteReviewed(context.contentResolver, request)
                                 }
-                                message = originalDeletionMessage(outcome)
+                                originalNote = originalDeletionMessage(outcome)
                             } finally {
                                 originalDeleting = false
                                 if (originalDeletion === request) originalDeletion = null
@@ -1570,8 +1572,12 @@ internal fun LocalEngineScreen(
                 },
                 onKeep = {
                     if (originalDeletion === request) originalDeletion = null
-                    message = "The original .torrent file was kept."
+                    originalNote = "The original .torrent file was kept."
                 })
+        }
+        originalNote?.let { note ->
+            Text(note, style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
         val add = pending
         if (add != null && magnet.isNotBlank()) {
@@ -1608,12 +1614,27 @@ internal fun LocalEngineScreen(
                 onDefault = { on -> if (finishInOrderStore.setDefaultForNewAdds(on)) finishInOrderDefault = on }
             )
         }
-        val originalHandlingStore = remember { OriginalTorrentHandlingStore(context) }
-        var originalHandling by remember(add) { mutableStateOf(originalHandlingStore.default) }
-        if (add?.originalDocument != null && destination != null) OriginalTorrentHandlingChoice(
-            "Original .torrent file", selected = originalHandling,
-            enabled = !busy && localAddAttemptSession?.attemptedTicket == null,
-            onSelect = { originalHandling = it })
+        // Null until the saved default and the provider's delete support are read on IO;
+        // an Add confirmed before then keeps the original untouched.
+        var originalHandling by remember(add) { mutableStateOf<OriginalTorrentHandling?>(null) }
+        var originalDeletable by remember(add) { mutableStateOf(false) }
+        LaunchedEffect(add) {
+            val document = add?.originalDocument ?: return@LaunchedEffect
+            val (saved, deletable) = withContext(Dispatchers.IO) {
+                OriginalTorrentHandlingStore(context).default to
+                    OriginalTorrentDocuments.supportsDelete(context, document)
+            }
+            originalDeletable = deletable
+            originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
+                OriginalTorrentHandling.ARCHIVE else saved
+        }
+        val shownHandling = originalHandling
+        if (add?.originalDocument != null && destination != null && shownHandling != null)
+            OriginalTorrentHandlingChoice(
+                "Original .torrent file", selected = shownHandling,
+                enabled = !busy && localAddAttemptSession?.attemptedTicket == null,
+                deleteAvailable = originalDeletable,
+                onSelect = { originalHandling = it })
         val seedingPreview = remember(add?.preview?.infoHashV1) {
             add?.preview?.let { localSeedingPreview(context, it) }
         }
@@ -1659,7 +1680,9 @@ internal fun LocalEngineScreen(
                 var verifyAfterAdd: String? = null
                 // Frozen with the Add click: only the reviewed user document, never a URL.
                 val frozenOriginal = add.originalDocument
-                val frozenHandling = if (frozenOriginal != null) originalHandling else OriginalTorrentHandling.KEEP
+                val frozenHandling = if (frozenOriginal != null) originalHandling ?: OriginalTorrentHandling.KEEP
+                    else OriginalTorrentHandling.KEEP
+                originalNote = null
                 var submittedBytes: ByteArray? = null
                 performLocalMutation localDocument@{
                     val selected = selectedPlace ?: run {
@@ -1739,17 +1762,12 @@ internal fun LocalEngineScreen(
                                     if (autoStart && added is LocalAddResult.AddedStopped)
                                         added to engine.resume(added.status.infoHash)
                                     else {
-                                        // "Stopped after verification": files already at the
-                                        // exact torrent paths are hash-checked now, and the
-                                        // job stops itself again before any peer traffic.
+                                        // "Stopped after verification": inside this Add's own change,
+                                        // libtorrent starts checking files already at the exact torrent
+                                        // paths and stops the job itself before any peer traffic.
                                         if (added is LocalAddResult.AddedStopped &&
-                                            engine.hasExistingPayloadToVerify(added.status.infoHash)) {
-                                            val hash = added.status.infoHash
-                                            verifyAfterAdd = hash.takeIf {
-                                                LocalRecheckRuns.start(it, awaitFenceMillis = 60_000) { exact ->
-                                                    engine.recheckStopped(exact) }
-                                            }
-                                        }
+                                            engine.beginStoppedVerification(added.status.infoHash))
+                                            verifyAfterAdd = added.status.infoHash
                                         added to null
                                     }
                                 }
@@ -1781,8 +1799,8 @@ internal fun LocalEngineScreen(
                                 LocalCommandOutcome.NOT_FOUND ->
                                     "Added but could not locate the torrent for Start. Inspect the list before retrying."
                                 null -> if (verifyAfterAdd != null)
-                                    "Added stopped. Checking the files already in this folder; " +
-                                        "it stays stopped and downloads nothing until you press Start."
+                                    "Added stopped. Checking the files already in this folder; it stops by itself " +
+                                        "when the check ends and downloads nothing until you press Start."
                                 else "Added stopped. Start manually from its transfer card."
                             }
                         }
@@ -1824,7 +1842,7 @@ internal fun LocalEngineScreen(
                                         withContext(Dispatchers.IO) {
                                             OriginalTorrentDocuments.displayName(context.contentResolver, original)
                                         }, OriginalTorrentDocuments.sha256(verifiedBytes), add.preview.name)
-                                } else archiveOutcomeMessage(outcome)?.let { note ->
+                                } else archiveOutcomeMessage(outcome, frozenHandling)?.let { note ->
                                     message = listOfNotNull(message, note).joinToString(" ")
                                 }
                             }
@@ -2974,11 +2992,22 @@ internal fun LocalEngineScreen(
             onNamesChanged = { registeredNames = it }
         )
         } // names anchor
-        val handlingStore = remember { OriginalTorrentHandlingStore(context) }
-        var defaultHandling by remember(optionsCategory) { mutableStateOf(handlingStore.default) }
-        OriginalTorrentHandlingChoice("Original .torrent file after Add (default)",
-            selected = defaultHandling, enabled = true,
-            onSelect = { choice -> if (handlingStore.setDefault(choice)) defaultHandling = choice })
+        var defaultHandling by remember { mutableStateOf<OriginalTorrentHandling?>(null) }
+        LaunchedEffect(optionsCategory) {
+            if (optionsCategory == OptionsCategory.DOWNLOADS) defaultHandling =
+                withContext(Dispatchers.IO) { OriginalTorrentHandlingStore(context).default }
+        }
+        defaultHandling?.let { shown ->
+            OriginalTorrentHandlingChoice("Original .torrent file after Add (default)",
+                selected = shown, enabled = true,
+                onSelect = { choice ->
+                    scope.launch {
+                        if (withContext(Dispatchers.IO) { OriginalTorrentHandlingStore(context).setDefault(choice) })
+                            defaultHandling = choice
+                        else message = "The default for original .torrent files could not be saved."
+                    }
+                })
+        }
         Text("Applies when you open or share a .torrent file from another app. Each Add can choose differently.",
             style = MaterialTheme.typography.bodySmall)
         LocalZipInterruptedExtractions()
@@ -3205,7 +3234,7 @@ internal fun LocalAddReview(
 private fun stateLabel(transfer: LocalTransferStatus): String = when {
     transfer.error != null -> "Error"
     transfer.stopped -> "Stopped"
-    transfer.state == LocalTransferState.CHECKING && transfer.stopsAfterCheck -> "Checking existing data, stays stopped"
+    transfer.state == LocalTransferState.CHECKING && transfer.stopsAfterCheck -> CHECKING_STAYS_STOPPED
     transfer.state == LocalTransferState.CHECKING -> "Checking existing data"
     !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching metadata"
     transfer.state == LocalTransferState.DOWNLOADING -> "Downloading"

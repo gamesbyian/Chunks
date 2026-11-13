@@ -117,12 +117,10 @@ class LocalStoppedRecheckInstrumentedTest {
         val local = engine()
         val job = (local.addStoppedChecked(torrent, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))) as LocalAddResult.AddedStopped).status
-        assertTrue(local.hasExistingPayloadToVerify(job.infoHash))
-
-        val verified = local.recheckStopped(job.infoHash)
-        assertEquals(verified.toString(), LocalCommandOutcome.VERIFIED, verified.outcome)
-        assertTrue(verified.toString(), verified.status!!.stopped)
-        assertEquals(10L * 65536, verified.status!!.doneBytes)
+        assertTrue(local.beginStoppedVerification(job.infoHash))
+        waitFor { local.status(job.infoHash)?.let { it.stopped && !it.stopsAfterCheck &&
+            it.state != LocalTransferState.CHECKING } == true }
+        assertEquals(10L * 65536, requireNotNull(local.status(job.infoHash)).doneBytes)
         Thread.sleep(2_000)
         val idle = requireNotNull(local.status(job.infoHash))
         assertTrue("still stopped: $idle", idle.stopped)

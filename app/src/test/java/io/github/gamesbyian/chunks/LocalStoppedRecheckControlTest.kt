@@ -62,46 +62,6 @@ class LocalStoppedRecheckControlTest {
         rule.onNodeWithText("Check finished", substring = true).assertExists()
     }
 
-    @Test fun checkAfterAStoppedAddWaitsForThatAddsChangeLockThenRunsOnce() {
-        val fence = LocalMutationFence.revision
-        assertTrue("the Add holds the shared lock", fence.beginMutation())
-        val hash = "c3".repeat(20)
-        val calls = AtomicInteger()
-        assertTrue(LocalRecheckRuns.start(hash, awaitFenceMillis = 10_000) {
-            calls.incrementAndGet(); LocalCommandResult(LocalCommandOutcome.VERIFIED, null)
-        })
-        Thread.sleep(400)
-        assertEquals("no check while the Add is unsettled", 0, calls.get())
-        fence.settledMutation()
-        Thread.sleep(300)
-        assertEquals("nor before the Add's fresh readback", 0, calls.get())
-        fence.acceptObservation(fence.snapshot(), emptyList<Any>())
-        val deadline = System.currentTimeMillis() + 5_000
-        while (LocalRecheckRuns.running[hash] == true && System.currentTimeMillis() < deadline) Thread.sleep(20)
-        assertEquals(1, calls.get())
-        assertTrue(LocalRecheckRuns.outcomes[hash].orEmpty().startsWith("Check finished"))
-        fence.acceptObservation(fence.snapshot(), emptyList<Any>())
-    }
-
-    @Test fun aBoundedWaitGivesUpWithoutChecking() {
-        val fence = LocalMutationFence.revision
-        assertTrue(fence.beginMutation())
-        val hash = "d4".repeat(20)
-        val calls = AtomicInteger()
-        try {
-            assertTrue(LocalRecheckRuns.start(hash, awaitFenceMillis = 300) {
-                calls.incrementAndGet(); null
-            })
-            val deadline = System.currentTimeMillis() + 5_000
-            while (LocalRecheckRuns.running[hash] == true && System.currentTimeMillis() < deadline) Thread.sleep(20)
-            assertEquals(0, calls.get())
-            assertTrue(LocalRecheckRuns.outcomes[hash].orEmpty().contains("Nothing was checked"))
-        } finally {
-            fence.settledMutation()
-            fence.acceptObservation(fence.snapshot(), emptyList<Any>())
-        }
-    }
-
     @Test fun outcomeSurvivesDetailsHidingTheControlDuringTheCheck() {
         // Details shows local operations only while stopped; libtorrent
         // unpauses the job for the check, so the control leaves composition.

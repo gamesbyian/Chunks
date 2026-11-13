@@ -11,6 +11,8 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -144,5 +146,21 @@ class OriginalTorrentHandlingTest {
         for (outcome in listOf(SourceArchiveOutcome.NeedsReconciliation, SourceArchiveOutcome.ArchiveFull,
             SourceArchiveOutcome.IoFailure, SourceArchiveOutcome.UnverifiedAdd))
             assertTrue(outcome.toString(), archiveOutcomeMessage(outcome)!!.contains("original was kept"))
+    }
+
+    @Test fun deleteIsOfferedOnlyWhenTheProviderSupportsIt() {
+        // A plain shared-content provider is not a deletable document.
+        File(root, "shared.torrent").writeBytes(metainfo)
+        assertEquals(false, OriginalTorrentDocuments.supportsDelete(context, uri("shared.torrent")))
+        rule.setContent { ChunksTheme { OriginalTorrentHandlingChoice("Original .torrent file",
+            OriginalTorrentHandling.ARCHIVE, enabled = true, deleteAvailable = false, onSelect = {}) } }
+        rule.onNodeWithTag(originalHandlingTag(OriginalTorrentHandling.DELETE)).assertIsNotEnabled()
+        rule.onNodeWithTag(originalHandlingTag(OriginalTorrentHandling.KEEP)).assertIsEnabled()
+    }
+
+    @Test fun aRefusedDeletePreconditionIsReportedAsKeptNotAsArchive() {
+        val text = archiveOutcomeMessage(SourceArchiveOutcome.IdentityMismatch, OriginalTorrentHandling.DELETE)!!
+        assertTrue(text, text.contains("original .torrent file was kept"))
+        assertTrue(text, !text.contains("archive"))
     }
 }
