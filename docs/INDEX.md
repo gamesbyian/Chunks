@@ -1,3 +1,4 @@
+**Owner-approved Add/environment polish (2026-11-13):** [Add destination and outcome UX](design/ADD-DESTINATION-AND-OUTCOME.md) binds compact Local/named-connection Add chips, short-name-only status, one in-place operation outcome, matched transfer stripe/label/dot colours and contextual rather than permanent remote folder explanations. Integrate with existing R1 UX work; implementation and installed acceptance remain pending.
 # Chunks documentation index
 
 **Approved Transfers redesign (2026-11-13):** [Compact list-first Transfers UI contract](design/TRANSFERS-COMPACT-LIST-FIRST.md) binds screen hierarchy, conditional All/individual count chips, search/filter/sort/batch compactness, above-list live summary, removal of bottom dashboard and placement of environment colours under Connections/Options. Design approved; implementation and Pixel acceptance remain pending. The ranked work is integrated into [WORK-QUEUE](WORK-QUEUE.md), not a separate backlog.
