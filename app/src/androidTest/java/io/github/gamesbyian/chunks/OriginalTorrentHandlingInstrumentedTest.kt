@@ -144,4 +144,53 @@ class OriginalTorrentHandlingInstrumentedTest {
         assertTrue("Unrelated documents are untouched", stillReadable(sibling))
         assertTrue("The verified transfer stays", LocalEngineHolder.current()?.status(hash) != null)
     }
+
+    /**
+     * WORK-QUEUE R3 installed UI: exact-path partial data already in the reviewed Place is
+     * verified straight after a stopped Add, which stays stopped and downloads nothing.
+     * The fixture writes only its own uniquely named file and deletes only that file.
+     */
+    @Test fun stoppedAddOverExistingPartialDataShowsVerifiedShareAndStaysStopped() {
+        val source = File(work, "partial-src").apply { mkdirs() }
+        val name = "chunks-stopped-verify-${System.nanoTime().toString(16)}.bin"
+        val payload = ByteArray(16 * 16 * 1024).also { Random(17).nextBytes(it) }
+        File(source, name).writeBytes(payload)
+        val bytes = TorrentBuilder().path(File(source, name)).pieceSize(16 * 1024)
+            .flags(TorrentBuilder.V1_ONLY).generate().entry().bencode()
+        val hash = requireNotNull(TorrentMetainfoReader.preview(bytes).infoHashV1)
+        hashes += hash
+        val document = shareDocument(bytes, "partial.torrent")
+        var placed: File? = null
+        try {
+            ActivityScenario.launch<MainActivity>(intent(document)).use {
+                waitForText("Original .torrent file")
+                // The review states the exact folder this Add writes into.
+                val saves = rule.onAllNodes(hasText("Saves into:", substring = true)).fetchSemanticsNodes()
+                    .flatMap { it.config.getOrElseNullable(SemanticsProperties.Text) { null }.orEmpty() }
+                    .map { it.text }.first { it.startsWith("Saves into:") }
+                val folder = File(saves.substringAfterLast("(").substringBeforeLast(")"))
+                assertTrue("reviewed Place exists: $saves", folder.isDirectory)
+                val target = File(folder, name)
+                assertTrue("fixture name is unique", !target.exists())
+                // Six whole valid pieces at the exact torrent path; nothing else.
+                target.writeBytes(payload.copyOf(6 * 16 * 1024))
+                placed = target
+                addStoppedFromShare(document, OriginalTorrentHandling.KEEP)
+                waitForText("Checking the files already in this folder")
+                waitFor(60_000) {
+                    LocalEngineHolder.current()?.status(hash)?.let {
+                        it.stopped && !it.stopsAfterCheck && it.doneBytes == 6L * 16 * 1024
+                    } == true
+                }
+                Thread.sleep(1_500)
+                val idle = requireNotNull(LocalEngineHolder.current()?.status(hash))
+                assertTrue("still stopped: $idle", idle.stopped)
+                assertEquals("nothing downloaded while stopped", 0L, idle.payloadDownloadedBytes)
+                assertArrayEquals("verification never writes payload", payload.copyOf(6 * 16 * 1024), target.readBytes())
+                assertTrue("Keep leaves the original", stillReadable(document))
+            }
+        } finally {
+            placed?.delete()
+        }
+    }
 }
