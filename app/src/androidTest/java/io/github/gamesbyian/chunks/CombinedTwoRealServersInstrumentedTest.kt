@@ -485,10 +485,11 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("source-first Universal Add") { visible("Add a transfer") }
             val preservedDraft = "magnet:?xt=urn:btih:$sharedHash"
             typeInto("Magnet or HTTP(S) torrent URL", preservedDraft)
-            requireScrollTo("Other saved connections")
-            rule.onNodeWithText("Other saved connections", substring = true).performClick()
-            requireScrollTo("Connect to ")
-            rule.onNodeWithText("Connect to ", substring = true).performClick()
+            // Both saved profiles deliberately have the same custom name.
+            // The direct Add chip must be distinct, and selecting saved A only
+            // begins authentication: it cannot borrow B's current Add authority.
+            rule.onNodeWithContentDescription("Connect to Studio (2) before adding")
+                .performScrollTo().performClick()
             // This must show an ACTUAL login, not B's already authenticated
             // server UI with A's address painted into editable fields.
             waitFor("explicit A authentication rather than stale B", 30_000) {
