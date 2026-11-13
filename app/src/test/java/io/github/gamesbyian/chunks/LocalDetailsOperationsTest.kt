@@ -168,4 +168,16 @@ class LocalDetailsOperationsTest {
         rule.waitUntil(5_000) { runCatching {
             rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).assertIsEnabled() }.isSuccess }
     }
+
+    @Test fun aCompleteJobOffersTheVerifiedLibraryCopy() {
+        show(FakePort(status))
+        rule.waitUntil(5_000) { runCatching { rule.onNodeWithText("Copy a finished file").assertExists() }.isSuccess }
+    }
+
+    @Test fun anIncompleteJobGetsNoLibraryCopy() {
+        show(FakePort(status.copy(progressPpm = 400_000)))
+        rule.waitUntil(5_000) { runCatching { rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_REMOVE).assertExists() }.isSuccess }
+        rule.waitForIdle()
+        rule.onNodeWithText("Copy a finished file").assertDoesNotExist()
+    }
 }
