@@ -13,6 +13,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
@@ -116,28 +117,34 @@ internal fun UnifiedTransferDetailPanel(
         }
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
-        if (!hidden && onReviewStartStop != null) {
-            // Start/Stop uses the already-owned review and exact-account mutation
-            // gates on the Transfers screen. This button only selects the job.
-            OutlinedButton(onClick = onReviewStartStop,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .semantics {
-                        contentDescription = "Review Start or Stop for " +
-                            "${detail.observation?.displayName ?: "this transfer"} on $environmentLabel"
-                    }) {
-                Text("Review Start / Stop")
+        // Ordinary actions two across (ChunksActionGrid); environment tools follow.
+        val primaryActions = buildList<@Composable (Modifier) -> Unit> {
+            if (!hidden && onReviewStartStop != null) add { cell ->
+                // Start/Stop uses the already-owned review and exact-account mutation
+                // gates on the Transfers screen. This button only selects the job.
+                OutlinedButton(onClick = onReviewStartStop,
+                    modifier = cell.heightIn(min = 48.dp)
+                        .semantics {
+                            contentDescription = "Review Start or Stop for " +
+                                "${detail.observation?.displayName ?: "this transfer"} on $environmentLabel"
+                        }) {
+                    Text("Review Start / Stop", textAlign = TextAlign.Center)
+                }
+            }
+            if (!hidden && onOpenOwningList != null) add { cell ->
+                OutlinedButton(onClick = onOpenOwningList, modifier = cell.heightIn(min = 48.dp)) {
+                    Text("Open " + environmentLabel + " transfers", textAlign = TextAlign.Center)
+                }
+            }
+            if (!hidden && onRefreshOwningList != null) add { cell ->
+                OutlinedButton(onClick = onRefreshOwningList, modifier = cell.heightIn(min = 48.dp)) {
+                    Text("Refresh " + environmentLabel, textAlign = TextAlign.Center)
+                }
             }
         }
+        ChunksActionGrid(primaryActions)
         if (!hidden) exactServerOperations?.invoke()
         if (!hidden) localOperations?.invoke()
-        if (!hidden && onOpenOwningList != null) {
-            Text("Browse transfers in this environment.",
-                style = MaterialTheme.typography.bodyMedium)
-            OutlinedButton(onClick = onOpenOwningList,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Open " + environmentLabel + " transfers")
-            }
-        }
         if (!hidden && onOpenOwningList == null && detail.observation != null) {
             Text("This transfer is listed here for reference. Sign in to its own environment " +
                 "to change it.", style = MaterialTheme.typography.bodyMedium)
@@ -156,12 +163,6 @@ internal fun UnifiedTransferDetailPanel(
             if (detail.observation == null) {
                 Text("No currently displayable details from this exact environment.",
                     style = MaterialTheme.typography.bodySmall)
-            }
-        }
-        if (onRefreshOwningList != null && !hidden) {
-            OutlinedButton(onClick = onRefreshOwningList,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Refresh " + environmentLabel)
             }
         }
         if (!hidden && onInspectStall != null) {
@@ -268,10 +269,7 @@ internal fun UnifiedTransferDetailPanel(
 @Composable
 private fun TransferDetailFacts(transfer: UnifiedTransferObservation) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (transfer.originalName != transfer.displayName) {
-            Text("Original torrent: " + transfer.originalName,
-                style = MaterialTheme.typography.bodyMedium)
-        }
+        // The original name is stated once, beside the rename control above.
         val state = when (transfer.started) {
             true -> "Start state set; peer activity has not been verified."
             false -> "Stopped in the last observed list."
