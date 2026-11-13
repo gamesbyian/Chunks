@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.DocumentsContract
 import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -83,11 +84,12 @@ class OriginalTorrentHandlingInstrumentedTest {
         }
         waitForText("Original .torrent file")
         rule.onNodeWithTag(originalHandlingTag(handling)).performScrollTo().performClick()
-        val start = hasText("Start when added") and hasClickAction()
-        if (rule.onAllNodes(start).fetchSemanticsNodes().isNotEmpty() &&
-            rule.onNode(start).fetchSemanticsNode().config
-                .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name == "On")
-            rule.onNode(start).performScrollTo().performClick()
+        // A stopped Add is part of every case here: drive the exact tagged control and prove Off.
+        val start = rule.onNodeWithTag(ChunksSemantics.ADD_START_PREFERENCE).performScrollTo()
+        if (start.fetchSemanticsNode().config
+                .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name != "Off")
+            start.performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_START_PREFERENCE).assertIsOff()
         val add = hasText("Add transfer") and hasClickAction()
         waitFor { rule.onAllNodes(add).fetchSemanticsNodes().any {
             it.config.getOrElseNullable(SemanticsProperties.Disabled) { null } == null } }
@@ -106,8 +108,18 @@ class OriginalTorrentHandlingInstrumentedTest {
         context.contentResolver.openInputStream(document)?.use { true } ?: false
     } catch (_: FileNotFoundException) { false }
 
-    private fun waitForExactStoppedJob(hash: String) = waitFor(45_000) {
-        LocalEngineHolder.current()?.status(hash)?.stopped == true
+    private fun waitForExactStoppedJob(hash: String) {
+        val deadline = System.currentTimeMillis() + 45_000
+        while (LocalEngineHolder.current()?.status(hash)?.stopped != true) {
+            if (System.currentTimeMillis() > deadline) {
+                val shown = rule.onAllNodes(hasText("Add", substring = true)).fetchSemanticsNodes()
+                    .flatMap { it.config.getOrElseNullable(SemanticsProperties.Text) { null }.orEmpty() }
+                    .map { it.text }.filter { it.startsWith("Added") || it.contains("Nothing was") }
+                fail("No exact stopped job for $hash: status=${LocalEngineHolder.current()?.status(hash)} messages=$shown")
+            }
+            rule.waitForIdle()
+            Thread.sleep(200)
+        }
     }
 
     @Test fun archiveKeepsThePrivateCopyAndTheOriginal() {
