@@ -38,6 +38,9 @@ internal object ChunksSemantics {
     const val DETAILS_FOREIGN_PARTIAL = "chunks.details.foreign_partial"
     const val DETAILS_FOREIGN_PARTIAL_REUSE = "chunks.details.foreign_partial.reuse"
     const val DETAILS_LOCAL_RECHECK = "chunks.details.local.recheck"
+    const val DETAILS_LOCAL_FILES = "chunks.details.local.files"
+    const val DETAILS_LOCAL_REMOVE = "chunks.details.local.remove"
+    const val DETAILS_LOCAL_REMOVE_DATA = "chunks.details.local.remove-data"
     const val ADD_START_PREFERENCE = "chunks.add.start-preference"
     /** Inline Add-to choice for this device. Selected state is a Compose semantic. */
     const val ADD_TARGET_DEVICE = "chunks.add.target.device"

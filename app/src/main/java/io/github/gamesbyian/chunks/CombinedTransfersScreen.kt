@@ -1041,11 +1041,15 @@ internal fun CombinedTransfersScreen(
             environmentHue = palette.hueOf(focusedKey.environment),
             onBack = { savedDetailTarget = null },
             localOperations = if (focusedKey.environment == EnvironmentSnapshots.LOCAL &&
-                details.readState == TransferDetailReadState.CURRENT &&
-                details.observation?.started == false && localPrivacy?.mayShow != false) ({
+                details.readState == TransferDetailReadState.CURRENT && localPrivacy?.mayShow != false) ({
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    LocalStoppedRecheckControl(focusedKey.infoHash)
-                    LocalForeignPartialStartRecovery(focusedKey.infoHash)
+                    if (details.observation?.started == false) {
+                        LocalStoppedRecheckControl(focusedKey.infoHash)
+                        LocalForeignPartialStartRecovery(focusedKey.infoHash)
+                    }
+                    // Full Details parity with server jobs: files & priorities and Remove.
+                    LocalDetailsOperations(focusedKey.infoHash,
+                        stale = localFrame.stale || LocalMutationFence.revision.blocksMutations())
                 }
             }) else null,
             exactServerOperations = if (canShowExactRemoval) ({

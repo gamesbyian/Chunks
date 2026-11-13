@@ -18,7 +18,7 @@ internal fun LocalTransferConfirmationActions(
     onConfirm: () -> Unit,
     onCancel: () -> Unit
 ) {
-    ResponsiveActionGroup { actionModifier ->
+    ResponsiveActionGroup(maxColumns = 2) { actionModifier ->
         Button(onClick = onConfirm, enabled = enabled, modifier = actionModifier) {
             Text(confirmLabel)
         }
