@@ -4,7 +4,8 @@ import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.attribute.PosixFilePermissions
+import java.nio.file.LinkOption
+import java.nio.file.StandardOpenOption
 import java.security.MessageDigest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -51,14 +52,19 @@ class RTorrentDisposableAddRecoveryTest {
     @Test fun unavailableStorageIsTruthfulAndTheSessionCanRecoverAfterExplicitRepair() = runBlocking {
         val (remote, parent) = client()
         val owned = Files.createTempDirectory(parent, "chunks-refused-storage-")
+        val destination = owned.resolve("download-place")
+        // A regular file where the directory must be is unusable even when
+        // modern rTorrent runs as root inside its disposable container.
+        // chmod alone only refuses the unprivileged legacy fixture.
+        Files.write(destination, "Owned storage refusal fixture".toByteArray(),
+            StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)
         val name = "chunks-storage-recovery.bin"
         val bytes = metainfo(name)
         val hash = TorrentMetainfoReader.preview(bytes).infoHashV1
-        Files.setPosixFilePermissions(owned, PosixFilePermissions.fromString("r-x------"))
         try {
-            check(!Files.isWritable(owned)) { "Fixture must really lack write permission" }
+            check(Files.isRegularFile(destination, LinkOption.NOFOLLOW_LINKS))
             assertTrue("Unusable storage cannot be called Started",
-                remote.loadStartedTorrentBytes(bytes, owned.toString()) is RemoteAddAndStart.StartNotVerified)
+                remote.loadStartedTorrentBytes(bytes, destination.toString()) is RemoteAddAndStart.StartNotVerified)
             val stalled = RemoteStallInspector.inspect(remote, hash)
             assertTrue(stalled.started)
             assertFalse(stalled.active)
@@ -66,13 +72,14 @@ class RTorrentDisposableAddRecoveryTest {
             assertEquals(true, stalled.hashCheckFailed)
             assertTrue(stalled.explanation().contains("permissions"))
             assertEquals(LifecycleOutcome.Verified(false), remote.setStarted(hash, false))
-            remote.requestHashRecheck(hash, name, owned.toString())
-            assertFalse("Recheck does not repair missing filesystem permission", remote.readActivity(hash).active == true)
+            remote.requestHashRecheck(hash, name, destination.toString())
+            assertFalse("Recheck does not repair unusable storage", remote.readActivity(hash).active == true)
 
             // Test-rig storage repair, not a Chunks remote-shell capability.
             // Only a fresh, explicitly requested Start follows this independently observed repair.
-            Files.setPosixFilePermissions(owned, PosixFilePermissions.fromString("rwx------"))
-            assertTrue(Files.isWritable(owned))
+            Files.delete(destination) // exact owned fixture, never user payload
+            Files.createDirectory(destination)
+            assertTrue(Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS))
             remote.setStarted(hash, true)
             var active = false
             for (attempt in 0..30) {
@@ -82,11 +89,12 @@ class RTorrentDisposableAddRecoveryTest {
             }
             assertTrue("Ordinary lifecycle must recover after actual storage is repaired", active)
             assertEquals(SessionEraseOutcome.VerifiedRemoved(hash),
-                remote.eraseFromSession(hash, name, owned.toString()))
+                remote.eraseFromSession(hash, name, destination.toString()))
         } finally {
-            Files.setPosixFilePermissions(owned, PosixFilePermissions.fromString("rwx------"))
             if (remote.lookupName(hash) == null) {
-                Files.deleteIfExists(owned.resolve(name))
+                if (Files.isDirectory(destination, LinkOption.NOFOLLOW_LINKS))
+                    Files.deleteIfExists(destination.resolve(name))
+                Files.deleteIfExists(destination)
                 Files.deleteIfExists(owned)
             }
         }

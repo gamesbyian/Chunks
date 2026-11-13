@@ -173,6 +173,9 @@ internal class MainActivityRealMagnetJourney(
             try { if (condition()) return } catch (fault: RpcFault) {
                 if (!fault.isUnknownInfoHash()) throw fault
             }
+            // Advance app composition on the v2 rule's main dispatcher while
+            // waiting for independent engine state; never replay a mutation.
+            rule.waitForIdle()
             Thread.sleep(300)
         }
         fail("Required exact-server checkpoint missing: $what")
@@ -190,6 +193,7 @@ internal class MainActivityRealMagnetJourney(
                 if (transient is io.github.gamesbyian.chunks.rpc.RpcReplyTooLarge) throw transient
                 last = transient
                 android.util.Log.i("ChunksRealMagnet", "CHUNKS_READ_RETRY attempt=${attempt + 1} type=${transient.javaClass.simpleName}")
+                rule.waitForIdle()
                 Thread.sleep(1_000)
             }
         }
@@ -356,7 +360,7 @@ internal class MainActivityRealMagnetJourney(
                 assertEquals("Blank optional folder must remain a native-default selection", "",
                     rule.onNodeWithText("Custom server folder (optional)").fetchSemanticsNode()
                         .config[androidx.compose.ui.semantics.SemanticsProperties.EditableText].text)
-                report("chunks_real_add_native_default", "blank-override-empty-server-default")
+                report("chunks_real_add_app_stage", "native-default-ready")
             }
             report("chunks_real_add_app_stage", "place-ready")
             if (disposable) {
@@ -391,8 +395,10 @@ internal class MainActivityRealMagnetJourney(
                 report("chunks_real_add_app_stage", "artwork-choice")
                 // This must remain present, reachable and actionable for
                 // EVERY Add; do not silently omit an opt-out after navigation.
-                rule.onNodeWithText(artworkChoice).performScrollTo()
-                rule.onNodeWithText(artworkChoice).assertIsEnabled().performClick()
+                // Reuse the existing settled read/scroll checks. A lazy option
+                // observed above may be recycled on the next layout frame.
+                // click() still dispatches the actual choice exactly once.
+                click(artworkChoice)
                 report("chunks_real_add_app_stage", "artwork-chosen")
             }
             // The source-first form has one explicit "Add transfer" submission action and no

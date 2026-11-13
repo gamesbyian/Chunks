@@ -2,9 +2,10 @@
 
 Evidence-only Robolectric native-graphics API35 captures, **not approved golden
 baselines, installed-device proof or owner visual approval**. All source/hash/path
-content shown is synthetic. Captured at original source `8c568438` before the
-main-documentation rebase; the application, test and workflow bytes are identical
-to the rebased candidate. The [quality ledger](../../QUALITY-LEDGER.md) records
+content shown is synthetic. Regenerated after integration onto `19bfe3de`;
+the reviewed production components and JVM producers come from checkpoint
+`4aa4ea8f`. The later Android runner/fixture corrections do not alter these
+rendered components. The [quality ledger](../../QUALITY-LEDGER.md) records
 functional proof and remaining acceptance tiers.
 
 | Capture | Producer / viewport | Agent inspection |

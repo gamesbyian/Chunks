@@ -454,25 +454,37 @@ jobs:
           CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
         run: |
           status=0
+          results="$RUNNER_TEMP/chunks-modern-results"
+          mkdir -p "$results"
+          preserve_results() {
+            for report in app/build/test-results/testDebugUnitTest/TEST-*Disposable*.xml; do
+              if [ -f "$report" ]; then cp "$report" "$results/"; fi
+            done
+          }
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableServerTest' || status=1
+          preserve_results
           gradle --no-daemon :app:testDebugUnitTest \
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableMutationTest' \
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableFullJourneyTest' || status=1
+          preserve_results
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeStartedAddTest' || status=1
+          preserve_results
           CHUNKS_DISPOSABLE_AUTH_URL=http://127.0.0.1:18080/AUTHRPC \
             gradle --no-daemon :app:testDebugUnitTest \
               --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAddRecoveryTest' \
-            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeDefaultTest' \
-            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest' || status=1
+              --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeDefaultTest' \
+              --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest' || status=1
+          preserve_results
           grep -q 'tests="2" skipped="0" failures="0" errors="0"' \
             app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml || status=1
           gradle --no-daemon :app:testDebugUnitTest \
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableDigestAuthenticatedTest' || status=1
+          preserve_results
           grep -q 'tests="1" skipped="0" failures="0" errors="0"' \
             app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableDigestAuthenticatedTest.xml || status=1
           python3 - <<'PY'
-          import pathlib, xml.etree.ElementTree as ET
-          for path in sorted(pathlib.Path("app/build/test-results/testDebugUnitTest").glob("TEST-*Disposable*.xml")):
+          import os, pathlib, xml.etree.ElementTree as ET
+          for path in sorted((pathlib.Path(os.environ["RUNNER_TEMP"]) / "chunks-modern-results").glob("TEST-*Disposable*.xml")):
               root=ET.parse(path).getroot()
               print("CHUNKS_MODERN_RESULT", root.attrib.get("name"), "tests=" + root.attrib.get("tests","?"),
                     "failures=" + root.attrib.get("failures","?"), "errors=" + root.attrib.get("errors","?"),
