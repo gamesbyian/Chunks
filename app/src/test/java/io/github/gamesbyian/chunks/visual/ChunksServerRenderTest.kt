@@ -146,10 +146,10 @@ open class ChunksServerRenderTest {
         rule.waitForIdle()
         rule.onNodeWithText("Add a transfer").assertExists()
         // The authenticated server is an inline Add-to choice; selecting it only edits the draft.
-        // The remote chip is nested within the source-first Add item.
-        // Scroll the lazy list to its persistent section heading first; a
-        // nested FilterChip tag is not itself a LazyList item matcher.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Add to"))
+        // The source-first selector is a vertically scrollable Compose
+        // column. The remote lazy list is created only AFTER this click.
+        // Scroll directly to the selected tagged chip, never look for
+        // ScrollToIndex on a not-yet-mounted remote form.
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE)
             .performScrollTo().performClick()
         rule.waitForIdle()
