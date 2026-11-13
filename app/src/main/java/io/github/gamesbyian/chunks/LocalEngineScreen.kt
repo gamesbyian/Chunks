@@ -466,6 +466,12 @@ internal fun LocalEngineScreen(
     var addStorage by remember {
         mutableStateOf<Pair<String, LocalAddStoragePreflight>?>(null)
     }
+    // Read-only foreign partial-file offer for the reviewed .torrent and exact folder.
+    // Reuse requires the person's explicit choice; it resets whenever either changes.
+    var addRecovery by remember {
+        mutableStateOf<Pair<String, io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.Offer>?>(null)
+    }
+    var useRecovery by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     // The latest outcome that needs attention (refused, uncertain, failed).
     // Tone is chosen where the outcome is known, never guessed from text.
@@ -711,6 +717,22 @@ internal fun LocalEngineScreen(
     }
     val proposedAddDestination = remember(destination, addFolderDraft) {
         LocalOwnedAddFolder.proposed(destination, addFolderDraft)
+    }
+    LaunchedEffect(pending?.preview?.infoHashV1, proposedAddDestination) {
+        addRecovery = null
+        useRecovery = false
+        val review = pending
+        val folder = proposedAddDestination
+        if (review != null && folder != null) {
+            val offer = withContext(Dispatchers.IO) {
+                try {
+                    io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.offer(review.bytes, folder)
+                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                    throw cancel
+                } catch (_: Exception) { null }
+            }
+            addRecovery = offer?.let { review.preview.infoHashV1 to it }
+        }
     }
     // This is invoked *only* inside performLocalMutation after the existing
     // local mutation gate has been acquired, before any IO/native call.
@@ -1569,6 +1591,9 @@ internal fun LocalEngineScreen(
             cancelEnabled = !busy && localAddAttemptSession?.attemptedTicket == null,
             storagePreflight = addStorage?.takeIf { it.first == add.preview.infoHashV1 }?.second,
             seeding = seedingPreview,
+            recovery = addRecovery?.takeIf { it.first == add.preview.infoHashV1 }?.second,
+            useRecovery = useRecovery,
+            onUseRecovery = { useRecovery = it },
             onConfirm = confirm@{
                 if (!localReviewedMetainfoIsCurrent(magnet, sourceReading) || pending !== add) return@confirm
                 // Freeze on the explicit Add click before native admission or
@@ -1591,6 +1616,9 @@ internal fun LocalEngineScreen(
                 val allowArtwork = automaticArtwork
                 val orderAfterAdd = finishInOrderAfterAdd
                 val inventoryReadyAtClick = addInventoryReady
+                // Frozen at the click: only this exact reviewed offer may be renamed.
+                val reviewedRecovery = addRecovery?.takeIf { useRecovery && it.first == add.preview.infoHashV1 }?.second
+                var recoveryNote: String? = null
                 var orderNote: String? = null
                 performLocalMutation localDocument@{
                     val selected = selectedPlace ?: run {
@@ -1636,14 +1664,31 @@ internal fun LocalEngineScreen(
                                     "The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.") to null
                                 is LocalAddArtworkPreflight.Ready -> {
                                     val engine = LocalEngineHolder.get(context)
-                                    enteredNative.set(true)
                                     // The shared ticket freezes the exact reviewed
                                     // bytes: never execute with the mutable screen
                                     // holder after authorization and a suspend gap.
                                     val authorizedBytes = ticket?.intent?.source?.metainfoForSubmission()
                                         ?: add.bytes
+                                    // Explicitly approved foreign partial files are renamed
+                                    // (never replaced) before the checked Add verifies pieces.
+                                    val adoption = io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan
+                                        .adoptReviewed(authorizedBytes, preflight.folder, reviewedRecovery)
+                                    if (adoption is io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.Adoption.Refused)
+                                        return@withContext LocalAddResult.Refused(
+                                            "Partial files were not reused: " + adoption.problem +
+                                                ". Nothing was added. Review the folder and try again.") to null
+                                    enteredNative.set(true)
                                     val added = engine.addStoppedChecked(authorizedBytes, preflight.folder)
                                         .also(nativeResult::set)
+                                    if (adoption is io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.Adoption.Renamed) {
+                                        val count = adoption.receipt.renames.size
+                                        recoveryNote = if (added is LocalAddResult.Refused) {
+                                            if (io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.undo(preflight.folder, adoption))
+                                                "The partial files were given back their original names."
+                                            else "Some partial files keep the torrent's file names; nothing was deleted."
+                                        } else "Reusing " + count + (if (count == 1) " partial file" else " partial files") +
+                                            " from another app. Chunks checks every piece and downloads only what is missing."
+                                    }
                                     // Configure file order while stopped, before any
                                     // explicitly requested payload Start.
                                     if (orderAfterAdd && added is LocalAddResult.AddedStopped) {
@@ -1683,6 +1728,7 @@ internal fun LocalEngineScreen(
                                 null -> "Added stopped. Start manually from its transfer card."
                             }
                         }
+                        recoveryNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         orderNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
                         if (added is LocalAddResult.Refused || (added is LocalAddResult.AddedStopped &&
                                 started != null && started.outcome != LocalCommandOutcome.VERIFIED))
@@ -2990,7 +3036,11 @@ internal fun LocalAddReview(
     seeding: io.github.gamesbyian.chunks.seeding.SeedingResolution? = null,
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
-    cancelEnabled: Boolean = true
+    cancelEnabled: Boolean = true,
+    /** Foreign partial files next to the declared names; reuse only on explicit choice. */
+    recovery: io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan.Offer? = null,
+    useRecovery: Boolean = false,
+    onUseRecovery: (Boolean) -> Unit = {}
 ) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -3050,6 +3100,7 @@ internal fun LocalAddReview(
                     "can change actual storage needs.",
                     style = MaterialTheme.typography.bodySmall)
             }
+            if (recovery != null) ForeignPartialRecoveryPanel(recovery, useRecovery, !busy, onUseRecovery)
             Text(if (startAfterAdd)
                 "Chunks adds stopped, verifies the new transfer, then starts it. Download progress depends on available peers or web seeds."
                 else "It is added stopped. Nothing downloads until you press Start.",

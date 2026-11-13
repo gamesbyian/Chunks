@@ -67,6 +67,8 @@ internal fun UnifiedTransferDetailPanel(
     similar: (@Composable (UnifiedTransferObservation) -> Unit)? = null,
     /** The authenticated owning adapter supplies operations without another list route. */
     exactServerOperations: (@Composable () -> Unit)? = null,
+    /** Local-device-only operations for this exact job (e.g. foreign partial recovery). */
+    localOperations: (@Composable () -> Unit)? = null,
     /** Display-name (Chunks alias) editor for an authorized owner; never renames payload. */
     rename: (@Composable (UnifiedTransferObservation) -> Unit)? = null
 ) {
@@ -127,6 +129,7 @@ internal fun UnifiedTransferDetailPanel(
             }
         }
         if (!hidden) exactServerOperations?.invoke()
+        if (!hidden) localOperations?.invoke()
         if (!hidden && onOpenOwningList != null) {
             Text("Browse transfers in this environment.",
                 style = MaterialTheme.typography.bodyMedium)
