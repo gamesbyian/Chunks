@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "issue": 1679,
+  "pull_request": 1683,
+  "candidate_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+  "base_sha": "37d3ecab165e76ed27ce6b5978c7f6c26cca4704",
+  "tested_checkout_sha": "642ce7cfa5dfff4ff5d5eaca0a5708089eca091b",
+  "integrated_merge_sha": "f4b6d350f6952d1aeb5d5bc32102449575095535",
+  "git_tree_sha": "b2fdaaad5940e87b4477acd5507dd3b828a6d7ac",
+  "same_tree_verified_for": [
+    "candidate_sha",
+    "tested_checkout_sha",
+    "integrated_merge_sha"
+  ],
+  "acceptance_profile": "integration-real-peer",
+  "waivers": [],
+  "checks": [
+    {
+      "name": "verify-complete-native-add",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493863395/job/132127331781",
+      "completed_at": "2026-11-13T19:47:39Z"
+    },
+    {
+      "name": "add-review-device-test (0)",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493863395/job/132123194121",
+      "completed_at": "2026-11-13T19:47:18Z"
+    },
+    {
+      "name": "add-review-device-test (1)",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493863395/job/132123194067",
+      "completed_at": "2026-11-13T19:47:23Z"
+    },
+    {
+      "name": "android-native-atlas",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493968592/job/132122090544",
+      "completed_at": "2026-11-13T19:44:47Z"
+    },
+    {
+      "name": "api29-downloads",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493964436/job/132122074196",
+      "completed_at": "2026-11-13T19:46:36Z"
+    },
+    {
+      "name": "check",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493863432/job/132121713376",
+      "completed_at": "2026-11-13T19:37:10Z"
+    },
+    {
+      "name": "build-once",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493863395/job/132121712632",
+      "completed_at": "2026-11-13T19:39:37Z"
+    },
+    {
+      "name": "remote-delete-data",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493863127/job/132121711921",
+      "completed_at": "2026-11-13T19:42:16Z"
+    },
+    {
+      "name": "build",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493862934/job/132121711755",
+      "completed_at": "2026-11-13T19:44:48Z"
+    },
+    {
+      "name": "installed-magnet-lifecycle",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493862719/job/132121710964",
+      "completed_at": "2026-11-13T19:45:40Z"
+    },
+    {
+      "name": "two-server-combined",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493862752/job/132121710869",
+      "completed_at": "2026-11-13T19:44:05Z"
+    },
+    {
+      "name": "minified-smoke",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493862821/job/132121710676",
+      "completed_at": "2026-11-13T19:46:26Z"
+    },
+    {
+      "name": "modern-real-engine (arch-latest, archlinux:latest)",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493862483/job/132121710332",
+      "completed_at": "2026-11-13T19:41:37Z"
+    },
+    {
+      "name": "legacy-real-engine",
+      "conclusion": "success",
+      "head_sha": "949e743deaa8f95c69c0bf8ed446ae0f8755890e",
+      "url": "https://github.com/gamesbyian/Chunks/actions/runs/43493862483/job/132121709859",
+      "completed_at": "2026-11-13T19:45:38Z"
+    }
+  ],
+  "artifacts": [
+    {
+      "run_id": 43493862719,
+      "artifact_id": 14071721516,
+      "zip_sha256": "32b3b62c591c5e14c5af77215d0c30c5e1da025a5f4a917b5fecf0bcf22daae2",
+      "preserved_members": [
+        "RECEIPT.json",
+        "APK-IDENTITY.json",
+        "PEER-RECEIPT.json"
+      ],
+      "junit": {
+        "executed": 1,
+        "failed": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "run_id": 43493863127,
+      "artifact_id": 14071426217,
+      "zip_sha256": "fbd3599a7efd6f292af61e1d8aa08c3f3ba237b3ea5379def19c6a4bf6373326",
+      "preserved_members": [
+        "REMOVAL-WITNESS.txt"
+      ],
+      "installed_cases": 1,
+      "installed_case_result": "passed",
+      "standalone_installed_apk_digest_present": false
+    }
+  ],
+  "secondary_counts": {
+    "foundation": {
+      "executed": 2389,
+      "failed": 0,
+      "skipped": 62
+    },
+    "native_add": {
+      "executed": 402,
+      "failed": 0,
+      "skipped": 37
+    },
+    "modern_engine": {
+      "version": "0.16.26",
+      "executed": 17,
+      "failed": 0,
+      "skipped": 0
+    }
+  },
+  "remaining_acceptance_gaps": [
+    "original owner-host causes and owner-installed acceptance",
+    "physical Pixel and human TalkBack",
+    "protected-host exact authorized fixture proof",
+    "OEM/Doze",
+    "publisher signing/distribution",
+    "modern untrusted ruTorrent data deletion where complete inventory getters are denied"
+  ],
+  "scope_note": "The APK digest belongs to the installed peer journey only. Publisher proof is partial verified pieces, not completed publisher downloads. Later documentation changes do not qualify a rebuilt APK."
+}
