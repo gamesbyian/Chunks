@@ -72,8 +72,13 @@ data class LocalEngineConfig(
      * exempts them by default; tests use this to observe throttling over loopback.
      */
     val rateLimitLocalPeers: Boolean = false,
-    /** Local production uses POSIX for Android FUSE compatibility; DEFAULT remains for comparison tests. */
-    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.DEFAULT
+    /**
+     * POSIX is the shipping backend (Android 15 FUSE aborts with mmap), so it
+     * is also the default: real-byte engine tests exercise what the app ships.
+     * DEFAULT (libtorrent's mmap) remains only for explicit comparison; a
+     * persistent zero block after CACHE_FLUSHED was reproduced only with it.
+     */
+    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.POSIX
 )
 
 enum class LocalTransferState { CHECKING, DOWNLOADING_METADATA, DOWNLOADING, FINISHED, SEEDING, UNKNOWN }
