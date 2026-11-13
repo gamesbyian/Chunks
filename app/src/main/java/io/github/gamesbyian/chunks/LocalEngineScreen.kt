@@ -1620,6 +1620,7 @@ internal fun LocalEngineScreen(
                 val reviewedRecovery = addRecovery?.takeIf { useRecovery && it.first == add.preview.infoHashV1 }?.second
                 var recoveryNote: String? = null
                 var orderNote: String? = null
+                var verifyAfterAdd: String? = null
                 performLocalMutation localDocument@{
                     val selected = selectedPlace ?: run {
                         noteProblem("Choose a verified local download location before Add. Nothing was sent.")
@@ -1696,7 +1697,20 @@ internal fun LocalEngineScreen(
                                     }
                                     if (autoStart && added is LocalAddResult.AddedStopped)
                                         added to engine.resume(added.status.infoHash)
-                                    else added to null
+                                    else {
+                                        // "Stopped after verification": files already at the
+                                        // exact torrent paths are hash-checked now, and the
+                                        // job stops itself again before any peer traffic.
+                                        if (added is LocalAddResult.AddedStopped &&
+                                            engine.hasExistingPayloadToVerify(added.status.infoHash)) {
+                                            val hash = added.status.infoHash
+                                            verifyAfterAdd = hash.takeIf {
+                                                LocalRecheckRuns.start(it, awaitFenceMillis = 60_000) { exact ->
+                                                    engine.recheckStopped(exact) }
+                                            }
+                                        }
+                                        added to null
+                                    }
                                 }
                             }
                         }
@@ -1725,7 +1739,10 @@ internal fun LocalEngineScreen(
                                 }
                                 LocalCommandOutcome.NOT_FOUND ->
                                     "Added but could not locate the torrent for Start. Inspect the list before retrying."
-                                null -> "Added stopped. Start manually from its transfer card."
+                                null -> if (verifyAfterAdd != null)
+                                    "Added stopped. Checking the files already in this folder; " +
+                                        "it stays stopped and downloads nothing until you press Start."
+                                else "Added stopped. Start manually from its transfer card."
                             }
                         }
                         recoveryNote?.let { note -> message = listOfNotNull(message, note).joinToString(" ") }
@@ -3118,6 +3135,7 @@ internal fun LocalAddReview(
 private fun stateLabel(transfer: LocalTransferStatus): String = when {
     transfer.error != null -> "Error"
     transfer.stopped -> "Stopped"
+    transfer.state == LocalTransferState.CHECKING && transfer.stopsAfterCheck -> "Checking existing data, stays stopped"
     transfer.state == LocalTransferState.CHECKING -> "Checking existing data"
     !transfer.metadataKnown || transfer.state == LocalTransferState.DOWNLOADING_METADATA -> "Fetching metadata"
     transfer.state == LocalTransferState.DOWNLOADING -> "Downloading"

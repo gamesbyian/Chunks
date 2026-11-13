@@ -488,6 +488,73 @@ class LocalTorrentEngineTest {
         assertPartialReused(receiver, checked.infoHash, partial, seeder.listenPort())
     }
 
+    /**
+     * WORK-QUEUE R3 "stopped after verification": a stopped checked Add over exact-path
+     * existing data is hash-checked straight away and ends stopped, with the real seeder
+     * offered as a peer the whole time. Nothing is downloaded or written; the later
+     * ordinary Start still reuses the verified pieces and fetches only what is missing.
+     */
+    @Test fun stoppedCheckedAddVerifiesExistingPartialPayloadAndStaysStopped() {
+        val partial = partialExactPathFixture("partial-exact-path-verify-stopped")
+        val seeder = engine()
+        val source = added(seeder.addStopped(partial.fixture.torrent, partial.fixture.root.parentFile))
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(source.infoHash).outcome)
+        waitFor { seeder.status(source.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val receiver = engine()
+        val checked = added(receiver.addStoppedChecked(partial.fixture.torrent, partial.destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertFalse("Not a payload Start before any check", checked.stopsAfterCheck)
+        assertTrue(receiver.hasExistingPayloadToVerify(checked.infoHash.uppercase()))
+        val before = partial.payload.readBytes()
+
+        val verified = receiver.recheckStopped(checked.infoHash)
+        assertEquals(verified.toString(), LocalCommandOutcome.VERIFIED, verified.outcome)
+        val status = requireNotNull(verified.status)
+        assertTrue(status.toString(), status.stopped)
+        assertFalse(status.toString(), status.stopsAfterCheck)
+        val total = partial.fixture.files.values.sumOf { it.size.toLong() }
+        val reusable = partial.reusablePieces.toLong() * partial.pieceSize
+        assertEquals("Exactly the intact existing pieces are verified, not the corrupted one or the size",
+            reusable, status.doneBytes)
+        assertTrue(status.toString(), status.progressPpm in 1 until 1_000_000)
+        assertTrue(total > reusable)
+        Thread.sleep(1_500)
+        val idle = requireNotNull(receiver.status(checked.infoHash))
+        assertTrue("still stopped: $idle", idle.stopped)
+        assertEquals("nothing downloaded while stopped", 0L, idle.payloadDownloadedBytes)
+        assertArrayEquals("the check never writes payload", before, partial.payload.readBytes())
+
+        assertEquals(LocalCommandOutcome.VERIFIED, receiver.resume(checked.infoHash).outcome)
+        assertPartialReused(receiver, checked.infoHash, partial, seeder.listenPort())
+    }
+
+    @Test fun stoppedVerificationIsOfferedOnlyForReadableExistingDataInsideThePlace() {
+        val fixture = fixture()
+        val engine = engine()
+        val empty = added(engine.addStoppedChecked(fixture.torrent, temp.newFolder("verify-empty")))
+        assertFalse("An empty destination has nothing to verify",
+            engine.hasExistingPayloadToVerify(empty.infoHash))
+        assertTrue(engine.removeKeepingData(empty.infoHash))
+
+        val other = TorrentBuilder().path(File(temp.newFolder("verify-symlink-source"), "Other").apply {
+            mkdirs(); File(this, "a.bin").writeBytes(ByteArray(200_000).also { Random(7).nextBytes(it) })
+        }).pieceSize(64 * 1024).generate().entry().bencode()
+        val destination = temp.newFolder("verify-symlink")
+        val job = added(engine.addStoppedChecked(other, destination))
+        val outside = File(temp.newFolder("verify-outside"), "critical.bin")
+            .apply { writeBytes(ByteArray(200_000)) }
+        val payload = File(destination, "Other/a.bin")
+        assertTrue(payload.parentFile.isDirectory || payload.parentFile.mkdirs())
+        Files.createSymbolicLink(payload.toPath(), outside.toPath())
+        assertFalse("A symlinked payload path is never read",
+            engine.hasExistingPayloadToVerify(job.infoHash))
+        val refused = engine.recheckStopped(job.infoHash)
+        assertEquals(refused.toString(), LocalCommandOutcome.REFUSED, refused.outcome)
+        assertTrue(requireNotNull(engine.status(job.infoHash)).stopped)
+        assertFalse(engine.hasExistingPayloadToVerify("c".repeat(40)))
+    }
+
     @Test fun restartedCheckedAddStillVerifiesExistingPartialPayloadInsteadOfTrustingInitialResume() {
         val partial = partialExactPathFixture("partial-exact-path-restart")
         val seeder = engine()

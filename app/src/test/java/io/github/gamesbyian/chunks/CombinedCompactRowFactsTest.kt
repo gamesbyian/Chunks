@@ -36,6 +36,16 @@ class CombinedCompactRowFactsTest {
         assertTrue(combinedCompactRowFacts(stopped).startsWith("Stopped · 35%"))
     }
 
+    @Test fun aStoppedAddsFileCheckSaysItStaysStopped() {
+        val checking = UnifiedTransferObservations.fromLocal(local,
+            status(LocalTransferState.CHECKING).copy(stopsAfterCheck = true))
+        assertEquals(true, checking.stopsAfterCheck)
+        assertTrue(combinedCompactRowFacts(checking, fresh = true)
+            .startsWith("Checking existing data, stays stopped · 35%"))
+        assertTrue(combinedRowFacts(checking, fresh = true)
+            .startsWith("Checking existing data, stays stopped · 35%"))
+    }
+
     @Test fun remoteSourcesThatCannotReportCheckingLeaveItUnknown() {
         val remote = UnifiedTransferObservations.fromRTorrent(EnvironmentId("rtorrent:one"),
             io.github.gamesbyian.chunks.rpc.RemoteTransfer("b".repeat(40), "Episode", 1000, 350, true, "/srv"))

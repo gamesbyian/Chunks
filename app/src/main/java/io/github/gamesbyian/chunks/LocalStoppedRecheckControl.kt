@@ -20,6 +20,7 @@ import io.github.gamesbyian.chunks.engine.LocalCommandResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -33,8 +34,14 @@ internal object LocalRecheckRuns {
     val running = mutableStateMapOf<String, Boolean>()
     val outcomes = mutableStateMapOf<String, String>()
 
-    /** False when a run for this exact hash is already in flight (single flight). */
-    fun start(infoHash: String, recheck: (String) -> LocalCommandResult?): Boolean {
+    /**
+     * False when a run for this exact hash is already in flight (single flight).
+     * [awaitFenceMillis] lets the check that follows a stopped Add wait for that
+     * Add's own change lock and readback to clear; it never waits past the bound.
+     */
+    fun start(infoHash: String, awaitFenceMillis: Long = 0,
+              recheck: (String) -> LocalCommandResult?): Boolean {
+        require(awaitFenceMillis in 0L..120_000L)
         synchronized(this) {
             if (running[infoHash] == true) return false
             running[infoHash] = true
@@ -42,7 +49,12 @@ internal object LocalRecheckRuns {
         outcomes[infoHash] = "Checking every piece. The transfer stops again by itself when the check ends."
         scope.launch {
             try {
-                val fenced = LocalMutationFence.revision.beginMutation()
+                val deadline = System.nanoTime() + awaitFenceMillis * 1_000_000
+                var fenced = LocalMutationFence.revision.beginMutation()
+                while (!fenced && System.nanoTime() < deadline) {
+                    delay(100)
+                    fenced = LocalMutationFence.revision.beginMutation()
+                }
                 val result = if (!fenced) null else try { recheck(infoHash) }
                     finally { LocalMutationFence.revision.settledMutation() }
                 outcomes[infoHash] = recheckOutcomeText(fenced, result)
@@ -70,7 +82,7 @@ internal fun LocalStoppedRecheckControl(
     val outcome = LocalRecheckRuns.outcomes[infoHash]
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedButton(
-            onClick = { LocalRecheckRuns.start(infoHash, recheck) },
+            onClick = { LocalRecheckRuns.start(infoHash, recheck = recheck) },
             enabled = !busy,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 .testTag(ChunksSemantics.DETAILS_LOCAL_RECHECK)

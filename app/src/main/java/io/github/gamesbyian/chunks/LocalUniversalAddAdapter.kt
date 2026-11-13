@@ -131,9 +131,12 @@ internal object LocalUniversalAddAdapter {
      * mode even when the owner explicitly chose "do not start payload".
      * Treat that state as stopped for the *payload* Start contract, and do
      * not claim that a requested Start succeeded before upload-only clears.
+     * The same holds for a stop_when_ready verification of existing files.
      */
     fun observedPayloadStarted(status: LocalTransferStatus): Boolean? = when {
-        status.stopped || status.uploadOnly -> false
+        // A stopped Add's automatic file check runs libtorrent until the
+        // check ends and then stops itself; it never requests payload.
+        status.stopped || status.uploadOnly || status.stopsAfterCheck -> false
         !status.metadataKnown -> null
         else -> true
     }

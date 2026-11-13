@@ -53,6 +53,16 @@ class LocalUniversalAddAdapterTest {
             nativeReviewToken = nativeToken
         )
 
+    @Test fun stoppedAddFileCheckIsNotAPayloadStart() {
+        // libtorrent unpauses a job to hash-check files and stops it again by itself.
+        val checking = status(stopped = false).copy(state = LocalTransferState.CHECKING,
+            stopsAfterCheck = true)
+        assertEquals(false, LocalUniversalAddAdapter.observedPayloadStarted(checking))
+        // An ordinary running check (after Start) is still a Start.
+        assertEquals(true, LocalUniversalAddAdapter.observedPayloadStarted(
+            checking.copy(stopsAfterCheck = false)))
+    }
+
     @Test fun validMetainfoAndNormalizedMagnetFreezeExactPlaceStartAndPrivateSource() {
         val bytes = TorrentLinkFixtures.singleFileV1("show.mkv", 1_024)
         val review = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)

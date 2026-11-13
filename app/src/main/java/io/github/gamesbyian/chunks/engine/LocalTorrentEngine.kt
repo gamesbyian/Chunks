@@ -109,7 +109,13 @@ data class LocalTransferStatus(
     /** When libtorrent first added this job (kept in resume data); null if unreported. */
     val addedAtEpochMillis: Long? = null,
     /** Ephemeral exact native Add/restore generation; never persisted or reused for a new handle. */
-    val nativeReviewToken: String = ""
+    val nativeReviewToken: String = "",
+    /**
+     * libtorrent is running only to hash-check the files already on disk and
+     * will stop the job by itself when the check ends (stop_when_ready), before
+     * any peer download or upload. Not a payload Start.
+     */
+    val stopsAfterCheck: Boolean = false
 )
 
 /** Aggregate tracker health for one transfer, without URLs or tracker messages. */
@@ -500,6 +506,45 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
         return null
     }
+
+    /**
+     * The checked first-Start survey of the exact recorded destination: the
+     * observed survey (null if not reached) and a refusal reason, if any.
+     */
+    private fun firstStartSurvey(
+        pending: CheckedFirstStart, handle: TorrentHandle
+    ): Pair<LocalPayloadCollisionSurvey.Result?, String?> {
+        if (File(handle.savePath()).absolutePath != pending.saveDirectory.absolutePath)
+            return null to "Download destination changed since Add; Start refused"
+        val survey = LocalPayloadCollisionSurvey.inspect(pending.saveDirectory, pending.paths)
+        return survey to when (survey) {
+            is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> null
+            is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
+                unreadableExistingPayload(pending.saveDirectory, survey)
+            is LocalPayloadCollisionSurvey.Result.Unknown ->
+                "Cannot verify file paths before Start: " + survey.problem
+        }
+    }
+
+    /**
+     * True when a checked Add that was never started is stopped over readable
+     * existing files at its exact torrent paths, so a stopped verification
+     * ([recheckStopped]) would measure real reusable pieces. Read-only.
+     */
+    fun hasExistingPayloadToVerify(infoHash: String): Boolean = try {
+        synchronized(this) {
+            synchronized(handles) {
+                val key = normal(infoHash)
+                val handle = handles[key]?.takeIf { started && it.isValid } ?: return false
+                val pending = checkedFirstStarts[key] ?: return false
+                val state = handle.status(TorrentHandle.QUERY_NAME)
+                if (!state.flags().and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero() ||
+                    !state.hasMetadata()) return false
+                val (survey, problem) = firstStartSurvey(pending, handle)
+                problem == null && survey is LocalPayloadCollisionSurvey.Result.ExistingPaths
+            }
+        }
+    } catch (_: Exception) { false }
 
     private fun reserveRestoredJobPaths(key: String, handle: TorrentHandle): String? {
         val paths = try {
@@ -900,18 +945,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // during a later Start. Re-survey the exact recorded native
                 // destination while the handle's Start and metadata callback
                 // share this monitor. Unknown also refuses.
-                val problem = if (File(handle.savePath()).absolutePath !=
-                    pending.saveDirectory.absolutePath) {
-                    "Download destination changed since Add; Start refused"
-                } else when (val survey = LocalPayloadCollisionSurvey.inspect(
-                    pending.saveDirectory, pending.paths
-                )) {
-                    is LocalPayloadCollisionSurvey.Result.ClearAtObservation -> null
-                    is LocalPayloadCollisionSurvey.Result.ExistingPaths ->
-                        unreadableExistingPayload(pending.saveDirectory, survey)
-                    is LocalPayloadCollisionSurvey.Result.Unknown ->
-                        "Cannot verify file paths before Start: " + survey.problem
-                }
+                val problem = firstStartSurvey(pending, handle).second
                 if (problem != null) {
                     checkedStartProblems[key] = problem
                     return@command false
@@ -1074,6 +1108,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 if (!paused || !state.hasMetadata() || awaitingMetadata.contains(key) ||
                     startWhenMetadataArrives.contains(key))
                     return LocalCommandResult(LocalCommandOutcome.REFUSED, snapshot(key, exact))
+                // A never-started checked Add reads through its recorded paths only
+                // when the same survey that guards its first Start admits them.
+                checkedFirstStarts[key]?.let { pending ->
+                    if (firstStartSurvey(pending, exact).second != null)
+                        return LocalCommandResult(LocalCommandOutcome.REFUSED, snapshot(key, exact))
+                }
                 // A stopped Add over existing files (or an adopted partial set)
                 // already holds a queued check that libtorrent runs only once
                 // unpaused; let that one run rather than queueing another.
@@ -2098,7 +2138,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             downloadPayloadRateBytesPerSecond = status.downloadPayloadRate().coerceAtLeast(0),
             uploadPayloadRateBytesPerSecond = status.uploadPayloadRate().coerceAtLeast(0),
             addedAtEpochMillis = status.addedTime().takeIf { it > 0 },
-            nativeReviewToken = nativeReviewTokens[hash].orEmpty()
+            nativeReviewToken = nativeReviewTokens[hash].orEmpty(),
+            stopsAfterCheck = !paused &&
+                status.flags().and_(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY).non_zero()
         )
     }
 
