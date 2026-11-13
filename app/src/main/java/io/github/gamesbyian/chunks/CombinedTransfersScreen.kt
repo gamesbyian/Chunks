@@ -1808,7 +1808,7 @@ internal fun shouldShowAllEnvironmentChip(configuredCount: Int): Boolean = confi
 /** Compact chip count; unavailable or privacy-locked inventories never masquerade as zero. */
 internal fun environmentScopeCount(source: EnvironmentTransferSnapshot?): String = when {
     source == null || source.availability == EnvironmentAvailability.LOCKED -> "?"
-    source.observedAtEpochMillis == null && !source.inventoryComplete -> "?"
+    !source.inventoryComplete -> if (source.transfers.isEmpty()) "?" else "${source.transfers.size}+"
     else -> source.transfers.size.toString()
 }
 

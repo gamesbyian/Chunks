@@ -466,9 +466,20 @@ class CombinedTransfersScreenTest {
         // The view chip shows the compact unique origin; the group heading below
         // retains the exact address-bearing label.
         // Toggle row: hide the device and the other saved server, leaving only this server.
+        val exactServerId = requireNotNull(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
+        val otherId = io.github.gamesbyian.chunks.model.EnvironmentId(other.id)
+        val persisted = CombinedViewPreferences(context)
         reveal(hasContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true))
         rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
+        rule.waitUntil(10_000) {
+            (persisted.load().scope as? EnvironmentViewScope.Only)?.ids ==
+                setOf(exactServerId, otherId)
+        }
         rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
+        rule.waitUntil(10_000) {
+            persisted.load().scope == EnvironmentViewScope.Only(setOf(exactServerId))
+        }
         rule.onNodeWithText("On this device: Engine not running; open transfers on this device · 0 transfers").assertDoesNotExist()
         // The exact row remains visible after the scope/filter change; the
         // header totals may be refreshed asynchronously by inventory polling.
@@ -806,6 +817,16 @@ class CombinedTransfersScreenTest {
             io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot(
                 id, io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE,
                 true, 1720000000000L, emptyList())))
+        val partial = listOf("a", "b").map { hash ->
+            io.github.gamesbyian.chunks.model.UnifiedTransferObservation(
+                io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+                    id, hash.repeat(40)),
+                "A", "A", 120L, 0, false, 0L, 0L, 0)
+        }
+        assertEquals("2+", environmentScopeCount(
+            io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot(
+                id, io.github.gamesbyian.chunks.model.EnvironmentAvailability.STALE,
+                false, 1720000000000L, partial)))
     }
 
     @Test fun rootTransfersReturnClosesDetailsWithoutLosingExactScopeOrViewPreferences() {
