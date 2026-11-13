@@ -391,7 +391,18 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // Don't clear UPLOAD_MODE while the native pause is still
                 // asynchronous. A paused magnet can persist and be revived
                 // only by a *fresh* path survey on explicit Start.
-                handle.pause()
+                if (problem == null && magnetHasReadableExistingPayload(handle)) {
+                    // "Stopped after verification" for a Start-off magnet over files already
+                    // at its exact paths: libtorrent's own check (peers disconnected while
+                    // checking) stops the job itself before any transfer. Never a Start.
+                    try {
+                        handle.forceRecheck()
+                        handle.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
+                        handle.resume()
+                    } catch (_: Exception) {
+                        runCatching { handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); handle.pause() }
+                    }
+                } else handle.pause()
             } else {
                 handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
                 handle.resume()
@@ -399,6 +410,19 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             requestMetadataResumeSave(key, handle)
         }
     }
+
+    /** Read-only: readable regular files already exist at this magnet's exact declared paths. */
+    private fun magnetHasReadableExistingPayload(handle: TorrentHandle): Boolean = try {
+        val info = handle.torrentFile()
+        val files = info?.files()
+        val count = files?.numFiles() ?: 0
+        if (files == null || !LocalPayloadCollisionSurvey.supportsNativeFileCount(count)) false else {
+            val paths = (0 until count).filterNot { files.padFileAt(it) }.map { files.filePath(it) }
+            val root = File(handle.savePath())
+            val survey = LocalPayloadCollisionSurvey.inspect(root, paths)
+            survey is LocalPayloadCollisionSurvey.Result.ExistingPaths && unreadableExistingPayload(root, survey) == null
+        }
+    } catch (_: Exception) { false }
 
     private fun inspectMagnetCollision(key: String, handle: TorrentHandle): String? {
         val paths = try {

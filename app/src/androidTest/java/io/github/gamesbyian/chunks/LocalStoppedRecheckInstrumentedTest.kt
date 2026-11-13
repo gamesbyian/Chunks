@@ -134,4 +134,34 @@ class LocalStoppedRecheckInstrumentedTest {
         assertTrue("verified pieces were not downloaded again",
             local.status(job.infoHash)!!.payloadDownloadedBytes <= payload.size - 10L * 65536 + 65536)
     }
+
+    /** A Start-off magnet over exact-path partial data is verified when its metadata arrives and stays stopped. */
+    @Test fun stoppedMagnetOverPartialDataVerifiesWhenMetadataArrives() {
+        val seedParent = File(work, "magnet-seed").apply { mkdirs() }
+        val root = File(seedParent, "Chunks magnet partial fixture").apply { mkdirs() }
+        val payload = ByteArray(1_300_000).also { Random(13).nextBytes(it) }
+        File(root, "episode.bin").writeBytes(payload)
+        val torrent = TorrentBuilder().path(root).pieceSize(64 * 1024).generate().entry().bencode()
+        val seeder = engine()
+        val seed = (seeder.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = File(work, "magnet-destination").apply { mkdirs() }
+        val episode = File(destination, "${root.name}/episode.bin").apply { parentFile!!.mkdirs() }
+        val kept = payload.copyOf(10 * 65536)
+        episode.writeBytes(kept)
+        val local = engine()
+        assertTrue(local.addMagnet("magnet:?xt=urn:btih:" + seed.infoHash, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
+            autoStartAfterMetadata = false) is LocalAddResult.FetchingMetadata)
+        waitFor { local.status(seed.infoHash)?.let {
+            it.metadataKnown && it.stopped && !it.stopsAfterCheck && it.state != LocalTransferState.CHECKING &&
+                it.doneBytes == 10L * 65536 } == true }
+        Thread.sleep(2_000)
+        val idle = requireNotNull(local.status(seed.infoHash))
+        assertTrue("still stopped: $idle", idle.stopped)
+        assertEquals("no payload downloaded while stopped", 0L, idle.payloadDownloadedBytes)
+        assertArrayEquals("verification never writes payload", kept, episode.readBytes())
+    }
 }
