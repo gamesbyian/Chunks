@@ -8,11 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -21,9 +17,44 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalCommandResult
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+
+/**
+ * In-flight recheck runs and their last outcome, per exact infoHash. During
+ * the check libtorrent unpauses the job, so stopped-only Details hides the
+ * control mid-check; the run must outlive it, and its outcome must still be
+ * there when the job stops itself and the control returns.
+ */
+internal object LocalRecheckRuns {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    val running = mutableStateMapOf<String, Boolean>()
+    val outcomes = mutableStateMapOf<String, String>()
+
+    /** False when a run for this exact hash is already in flight (single flight). */
+    fun start(infoHash: String, recheck: (String) -> LocalCommandResult?): Boolean {
+        synchronized(this) {
+            if (running[infoHash] == true) return false
+            running[infoHash] = true
+        }
+        outcomes[infoHash] = "Checking every piece. The transfer stops again by itself when the check ends."
+        scope.launch {
+            try {
+                val fenced = LocalMutationFence.revision.beginMutation()
+                val result = if (!fenced) null else try { recheck(infoHash) }
+                    finally { LocalMutationFence.revision.settledMutation() }
+                outcomes[infoHash] = recheckOutcomeText(fenced, result)
+            } catch (_: Exception) {
+                outcomes[infoHash] = recheckOutcomeText(true, null)
+            } finally {
+                synchronized(this@LocalRecheckRuns) { running.remove(infoHash) }
+            }
+        }
+        return true
+    }
+}
 
 /**
  * "Recheck files" for a STOPPED local job in canonical Details. libtorrent reads
@@ -35,24 +66,11 @@ internal fun LocalStoppedRecheckControl(
     infoHash: String,
     recheck: (String) -> LocalCommandResult? = { LocalEngineHolder.current()?.recheckStopped(it) }
 ) {
-    var busy by remember(infoHash) { mutableStateOf(false) }
-    var outcome by remember(infoHash) { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+    val busy = LocalRecheckRuns.running[infoHash] == true
+    val outcome = LocalRecheckRuns.outcomes[infoHash]
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
         OutlinedButton(
-            onClick = {
-                if (busy) return@OutlinedButton
-                busy = true
-                outcome = "Checking every piece. The transfer stays stopped."
-                scope.launch {
-                    val fenced = LocalMutationFence.revision.beginMutation()
-                    val result = if (!fenced) null else try {
-                        withContext(Dispatchers.IO) { recheck(infoHash) }
-                    } finally { LocalMutationFence.revision.settledMutation() }
-                    outcome = recheckOutcomeText(fenced, result)
-                    busy = false
-                }
-            },
+            onClick = { LocalRecheckRuns.start(infoHash, recheck) },
             enabled = !busy,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 .testTag(ChunksSemantics.DETAILS_LOCAL_RECHECK)
