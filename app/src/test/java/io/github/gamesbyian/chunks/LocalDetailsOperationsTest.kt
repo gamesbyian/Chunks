@@ -180,4 +180,12 @@ class LocalDetailsOperationsTest {
         rule.waitForIdle()
         rule.onNodeWithText("Copy a finished file").assertDoesNotExist()
     }
+
+    @Test fun trackerHealthIsStatedWithoutUrls() {
+        show(FakePort(status.copy(stopped = false,
+            trackers = io.github.gamesbyian.chunks.engine.LocalTrackerSummary(total = 3, working = 1, updating = 0, failing = 2))))
+        rule.waitUntil(5_000) { runCatching {
+            rule.onNodeWithTag(ChunksSemantics.DETAILS_LOCAL_TRACKERS).assertExists() }.isSuccess }
+        rule.onNodeWithText("Trackers: 1 of 3 responding.").assertExists()
+    }
 }
