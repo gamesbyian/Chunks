@@ -1,5 +1,8 @@
 # Multi-backend remote adapters: canonical technical and acceptance contract
 
+> **2026-11-13 refinement:** The [remote capability discovery and deletion contract](REMOTE-CAPABILITY-DISCOVERY-AND-DELETION.md) is binding on this future adapter seam and on present rTorrent safety. Backend/method existence, actual authorization, prerequisite coverage and mutation results have distinct evidence states; `REMOVE_WITH_DATA` is optional and may not be inferred from standard rTorrent XML-RPC, ruTorrent URL shape or Transdroid-style custom5 flagging. Existing owner-host diagnosis stays in R1 and staged typed discovery/integration in R3, rather than accelerating speculative multi-engine work.
+
+
 **Status:** owner-approved design, 2026-11-05; future execution only. **Authority:** [PRODUCT](PRODUCT.md), [ARCHITECTURE](ARCHITECTURE.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [CROSS-ENGINE-TRANSFER-JOBS](CROSS-ENGINE-TRANSFER-JOBS.md), [SMART-ROUTING-AND-SOURCE-LIFECYCLE](SMART-ROUTING-AND-SOURCE-LIFECYCLE.md), [SECURITY](SECURITY.md), and decision [D-MULTI-BACKEND-20261105](DECISIONS.md). Existing [#660](https://github.com/gamesbyian/Chunks/issues/660) is the single future-backend tracking umbrella. This contract supplies the backend-specific detail behind [ANDROID-TV-AND-REMOTE-BACKENDS](ANDROID-TV-AND-REMOTE-BACKENDS.md); TV presentation is a separate track.
 
 ## Purpose and binding sequencing
