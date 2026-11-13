@@ -936,19 +936,31 @@ internal fun ChunksApp(
     val remoteAddLocked = if (server != null && aliasScope.isNotBlank())
         remoteAddSessions.forAccount(aliasScope).alreadyAttempted else false
     val addChoicesEnabled = activeLocalAddAttempt.attemptedTicket == null && !remoteAddLocked
+    val verifiedAddRemoteScope = aliasScope.takeIf {
+        server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
+    }
+    val savedAddTarget = savedProfiles.firstOrNull { profile ->
+        eligibleUniversalAddRemote(verifiedAddRemoteScope,
+            RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
+    }
+    val otherSavedAddTargets = savedProfiles.filterNot { profile ->
+        eligibleUniversalAddRemote(verifiedAddRemoteScope,
+            RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
+    }.map { UniversalAddSavedDestination(it.id, it.label) }
+    val activeAddRemoteName = verifiedAddRemoteScope?.let {
+        savedAddTarget?.label?.trim()?.takeIf(String::isNotBlank)
+            ?: connectionName.trim().takeIf(String::isNotBlank)
+            ?: "rTorrent"
+    }
+    // Use the same collision-safe short label in Add chips and the frozen
+    // remote attempt's status. An alias never authorizes a server operation.
+    val activeAddDisplayName = compactUniversalAddTargetLabels(
+        activeAddRemoteName, otherSavedAddTargets).first
     val addDestinationPicker: @Composable () -> Unit = {
-        val verifiedRemoteScope = aliasScope.takeIf {
-            server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
-        }
         UniversalAddDestinationPicker(
             addingRemotely = addTargetIsAuthenticated,
-            authenticatedRemoteLabel = verifiedRemoteScope?.let {
-                "On " + serverEnvironmentLabel(it)
-            },
-            savedOtherProfiles = savedProfiles.filterNot { profile ->
-                eligibleUniversalAddRemote(verifiedRemoteScope,
-                    RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
-            }.map { UniversalAddSavedDestination(it.id, it.label + " · " + it.address) },
+            authenticatedRemoteLabel = activeAddRemoteName,
+            savedOtherProfiles = otherSavedAddTargets,
             enabled = addChoicesEnabled && !sharedTorrentReading,
             aliasDraft = addAliasDraft.value,
             onAliasChange = { addAliasDraft.value = it },
@@ -2239,7 +2251,7 @@ internal fun ChunksApp(
                             localHandoffTorrentUri = null
                         },
                         finishInOrderScope = aliasScope.takeIf { it.isNotBlank() },
-                        environmentLabel = serverEnvironmentLabel(aliasScope),
+                        environmentLabel = activeAddDisplayName,
                         onMagnet = { magnet = it }, onDestination = { addSession.destination = it },
                         addStartState = localAddStart,
                         addArtworkState = addArtworkChoices.onServer(aliasScope),

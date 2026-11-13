@@ -31,6 +31,7 @@ class UniversalAddDestinationPickerInstrumentedTest {
         val start = mutableStateOf(false)
         val remote = mutableStateOf(false)
         val submissions = mutableStateOf(0)
+        val savedSelection = mutableStateOf<String?>(null)
         rule.setContent {
             MaterialTheme {
                 UniversalAddDestinationPicker(
@@ -41,14 +42,14 @@ class UniversalAddDestinationPickerInstrumentedTest {
                     enabled = true,
                     onLocal = { remote.value = false },
                     onAuthenticatedRemote = { remote.value = true },
-                    onConnectSaved = { })
+                    onConnectSaved = { savedSelection.value = it })
             }
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).assertIsSelected()
         rule.onNodeWithText("rTorrent instance 2").performClick().assertIsSelected()
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performClick().assertIsSelected()
-        rule.onNodeWithText("Other saved connections (1)").performClick()
-        rule.onNodeWithText("Connect to rTorrent instance 3").assertExists()
+        rule.onNodeWithText("rTorrent instance 3").performClick()
+        rule.runOnIdle { assertEquals("offline-3", savedSelection.value) }
         rule.runOnIdle {
             assertEquals("magnet:?xt=urn:btih:" + "a".repeat(40), source.value)
             assertEquals(false, start.value)
@@ -78,7 +79,7 @@ class UniversalAddDestinationPickerInstrumentedTest {
         rule.onNodeWithText("Display name in Chunks")
             .performTextReplacement("Custom List Alias")
         rule.onNodeWithText("On test rTorrent").performClick()
-        rule.onNodeWithText("This device").performClick()
+        rule.onNodeWithText("Local").performClick()
         rule.onNodeWithText("Custom List Alias").assertExists()
         rule.runOnIdle {
             assertEquals("Custom List Alias", alias.value)
@@ -104,4 +105,24 @@ class UniversalAddDestinationPickerInstrumentedTest {
         rule.runOnIdle { assertEquals(0, replacements.value) }
         rule.onNodeWithText("Use new source").assertDoesNotExist()
     }
+    @Test fun duplicateNamesRemainDistinctSavedConnectionActions() {
+        val selected = mutableStateOf<String?>(null)
+        rule.setContent {
+            MaterialTheme {
+                UniversalAddDestinationPicker(
+                    addingRemotely = false, authenticatedRemoteLabel = "Wood",
+                    savedOtherProfiles = listOf(
+                        UniversalAddSavedDestination("remote-2", "Wood")),
+                    enabled = true,
+                    onLocal = {}, onAuthenticatedRemote = {},
+                    onConnectSaved = { selected.value = it })
+            }
+        }
+        rule.onNodeWithText("Local").assertIsSelected()
+        rule.onNodeWithText("Wood (1)").assertExists()
+        rule.onNodeWithText("Wood (2)").performClick()
+        rule.runOnIdle { assertEquals("remote-2", selected.value) }
+        rule.onNodeWithText("Local").assertIsSelected()
+    }
+
 }

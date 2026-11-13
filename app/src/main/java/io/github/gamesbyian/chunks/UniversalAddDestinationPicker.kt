@@ -23,6 +23,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 
 /**
  * The visible Add target is a draft edit, never an execution permission. Only
@@ -36,6 +37,32 @@ internal fun eligibleUniversalAddRemote(
     candidateAccountScope: String?
 ): Boolean = !authenticatedAccountScope.isNullOrBlank() &&
     authenticatedAccountScope == candidateAccountScope
+
+/**
+ * Compact labels may be duplicated because names are editable aliases, not keys.
+ * Suffix only collisions in the visible Add selector; callbacks still receive
+ * immutable saved profile IDs, and the active remote uses its authenticated scope.
+ */
+internal fun compactUniversalAddTargetLabels(
+    authenticatedName: String?,
+    saved: List<UniversalAddSavedDestination>
+): Pair<String?, List<UniversalAddSavedDestination>> {
+    val raw = listOfNotNull(authenticatedName) + saved.map { it.label }
+    val normalized = raw.map { it.trim().ifBlank { "rTorrent" } }
+    val totals = normalized.groupingBy { it.lowercase(java.util.Locale.ROOT) }.eachCount()
+    val seen = mutableMapOf<String, Int>()
+    val distinct = normalized.map { label ->
+        val key = label.lowercase(java.util.Locale.ROOT)
+        val ordinal = (seen[key] ?: 0) + 1
+        seen[key] = ordinal
+        if (totals.getValue(key) > 1) "$label ($ordinal)" else label
+    }
+    val active = if (authenticatedName == null) null else distinct.first()
+    val offset = if (authenticatedName == null) 0 else 1
+    return active to saved.mapIndexed { index, profile ->
+        profile.copy(label = distinct[index + offset])
+    }
+}
 
 @Composable
 internal fun UniversalAddDestinationPicker(
@@ -56,8 +83,9 @@ internal fun UniversalAddDestinationPicker(
     onAuthenticatedRemote: () -> Unit,
     onConnectSaved: (String) -> Unit
 ) {
-    var showSaved by rememberSaveable { mutableStateOf(false) }
     var showAlias by rememberSaveable { mutableStateOf(false) }
+    val (activeRemoteName, otherDestinations) = compactUniversalAddTargetLabels(
+        authenticatedRemoteLabel, savedOtherProfiles)
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (incomingSourceWaiting) {
             Text("Another torrent source was shared. Keep the current draft or explicitly replace it; neither choice adds a transfer.",
@@ -80,17 +108,29 @@ internal fun UniversalAddDestinationPicker(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
             FilterChip(selected = !addingRemotely, enabled = enabled,
-                onClick = onLocal, label = { Text("This device") },
+                onClick = onLocal, label = { Text("Local") },
                 modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_TARGET_DEVICE))
-            authenticatedRemoteLabel?.let { label ->
+            activeRemoteName?.let { name ->
                 FilterChip(selected = addingRemotely, enabled = enabled,
                     onClick = onAuthenticatedRemote,
-                    label = { Text(label) },
+                    label = { Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.ADD_TARGET_REMOTE))
             }
+            otherDestinations.forEach { profile ->
+                // A saved profile requires authentication first. This gesture only
+                // navigates to that exact account's connection form with the draft kept.
+                FilterChip(selected = false, enabled = enabled,
+                    onClick = { onConnectSaved(profile.id) },
+                    label = { Text(profile.label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    modifier = Modifier.heightIn(min = 48.dp).semantics {
+                        contentDescription = "Connect to " + profile.label + " before adding"
+                    })
+            }
         }
-        Text("Destination selection only changes this draft. Add transfer is the sole submission action.",
+        if (otherDestinations.isNotEmpty()) Text(
+            "Saved connections need authentication before Add; selecting one keeps this draft.",
             style = MaterialTheme.typography.bodySmall)
+
         OutlinedButton(onClick = { showAlias = !showAlias }, enabled = enabled,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
                 stateDescription = if (showAlias) "Expanded" else "Collapsed"
@@ -134,27 +174,6 @@ internal fun UniversalAddDestinationPicker(
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall)
         }
-        if (savedOtherProfiles.isNotEmpty()) {
-            OutlinedButton(onClick = { showSaved = !showSaved },
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).semantics {
-                    stateDescription = if (showSaved) "Expanded" else "Collapsed"
-                }) {
-                Text(if (showSaved) "Hide other saved connections"
-                    else "Other saved connections (" + savedOtherProfiles.size + ")")
-            }
-            if (showSaved) {
-                Text("A saved profile is not an authenticated Add destination. Connect first; the current source draft is kept.",
-                    style = MaterialTheme.typography.bodySmall)
-                savedOtherProfiles.forEach { profile ->
-                    OutlinedButton(
-                        onClick = { onConnectSaved(profile.id) },
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                        enabled = enabled) {
-                        Text("Connect to " + profile.label)
-                    }
-                }
-            }
-        }
+
     }
 }
