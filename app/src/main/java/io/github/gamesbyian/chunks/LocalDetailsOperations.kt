@@ -205,6 +205,26 @@ private fun LocalDetailsFiles(
             change { localFileWantedFeedback(it.setFileWanted(infoHash, index, want)) }
         }
     )
+    // Same read-only file tools as the device screen's Files section.
+    val shownFiles = files ?: return
+    val savePath = savePathOf(infoHash, engine) ?: return
+    LocalFilesOnDiskCheck(infoHash, savePath, shownFiles)
+    val inspectable = remember(savePath, shownFiles) { LocalCompletedMediaFiles(savePath, shownFiles) }
+    inspectable.primaryInspectable?.let { hint ->
+        io.github.gamesbyian.chunks.media.ui.MediaTechnicalDetails(
+            fileName = hint.path.substringAfterLast('/'), open = { inspectable.open(hint) })
+    }
+}
+
+/** The job's engine-reported folder, read off the UI thread; null until known. */
+@Composable
+private fun savePathOf(infoHash: String, engine: () -> LocalDetailsPort?): String? {
+    var path by remember(infoHash) { mutableStateOf<String?>(null) }
+    LaunchedEffect(infoHash) {
+        path = withContext(Dispatchers.IO) { runCatching { engine()?.status(infoHash)?.savePath }.getOrNull() }
+            ?.takeIf { it.isNotBlank() }
+    }
+    return path
 }
 
 @Composable
