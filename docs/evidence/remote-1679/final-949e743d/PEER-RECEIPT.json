@@ -1,0 +1,143 @@
+{
+  "source_sha": "642ce7cfa5dfff4ff5d5eaca0a5708089eca091b",
+  "run_id": "43493862719",
+  "libtorrent_version": "2.0.10.0",
+  "runtime_seconds": 485.49,
+  "topology": "real libtorrent TCP peer to disposable rTorrent",
+  "fixtures": {
+    "magnet": {
+      "hash": "bf7ed99351f7b08f0916b7b3e49cfa574d206879",
+      "name": "debian-13.7.0-arm64-netinst.iso",
+      "size": 735358976,
+      "prefix_bytes": 33554432,
+      "early_prefix_bytes": 4194304,
+      "source": "https://cdimage.debian.org/debian-cd/current/arm64/bt-cd/",
+      "license": "Debian, DFSG-free and redistributable (https://www.debian.org/social_contract)",
+      "torrent_url": "https://cdimage.debian.org/debian-cd/current/arm64/bt-cd/debian-13.7.0-arm64-netinst.iso.torrent",
+      "metainfo_sha256": "a1462e3c57760dc58ad35bf21e12a615b6e09eab7e60191dd3d14ccd2ef5fb63",
+      "original_source_metainfo_sha256": "0cccb64f9ed3a6badfa472434d18a2ae33ba9a0d431f0b16e8a704c310592eac",
+      "tracker_scope": "disposable-loopback",
+      "peer_connections": 0,
+      "peer_disconnects": 0,
+      "peer_error_alerts": 0,
+      "max_active_peers": 0,
+      "payload_uploaded_bytes": 0,
+      "stages": [
+        "preflight"
+      ],
+      "native_verified_bytes": 33554432,
+      "phase_native_verified_bytes": {
+        "preflight": 33554432
+      }
+    },
+    "magnet3": {
+      "hash": "7acf8fb590b2060dd9c3146ef770169d593433b0",
+      "name": "debian-13.7.0-amd64-netinst.iso",
+      "size": 792723456,
+      "prefix_bytes": 33554432,
+      "early_prefix_bytes": 4194304,
+      "source": "https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/",
+      "license": "Debian, DFSG-free and redistributable (https://www.debian.org/social_contract)",
+      "torrent_url": "https://cdimage.debian.org/debian-cd/current/amd64/bt-cd/debian-13.7.0-amd64-netinst.iso.torrent",
+      "metainfo_sha256": "b5a32f901ce3a3ebd47cf68c43316fc8ce0949104f3dba85fadca5fd0fbe7be9",
+      "original_source_metainfo_sha256": "979d5c0a155548c2c9f01def8364b337f90549d8f022e0d1d3a309b14df205f5",
+      "tracker_scope": "disposable-loopback",
+      "peer_connections": 8,
+      "peer_disconnects": 7,
+      "peer_error_alerts": 0,
+      "max_active_peers": 1,
+      "payload_uploaded_bytes": 1548777,
+      "stages": [
+        "preflight",
+        "metadata",
+        "payload",
+        "resume"
+      ],
+      "native_verified_bytes": 33554432,
+      "phase_native_verified_bytes": {
+        "preflight": 33554432,
+        "metadata": 33554432,
+        "payload": 4194304,
+        "resume": 33554432
+      }
+    },
+    "magnet2": {
+      "hash": "08ada5a7a6183aae1e09d831df6748d566095a10",
+      "name": "Sintel",
+      "size": 129302391,
+      "prefix_bytes": 33554432,
+      "early_prefix_bytes": 4194304,
+      "source": "https://webtorrent.io/torrents/sintel.torrent",
+      "license": "Blender Foundation, CC BY 3.0, https://durian.blender.org/sharing/",
+      "torrent_url": "https://webtorrent.io/torrents/sintel.torrent",
+      "metainfo_sha256": "48ea13e3282ab325dc224beeb3caceaebbe6955310ebf5811a51ddaa6062676a",
+      "original_source_metainfo_sha256": "4c8fdad0414b4767546a0f92fe3d660a66edc32471874e7a1cfa97120317b84a",
+      "tracker_scope": "disposable-loopback",
+      "peer_connections": 8,
+      "peer_disconnects": 7,
+      "peer_error_alerts": 0,
+      "max_active_peers": 1,
+      "payload_uploaded_bytes": 1081344,
+      "stages": [
+        "preflight",
+        "metadata",
+        "payload",
+        "resume"
+      ],
+      "native_verified_bytes": 33554432,
+      "phase_native_verified_bytes": {
+        "preflight": 33554432,
+        "metadata": 33554432,
+        "payload": 4194304,
+        "resume": 33554432
+      }
+    },
+    "magnet4": {
+      "hash": "dd8255ecdc7ca55fb0bbf81323d87062db1f6d1c",
+      "name": "Big Buck Bunny",
+      "size": 276445467,
+      "prefix_bytes": 33554432,
+      "early_prefix_bytes": 4194304,
+      "source": "https://webtorrent.io/torrents/big-buck-bunny.torrent",
+      "license": "Blender Foundation, CC BY 3.0, https://peach.blender.org/about/",
+      "torrent_url": "https://webtorrent.io/torrents/big-buck-bunny.torrent",
+      "metainfo_sha256": "21013c437a94ee3ee3f098dc7dbcb1fc9fb9e10dd4bc194fb04dd2853d9a9766",
+      "original_source_metainfo_sha256": "13b4241c2fc4c2be3806287895566c0f596b9716643f2e679fd1482bcc7ed449",
+      "tracker_scope": "disposable-loopback",
+      "peer_connections": 0,
+      "peer_disconnects": 0,
+      "peer_error_alerts": 0,
+      "max_active_peers": 0,
+      "payload_uploaded_bytes": 0,
+      "stages": [
+        "preflight"
+      ],
+      "native_verified_bytes": 33554432,
+      "phase_native_verified_bytes": {
+        "preflight": 33554432
+      }
+    },
+    "magnet0": {
+      "hash": "a4d930905f5e5010258c8f1b557d0e43cc36a578",
+      "name": "chunks-precompleted-control.bin",
+      "size": 65536,
+      "prefix_bytes": 65536,
+      "source": "disposable-negative-control",
+      "license": "synthetic local test bytes",
+      "metainfo_sha256": "a882e7391bd3e4a1c25b5d01b80f569e9447b4efc8d82b102c4ac5120c0e1f5d",
+      "peer_connections": 2,
+      "peer_disconnects": 2,
+      "peer_error_alerts": 0,
+      "max_active_peers": 1,
+      "payload_uploaded_bytes": 0,
+      "stages": [
+        "preflight",
+        "metadata"
+      ],
+      "native_verified_bytes": 65536,
+      "phase_native_verified_bytes": {
+        "preflight": 65536
+      }
+    }
+  }
+}

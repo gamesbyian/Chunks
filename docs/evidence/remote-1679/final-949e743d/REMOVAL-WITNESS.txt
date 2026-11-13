@@ -1,0 +1,1 @@
+PASS production Kotlin adapter -> actual PHP erasedata -> real collector: exact file absent, canary intact
