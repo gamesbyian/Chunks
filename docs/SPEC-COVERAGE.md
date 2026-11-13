@@ -1,5 +1,8 @@
 # Chunks acceptance and specification coverage
 
+> **Remote removal capability acceptance (2026-11-13; not yet accepted):** [Remote capability discovery and deletion](REMOTE-CAPABILITY-DISCOVERY-AND-DELETION.md) binds rTorrent connection detection, exact-profile cache invalidation, truthful unknown/unsupported/restricted states, independent session-only removal and consented file deletion. URL shape and Transdroid custom5 conventions do not constitute confirmed data-deletion support; HTTP 404 versus 405 and queued versus physical-deleted outcomes remain distinct. Test standalone rTorrent, genuine ruTorrent, missing/blocked endpoints, wrong account, uncertainty and accessible canonical Details before promoting acceptance.
+
+
 > **Binding Transfers visual acceptance, 2026-11-13:** See [compact list-first screen design](design/TRANSFERS-COMPACT-LIST-FIRST.md). Verify 1–3 configured environments => Local (N)/named (N) chips without All; 4+ => unnumbered All; combined scope remains reachable and nonempty; search, compact filter/sort and batch controls, aggregate selected-scope count and live rates *above* first transfer; no bottom live totals or redundant prose/buttons; per-connection/Local colour settings plus default-on global Options colour suppression; preserve canonical cards/footer/source authority. Require actual Pixel visual comparison, 1/2/3/4+ scope/stale/filter tests and TalkBack/IME; planned until installed proof.
 
 
