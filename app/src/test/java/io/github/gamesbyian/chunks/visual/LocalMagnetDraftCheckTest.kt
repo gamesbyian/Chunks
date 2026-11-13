@@ -120,7 +120,8 @@ class LocalMagnetDraftCheckTest {
             openAdd()
             rule.onNode(hasSetTextAction() and hasText(link)).assertDoesNotExist()
             rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
-            rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
+            rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.PRIVACY.tag).performScrollTo().performClick()
+        rule.onNodeWithText("Fill in a copied magnet or torrent link when Add opens")
                 .performScrollTo().performClick()
             rule.waitUntil(5_000) { !prefs.getBoolean("enabled", true) }
             copy(link)

@@ -201,9 +201,11 @@ internal class RememberedRemoteProfileRoster(context: Context) {
      * generation is current. The token is captured before Connect begins,
      * never derived from a mutable UI text field after network suspension.
      */
-    fun saveVerifiedIfCurrent(credentials: RemoteCredentials, ticket: Long): Boolean =
+    fun saveVerifiedIfCurrent(
+        credentials: RemoteCredentials, ticket: Long, preferredLabel: String? = null
+    ): Boolean =
         synchronized(RemoteCredentialLock.monitor) {
-            if (!RemoteCredentialLock.current(ticket)) false else saveVerified(credentials)
+            if (!RemoteCredentialLock.current(ticket)) false else saveVerified(credentials, preferredLabel)
         }
 
     /** Presentation-only rename of an already encrypted and authenticated profile. */

@@ -219,25 +219,26 @@ open class ChunksServerRenderTest {
         // The root four-destination footer is the only global navigation bar.
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Connected server tools").performScrollTo().assertIsDisplayed()
-        for (label in listOf("Server folders & destinations", "Server collections",
-                "Manage connections and environments", "Create a torrent…",
-                "Review ZIP archives…", "Privacy & authentication")) {
-            rule.onNodeWithText(label).performScrollTo().assertIsDisplayed()
+        for (category in io.github.gamesbyian.chunks.OptionsCategory.entries) {
+            rule.onNodeWithTag(category.tag).performScrollTo().assertIsDisplayed()
         }
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.CONNECTIONS.tag).performScrollTo()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-options.png")
 
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS.tag).performScrollTo().performClick()
+        rule.onNodeWithText("Connected server tools").performScrollTo().assertIsDisplayed()
         rule.onNodeWithText("Server folders & destinations").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-places.png")
         rule.onNodeWithContentDescription("Options").performClick()
 
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS.tag).performScrollTo().performClick()
         rule.onNodeWithText("Server collections").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-organize.png")
         rule.onNodeWithContentDescription("Options").performClick()
 
-        rule.onNodeWithText("Manage connections and environments").performScrollTo().performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.CONNECTIONS.tag).performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-tab-server.png")
         rule.onNodeWithContentDescription("Options").assertIsDisplayed()

@@ -728,7 +728,10 @@ internal fun CombinedTransfersScreen(
     // Only environments with a live list here can open a row there.
     fun openFor(key: UnifiedTransferKey): (() -> Unit)? =
         if (key.environment == EnvironmentSnapshots.LOCAL || (serverId != null && key.environment == serverId))
-            ({ onOpenTransfer(key) }) else null
+            ({
+                savedDetailTarget = null
+                onOpenTransfer(key)
+            }) else null
 
     // Keyed on data only: MainActivity rebuilds the server source (and its lifecycle lambdas) each frame.
     val rawSources = remember(localFrame, localConfirmed, localRunning, localObservedAt, localPrivacy,

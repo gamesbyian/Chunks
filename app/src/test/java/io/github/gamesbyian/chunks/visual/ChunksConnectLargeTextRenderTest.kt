@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks.visual
 
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -39,6 +40,16 @@ class ChunksConnectLargeTextRenderTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/connect-200pct.png")
     }
 
+    @Test
+    @Config(sdk = [35], qualifiers = "w412dp-h892dp-xxhdpi", fontScale = 1.0f)
+    fun newConnectionAtNormalText() {
+        waitForWelcome()
+        rule.onNodeWithContentDescription("Connections").performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/chunks-visual/connections-new-profile.png")
+    }
+
     @Test fun localAt200Percent() {
         waitForWelcome()
         rule.waitForIdle()
@@ -48,6 +59,7 @@ class ChunksConnectLargeTextRenderTest {
     @Test fun createAt200Percent() {
         waitForWelcome()
         rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.ABOUT.tag).performScrollTo().performClick()
         rule.onNodeWithText("Create a torrent…").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/create-200pct.png")

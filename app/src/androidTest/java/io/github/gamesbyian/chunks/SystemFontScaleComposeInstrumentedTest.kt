@@ -289,7 +289,7 @@ class SystemFontScaleComposeInstrumentedTest {
         savePixels("transfers-initial")
         rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS)
             .assertIsDisplayed().performClick()
-        rule.onNodeWithText("Options · this device").assertExists()
+        rule.onNodeWithText("About Chunks").assertExists()
         rule.waitForIdle()
         savePixels("options")
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD)

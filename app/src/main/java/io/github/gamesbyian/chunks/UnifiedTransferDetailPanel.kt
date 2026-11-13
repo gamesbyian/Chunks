@@ -128,7 +128,7 @@ internal fun UnifiedTransferDetailPanel(
         }
         if (!hidden) exactServerOperations?.invoke()
         if (!hidden && onOpenOwningList != null) {
-            Text("To manage this download, open its own environment's transfer list.",
+            Text("Browse transfers in this environment.",
                 style = MaterialTheme.typography.bodyMedium)
             OutlinedButton(onClick = onOpenOwningList,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

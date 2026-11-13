@@ -60,35 +60,32 @@ class CombinedTwoRealServersInstrumentedTest {
     private fun visible(text: String) =
         rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
 
-    // Compact server header: "<host> · <n> transfers" with the server's own
-    // Add action. Each disposable server holds exactly two fixtures.
-    private fun connectedQueue() = visible("127.0.0.1 · 2 transfers") && visible("+ Add torrent")
-    private fun enterConnectedQueueIfCombined(observedOwnerTransfer: String? = null) {
-        if (connectedQueue()) return
-        // Startup may show a read-only Combined view during a saved-profile
-        // reconnect. Wait for positive authenticated navigation; never infer
-        // connection success from a saved label or silently call Connect.
-        waitFor("authenticated server list entry", 90_000) {
-            connectedQueue() || runCatching {
-                scrollTo("Only connected server")
-                true
-            }.getOrDefault(false)
-        }
-        if (!connectedQueue()) {
-            // Scope is only a view filter. For operational tests, enter the
-            // authenticated owner's management controls through full Details,
-            // never by converting a selected scope into command authority.
-            scrollTo("Only connected server")
+    // The authenticated-only scope control is the session witness; a saved label
+    // or a read-only cached row cannot provide it. All scopes use this ONE browser.
+    private fun authenticatedCanonicalBrowser(): Boolean = runCatching {
+        scrollTo("Only connected server")
+        visible("Only connected server") && !visible("+ Add torrent")
+    }.getOrDefault(false)
+
+    private fun enterConnectedCanonicalTransfers(expectedUrl: String? = null, expectedUser: String = "") {
+        waitFor("authenticated canonical Transfers", 90_000) { authenticatedCanonicalBrowser() }
+        if (expectedUrl != null) {
             rule.onNodeWithText("Only connected server").performClick()
-            // Process-death phase deliberately receives only the one B endpoint;
-            // choose a transfer observed by independent authenticated readback.
-            // Phase 1 retains its explicit cross-server same-hash fixture.
-            val shared = observedOwnerTransfer ?: decoded("chunks_combined_shared_b64")
-            val row = hasContentDescription("Details for $shared on", substring = true)
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
-            rule.onNode(row).performClick()
-            rule.onNode(hasText("Open Server ·", substring = true))
-                .performScrollTo().performClick()
+            val expectedId = requireNotNull(io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                .serverIdOfAliasScope(RemoteVerifiedUiIdentity.aliasScopeOf(
+                    RemoteCredentials(expectedUrl, expectedUser, ""))))
+            assertEquals("Canonical scope must follow the exact authenticated principal",
+                io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(setOf(expectedId)),
+                CombinedViewPreferences(InstrumentationRegistry.getInstrumentation().targetContext).load().scope)
+        }
+    }
+
+    private fun showAllCanonicalTransfers() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        if (CombinedViewPreferences(context).load().scope !=
+            io.github.gamesbyian.chunks.model.EnvironmentViewScope.All) {
+            scrollTo("Show all transfers")
+            rule.onNodeWithText("Show all transfers").performClick()
         }
     }
 
@@ -100,6 +97,18 @@ class CombinedTwoRealServersInstrumentedTest {
         if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(match)
         else rule.onNode(match).performScrollTo()
+    }
+
+    /** [scrollTo] for a single required step: a miss reports the visible screen. */
+    private fun requireScrollTo(text: String) {
+        try {
+            scrollTo(text)
+        } catch (failure: AssertionError) {
+            // Disposable loopback fixture only: report the visible screen like waitFor does.
+            val ui = runCatching { rule.onRoot(useUnmergedTree = true).printToString().take(6_000) }
+                .getOrDefault("semantics unavailable")
+            throw AssertionError("Could not scroll to \"$text\"\n$ui", failure)
+        }
     }
 
     private fun waitFor(what: String, timeoutMs: Long = 60_000, condition: () -> Boolean) {
@@ -131,6 +140,8 @@ class CombinedTwoRealServersInstrumentedTest {
     }
 
     private fun connect(url: String, user: String = "", password: String = "") {
+        typeInto("Connection name (optional)", "Studio")
+        // Duplicate display names must never collapse numbered instances/accounts.
         // Server A sits behind basic auth; server B is anonymous, so its
         // fields are explicitly cleared after A's login was typed.
         typeInto("Seedbox hostname, ruTorrent URL or RPC address", url)
@@ -144,7 +155,7 @@ class CombinedTwoRealServersInstrumentedTest {
         // may lead to a second production Connect invocation.
         var connectInvoked = false
         rule.waitUntil(15_000) {
-            if (connectedQueue()) true else {
+            if (authenticatedCanonicalBrowser()) true else {
                 try {
                     scrollTo("Connect to rTorrent")
                     rule.onNodeWithText("Connect to rTorrent").assertIsDisplayed().assertIsEnabled()
@@ -165,6 +176,7 @@ class CombinedTwoRealServersInstrumentedTest {
         waitFor("verified Connect acknowledgment", 90_000) {
             visible("Connection verified")
         }
+        assertTrue("Initial connection name must be acknowledged immediately", visible("Studio is connected"))
         rule.onNodeWithText("Continue to Connections").performClick()
         waitFor("verified Connections management") {
             // Connections is a lazy list that can still be scrolled to the saved
@@ -174,10 +186,15 @@ class CombinedTwoRealServersInstrumentedTest {
             visible("Connected ·") && visible("View transfers")
         }
         rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
-        // Legacy operations remain reachable from canonical exact-owner Details
-        // until the active #1534/#1566 migration preserves full capability parity.
-        enterConnectedQueueIfCombined()
-        waitFor("server queue after exact-owner handoff", 90_000) { connectedQueue() }
+        enterConnectedCanonicalTransfers(url, user)
+        scrollTo("Showing 2")
+        assertTrue("The exact scoped server must show its two real jobs", visible("Showing 2"))
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        waitFor("named verified profile persisted") {
+            RememberedRemoteProfileRoster(context).list().any {
+                it.credentials.endpoint == url && it.credentials.username == user && it.label == "Studio"
+            }
+        }
     }
 
     /**
@@ -195,8 +212,8 @@ class CombinedTwoRealServersInstrumentedTest {
         assertTrue("Only a verified real B transfer can anchor the restored view", observedBefore.isNotEmpty())
         val before = observedBefore.map { it.hash to it.started }.toSet()
         ActivityScenario.launch(MainActivity::class.java).use {
-            enterConnectedQueueIfCombined(observedBefore.first().name)
-            waitFor("reconnect after process death", 90_000) { connectedQueue() }
+            enterConnectedCanonicalTransfers(urlB)
+            waitFor("reconnect after process death", 90_000) { authenticatedCanonicalBrowser() }
             assertTrue(!visible("Seedbox hostname, ruTorrent URL or RPC address"))
             stage("process-death-reconnected")
         }
@@ -275,10 +292,16 @@ class CombinedTwoRealServersInstrumentedTest {
                 }.getOrDefault(false)
             }
             stage("explicit-disconnect-restored")
+            scrollTo("Add connection")
+            rule.onNodeWithText("Add connection").performClick()
             connect(urlB)
+            val profiles = RememberedRemoteProfileRoster(InstrumentationRegistry.getInstrumentation().targetContext).list()
+            assertEquals(2, profiles.size)
+            assertEquals(2, profiles.map { it.id }.toSet().size)
+            assertEquals(setOf("Studio"), profiles.map { it.label }.toSet())
             stage("connected-b")
 
-            rule.onAllNodesWithText("All environments…")[0].performClick()
+            showAllCanonicalTransfers()
             waitFor("canonical Combined-derived Transfers browser") {
                 // The catalog's actual heading is now "Transfers"; the old
                 // "All environments" screen name belonged to the legacy fork.
@@ -422,9 +445,9 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("source-first Universal Add") { visible("Add a transfer") }
             val preservedDraft = "magnet:?xt=urn:btih:$sharedHash"
             typeInto("Magnet or HTTP(S) torrent URL", preservedDraft)
-            scrollTo("Other saved connections")
+            requireScrollTo("Other saved connections")
             rule.onNodeWithText("Other saved connections", substring = true).performClick()
-            scrollTo("Connect to ")
+            requireScrollTo("Connect to ")
             rule.onNodeWithText("Connect to ", substring = true).performClick()
             // This must show an ACTUAL login, not B's already authenticated
             // server UI with A's address painted into editable fields.
@@ -507,7 +530,7 @@ class CombinedTwoRealServersInstrumentedTest {
             // The authenticated-only control may be below the lazy viewport: scroll, don't
             // depend on its position (the environment toggle row sits above it).
             waitFor("automatic reconnect reaches canonical Transfers", 90_000) {
-                connectedQueue() || runCatching { scrollTo("Only connected server"); true }.getOrDefault(false)
+                authenticatedCanonicalBrowser() || runCatching { scrollTo("Only connected server"); true }.getOrDefault(false)
             }
             // "Only connected server" requires the authenticated server; let the same frame's
             // scope effects (the old code's startup focus) run before reading the preference.
@@ -517,9 +540,9 @@ class CombinedTwoRealServersInstrumentedTest {
             // Run 41789912090: with a remembered verified server, launch opens
             // that server's queue directly. Accept either entry route, but the
             // queue must appear with no address or credential retyped.
-            enterConnectedQueueIfCombined()
+            enterConnectedCanonicalTransfers(urlB)
             waitFor("automatic read-only reconnect of remembered server", 90_000) {
-                connectedQueue()
+                authenticatedCanonicalBrowser()
             }
             assertTrue("Relaunch must not require the Connect form",
                 !visible("Seedbox hostname, ruTorrent URL or RPC address"))
@@ -537,9 +560,9 @@ class CombinedTwoRealServersInstrumentedTest {
         // failure, keep its last rows marked out of date, keep B live, and
         // never claim A is current.
         ActivityScenario.launch(MainActivity::class.java).use {
-            enterConnectedQueueIfCombined()
-            waitFor("reconnect for C2", 90_000) { connectedQueue() }
-            rule.onAllNodesWithText("All environments…")[0].performClick()
+            enterConnectedCanonicalTransfers(urlB)
+            waitFor("reconnect for C2", 90_000) { authenticatedCanonicalBrowser() }
+            showAllCanonicalTransfers()
             waitFor("canonical Combined browser for C2") {
                 visible("Search names or hashes") && !visible("All environments…")
             }

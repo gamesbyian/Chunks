@@ -577,6 +577,7 @@ class ChunksMainActivityAtlasTest {
         // The root Options destination is searchable and routes to the
         // existing exact-account tools. No remote write is issued by navigation.
         rule.onNodeWithContentDescription("Options").performClick()
+        save("options-filled-index-real-compose")
         rule.onNodeWithText("Search options").performTextReplacement("server")
         // Result titles are also shown as standing section headings below the
         // filtered cards. Assert each exact search-result description, scrolling
@@ -617,19 +618,16 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(returnRow)
         rule.onNode(returnRow).performClick()
         rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
-        // The filtered card remains the exact same server/infohash identity.
-        // Reopen its secondary actions only if navigation recreated the row.
-        if (rule.onAllNodesWithText("Inspect files").fetchSemanticsNodes().isEmpty()) {
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More details"))
-            rule.onNodeWithText("More details").performClick()
-        }
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect files"))
-        rule.onAllNodesWithText("Inspect files").onFirst().performClick()
+        // The owner link scopes the SAME canonical browser. Reopen that exact
+        // row's full Details and its canonical file controls, without a legacy list.
+        rule.onNodeWithText("Search names or hashes").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(returnRow)
+        rule.onNode(returnRow).performClick()
+        rule.onNodeWithText("Files & priorities…").performScrollTo().performClick()
         rule.waitUntil(15_000) {
             rule.onAllNodesWithText("85 server-reported files").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("85 server-reported files"))
+        rule.onNodeWithText("85 server-reported files").performScrollTo()
         save("app-files-populated-real-compose")
         val invoked = receivedMethods.toList()
         assertTrue("Installed client must request server version", invoked.contains("system.client_version"))

@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.runtime.mutableStateOf
 import androidx.test.core.app.ApplicationProvider
@@ -140,5 +141,27 @@ class RepeatedAndroidIntakeTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
         rule.waitUntil(30_000) { server.jobs.containsKey(replacement) }
         assertEquals("Only the explicitly chosen replacement is submitted", setOf(replacement), server.jobs.keys)
+    }
+
+    @Test fun detailsEnvironmentLinkReturnsToTheCanonicalBrowserWithoutRemoteWrites() {
+        val hash = "8".repeat(40)
+        val name = "scope-regression.txt"
+        server.seed(hash, name)
+        connect()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+        val row = hasContentDescription("Details for $name on", substring = true)
+        list().performScrollToNode(row)
+        rule.onNode(row).performClick()
+        rule.onNodeWithText("Transfer details").assertExists()
+        val before = server.methods.size
+        rule.onNode(hasText("Open Server ·", substring = true)).performScrollTo().performClick()
+        waitForText("Search names or hashes")
+        rule.onNodeWithText("+ Add torrent").assertDoesNotExist()
+        val owner = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(
+            RemoteVerifiedUiIdentity.aliasScopeOf(io.github.gamesbyian.chunks.rpc.RemoteCredentials(server.endpoint, "", "")))
+        assertEquals(io.github.gamesbyian.chunks.model.EnvironmentViewScope.Only(setOf(requireNotNull(owner))),
+            CombinedViewPreferences(context).load().scope)
+        val writes = Regex("(^load\\.|\\.(start|stop|erase|close|open|pause|resume|check_hash)$|\\.set$|\\.set\\.)")
+        assertTrue("Browsing cannot issue a remote write", server.methods.drop(before).none { writes.containsMatchIn(it) })
     }
 }

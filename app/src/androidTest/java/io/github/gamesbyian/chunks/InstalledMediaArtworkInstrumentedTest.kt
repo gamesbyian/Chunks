@@ -248,7 +248,8 @@ class InstalledMediaArtworkInstrumentedTest {
         rule.onNodeWithText("Back").performScrollTo().performClick()
         // Back from media settings restores central Options. Navigate through
         // the same Combined inventory to the exact authenticated server list.
-        rule.onNodeWithText("Options · this device").assertExists()
+        // The central Options index is identified by its stable category cards, not heading copy.
+        rule.onNodeWithTag(OptionsCategory.ARTWORK.tag).assertExists()
         // The canonical Transfers catalog (not a legacy server queue) hosts the exact row.
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(episode))

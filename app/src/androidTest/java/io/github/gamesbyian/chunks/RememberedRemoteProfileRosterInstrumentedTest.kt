@@ -82,6 +82,32 @@ class RememberedRemoteProfileRosterInstrumentedTest {
         } finally { vault.clearAll() }
     }
 
+    @Test fun initialNamesFollowOnlyTheCurrentVerifiedAccountAndAllowDuplicates() {
+        val login = RememberedRemoteLogin(context)
+        val roster = RememberedRemoteProfileRoster(context)
+        assertTrue(roster.clearAll())
+        val firstTicket = RemoteCredentialLock.beginConnection()
+        assertTrue(RemoteCredentialLock.saveVerifiedPairIfCurrent(
+            login, roster, alice, firstTicket, "  Studio  "))
+        val secondTicket = RemoteCredentialLock.beginConnection()
+        assertTrue(RemoteCredentialLock.saveVerifiedPairIfCurrent(
+            login, roster, bob, secondTicket, "Studio"))
+        // A late cancelled/auth-failed attempt has no authority to change the name or credentials.
+        RemoteCredentialLock.invalidate()
+        assertFalse(RemoteCredentialLock.saveVerifiedPairIfCurrent(
+            login, roster, alice.copy(password = "stale"), firstTicket, "Wrong"))
+        val reopened = RememberedRemoteProfileRoster(context).list()
+        assertEquals(2, reopened.size)
+        assertEquals(setOf("Studio"), reopened.map { it.label }.toSet())
+        assertEquals(2, reopened.map { it.id }.toSet().size)
+        assertEquals(alice, reopened.single { it.credentials.username == alice.username }.credentials)
+        val thirdTicket = RemoteCredentialLock.beginConnection()
+        assertTrue(RemoteCredentialLock.saveVerifiedPairIfCurrent(
+            login, roster, other, thirdTicket, "   "))
+        assertEquals("Alice @ other.invalid", RememberedRemoteProfileRoster(context).list().first().label)
+        assertEquals(3, roster.list().size)
+    }
+
     @Test fun twoInstancesOfOneAccountShowDistinctAddressesAndVerifiedTimes() {
         val vault = RememberedRemoteProfileRoster(context)
         vault.clearAll()

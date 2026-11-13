@@ -48,7 +48,7 @@ class LocalNavigationContinuityTest {
             .performTextInput("ubuntu")
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Options · this device").assertExists()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.CONNECTIONS.tag).assertExists()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()

@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -32,13 +33,18 @@ class LocalOptionsLargeTextRenderTest {
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        for (label in listOf("Seeding rules…", "Privacy & authentication", "Create a torrent…",
-                "Review ZIP archives…")) {
+        for ((category, label) in listOf(
+                io.github.gamesbyian.chunks.OptionsCategory.SEEDING to "Seeding rules…",
+                io.github.gamesbyian.chunks.OptionsCategory.PRIVACY to "Privacy & authentication",
+                io.github.gamesbyian.chunks.OptionsCategory.ABOUT to "Create a torrent…",
+                io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS to "Review ZIP archives…")) {
+            rule.onNodeWithTag(category.tag).performScrollTo().performClick()
             val node = rule.onNodeWithText(label).performScrollTo()
             val box = node.getUnclippedBoundsInRoot()
             assertTrue("$label is a 48dp-class target", box.bottom - box.top >= 48.dp)
+            rule.onNodeWithText("All options").performScrollTo().performClick()
         }
-        rule.onNodeWithText("Speed limits").performScrollTo()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.CONNECTIONS.tag).performScrollTo()
         rule.onRoot().captureRoboImage("build/chunks-visual/local-options-200pct.png")
     }
 }

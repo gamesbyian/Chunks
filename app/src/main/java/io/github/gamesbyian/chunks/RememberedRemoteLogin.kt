@@ -47,10 +47,11 @@ internal object RemoteCredentialLock {
         vault: RememberedRemoteLogin,
         roster: RememberedRemoteProfileRoster,
         credentials: RemoteCredentials,
-        ticket: Long
+        ticket: Long,
+        preferredLabel: String? = null
     ): Boolean = synchronized(monitor) {
         if (ticket != generation || !vault.rememberingEnabled()) return@synchronized false
-        if (!roster.saveVerifiedIfCurrent(credentials, ticket)) return@synchronized false
+        if (!roster.saveVerifiedIfCurrent(credentials, ticket, preferredLabel)) return@synchronized false
         vault.saveIfCurrent(credentials, ticket)
     }
 }

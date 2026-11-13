@@ -70,6 +70,7 @@ class LocalContrastSweepTest {
         sweep("add-place")
         rule.onNodeWithContentDescription("Options").performClick()
         sweep("options")
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.SEEDING.tag).performScrollTo().performClick()
         rule.onNode(hasText("Save speed limits")).performScrollTo()
         sweep("options-speed")
         assertTrue("Text below 4.5:1: $failures", failures.isEmpty())

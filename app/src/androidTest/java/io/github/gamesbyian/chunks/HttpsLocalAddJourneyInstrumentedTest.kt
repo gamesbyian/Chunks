@@ -204,7 +204,9 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 // into the saved default when the same draft returns.
                 stage("override-set")
                 click("Options")
-                rule.waitUntil(30_000) { visible("Options · this device") }
+                rule.waitUntil(30_000) {
+                    rule.onAllNodesWithTag(OptionsCategory.CONNECTIONS.tag).fetchSemanticsNodes().isNotEmpty()
+                }
                 click("+ Add")
                 rule.waitUntil(30_000) { visible("Saves to: Chunks app folder") }
                 rule.onNodeWithText("For this Add only. Saving a local default is a separate action.").assertExists()

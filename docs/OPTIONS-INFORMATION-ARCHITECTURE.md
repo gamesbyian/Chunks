@@ -92,3 +92,20 @@ This universal contract takes precedence over older mockups or prose depicting S
 The eight-section index is coherent on the Pixel, every already-existing setting has one canonical home, search reaches nested controls, contextual per-transfer links resolve to the right scope, migrations preserve old selections, inaccessible/unfinished controls are labeled or hidden, and the rTorrent transfer life cycle remains unaffected. Changes to rule execution, authentication or actual source removal require their independent safety/evidence gates.
 
 **Owner request is organizational**: this contract introduces no additional release blocker, provider integration, independent backend, or requirement to build speculative features merely to populate Options.
+
+## Current control ownership under the eight-card index
+
+Navigation reuses the existing owners; the index never writes preferences. Keep legacy search terms as aliases. Planned settings are not implemented merely by creating a category.
+
+| Category | Existing controls and destinations |
+| --- | --- |
+| Connections | Footer Connections authority: encrypted profile roster, initial name, rename, remember/forget, read-only Connect |
+| Downloads & storage | Add's existing Save to/default Place, authenticated server folders/collections, local snapshot restore, ZIP review/recovery, collection names |
+| Seeding & limits | Shared Seeding rules and existing local speed-limit controls |
+| Artwork & metadata | Existing Artwork & info screen and media preference/provider stores |
+| Notifications | Observed Android notification permission and OS channel settings; no invented master switch |
+| Appearance & accessibility | Existing environment colour chooser, artwork-size/display settings, authenticated server display aliases; Android text sizing |
+| Privacy & network | Existing scoped access protection, local DHT and clipboard-prefill preferences |
+| About Chunks | Actual build version/help, Create torrent, authenticated inventory backup, local inventory/health/magnet exports |
+
+Search opens or scrolls to these same controls. Back/All options restores the originating query and index scroll; footer Options returns to that index. Retain non-saveable snapshot review state while hiding other categories, excluding hidden controls from accessibility and keyboard focus. Android notification status must refresh on resume after the OS settings detour.

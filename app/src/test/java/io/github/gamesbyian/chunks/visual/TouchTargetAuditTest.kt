@@ -64,9 +64,12 @@ class LocalTouchTargetAuditTest {
         val small = rule.smallTouchTargets(density).toMutableList()
         // Traverse the real Options destination before auditing its lower controls.
         rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.SEEDING.tag).performScrollTo().performClick()
         rule.onNodeWithText("Save speed limits").performScrollTo()
         rule.waitForIdle()
         small += rule.smallTouchTargets(density)
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_OPTIONS).performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.ABOUT.tag).performScrollTo().performClick()
         rule.onNodeWithText("More local tools").performScrollTo().performClick()
         rule.waitForIdle()
         small += rule.smallTouchTargets(density)

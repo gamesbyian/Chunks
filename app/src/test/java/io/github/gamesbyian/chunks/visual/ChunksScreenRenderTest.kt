@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.visual
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithTag
 import io.github.gamesbyian.chunks.ChunksSemantics
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -53,6 +54,7 @@ class ChunksScreenRenderTest {
         waitForWelcome()
         // Offline tools live in Options, not in remote Connections.
         rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.DOWNLOADS.tag).performScrollTo().performClick()
         rule.onNodeWithText("Review ZIP archives…").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/zip-review.png")
@@ -64,6 +66,7 @@ class ChunksScreenRenderTest {
         // Privacy & authentication lives in Local options, reached from the footer.
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.PRIVACY.tag).performScrollTo().performClick()
         rule.onNodeWithText("Privacy & authentication").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithText("Privacy for transfers on this device is off", substring = true).assertExists()
@@ -73,6 +76,7 @@ class ChunksScreenRenderTest {
     @Test fun createScreen() {
         waitForWelcome()
         rule.onNodeWithContentDescription("Options").performClick()
+        rule.onNodeWithTag(io.github.gamesbyian.chunks.OptionsCategory.ABOUT.tag).performScrollTo().performClick()
         rule.onNodeWithText("Create a torrent…").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/create.png")
