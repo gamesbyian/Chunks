@@ -1,5 +1,8 @@
 # Chunks: dependency-ordered completion and validation
 
+> **Owner-approved list-first presentation (2026-11-13):** During R1 canonical Transfers UX and coordinated screenshot refinement, satisfy [compact Transfers design](design/TRANSFERS-COMPACT-LIST-FIRST.md): conditional unnumbered All at >=4 configured environments, bracketed Local/remote counts, compact search/filter/sort/batch, above-list aggregate count/speeds, removal/relocation of redundant panels, colour controls in Connections and Options. Validate rendered Pixel UX and behavior as distinct gates; no separate release-blocking lane or docs-only emulator work.
+
+
 **Authority:** The [active work queue](WORK-QUEUE.md) ranks tasks. [SPEC-COVERAGE](SPEC-COVERAGE.md) defines product acceptance, [CI-POLICY](CI-POLICY.md) selects tests, [TEST-ARCHITECTURE](TEST-ARCHITECTURE.md) governs assertions and [NEXT-PUSH-HANDOFF](NEXT-PUSH-HANDOFF-2026-11-08.md) defines a fresh dispatch. Re-check live main, PR heads, issues, owner decisions and exact tests before acting. These are dependency cohorts, never fixed numbered agent lanes.
 
 ## Milestones and release meaning
