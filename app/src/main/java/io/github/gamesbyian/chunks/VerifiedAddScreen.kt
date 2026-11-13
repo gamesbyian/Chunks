@@ -595,9 +595,10 @@ internal fun VerifiedAddScreen(
                     observedProgress?.registered == true && observedProgress?.started == true &&
                     observedProgress?.traffic?.active == true &&
                     observedProgress?.metadataPending != null && !progressReading && !progressReadFailed
-                Card(colors = CardDefaults.cardColors(containerColor =
-                    if (uncertain && !nativePlaceAwaitingConfirmation) MaterialTheme.colorScheme.errorContainer
-                    else MaterialTheme.colorScheme.secondaryContainer)) {
+                Card(modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS),
+                    colors = CardDefaults.cardColors(containerColor =
+                        if (uncertain && !nativePlaceAwaitingConfirmation) MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         val targetName = draft.submittedDisplayName ?: environmentLabel?.takeIf(String::isNotBlank) ?: "rTorrent"
                         Text(when {

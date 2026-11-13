@@ -146,8 +146,9 @@ open class ChunksServerRenderTest {
         rule.waitForIdle()
         rule.onNodeWithText("Add a transfer").assertExists()
         // The authenticated server is an inline Add-to choice; selecting it only edits the draft.
-        rule.onNode(hasText("On ", substring = true) and hasClickAction() and
-            !hasText("On this", substring = true)).performScrollTo().performClick()
+        rule.onNode(hasScrollToIndexAction())
+            .performScrollToNode(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE))
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performClick()
         rule.waitForIdle()
         val addList = rule.onNode(hasScrollToIndexAction())
         addList.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD))
