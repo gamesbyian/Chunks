@@ -1321,8 +1321,66 @@ class LocalTorrentEngineTest {
         // ~1.3 MB at 128 KiB/s is about 10 s; unthrottled loopback takes well under 2 s.
         assertTrue("finished in $seconds s", seconds > total / limit.toDouble() * 0.6)
         requireFlushed(leecher, leech.infoHash)
-        assertArrayEquals(fixture.files.getValue("episode.bin"),
-            File(destination, "Chunks public fixture/episode.bin").readBytes())
+        assertReadbackOrDiagnose(leecher, leech.infoHash, fixture.files.getValue("episode.bin"),
+            File(destination, "Chunks public fixture/episode.bin"))
+    }
+
+    /**
+     * Same strict byte assertion, but a mismatch (seen once, 2026-11-13, zeros
+     * at 884,736 after CACHE_FLUSHED) records the native state and re-reads
+     * after a delay: "late" means the write landed after the flush gate,
+     * "persistent" means the bytes were lost. Either outcome still fails.
+     */
+    private fun assertReadbackOrDiagnose(engine: LocalTorrentEngine, infoHash: String,
+                                         expected: ByteArray, file: File) {
+        val first = file.readBytes()
+        if (first.contentEquals(expected)) return
+        val at = (0 until minOf(first.size, expected.size)).firstOrNull { first[it] != expected[it] }
+            ?: minOf(first.size, expected.size)
+        val zeroRun = (at until first.size).takeWhile { first[it] == 0.toByte() }.count()
+        val status = engine.status(infoHash)
+        Thread.sleep(2_000)
+        val later = file.readBytes().contentEquals(expected)
+        fail("Readback mismatch at $at (piece ${at / (64 * 1024)}, block ${at / (16 * 1024)}), " +
+            "zeroRun=$zeroRun size=${first.size}/${expected.size}, " +
+            "after 2 s ${if (later) "late: now matches" else "persistent"}; status=$status")
+    }
+
+    /**
+     * Real ENOSPC, opt-in: CHUNKS_TINY_FS_DIR must name an already mounted,
+     * writable filesystem smaller than the 1.3 MB fixture (for example
+     * `mount -t tmpfs -o size=512k tmpfs DIR`). Unprivileged CI cannot mount,
+     * so it is skipped there; a skip is NOT acceptance of this path.
+     *
+     * On a failed write upstream libtorrent can enter upload mode with no
+     * torrent error (measured: DOWNLOADING, uploadOnly, error=null), so the
+     * transfer would silently stall. The failure must surface as an error and
+     * must never pass the library-readback flush gate.
+     */
+    @Test fun failedDiskWriteSurfacesAnErrorAndBlocksReadback() {
+        val tiny = System.getenv("CHUNKS_TINY_FS_DIR")?.let(::File)
+        org.junit.Assume.assumeTrue("CHUNKS_TINY_FS_DIR not set", tiny != null && tiny.isDirectory)
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = File(requireNotNull(tiny), "enospc-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val leecher = engine()
+            val leech = added(leecher.addStopped(fixture.torrent, destination,
+                listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+            leecher.resume(leech.infoHash)
+            waitFor(60_000) { leecher.status(leech.infoHash)?.error != null }
+            val failed = requireNotNull(leecher.status(leech.infoHash))
+            assertFalse(failed.toString(), failed.error.isNullOrBlank())
+            assertTrue(failed.toString(), failed.progressPpm < 1_000_000)
+            assertFalse("A failed write must block readback publication",
+                leecher.flushCompletedForLibraryRead(leech.infoHash, timeoutMs = 10_000L))
+        } finally {
+            destination.deleteRecursively()
+        }
     }
 
     @Test fun dhtIsOffByDefaultAndTogglesOnlyOnRequest() {
