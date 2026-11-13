@@ -1,5 +1,8 @@
 # Chunks acceptance and specification coverage
 
+> **Binding Transfers visual acceptance, 2026-11-13:** See [compact list-first screen design](design/TRANSFERS-COMPACT-LIST-FIRST.md). Verify 1–3 configured environments => Local (N)/named (N) chips without All; 4+ => unnumbered All; combined scope remains reachable and nonempty; search, compact filter/sort and batch controls, aggregate selected-scope count and live rates *above* first transfer; no bottom live totals or redundant prose/buttons; per-connection/Local colour settings plus default-on global Options colour suppression; preserve canonical cards/footer/source authority. Require actual Pixel visual comparison, 1/2/3/4+ scope/stale/filter tests and TalkBack/IME; planned until installed proof.
+
+
 **Purpose:** precise required outcome and evidence gate. See [completion cohorts](COMPLETION-ROADMAP.md). This is an **acceptance checklist**, not a PR diary. Consult [WORK-QUEUE](WORK-QUEUE.md) for execution order, [QUALITY-LEDGER](QUALITY-LEDGER.md) for historical receipts, and [SPEC-COVERAGE-HISTORY-2026-11-09.md](SPEC-COVERAGE-HISTORY-2026-11-09.md) for the archived narrative. Mark a capability accepted only from actual same-source executed tests. For UI-affecting capabilities record **functional acceptance** and **experience acceptance** independently as accepted, acceptance-pending, failed or not-applicable (with evidence links). The [feature experience contract](FEATURE-EXPERIENCE-CONTRACT.md) governs placement, interactions, visual review and proportional proof; a captured atlas PNG is not appearance acceptance.
 
 | Capability / user outcome | Required acceptance | Evidence needed |
