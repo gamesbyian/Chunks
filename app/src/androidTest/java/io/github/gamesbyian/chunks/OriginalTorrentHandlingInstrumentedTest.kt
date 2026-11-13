@@ -85,6 +85,10 @@ class OriginalTorrentHandlingInstrumentedTest {
         waitForText("Original .torrent file")
         rule.onNodeWithTag(originalHandlingTag(handling)).performScrollTo().performClick()
         // A stopped Add is part of every case here: drive the exact tagged control and prove Off.
+        // The control is disabled until a fresh local inventory is confirmed; a tap before
+        // then is ignored, so wait for it to become actionable first.
+        waitFor { rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_START_PREFERENCE)).fetchSemanticsNodes()
+            .any { it.config.getOrElseNullable(SemanticsProperties.Disabled) { null } == null } }
         val start = rule.onNodeWithTag(ChunksSemantics.ADD_START_PREFERENCE).performScrollTo()
         if (start.fetchSemanticsNode().config
                 .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name != "Off")
