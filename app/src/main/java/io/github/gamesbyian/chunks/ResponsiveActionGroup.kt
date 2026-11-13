@@ -22,11 +22,14 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun ResponsiveActionGroup(
     modifier: Modifier = Modifier,
+    /** 2 for actions whose labels are long (for example an environment name). */
+    maxColumns: Int = 3,
     content: @Composable (Modifier) -> Unit
 ) {
+    require(maxColumns in 2..3)
     val fontScale = LocalDensity.current.fontScale
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        val columns = if (maxWidth < 380.dp || fontScale >= 1.5f) 2 else 3
+        val columns = minOf(maxColumns, if (maxWidth < 380.dp || fontScale >= 1.5f) 2 else 3)
         val gap = 8.dp
         val buttonWidth = (maxWidth - gap * (columns - 1)) / columns
         FlowRow(

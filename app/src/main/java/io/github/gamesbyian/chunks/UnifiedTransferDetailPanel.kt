@@ -117,32 +117,27 @@ internal fun UnifiedTransferDetailPanel(
         }
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
-        // Ordinary actions two across (ChunksActionGrid); environment tools follow.
-        val primaryActions = buildList<@Composable (Modifier) -> Unit> {
-            if (!hidden && onReviewStartStop != null) add { cell ->
-                // Start/Stop uses the already-owned review and exact-account mutation
-                // gates on the Transfers screen. This button only selects the job.
-                OutlinedButton(onClick = onReviewStartStop,
-                    modifier = cell.heightIn(min = 48.dp)
-                        .semantics {
+        // Ordinary actions two across (shared ResponsiveActionGroup); environment tools follow.
+        if (!hidden && (onReviewStartStop != null || onOpenOwningList != null || onRefreshOwningList != null))
+            ResponsiveActionGroup(maxColumns = 2) { cell ->
+                if (onReviewStartStop != null) {
+                    // Start/Stop uses the already-owned review and exact-account mutation
+                    // gates on the Transfers screen. This button only selects the job.
+                    OutlinedButton(onClick = onReviewStartStop,
+                        modifier = cell.semantics {
                             contentDescription = "Review Start or Stop for " +
                                 "${detail.observation?.displayName ?: "this transfer"} on $environmentLabel"
                         }) {
-                    Text("Review Start / Stop", textAlign = TextAlign.Center)
+                        Text("Review Start / Stop", textAlign = TextAlign.Center)
+                    }
                 }
-            }
-            if (!hidden && onOpenOwningList != null) add { cell ->
-                OutlinedButton(onClick = onOpenOwningList, modifier = cell.heightIn(min = 48.dp)) {
+                if (onOpenOwningList != null) OutlinedButton(onClick = onOpenOwningList, modifier = cell) {
                     Text("Open " + environmentLabel + " transfers", textAlign = TextAlign.Center)
                 }
-            }
-            if (!hidden && onRefreshOwningList != null) add { cell ->
-                OutlinedButton(onClick = onRefreshOwningList, modifier = cell.heightIn(min = 48.dp)) {
+                if (onRefreshOwningList != null) OutlinedButton(onClick = onRefreshOwningList, modifier = cell) {
                     Text("Refresh " + environmentLabel, textAlign = TextAlign.Center)
                 }
             }
-        }
-        ChunksActionGrid(primaryActions)
         if (!hidden) exactServerOperations?.invoke()
         if (!hidden) localOperations?.invoke()
         if (!hidden && onOpenOwningList == null && detail.observation != null) {

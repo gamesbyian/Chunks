@@ -150,7 +150,9 @@ class RepeatedAndroidIntakeTest {
         connect()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         val row = hasContentDescription("Details for $name on", substring = true)
-        list().performScrollToNode(row)
+        // The remote inventory loads asynchronously after Connect; wait for the row
+        // (a read-only observation) rather than racing it in a loaded full suite.
+        rule.waitUntil(15_000) { runCatching { list().performScrollToNode(row) }.isSuccess }
         rule.onNode(row).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
         val before = server.methods.size
