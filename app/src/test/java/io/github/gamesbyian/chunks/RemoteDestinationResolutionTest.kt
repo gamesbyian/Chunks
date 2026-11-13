@@ -11,6 +11,8 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
+import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
@@ -76,7 +78,7 @@ class RemoteDestinationResolutionTest {
 
     private fun reveal(tag: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(tag))
 
-    @Test fun unsetServerDefaultNeedsOneChoiceThenTheSavedDefaultIsUsedWithoutTyping() {
+    @Test fun anExplicitSavedDefaultStillTakesPrecedenceOverAnUnknownNativeDefault() {
         server.directoryDefault = ""
         val saved = mutableStateOf<String?>(null)
         val destination = mutableStateOf("")
@@ -85,9 +87,9 @@ class RemoteDestinationResolutionTest {
             rule.onAllNodesWithText("rTorrent has no default download folder configured", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        // Add is visible but blocked only because no folder is knowable yet.
+        // Unknown default is an explicit native selection; optional means optional.
         reveal(ChunksSemantics.ADD_SUBMIT)
-        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
 
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Custom server folder (optional)"))
         rule.onNodeWithText("Custom server folder (optional)").performTextReplacement("/home/ian/torrents")
@@ -106,6 +108,28 @@ class RemoteDestinationResolutionTest {
             "/home/ian/torrents", server.jobs.getValue("c".repeat(40)).directory)
         assertTrue(server.calls.single { it.first.startsWith("load.") }.second
             .contains("d.directory.set=/home/ian/torrents"))
+    }
+
+    /** Behavioral + data-integrity: blank optional folder sends one native Add and verifies actual Place. */
+    @Test fun blankOptionalFolderSubmitsAtNativeDefaultWithoutInventingAnOverride() {
+        server.directoryDefault = ""
+        show(mutableStateOf(null), mutableStateOf(""))
+        reveal(ChunksSemantics.ADD_REMOTE_SAVE_TO)
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("actual folder must be confirmed after Add", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onRoot().captureRoboImage("build/chunks-visual/remote-native-default-unknown.png")
+        reveal(ChunksSemantics.ADD_SUBMIT)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled().performClick()
+        rule.waitUntil(15_000) {
+            rule.onAllNodesWithText("Verified: added and started", substring = true)
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        val load = server.calls.single { it.first.startsWith("load.") }
+        assertEquals(2, load.second.size)
+        assertEquals("/home/user", server.jobs.getValue("c".repeat(40)).directory)
+        assertTrue(server.methods.contains("d.directory"))
     }
 
     @Test fun anAbsoluteServerDefaultIsUsedAndAnExplicitFolderIsNeverOverwrittenByLateDiscovery() {

@@ -537,7 +537,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
      */
     /** Refuse a stale default preview before sending even the first Add write. */
     private suspend fun requireCurrentServerDefault(plan: StoppedRemoteAddPlan) {
-        if (plan.useServerDefault) {
+        if (plan.useServerDefault && plan.destination.isNotEmpty()) {
             check(defaultDirectory() == plan.destination) {
                 "Server default location is missing or changed. Review this Add again."
             }
@@ -1047,6 +1047,24 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         // root that can release an attempted Universal Add ticket.
         val multiFlag = number(call("d.is_multi_file", listOf(hash)))
         require(multiFlag == 0L || multiFlag == 1L) { "Invalid rTorrent multi-file flag" }
+        if (parent.isEmpty()) {
+            // Native-default selection has no invented parent to compare against.
+            // A magnet's metadata scratch directory is not its payload Place.
+            if (number(call("d.is_meta", listOf(hash))) != 0L) return null
+            // Legacy rTorrent reports '.' when directory.default is empty.
+            // Resolve only against its independently observed process cwd,
+            // never Android's filesystem or a previous profile's directory.
+            val cwd = if (!directory.startsWith('/')) call("system.cwd") as? String else null
+            val observed = if (cwd != null && RuTorrentDeleteData.safeDirectory(cwd, allowRoot = true)) {
+                java.nio.file.Paths.get(cwd).resolve(directory).normalize().toString()
+            } else directory
+            if (!RuTorrentDeleteData.safeDirectory(observed, allowRoot = true)) return null
+            if (multiFlag == 1L && (name.isBlank() || name == "." || name == ".." ||
+                    name.any { it == '/' || it == '\\' || it.code < 32 || it.code == 127 } ||
+                    !observed.endsWith("/$name"))) return null
+            if (cwd != null && call("system.cwd") != cwd) return null
+            return observed.takeIf { call("d.directory", listOf(hash)) == directory }
+        }
         val expected = if (multiFlag == 1L) {
             if (name.isBlank() || name == "." || name == ".." ||
                 name.contains('/') || name.contains('\\') || name.any { it.code < 32 }) {

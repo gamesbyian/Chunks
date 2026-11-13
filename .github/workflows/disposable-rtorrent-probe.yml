@@ -6,6 +6,7 @@ on:
       - ".github/workflows/disposable-rtorrent-probe.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableMutationTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableAuthenticatedTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableNativeDefaultTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableDigestAuthenticatedTest.kt"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/RTorrentDisposableFullJourneyTest.kt"
       - "tools/verify_disposable_rutorrent_readd_cancel.py"
@@ -157,6 +158,7 @@ jobs:
           CHUNKS_DISPOSABLE_TARGET_DIR: ${{ runner.temp }}/chunks-data
         run: |
           gradle --no-daemon :app:testDebugUnitTest \
+            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeDefaultTest' \
             --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest'
           report=app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml
           grep -q 'tests="2" skipped="0" failures="0" errors="0"' "$report"
@@ -457,7 +459,8 @@ jobs:
           gradle --no-daemon :app:testDebugUnitTest --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeStartedAddTest' || status=1
           CHUNKS_DISPOSABLE_AUTH_URL=http://127.0.0.1:18080/AUTHRPC \
             gradle --no-daemon :app:testDebugUnitTest \
-              --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest' || status=1
+              --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableNativeDefaultTest' \
+            --tests 'io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest' || status=1
           grep -q 'tests="2" skipped="0" failures="0" errors="0"' \
             app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RTorrentDisposableAuthenticatedTest.xml || status=1
           gradle --no-daemon :app:testDebugUnitTest \

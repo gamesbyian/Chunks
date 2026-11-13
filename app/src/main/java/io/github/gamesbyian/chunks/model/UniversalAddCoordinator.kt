@@ -91,8 +91,8 @@ internal sealed class UniversalAddPlace {
         override fun toString(): String = "Local(private)"
     }
 
-    class ServerDefault(val observedDefaultPath: String) : UniversalAddPlace() {
-        init { require(observedDefaultPath.isNotBlank()) }
+    /** Empty means the user selected the native default, whose path requires post-Add observation. */
+    class ServerDefault(val observedDefaultPath: String = "") : UniversalAddPlace() {
         override fun toString(): String = "ServerDefault(private)"
     }
 

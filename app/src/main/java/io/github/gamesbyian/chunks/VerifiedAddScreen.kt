@@ -375,14 +375,10 @@ internal fun VerifiedAddScreen(
     var addGuidance = when {
         sourceText.isBlank() && !useFile -> "Add a magnet or torrent link, or open a .torrent, to continue."
         linkNeedsFetch -> "Get the .torrent from this link first (Get torrent from link above)."
-        useServerDefault && !defaultReadComplete -> "Checking the server's default download folder…"
-        useServerDefault && configuredDefault == null ->
-            "Choose a server folder below to continue. " + remoteDefaultUnavailableReason(defaultReport)
         else -> "Enter a valid v1 magnet or select a .torrent file. The Place override is optional."
     }
     val plan = try {
-        if (useServerDefault && (!defaultReadComplete || configuredDefault == null)) null
-        else {
+        run {
             val link = if (useFile && selectedTorrent != null && selectedBytes != null)
                 "magnet:?xt=urn:btih:" + selectedTorrent!!.infoHashV1
             else (magnetCheck as? MagnetDraftCheck.Valid)?.normalized ?: sourceText
@@ -593,11 +589,12 @@ internal fun VerifiedAddScreen(
                     "Using a custom folder for this Add only. The server's configured default remains unchanged."
                 usingSavedDefault ->
                     "Using this server's saved default folder: " + savedDefaultPlace + "."
-                !defaultReadComplete -> "Reading rTorrent's configured default Place…"
+                !defaultReadComplete -> "Using the server default. Reading its folder; Add remains available."
                 configuredDefault != null ->
                     "Using rTorrent default Place: " + configuredDefault + ". No directory override will be sent."
                 else ->
-                    "No usable default Place was reported. " + remoteDefaultUnavailableReason(defaultReport)
+                    "Using the server default without a folder override. " + remoteDefaultUnavailableReason(defaultReport) +
+                        " The actual folder must be confirmed after Add."
             }, style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
             if (destination.isBlank() && savedDefaultPlace == null && defaultReport is
@@ -639,7 +636,7 @@ internal fun VerifiedAddScreen(
 
         if (!alreadyAttempted && plan != null) item {
             Text("Infohash: " + plan.expectedInfoHash, style = MaterialTheme.typography.bodySmall)
-            Text("Destination: " + plan.destination +
+            Text("Destination: " + plan.destination.ifEmpty { "Server default (folder not yet observed)" } +
                 if (plan.useServerDefault) " (server default; no directory override)"
                 else " (custom parent folder)", style = MaterialTheme.typography.bodySmall)
             // Restored from the former confirmation card: the one-click Add must still warn,
@@ -1236,20 +1233,19 @@ internal fun RemoteDefaultPlaceResetControl(
     ) { Text(label) }
 }
 
-/** Why no default folder can be used, distinguishing unset, relative, unsupported and failed. */
+/** Explain an unknown preview without making the optional override mandatory. */
 internal fun remoteDefaultUnavailableReason(
     report: io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport?
 ): String = when (report) {
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unset ->
-        "rTorrent has no default download folder configured. Choose a folder once and tap " +
-            "\"Always use this folder on this server\"."
+        "rTorrent has no default download folder configured; its native working directory will be used."
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.NotAbsolute ->
-        "rTorrent's default folder is a relative path, so Chunks cannot confirm where files would go. Choose an absolute folder."
+        "rTorrent reports a relative default folder; its server working directory must also be observed."
     io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Unsupported ->
-        "This rTorrent does not report a default download folder. Choose a folder."
+        "This rTorrent does not expose its default-folder getter."
     is io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed ->
-        "The server's default folder could not be read (connection or permission). Check again, or choose a folder."
-    else -> "Choose an absolute server folder."
+        "The server's default folder could not be read (connection or permission). You can check again."
+    else -> "The server's default folder has not yet been observed."
 }
 
 /** Scope stays visible before someone chooses a magnet, file or destination. */
