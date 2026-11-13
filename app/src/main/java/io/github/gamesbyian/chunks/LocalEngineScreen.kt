@@ -1562,7 +1562,7 @@ internal fun LocalEngineScreen(
                                 val outcome = withContext(Dispatchers.IO) {
                                     OriginalTorrentDocuments.deleteReviewed(context.contentResolver, request)
                                 }
-                                originalNote = originalDeletionMessage(outcome)
+                                originalNote = originalDeletionMessage(outcome, request.archived)
                             } finally {
                                 originalDeleting = false
                                 if (originalDeletion === request) originalDeletion = null
@@ -1572,7 +1572,8 @@ internal fun LocalEngineScreen(
                 },
                 onKeep = {
                     if (originalDeletion === request) originalDeletion = null
-                    originalNote = "The original .torrent file was kept."
+                    originalNote = if (request.archived) "The original .torrent file was kept; Chunks also keeps its archived copy."
+                        else "The original .torrent file was kept."
                 })
         }
         originalNote?.let { note ->
@@ -1682,6 +1683,7 @@ internal fun LocalEngineScreen(
                 val frozenOriginal = add.originalDocument
                 val frozenHandling = if (frozenOriginal != null) originalHandling ?: OriginalTorrentHandling.KEEP
                     else OriginalTorrentHandling.KEEP
+                val frozenDeletable = frozenOriginal != null && originalDeletable
                 originalNote = null
                 var submittedBytes: ByteArray? = null
                 performLocalMutation localDocument@{
@@ -1842,8 +1844,18 @@ internal fun LocalEngineScreen(
                                         withContext(Dispatchers.IO) {
                                             OriginalTorrentDocuments.displayName(context.contentResolver, original)
                                         }, OriginalTorrentDocuments.sha256(verifiedBytes), add.preview.name)
-                                } else archiveOutcomeMessage(outcome, frozenHandling)?.let { note ->
-                                    message = listOfNotNull(message, note).joinToString(" ")
+                                } else {
+                                    archiveOutcomeMessage(outcome, frozenHandling)?.let { note ->
+                                        message = listOfNotNull(message, note).joinToString(" ")
+                                    }
+                                    // Archive prefers a move: once the private copy is verified,
+                                    // ask separately before removing an original its app lets us delete.
+                                    if (outcome is SourceArchiveOutcome.ArchivedCopy && frozenDeletable)
+                                        originalDeletion = OriginalDeletionRequest(original,
+                                            withContext(Dispatchers.IO) {
+                                                OriginalTorrentDocuments.displayName(context.contentResolver, original)
+                                            }, OriginalTorrentDocuments.sha256(verifiedBytes), add.preview.name,
+                                            archived = true)
                                 }
                             }
                             rememberAdded(added.status.infoHash, message)

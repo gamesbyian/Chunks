@@ -60,7 +60,8 @@ internal val OriginalTorrentHandling.label: String get() = when (this) {
 
 internal val OriginalTorrentHandling.explanation: String get() = when (this) {
     OriginalTorrentHandling.KEEP -> "Chunks only reads the file."
-    OriginalTorrentHandling.ARCHIVE -> "Keeps a private copy in Chunks after the Add is confirmed. The original stays where it is."
+    OriginalTorrentHandling.ARCHIVE -> "Keeps a private copy in Chunks after the Add is confirmed, then asks before " +
+        "removing the original where its app allows. Otherwise the original stays where it is."
     OriginalTorrentHandling.DELETE -> "After the Add is confirmed, Chunks asks once more before deleting the .torrent file. Downloaded files are never touched."
 }
 
@@ -106,13 +107,17 @@ internal class OriginalDeletionRequest(
     val document: Uri,
     val displayName: String,
     val reviewedSha256: ByteArray,
-    val transferName: String
+    val transferName: String,
+    /** Archive-as-move: a verified private copy already exists, so this only removes the original. */
+    val archived: Boolean = false
 )
 
 internal enum class OriginalDeletionOutcome { DELETED, CHANGED, REFUSED, UNCONFIRMED }
 
-internal fun originalDeletionMessage(outcome: OriginalDeletionOutcome): String = when (outcome) {
-    OriginalDeletionOutcome.DELETED -> "The original .torrent file was deleted. The transfer and its downloaded files are unchanged."
+internal fun originalDeletionMessage(outcome: OriginalDeletionOutcome, archived: Boolean = false): String = when (outcome) {
+    OriginalDeletionOutcome.DELETED -> if (archived)
+        "The original .torrent file was moved into Chunks: its archived copy stays and the original was removed."
+        else "The original .torrent file was deleted. The transfer and its downloaded files are unchanged."
     OriginalDeletionOutcome.CHANGED -> "The original .torrent file changed or could not be read since you reviewed it, so it was kept."
     OriginalDeletionOutcome.REFUSED -> "Android or the app that holds the file did not allow Chunks to delete it. The original was kept."
     OriginalDeletionOutcome.UNCONFIRMED -> "Chunks asked to delete the original, but it may still exist. Check it in your Files app; nothing was retried."
@@ -183,17 +188,21 @@ internal fun OriginalDeletionPrompt(
 ) {
     Card(Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_ORIGINAL_DELETE_PROMPT)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Delete the original .torrent file?", style = MaterialTheme.typography.titleMedium,
+            Text(if (request.archived) "Remove the original .torrent file?" else "Delete the original .torrent file?",
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
-            Text("“" + request.displayName + "” was added as " + request.transferName +
-                ". Deleting it removes only that .torrent file from the app or folder you opened it from. " +
+            Text("“" + request.displayName + "” was added as " + request.transferName + ". " +
+                (if (request.archived) "Chunks has kept a verified private copy, so removing the original " +
+                    "finishes moving it into Chunks. "
+                else "") +
+                "This removes only that .torrent file from the app or folder you opened it from. " +
                 "The transfer and its downloaded files stay.", style = MaterialTheme.typography.bodyMedium)
             Button(onClick = onDelete, enabled = !busy,
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error,
                     contentColor = MaterialTheme.colorScheme.onError),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                     .testTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM)) {
-                Text("Delete original .torrent")
+                Text(if (request.archived) "Remove original .torrent" else "Delete original .torrent")
             }
             OutlinedButton(onClick = onKeep, enabled = !busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Keep it") }
