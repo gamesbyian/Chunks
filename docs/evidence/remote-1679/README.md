@@ -8,6 +8,9 @@ the reviewed production components and JVM producers come from checkpoint
 rendered components. The [quality ledger](../../QUALITY-LEDGER.md) records
 functional proof and remaining acceptance tiers.
 
+The additional canonical Details control has its own [Recheck evidence record](RECHECK.md),
+including isolated ready, historical-idle and large-text pending renders.
+
 | Capture | Producer / viewport | Agent inspection |
 | --- | --- | --- |
 | [Native default unknown](remote-native-default-unknown.png) | `RemoteDestinationResolutionTest.blankOptionalFolderSubmitsAtNativeDefaultWithoutInventingAnOverride`, 412×892 mdpi | Blank optional field, explicit unknown folder and reachable Add; test submits once and reads back actual Place |

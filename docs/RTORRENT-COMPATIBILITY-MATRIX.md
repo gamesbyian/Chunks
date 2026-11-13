@@ -166,6 +166,9 @@ physical bytes have been deleted; independent filesystem/collector proof is sepa
 `system.cwd` or `view.size_not_visible` safe, and the pinned ruTorrent proxy may
 forward them untrusted. An exact method-scoped CWD denial preserves unresolved
 inventory. Unprovable complete coverage refuses data deletion with a fixed reason.
+Upstream `download_list` and `d.multicall.filtered` both iterate only visible view
+entries; they cannot supply a safe complete-session fallback when that coverage
+getter is denied. No command-expression or trust-mode bypass is introduced.
 Legacy/direct-SCGI evidence does not qualify modern ruTorrent for these capabilities.
 See [QUALITY-LEDGER](QUALITY-LEDGER.md) for source-bound campaign evidence; installed,
 protected-host and physical acceptance must be reported separately.
