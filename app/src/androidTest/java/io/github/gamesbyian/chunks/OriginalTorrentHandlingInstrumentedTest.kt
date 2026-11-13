@@ -234,4 +234,30 @@ class OriginalTorrentHandlingInstrumentedTest {
         assertEquals("the verified private copy remains", 1, archived.size)
         assertArrayEquals(bytes, archived.single().readBytes())
     }
+
+    /** Universal Add "Files to download": a file unticked before Add is registered not-wanted, the other wanted. */
+    @Test fun aFileUntickedBeforeAddIsRegisteredAsSkipped() {
+        val source = File(work, "two-" + System.nanoTime().toString(16)).apply { mkdirs() }
+        val root = File(source, "Chunks two-file fixture ${System.nanoTime().toString(16)}").apply { mkdirs() }
+        File(root, "keep.bin").writeBytes(ByteArray(64 * 1024).also { Random(5).nextBytes(it) })
+        File(root, "skip.bin").writeBytes(ByteArray(64 * 1024).also { Random(6).nextBytes(it) })
+        val bytes = TorrentBuilder().path(root).pieceSize(16 * 1024).flags(TorrentBuilder.V1_ONLY)
+            .generate().entry().bencode()
+        val hash = requireNotNull(TorrentMetainfoReader.preview(bytes).infoHashV1)
+        hashes += hash
+        val document = shareDocument(bytes, "two-files.torrent")
+        ActivityScenario.launch<MainActivity>(intent(document)).use {
+            waitFor { rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_FILE_CHOICE)).fetchSemanticsNodes().isNotEmpty() }
+            rule.onNodeWithTag(ChunksSemantics.ADD_FILE_CHOICE).performScrollTo().performClick()
+            waitForText("skip.bin")
+            rule.onNode(hasText("skip.bin") and hasClickAction()).performScrollTo().performClick()
+            waitForText("Files to download (1 of 2")
+            addStoppedFromShare(document, OriginalTorrentHandling.KEEP)
+            waitForExactStoppedJob(hash)
+            waitForText("Skipping 1 file as chosen")
+        }
+        val files = requireNotNull(LocalEngineHolder.current()?.files(hash))
+        assertEquals(false, files.single { it.path.endsWith("skip.bin") }.wanted)
+        assertEquals(true, files.single { it.path.endsWith("keep.bin") }.wanted)
+    }
 }
