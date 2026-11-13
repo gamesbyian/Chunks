@@ -172,7 +172,7 @@ class RTorrentLibtorrentInteropTest {
             val added = local.addStopped(torrent, leechRoot, listOf(rig.peer))
             val status = (added as LocalAddResult.AddedStopped).status
             assertEquals(hash.lowercase(), status.infoHash.lowercase())
-            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(status.infoHash).outcome)
+            local.resume(status.infoHash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
             waitFor("local engine to download from rTorrent") {
                 val s = local.status(status.infoHash)
                 s?.error?.let { fail("Local engine error: $it") }
@@ -204,7 +204,7 @@ class RTorrentLibtorrentInteropTest {
             val torrent = torrentFor(root)
             val local = engine()
             val seed = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
-            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(seed.infoHash).outcome)
+            local.resume(seed.infoHash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
             waitFor("local engine to verify its seed") {
                 local.status(seed.infoHash)?.state == LocalTransferState.SEEDING
             }
@@ -282,7 +282,7 @@ class RTorrentLibtorrentInteropTest {
             val torrent = torrentFor(root)
             val local = engine()
             val seed = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
-            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(seed.infoHash).outcome)
+            local.resume(seed.infoHash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
             waitFor("local engine to verify its seed") {
                 local.status(seed.infoHash)?.state == LocalTransferState.SEEDING
             }
@@ -314,10 +314,21 @@ class RTorrentLibtorrentInteropTest {
             Thread.sleep(3_000)
             val skippedDone = chunks(skipIndex, "f.completed_chunks")
             val skippedTotal = chunks(skipIndex, "f.size_chunks")
-            println("CHUNKS_RT_PRIORITY: skipped completed_chunks=$skippedDone size_chunks=$skippedTotal")
+            // File order comes from directory traversal and can differ by
+            // filesystem, so the skipped file may border wanted files on one
+            // or both ends. Only chunks it SHARES with a wanted file may be
+            // complete; rTorrent reports each file's exact chunk range.
+            suspend fun range(index: Int) =
+                chunks(index, "f.range_first") until chunks(index, "f.range_second")
+            val skippedRange = range(skipIndex)
+            val wantedRanges = wanted.map { range(it) }
+            val shared = skippedRange.count { chunk -> wantedRanges.any { chunk in it } }
+            println("CHUNKS_RT_PRIORITY: skipped completed_chunks=$skippedDone size_chunks=$skippedTotal " +
+                "order=${listed.map { it.path }} skippedRange=$skippedRange sharedBoundaryChunks=$shared")
             assertTrue("fixture skipped file must span many pieces", skippedTotal >= 10)
-            assertTrue("Skipped file received pieces beyond a shared boundary chunk: " +
-                "$skippedDone/$skippedTotal", skippedDone <= 1)
+            assertTrue("a file shares chunks only at its two ends: $shared", shared in 0..2)
+            assertTrue("Skipped file received pieces beyond its $shared shared boundary chunk(s): " +
+                "$skippedDone/$skippedTotal", skippedDone <= shared)
             for (index in wanted) {
                 val path = listed[index].path
                 assertArrayEquals("Exact wanted bytes for $path", files.getValue(path),
@@ -424,7 +435,7 @@ class RTorrentLibtorrentInteropTest {
             val local = engine()
             val seeded = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
             assertEquals(hash.lowercase(), seeded.infoHash.lowercase())
-            assertEquals(LocalCommandOutcome.VERIFIED, local.resume(hash).outcome)
+            local.resume(hash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
             waitFor("real magnet seeder to hash-check the source") {
                 local.status(hash)?.state == LocalTransferState.SEEDING
             }

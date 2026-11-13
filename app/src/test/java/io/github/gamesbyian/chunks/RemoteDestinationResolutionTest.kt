@@ -114,6 +114,14 @@ class RemoteDestinationResolutionTest {
         val destination = mutableStateOf("/srv/chosen")
         show(saved, destination)
         rule.waitUntil(15_000) { server.methods.contains("directory.default") }
+        // The fixture receiving the read is not the screen having APPLIED its
+        // reply. Reset appears only once the discovered default is applied, so
+        // wait for it: only then does "never overwritten" test late discovery.
+        rule.waitUntil(15_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Reset to rTorrent default folder"))
+            }.isSuccess
+        }
         rule.waitForIdle()
         assertEquals("/srv/chosen", destination.value)
         reveal(ChunksSemantics.ADD_REMOTE_SAVE_TO)

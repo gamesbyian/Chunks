@@ -72,8 +72,13 @@ data class LocalEngineConfig(
      * exempts them by default; tests use this to observe throttling over loopback.
      */
     val rateLimitLocalPeers: Boolean = false,
-    /** Local production uses POSIX for Android FUSE compatibility; DEFAULT remains for comparison tests. */
-    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.DEFAULT
+    /**
+     * POSIX is the shipping backend (Android 15 FUSE aborts with mmap), so it
+     * is also the default: real-byte engine tests exercise what the app ships.
+     * DEFAULT (libtorrent's mmap) remains only for explicit comparison; a
+     * persistent zero block after CACHE_FLUSHED was reproduced only with it.
+     */
+    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.POSIX
 )
 
 enum class LocalTransferState { CHECKING, DOWNLOADING_METADATA, DOWNLOADING, FINISHED, SEEDING, UNKNOWN }
@@ -198,6 +203,13 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // saves. In particular, a late alert for a removed torrent must never
     // confirm the cache of a replacement with the same infohash.
     private val pendingFlushes = LocalCacheFlushGate<TorrentHandle>(this)
+    // libtorrent 2.0 hashes a piece from its in-memory store buffer, so a piece
+    // can pass (progress 100%, SEEDING) while its disk write FAILED. For
+    // ENOSPC/EACCES/EROFS/EFBIG upstream handle_disk_error() only sets upload
+    // mode, with no torrent error; the fenced cache flush still succeeds over
+    // a hole that reads back as zeros. Any file_error_alert on this exact
+    // native handle therefore revokes "complete on disk" for its lifetime.
+    private val storageFileErrors = ConcurrentHashMap<String, Pair<TorrentHandle, String>>()
     @Volatile private var started = false
 
     /** Resume files that could not be restored on start; they are left untouched. */
@@ -248,7 +260,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         override fun types() = intArrayOf(AlertType.SAVE_RESUME_DATA.swig(),
             AlertType.SAVE_RESUME_DATA_FAILED.swig(), AlertType.METADATA_RECEIVED.swig(),
             AlertType.CACHE_FLUSHED.swig(), AlertType.TORRENT_DELETED.swig(),
-            AlertType.TORRENT_DELETE_FAILED.swig(), AlertType.TORRENT_FINISHED.swig())
+            AlertType.TORRENT_DELETE_FAILED.swig(), AlertType.TORRENT_FINISHED.swig(),
+            AlertType.FILE_ERROR.swig())
         override fun alert(alert: Alert<*>) {
             // Removed handles disappear from handles[] before the async alert.
             // Consume exactly the matching v1 infohash without acquiring the
@@ -275,6 +288,12 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             }
             val handle = (alert as? TorrentAlert<*>)?.handle() ?: return
             val key = synchronized(handles) { handles.entries.firstOrNull { it.value == handle }?.key } ?: return
+            if (alert.type() == AlertType.FILE_ERROR) {
+                // Keep the first failure; it is the one that left bytes unwritten.
+                storageFileErrors.putIfAbsent(key, handle to
+                    "Storage error: ${runCatching { alert.message() }.getOrNull() ?: "file operation failed"}")
+                return
+            }
             if (alert.type() == AlertType.CACHE_FLUSHED) {
                 pendingFlushes.complete(key, handle)
                 return
@@ -925,6 +944,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 requestMetadataResumeSave(key, handle)
             }
             if (awaitingMetadata.contains(key)) startWhenMetadataArrives.add(key)
+            // An explicit Start is the retry after the person freed space or
+            // fixed access; a new failed write records a fresh error.
+            storageFileErrors.remove(key)
+            // An ordinary Start must never inherit a recheck's auto-stop.
+            handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
             handle.resume()
             // Only after native Start submission: an exception keeps the gate.
             // Future Stop/Start and process restoration remain separate P0.
@@ -1026,11 +1050,77 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
     }
 
+    /**
+     * Explicit "Recheck" of a STOPPED job with metadata, using libtorrent's own
+     * mechanism: force_recheck, then stop_when_ready, then resume. libtorrent
+     * reads every piece and pauses itself inside the same network-thread state
+     * transition that leaves checking, before any peer download or upload.
+     * Read-only for payload bytes; the job ends stopped again.
+     *
+     * VERIFIED means the check ran and the job is stopped again, with
+     * [LocalCommandResult.status] carrying the re-measured progress. UNCERTAIN
+     * means it is still checking (or could not be observed) within the timeout;
+     * the person can keep watching or Stop it. Never retried automatically.
+     */
+    fun recheckStopped(infoHash: String, timeoutMs: Long = 60_000): LocalCommandResult {
+        require(timeoutMs in 0L..600_000L)
+        val key = normal(infoHash)
+        val handle = synchronized(this) {
+            synchronized(handles) {
+                val exact = handles[key]?.takeIf { started && runCatching { it.isValid }.getOrDefault(false) }
+                    ?: return LocalCommandResult(LocalCommandOutcome.NOT_FOUND, null)
+                val state = exact.status(TorrentHandle.QUERY_NAME)
+                val paused = state.flags().and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero()
+                if (!paused || !state.hasMetadata() || awaitingMetadata.contains(key) ||
+                    startWhenMetadataArrives.contains(key))
+                    return LocalCommandResult(LocalCommandOutcome.REFUSED, snapshot(key, exact))
+                // A stopped Add over existing files (or an adopted partial set)
+                // already holds a queued check that libtorrent runs only once
+                // unpaused; let that one run rather than queueing another.
+                val pendingCheck = state.state() == TorrentStatus.State.CHECKING_FILES ||
+                    state.state() == TorrentStatus.State.CHECKING_RESUME_DATA
+                try {
+                    // Order matters: once CHECKING, stop_when_ready waits for the
+                    // transition out of checking instead of pausing immediately.
+                    if (!pendingCheck) exact.forceRecheck()
+                    exact.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
+                    exact.resume()
+                } catch (_: Exception) {
+                    runCatching { exact.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); exact.pause() }
+                    return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, exact))
+                }
+                exact
+            }
+        }
+        val deadline = System.nanoTime() + timeoutMs * 1_000_000
+        while (true) {
+            val current = synchronized(handles) { handles[key] }
+            if (current != handle) return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, null)
+            val native = try { handle.status(TorrentHandle.QUERY_NAME) } catch (_: Exception) { null }
+            if (native != null) {
+                val flags = native.flags()
+                val paused = flags.and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero()
+                val armed = flags.and_(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY).non_zero()
+                val checking = native.state() == TorrentStatus.State.CHECKING_FILES ||
+                    native.state() == TorrentStatus.State.CHECKING_RESUME_DATA
+                // libtorrent clears stop_when_ready exactly when it auto-pauses
+                // on leaving checking. A Stop during the check also clears it,
+                // but leaves the paused job in a checking state: not done.
+                if (paused && !armed && !checking)
+                    return LocalCommandResult(LocalCommandOutcome.VERIFIED, snapshot(key, handle))
+            }
+            if (System.nanoTime() >= deadline)
+                return LocalCommandResult(LocalCommandOutcome.UNCERTAIN, snapshot(key, handle))
+            Thread.sleep(50)
+        }
+    }
+
     fun pause(infoHash: String, readbackTimeoutMs: Long = 5_000): LocalCommandResult =
         command(infoHash, wantStopped = true, readbackTimeoutMs) {
             // User Stop overrides any earlier Add-and-start consent while
-            // magnet metadata is in flight.
+            // magnet metadata is in flight, and any pending recheck auto-stop.
             startWhenMetadataArrives.remove(normal(infoHash))
+            it.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
             it.pause()
             true
         }
@@ -1752,6 +1842,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         checkedFirstStarts.remove(key)
         restoredNativeJobs.remove(key)
         checkedStartProblems.remove(key)
+        storageFileErrors.remove(key)
         pendingFlushes.cancel(key, handle)
         pendingSaves.cancel(key, handle)
         return try {
@@ -1809,8 +1900,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             currentHandle = { if (started) handles[key] else null },
             isComplete = { handle ->
                 val status = try { snapshot(key, handle) } catch (_: Exception) { null }
+                // A native error (including a recorded failed write) means the
+                // verified-piece bitmap may not describe the bytes on disk.
                 status?.metadataKnown == true && status.progressPpm == 1_000_000 &&
-                    status.state in setOf(LocalTransferState.SEEDING, LocalTransferState.FINISHED)
+                    status.state in setOf(LocalTransferState.SEEDING, LocalTransferState.FINISHED) &&
+                    status.error == null
             },
             invokeNative = { it.flushCache() }
         )
@@ -1908,6 +2002,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         pendingSaves.cancelAll()
         completionResaveWanted.clear()
         pendingFlushes.cancelAll()
+        storageFileErrors.clear()
         handles.clear()
         awaitingMetadata.clear()
         startWhenMetadataArrives.clear()
@@ -1997,7 +2092,8 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             metadataKnown = status.hasMetadata(),
             uploadOnly = status.flags().and_(org.libtorrent4j.TorrentFlags.UPLOAD_MODE).non_zero(),
             savePath = handle.savePath(),
-            error = checkedStartProblems[hash] ?: magnetCollisionProblems[hash] ?: error,
+            error = checkedStartProblems[hash] ?: magnetCollisionProblems[hash] ?: error
+                ?: storageFileErrors[hash]?.takeIf { it.first == handle }?.second,
             trackers = trackerSummary(handle),
             downloadPayloadRateBytesPerSecond = status.downloadPayloadRate().coerceAtLeast(0),
             uploadPayloadRateBytesPerSecond = status.uploadPayloadRate().coerceAtLeast(0),

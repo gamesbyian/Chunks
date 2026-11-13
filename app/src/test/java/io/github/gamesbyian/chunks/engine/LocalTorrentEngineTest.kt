@@ -1321,8 +1321,160 @@ class LocalTorrentEngineTest {
         // ~1.3 MB at 128 KiB/s is about 10 s; unthrottled loopback takes well under 2 s.
         assertTrue("finished in $seconds s", seconds > total / limit.toDouble() * 0.6)
         requireFlushed(leecher, leech.infoHash)
-        assertArrayEquals(fixture.files.getValue("episode.bin"),
-            File(destination, "Chunks public fixture/episode.bin").readBytes())
+        assertReadbackOrDiagnose(leecher, leech.infoHash, fixture.files.getValue("episode.bin"),
+            File(destination, "Chunks public fixture/episode.bin"))
+    }
+
+    /**
+     * Same strict byte assertion, but a mismatch (seen once, 2026-11-13, zeros
+     * at 884,736 after CACHE_FLUSHED) records the native state and re-reads
+     * after a delay: "late" means the write landed after the flush gate,
+     * "persistent" means the bytes were lost. Either outcome still fails.
+     */
+    private fun assertReadbackOrDiagnose(engine: LocalTorrentEngine, infoHash: String,
+                                         expected: ByteArray, file: File) {
+        val first = file.readBytes()
+        if (first.contentEquals(expected)) return
+        val at = (0 until minOf(first.size, expected.size)).firstOrNull { first[it] != expected[it] }
+            ?: minOf(first.size, expected.size)
+        val zeroRun = (at until first.size).takeWhile { first[it] == 0.toByte() }.count()
+        val status = engine.status(infoHash)
+        Thread.sleep(2_000)
+        val later = file.readBytes().contentEquals(expected)
+        fail("Readback mismatch at $at (piece ${at / (64 * 1024)}, block ${at / (16 * 1024)}), " +
+            "zeroRun=$zeroRun size=${first.size}/${expected.size}, " +
+            "after 2 s ${if (later) "late: now matches" else "persistent"}; status=$status")
+    }
+
+    /**
+     * Real ENOSPC, opt-in: CHUNKS_TINY_FS_DIR must name an already mounted,
+     * writable filesystem smaller than the 1.3 MB fixture (for example
+     * `mount -t tmpfs -o size=512k tmpfs DIR`). Unprivileged CI cannot mount,
+     * so it is skipped there; a skip is NOT acceptance of this path.
+     *
+     * On a failed write upstream libtorrent can enter upload mode with no
+     * torrent error (measured: DOWNLOADING, uploadOnly, error=null), so the
+     * transfer would silently stall. The failure must surface as an error and
+     * must never pass the library-readback flush gate.
+     */
+    @Test fun failedDiskWriteSurfacesAnErrorAndBlocksReadback() {
+        val tiny = System.getenv("CHUNKS_TINY_FS_DIR")?.let(::File)
+        org.junit.Assume.assumeTrue("CHUNKS_TINY_FS_DIR not set", tiny != null && tiny.isDirectory)
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = File(requireNotNull(tiny), "enospc-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val leecher = engine()
+            val leech = added(leecher.addStopped(fixture.torrent, destination,
+                listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+            leecher.resume(leech.infoHash)
+            try {
+                waitFor(60_000) { leecher.status(leech.infoHash)?.error != null }
+            } catch (timeout: AssertionError) {
+                throw AssertionError("No storage error; tiny fs total=${tiny!!.totalSpace} " +
+                    "usable=${tiny.usableSpace}; status=${leecher.status(leech.infoHash)}", timeout)
+            }
+            val failed = requireNotNull(leecher.status(leech.infoHash))
+            assertFalse(failed.toString(), failed.error.isNullOrBlank())
+            assertTrue(failed.toString(), failed.progressPpm < 1_000_000)
+            assertFalse("A failed write must block readback publication",
+                leecher.flushCompletedForLibraryRead(leech.infoHash, timeoutMs = 10_000L))
+        } finally {
+            destination.deleteRecursively()
+        }
+    }
+
+    /**
+     * Real ENOSPC recovery, opt-in like the test above, and additionally needs
+     * permission to `mount -o remount,size=` that filesystem (root), standing in
+     * for the person freeing space. Stop, free space, Start must resume the
+     * SAME job to exact bytes: the ordinary qBittorrent-style recovery.
+     */
+    @Test fun startAfterFreeingSpaceRecoversADiskFullTransfer() {
+        val tiny = System.getenv("CHUNKS_TINY_FS_DIR")?.let(::File)
+        org.junit.Assume.assumeTrue("CHUNKS_TINY_FS_DIR not set", tiny != null && tiny.isDirectory)
+        fun resize(size: String) = ProcessBuilder("mount", "-o", "remount,size=$size", tiny!!.absolutePath)
+            .redirectErrorStream(true).start().let { it.waitFor(20, java.util.concurrent.TimeUnit.SECONDS) && it.exitValue() == 0 }
+        org.junit.Assume.assumeTrue("cannot remount CHUNKS_TINY_FS_DIR", resize("512k"))
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = File(requireNotNull(tiny), "recover-${System.nanoTime()}").apply { mkdirs() }
+        try {
+            val leecher = engine()
+            val leech = added(leecher.addStopped(fixture.torrent, destination,
+                listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+            leecher.resume(leech.infoHash)
+            waitFor(60_000) { leecher.status(leech.infoHash)?.error != null }
+            assertEquals(LocalCommandOutcome.VERIFIED, leecher.pause(leech.infoHash).outcome)
+            assertTrue("remount larger", resize("8m"))
+            val restarted = leecher.resume(leech.infoHash)
+            assertEquals(restarted.toString(), LocalCommandOutcome.VERIFIED, restarted.outcome)
+            waitFor(120_000) {
+                leecher.status(leech.infoHash)?.let { it.progressPpm == 1_000_000 && it.error == null } == true
+            }
+            requireFlushed(leecher, leech.infoHash)
+            for ((name, bytes) in fixture.files)
+                assertArrayEquals(name, bytes, File(destination, "Chunks public fixture/$name").readBytes())
+        } finally {
+            destination.deleteRecursively()
+            resize("512k")
+        }
+    }
+
+    @Test fun recheckOfAStoppedJobReadsPiecesAndStaysStoppedUntilAnOrdinaryStart() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        // An independent copy of the complete payload, registered stopped,
+        // with the real seeder offered as a peer the whole time.
+        val destination = temp.newFolder("recheck destination")
+        fixture.root.copyRecursively(File(destination, fixture.root.name))
+        val engine = engine()
+        val job = added(engine.addStopped(fixture.torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))))
+        assertEquals(0, job.progressPpm)
+
+        val full = engine.recheckStopped(job.infoHash)
+        assertEquals(full.toString(), LocalCommandOutcome.VERIFIED, full.outcome)
+        assertTrue(full.toString(), full.status!!.stopped)
+        assertEquals(1_000_000, full.status!!.progressPpm)
+
+        // Damage one whole piece on disk; a recheck must find it missing and
+        // must not repair it, because the job never leaves Stopped.
+        val episode = File(destination, "${fixture.root.name}/episode.bin")
+        val damaged = episode.readBytes().also { bytes -> for (i in 3 * 65536 until 4 * 65536) bytes[i] = 0 }
+        episode.writeBytes(damaged)
+        val partial = engine.recheckStopped(job.infoHash)
+        assertEquals(partial.toString(), LocalCommandOutcome.VERIFIED, partial.outcome)
+        assertTrue(partial.toString(), partial.status!!.stopped)
+        assertTrue(partial.toString(), partial.status!!.progressPpm in 1 until 1_000_000)
+        Thread.sleep(2_000)
+        val idle = requireNotNull(engine.status(job.infoHash))
+        assertTrue("still stopped: $idle", idle.stopped)
+        assertEquals("no payload downloaded while stopped", 0L, idle.payloadDownloadedBytes)
+        assertArrayEquals("recheck never writes payload", damaged, episode.readBytes())
+
+        // A running job is refused.
+        assertEquals(LocalCommandOutcome.REFUSED, seeder.recheckStopped(seed.infoHash).outcome)
+
+        // The ordinary Start repairs the piece and does not auto-stop.
+        assertEquals(LocalCommandOutcome.VERIFIED, engine.resume(job.infoHash).outcome)
+        requireFlushed(engine, job.infoHash)
+        for ((name, bytes) in fixture.files)
+            assertArrayEquals(name, bytes, File(destination, "${fixture.root.name}/$name").readBytes())
+        Thread.sleep(1_500)
+        assertFalse("Start after a recheck keeps running", engine.status(job.infoHash)!!.stopped)
     }
 
     @Test fun dhtIsOffByDefaultAndTogglesOnlyOnRequest() {

@@ -69,9 +69,17 @@ class RemoteAddSessionContinuityTest {
                     onMutationStarted = { attempts++; true }, onMutationSettled = { settled++ },
                     finishInOrderScope = endpoint + "\u0000", session = session)
             } } }
-            reveal("Add transfer")
-            
-            reveal("Add transfer")
+            // A text match can land on another "Add transfer" node and the lazy
+            // submit row may not be composed yet: settle the exact tagged control,
+            // then press it ONCE (a retried click could be a second load).
+            rule.waitUntil(15_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+                    rule.waitForIdle()
+                    rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertExists()
+                    true
+                }.getOrDefault(false)
+            }
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }
             reveal("Check server state (read only)")
@@ -213,9 +221,17 @@ class RemoteAddSessionContinuityTest {
                     initialTorrent = incoming.value, onInitialTorrentConsumed = { incoming.value = null; consumed++ },
                     finishInOrderScope = account, addStartState = start, addArtworkState = artwork, session = session)
             } } }
-            reveal("Add transfer")
-            
-            reveal("Add transfer")
+            // A text match can land on another "Add transfer" node and the lazy
+            // submit row may not be composed yet: settle the exact tagged control,
+            // then press it ONCE (a retried click could be a second load).
+            rule.waitUntil(15_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+                    rule.waitForIdle()
+                    rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertExists()
+                    true
+                }.getOrDefault(false)
+            }
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             try {
                 rule.waitUntil(15_000) { received.count == 0L }
@@ -365,9 +381,17 @@ class RemoteAddSessionContinuityTest {
                     onMutationStarted = { true }, onMutationSettled = { settled++ },
                     finishInOrderScope = account, session = session)
             } } }
-            reveal("Add transfer")
-            
-            reveal("Add transfer")
+            // A text match can land on another "Add transfer" node and the lazy
+            // submit row may not be composed yet: settle the exact tagged control,
+            // then press it ONCE (a retried click could be a second load).
+            rule.waitUntil(15_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+                    rule.waitForIdle()
+                    rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertExists()
+                    true
+                }.getOrDefault(false)
+            }
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }
             assertFalse("An existing-hash preflight sent no mutation; the user may correct the draft", session.alreadyAttempted)
