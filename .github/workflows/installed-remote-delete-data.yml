@@ -29,6 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
+      CHUNKS_SOURCE_SHA: ${{ github.sha }}
       CHUNKS_DISPOSABLE_RT_URL: http://127.0.0.1:18080/RPC2
       RU_SCGI_HOST: 127.0.0.1
       RU_SCGI_PORT: "5000"
