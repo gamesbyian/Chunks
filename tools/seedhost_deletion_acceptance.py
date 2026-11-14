@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Trusted-main, read-only deletion diagnosis. Never print server-controlled strings."""
 import json
+import re
+import ftplib
+import ssl
 import os
 import sys
 import urllib.error
@@ -12,6 +15,8 @@ READS = (
     ('system.client_version', ('',)),
     ('system.listMethods', ()),
     ('system.cwd', ('',)),
+    ('method.get', ('', 'event.download.erased')),
+    ('method.list_keys', ('', 'event.download.erased')),
     ('directory.default', ('',)),
     ('view.size_not_visible', ('', 'default')),
     ('view.size', ('', 'default')),
@@ -52,6 +57,10 @@ def main():
             result['type'] = type(value).__name__
             if isinstance(value, list):
                 result['count'] = len(value)
+            if method == 'method.get' and isinstance(value, dict):
+                principal = os.environ['CHUNKS_LIVE_RTORRENT_USER']
+                result['hooks'] = {prefix: isinstance(value.get(prefix + principal), str) for prefix in ('erasedata0', 'erasedata1')}
+                result['hook_semantics'] = {token: any(token in str(v) for k,v in value.items() if k in ('erasedata0' + principal, 'erasedata1' + principal)) for token in ('custom5', 'frozen_path', '/fin.sh', 'd.open')}
             if method == 'view.size_not_visible' and isinstance(value, int):
                 result['unfiltered'] = value == 0
             if method == 'system.listMethods' and isinstance(value, list):
@@ -78,11 +87,22 @@ def main():
                 if raw:
                     result['form_adapter'] = b'getCommon("removewithdata")' in raw or b'getCommon( "removewithdata" )' in raw
                     result['legacy_custom5'] = b'custom5' in raw
+                    result['httprpc_delete_override'] = bool(re.search(rb'rTorrentStub\.prototype\.removewithdata\s*=', raw))
+                    result['legacy_delete_commands'] = all(token in raw for token in (b'd.set_custom5', b'd.delete_tied', b'd.erase'))
         except urllib.error.HTTPError as error:
             result.update(status='http', code=error.code)
         except Exception:
             result['status'] = 'unavailable'
         print('DELETION_PROBE ' + json.dumps(result, sort_keys=True), flush=True)
+    try:
+        with ftplib.FTP_TLS(context=ssl.create_default_context(), timeout=15) as ftp:
+            ftp.connect('ianseeds.wood.seedhost.eu', 21)
+            ftp.login(os.environ['CHUNKS_LIVE_RTORRENT_USER'], os.environ['CHUNKS_LIVE_RTORRENT_PASS'])
+            ftp.prot_p()
+            result = {'phase':'independent-files', 'ftps':'authenticated', 'pwd_absolute':ftp.pwd().startswith('/')}
+    except Exception:
+        result = {'phase':'independent-files', 'ftps':'unavailable'}
+    print('DELETION_PROBE ' + json.dumps(result, sort_keys=True), flush=True)
     print('DELETION_PROBE completed zero_mutations=true')
 
 if __name__ == '__main__':
