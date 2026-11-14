@@ -81,9 +81,9 @@ class CombinedCompactLabelTest {
         // The summary is a first-fold status line ABOVE the transfer cards,
         // preserving its live-only caveats rather than duplicating it below.
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Live total:", substring = true).fetchSemanticsNodes().size == 1
+            rule.onAllNodesWithText("1 transfer · Live ↓", substring = true).fetchSemanticsNodes().size == 1
         }
-        val summaryTop = rule.onNodeWithText("Live total:", substring = true)
+        val summaryTop = rule.onNodeWithText("1 transfer · Live ↓", substring = true)
             .getUnclippedBoundsInRoot().top
         val rowTop = rule.onNodeWithContentDescription(details).getUnclippedBoundsInRoot().top
         assertTrue("Transfer totals are above the first card", summaryTop < rowTop)
