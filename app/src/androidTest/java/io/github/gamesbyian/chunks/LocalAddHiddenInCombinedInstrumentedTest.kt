@@ -3,19 +3,18 @@ package io.github.gamesbyian.chunks
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.gamesbyian.chunks.model.UnifiedTransferQuery
@@ -30,6 +29,10 @@ import org.junit.runner.RunWith
  * explained, and Show all brings it back. The magnet is metadata-only with an
  * unused hash and no trackers, so no payload is fetched; it is removed by
  * exact hash afterwards, keeping (empty) data.
+ *
+ * Behavioral: the canonical footer opens Local Universal Add directly, then
+ * the exact native job is observed before search hides it. Recovery must
+ * expose that same job. No legacy device-controls route is a precondition.
  */
 @RunWith(AndroidJUnit4::class)
 class LocalAddHiddenInCombinedInstrumentedTest {
@@ -46,50 +49,25 @@ class LocalAddHiddenInCombinedInstrumentedTest {
 
     private fun waitFor(ms: Long = 20_000, condition: () -> Boolean) = rule.waitUntil(ms, condition)
 
-    private fun reachLocal() {
-        val local = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
-        if (rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty()) return
-        // The compact toolbar now exposes Filters and sort as a stable
-        // semantic action beside Search, not an old "Filters" text button.
-        waitFor(30_000) {
-            rule.onAllNodes(androidx.compose.ui.test.hasTestTag(
-                ChunksSemantics.TRANSFERS_FILTER_SORT)).fetchSemanticsNodes().isNotEmpty()
-        }
-        val filter = rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT)
-        val expanded = runCatching {
-            filter.fetchSemanticsNode().config[SemanticsProperties.StateDescription]
-        }.getOrNull() == "Expanded"
-        if (!expanded) filter.performClick()
-        waitFor(30_000) {
-            runCatching {
-                rule.onNode(hasScrollToIndexAction())
-                    .performScrollToNode(hasText("Device transfer controls"))
-                true
-            }.getOrDefault(false)
-        }
-        rule.onNodeWithText("Device transfer controls").performClick()
-        waitFor { rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty() }
-    }
-
     @Test fun anAcknowledgedLocalAddHiddenByTheCombinedSearchIsExplained() {
         // Test the ordinary All/All baseline before deliberately narrowing by
         // search. A previous test may have persisted STARTED while this test
         // intentionally adds a stopped (metadata-only) local torrent.
         // Merely tapping All environments never resets the transfer filter.
         CombinedViewPreferences(rule.activity).save(UnifiedTransferQuery())
-        reachLocal()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitForIdle()
-        val field = hasSetTextAction() and hasText("Magnet or HTTP(S) torrent URL")
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).assertIsSelected()
+        val field = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)
         waitFor { rule.onAllNodes(field).fetchSemanticsNodes().isNotEmpty() }
         rule.onNode(field).performScrollTo().performTextInput(
             "magnet:?xt=urn:btih:$hash&dn=" + name.replace(" ", "%20"))
         // Metadata only: nothing would download even if a peer appeared.
-        val start = hasText("Start when added") and hasClickAction()
+        val start = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_START_PREFERENCE)
         if (rule.onNode(start).fetchSemanticsNode().config
                 .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name == "On")
             rule.onNode(start).performScrollTo().performClick()
-        val addTile = hasText("Add transfer") and hasClickAction()
+        val addTile = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT)
         waitFor { rule.onAllNodes(addTile).fetchSemanticsNodes().isNotEmpty() }
         rule.onNode(addTile).performScrollTo().performClick()
         // The engine acknowledged and read back the Add.
