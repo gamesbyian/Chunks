@@ -38,7 +38,9 @@ internal enum class RemoteFolderReadback {
 internal object RuTorrentFileManager {
     private const val MAX_RESPONSE_BYTES = 64_000
     private data class Reply(val code: Int, val body: String, val challenges: List<String>)
-    private data class Verified(val fileRoot: String, val authorization: String?)
+    private data class Verified(
+        val fileRoot: String, val authorization: String?, val challenges: List<String>
+    )
     private sealed interface Configuration {
         data class Accepted(val value: Verified) : Configuration
         data class Rejected(val reason: RemoteFolderCreateCapability.Reason) : Configuration
@@ -98,20 +100,21 @@ internal object RuTorrentFileManager {
     /** Read-only typed API calls can retry once after HTTP authentication; writes cannot. */
     private fun read(
         endpoint: URI, credentials: RemoteCredentials, json: JSONObject
-    ): Pair<Reply, String?> {
+    ): Triple<Reply, String?, List<String>> {
         val first = post(endpoint, json, null)
-        if (first.code != 401 || credentials.username.isBlank()) return first to null
+        if (first.code != 401 || credentials.username.isBlank())
+            return Triple(first, null, emptyList())
         val target = endpoint.rawPath.orEmpty()
         val authorization = HttpRpcAuthorization.fromChallenge(
             first.challenges, credentials, "POST", target)
-        return post(endpoint, json, authorization) to authorization
+        return Triple(post(endpoint, json, authorization), authorization, first.challenges)
     }
 
     /** Classify capability refusal without exposing hosts, credentials or filesystem paths. */
     private fun config(
         endpoint: URI, credentials: RemoteCredentials, expectedRoot: String
     ): Configuration {
-        val (result, authorization) = read(endpoint, credentials,
+        val (result, authorization, challenges) = read(endpoint, credentials,
             JSONObject().put("method", "getConfig"))
         val reason = when (result.code) {
             404, 405 -> RemoteFolderCreateCapability.Reason.NOT_INSTALLED
@@ -148,7 +151,7 @@ internal object RuTorrentFileManager {
                 return Configuration.Rejected(RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
             walked = if (walked.isEmpty()) segment else walked + "/" + segment
         }
-        return Configuration.Accepted(Verified(fileRoot, authorization))
+        return Configuration.Accepted(Verified(fileRoot, authorization, challenges))
     }
 
     suspend fun capability(
@@ -295,11 +298,19 @@ internal object RuTorrentFileManager {
 
             // Only a user-initiated create may reach this point. Never submit
             // again after 401, timeout, cancellation or malformed receipt.
+            // Digest Authorization includes a nonce-count/client nonce pair.
+            // The header used for getConfig may have been consumed already.
+            // Construct a FRESH write authorization from the verified, same-
+            // endpoint challenge before dispatch; never retry the mutation.
+            val writeAuthorization = if (verified.challenges.isEmpty())
+                verified.authorization
+            else HttpRpcAuthorization.fromChallenge(
+                verified.challenges, credentials, "POST", endpoint.rawPath.orEmpty())
             kotlinx.coroutines.currentCoroutineContext().ensureActive()
             sent = true
             reply = post(endpoint,
                 JSONObject().put("method", "newDirectory").put("target", target),
-                verified.authorization)
+                writeAuthorization)
         } catch (cancel: CancellationException) { throw cancel }
           catch (_: Exception) {
               if (!sent) return@withContext RemoteFolderCreateOutcome.Refused

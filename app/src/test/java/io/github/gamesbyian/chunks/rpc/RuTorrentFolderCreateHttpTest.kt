@@ -32,6 +32,8 @@ class RuTorrentFolderCreateHttpTest {
             .encodeToString("alice:secret".toByteArray(Charsets.UTF_8))
         val created = java.util.Collections.synchronizedSet(mutableSetOf<String>())
         val writes = AtomicInteger()
+        var requireFreshDigest = false
+        val observedDigestHeaders = java.util.Collections.synchronizedSet(mutableSetOf<String>())
         val targets = java.util.Collections.synchronizedList(mutableListOf<String>())
         val siblingCalls = AtomicInteger()
         var configuredRoot = "/srv/tenant"
@@ -45,7 +47,10 @@ class RuTorrentFolderCreateHttpTest {
         private fun send(ex: HttpExchange, code: Int, body: String = "") {
             val bytes = body.toByteArray(Charsets.UTF_8)
             if (code == 401)
-                ex.responseHeaders.add("WWW-Authenticate", "Basic realm=\"tenant\"")
+                ex.responseHeaders.add("WWW-Authenticate",
+                    if (requireFreshDigest)
+                        "Digest realm=\"tenant\", nonce=\"disposable-fixed\", qop=\"auth\", algorithm=SHA-256"
+                    else "Basic realm=\"tenant\"")
             if (code == 200) {
                 ex.responseHeaders.add("Content-Type", "application/json")
                 ex.sendResponseHeaders(200, bytes.size.toLong())
@@ -73,7 +78,12 @@ class RuTorrentFolderCreateHttpTest {
             server.createContext("/tenant/rutorrent2/plugins/filemanager/action.php") { ex ->
                 require(ex.requestMethod == "POST")
                 val body = ex.requestBody.use { it.readBytes().toString(Charsets.UTF_8) }
-                if (ex.requestHeaders.getFirst("Authorization") != authHeader) {
+                val suppliedAuthorization = ex.requestHeaders.getFirst("Authorization")
+                val authorized = if (requireFreshDigest) {
+                    suppliedAuthorization?.startsWith("Digest ") == true &&
+                        observedDigestHeaders.add(suppliedAuthorization)
+                } else suppliedAuthorization == authHeader
+                if (!authorized) {
                     send(ex, 401)
                 } else {
                     val command = JSONObject(URLDecoder.decode(
@@ -132,6 +142,23 @@ class RuTorrentFolderCreateHttpTest {
             assertEquals(listOf("Season 1", "Season 2"),
                 (remote.browseDirectories("/srv/tenant/TV") as
                     RemoteDirectoryLookup.Ready).page.folders)
+        }
+    }
+
+    @Test fun digestAuthenticatedMkdirRequiresFreshRequestProofAndNeverReplaysWrite() = runBlocking {
+        Fixture().use { fx ->
+            fx.requireFreshDigest = true
+            val remote = fx.remote()
+            assertEquals(RemoteFolderCreateCapability.Ready("/srv/tenant"),
+                remote.folderCreateCapability("/srv/tenant"))
+            val outcome = remote.createServerFolder(
+                "/srv/tenant", "/srv/tenant/TV", "Digest-child")
+            assertEquals(RemoteFolderCreateOutcome.Created("/srv/tenant/TV/Digest-child"),
+                outcome)
+            assertEquals("Only one authorized mutation", 1, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
+            assertTrue("Capability and write must not reuse a Digest header",
+                fx.observedDigestHeaders.size >= 3)
         }
     }
 
