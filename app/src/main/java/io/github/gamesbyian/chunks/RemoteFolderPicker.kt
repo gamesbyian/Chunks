@@ -253,7 +253,18 @@ internal fun RemoteFolderPicker(
                             }
                         }
                     } else if (createCapability is RemoteFolderCreateCapability.Unavailable) {
-                        Text("This server does not expose a verified folder-creation capability. You can still browse or enter a path.",
+                        val unavailable = createCapability as RemoteFolderCreateCapability.Unavailable
+                        val explanation = when (unavailable.reason) {
+                            RemoteFolderCreateCapability.Reason.NOT_INSTALLED ->
+                                "The server's File Manager folder-creation endpoint is unavailable."
+                            RemoteFolderCreateCapability.Reason.ACCESS_DENIED ->
+                                "The server denied access to File Manager's folder controls."
+                            RemoteFolderCreateCapability.Reason.ROOT_MISMATCH ->
+                                "The server's File Manager and download browser use different roots."
+                            RemoteFolderCreateCapability.Reason.CANNOT_VERIFY ->
+                                "The server's folder-creation capability could not be verified."
+                        }
+                        Text(explanation + " Browsing and manual paths remain available.",
                             style = MaterialTheme.typography.bodySmall)
                     }
                 }

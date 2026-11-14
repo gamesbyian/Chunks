@@ -32,6 +32,10 @@ internal object RuTorrentFileManager {
     private const val MAX_RESPONSE_BYTES = 64_000
     private data class Reply(val code: Int, val body: String, val challenges: List<String>)
     private data class Verified(val root: String, val authorization: String?)
+    private sealed interface Configuration {
+        data class Accepted(val value: Verified) : Configuration
+        data class Rejected(val reason: RemoteFolderCreateCapability.Reason) : Configuration
+    }
 
     fun endpoint(rpc: URI): URI? =
         RuTorrentDirectoryListing.endpoint(rpc)?.let {
@@ -96,17 +100,28 @@ internal object RuTorrentFileManager {
         return post(endpoint, json, authorization) to authorization
     }
 
+    /** Classify capability refusal without exposing hosts, credentials or filesystem paths. */
     private fun config(
         endpoint: URI, credentials: RemoteCredentials, expectedRoot: String
-    ): Verified? {
+    ): Configuration {
         val (result, authorization) = read(endpoint, credentials,
             JSONObject().put("method", "getConfig"))
-        if (result.code != 200) return null
-        val response = JSONObject(result.body)
-        if (response.has("error") || response.has("errcode")) return null
+        val reason = when (result.code) {
+            404, 405 -> RemoteFolderCreateCapability.Reason.NOT_INSTALLED
+            401, 403, 407 -> RemoteFolderCreateCapability.Reason.ACCESS_DENIED
+            200 -> null
+            else -> RemoteFolderCreateCapability.Reason.CANNOT_VERIFY
+        }
+        if (reason != null) return Configuration.Rejected(reason)
+        val response = runCatching { JSONObject(result.body) }.getOrNull()
+            ?: return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
+        if (response.has("error") || response.has("errcode"))
+            return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
         val root = RuTorrentDirectoryListing.canonical(response.optString("homedir"))
-            ?: return null
-        return if (root != expectedRoot || root == "/") null else Verified(root, authorization)
+            ?: return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
+        if (root != expectedRoot || root == "/")
+            return Configuration.Rejected(RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
+        return Configuration.Accepted(Verified(root, authorization))
     }
 
     suspend fun capability(
@@ -118,18 +133,22 @@ internal object RuTorrentFileManager {
             ?: return@withContext RemoteFolderCreateCapability.Unavailable(
                 RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
         try {
-            val verified = config(uri, credentials, root)
-            if (verified == null) RemoteFolderCreateCapability.Unavailable(
-                RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
-            else {
-                // A successful read-only list on the same File Manager root
-                // establishes that this is not merely an unrelated PHP page.
-                val list = read(uri, credentials, JSONObject()
-                    .put("method", "listDirectory").put("dir", "/")).first
-                if (list.code == 200 && directoryNames(list.body) != null)
-                    RemoteFolderCreateCapability.Ready(root)
-                else RemoteFolderCreateCapability.Unavailable(
-                    RemoteFolderCreateCapability.Reason.ACCESS_DENIED)
+            when (val configuration = config(uri, credentials, root)) {
+                is Configuration.Rejected ->
+                    RemoteFolderCreateCapability.Unavailable(configuration.reason)
+                is Configuration.Accepted -> {
+                    // One read-only typed listing demonstrates more than PHP reachability.
+                    val list = read(uri, credentials, JSONObject()
+                        .put("method", "listDirectory").put("dir", "/")).first
+                    val reason = when (list.code) {
+                        401, 403, 407 -> RemoteFolderCreateCapability.Reason.ACCESS_DENIED
+                        404, 405 -> RemoteFolderCreateCapability.Reason.NOT_INSTALLED
+                        else -> RemoteFolderCreateCapability.Reason.CANNOT_VERIFY
+                    }
+                    if (list.code == 200 && directoryNames(list.body) != null)
+                        RemoteFolderCreateCapability.Ready(root)
+                    else RemoteFolderCreateCapability.Unavailable(reason)
+                }
             }
         } catch (cancel: CancellationException) { throw cancel }
           catch (_: Exception) {
@@ -176,8 +195,8 @@ internal object RuTorrentFileManager {
         var sent = false
         var reply: Reply? = null
         try {
-            val verified = config(endpoint, credentials, root)
-                ?: return@withContext RemoteFolderCreateOutcome.Refused
+            val verified = (config(endpoint, credentials, root) as? Configuration.Accepted)
+                ?.value ?: return@withContext RemoteFolderCreateOutcome.Refused
             // Verify each intermediate component is a directory, not a symlink.
             var walked = ""
             for (segment in rel.split('/').filter { it.isNotEmpty() }) {
