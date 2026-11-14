@@ -252,6 +252,39 @@ class SeedhostExactPeerBytesOnceTest {
             "Unexpected RPC instance"
         }
         val remote = verified.response
+        if (System.getenv("CHUNKS_HOST_DELETE_PROOF") == "authorized") {
+            // One-off retirement of the owned fixture left by the failed
+            // observer run. No Add or arbitrary pre-existing transfer removal.
+            val fixtureRun = "43545246997"
+            val fixtureName = "chunks-verified-peer-$fixtureRun.bin"
+            val sourceFile = File(temp.newFolder("retirement-identity"), fixtureName)
+            sourceFile.writeBytes(ByteArray(512 * 1024).also { Random(fixtureRun.toLong()).nextBytes(it) })
+            val metainfo = TorrentBuilder().path(sourceFile).flags(TorrentBuilder.V1_ONLY)
+                .pieceSize(64 * 1024).addTracker("http://127.0.0.1:1/announce").generate().entry().bencode()
+            val expectedHash = TorrentMetainfoReader.preview(metainfo).infoHashV1
+            val inventory = remote.listTransfers("main")
+            val target = inventory.single { it.hash.equals(expectedHash, true) }
+            check(target.name == fixtureName && target.sizeBytes == 512L * 1024 &&
+                target.completedBytes == target.sizeBytes && !target.started) { "Owned fixture identity changed" }
+            val before = diskEntries(target.directory)
+            val path = target.directory.trimEnd('/') + "/" + fixtureName
+            check(path in before) { "Owned fixture payload not independently visible" }
+            println("CHUNKS_HOST_DELETE: retiring-prior-owned-fixture-exact-hash-rederived")
+            val result = remote.removeWithDataViaRuTorrent(expectedHash, fixtureName, target.directory)
+            check(result is io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome.QueuedForCleanup)
+            check(remote.lookupName(expectedHash) == null)
+            val deadline = System.nanoTime() + 180_000_000_000L
+            var after = diskEntries(target.directory)
+            while (path in after && System.nanoTime() < deadline) {
+                kotlinx.coroutines.delay(3_000)
+                after = diskEntries(target.directory)
+            }
+            check(after == before - path && path !in after) { "Owned fixture cleanup was not independently verified" }
+            check(remote.listTransfers("main").map { it.hash.lowercase() }.toSet() ==
+                inventory.filterNot { it.hash.equals(expectedHash, true) }.map { it.hash.lowercase() }.toSet())
+            println("CHUNKS_HOST_DELETE: verified-session-absent-payload-absent-unrelated-entries-preserved")
+            return@runBlocking
+        }
         val beforeInventory = remote.listTransfers("main")
         require(beforeInventory.isNotEmpty()) { "No independently corroborated destination" }
         stage("preflight")
