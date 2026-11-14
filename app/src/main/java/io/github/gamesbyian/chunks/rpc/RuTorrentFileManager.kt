@@ -288,6 +288,69 @@ internal object RuTorrentFileManager {
     }
 
     /**
+     * Temporary diagnostic-only read. Reports aggregate counts; neither raw directory
+     * names nor server paths are returned to workflow logs. No write operations.
+     */
+    internal data class ForensicInventory(
+        val browserDirectories: Int,
+        val managerEntries: Int,
+        val managerDirectories: Int,
+        val sharedTyped: Int,
+        val browserAlsoNonDirectory: Int,
+        val managerOnlyTyped: Int,
+        val responseChars: Int,
+        val firstBrowserTyped: Boolean,
+        val lastBrowserTyped: Boolean,
+        val earliestTypedIndex: Int,
+        val latestTypedIndex: Int,
+        val targetInBrowser: Boolean,
+        val targetInManager: Boolean,
+        val targetInManagerAsNonDirectory: Boolean
+    )
+
+    internal suspend fun forensicInventoryReadOnly(
+        rpc: URI, credentials: RemoteCredentials, root: String, targetChild: String
+    ): ForensicInventory? = withContext(Dispatchers.IO) {
+        if (!validLeaf(targetChild)) return@withContext null
+        val endpoint = endpoint(rpc) ?: return@withContext null
+        val verified = (config(endpoint, credentials, root) as? Configuration.Accepted)
+            ?.value ?: return@withContext null
+        val rel = relative(verified.fileRoot, root) ?: return@withContext null
+        val browser = RuTorrentDirectoryListing.read(rpc, credentials, root)
+        if (browser !is RemoteDirectoryLookup.Ready || browser.page.path != root)
+            return@withContext null
+        val response = read(endpoint, credentials,
+            JSONObject().put("method", "listDirectory")
+                .put("dir", if (rel.isEmpty()) "/" else rel)).first
+        if (response.code != 200) return@withContext null
+        val entries = directoryNames(response.body) ?: return@withContext null
+        val typed = entries.asSequence()
+            .filter { it.endsWith("/") && it.length > 1 }
+            .map { it.dropLast(1) }.toSet()
+        val browserNames = browser.page.folders
+        val browserSet = browserNames.toSet()
+        val untyped = entries.filterNot { it.endsWith("/") }.toSet()
+        val indexes = browserNames.withIndex()
+            .filter { it.value in typed }.map { it.index }
+        ForensicInventory(
+            browserDirectories = browserNames.size,
+            managerEntries = entries.size,
+            managerDirectories = typed.size,
+            sharedTyped = browserNames.count { it in typed },
+            browserAlsoNonDirectory = browserNames.count { it in untyped },
+            managerOnlyTyped = typed.count { it !in browserSet },
+            responseChars = response.body.length,
+            firstBrowserTyped = browserNames.firstOrNull() in typed,
+            lastBrowserTyped = browserNames.lastOrNull() in typed,
+            earliestTypedIndex = indexes.minOrNull() ?: -1,
+            latestTypedIndex = indexes.maxOrNull() ?: -1,
+            targetInBrowser = targetChild in browserSet,
+            targetInManager = targetChild + "/" in entries,
+            targetInManagerAsNonDirectory = targetChild in entries
+        )
+    }
+
+    /**
      * Explicit one-child mutation, with fresh exact-root check and read-only
      * corroboration of every parent component. No retry after dispatch. The
      * PHP provider may use mkdir -p internally; verifying an existing parent
