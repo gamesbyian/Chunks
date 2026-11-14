@@ -93,9 +93,12 @@ internal object ForeignPartialLayoutScanner {
                     if (!Files.exists(sibling, LinkOption.NOFOLLOW_LINKS)) continue
                     // Symlinks, directories and special files are ignored, never followed.
                     if (!Files.isRegularFile(sibling, LinkOption.NOFOLLOW_LINKS)) continue
+                    // The presentation cap must not turn a partially listed pair
+                    // into an apparently unique reusable file. Keep counting
+                    // importable siblings even when their rows are omitted.
+                    if (kind.importable) importableByDeclared.merge(relative, 1, Int::plus)
                     if (found.size >= MAX_CANDIDATES) { truncated = true; continue }
                     found += Candidate(relative, relative + kind.suffix, kind, Files.size(sibling))
-                    if (kind.importable) importableByDeclared.merge(relative, 1, Int::plus)
                 }
             } catch (_: Exception) {
                 return Result.Unknown("Torrent payload path cannot be inspected")
