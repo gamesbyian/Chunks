@@ -229,6 +229,42 @@ class RuTorrentFolderCreateHttpTest {
         }
     }
 
+    @Test fun readOnlyReconciliationNeverReplaysMkdirAndRequiresTwoIndependentWitnesses() = runBlocking {
+        Fixture().use { fx ->
+            fx.created.add("Historical")
+            val creds = RemoteCredentials(fx.rpc, "alice", "secret")
+            val rpc = java.net.URI(fx.rpc)
+            assertEquals(RemoteFolderReadback.VERIFIED_DIRECTORY,
+                RuTorrentFileManager.observeChild(rpc, creds,
+                    "/srv/tenant/TV", "/srv/tenant/TV", "Historical"))
+            assertEquals(RemoteFolderReadback.NOT_PRESENT,
+                RuTorrentFileManager.observeChild(rpc, creds,
+                    "/srv/tenant/TV", "/srv/tenant/TV", "Never-created"))
+            fx.symlinkChildAfterWrite = true
+            assertEquals(RemoteFolderReadback.INCONSISTENT,
+                RuTorrentFileManager.observeChild(rpc, creds,
+                    "/srv/tenant/TV", "/srv/tenant/TV", "Historical"))
+            assertEquals(0, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
+        }
+    }
+
+    @Test fun reconciliationWorksWithVerifiedFileManagerAncestorRoot() = runBlocking {
+        Fixture().use { fx ->
+            fx.configuredRoot = "/srv"
+            fx.created.add("Old")
+            val creds = RemoteCredentials(fx.rpc, "alice", "secret")
+            assertEquals(RemoteFolderReadback.VERIFIED_DIRECTORY,
+                RuTorrentFileManager.observeChild(java.net.URI(fx.rpc), creds,
+                    "/srv/tenant", "/srv/tenant/TV", "Old"))
+            assertEquals(RemoteFolderReadback.CANNOT_VERIFY,
+                RuTorrentFileManager.observeChild(java.net.URI(fx.rpc), creds,
+                    "/srv/tenant", "/srv/other", "Old"))
+            assertEquals(0, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
+        }
+    }
+
     @Test fun lostAcknowledgementNeverReplaysTheWrite() = runBlocking {
         Fixture().use { fx ->
             fx.ackStatus = 500

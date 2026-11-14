@@ -28,6 +28,13 @@ internal sealed interface RemoteFolderCreateOutcome {
     data object Uncertain : RemoteFolderCreateOutcome
 }
 
+/** Independent, non-mutating status of one reviewed child path.
+ * INCONSISTENT never authorizes retry or a claim of physical creation.
+ */
+internal enum class RemoteFolderReadback {
+    VERIFIED_DIRECTORY, NOT_PRESENT, INCONSISTENT, CANNOT_VERIFY
+}
+
 internal object RuTorrentFileManager {
     private const val MAX_RESPONSE_BYTES = 64_000
     private data class Reply(val code: Int, val body: String, val challenges: List<String>)
@@ -196,6 +203,43 @@ internal object RuTorrentFileManager {
             }
         }
     } catch (_: Exception) { null }
+
+    /**
+     * Read-only reconciliation after an uncertain one-shot mkdir. Uses the
+     * independently typed File Manager listing AND the exact-account _getdir
+     * listing. Neither reads bytes, mutates files, nor relies on a POST receipt.
+     */
+    suspend fun observeChild(
+        rpc: URI, credentials: RemoteCredentials, observedRoot: String,
+        parent: String, child: String
+    ): RemoteFolderReadback = withContext(Dispatchers.IO) {
+        if (!validLeaf(child) || relative(observedRoot, parent) == null)
+            return@withContext RemoteFolderReadback.CANNOT_VERIFY
+        val endpoint = endpoint(rpc) ?: return@withContext RemoteFolderReadback.CANNOT_VERIFY
+        try {
+            val verified = (config(endpoint, credentials, observedRoot) as? Configuration.Accepted)
+                ?.value ?: return@withContext RemoteFolderReadback.CANNOT_VERIFY
+            val rel = relative(verified.fileRoot, parent)
+                ?: return@withContext RemoteFolderReadback.CANNOT_VERIFY
+            val direct = RuTorrentDirectoryListing.read(rpc, credentials, parent)
+            if (direct !is RemoteDirectoryLookup.Ready || direct.page.path != parent)
+                return@withContext RemoteFolderReadback.CANNOT_VERIFY
+            val typed = read(endpoint, credentials,
+                JSONObject().put("method", "listDirectory")
+                    .put("dir", if (rel.isEmpty()) "/" else rel)).first
+            val entries = if (typed.code == 200) directoryNames(typed.body) else null
+            if (entries == null) return@withContext RemoteFolderReadback.CANNOT_VERIFY
+            val inBrowser = child in direct.page.folders
+            val inFileManager = (child + "/") in entries
+            when {
+                inBrowser && inFileManager -> RemoteFolderReadback.VERIFIED_DIRECTORY
+                !inBrowser && !inFileManager && child !in entries ->
+                    RemoteFolderReadback.NOT_PRESENT
+                else -> RemoteFolderReadback.INCONSISTENT
+            }
+        } catch (cancel: CancellationException) { throw cancel }
+          catch (_: Exception) { RemoteFolderReadback.CANNOT_VERIFY }
+    }
 
     /**
      * Explicit one-child mutation, with fresh exact-root check and read-only
