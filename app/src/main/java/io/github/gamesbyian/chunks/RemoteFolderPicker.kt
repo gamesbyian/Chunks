@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -43,6 +45,22 @@ import io.github.gamesbyian.chunks.rpc.RuTorrentDirectoryListing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
+
+/** A verified-root-bounded trail; never derive a clickable parent from raw server text. */
+internal data class RemoteFolderCrumb(val path: String, val label: String)
+
+internal fun remoteFolderBreadcrumbs(root: String?, current: String?): List<RemoteFolderCrumb> {
+    if (root == null || current == null ||
+        !RuTorrentDirectoryListing.contains(root, current)) return emptyList()
+    val result = mutableListOf(RemoteFolderCrumb(root, "Root"))
+    var walked = root
+    val remaining = current.removePrefix(root).trimStart('/')
+    if (remaining.isNotEmpty()) for (segment in remaining.split('/')) {
+        walked = if (walked == "/") "/" + segment else walked + "/" + segment
+        result.add(RemoteFolderCrumb(walked, segment))
+    }
+    return result
+}
 
 /** A newly created child directly beneath / still has / as its parent. */
 internal fun remoteFolderReadbackParent(target: String): String =
@@ -142,7 +160,34 @@ internal fun RemoteFolderPicker(
                     )
                 } else {
                     Text(currentPage?.path ?: current ?: "Checking server folders…",
-                        style = MaterialTheme.typography.bodyMedium)
+                        style = MaterialTheme.typography.bodySmall)
+                    val crumbs = remoteFolderBreadcrumbs(root, currentPage?.path)
+                    if (crumbs.isNotEmpty()) {
+                        Row(
+                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            crumbs.forEachIndexed { index, crumb ->
+                                val last = index == crumbs.lastIndex
+                                TextButton(
+                                    onClick = {
+                                        result = null
+                                        current = crumb.path
+                                        showNewFolder = false
+                                        createStatus = null
+                                    },
+                                    enabled = !last && !creating && !reconciling,
+                                    modifier = Modifier.heightIn(min = 48.dp).semantics {
+                                        contentDescription = if (last)
+                                            "Current folder " + crumb.label
+                                        else "Open breadcrumb " + crumb.label
+                                    }
+                                ) {
+                                    Text((if (index == 0) "" else "› ") + crumb.label)
+                                }
+                            }
+                        }
+                    }
                     when (val state = result) {
                         null -> Text("Loading server folders…")
                         is RemoteDirectoryLookup.Unavailable -> {
