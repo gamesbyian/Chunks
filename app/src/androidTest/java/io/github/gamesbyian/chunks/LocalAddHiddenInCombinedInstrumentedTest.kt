@@ -49,17 +49,17 @@ class LocalAddHiddenInCombinedInstrumentedTest {
     private fun reachLocal() {
         val local = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
         if (rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty()) return
-        // The former bottom-of-list device button was removed. Find the
-        // disclosed management route without assuming the first lazy viewport.
+        // The compact toolbar now exposes Filters and sort as a stable
+        // semantic action beside Search, not an old "Filters" text button.
         waitFor(30_000) {
-            runCatching {
-                rule.onNode(hasScrollToIndexAction())
-                    .performScrollToNode(hasText("Filters"))
-                true
-            }.getOrDefault(false)
+            rule.onAllNodes(androidx.compose.ui.test.hasTestTag(
+                ChunksSemantics.TRANSFERS_FILTER_SORT)).fetchSemanticsNodes().isNotEmpty()
         }
-        if (rule.onAllNodes(hasText("Hide filters")).fetchSemanticsNodes().isEmpty())
-            rule.onNodeWithText("Filters").performClick()
+        val filter = rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT)
+        val expanded = runCatching {
+            filter.fetchSemanticsNode().config[SemanticsProperties.StateDescription]
+        }.getOrNull() == "Expanded"
+        if (!expanded) filter.performClick()
         waitFor(30_000) {
             runCatching {
                 rule.onNode(hasScrollToIndexAction())
