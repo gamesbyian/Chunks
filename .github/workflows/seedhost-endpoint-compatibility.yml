@@ -1,9 +1,11 @@
 name: Seedhost endpoint compatibility (manual plus one trusted-main read-only browse acceptance)
 
-# One main-only push when this workflow changes proves the real directory
-# provider read-only, without involving untrusted pull requests or a write.
-# Subsequent optional create testing is workflow_dispatch only and is never
-# executed on push or rerun.
+# Protected main-only push verifies directory browsing, without exposing secrets
+# to pull requests. A single reviewed commit marker may authorize exactly one
+# NEW uniquely run-ID-named EMPTY child on the primary Seedhost account,
+# guarded by run_attempt=1; never the historical ambiguous directory.
+# No rerun or unmarked push can create a folder. Manual workflow_dispatch
+# retains its separately reviewed create_test_folder opt-in.
 on:
   push:
     branches: [main]
@@ -98,7 +100,10 @@ jobs:
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
           CHUNKS_HOST_FOLDER_READONLY: authorized
-          CHUNKS_HOST_FOLDER_CREATE: ${{ inputs.create_test_folder && 'authorized' || '' }}
+          # This exact marker is consumed by one protected main merge only.
+          # The created child uses github.run_id, never the old ambiguous id.
+          # A rerun (run_attempt > 1) skips this entire step.
+          CHUNKS_HOST_FOLDER_CREATE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_ONCE_V2')) && 'authorized' || (github.event_name == 'workflow_dispatch' && inputs.create_test_folder && inputs.probe_folders && inputs.profile == 'primary-rutorrent-https') && 'authorized' || '' }}
           CHUNKS_HOST_FOLDER_RUN_ID: ${{ github.run_id }}
         run: |
           private_log=$(mktemp)
@@ -127,6 +132,10 @@ jobs:
           raise SystemExit(0 if ok else 1)
           PY
 
+      # The one-shot marker above permits no retries. A local create outcome
+      # must be independently verified by both directory providers. A missing
+      # success receipt is NOT permission to repeat the write on this or any
+      # other run; use only a subsequent nonmutating exact-child readback.
       - name: Reconcile the single historical mkdir by read-only evidence
         # The earlier one-shot attempt from 43570367968 was inconclusive.
         # The previous check passed the ruTorrent web URL, not the exact RPC
