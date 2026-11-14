@@ -25,6 +25,8 @@ internal object ChunksSemantics {
     const val FOOTER_OPTIONS = "chunks.footer.options"
 
     const val CONNECTION_ADD = "chunks.connection.add"
+    /** Submit a reviewed connection; stable across keyboard and roster layout. */
+    const val CONNECTION_CONNECT = "chunks.connection.connect"
     const val CONNECTION_NAME = "chunks.connection.name"
 
     // Universal Add: one source, one submission action, one Start preference.
