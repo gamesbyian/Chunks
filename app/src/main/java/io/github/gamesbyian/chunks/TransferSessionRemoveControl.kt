@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
+import io.github.gamesbyian.chunks.rpc.RemoteDeleteCapability
 import io.github.gamesbyian.chunks.rpc.RemoteRemovalStage
 import io.github.gamesbyian.chunks.rpc.SessionEraseOutcome
 import io.github.gamesbyian.chunks.rpc.SessionEraseRecheck
@@ -71,7 +72,8 @@ fun TransferSessionRemoveControl(
     performDataErase: (suspend (String, String, String) -> RemoteDeleteDataOutcome)? = null,
     recheck: suspend (String, String, String) -> SessionEraseRecheck = remote::recheckSessionErase,
     environmentLabel: String? = "rTorrent",
-    snapshotRevision: Long = 0L
+    snapshotRevision: Long = 0L,
+    discoverDataDeletion: suspend () -> RemoteDeleteCapability = { remote.discoverDeleteDataCapability(force = true) }
 ) {
     val validHash = remember(remote, transfer.hash) { Regex("[0-9a-fA-F]{40}").matches(transfer.hash) }
     // Freshness or view changes revoke an open review, but never erase the
@@ -112,7 +114,21 @@ fun TransferSessionRemoveControl(
         mutableStateOf(false)
     }
     val scope = rememberCoroutineScope()
-    val canRequestDataDeletion = remember(remote) { remote.supportsRuTorrentDeleteData() }
+    var capability by remember(remote) { mutableStateOf<RemoteDeleteCapability?>(null) }
+    var capabilityChecking by remember(remote) { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(remote, reviewCurrent) {
+        if (reviewCurrent) {
+            capabilityChecking = true
+            capability = null
+            try { capability = withTimeout(15_000L) { discoverDataDeletion() } }
+            catch (cancel: CancellationException) {
+                if (cancel !is TimeoutCancellationException) throw cancel
+            } finally { capabilityChecking = false }
+        }
+    }
+    val canRequestDataDeletion = capability?.let {
+        it.isFresh(accountScope) && it.actionable
+    } == true
 
     if (!validHash) {
         Text("Remove is available only for torrents with an exact v1 infohash.",
@@ -177,7 +193,10 @@ fun TransferSessionRemoveControl(
                                         }
                                         feedback = when (response) {
                                             is RemoteDeleteDataOutcome.QueuedForCleanup ->
-                                                "Verified: this exact rTorrent session is absent after ruTorrent accepted a nonforce delete-data request. The plugin cleans up files asynchronously; physical data deletion is NOT yet verified."
+                                                (if (response.sessionRemoved) "Verified: this exact rTorrent session is absent. " else "Session removal is still pending. ") +
+                                                    "Queued: ruTorrent accepted nonforce data cleanup. physical data deletion is NOT yet verified."
+                                            is RemoteDeleteDataOutcome.Partial ->
+                                                "Partial result: the exact session is absent, but data cleanup was not acknowledged. Inspect server files; no request will be retried."
                                             RemoteDeleteDataOutcome.Unsupported ->
                                                 "No deletion command was sent. This server route does not expose the required ruTorrent erasedata plugin."
                                             is RemoteDeleteDataOutcome.Refused ->
@@ -206,12 +225,29 @@ fun TransferSessionRemoveControl(
                         enabled = canRequestDataDeletion && environmentLabel != null &&
                             !pending && !checking && mainView && !snapshotStale,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text(if (canRequestDataDeletion) "Remove transfer and data"
+                    ) { Text(if (capabilityChecking) "Checking data-deletion support…"
+                        else if (canRequestDataDeletion) "Remove transfer and data"
                         else "Remove transfer and data (unavailable)") }
                     Text(if (canRequestDataDeletion)
                         "Requests ruTorrent erasedata to delete this transfer's exact payload files, including files present before Add. The server processes cleanup asynchronously; the operation is not complete until the actual files are gone. This choice cannot be undone."
-                        else "This connection does not expose a supported ruTorrent erasedata route. Session-only Remove keeps the downloaded data, and cannot be substituted for file deletion.",
+                        else capability?.reason ?: "Data-deletion support has not been verified. Session-only Remove remains available.",
                         style = MaterialTheme.typography.bodySmall)
+                    if (!canRequestDataDeletion && !capabilityChecking) {
+                        AccentCardOutlinedButton(
+                            onClick = {
+                                capability = null
+                                capabilityChecking = true
+                                scope.launch {
+                                    try { capability = withTimeout(15_000L) { discoverDataDeletion() } }
+                                    catch (cancel: CancellationException) {
+                                        if (cancel !is TimeoutCancellationException) throw cancel
+                                    } finally { capabilityChecking = false }
+                                }
+                            },
+                            enabled = !pending && !checking,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) { Text("Recheck data-deletion support") }
+                    }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {

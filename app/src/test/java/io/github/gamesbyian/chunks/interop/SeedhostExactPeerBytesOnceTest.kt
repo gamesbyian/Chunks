@@ -161,6 +161,78 @@ class SeedhostExactPeerBytesOnceTest {
         }
     }
 
+    /** Independent PHP filesystem listing, never a torrent view or erase receipt. */
+    private suspend fun diskEntries(remote: RTorrentRemote, place: String): Set<String> {
+        val uri = URI("https://ianseeds.wood.seedhost.eu/rutorrent/plugins/_getdir/getfiles.php?dir=" +
+            java.net.URLEncoder.encode(place, "UTF-8") + "&btn=probe&edit=probe&frame=probe")
+        val credentials = RemoteCredentials("https://ianseeds.wood.seedhost.eu/rutorrent/",
+            System.getenv("CHUNKS_LIVE_RTORRENT_USER"), System.getenv("CHUNKS_LIVE_RTORRENT_PASS"))
+        var authorization: String? = null
+        repeat(2) { attempt ->
+            val connection = uri.toURL().openConnection() as java.net.HttpURLConnection
+            connection.connectTimeout = 8_000
+            connection.readTimeout = 15_000
+            connection.instanceFollowRedirects = false
+            if (authorization != null) connection.setRequestProperty("Authorization", authorization)
+            try {
+                if (connection.responseCode == 401 && attempt == 0) {
+                    val challenges = connection.headerFields.entries.filter { it.key?.equals("WWW-Authenticate", true) == true }.flatMap { it.value }
+                    authorization = io.github.gamesbyian.chunks.rpc.HttpRpcAuthorization.fromChallenge(
+                        challenges, credentials, "GET", uri.rawPath + "?" + uri.rawQuery)
+                } else {
+                    check(connection.responseCode == 200) { "Independent filesystem observer unavailable" }
+                    val bytes = connection.inputStream.use { it.readNBytes(2_000_001) }
+                    check(bytes.size <= 2_000_000)
+                    val paths = Regex("code=['\"]([^'\"]+)['\"]").findAll(bytes.toString(Charsets.UTF_8))
+                        .map { java.net.URLDecoder.decode(it.groupValues[1], "UTF-8") }.toSet()
+                    check(place.trimEnd('/') + "/" in paths) { "Filesystem observer did not confirm the requested parent" }
+                    check(paths.all { it.startsWith(place.trimEnd('/') + "/") || it == java.io.File(place).parent + "/" }) {
+                        "Filesystem observer returned another directory"
+                    }
+                    return paths
+                }
+            } finally { connection.disconnect() }
+        }
+        error("Independent filesystem observer authentication failed")
+    }
+
+    private suspend fun qualifyDeletion(remote: RTorrentRemote, hash: String, name: String,
+        place: String, metainfo: ByteArray) {
+        require(System.getenv("GITHUB_REF") == "refs/heads/main")
+        val cap = remote.discoverDeleteDataCapability(force = true)
+        check(cap.actionable) { "No verified deletion adapter" }
+        println("CHUNKS_HOST_DELETE: capability=" + cap.adapter!!.name)
+        val before = diskEntries(remote, place)
+        val payloadPath = place.trimEnd('/') + "/" + name
+        check(payloadPath in before) { "Exact completed payload not independently observable" }
+        println("CHUNKS_HOST_DELETE: actual-payload-present")
+        check(remote.removeWithDataViaRuTorrent(hash, "incorrect-reviewed-name", place) ==
+            io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome.Refused(io.github.gamesbyian.chunks.rpc.RemoteDeleteRefusal.TARGET_CHANGED))
+        check(remote.lookupName(hash) == name && diskEntries(remote, place) == before)
+        println("CHUNKS_HOST_DELETE: stale-review-refused-files-preserved")
+        check(remote.eraseFromSession(hash, name, place) is SessionEraseOutcome.VerifiedRemoved)
+        check(remote.lookupName(hash) == null && diskEntries(remote, place) == before)
+        println("CHUNKS_HOST_DELETE: session-only-removed-payload-preserved")
+        val added = remote.loadStoppedTorrentBytes(metainfo, place)
+        check(added is RemoteAddOutcome.VerifiedStopped) { "Stopped re-registration not verified" }
+        check(remote.lookupName(hash) == name && diskEntries(remote, place) == before)
+        // Exactly one destructive submission. A failure from this point is
+        // reconciled read-only; it must never fall into session-only cleanup.
+        val outcome = remote.removeWithDataViaRuTorrent(hash, name, place)
+        println("CHUNKS_HOST_DELETE: outcome=" + outcome.javaClass.simpleName)
+        check(outcome is io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome.QueuedForCleanup)
+        check(remote.lookupName(hash) == null) { "Exact session not removed" }
+        val deadline = System.nanoTime() + 180_000_000_000L
+        var after = diskEntries(remote, place)
+        while (payloadPath in after && System.nanoTime() < deadline) {
+            kotlinx.coroutines.delay(3_000)
+            after = diskEntries(remote, place)
+        }
+        check(payloadPath !in after) { "Collector did not delete actual payload within 180 seconds" }
+        check(after == before - payloadPath) { "Unrelated filesystem entries changed" }
+        println("CHUNKS_HOST_DELETE: verified-session-absent-payload-absent-unrelated-entries-preserved")
+    }
+
     @Test fun approvedHostedRTorrentReceivesVerifiedPeerBytesFromRunner() = runBlocking {
         assumeTrue("Protected manual host acceptance only",
             System.getenv("CHUNKS_HOST_PEER_PROOF") == "authorized")
@@ -362,7 +434,10 @@ class SeedhostExactPeerBytesOnceTest {
                         stopped.name == name && stopped.directory == place &&
                         runCatching { remote.readTrafficSample(hash).active == false }.getOrDefault(false)) {
                         stage("stopped")
-                        val removed = runCatching {
+                        val removed = if (System.getenv("CHUNKS_HOST_DELETE_PROOF") == "authorized") {
+                            qualifyDeletion(remote, hash, name, place, metainfo)
+                            SessionEraseOutcome.VerifiedRemoved(hash)
+                        } else runCatching {
                             remote.eraseFromSession(hash, name, place)
                         }.getOrNull()
                         // A PendingRemoval still has an exact-session hash.

@@ -129,6 +129,12 @@ class TransferSessionRemoveLargeTextTest {
                                     keepCalls++
                                     SessionEraseOutcome.VerifiedRemoved(transfer.hash)
                                 },
+                                discoverDataDeletion = {
+                                    io.github.gamesbyian.chunks.rpc.RemoteDeleteCapability(
+                                        io.github.gamesbyian.chunks.rpc.RemoteCapabilityState.SUPPORTED,
+                                        io.github.gamesbyian.chunks.rpc.RemoteDeleteAdapter.ERASEDATA_HTTP,
+                                        "Test adapter", System.currentTimeMillis(), mounted.addAccountScope())
+                                },
                                 performDataErase = { hash, name, path ->
                                     assertEquals(transfer.hash, hash)
                                     assertEquals(transfer.name, name)

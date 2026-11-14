@@ -50,8 +50,13 @@ class RuTorrentFullSessionDeleteGuardTest {
         pluginStatus: Int = 200,
         denyRead: String? = null,
         denyReadAfter: Int = 1,
+        legacy: Boolean = false,
+        legacyPrincipal: String = "alice",
+        incompleteHooks: Boolean = false,
+        advertiseAdapter: Boolean = true,
         check: suspend (RTorrentRemote, AtomicInteger, AtomicInteger, AtomicInteger) -> Unit
     ) = runBlocking {
+        val erased = java.util.concurrent.atomic.AtomicBoolean(false)
         val deniedReads = AtomicInteger()
         val defaultReads = AtomicInteger()
         val hiddenCandidate = (defaultFirst + defaultLater).firstOrNull {
@@ -62,6 +67,11 @@ class RuTorrentFullSessionDeleteGuardTest {
         val server = HttpServer.create(
             InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
         server.createContext("$mount/plugins/httprpc/action.php") { exchange ->
+            if (exchange.requestMethod == "HEAD") {
+                exchange.sendResponseHeaders(200, -1)
+                exchange.close()
+                return@createContext
+            }
             val request = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>")
                 .find(request)?.groupValues?.get(1).orEmpty()
@@ -70,7 +80,21 @@ class RuTorrentFullSessionDeleteGuardTest {
                 exchange.close()
                 return@createContext
             }
+            if (method == "d.hash" && erased.get()) {
+                val bytes = "<methodResponse><fault><value><struct><member><name>faultCode</name><value><int>-501</int></value></member><member><name>faultString</name><value><string>Could not find info-hash.</string></value></member></struct></value></fault></methodResponse>".toByteArray()
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+                return@createContext
+            }
             val value = when (method) {
+                "system.client_version" -> string("0.9.8")
+                "method.get" -> {
+                    val collect = "d.open= ; branch=d.custom5=,f.multicall=,file.append=/profile/erasedata/,f.frozen_path="
+                    val finish = "branch=d.custom5=,execute={/web/erasedata/fin.sh,system.pid=,d.base_path=,d.is_multi_file=}"
+                    "<value><struct><member><name>erasedata0$legacyPrincipal</name>" + string(collect) + "</member>" +
+                        (if (incompleteHooks) "" else "<member><name>erasedata1$legacyPrincipal</name>" + string(finish) + "</member>") +
+                        "</struct></value>"
+                }
                 "view.size_not_visible" -> number(invisibleDefaultJobs)
                 "d.multicall2" -> {
                     val rows = if (request.contains("<string>default</string>")) {
@@ -83,6 +107,12 @@ class RuTorrentFullSessionDeleteGuardTest {
                     array(rows.map(::torrentRow))
                 }
                 "system.multicall" -> {
+                    if (request.contains("<string>d.custom5.set</string>")) {
+                        pluginPosts.incrementAndGet()
+                        erased.set(true)
+                        respond(exchange, array(listOf(array(listOf(string("1"))), array(listOf(number(0))), array(listOf(number(0))))))
+                        return@createContext
+                    }
                     batchReads++
                     val jobs = (defaultFirst + defaultLater).associateBy { it.hash }
                     val results = Regex("<value><struct>(.*?)</struct></value>", RegexOption.DOT_MATCHES_ALL)
@@ -101,7 +131,8 @@ class RuTorrentFullSessionDeleteGuardTest {
                         hiddenFileReads.incrementAndGet()
                         hiddenCandidate
                     } else selected
-                    array(listOf(array(listOf(string(t.file), number(100), number(1)))))
+                    if (request.contains("f.frozen_path=")) array(listOf(array(listOf(string(t.file), string(t.directory + "/" + t.file)))))
+                    else array(listOf(array(listOf(string(t.file), number(100), number(1)))))
                 }
                 "d.hash" -> string(selected.hash)
                 "d.name" -> string(selected.name)
@@ -111,17 +142,27 @@ class RuTorrentFullSessionDeleteGuardTest {
             respond(exchange, value)
         }
         server.createContext("$mount/plugins/erasedata/action.php") { exchange ->
+            if (exchange.requestMethod == "HEAD") {
+                exchange.sendResponseHeaders(if (legacy) 404 else 200, -1)
+                exchange.close()
+                return@createContext
+            }
             pluginPosts.incrementAndGet()
             exchange.requestBody.use { it.readBytes() }
             val bytes = "[0,0,0]".toByteArray(Charsets.UTF_8)
             exchange.sendResponseHeaders(pluginStatus, bytes.size.toLong())
             exchange.responseBody.use { it.write(bytes) }
         }
+        server.createContext("$mount/plugins/erasedata/init.js") { exchange ->
+            val bytes = (if (legacy) "rTorrentStub.prototype.removewithdata = function() { d.set_custom5; d.delete_tied; d.erase; }" else if (advertiseAdapter) "rTorrentStub.prototype.removewithdata = function() { mountPoint = 'plugins/erasedata/action.php'; content = 'mode=removewithdata'; }" else "<html>login</html>").toByteArray()
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
         server.start()
         try {
             val endpoint = "http://127.0.0.1:" + server.address.port +
                 "$mount/plugins/httprpc/action.php"
-            val remote = RTorrentRemote(RemoteCredentials(endpoint, "", ""))
+            val remote = RTorrentRemote(RemoteCredentials(endpoint, if (legacy) "alice" else "", ""))
             check(remote, defaultReads, hiddenFileReads, pluginPosts)
         } finally {
             server.stop(0)
@@ -134,7 +175,7 @@ class RuTorrentFullSessionDeleteGuardTest {
             val outcome = remote.removeWithDataViaRuTorrent(
                 selected.hash, selected.name, selected.directory)
             assertTrue("Plugin ACK only queues cleanup, never proves deletion",
-                outcome is RemoteDeleteDataOutcome.Uncertain)
+                outcome == RemoteDeleteDataOutcome.QueuedForCleanup(selected.hash, sessionRemoved = false))
             assertEquals("Both complete session views must still be checked", 2, defaultReads.get())
             assertEquals("Only the tenant2/rutorrent3 erase endpoint is available", 1, posts.get())
         }
@@ -196,7 +237,7 @@ class RuTorrentFullSessionDeleteGuardTest {
             val outcome = remote.removeWithDataViaRuTorrent(
                 selected.hash, selected.name, selected.directory)
             assertTrue("A valid plugin receipt does not prove payload deletion",
-                outcome is RemoteDeleteDataOutcome.Uncertain)
+                outcome == RemoteDeleteDataOutcome.QueuedForCleanup(selected.hash, sessionRemoved = false))
             assertEquals("Both session snapshots must be read", 2, defaultReads.get())
             assertEquals("Authorized non-idempotent plugin request must be sent once",
                 1, posts.get())
@@ -252,4 +293,37 @@ class RuTorrentFullSessionDeleteGuardTest {
         }
     }
 
+
+    @Test fun actualAccountHooksAndBrowserSelectOneLegacyBatchInsteadOfMissingHttpEndpoint() =
+        fixture(listOf(selected), legacy = true) { remote, _, _, posts ->
+            val cap = remote.discoverDeleteDataCapability()
+            assertEquals(RemoteDeleteAdapter.REGISTERED_ERASE_HOOKS, cap.adapter)
+            assertEquals(RemoteDeleteDataOutcome.QueuedForCleanup(selected.hash),
+                remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+            assertEquals("One legacy batch; no fallback HTTP deletion", 1, posts.get())
+        }
+
+    @Test fun anotherPrincipalHooksCannotAuthorizeLegacyFlaggingOrErase() =
+        fixture(listOf(selected), legacy = true, legacyPrincipal = "bob") { remote, _, _, posts ->
+            assertFalse(remote.discoverDeleteDataCapability().actionable)
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.CAPABILITY_UNKNOWN),
+                remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+            assertEquals(0, posts.get())
+        }
+
+    @Test fun incompleteLegacyHookRegistrationCannotAuthorizeDataRemoval() =
+        fixture(listOf(selected), legacy = true, incompleteHooks = true) { remote, _, _, posts ->
+            assertFalse(remote.discoverDeleteDataCapability().actionable)
+            assertEquals(RemoteDeleteDataOutcome.Refused(RemoteDeleteRefusal.CAPABILITY_UNKNOWN),
+                remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
+            assertEquals(0, posts.get())
+        }
+
+    @Test fun successfulHarmlessHttpDoesNotProveADeletionAdapter() =
+        fixture(listOf(selected), advertiseAdapter = false) { remote, _, _, posts ->
+            val cap = remote.discoverDeleteDataCapability()
+            assertEquals(RemoteCapabilityState.UNKNOWN, cap.state)
+            assertFalse(cap.actionable)
+            assertEquals(0, posts.get())
+        }
 }
