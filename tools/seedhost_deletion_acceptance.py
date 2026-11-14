@@ -96,12 +96,14 @@ def main():
         print('DELETION_PROBE ' + json.dumps(result, sort_keys=True), flush=True)
     try:
         with ftplib.FTP_TLS(context=ssl.create_default_context(), timeout=15) as ftp:
-            ftp.connect('ianseeds.wood.seedhost.eu', 21)
+            ftp.connect('wood.seedhost.eu', 21)
             ftp.login(os.environ['CHUNKS_LIVE_RTORRENT_USER'], os.environ['CHUNKS_LIVE_RTORRENT_PASS'])
             ftp.prot_p()
             result = {'phase':'independent-files', 'ftps':'authenticated', 'pwd_absolute':ftp.pwd().startswith('/')}
-    except Exception:
-        result = {'phase':'independent-files', 'ftps':'unavailable'}
+    except Exception as error:
+        result = {'phase':'independent-files', 'ftps':'unavailable', 'category':type(error).__name__}
+        if isinstance(error, ftplib.error_perm):
+            result['code'] = str(error)[:3] if str(error)[:3].isdigit() else 'unknown'
     print('DELETION_PROBE ' + json.dumps(result, sort_keys=True), flush=True)
     print('DELETION_PROBE completed zero_mutations=true')
 
