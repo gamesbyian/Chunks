@@ -25,6 +25,10 @@ on:
         description: 'Authorize exactly one empty child folder on primary Seedhost; no automatic cleanup'
         type: boolean
         default: false
+      readback_existing_second_child:
+        description: 'Read-only: compare two directory inventories for the already attempted child'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -81,7 +85,7 @@ jobs:
           PY
 
       - name: Reject invalid folder-acceptance scope before any test-folder mutation
-        if: ${{ inputs.probe_folders && inputs.profile != 'primary-rutorrent-https' || inputs.create_test_folder && (!inputs.probe_folders || inputs.profile != 'primary-rutorrent-https') }}
+        if: ${{ inputs.probe_folders && inputs.profile != 'primary-rutorrent-https' || inputs.create_test_folder && (!inputs.probe_folders || inputs.profile != 'primary-rutorrent-https') || inputs.readback_existing_second_child && (!inputs.probe_folders || inputs.profile != 'primary-rutorrent-https' || inputs.create_test_folder) }}
         run: |
           echo '::error::Folder acceptance is authorized only for the selected primary ruTorrent profile'
           exit 1
@@ -119,5 +123,40 @@ jobs:
                 and sys.argv[1] == '0'
                 and any(l.startswith('CHUNKS_SEEDHOST_FOLDER: browse-verified') for l in lines))
           print('CHUNKS_SEEDHOST_FOLDER: real-host-acceptance=' + ('passed' if ok else 'failed'))
+          raise SystemExit(0 if ok else 1)
+          PY
+
+      - name: Compare two exact-parent directory inventories for the historical second child without writes
+        if: ${{ inputs.readback_existing_second_child && inputs.probe_folders && inputs.profile == 'primary-rutorrent-https' && !inputs.create_test_folder && github.run_attempt == 1 }}
+        env:
+          CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+          CHUNKS_FOLDER_RECONCILE_ONLY: authorized
+          CHUNKS_FOLDER_RECONCILE_RUN: "43587333772"
+        run: |
+          private_log=$(mktemp)
+          trap 'rm -f "$private_log"' EXIT
+          set +e
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostFolderCreateReconcileReadOnlyTest > "$private_log" 2>&1
+          status=$?
+          set -e
+          python3 - "$status" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          path = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostFolderCreateReconcileReadOnlyTest.xml')
+          if not path.exists():
+              print('CHUNKS_CREATE_RECONCILE: result-absent writes=zero')
+              raise SystemExit(1)
+          root = ET.parse(path).getroot()
+          lines = (root.findtext('system-out') or '').splitlines()
+          for line in lines:
+              if line.startswith('CHUNKS_CREATE_RECONCILE: '):
+                  print(line[:180])
+          ok = (sys.argv[1] == '0' and int(root.get('tests', '0')) == 1
+                and all(root.get(f) == '0' for f in ('failures', 'errors', 'skipped'))
+                and any('inventory=browser-' in l for l in lines)
+                and any('checkpoint=two-providers-observed' in l for l in lines))
+          print('CHUNKS_CREATE_RECONCILE: inventory-proof=' + ('passed' if ok else 'failed') + ' writes=zero')
           raise SystemExit(0 if ok else 1)
           PY
