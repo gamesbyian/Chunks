@@ -59,7 +59,13 @@ class SeedhostFolderCreateReconcileReadOnlyTest {
         val root = (rootResult as? RemoteDirectoryLookup.Ready)?.page?.path
             ?: error("CHUNKS_CREATE_RECONCILE: root-not-observed")
         val outcome = RuTorrentFileManager.observeChild(
-            rpc, credentials, root, root, "Chunks-folder-test-$runId")
+            rpc, credentials, root, root, "Chunks-folder-test-$runId",
+            onPresence = { presence ->
+                // Only the fixed enum is printed. No raw provider response,
+                // account path, target, URI, credentials or exception.
+                println("CHUNKS_CREATE_RECONCILE: providers=" +
+                    presence.name.lowercase().replace('_', '-') + " writes=zero")
+            })
         checkpoint = "two-providers-observed"
         // Nothing here calls newDirectory, d.erase, shell or any transfer mutation.
         println("CHUNKS_CREATE_RECONCILE: evidence=" +
