@@ -129,9 +129,10 @@ jobs:
 
       - name: Reconcile the single historical mkdir by read-only evidence
         # The earlier one-shot attempt from 43570367968 was inconclusive.
-        # This step cannot submit a new mkdir, runs only on the marked main
-        # merge commit, and is not repeated by reruns or unrelated pushes.
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_DIAG_V2') }}
+        # The previous check passed the ruTorrent web URL, not the exact RPC
+        # endpoint, to _getdir and was UNSUPPORTED before observing the child.
+        # This corrected, main-only check submits zero writes and never reruns.
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_CORRECT_ENDPOINT_V3') }}
         env:
           CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
