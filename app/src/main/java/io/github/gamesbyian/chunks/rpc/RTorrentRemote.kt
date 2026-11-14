@@ -240,6 +240,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     ): RemoteFolderCreateOutcome =
         RuTorrentFileManager.create(endpoint, auth, root, parent, childName)
 
+    /** Read-only, exact-account inspection after an uncertain folder write. No mkdir replay. */
+    internal suspend fun observeServerFolder(
+        root: String, parent: String, childName: String
+    ): RemoteFolderReadback =
+        RuTorrentFileManager.observeChild(endpoint, auth, root, parent, childName)
+
     /** Read-only classification of `directory.default`; never throws except cancellation. */
     suspend fun defaultDirectoryReport(): DefaultDirectoryReport {
         val value = try {
