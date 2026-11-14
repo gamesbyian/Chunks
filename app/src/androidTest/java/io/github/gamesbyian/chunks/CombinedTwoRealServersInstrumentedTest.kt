@@ -235,28 +235,26 @@ class CombinedTwoRealServersInstrumentedTest {
         typeInto("Username, if required", user)
         typeInto("Password", password)
         scrollTo("Remember this server and login on this device")
-        // The IME can recycle this lazy item during selector resolution
-        // (42238837684 and 42241610339 failed BEFORE action invocation).
-        // Repeat only readiness/selector reads. Once the framework supplies
-        // its action, latch BEFORE invoking it: no exception or refused action
-        // may lead to a second production Connect invocation.
-        var connectInvoked = false
+        // Read/scroll only while polling. Clicking from inside waitUntil
+        // previously raced LazyColumn reattachment and reached a detached
+        // Compose ModifierNode (run 43567813262). The stable capability tag
+        // outlives wording, IME viewport changes and text merging.
+        val connectControl = hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
         rule.waitUntil(15_000) {
-            if (authenticatedCanonicalBrowser()) true else {
-                try {
-                    scrollTo("Connect to rTorrent")
-                    rule.onNodeWithText("Connect to rTorrent").assertIsDisplayed().assertIsEnabled()
-                        .performSemanticsAction(SemanticsActions.OnClick) {
-                            check(!connectInvoked)
-                            connectInvoked = true
-                            assertTrue("The production Connect action must be accepted", it())
-                        }
-                    connectInvoked
-                } catch (failure: Throwable) {
-                    if (connectInvoked) throw failure
-                    false
+            if (authenticatedCanonicalBrowser()) true else runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(connectControl)
+                rule.onNode(connectControl, useUnmergedTree = true)
+                    .assertIsDisplayed().assertIsEnabled()
+                true
+            }.getOrDefault(false)
+        }
+        if (!authenticatedCanonicalBrowser()) {
+            // Exactly one dispatch, outside all polling/retry paths.
+            rule.waitForIdle()
+            rule.onNode(connectControl, useUnmergedTree = true)
+                .performSemanticsAction(SemanticsActions.OnClick) { action ->
+                    assertTrue("The production Connect action must be accepted", action())
                 }
-            }
         }
         // Verified Connect acknowledges the result and returns to Connections;
         // the legacy server queue is NOT the new landing screen.
