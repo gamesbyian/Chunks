@@ -435,7 +435,7 @@ class TransferMediaController(
                 val inherited = applyRuleIfAny(key, recognition, previous, permitted)
                 if (inherited != null) {
                     flow(key)?.update { cur -> if (store.get(key) == inherited) cur.copy(assignment = inherited) else cur }
-                    if (flow(key) != null && authorization(key)()) loadArtwork(key)
+                    if (flow(key) != null) loadArtwork(key)
                     return
                 }
                 val preferences = settings()
@@ -490,9 +490,9 @@ class TransferMediaController(
                         cur.copy(assignment = updated,
                             automaticMessage = if (verifiedArt == null) updated.lastMessage else null) else cur }
                     if (verifiedArt != null) {
-                        // A retained StateFlow is not a live row/Details lease. After
-                // that observer leaves, use the inventory's own witness below.
-                if (flow(key) != null && authorization(key)()) loadArtwork(key)
+                        // A retained StateFlow is not a live row/Details lease.
+                        // Use the inventory witness below after that row leaves.
+                        if (flow(key) != null && authorization(key)()) loadArtwork(key)
                         else if (permitted() && preferences.showArtwork && preferences.downloadArtwork) {
                             val net = network()
                             if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {
