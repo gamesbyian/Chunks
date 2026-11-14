@@ -92,9 +92,11 @@ class InstrumentationStreamTests(unittest.TestCase):
             result = subprocess.run([sys.executable, "tools/parse_instrumentation_stream.py",
                                      "--raw", str(source), "--junit", str(report)],
                                     text=True, capture_output=True)
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("CHUNKS_PREBUILT_SAFE_STOPPED_MAGNET: " + expected, result.stdout)
-        self.assertEqual("1", ET.parse(report).getroot().get("failures"))
+            # The temporary JUnit receipt exists only inside this context.
+            # Verify it before cleanup, while keeping the failing CLI result.
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("CHUNKS_PREBUILT_SAFE_STOPPED_MAGNET: " + expected, result.stdout)
+            self.assertEqual("1", ET.parse(report).getroot().get("failures"))
 
         # Every other test, passing outcome, wrong type/length, or appended
         # arbitrary URL or error string stays redacted without exception.
