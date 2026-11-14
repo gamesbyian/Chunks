@@ -260,7 +260,7 @@ internal fun RemoteFolderPicker(
                             RemoteFolderCreateCapability.Reason.ACCESS_DENIED ->
                                 "The server denied access to File Manager's folder controls."
                             RemoteFolderCreateCapability.Reason.ROOT_MISMATCH ->
-                                "The server's File Manager and download browser use different roots."
+                                "File Manager cannot verify the chosen download tree beneath its permitted root."
                             RemoteFolderCreateCapability.Reason.CANNOT_VERIFY ->
                                 "The server's folder-creation capability could not be verified."
                         }

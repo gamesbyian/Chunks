@@ -31,7 +31,7 @@ internal sealed interface RemoteFolderCreateOutcome {
 internal object RuTorrentFileManager {
     private const val MAX_RESPONSE_BYTES = 64_000
     private data class Reply(val code: Int, val body: String, val challenges: List<String>)
-    private data class Verified(val root: String, val authorization: String?)
+    private data class Verified(val fileRoot: String, val authorization: String?)
     private sealed interface Configuration {
         data class Accepted(val value: Verified) : Configuration
         data class Rejected(val reason: RemoteFolderCreateCapability.Reason) : Configuration
@@ -117,11 +117,31 @@ internal object RuTorrentFileManager {
             ?: return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
         if (response.has("error") || response.has("errcode"))
             return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
-        val root = RuTorrentDirectoryListing.canonical(response.optString("homedir"))
+        val fileRoot = RuTorrentDirectoryListing.canonical(response.optString("homedir"))
             ?: return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
-        if (root != expectedRoot || root == "/")
-            return Configuration.Rejected(RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
-        return Configuration.Accepted(Verified(root, authorization))
+        // ruTorrent _getdir may start at rTorrent's current download directory,
+        // below File Manager's configured homedir. Only accept this ancestry
+        // when every intermediate segment is independently proven to be a
+        // *real directory* in File Manager (its symlink rows lack '/').
+        // Never accept an unrelated root, a broader '/' root, or traverse up.
+        val requestedRelative = relative(fileRoot, expectedRoot)
+            ?: return Configuration.Rejected(RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
+        var walked = ""
+        for (segment in requestedRelative.split('/').filter { it.isNotEmpty() }) {
+            val listing = read(endpoint, credentials,
+                JSONObject().put("method", "listDirectory")
+                    .put("dir", if (walked.isEmpty()) "/" else walked)).first
+            if (listing.code == 401 || listing.code == 403 || listing.code == 407)
+                return Configuration.Rejected(RemoteFolderCreateCapability.Reason.ACCESS_DENIED)
+            if (listing.code != 200)
+                return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
+            val entries = directoryNames(listing.body)
+                ?: return Configuration.Rejected(RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
+            if (segment + "/" !in entries)
+                return Configuration.Rejected(RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
+            walked = if (walked.isEmpty()) segment else walked + "/" + segment
+        }
+        return Configuration.Accepted(Verified(fileRoot, authorization))
     }
 
     suspend fun capability(
@@ -188,15 +208,22 @@ internal object RuTorrentFileManager {
         parent: String, name: String
     ): RemoteFolderCreateOutcome = withContext(Dispatchers.IO) {
         val endpoint = endpoint(rpc) ?: return@withContext RemoteFolderCreateOutcome.Refused
-        val rel = relative(root, parent) ?: return@withContext RemoteFolderCreateOutcome.Refused
+        // Restrict the reviewed target to the browser-observed root even if
+        // File Manager's own validated root is an ancestor of that tree.
+        if (relative(root, parent) == null) return@withContext RemoteFolderCreateOutcome.Refused
         if (!validLeaf(name)) return@withContext RemoteFolderCreateOutcome.Refused
-        val target = if (rel.isEmpty()) name else rel + "/" + name
         val confirmedPath = if (parent == "/") "/" + name else parent + "/" + name
         var sent = false
         var reply: Reply? = null
+        var rel = ""
         try {
             val verified = (config(endpoint, credentials, root) as? Configuration.Accepted)
                 ?.value ?: return@withContext RemoteFolderCreateOutcome.Refused
+            // Send relative to *File Manager's* verified homedir, not _getdir's
+            // narrower observed start. Otherwise mkdir can target a sibling.
+            rel = relative(verified.fileRoot, parent)
+                ?: return@withContext RemoteFolderCreateOutcome.Refused
+            val target = if (rel.isEmpty()) name else rel + "/" + name
             // Verify each intermediate component is a directory, not a symlink.
             var walked = ""
             for (segment in rel.split('/').filter { it.isNotEmpty() }) {
