@@ -1,0 +1,8 @@
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T03:04:22.1805274Z CHUNKS_HOST_DELETE: readonly-retirement-reconciliation
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T03:04:22.1805883Z CHUNKS_HOST_DELETE: session-present=false
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T03:04:22.1806541Z CHUNKS_HOST_DELETE: exact-lookup-present=false
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T03:04:22.1807092Z CHUNKS_HOST_DELETE: declared-parent-count=38
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T03:04:22.1807540Z CHUNKS_HOST_DELETE: independent-parents-observed=8
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T03:04:22.1807991Z CHUNKS_HOST_DELETE: retired-payload-matches=0
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T03:04:22.1808367Z CHUNKS_HOST_DELETE: remaining-session-count=50
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T03:04:22.1808737Z CHUNKS_HOST_DELETE: tests=3 failed=0 skipped=0

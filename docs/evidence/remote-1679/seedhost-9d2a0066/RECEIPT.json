@@ -34,8 +34,7 @@
     {
       "run": 43545246997,
       "source": "4b367f15",
-      "phase": "independent observer after real peer verification and Stop; before deletion",
-      "retirement_required": true
+      "phase": "independent observer after real peer verification and Stop; before deletion"
     },
     {
       "run": 43546155602,
@@ -84,5 +83,26 @@
     "review": "primary and independent reviewers found no blocking wrapping, touch target, state truth or recovery issue; component acceptance only"
   },
   "merge_sha": "8d485caa5884e12b4af13eb10e6448c2ccda4a6f",
-  "merge_tree": "00fdfb7a0d2b8518772f3e14dede76daaa118d2b"
+  "merge_tree": "00fdfb7a0d2b8518772f3e14dede76daaa118d2b",
+  "fixture_retirement": {
+    "mutation_run": 43547710272,
+    "source": "047ce20274f768aff46113cb507b5183ee414292",
+    "complete_retirement_receipt": "failed; not promoted to success",
+    "readonly_runs": [
+      43548332508,
+      43548913178,
+      43549473356
+    ],
+    "final_readonly_source": "28acef01",
+    "exact_session_absent": true,
+    "remaining_sessions": 50,
+    "current_declared_parents": 38,
+    "independently_observed_parents": 8,
+    "retired_payload_leaf_matches_in_observed_parents": 0,
+    "original_parent_coverage_certified": false,
+    "unrelated_preservation_for_retirement_certified": false,
+    "mutation_replayed": false,
+    "experiment_branch_merged": false,
+    "note": "Read-only collection ran3cases/0failures/0skips; its deletion-acceptance workflow correctly remained red without a new physical-deletion terminal witness. The separate accepted9d end-to-end journey remains fully qualified."
+  }
 }
