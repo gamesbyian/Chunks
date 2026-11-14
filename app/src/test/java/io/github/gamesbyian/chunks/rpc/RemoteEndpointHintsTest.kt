@@ -23,6 +23,18 @@ class RemoteEndpointHintsTest {
             RemoteEndpointHints.rpcAddress("https://box.test/custom%2Frpc/RPC%202"))
     }
 
+    @Test fun exactDirectoryPluginRoutesDeriveFromMappedRpcInsteadOfUiRoot() {
+        val ui = "https://box.test/rutorrent/"
+        val rpc = java.net.URI(RemoteEndpointHints.rpcAddress(ui))
+        assertEquals("/rutorrent/plugins/httprpc/action.php", rpc.rawPath)
+        assertEquals("/rutorrent/plugins/_getdir/listdir.php",
+            RuTorrentDirectoryListing.endpoint(rpc)?.rawPath)
+        assertEquals("/rutorrent/plugins/filemanager/action.php",
+            RuTorrentFileManager.endpoint(rpc)?.rawPath)
+        assertNull("The UI root cannot itself be treated as an RPC endpoint",
+            RuTorrentDirectoryListing.endpoint(java.net.URI(ui)))
+    }
+
     @Test fun mapsNumberedHostedRutorrentInstancesOnly() {
         assertEquals("https://box.seedhost.eu/rutorrent2/plugins/httprpc/action.php",
             RemoteEndpointHints.rpcAddress("https://box.seedhost.eu/rutorrent2/"))

@@ -38,8 +38,16 @@ class SeedhostFolderCreateReconcileReadOnlyTest {
         val pass = System.getenv("CHUNKS_LIVE_RTORRENT_PASS").orEmpty()
         require(user.isNotBlank() && pass.isNotBlank()) { "Protected credentials unavailable" }
         val credentials = RemoteCredentials(rawUrl, user, pass)
+        // The user-entered /rutorrent/ web URL is NOT a raw XML-RPC URL.
+        // Match RTorrentRemote's exact same-account endpoint mapping before
+        // invoking either plugin. The previous diagnostic passed the web URL
+        // directly and received an unrelated _getdir UNSUPPORTED outcome.
+        val rpc = URI(RemoteEndpointHints.rpcAddress(rawUrl))
+        require(rpc.host == uri.host && rpc.rawPath == "/rutorrent/plugins/httprpc/action.php" &&
+            rpc.scheme == "https" && rpc.rawUserInfo == null && rpc.rawQuery == null &&
+            rpc.rawFragment == null) { "Unexpected primary RPC mount" }
         checkpoint = "account-verified"
-        val rootResult = RuTorrentDirectoryListing.read(uri, credentials, "")
+        val rootResult = RuTorrentDirectoryListing.read(rpc, credentials, "")
         checkpoint = when (rootResult) {
             is RemoteDirectoryLookup.Ready -> "root-observed"
             is RemoteDirectoryLookup.Unavailable -> "root-" +
@@ -48,7 +56,7 @@ class SeedhostFolderCreateReconcileReadOnlyTest {
         val root = (rootResult as? RemoteDirectoryLookup.Ready)?.page?.path
             ?: error("CHUNKS_CREATE_RECONCILE: root-not-observed")
         val outcome = RuTorrentFileManager.observeChild(
-            uri, credentials, root, root, "Chunks-folder-test-$runId")
+            rpc, credentials, root, root, "Chunks-folder-test-$runId")
         checkpoint = "two-providers-observed"
         // Nothing here calls newDirectory, d.erase, shell or any transfer mutation.
         println("CHUNKS_CREATE_RECONCILE: evidence=" +
