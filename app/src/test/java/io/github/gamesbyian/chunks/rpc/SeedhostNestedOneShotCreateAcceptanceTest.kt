@@ -45,7 +45,12 @@ class SeedhostNestedOneShotCreateAcceptanceTest {
         val candidateParents = page.folders.take(10).map { root.trimEnd('/') + "/" + it }
         var selected: String? = null
         for (candidate in candidateParents) {
-            if (remote.folderCreateCapability(root, candidate) is RemoteFolderCreateCapability.Ready) {
+            // Prefer an already-empty subdirectory to avoid disturbing the
+            // user's existing catalogue layout. No newDirectory is sent until
+            // the selected exact parent has complete two-provider agreement.
+            val page = remote.browseDirectories(candidate) as? RemoteDirectoryLookup.Ready
+            if (page?.page?.path == candidate && page.page.folders.isEmpty() &&
+                remote.folderCreateCapability(root, candidate) is RemoteFolderCreateCapability.Ready) {
                 selected = candidate
                 break
             }
