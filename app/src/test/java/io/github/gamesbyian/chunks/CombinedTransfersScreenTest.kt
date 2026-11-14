@@ -476,7 +476,12 @@ class CombinedTransfersScreenTest {
             (persisted.load().scope as? EnvironmentViewScope.Only)?.ids ==
                 setOf(exactServerId, otherId)
         }
-        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
+        // Client chips live in a horizontally scrolling row. After hiding
+        // Local, the saved server may be clipped beyond the 411dp viewport.
+        // Reveal the actual chip before tapping; a clipped center tap must
+        // never be mistaken for a committed scope preference.
+        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true)
+            .performScrollTo().assertIsDisplayed().performClick()
         rule.waitUntil(10_000) {
             persisted.load().scope == EnvironmentViewScope.Only(setOf(exactServerId))
         }
