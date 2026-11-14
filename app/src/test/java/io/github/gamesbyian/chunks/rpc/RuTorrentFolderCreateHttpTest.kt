@@ -42,6 +42,7 @@ class RuTorrentFolderCreateHttpTest {
         var symlinkParent = false
         var symlinkBrowserRoot = false
         var symlinkChildAfterWrite = false
+        var hideTypedParentChildren = false
         var applyWrite = true
         var ackStatus = 200
         private fun send(ex: HttpExchange, code: Int, body: String = "") {
@@ -99,8 +100,9 @@ class RuTorrentFolderCreateHttpTest {
                             val names = when (path) {
                                 "/srv" -> listOf(if (symlinkBrowserRoot) "tenant" else "tenant/")
                                 "/srv/tenant" -> listOf(if (symlinkParent) "TV" else "TV/")
-                                "/srv/tenant/TV" -> listOf("Season 1/") +
-                                    created.map { it + if (symlinkChildAfterWrite) "" else "/" }
+                                "/srv/tenant/TV" -> if (hideTypedParentChildren) emptyList()
+                                    else listOf("Season 1/") +
+                                        created.map { it + if (symlinkChildAfterWrite) "" else "/" }
                                 else -> emptyList()
                             }
                             send(ex, listingStatus, JSONObject().put("listing",
@@ -211,6 +213,21 @@ class RuTorrentFolderCreateHttpTest {
             assertEquals(RemoteFolderCreateOutcome.Refused,
                 remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "Season 2"))
             assertEquals(0, fx.writes.get())
+        }
+    }
+
+    @Test fun conflictingParentInventoriesRefuseBeforeAnyMkdir() = runBlocking {
+        Fixture().use { fx ->
+            fx.hideTypedParentChildren = true
+            val remote = fx.remote()
+            // Capability at the root still succeeds, but the exact parent is
+            // empty to File Manager and nonempty to _getdir. Do not trust 200.
+            assertEquals(RemoteFolderCreateCapability.Ready("/srv/tenant"),
+                remote.folderCreateCapability("/srv/tenant"))
+            assertEquals(RemoteFolderCreateOutcome.Refused,
+                remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "New"))
+            assertEquals(0, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
         }
     }
 

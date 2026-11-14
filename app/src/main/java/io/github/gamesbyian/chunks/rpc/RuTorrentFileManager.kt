@@ -41,6 +41,28 @@ internal enum class RemoteFolderPresence {
     FILE_MANAGER_NON_DIRECTORY
 }
 
+/** Directional, path-free inventory evidence. A shared child is a real typed FM folder,
+ * not a symlink or non-directory row. An empty 200 listing alone proves little:
+ * upstream File Manager's shell-backed find does not check the exit status.
+ */
+internal data class RemoteFolderInventoryComparison(
+    val browserDirectories: Int,
+    val fileManagerDirectories: Int,
+    val sharedDirectories: Int
+)
+
+internal fun folderInventoryComparison(
+    browserFolders: Collection<String>, fileManagerEntries: Set<String>
+): RemoteFolderInventoryComparison {
+    val typedDirectories = fileManagerEntries.asSequence()
+        .filter { it.endsWith("/") && it.length > 1 }
+        .map { it.dropLast(1) }.toSet()
+    return RemoteFolderInventoryComparison(
+        browserFolders.size, typedDirectories.size,
+        browserFolders.count { it in typedDirectories }
+    )
+}
+
 /** Classify two independent directory witnesses without exposing a tenant path. */
 internal fun folderPresence(
     inBrowser: Boolean, inFileManager: Boolean, nonDirectoryEntry: Boolean
@@ -232,7 +254,8 @@ internal object RuTorrentFileManager {
     suspend fun observeChild(
         rpc: URI, credentials: RemoteCredentials, observedRoot: String,
         parent: String, child: String,
-        onPresence: ((RemoteFolderPresence) -> Unit)? = null
+        onPresence: ((RemoteFolderPresence) -> Unit)? = null,
+        onInventory: ((RemoteFolderInventoryComparison) -> Unit)? = null
     ): RemoteFolderReadback = withContext(Dispatchers.IO) {
         if (!validLeaf(child) || relative(observedRoot, parent) == null)
             return@withContext RemoteFolderReadback.CANNOT_VERIFY
@@ -250,6 +273,7 @@ internal object RuTorrentFileManager {
                     .put("dir", if (rel.isEmpty()) "/" else rel)).first
             val entries = if (typed.code == 200) directoryNames(typed.body) else null
             if (entries == null) return@withContext RemoteFolderReadback.CANNOT_VERIFY
+            onInventory?.invoke(folderInventoryComparison(direct.page.folders, entries))
             val inBrowser = child in direct.page.folders
             val inFileManager = (child + "/") in entries
             onPresence?.invoke(folderPresence(inBrowser, inFileManager, child in entries))
@@ -312,6 +336,13 @@ internal object RuTorrentFileManager {
             val parentEntries = if (parentList.code == 200)
                 directoryNames(parentList.body) else null
             if (parentEntries == null) return@withContext RemoteFolderCreateOutcome.Refused
+            // If _getdir sees subdirectories while File Manager's shell-backed
+            // parent listing shares NONE of them, we have no independent proof
+            // both providers are looking at the same directory. Refuse the
+            // proposed write rather than risking an unrelated destination.
+            val overlap = folderInventoryComparison(before.page.folders, parentEntries)
+            if (overlap.browserDirectories > 0 && overlap.sharedDirectories == 0)
+                return@withContext RemoteFolderCreateOutcome.Refused
             if (name in parentEntries || name + "/" in parentEntries)
                 return@withContext RemoteFolderCreateOutcome.AlreadyExists
 
