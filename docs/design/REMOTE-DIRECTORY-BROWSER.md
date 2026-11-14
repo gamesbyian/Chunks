@@ -1,6 +1,6 @@
 # Remote download folder picker: interaction and visual design
 
-**Status: Universal Add picker and guarded New folder merged in [PR #1710](https://github.com/gamesbyian/Chunks/pull/1710); Connections saved-default reuse merged in [PR #1711](https://github.com/gamesbyian/Chunks/pull/1711).** Real Seedhost browsing is verified; New folder remains gated pending safe ancestral-root compatibility, with physical Pixel visual/accessibility acceptance still open. [Canonical behavior and security](../REMOTE-DIRECTORY-BROWSER.md) are binding; this file owns placement, composition, view states and visual acceptance. Reuse the existing Chunks theme, iconography and shared Compose controls; use the approved [folder icon](svg/icons/files/folder.svg) and [new-folder icon](svg/icons/files/new-folder.svg) when visually suitable, avoiding generic placeholder vectors. Keep the one-row Transfers / + Add / Connections / Options footer under the parent Add screen; picker overlay must respect system insets and not duplicate navigation.
+**Status: Universal Add picker and guarded New folder merged in [PR #1710](https://github.com/gamesbyian/Chunks/pull/1710); Connections saved-default reuse merged in [PR #1711](https://github.com/gamesbyian/Chunks/pull/1711).** Real Seedhost browsing and strictly verified ancestral-root compatibility are implemented (#1714), but actual Seedhost New folder remains unaccepted after two inconclusive one-shot writes and cross-provider disagreement. The explicit read-only **Check folder** recovery action is merged (#1721). Physical Pixel visual/accessibility acceptance is still open. [Canonical behavior and security](../REMOTE-DIRECTORY-BROWSER.md) are binding; this file owns placement, composition, view states and visual acceptance. Reuse the existing Chunks theme, iconography and shared Compose controls; use the approved [folder icon](svg/icons/files/folder.svg) and [new-folder icon](svg/icons/files/new-folder.svg) when visually suitable, avoiding generic placeholder vectors. Keep the one-row Transfers / + Add / Connections / Options footer under the parent Add screen; picker overlay must respect system insets and not duplicate navigation.
 
 ## Entry and hierarchy
 
@@ -44,10 +44,10 @@ The names and path above are **not** real server observations. The actual UI **m
 | Initial load | Spinner/progress text **Loading server folders**; current profile/path visible | Cancel, stale-safe read-only retry after timeout |
 | Ready (writable current parent) | Real subfolders + path; **Use this folder** enabled | Enter folder, Up, New folder only if separately permitted |
 | Empty (valid list) | **No subfolders here**; current folder still selectable if writable | Up, Use, New folder if supported |
-| Read-only or forbidden folder | Specific **Cannot save here** / permission detail; no false enabled Use | Up/Retry/Manual |
+| Read-only or forbidden folder | Specific **Cannot save here** / permission detail; no false enabled Use | Up/Refresh folders/Manual |
 | Browse supported, create absent | List works; New folder omitted or disabled with **Server does not allow creating folders** | Use existing folder |
-| Offline, expired auth, missing plugin | Specific failure and account name; no stale listing from another session | Reconnect, read-only Retry, manual path |
-| Create pending, refused, exists, uncertain | Target path and distinct status; no optimistic success | Cancel/read-only refresh; explicit fresh user action only |
+| Offline, expired auth, missing plugin | Specific failure and account name; no stale listing from another session | Reconnect, read-only Refresh folders, manual path |
+| Create pending, refused, exists, uncertain | Target path and distinct status; no optimistic success. **Uncertain** shows **Check folder (read-only)** for that exact child and identifies whether both providers confirm a real directory, both report absence, disagree, or cannot verify | Refresh folders without writes; keep the uncertain target blocked from another Create. Verified directory may be entered only after new listing is loaded |
 | Server or Add target switched | Prior folder data cleared, new profile shown; Add draft retained | Re-probe current profile |
 | Picker cancelled | Original Add path/source/Start unchanged; no remote operation | Return to same Add screen |
 
