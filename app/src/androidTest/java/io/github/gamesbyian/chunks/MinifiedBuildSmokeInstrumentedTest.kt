@@ -1,6 +1,6 @@
 package io.github.gamesbyian.chunks
 
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -47,11 +47,9 @@ class MinifiedBuildSmokeInstrumentedTest {
         diskIoMode = io.github.gamesbyian.chunks.engine.LocalDiskIoMode.POSIX)).also { it.start(); engines += it }
 
     private fun waitFor(timeoutMs: Long, condition: () -> Boolean) {
-        val deadline = System.currentTimeMillis() + timeoutMs
-        while (!condition()) {
-            check(System.currentTimeMillis() < deadline) { "Timed out waiting for engine state" }
-            Thread.sleep(100)
-        }
+        // Advance the v2 Compose scheduler while the independent native
+        // engines run; never starve pending UI continuations during JNI waits.
+        rule.waitUntil(timeoutMs, condition)
     }
 
     @Test fun nativeEngineMovesExactBytesAndComposeRenders() {
