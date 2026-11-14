@@ -43,6 +43,8 @@ class RuTorrentFolderCreateHttpTest {
         var symlinkBrowserRoot = false
         var symlinkChildAfterWrite = false
         var hideTypedParentChildren = false
+        var partialTypedParentChildren = false
+        var extraTypedParentChild = false
         var applyWrite = true
         var ackStatus = 200
         var ackBody = JSONObject().put("error", false).toString()
@@ -103,7 +105,9 @@ class RuTorrentFolderCreateHttpTest {
                                 "/srv/tenant" -> listOf(if (symlinkParent) "TV" else "TV/")
                                 "/srv/tenant/TV" -> if (hideTypedParentChildren) emptyList()
                                     else listOf("Season 1/") +
-                                        created.map { it + if (symlinkChildAfterWrite) "" else "/" }
+                                        (if (partialTypedParentChildren) emptyList() else
+                                            created.map { it + if (symlinkChildAfterWrite) "" else "/" }) +
+                                        (if (extraTypedParentChild) listOf("FM-only/") else emptyList())
                                 else -> emptyList()
                             }
                             send(ex, listingStatus, JSONObject().put("listing",
@@ -229,6 +233,32 @@ class RuTorrentFolderCreateHttpTest {
                 remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "New"))
             assertEquals(0, fx.writes.get())
             assertEquals(0, fx.siblingCalls.get())
+        }
+    }
+
+    @Test fun partiallyOverlappingParentInventoriesRefuseBeforeAnyMkdir() = runBlocking {
+        Fixture().use { fx ->
+            fx.created.add("Existing")
+            fx.partialTypedParentChildren = true
+            val remote = fx.remote()
+            // _getdir has two real children, File Manager only one matching
+            // typed child. Any positive overlap is NOT sufficient proof.
+            assertEquals(RemoteFolderCreateCapability.Ready("/srv/tenant"),
+                remote.folderCreateCapability("/srv/tenant"))
+            assertEquals(RemoteFolderCreateOutcome.Refused,
+                remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "New"))
+            assertEquals(0, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
+        }
+    }
+
+    @Test fun fileManagerOnlyParentChildAlsoRefusesBeforeAnyMkdir() = runBlocking {
+        Fixture().use { fx ->
+            fx.extraTypedParentChild = true
+            val remote = fx.remote()
+            assertEquals(RemoteFolderCreateOutcome.Refused,
+                remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "New"))
+            assertEquals(0, fx.writes.get())
         }
     }
 
