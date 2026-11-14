@@ -267,6 +267,16 @@ class SeedhostExactPeerBytesOnceTest {
             println("CHUNKS_HOST_DELETE: readonly-retirement-reconciliation")
             println("CHUNKS_HOST_DELETE: session-present=" + (target != null))
             println("CHUNKS_HOST_DELETE: exact-lookup-present=" + (remote.lookupName(expectedHash) != null))
+            if (target == null) {
+                val originalParent = requireNotNull(remote.defaultDirectory())
+                val digest = MessageDigest.getInstance("SHA-256").digest(originalParent.toByteArray())
+                    .joinToString("") { "%02x".format(it.toInt() and 255) }
+                check(digest == "506e63c4e10f73344832a9a9c271183db706876b3e7e8c9c34cf42dcb7664e42") { "Original fixture parent changed; no absence claim" }
+                val entries = diskEntries(originalParent)
+                println("CHUNKS_HOST_DELETE: original-parent-confirmed=true")
+                println("CHUNKS_HOST_DELETE: original-payload-present=" + (originalParent + "/" + fixtureName in entries))
+                println("CHUNKS_HOST_DELETE: remaining-session-count=" + inventory.size)
+            }
             if (target != null) {
                 check(target.name == fixtureName && target.sizeBytes == 512L * 1024)
                 val page = diskEntries(target.directory)
