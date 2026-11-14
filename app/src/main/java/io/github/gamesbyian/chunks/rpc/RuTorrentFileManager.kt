@@ -350,6 +350,33 @@ internal object RuTorrentFileManager {
         )
     }
 
+    /** Sample only three verified shared children to compare small directory responses. */
+    internal suspend fun forensicNestedCoverageReadOnly(
+        rpc: URI, credentials: RemoteCredentials, root: String
+    ): List<ForensicInventory> = withContext(Dispatchers.IO) {
+        val endpoint = endpoint(rpc) ?: return@withContext emptyList()
+        val verified = (config(endpoint, credentials, root) as? Configuration.Accepted)
+            ?.value ?: return@withContext emptyList()
+        val relativeRoot = relative(verified.fileRoot, root)
+            ?: return@withContext emptyList()
+        val rootPage = RuTorrentDirectoryListing.read(rpc, credentials, root)
+        if (rootPage !is RemoteDirectoryLookup.Ready || rootPage.page.path != root)
+            return@withContext emptyList()
+        val list = read(endpoint, credentials, JSONObject().put("method", "listDirectory")
+            .put("dir", if (relativeRoot.isEmpty()) "/" else relativeRoot)).first
+        if (list.code != 200) return@withContext emptyList()
+        val entries = directoryNames(list.body) ?: return@withContext emptyList()
+        val candidates = rootPage.page.folders.filter { it + "/" in entries }.take(3)
+        val result = mutableListOf<ForensicInventory>()
+        for (candidate in candidates) {
+            val childRoot = root.trimEnd('/') + "/" + candidate
+            val evidence = forensicInventoryReadOnly(
+                rpc, credentials, childRoot, "Chunks-folder-test-43587333772")
+            if (evidence != null) result.add(evidence)
+        }
+        result
+    }
+
     /**
      * Explicit one-child mutation, with fresh exact-root check and read-only
      * corroboration of every parent component. No retry after dispatch. The
