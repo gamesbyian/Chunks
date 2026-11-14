@@ -13,7 +13,7 @@ permissions:
   contents: read
 concurrency:
   group: chunks-seedhost-nested-coverage-once
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   coverage:
@@ -65,7 +65,7 @@ jobs:
                   print(line[:250])
           valid=(sys.argv[1]=="0" and int(root.get("tests","0"))==1
                  and all(root.get(k)=="0" for k in ("failures","errors","skipped"))
-                 and any("completed=read-only writes=zero" in l for l in lines))
+                 and any("completed=read-only samples=" in l and "writes=zero" in l for l in lines))
           print("CHUNKS_NESTED_FORENSIC: proof=" + ("passed" if valid else "failed") + " writes=zero")
           raise SystemExit(0 if valid else 1)
           PY
