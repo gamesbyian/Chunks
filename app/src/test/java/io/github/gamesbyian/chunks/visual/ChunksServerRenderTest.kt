@@ -125,7 +125,9 @@ open class ChunksServerRenderTest {
             rule.waitUntil(30_000) {
                 rule.onAllNodes(hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT)).fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Showing 3"))
+            // One compact count/live-rate line replaces the removed "Showing N" contract.
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                hasText("3 transfers · Live ↓", substring = true))
         } catch (timeout: Throwable) {
             rule.onRoot().captureRoboImage("build/chunks-visual/$prefix-timeout.png")
             throw timeout
