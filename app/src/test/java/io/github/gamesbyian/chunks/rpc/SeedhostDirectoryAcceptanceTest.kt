@@ -48,6 +48,11 @@ class SeedhostDirectoryAcceptanceTest {
         val capability = remote.folderCreateCapability(root)
         val canCreate = capability is RemoteFolderCreateCapability.Ready
         println("CHUNKS_SEEDHOST_FOLDER: filemanager-root-verified=" + canCreate)
+        if (capability is RemoteFolderCreateCapability.Unavailable) {
+            // Stable enum only; never expose returned server paths or responses.
+            println("CHUNKS_SEEDHOST_FOLDER: filemanager-reason=" +
+                capability.reason.name.lowercase().replace('_', '-'))
+        }
         if (System.getenv("CHUNKS_HOST_FOLDER_CREATE") == "authorized") {
             require(canCreate) { "CHUNKS_SEEDHOST_FOLDER: create-capability-unavailable" }
             val id = System.getenv("CHUNKS_HOST_FOLDER_RUN_ID").orEmpty()

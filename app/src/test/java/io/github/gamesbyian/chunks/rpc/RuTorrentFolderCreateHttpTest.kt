@@ -34,6 +34,8 @@ class RuTorrentFolderCreateHttpTest {
         val writes = AtomicInteger()
         val siblingCalls = AtomicInteger()
         var configuredRoot = "/srv/tenant"
+        var configStatus = 200
+        var listingStatus = 200
         var symlinkParent = false
         var symlinkChildAfterWrite = false
         var applyWrite = true
@@ -75,7 +77,7 @@ class RuTorrentFolderCreateHttpTest {
                     val command = JSONObject(URLDecoder.decode(
                         body.substringAfter("action="), Charsets.UTF_8.name()))
                     when (command.getString("method")) {
-                        "getConfig" -> send(ex, 200,
+                        "getConfig" -> send(ex, configStatus,
                             JSONObject().put("homedir", configuredRoot).toString())
                         "listDirectory" -> {
                             val path = command.getString("dir").trim('/').let {
@@ -87,7 +89,7 @@ class RuTorrentFolderCreateHttpTest {
                                     created.map { it + if (symlinkChildAfterWrite) "" else "/" }
                                 else -> emptyList()
                             }
-                            send(ex, 200, JSONObject().put("listing",
+                            send(ex, listingStatus, JSONObject().put("listing",
                                 JSONArray(names.map { JSONObject().put("name", it) })).toString())
                         }
                         "newDirectory" -> {
@@ -154,6 +156,36 @@ class RuTorrentFolderCreateHttpTest {
                 "/srv/tenant", "/srv/tenant/TV", "Raced-child")
             assertEquals(RemoteFolderCreateOutcome.Uncertain, outcome)
             assertEquals("Never replay a write whose target changed type", 1, fx.writes.get())
+        }
+    }
+
+    @Test fun readOnlyCapabilityExplainsMissingPluginDeniedAccessAndMismatchedRoot() = runBlocking {
+        Fixture().use { fx ->
+            val remote = fx.remote()
+            fx.configStatus = 404
+            assertEquals(RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.NOT_INSTALLED),
+                remote.folderCreateCapability("/srv/tenant"))
+            fx.configStatus = 403
+            assertEquals(RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.ACCESS_DENIED),
+                remote.folderCreateCapability("/srv/tenant"))
+            fx.configStatus = 500
+            assertEquals(RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.CANNOT_VERIFY),
+                remote.folderCreateCapability("/srv/tenant"))
+            fx.configStatus = 200
+            fx.configuredRoot = "/srv/different"
+            assertEquals(RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.ROOT_MISMATCH),
+                remote.folderCreateCapability("/srv/tenant"))
+            fx.configuredRoot = "/srv/tenant"
+            fx.listingStatus = 403
+            assertEquals(RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.ACCESS_DENIED),
+                remote.folderCreateCapability("/srv/tenant"))
+            assertEquals("Capability diagnosis must be read-only", 0, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
         }
     }
 
