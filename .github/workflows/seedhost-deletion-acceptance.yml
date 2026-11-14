@@ -1,0 +1,29 @@
+name: Protected Seedhost deletion acceptance
+on:
+  pull_request:
+    paths:
+      - tools/seedhost_deletion_acceptance.py
+      - .github/workflows/seedhost-deletion-acceptance.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: chunks-android-seedhost-scope-mutation
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 -m py_compile tools/seedhost_deletion_acceptance.py
+  protected:
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read-only getter and plugin diagnosis
+        env:
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+        run: python3 tools/seedhost_deletion_acceptance.py
