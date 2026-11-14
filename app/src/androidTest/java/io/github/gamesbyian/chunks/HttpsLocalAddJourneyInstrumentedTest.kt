@@ -298,7 +298,16 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 click("Transfers")
                 // The persistent footer now opens the canonical catalog.
                 // Enter this exact device's existing lifecycle controls.
-                click("Open device transfer controls")
+                // Transfers now keeps device maintenance inside the
+                // Filters disclosure. Reach the same Start control explicitly.
+                val filterTools = androidx.compose.ui.test.hasText("Filters")
+                rule.waitUntil(30_000) { runCatching {
+                    rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
+                        .performScrollToNode(filterTools)
+                    true
+                }.getOrDefault(false) }
+                click("Filters")
+                click("Device transfer controls")
                 click("Start")
                 rule.waitForIdle() // Dispatch queued Start before checking the OS permission prompt.
                 // Connect the verified piece-0 publisher immediately when Start is dispatched.
