@@ -15,6 +15,7 @@ import androidx.compose.ui.test.SemanticsNodeInteractionsProvider
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -96,7 +97,16 @@ class CombinedTouchTargetAuditTest {
         val density = androidx.test.core.app.ApplicationProvider
             .getApplicationContext<android.content.Context>().resources.displayMetrics.density
         val small = rule.smallTouchTargets(density).toMutableList()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Environment colours…"))
+        // Environment colours have moved to Connections/Options. Audit the
+        // canonical selector and the remaining disclosed device-maintenance row.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
+        rule.waitForIdle()
+        small += rule.smallTouchTargets(density)
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filters"))
+        rule.onNodeWithText("Filters").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasText("Device transfer controls"))
         rule.waitForIdle()
         small += rule.smallTouchTargets(density)
         assertTrue("Touch targets under 48dp: ${small.distinct()}", small.isEmpty())

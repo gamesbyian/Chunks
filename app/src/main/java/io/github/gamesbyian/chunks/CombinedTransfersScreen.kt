@@ -708,19 +708,24 @@ internal fun CombinedTransfersScreen(
     val paletteIdentities = labels.keys.toList()
     val paletteRevision = EnvironmentColourStore.revision
     var palette by remember { mutableStateOf(EnvironmentPalette.State(emptyMap(), emptyMap())) }
+    var coloursEnabled by remember { mutableStateOf(true) }
     LaunchedEffect(context, paletteIdentities, paletteRevision) {
         try {
-            palette = withContext(Dispatchers.IO) {
-                EnvironmentColourStore(context).ensure(paletteIdentities)
+            val (savedPalette, enabled) = withContext(Dispatchers.IO) {
+                val store = EnvironmentColourStore(context)
+                store.ensure(paletteIdentities) to store.showEnvironmentColours()
             }
+            palette = savedPalette
+            coloursEnabled = enabled
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            // Keep the previous visible colours rather than presenting a failed
-            // write as saved; controls and environment IDs are independent.
+            // Keep prior colours and the global preference if storage is unreadable.
         }
     }
-    var choosingColours by remember { mutableStateOf(false) }
+    val hueFor: (EnvironmentId) -> EnvironmentHue? = { id ->
+        palette.hueOf(id).takeIf { coloursEnabled }
+    }
     var showingViewOptions by rememberSaveable { mutableStateOf(false) }
     var showingBatchTools by rememberSaveable { mutableStateOf(false) }
     var showingSortOptions by rememberSaveable { mutableStateOf(false) }
@@ -1040,7 +1045,7 @@ internal fun CombinedTransfersScreen(
                 DetailsCollections(renameScope, transfer.key.infoHash, transfer.displayName)
             }),
             environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
-            environmentHue = palette.hueOf(focusedKey.environment),
+            environmentHue = hueFor(focusedKey.environment),
             onBack = { savedDetailTarget = null },
             // A Remove's outcome is retained after its job leaves the list (incomplete or
             // uncertain deletions must stay visible), so Details keeps showing it.
@@ -1190,7 +1195,7 @@ internal fun CombinedTransfersScreen(
             similar = { transfer ->
                 SimilarTransfersHost(transfer, sources,
                     environmentLabel = { labels[it] },
-                    environmentColor = { id -> palette.hueOf(id)?.let { Color(it.argb) } ?: ChunksColors.Outline },
+                    environmentColor = { id -> hueFor(id)?.let { Color(it.argb) } ?: ChunksColors.Outline },
                     onOpen = { key -> savedDetailTarget = arrayListOf(key.environment.value, key.infoHash) })
             }
         )
@@ -1293,8 +1298,8 @@ internal fun CombinedTransfersScreen(
                 pendingSharedTorrent = pendingSharedTorrent,
                 readingSharedTorrent = readingSharedTorrent,
                 sharedTorrentError = sharedTorrentError,
-                localHue = palette.hueOf(EnvironmentSnapshots.LOCAL),
-                serverHue = serverId?.let { palette.hueOf(it) }
+                localHue = hueFor(EnvironmentSnapshots.LOCAL),
+                serverHue = serverId?.let { hueFor(it) }
             )
         }
         item {
@@ -1359,24 +1364,34 @@ internal fun CombinedTransfersScreen(
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
                 .testTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // With up to three environments the individual chips fit; All
+                // would duplicate their default selected state and waste width.
+                if (shouldShowAllEnvironmentChip(labels.size)) FilterChip(
+                    selected = query.scope == EnvironmentViewScope.All,
+                    onClick = { update(query.copy(scope = EnvironmentViewScope.All)) },
+                    label = { Text("All") }, modifier = Modifier.heightIn(min = 48.dp)
+                        .semantics { contentDescription = "Show all environments" })
                 labels.forEach { (id, label) ->
                     val visible = environmentVisible(query.scope, id)
-                    // From ALL sources: a hidden environment still shows if it is offline/locked.
-                    val availability = sources.firstOrNull { it.environment == id }?.availability
+                    // A locked/unobserved inventory must say ?, never invent 0.
+                    val source = sources.firstOrNull { it.environment == id }
+                    val availability = source?.availability
                     val unavailable = availability == EnvironmentAvailability.OFFLINE ||
                         availability == EnvironmentAvailability.LOCKED
                     val shortName = environmentToggleName(id, rowLabels[id] ?: label)
+                    val count = environmentScopeCount(source)
                     FilterChip(selected = visible,
                         onClick = { update(query.copy(scope =
                             toggleEnvironmentVisibility(query.scope, id, available))) },
-                        label = { Text(shortName + when (availability) {
+                        label = { Text("$shortName ($count)" + when (availability) {
                             EnvironmentAvailability.OFFLINE -> " · offline"
                             EnvironmentAvailability.LOCKED -> " · locked"
                             else -> ""
                         }, maxLines = 1) },
-                        leadingIcon = { EnvironmentDot(palette.hueOf(id)) },
+                        leadingIcon = { EnvironmentDot(hueFor(id)) },
                         modifier = Modifier.heightIn(min = 48.dp).semantics {
-                            contentDescription = (if (visible) "Showing " else "Hidden: ") + label +
+                            contentDescription = (if (visible) "Showing " else "Hidden: ") +
+                                label + ", " + (if (count == "?") "count unknown" else "$count transfers") +
                                 (if (unavailable) ", currently unavailable" else "")
                         })
                 }
@@ -1520,10 +1535,12 @@ internal fun CombinedTransfersScreen(
         }
         }
         item(key = "combined-compact-count") {
-            Text(combinedShowingText(result.transfers.size,
-                result.sources.sumOf { it.transfers.size }) +
-                if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
-                style = MaterialTheme.typography.bodySmall)
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(combinedShowingText(result.transfers.size,
+                    result.sources.sumOf { it.transfers.size }) +
+                    if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
+                    style = MaterialTheme.typography.bodySmall)
+            }
         }
         // A local-only cold launch can have no running native engine, even
         // when saved jobs await explicit restoration. Never call that state
@@ -1579,14 +1596,14 @@ internal fun CombinedTransfersScreen(
                 item(key = "header-" + group.source.environment.value) {
                     Row(Modifier.padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        EnvironmentDot(palette.hueOf(group.source.environment))
+                        EnvironmentDot(hueFor(group.source.environment))
                         Text(labels[group.source.environment].orEmpty() + " · " + group.transfers.size +
                             " shown", style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.semantics { heading() })
                     }
                 }
                 items(group.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                    CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                    CombinedTransferRow(row, labels[row.key.environment].orEmpty(), hueFor(row.key.environment),
                     visibleEnvironmentLabel = rowLabels[row.key.environment],
                     source = sourcesByEnvironment[row.key.environment],
                         selection = if (selecting) row.key in selected else null,
@@ -1602,7 +1619,7 @@ internal fun CombinedTransfersScreen(
             }
         } else {
             items(result.transfers, key = { "row-" + it.key.environment.value + it.key.infoHash }) { row ->
-                CombinedTransferRow(row, labels[row.key.environment].orEmpty(), palette.hueOf(row.key.environment),
+                CombinedTransferRow(row, labels[row.key.environment].orEmpty(), hueFor(row.key.environment),
                     visibleEnvironmentLabel = rowLabels[row.key.environment],
                     source = sourcesByEnvironment[row.key.environment],
                     selection = if (selecting) row.key in selected else null,
@@ -1690,45 +1707,14 @@ internal fun CombinedTransfersScreen(
                     style = MaterialTheme.typography.bodySmall)
             }
         }
-        item {
-            OutlinedButton(onClick = { choosingColours = !choosingColours },
-                modifier = Modifier.padding(top = 8.dp).heightIn(min = 48.dp)) {
-                Text(if (choosingColours) "Done with colours" else "Environment colours…")
-            }
-            if (choosingColours) EnvironmentColourChooser(labels, palette,
-                onChoose = { id, hue ->
-                    batchScope.launch {
-                        withContext(Dispatchers.IO) { EnvironmentColourStore(context).choose(id, hue) }
-                    }
-                },
-                onRestore = { id ->
-                    batchScope.launch {
-                        withContext(Dispatchers.IO) { EnvironmentColourStore(context).restoreAutomatic(id) }
-                    }
-                })
-        }
-        // Switch view scopes here, never silently enter a different
-        // environment-specific list or change the authenticated account.
-        item {
-            ResponsiveActionGroup(Modifier.padding(vertical = 12.dp)) { actionModifier ->
-                OutlinedButton(onClick = {
-                    update(query.copy(scope = EnvironmentViewScope.Only(
-                        setOf(EnvironmentSnapshots.LOCAL))))
-                }, modifier = actionModifier) {
-                    Text("Only this device")
-                }
-                if (onOpenServer != null && serverId != null) OutlinedButton(onClick = {
-                    update(query.copy(scope = EnvironmentViewScope.Only(setOf(serverId))))
-                }, modifier = actionModifier) {
-                    Text("Only connected server")
-                }
-            }
-            // The local's explicit operational/restore controls must remain
-            // reachable whether its engine is running or has not been restored.
-            // Scoping the canonical catalog never grants native command authority.
+        // Colour choices live under Connections (each saved profile) and
+        // Options > Appearance (Local and global display preference).
+        // The client chips above are the only list-scope controls. Keep the
+        // local-engine maintenance route under advanced Filters, not after rows.
+        if (showingViewOptions) item {
             OutlinedButton(onClick = onOpenLocal,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                Text("Open device transfer controls")
+                Text("Device transfer controls")
             }
         }
         } // genuine Welcome/probe has no management chrome or list actions
@@ -1809,8 +1795,21 @@ internal fun toggleEnvironmentVisibility(
         is EnvironmentViewScope.Only -> scope.ids
     }
     val next = if (id in visible) visible - id else visible + id
+    // A compact chip row is a reversible multi-select, never a blank catalog
+    // with all sources implicitly disabled. Retain the final visible source.
+    if (next.isEmpty()) return scope
     return if (available.isNotEmpty() && next.containsAll(available)) EnvironmentViewScope.All
         else EnvironmentViewScope.Only(next)
+}
+
+/** The global scope chip adds value only with at least four configured environments. */
+internal fun shouldShowAllEnvironmentChip(configuredCount: Int): Boolean = configuredCount > 3
+
+/** Compact chip count; unavailable or privacy-locked inventories never masquerade as zero. */
+internal fun environmentScopeCount(source: EnvironmentTransferSnapshot?): String = when {
+    source == null || source.availability == EnvironmentAvailability.LOCKED -> "?"
+    !source.inventoryComplete -> if (source.transfers.isEmpty()) "?" else "${source.transfers.size}+"
+    else -> source.transfers.size.toString()
 }
 
 /** A confident (automatic or person-chosen) media identity suggests "Title (Year)". */
@@ -1944,9 +1943,10 @@ private fun CombinedTransferRow(
 ) {
     // The compact row expands in place to expose quick controls. Its header Details
     // button opens the one full Details destination for the exact environment/hash.
-    val accent = hue?.let { Color(it.argb) } ?: ChunksColors.Outline
-    val labelColour = if (hue != null && EnvironmentPalette.labelIsReadable(
-        hue, ChunksColors.Surface.toArgbLong())) accent else ChunksColors.Text
+    // One resolved hue drives rail, dot and text. The neutral fallback has
+    // readable contrast on Surface and avoids a grey rail with white label.
+    val accent = hue?.let { Color(it.argb) } ?: ChunksColors.TextSecondary
+    val labelColour = accent
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min).clip(RoundedCornerShape(12.dp))
         .background(ChunksColors.Surface)) {
         // Colour is supplementary: the exact environment name is always present.
@@ -2245,47 +2245,7 @@ private fun Color.toArgbLong(): Long =
 @Composable
 internal fun EnvironmentDot(hue: EnvironmentHue?, size: Int = 12) {
     Box(Modifier.size(size.dp).clip(CircleShape)
-        .background(hue?.let { Color(it.argb) } ?: ChunksColors.Outline))
-}
-
-/**
- * Per-environment palette choice. Repeating a colour is allowed; Restore
- * automatic returns to the colour first assigned to that environment.
- */
-@Composable
-private fun EnvironmentColourChooser(
-    labels: Map<EnvironmentId, String>,
-    palette: EnvironmentPalette.State,
-    onChoose: (EnvironmentId, EnvironmentHue) -> Unit,
-    onRestore: (EnvironmentId) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        labels.forEach { (id, label) ->
-            val current = palette.hueOf(id)
-            Text(label + " · " + (current?.label ?: "no colour") +
-                if (id in palette.chosen) " (chosen)" else " (automatic)",
-                style = MaterialTheme.typography.titleSmall)
-            FlowRow(Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                EnvironmentHue.entries.forEach { hue ->
-                    val isCurrent = hue == current
-                    Box(Modifier.size(48.dp).clip(CircleShape)
-                        .clickable(role = Role.RadioButton) { onChoose(id, hue) }
-                        .semantics {
-                            contentDescription = "$label colour ${hue.label}"
-                            selected = isCurrent
-                        }, contentAlignment = Alignment.Center) {
-                        Box(Modifier.size(if (isCurrent) 36.dp else 28.dp).clip(CircleShape)
-                            .background(Color(hue.argb))
-                            .then(if (isCurrent) Modifier.border(3.dp, ChunksColors.Text, CircleShape) else Modifier))
-                    }
-                }
-            }
-            if (id in palette.chosen) OutlinedButton(onClick = { onRestore(id) },
-                modifier = Modifier.heightIn(min = 48.dp)) { Text("Restore automatic colour") }
-        }
-    }
+        .background(hue?.let { Color(it.argb) } ?: ChunksColors.TextSecondary))
 }
 
 /** Live-only totals in words, saying what is unknown or left out. */

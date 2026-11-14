@@ -357,6 +357,18 @@ internal fun LocalEngineScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val colourRevision = EnvironmentColourStore.revision
+    var showEnvironmentColours by remember { mutableStateOf(true) }
+    var savingEnvironmentColours by remember { mutableStateOf(false) }
+    var colourPreferenceNotice by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(context, colourRevision) {
+        try {
+            showEnvironmentColours = withContext(Dispatchers.IO) {
+                EnvironmentColourStore(context).showEnvironmentColours()
+            }
+        } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+        catch (_: Exception) { colourPreferenceNotice = "Colour preference could not be read." }
+    }
     val finishInOrderStore = remember { FinishInOrderStore(context) }
     val seedingAssignments = remember { io.github.gamesbyian.chunks.seeding.PreferencesAssignmentStore(context) }
     val moveStore = remember { TransferMoveStore(context) }
@@ -3005,11 +3017,37 @@ internal fun LocalEngineScreen(
             }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Open Android notification settings") }
         }
         OptionsSettingsGroup(optionsCategory == OptionsCategory.APPEARANCE) {
-            if (onCombined != null) OutlinedButton(onClick = onCombined,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Environment colours in Transfers…") }
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .toggleable(value = showEnvironmentColours,
+                    enabled = !savingEnvironmentColours, role = Role.Switch,
+                    onValueChange = { requested ->
+                        savingEnvironmentColours = true
+                        scope.launch {
+                            val saved = withContext(Dispatchers.IO) {
+                                EnvironmentColourStore(context).setShowEnvironmentColours(requested)
+                            }
+                            if (saved) {
+                                showEnvironmentColours = requested
+                                colourPreferenceNotice = null
+                            } else colourPreferenceNotice = "Could not save Show environment colours."
+                            savingEnvironmentColours = false
+                        }
+                    }), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("Show environment colours", modifier = Modifier.weight(1f))
+                Switch(checked = showEnvironmentColours, onCheckedChange = null)
+            }
+            colourPreferenceNotice?.let {
+                Text(it, color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall)
+            }
+            EnvironmentColourPreference(
+                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL, "Local")
+            Text("Each remote connection's colour is configured in Connections. Names and status remain visible when colours are off.",
+                style = MaterialTheme.typography.bodySmall)
             if (onMediaSettings != null) OutlinedButton(onClick = onMediaSettings,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Artwork size and display…") }
-            Text("Chunks follows Android's text size. Transfer environment names remain visible alongside colours.",
+            Text("Chunks follows Android's text size.",
                 style = MaterialTheme.typography.bodySmall)
         }
         OptionsSettingsGroup(optionsCategory == OptionsCategory.ABOUT) {

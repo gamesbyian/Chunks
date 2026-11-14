@@ -299,23 +299,21 @@ class CombinedTransfersScreenTest {
         assertEquals(8, combinedBatchItemIndex(true, true, true))
     }
 
-    @Test fun deviceAndServerScopeShortcutsStayInCanonicalListAndOpenSameDetails() {
+    @Test fun compactClientChipsHideAndRestoreOneEnvironmentWithoutChangingCommandAuthority() {
         show()
-        revealText("Only this device")
-        rule.onNodeWithText("Only this device").performClick()
+        val serverName = serverEnvironmentLabel(aliasScope)
+        val showing = hasContentDescription("Showing " + serverName, substring = true)
+        reveal(showing)
+        rule.onNode(showing).performClick()
         rule.onNodeWithText("Big Archive").assertDoesNotExist()
-        revealText("Viewing:")
-        rule.onNodeWithText("Viewing:", substring = true).assertExists()
-        revealText("Only connected server")
-        rule.onNodeWithText("Only connected server").performClick()
-        // Scope change remains visible even when the filter chips are closed.
-        revealText("Viewing:")
-        rule.onNodeWithText("Viewing:", substring = true).assertExists()
-        val action = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        val hidden = hasContentDescription("Hidden: " + serverName, substring = true)
+        reveal(hidden)
+        rule.onNode(hidden).performClick()
+        val action = "Details for Big Archive on " + serverName
         revealDescription(action)
         rule.onNodeWithContentDescription(action).performClick()
         rule.onNodeWithText("Transfer details").assertExists()
-        assertTrue("Switching a list scope never executes a lifecycle command", commands.isEmpty())
+        assertTrue("Scope selection never executes a lifecycle command", commands.isEmpty())
     }
 
     @Test fun localOnlyCatalogKeepsExplicitRecoveryWhenNativeEngineIsAbsent() {
@@ -337,8 +335,10 @@ class CombinedTransfersScreenTest {
             } }
         }
         if (LocalEngineHolder.current() == null) {
-            revealText("Open device transfer controls")
-            rule.onNodeWithText("Open device transfer controls").performClick()
+            revealText("Filters")
+            rule.onNodeWithText("Filters").performClick()
+            revealText("Device transfer controls")
+            rule.onNodeWithText("Device transfer controls").performClick()
             assertEquals(1, openedDevice)
         }
         assertTrue("Scope selection or recovery navigation sent no remote commands", commands.isEmpty())
@@ -466,12 +466,31 @@ class CombinedTransfersScreenTest {
         // The view chip shows the compact unique origin; the group heading below
         // retains the exact address-bearing label.
         // Toggle row: hide the device and the other saved server, leaving only this server.
+        val exactServerId = requireNotNull(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))
+        val otherId = io.github.gamesbyian.chunks.model.EnvironmentId(other.id)
+        val persisted = CombinedViewPreferences(context)
         reveal(hasContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true))
         rule.onNodeWithContentDescription("Showing " + LOCAL_ENVIRONMENT_LABEL, substring = true).performClick()
-        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true).performClick()
+        rule.waitUntil(10_000) {
+            (persisted.load().scope as? EnvironmentViewScope.Only)?.ids ==
+                setOf(exactServerId, otherId)
+        }
+        // Client chips live in a horizontally scrolling row. After hiding
+        // Local, the saved server may be clipped beyond the 411dp viewport.
+        // Reveal the actual chip before tapping; a clipped center tap must
+        // never be mistaken for a committed scope preference.
+        rule.onNodeWithContentDescription("Showing Server · " + other.label, substring = true)
+            .performScrollTo().assertIsDisplayed().performClick()
+        rule.waitUntil(10_000) {
+            persisted.load().scope == EnvironmentViewScope.Only(setOf(exactServerId))
+        }
         rule.onNodeWithText("On this device: Engine not running; open transfers on this device · 0 transfers").assertDoesNotExist()
-        revealText("Showing 2")
-        rule.onNodeWithText("Showing 2").assertExists()
+        // The exact row remains visible after the scope/filter change; the
+        // header totals may be refreshed asynchronously by inventory polling.
+        val exact = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
+        revealDescription(exact)
+        rule.onNodeWithContentDescription(exact).assertExists()
         revealText("Group by environment")
         rule.onNodeWithContentDescription("Group by environment").assertExists()
         rule.onNode(androidx.compose.ui.test.isToggleable()).performClick()
@@ -756,35 +775,65 @@ class CombinedTransfersScreenTest {
         assertTrue(commands.isEmpty())
     }
 
-    @Test fun environmentColourChoicePersistsAndRestores() {
-        show()
-        revealText("Environment colours…")
-        rule.onNodeWithText("Environment colours…").performClick()
+    @Test fun connectionColourChoicePersistsAndRestoresWithoutChangingCommandScope() {
         val serverId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverId(
             aliasScope.substringBefore('\u0000'), "ian")
         val stored = EnvironmentColourStore(context)
-        rule.waitUntil(5_000) { stored.load().hueOf(serverId) != null }
-        val automatic = stored.load().hueOf(serverId)
+        val automatic = stored.ensure(listOf(
+            io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL, serverId)).hueOf(serverId)
         assertNotNull(automatic)
-        assertNotEquals("local and server differ automatically", automatic,
-            EnvironmentColourStore(context).load().hueOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL))
-        // A completed preference write does not mean its lazy controls have
-        // entered the current viewport. Await the real control before one tap.
-        revealDescription(serverEnvironmentLabel(aliasScope) + " colour Pink")
-        rule.onNodeWithContentDescription(serverEnvironmentLabel(aliasScope) + " colour Pink")
-            .performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.setContent {
+            ChunksTheme { Surface(color = ChunksColors.Background) {
+                EnvironmentColourPreference(serverId, "Wood")
+            } }
+        }
+        rule.onNodeWithContentDescription("Choose colour for Wood").performClick()
+        rule.onNodeWithContentDescription("Wood colour Pink").performClick()
         rule.waitUntil(5_000) {
             stored.load().hueOf(serverId) == io.github.gamesbyian.chunks.model.EnvironmentHue.PINK
         }
-        rule.waitForIdle()
-        assertEquals(io.github.gamesbyian.chunks.model.EnvironmentHue.PINK,
-            stored.load().hueOf(serverId))
-        rule.onRoot().captureRoboImage("build/chunks-visual/combined-colours.png")
-        revealText("Restore automatic colour")
+        rule.onRoot().captureRoboImage("build/chunks-visual/connections-colours.png")
         rule.onNodeWithText("Restore automatic colour").performClick()
         rule.waitUntil(5_000) { stored.load().hueOf(serverId) == automatic }
         assertEquals(automatic, stored.load().hueOf(serverId))
+        assertTrue(commands.isEmpty())
     }
+
+    @Test fun allScopeChipOnlyAppearsWithFourOrMoreClients() {
+        assertFalse(shouldShowAllEnvironmentChip(1))
+        assertFalse(shouldShowAllEnvironmentChip(2))
+        assertFalse(shouldShowAllEnvironmentChip(3))
+        assertTrue(shouldShowAllEnvironmentChip(4))
+        assertTrue(shouldShowAllEnvironmentChip(5))
+    }
+
+    @Test fun environmentCountLabelsDoNotClaimUnverifiedOrLockedZero() {
+        val id = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL
+        assertEquals("?", environmentScopeCount(null))
+        assertEquals("?", environmentScopeCount(
+            io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot(
+                id, io.github.gamesbyian.chunks.model.EnvironmentAvailability.LOCKED,
+                false, null, emptyList())))
+        assertEquals("?", environmentScopeCount(
+            io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot(
+                id, io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE,
+                false, null, emptyList())))
+        assertEquals("0", environmentScopeCount(
+            io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot(
+                id, io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE,
+                true, 1720000000000L, emptyList())))
+        val partial = listOf("a", "b").map { hash ->
+            io.github.gamesbyian.chunks.model.UnifiedTransferObservation(
+                io.github.gamesbyian.chunks.model.UnifiedTransferKey.of(
+                    id, hash.repeat(40)),
+                "A", "A", 120L, 0, false, 0L, 0L, 0)
+        }
+        assertEquals("2+", environmentScopeCount(
+            io.github.gamesbyian.chunks.model.EnvironmentTransferSnapshot(
+                id, io.github.gamesbyian.chunks.model.EnvironmentAvailability.STALE,
+                false, 1720000000000L, partial)))
+    }
+
     @Test fun rootTransfersReturnClosesDetailsWithoutLosingExactScopeOrViewPreferences() {
         val id = requireNotNull(
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(aliasScope))

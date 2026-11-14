@@ -17,9 +17,12 @@ class TransfersPresentationRulesTest {
     @Test fun togglesHideAndShowOneEnvironmentAndReturnToDynamicAll() {
         val hidden = toggleEnvironmentVisibility(EnvironmentViewScope.All, a, all)
         assertEquals(EnvironmentViewScope.Only(setOf(local, b)), hidden)
-        val none = toggleEnvironmentVisibility(toggleEnvironmentVisibility(hidden, local, all), b, all)
-        assertEquals(EnvironmentViewScope.Only(emptySet()), none)
-        assertEquals(EnvironmentViewScope.Only(setOf(a)), toggleEnvironmentVisibility(none, a, all))
+        val last = toggleEnvironmentVisibility(hidden, local, all)
+        assertEquals(EnvironmentViewScope.Only(setOf(b)), last)
+        // Reject hiding the last visible client; the interface cannot disappear.
+        assertEquals(last, toggleEnvironmentVisibility(last, b, all))
+        assertEquals(EnvironmentViewScope.Only(setOf(a, b)),
+            toggleEnvironmentVisibility(last, a, all))
         // Showing every available environment again is dynamic All, so new connections join.
         assertEquals(EnvironmentViewScope.All, toggleEnvironmentVisibility(hidden, a, all))
     }

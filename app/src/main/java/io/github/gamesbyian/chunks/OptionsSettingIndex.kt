@@ -13,7 +13,7 @@ internal enum class OptionsShortcut(val title: String, val where: String, privat
         "seeding seed ratio share sharing time rule rules stop upload goal"),
     LOCAL_SETTINGS("Device settings", "Speed limits and DHT are in Options; per-transfer download location is in Add · opens Options on this device",
         "speed limit limits bandwidth throttle rate dht peer peers discovery download location place local device storage"),
-    ENVIRONMENT_COLOURS("Environment colours", "Colours for the local device and each server · opens All environments",
+    ENVIRONMENT_COLOURS("Environment colours", "Global display toggle and Local colour in Appearance; each server colour in Connections",
         "colour colours color colors palette environment environments identity combined all"),
     MEDIA("Artwork & media info", "Online lookup consent, providers, artwork downloads and cache · opens Artwork & info",
         "artwork art poster cover image picture media metadata info identify identification match provider providers tmdb key tvmaze musicbrainz lookup online cache consent"),

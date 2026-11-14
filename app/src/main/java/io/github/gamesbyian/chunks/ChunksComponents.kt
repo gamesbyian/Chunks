@@ -203,20 +203,25 @@ internal fun EnvironmentBadge(
     var hue by androidx.compose.runtime.remember(context, environment) {
         androidx.compose.runtime.mutableStateOf<io.github.gamesbyian.chunks.model.EnvironmentHue?>(null)
     }
+    var coloursEnabled by androidx.compose.runtime.remember(context) {
+        androidx.compose.runtime.mutableStateOf(true)
+    }
     androidx.compose.runtime.LaunchedEffect(context, environment, paletteRevision) {
         try {
-            hue = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                environment?.let { EnvironmentColourStore(context).load().hueOf(it) }
+            val (enabled, resolved) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                val store = EnvironmentColourStore(context)
+                store.showEnvironmentColours() to environment?.let { store.load().hueOf(it) }
             }
+            coloursEnabled = enabled
+            hue = resolved
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
         } catch (_: Exception) {
-            // Retain a previously visible hue if preferences are temporarily
-            // unreadable. Neither the badge nor a palette reload may issue a
-            // transfer operation or change the environment's stable identity.
+            // Retain previous visible state rather than claiming an unsaved preference.
         }
     }
-    val accent = hue?.let { Color(it.argb) } ?: if (server) ChunksColors.Blue else ChunksColors.Cyan
+    val accent = if (!coloursEnabled) ChunksColors.TextSecondary
+        else hue?.let { Color(it.argb) } ?: if (server) ChunksColors.Blue else ChunksColors.Cyan
     Row(modifier.clip(RoundedCornerShape(12.dp)).background(ChunksColors.SurfaceRaised)
             .border(2.dp, accent, RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 6.dp),
