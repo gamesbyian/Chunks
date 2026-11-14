@@ -136,18 +136,21 @@ jobs:
       # must be independently verified by both directory providers. A missing
       # success receipt is NOT permission to repeat the write on this or any
       # other run; use only a subsequent nonmutating exact-child readback.
-      - name: Reconcile the single historical mkdir by read-only evidence
-        # The earlier one-shot attempt from 43570367968 was inconclusive.
-        # The previous check passed the ruTorrent web URL, not the exact RPC
-        # endpoint, to _getdir and was UNSUPPORTED before observing the child.
-        # This corrected, main-only check submits zero writes and never reruns.
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_CORRECT_ENDPOINT_V3') }}
+      - name: Reconcile exactly one reviewed mkdir by read-only evidence
+        # The previous attempt from 43570367968 has since been independently
+        # shown absent. The new 43587333772 one-shot was still uncertain after
+        # fresh Digest authorization; inspect only that separate fixed target
+        # using the already corrected exact-RPC read-only path.
+        # This main-only check submits zero writes and never reruns.
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && (contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_CORRECT_ENDPOINT_V3') || contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_READBACK_V4')) }}
         env:
           CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
           CHUNKS_FOLDER_RECONCILE_ONLY: authorized
-          CHUNKS_FOLDER_RECONCILE_RUN: "43570367968"
+          # A fixed allowlist: select exact target by trusted main commit marker.
+          # Never read the previous run's name when inspecting the new attempt.
+          CHUNKS_FOLDER_RECONCILE_RUN: ${{ contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_READBACK_V4') && '43587333772' || '43570367968' }}
         run: |
           private_log=$(mktemp)
           trap 'rm -f "$private_log"' EXIT
