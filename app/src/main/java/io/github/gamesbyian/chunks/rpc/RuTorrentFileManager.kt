@@ -215,12 +215,24 @@ internal object RuTorrentFileManager {
               if (!sent) return@withContext RemoteFolderCreateOutcome.Refused
           }
 
-        // Independent _getdir readback, including after a lost acknowledgement.
+        // Independent dual-provider readback, including after a lost acknowledgement.
+        // _getdir uses PHP is_dir(), which follows symlinks. Verify File
+        // Manager's directory-type entry too; a symlink can otherwise appear
+        // as a successful child directory even when it escapes the root.
         val after = try {
             RuTorrentDirectoryListing.read(rpc, credentials, parent)
         } catch (cancel: CancellationException) { throw cancel }
           catch (_: Exception) { null }
-        if (after is RemoteDirectoryLookup.Ready && name in after.page.folders)
+        val typedAfter = try {
+            val response = read(endpoint, credentials,
+                JSONObject().put("method", "listDirectory")
+                    .put("dir", if (rel.isEmpty()) "/" else rel)).first
+            if (response.code == 200) directoryNames(response.body) else null
+        } catch (cancel: CancellationException) { throw cancel }
+          catch (_: Exception) { null }
+        if (after is RemoteDirectoryLookup.Ready &&
+            name in after.page.folders &&
+            typedAfter?.contains(name + "/") == true)
             return@withContext RemoteFolderCreateOutcome.Created(confirmedPath)
         // The write may have reached the provider. Never automatically replay it.
         val explicitRefusal = reply?.takeIf { it.code == 200 }?.let { response ->

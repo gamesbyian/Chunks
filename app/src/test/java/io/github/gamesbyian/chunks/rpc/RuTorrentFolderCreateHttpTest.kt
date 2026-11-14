@@ -35,6 +35,7 @@ class RuTorrentFolderCreateHttpTest {
         val siblingCalls = AtomicInteger()
         var configuredRoot = "/srv/tenant"
         var symlinkParent = false
+        var symlinkChildAfterWrite = false
         var applyWrite = true
         var ackStatus = 200
         private fun send(ex: HttpExchange, code: Int, body: String = "") {
@@ -83,7 +84,7 @@ class RuTorrentFolderCreateHttpTest {
                             val names = when (path) {
                                 "/srv/tenant" -> listOf(if (symlinkParent) "TV" else "TV/")
                                 "/srv/tenant/TV" -> listOf("Season 1/") +
-                                    created.map { it + "/" }
+                                    created.map { it + if (symlinkChildAfterWrite) "" else "/" }
                                 else -> emptyList()
                             }
                             send(ex, 200, JSONObject().put("listing",
@@ -141,6 +142,18 @@ class RuTorrentFolderCreateHttpTest {
             assertEquals(RemoteFolderCreateOutcome.Refused,
                 remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "Season 2"))
             assertEquals(0, fx.writes.get())
+        }
+    }
+
+    @Test fun symlinkAppearingAfterWriteCannotBeMistakenForVerifiedDirectory() = runBlocking {
+        Fixture().use { fx ->
+            // _getdir's PHP is_dir follows symlinks; the File Manager listing
+            // must separately classify this entry as a directory (suffix '/').
+            fx.symlinkChildAfterWrite = true
+            val outcome = fx.remote().createServerFolder(
+                "/srv/tenant", "/srv/tenant/TV", "Raced-child")
+            assertEquals(RemoteFolderCreateOutcome.Uncertain, outcome)
+            assertEquals("Never replay a write whose target changed type", 1, fx.writes.get())
         }
     }
 
