@@ -10,6 +10,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -42,6 +44,17 @@ import org.robolectric.annotation.GraphicsMode
 class CombinedTransfersLargeTextTest {
     @get:Rule val rule = createComposeRule()
 
+    private fun clickFilters() {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT).performScrollTo().performClick()
+    }
+    private fun clickBatch() {
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+            hasTestTag(ChunksSemantics.TRANSFERS_BATCH_TOOLS))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_BATCH_TOOLS).performScrollTo().performClick()
+    }
+
     private fun show(openLocal: IntArray, back: IntArray) {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         // Explicit local-only scope is a real filtered view, so the full
@@ -66,7 +79,7 @@ class CombinedTransfersLargeTextTest {
         // Preference IO is deliberately off-main. Never scroll an unmounted
         // filtered control while the genuine Welcome is still being replaced.
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Filters").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodes(hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT)).fetchSemanticsNodes().isNotEmpty()
         }
     }
 
@@ -74,12 +87,9 @@ class CombinedTransfersLargeTextTest {
         val opened = intArrayOf(0)
         val backed = intArrayOf(0)
         show(opened, backed)
-        rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Viewing:", substring = true).fetchSemanticsNodes().isNotEmpty()
-        }
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Filters"))
-        rule.onNodeWithText("Filters").performClick()
+        clickFilters()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Viewing:", substring = true))
+        rule.onNodeWithText("Viewing:", substring = true).assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
         // This label lives inside a lazy list item, not a nested ScrollState.
@@ -90,8 +100,7 @@ class CombinedTransfersLargeTextTest {
         rule.onNodeWithText("Sort by").assertExists()
 
         // Batch controls begin collapsed to prioritize the first transfer.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Batch tools"))
-        rule.onNodeWithText("Batch tools").performClick()
+        clickBatch()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select…"))
         val select = rule.onNodeWithText("Select…")
         val selectionBounds = select.getUnclippedBoundsInRoot()
@@ -116,8 +125,7 @@ class CombinedTransfersLargeTextTest {
         val opened = intArrayOf(0)
         val backed = intArrayOf(0)
         show(opened, backed)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filters"))
-        rule.onNodeWithText("Filters").performClick()
+        clickFilters()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change sort & grouping", substring = true))
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Group by environment"))
@@ -144,8 +152,7 @@ class CombinedTransfersLargeTextTest {
         val list = rule.onNode(hasScrollToIndexAction())
         // The current-value summary opens all chips on demand, without
         // horizontal scrolling or losing the saved environment selection.
-        list.performScrollToNode(hasText("Filters"))
-        rule.onNodeWithText("Filters").performClick()
+        clickFilters()
         list.performScrollToNode(hasText("Attention"))
         rule.onNodeWithText("Attention").performClick()
         assertEquals(UnifiedTransferFilter.ATTENTION,

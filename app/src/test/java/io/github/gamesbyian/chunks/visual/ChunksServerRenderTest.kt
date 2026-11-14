@@ -123,7 +123,7 @@ open class ChunksServerRenderTest {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("View transfers"))
             rule.onNodeWithText("View transfers").performClick()
             rule.waitUntil(30_000) {
-                rule.onAllNodesWithText("Filters").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodes(hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT)).fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Showing 3"))
         } catch (timeout: Throwable) {
@@ -208,8 +208,8 @@ open class ChunksServerRenderTest {
         // Batch tools remain a disclosure within the canonical catalog. They
         // do not change account, start a transfer or grant command authority
         // until a distinct exact-job review and confirmation.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Batch tools"))
-        rule.onNodeWithText("Batch tools").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.TRANSFERS_BATCH_TOOLS))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_BATCH_TOOLS).performScrollTo().performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Select…"))
         rule.onNodeWithText("Select…").performClick()
         rule.waitForIdle()

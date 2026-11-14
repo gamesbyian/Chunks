@@ -335,9 +335,10 @@ class CombinedSavedServersTest {
         rule.waitUntil(15_000) { readsB.get() == 1 }
         assertEquals("Same-label unrelated principal must remain unread", 0, readsA.get())
         assertEquals(1, readsB.get())
+        // The compact list no longer renders the old "Viewing: Server" banner.
+        // Wait for the exact selected profile's inventory row instead.
         rule.waitUntil(15_000) {
-            rule.onAllNodesWithText("Viewing: Server · Shared label", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("B only").fetchSemanticsNodes().isNotEmpty()
         }
         revealText("B only")
         rule.onNodeWithText("B only").assertExists()

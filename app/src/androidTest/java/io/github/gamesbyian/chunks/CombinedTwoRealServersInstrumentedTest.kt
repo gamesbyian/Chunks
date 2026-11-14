@@ -508,8 +508,9 @@ class CombinedTwoRealServersInstrumentedTest {
                     rule.onNodeWithText("Select…").performClick()
                 }
             }
-            scrollTo("Batch tools")
-            rule.onNodeWithText("Batch tools").performClick()
+            scrollTo("Search names or hashes")
+            rule.onNode(hasTestTag(ChunksSemantics.TRANSFERS_BATCH_TOOLS))
+                .performScrollTo().performClick()
             ensureSelecting()
             selectRow(portA)
             selectRow(portB)

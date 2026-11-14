@@ -164,15 +164,19 @@ class LocalIntakeJourneyInstrumentedTest {
     /** Footer Transfers opens the unified catalog. Device maintenance is now
      * disclosed under Filters, never as a bottom-of-list dashboard button. */
     private fun enterDeviceControlsFromCatalog() {
+        val disclosure = androidx.compose.ui.test.hasTestTag(
+            ChunksSemantics.TRANSFERS_FILTER_SORT)
         rule.waitUntil(30_000) {
             runCatching {
-                rule.onNode(hasScrollToIndexAction())
-                    .performScrollToNode(hasText("Filters", substring = true))
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(disclosure)
                 true
             }.getOrDefault(false)
         }
-        if (rule.onAllNodesWithText("Hide filters").fetchSemanticsNodes().isEmpty())
-            click("Filters")
+        val state = runCatching {
+            rule.onNode(disclosure).fetchSemanticsNode().config[
+                androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
+        }.getOrNull()
+        if (state != "Expanded") rule.onNode(disclosure).performScrollTo().performClick()
         rule.waitUntil(30_000) {
             runCatching {
                 rule.onNode(hasScrollToIndexAction())

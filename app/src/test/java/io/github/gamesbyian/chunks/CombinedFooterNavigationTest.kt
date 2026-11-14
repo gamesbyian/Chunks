@@ -106,13 +106,13 @@ class CombinedFooterNavigationTest {
         reachLastTransfer()
         rule.onNodeWithContentDescription("Options").assertIsDisplayed().performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Hide filters").assertIsDisplayed()
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT).assertIsDisplayed()
         // Environment choice no longer lives in Filters: it is the always-visible toggle row.
         rule.onNodeWithText("Filter transfers").assertExists()
         rule.onNodeWithTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES).assertExists()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("Filters").assertIsDisplayed()
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT).assertIsDisplayed()
         assertTrue(commands.isEmpty())
     }
 

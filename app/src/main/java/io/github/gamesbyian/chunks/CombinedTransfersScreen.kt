@@ -1302,61 +1302,6 @@ internal fun CombinedTransfersScreen(
                 serverHue = serverId?.let { hueFor(it) }
             )
         }
-        item {
-            val scopeName = when (val scope = query.scope) {
-                EnvironmentViewScope.All -> "All environments"
-                is EnvironmentViewScope.Only ->
-                    if (scope.ids.isEmpty()) "No environments"
-                    else if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One environment"
-                    else "${scope.ids.size} environments"
-            }
-            val filterName = when (query.filter) {
-                UnifiedTransferFilter.ALL -> "All transfers"
-                UnifiedTransferFilter.STARTED -> "Started"
-                UnifiedTransferFilter.STOPPED -> "Stopped"
-                UnifiedTransferFilter.COMPLETE -> "Complete"
-                UnifiedTransferFilter.TRANSFERRING -> "Transferring"
-                UnifiedTransferFilter.ATTENTION -> "Needs attention"
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { showingViewOptions = !showingViewOptions; if (!showingViewOptions) showingSortOptions = false },
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                ) { Text(if (showingViewOptions) "Hide filters" else "Filters") }
-                OutlinedButton(onClick = { showingBatchTools = !showingBatchTools },
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
-                    Text(if (showingBatchTools) "Hide batch tools" else "Batch tools")
-                }
-            }
-            // A scoped Transfers list retains the same catalog and heading.
-            // State the effective environment and filter even when the chip
-            // panel is collapsed, so local/server-only views are not mistaken
-            // for an incomplete global inventory. All/default stays compact.
-            if (query.scope != EnvironmentViewScope.All ||
-                query.filter != UnifiedTransferFilter.ALL) {
-                Text("Viewing: $scopeName · $filterName",
-                    style = MaterialTheme.typography.bodySmall)
-            }
-            // Search has its own clear affordance; do not insert a second button
-            // above the text field as the user types and shift its focus/position.
-            if (!addedHidden && !showingViewOptions && result.transfers.isNotEmpty() &&
-                (query.filter != UnifiedTransferFilter.ALL ||
-                    query.scope != EnvironmentViewScope.All)) {
-                OutlinedButton(onClick = { update(CombinedViewPreferences.showAll(query)) },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Show all transfers")
-                }
-            }
-            if (!addedHidden && result.transfers.isNotEmpty() &&
-                (query.filter != UnifiedTransferFilter.ALL ||
-                    query.scope != EnvironmentViewScope.All)) {
-                Text(
-                    "New downloads may be hidden by this view. Show all transfers " +
-                        "clears view filters, not your Add destination.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-        }
         // One persistent row of environment toggles, always visible above the list: no
         // Filters panel, Apply or Hide step. Each toggles only its own environment.
         if (!firstRunVisible) item(key = "environment-toggles") {
@@ -1401,24 +1346,66 @@ internal fun CombinedTransfersScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp))
         }
-        item {
-            ClearableTransferSearchField(
-                value = query.search,
-                onValueChange = {
+        // One compact row: live search plus disclosure controls, following
+        // the environment chips. Batch and filter panels are still the same
+        // exact-account safety-gated sections; these icons only reveal them.
+        item(key = "transfers-search-tools") {
+            TransfersInlineToolbar(
+                search = query.search,
+                onSearchChange = {
                     queryTouched = true
                     query = query.copy(search = it)
                     searchState?.value = it
                 },
-                label = "Search names or hashes"
+                filtersExpanded = showingViewOptions,
+                batchExpanded = showingBatchTools,
+                filtersActive = query.filter != UnifiedTransferFilter.ALL ||
+                    query.sortKey != UnifiedSortKey.NAME ||
+                    query.direction != TransferSortOrdering.naturalDirection(query.sortKey.orderingKind()) ||
+                    query.groupByEnvironment,
+                onFilters = {
+                    showingViewOptions = !showingViewOptions
+                    if (!showingViewOptions) showingSortOptions = false
+                },
+                onBatch = { showingBatchTools = !showingBatchTools }
             )
-            // The search affordance itself remains in place while typing.
-            // This hint comes AFTER the field so it never displaces its focus.
-            if (query.search.isNotBlank() &&
-                query.filter == UnifiedTransferFilter.ALL &&
-                query.scope == EnvironmentViewScope.All) {
-                Text("New downloads may not match this search. Clear search to see them.",
+        }
+        // Explain a nondefault view and expose recovery inside its disclosure,
+        // never as a banner or oversized CTA above every transfer card.
+        if (showingViewOptions &&
+            (query.scope != EnvironmentViewScope.All ||
+                query.filter != UnifiedTransferFilter.ALL)) item {
+            val scopeName = when (val scope = query.scope) {
+                EnvironmentViewScope.All -> "All environments"
+                is EnvironmentViewScope.Only ->
+                    if (scope.ids.isEmpty()) "No environments"
+                    else if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One environment"
+                    else "${scope.ids.size} environments"
+            }
+            val filterName = when (query.filter) {
+                UnifiedTransferFilter.ALL -> "All transfers"
+                UnifiedTransferFilter.STARTED -> "Started"
+                UnifiedTransferFilter.STOPPED -> "Stopped"
+                UnifiedTransferFilter.COMPLETE -> "Complete"
+                UnifiedTransferFilter.TRANSFERRING -> "Transferring"
+                UnifiedTransferFilter.ATTENTION -> "Needs attention"
+            }
+            Text("Viewing: " + scopeName + " · " + filterName,
+                style = MaterialTheme.typography.bodySmall)
+            if (!addedHidden && result.transfers.isNotEmpty()) {
+                OutlinedButton(
+                    onClick = { update(CombinedViewPreferences.showAll(query)) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                ) { Text("Show all transfers") }
+                Text("New downloads may be hidden by this view. Resetting filters never changes your Add destination.",
                     style = MaterialTheme.typography.bodySmall)
             }
+        }
+        if (showingViewOptions && query.search.isNotBlank() &&
+            query.filter == UnifiedTransferFilter.ALL &&
+            query.scope == EnvironmentViewScope.All) item {
+            Text("New downloads may not match this search. Clear search to see them.",
+                style = MaterialTheme.typography.bodySmall)
         }
         if (showingViewOptions) item {
             Text("Filter transfers", style = MaterialTheme.typography.labelLarge)
