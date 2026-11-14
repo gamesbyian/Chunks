@@ -32,11 +32,13 @@ class RuTorrentFolderCreateHttpTest {
             .encodeToString("alice:secret".toByteArray(Charsets.UTF_8))
         val created = java.util.Collections.synchronizedSet(mutableSetOf<String>())
         val writes = AtomicInteger()
+        val targets = java.util.Collections.synchronizedList(mutableListOf<String>())
         val siblingCalls = AtomicInteger()
         var configuredRoot = "/srv/tenant"
         var configStatus = 200
         var listingStatus = 200
         var symlinkParent = false
+        var symlinkBrowserRoot = false
         var symlinkChildAfterWrite = false
         var applyWrite = true
         var ackStatus = 200
@@ -81,9 +83,11 @@ class RuTorrentFolderCreateHttpTest {
                             JSONObject().put("homedir", configuredRoot).toString())
                         "listDirectory" -> {
                             val path = command.getString("dir").trim('/').let {
-                                if (it.isEmpty()) "/srv/tenant" else "/srv/tenant/" + it
+                                if (it.isEmpty()) configuredRoot
+                                else configuredRoot.trimEnd('/') + "/" + it
                             }
                             val names = when (path) {
+                                "/srv" -> listOf(if (symlinkBrowserRoot) "tenant" else "tenant/")
                                 "/srv/tenant" -> listOf(if (symlinkParent) "TV" else "TV/")
                                 "/srv/tenant/TV" -> listOf("Season 1/") +
                                     created.map { it + if (symlinkChildAfterWrite) "" else "/" }
@@ -95,8 +99,10 @@ class RuTorrentFolderCreateHttpTest {
                         "newDirectory" -> {
                             writes.incrementAndGet()
                             val target = command.getString("target")
-                            if (applyWrite && target.startsWith("TV/"))
-                                created.add(target.removePrefix("TV/"))
+                            targets.add(target)
+                            if (applyWrite && (target.startsWith("TV/") ||
+                                    target.startsWith("tenant/TV/")))
+                                created.add(target.substringAfterLast('/'))
                             send(ex, ackStatus, JSONObject().put("error", false).toString())
                         }
                         else -> send(ex, 404)
@@ -126,6 +132,40 @@ class RuTorrentFolderCreateHttpTest {
             assertEquals(listOf("Season 1", "Season 2"),
                 (remote.browseDirectories("/srv/tenant/TV") as
                     RemoteDirectoryLookup.Ready).page.folders)
+        }
+    }
+
+    @Test fun verifiedAncestorRootMapsTheExactChildIntoFileManagerNamespace() = runBlocking {
+        Fixture().use { fx ->
+            // _getdir starts in the download subtree, but File Manager exposes
+            // an ancestor homedir. Chunks proves every path component is a
+            // directory and submits the correct File Manager-relative target.
+            fx.configuredRoot = "/srv"
+            val remote = fx.remote()
+            assertEquals(RemoteFolderCreateCapability.Ready("/srv/tenant"),
+                remote.folderCreateCapability("/srv/tenant"))
+            val outcome = remote.createServerFolder(
+                "/srv/tenant", "/srv/tenant/TV", "Season 2")
+            assertEquals(RemoteFolderCreateOutcome.Created("/srv/tenant/TV/Season 2"), outcome)
+            assertEquals(listOf("tenant/TV/Season 2"), fx.targets)
+            assertEquals(1, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
+        }
+    }
+
+    @Test fun ancestorMappingRefusesSymlinkRootOrUnrelatedParentWithoutWriting() = runBlocking {
+        Fixture().use { fx ->
+            fx.configuredRoot = "/srv"
+            fx.symlinkBrowserRoot = true
+            val remote = fx.remote()
+            assertEquals(RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.ROOT_MISMATCH),
+                remote.folderCreateCapability("/srv/tenant"))
+            assertEquals(RemoteFolderCreateOutcome.Refused,
+                remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "New"))
+            assertEquals(RemoteFolderCreateOutcome.Refused,
+                remote.createServerFolder("/srv/tenant", "/srv/other/TV", "New"))
+            assertEquals(0, fx.writes.get())
         }
     }
 
