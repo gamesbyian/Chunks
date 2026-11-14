@@ -131,7 +131,7 @@ jobs:
         # The earlier one-shot attempt from 43570367968 was inconclusive.
         # This step cannot submit a new mkdir, runs only on the marked main
         # merge commit, and is not repeated by reruns or unrelated pushes.
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_ONLY_V1') }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_DIAG_V2') }}
         env:
           CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
@@ -159,8 +159,13 @@ jobs:
           root = ET.parse(report).getroot()
           lines = (root.findtext('system-out') or '').splitlines()
           evidence = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: evidence=')]
-          for item in evidence:
+          checkpoints = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: checkpoint=')]
+          for item in evidence + checkpoints:
               print(item[:160])
+          print('CHUNKS_CREATE_RECONCILE: tests=' + root.get('tests', '?') +
+                ' failures=' + root.get('failures', '?') +
+                ' errors=' + root.get('errors', '?') +
+                ' skipped=' + root.get('skipped', '?'))
           passed = (
               sys.argv[1] == '0' and
               int(root.get('tests', '0')) == 1 and

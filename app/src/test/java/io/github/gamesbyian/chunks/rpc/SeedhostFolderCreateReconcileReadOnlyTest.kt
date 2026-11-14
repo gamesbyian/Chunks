@@ -18,7 +18,12 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class SeedhostFolderCreateReconcileReadOnlyTest {
     @Test fun inspectOnlyThePreviousOneTimeFolder() = runBlocking {
+        // These fixed checkpoints describe which read-only preflight completed.
+        // Never print raw exceptions, account paths, or provider responses.
+        var checkpoint = "entered"
+        try {
         assumeTrue(System.getenv("CHUNKS_FOLDER_RECONCILE_ONLY") == "authorized")
+        checkpoint = "opt-in-confirmed"
         val runId = System.getenv("CHUNKS_FOLDER_RECONCILE_RUN").orEmpty()
         require(runId == "43570367968") { "Unrecognized historical mkdir run" }
         val rawUrl = System.getenv("CHUNKS_LIVE_RUTORRENT_URL").orEmpty()
@@ -33,15 +38,25 @@ class SeedhostFolderCreateReconcileReadOnlyTest {
         val pass = System.getenv("CHUNKS_LIVE_RTORRENT_PASS").orEmpty()
         require(user.isNotBlank() && pass.isNotBlank()) { "Protected credentials unavailable" }
         val credentials = RemoteCredentials(rawUrl, user, pass)
-        val root = (RuTorrentDirectoryListing.read(uri, credentials, "") as?
-            RemoteDirectoryLookup.Ready)?.page?.path
+        checkpoint = "account-verified"
+        val rootResult = RuTorrentDirectoryListing.read(uri, credentials, "")
+        checkpoint = when (rootResult) {
+            is RemoteDirectoryLookup.Ready -> "root-observed"
+            is RemoteDirectoryLookup.Unavailable -> "root-" +
+                rootResult.reason.name.lowercase().replace('_', '-')
+        }
+        val root = (rootResult as? RemoteDirectoryLookup.Ready)?.page?.path
             ?: error("CHUNKS_CREATE_RECONCILE: root-not-observed")
         val outcome = RuTorrentFileManager.observeChild(
             uri, credentials, root, root, "Chunks-folder-test-$runId")
+        checkpoint = "two-providers-observed"
         // Nothing here calls newDirectory, d.erase, shell or any transfer mutation.
         println("CHUNKS_CREATE_RECONCILE: evidence=" +
             outcome.name.lowercase().replace('_', '-') + " writes=zero")
         assertNotEquals("The historical folder could not be independently classified",
             RemoteFolderReadback.CANNOT_VERIFY, outcome)
+        } finally {
+            println("CHUNKS_CREATE_RECONCILE: checkpoint=" + checkpoint + " writes=zero")
+        }
     }
 }
