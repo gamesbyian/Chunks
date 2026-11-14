@@ -126,6 +126,7 @@ enum class RemoteDeleteRefusal(val explanation: String) {
     SHARED_FILES("Another server transfer shares these payload files, or its file mapping could not be verified."),
     SESSION_CHANGED("The server jobs or file mappings changed during review. Refresh before a new review."),
     AUTHENTICATION("The server rejected authentication or access. Reconnect this exact profile."),
+    CAPABILITY_RESTRICTED("The server restricts data-deletion capability discovery. Session-only Remove remains available; inspect permissions in ruTorrent."),
     CAPABILITY_UNKNOWN("A safe data-deletion adapter could not be verified. Recheck server capabilities; session-only Remove remains available."),
     PLUGIN_METHOD_REFUSED("The selected deletion endpoint rejected this HTTP method (405). No alternative deletion was attempted."),
     PLUGIN_UNAVAILABLE("The ruTorrent erasedata endpoint is unavailable on this exact server route.")

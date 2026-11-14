@@ -54,6 +54,7 @@ class RuTorrentFullSessionDeleteGuardTest {
         legacyPrincipal: String = "alice",
         incompleteHooks: Boolean = false,
         advertiseAdapter: Boolean = true,
+        pluginHeadStatus: Int = 200,
         check: suspend (RTorrentRemote, AtomicInteger, AtomicInteger, AtomicInteger) -> Unit
     ) = runBlocking {
         val erased = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -88,6 +89,7 @@ class RuTorrentFullSessionDeleteGuardTest {
             }
             val value = when (method) {
                 "system.client_version" -> string("0.9.8")
+                "d.custom5" -> string("")
                 "method.get" -> {
                     val collect = "d.open= ; branch=d.custom5=,f.multicall=,file.append=/profile/erasedata/,f.frozen_path="
                     val finish = "branch=d.custom5=,execute={/web/erasedata/fin.sh,system.pid=,d.base_path=,d.is_multi_file=}"
@@ -143,7 +145,7 @@ class RuTorrentFullSessionDeleteGuardTest {
         }
         server.createContext("$mount/plugins/erasedata/action.php") { exchange ->
             if (exchange.requestMethod == "HEAD") {
-                exchange.sendResponseHeaders(if (legacy) 404 else 200, -1)
+                exchange.sendResponseHeaders(if (legacy) 404 else pluginHeadStatus, -1)
                 exchange.close()
                 return@createContext
             }
@@ -254,7 +256,8 @@ class RuTorrentFullSessionDeleteGuardTest {
     /** Behavioral: an auth denial and missing plugin are actionable refusals, not uncertain cleanup. */
     @Test fun pluginAuthAndUnavailableRoutesHaveDistinctFixedDiagnostics() {
         for ((status, reason) in listOf(401 to RemoteDeleteRefusal.AUTHENTICATION,
-                403 to RemoteDeleteRefusal.AUTHENTICATION, 404 to RemoteDeleteRefusal.PLUGIN_UNAVAILABLE)) {
+                403 to RemoteDeleteRefusal.AUTHENTICATION, 404 to RemoteDeleteRefusal.PLUGIN_UNAVAILABLE,
+                405 to RemoteDeleteRefusal.PLUGIN_METHOD_REFUSED)) {
             fixture(defaultFirst = listOf(selected), pluginStatus = status) { remote, _, _, posts ->
                 assertEquals(RemoteDeleteDataOutcome.Refused(reason),
                     remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
@@ -267,8 +270,8 @@ class RuTorrentFullSessionDeleteGuardTest {
     @Test fun overlappingSessionsAreBatchedAndAConflictStillPreventsTheOnlyPost() {
         val others = (1..55).map { n -> Torrent("%040x".format(n), "Other$n", "/downloads", "other$n.bin") }
         fixture(defaultFirst = listOf(selected) + others) { remote, _, _, posts ->
-            assertTrue(remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory)
-                is RemoteDeleteDataOutcome.Uncertain)
+            assertEquals(RemoteDeleteDataOutcome.QueuedForCleanup(selected.hash, sessionRemoved = false),
+                remote.removeWithDataViaRuTorrent(selected.hash, selected.name, selected.directory))
             assertEquals("55 jobs in three bounded pages, revalidated twice", 6, batchReads)
             assertEquals(1, posts.get())
         }
@@ -324,6 +327,13 @@ class RuTorrentFullSessionDeleteGuardTest {
             val cap = remote.discoverDeleteDataCapability()
             assertEquals(RemoteCapabilityState.UNKNOWN, cap.state)
             assertFalse(cap.actionable)
+            assertEquals(0, posts.get())
+        }
+    @Test fun phpEndpointRequiringPostCanBeDiscoveredFromItsGenuineBrowserAdapter() =
+        fixture(listOf(selected), pluginHeadStatus = 500) { remote, _, _, posts ->
+            val cap = remote.discoverDeleteDataCapability()
+            assertTrue(cap.reason, cap.actionable)
+            assertEquals(RemoteDeleteAdapter.ERASEDATA_HTTP, cap.adapter)
             assertEquals(0, posts.get())
         }
 }

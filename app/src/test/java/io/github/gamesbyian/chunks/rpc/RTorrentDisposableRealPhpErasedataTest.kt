@@ -26,8 +26,9 @@ class RTorrentDisposableRealPhpErasedataTest {
         val expected = TorrentMetainfoReader.preview(Files.readAllBytes(Paths.get(torrentPath)))
         val hash = expected.infoHashV1
         val rtorrent = RTorrentRemote(RemoteCredentials(url, "", ""))
-        assertTrue("Pinned ruTorrent HTTP endpoint must support exact plugin form",
-            rtorrent.discoverDeleteDataCapability().actionable)
+        val capability = rtorrent.discoverDeleteDataCapability()
+        assertTrue("Pinned ruTorrent adapter: " + capability.state + " " + capability.reason,
+            capability.actionable)
         val matching = rtorrent.listTransfers("main").singleOrNull { it.hash.equals(hash, true) }
         assertNotNull("The staged exact fixture must be visible through actual PHP httprpc",
             matching)

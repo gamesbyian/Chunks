@@ -5,7 +5,6 @@ import org.junit.Test
 
 class RemoteDeleteCapabilityTest {
     private val collect = "d.open= ; branch=d.custom5=,\"f.multicall=,file.append=/profile/erasedata/,f.frozen_path=\""
-        .replace("$" + "f", "f")
     private val finish = "branch=d.custom5=,execute={/web/erasedata/fin.sh,/profile/erasedata,system.pid=,d.base_path=,d.is_multi_file=}"
     @Test fun legacyRequiresBothActualPrincipalHooksAndBrowserCommands() {
         val hooks = mapOf("erasedata0alice" to collect, "erasedata1alice" to finish)
