@@ -381,16 +381,27 @@ internal object RuTorrentFileManager {
             if (response.code == 200) directoryNames(response.body) else null
         } catch (cancel: CancellationException) { throw cancel }
           catch (_: Exception) { null }
-        if (after is RemoteDirectoryLookup.Ready &&
-            name in after.page.folders &&
-            typedAfter?.contains(name + "/") == true)
+        val bothServicesSeeDirectory = after is RemoteDirectoryLookup.Ready &&
+            name in after.page.folders && typedAfter?.contains(name + "/") == true
+        // A folder observed after a lost/failed acknowledgment might have been
+        // created by a different actor. Two readbacks prove presence, but not
+        // that this one write succeeded. Require an explicit successful receipt.
+        val acknowledged = reply?.takeIf { it.code == 200 }?.let { response ->
+            runCatching {
+                val json = JSONObject(response.body)
+                !json.has("errcode") && json.opt("error") == false
+            }.getOrDefault(false)
+        } == true
+        if (bothServicesSeeDirectory && acknowledged)
             return@withContext RemoteFolderCreateOutcome.Created(confirmedPath)
         // The write may have reached the provider. Never automatically replay it.
         val explicitRefusal = reply?.takeIf { it.code == 200 }?.let { response ->
-            runCatching { JSONObject(response.body).optBoolean("error", false) ||
-                JSONObject(response.body).has("errcode") }.getOrDefault(false)
+            runCatching {
+                val json = JSONObject(response.body)
+                json.opt("error") == true || json.has("errcode")
+            }.getOrDefault(false)
         } == true
-        if (explicitRefusal) RemoteFolderCreateOutcome.Refused
+        if (explicitRefusal && !bothServicesSeeDirectory) RemoteFolderCreateOutcome.Refused
         else if (sent) RemoteFolderCreateOutcome.Uncertain
         else RemoteFolderCreateOutcome.Refused
     }
