@@ -13,7 +13,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -60,7 +59,7 @@ class LocalAddHiddenInCombinedInstrumentedTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).assertIsSelected()
         val field = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)
         waitFor { rule.onAllNodes(field).fetchSemanticsNodes().isNotEmpty() }
-        rule.onNode(field).performScrollTo().performTextInput(
+        rule.onNode(field).performScrollTo().performTextReplacement(
             "magnet:?xt=urn:btih:$hash&dn=" + name.replace(" ", "%20"))
         // Metadata only: nothing would download even if a peer appeared.
         val start = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_START_PREFERENCE)
