@@ -661,19 +661,34 @@ internal fun VerifiedAddScreen(
                 minLines = 1,
                 maxLines = 3
             )
-            Text(when {
-                destination.isNotBlank() ->
-                    "Using a custom folder for this Add only. The server's configured default remains unchanged."
-                usingSavedDefault ->
-                    "Using this server's saved default folder: " + savedDefaultPlace + "."
-                !defaultReadComplete -> "Using the server default. Reading its folder; Add remains available."
-                configuredDefault != null ->
-                    "Using rTorrent default Place: " + configuredDefault + ". No directory override will be sent."
-                else ->
-                    "Using the server default without a folder override. " + remoteDefaultUnavailableReason(defaultReport) +
-                        " The actual folder must be confirmed after Add."
-            }, style = MaterialTheme.typography.bodySmall,
+            // Only the actionable location stays in the default view.
+            // Technical rTorrent working-directory/getter details are opt-in;
+            // lack of a resolved absolute default never disables blank-place Add.
+            Text(remoteAddSaveToSummary(destination, savedDefaultPlace,
+                defaultReadComplete, configuredDefault),
+                style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
+            val unresolvedDefault = destination.isBlank() && savedDefaultPlace == null &&
+                defaultReadComplete && configuredDefault == null
+            var showFolderExplanation by rememberSaveable(finishInOrderScope) {
+                mutableStateOf(false)
+            }
+            if (unresolvedDefault) {
+                TextButton(
+                    onClick = { showFolderExplanation = !showFolderExplanation },
+                    modifier = Modifier.heightIn(min = 48.dp).semantics {
+                        stateDescription = if (showFolderExplanation) "Expanded" else "Collapsed"
+                    }
+                ) {
+                    Text(if (showFolderExplanation) "Hide server folder details"
+                        else "About server folders")
+                }
+                if (showFolderExplanation) Text(
+                    remoteDefaultUnavailableReason(defaultReport) +
+                        " Chunks will confirm the actual folder after Add. " +
+                        "Leaving the optional folder blank sends no directory override.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             if (destination.isBlank() && savedDefaultPlace == null && defaultReport is
                 io.github.gamesbyian.chunks.rpc.RTorrentRemote.DefaultDirectoryReport.Failed) TextButton(
                 onClick = { defaultReadRevision++ }, enabled = !submitting && !alreadyAttempted,
@@ -1296,6 +1311,25 @@ internal fun RemoteDefaultPlaceResetControl(
                 "Use rTorrent default save folder for this Add"
                 else "Use this server's saved default folder for this Add" }
     ) { Text(label) }
+}
+
+/**
+ * The ordinary Add screen needs a concise, source-specific destination.
+ * This is presentation only: the reviewed Add ticket, actual remote RPC Place,
+ * and postcondition checks are unchanged. Unobserved is never called invalid.
+ */
+internal fun remoteAddSaveToSummary(
+    customPlace: String,
+    savedDefaultPlace: String?,
+    defaultReadComplete: Boolean,
+    observedAbsoluteDefault: String?
+): String = when {
+    customPlace.isNotBlank() -> "Save to: $customPlace (this Add only)"
+    savedDefaultPlace != null -> "Save to: $savedDefaultPlace (saved default)"
+    !defaultReadComplete -> "Save to: Server default (checking; Add is available)"
+    observedAbsoluteDefault != null ->
+        "Save to: $observedAbsoluteDefault (rTorrent default)"
+    else -> "Save to: Server default (confirm after adding)"
 }
 
 /** Explain an unknown preview without making the optional override mandatory. */

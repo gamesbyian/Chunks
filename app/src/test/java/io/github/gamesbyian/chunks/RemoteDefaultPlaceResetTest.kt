@@ -5,6 +5,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -69,6 +71,9 @@ class RemoteDefaultPlaceResetTest {
             
             list.performScrollToNode(hasText("Destination: /srv/one-off (custom parent folder)"))
             rule.onNodeWithText("Destination: /srv/one-off (custom parent folder)").assertExists()
+            list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
+            rule.onNodeWithTag(ChunksSemantics.ADD_REMOTE_SAVE_TO).assertExists()
+            rule.onNodeWithText("Save to: /srv/one-off (this Add only)").assertExists()
             list.performScrollToNode(hasText("Custom server folder (optional)"))
             rule.waitUntil(15_000) {
                 rule.onAllNodes(androidx.compose.ui.test.hasContentDescription(
@@ -84,6 +89,9 @@ class RemoteDefaultPlaceResetTest {
                 "Destination: /downloads (server default; no directory override)"))
             rule.onNodeWithText("Destination: /downloads (server default; no directory override)")
                 .assertExists()
+            list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
+            rule.onNodeWithText("Save to: /downloads (rTorrent default)").assertExists()
+            rule.onNodeWithText("About server folders").assertDoesNotExist()
             assertEquals("Preview and Reset must issue only the default read",
                 listOf("directory.default"), methods.toList())
         } finally {
