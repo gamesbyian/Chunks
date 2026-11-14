@@ -166,7 +166,7 @@ internal fun RemoteFolderPicker(
                         // Follow the selected directory so deep paths do not open with
                         // only the root visible. Jump without animation for reduced motion.
                         val breadcrumbScroll = rememberScrollState()
-                        LaunchedEffect(crumbs.last().path) {
+                        LaunchedEffect(crumbs.last().path, breadcrumbScroll.maxValue) {
                             breadcrumbScroll.scrollTo(breadcrumbScroll.maxValue)
                         }
                         Row(
