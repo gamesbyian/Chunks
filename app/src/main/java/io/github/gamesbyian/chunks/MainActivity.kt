@@ -518,7 +518,7 @@ internal fun ChunksApp(
             // Preserve an Android document's original URI/handling authority
             // when this is already the very same reviewed source.
             localReviewedTorrent.value = localReviewedTorrent.value?.takeIf {
-                it.bytes.contentEquals(bytes)
+                it.stillMatchesReviewedSource(bytes)
             } ?: PendingLocalAdd(requireNotNull(remoteReview.selectedTorrent), bytes.copyOf())
             magnet = ""
             remoteReview.textAtFileSelection = ""
