@@ -4,7 +4,10 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -248,7 +251,7 @@ class UniversalAddSourcePrecedenceTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()
         waitForText("newest.mkv")
-        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertTextEquals("")
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
         assertTrue("The chosen file is immediately usable on Local; no competing text warning",
             rule.onAllNodesWithText("A newer torrent source is entered", substring = true)
                 .fetchSemanticsNodes().isEmpty())
@@ -260,7 +263,7 @@ class UniversalAddSourcePrecedenceTest {
         waitForText("newest.mkv")
         // The one source is still the selected file. The alternate-source chips
         // disappear once the inactive text is cleared; their presence is not a contract.
-        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertTextEquals("")
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
         assertNoWriteRpc()
     }
     /** A text edit after file selection is newer authority when changing targets. */
@@ -275,7 +278,7 @@ class UniversalAddSourcePrecedenceTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement(newer)
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()
-        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertTextEquals(newer)
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString(newer)))
         waitForText("LatestExplicitText")
         assertNoWriteRpc()
     }

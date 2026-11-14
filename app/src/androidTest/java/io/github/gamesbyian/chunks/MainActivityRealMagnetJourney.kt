@@ -429,8 +429,12 @@ internal class MainActivityRealMagnetJourney(
                 }.getOrDefault(false)
                 rule.waitUntil(45_000) { readReadyChoice() }
                 when (choice) {
+                    // Invoke the tagged control's production handler once; a
+                    // changing lazy layout must not turn its touch coordinate
+                    // into a missed opt-out. Dedicated Add accessibility tests
+                    // retain pointer/hit-target coverage.
                     androidx.compose.ui.state.ToggleableState.On ->
-                        rule.onNode(artworkToggle).performClick()
+                        rule.onNode(artworkToggle).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
                     androidx.compose.ui.state.ToggleableState.Off -> Unit
                     else -> fail("Remote Add artwork choice must have a definite state")
                 }
