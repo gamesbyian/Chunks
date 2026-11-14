@@ -216,6 +216,12 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                 scenario.onActivity { activity = it }
                 openCanonicalTransfers()
                 rule.waitUntil(30_000) { displayed(originalName) }
+                val restored = requireNotNull(LocalEngineHolder.current()?.status(hash()))
+                assertTrue("Canonical cold restore never starts payload transfer", restored.stopped)
+                assertEquals("Restoration downloads no payload", 0L, restored.payloadDownloadedBytes)
+                assertArrayEquals("Cold restore preserves the original fixture payload",
+                    ByteArray(16_384) { (it % 251).toByte() },
+                    File(context.filesDir, "auto-public-tv-fixture/$originalName").readBytes())
                 rule.waitUntil(40_000) {
                     runBlocking(Dispatchers.IO) { exactAssignment()?.state == MediaAssignmentState.AUTOMATIC }
                 }

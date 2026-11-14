@@ -357,8 +357,8 @@ class CombinedTransfersScreenTest {
     @Test fun localEmptyCopyRequiresAuthoritativeCurrentInventory() {
         assertEquals("No transfers on this device yet. Review a torrent to add one.",
             localOnlyEmptyInventoryMessage(true))
-        assertEquals("No verified transfer list is available yet. Saved transfers may need " +
-            "to be restored in device controls.",
+        assertEquals("No verified transfer list is available yet. Saved transfers restore stopped " +
+            "when Local Device access is available.",
             localOnlyEmptyInventoryMessage(false))
     }
 
