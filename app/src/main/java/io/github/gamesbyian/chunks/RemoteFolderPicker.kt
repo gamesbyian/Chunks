@@ -163,8 +163,14 @@ internal fun RemoteFolderPicker(
                         style = MaterialTheme.typography.bodySmall)
                     val crumbs = remoteFolderBreadcrumbs(root, currentPage?.path)
                     if (crumbs.isNotEmpty()) {
+                        // Follow the selected directory so deep paths do not open with
+                        // only the root visible. Jump without animation for reduced motion.
+                        val breadcrumbScroll = rememberScrollState()
+                        LaunchedEffect(crumbs.last().path, breadcrumbScroll.maxValue) {
+                            breadcrumbScroll.scrollTo(breadcrumbScroll.maxValue)
+                        }
                         Row(
-                            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                            Modifier.fillMaxWidth().horizontalScroll(breadcrumbScroll),
                             horizontalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             crumbs.forEachIndexed { index, crumb ->
