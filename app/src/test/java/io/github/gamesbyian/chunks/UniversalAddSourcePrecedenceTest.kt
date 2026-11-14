@@ -4,7 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -241,10 +241,37 @@ class UniversalAddSourcePrecedenceTest {
 
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()
+        waitForText("newest.mkv")
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertTextEquals("")
+        assertTrue("The chosen file is immediately usable on Local; no competing text warning",
+            rule.onAllNodesWithText("A newer torrent source is entered", substring = true)
+                .fetchSemanticsNodes().isEmpty())
+        assertTrue("The superseded magnet must not become Local's active source",
+            rule.onAllNodesWithText("NewerTypedMagnet", substring = true).fetchSemanticsNodes().isEmpty())
+
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
         rule.waitForIdle()
-        list().performScrollToNode(hasText(".torrent file"))
-        rule.onNodeWithText(".torrent file").assertIsSelected()
+        waitForText("newest.mkv")
+        // The one source is still the selected file. The alternate-source chips
+        // disappear once the inactive text is cleared; their presence is not a contract.
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertTextEquals("")
         assertNoWriteRpc()
     }
+    /** A text edit after file selection is newer authority, even before the effect settles. */
+    @Test fun newerRemoteTextIsKeptWhenSwitchingToLocal() {
+        connect()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.waitForIdle()
+        pickTorrentThroughAndroidPicker()
+        val newer = "magnet:?xt=urn:btih:" + "f".repeat(40) + "&dn=LatestExplicitText"
+        list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement(newer)
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertTextEquals(newer)
+        waitForText("LatestExplicitText")
+        assertNoWriteRpc()
+    }
+
 }
