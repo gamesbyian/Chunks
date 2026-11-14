@@ -1,8 +1,14 @@
-name: Seedhost endpoint compatibility (manual read-only)
+name: Seedhost endpoint compatibility (manual plus one trusted-main read-only browse acceptance)
 
-# Test one selected, independently credentialed instance using the actual
-# Android app's Kotlin RPC adapter. Never dispatched by PRs or push.
+# One main-only push when this workflow changes proves the real directory
+# provider read-only, without involving untrusted pull requests or a write.
+# Subsequent optional create testing is workflow_dispatch only and is never
+# executed on push or rerun.
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/seedhost-endpoint-compatibility.yml
   workflow_dispatch:
     inputs:
       profile:
@@ -15,6 +21,14 @@ on:
           - second-rutorrent-https
           - third-rutorrent-https
           - primary-scgi-https-candidate
+      probe_folders:
+        description: 'Probe real authenticated ruTorrent _getdir and File Manager roots (read-only)'
+        type: boolean
+        default: false
+      create_test_folder:
+        description: 'Authorize exactly one empty child folder on primary Seedhost; no automatic cleanup'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -68,4 +82,45 @@ jobs:
           if not success:
               raise SystemExit('Read-only adapter proof was absent; no success claim')
           print('CHUNKS_SEEDHOST_ENDPOINT: selected profile verified by Kotlin version and main-view reads')
+          PY
+
+      - name: Reject invalid folder-acceptance scope before any test-folder mutation
+        if: ${{ inputs.probe_folders && inputs.profile != 'primary-rutorrent-https' || inputs.create_test_folder && (!inputs.probe_folders || inputs.profile != 'primary-rutorrent-https') }}
+        run: |
+          echo '::error::Folder acceptance is authorized only for the selected primary ruTorrent profile'
+          exit 1
+      - name: Verify real primary folder browse and optionally one explicitly authorized new folder
+        if: ${{ (github.event_name == 'push' || inputs.probe_folders && inputs.profile == 'primary-rutorrent-https') && github.run_attempt == 1 }}
+        env:
+          CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
+          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+          CHUNKS_HOST_FOLDER_READONLY: authorized
+          CHUNKS_HOST_FOLDER_CREATE: ${{ inputs.create_test_folder && 'authorized' || '' }}
+          CHUNKS_HOST_FOLDER_RUN_ID: ${{ github.run_id }}
+        run: |
+          private_log=$(mktemp)
+          trap 'rm -f "$private_log"' EXIT
+          set +e
+          gradle --no-daemon --console=plain :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostDirectoryAcceptanceTest > "$private_log" 2>&1
+          status=$?
+          set -e
+          python3 - "$status" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          path = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostDirectoryAcceptanceTest.xml')
+          if not path.exists():
+              print('CHUNKS_SEEDHOST_FOLDER: test-receipt-missing; private output withheld')
+              raise SystemExit(1)
+          root = ET.parse(path).getroot()
+          lines = (root.findtext('system-out') or '').splitlines()
+          for line in lines:
+              if line.startswith('CHUNKS_SEEDHOST_FOLDER: '):
+                  print(line[:180])
+          ok = (int(root.get('tests', '0')) == 1
+                and all(root.get(field) == '0' for field in ('failures', 'errors', 'skipped'))
+                and sys.argv[1] == '0'
+                and any(l.startswith('CHUNKS_SEEDHOST_FOLDER: browse-verified') for l in lines))
+          print('CHUNKS_SEEDHOST_FOLDER: real-host-acceptance=' + ('passed' if ok else 'failed'))
+          raise SystemExit(0 if ok else 1)
           PY

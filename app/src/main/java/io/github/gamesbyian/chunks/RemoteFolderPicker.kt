@@ -53,7 +53,8 @@ internal fun RemoteFolderPicker(
     connectionName: String,
     initialFolder: String?,
     onChoose: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    savedDefaultMode: Boolean = false
 ) {
     var observedRoot by remember(remote) { mutableStateOf<String?>(null) }
     var current by remember(remote) { mutableStateOf<String?>(null) }
@@ -108,7 +109,7 @@ internal fun RemoteFolderPicker(
             color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.fillMaxSize().padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Save to · " + connectionName,
+                Text((if (savedDefaultMode) "Default folder · " else "Save to · ") + connectionName,
                     style = MaterialTheme.typography.titleLarge)
                 if (manualMode) {
                     Text("Enter a server folder manually. Chunks will check the actual destination during Add.",
@@ -276,7 +277,7 @@ internal fun RemoteFolderPicker(
                         },
                         enabled = !creating && (if (manualMode) manualValid else currentPage != null),
                         modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                    ) { Text(if (manualMode) "Use this path" else "Use this folder") }
+                    ) { Text(if (savedDefaultMode) "Set as server default" else if (manualMode) "Use this path" else "Use this folder") }
                 }
             }
         }
