@@ -1525,14 +1525,12 @@ internal fun CombinedTransfersScreen(
         // transfer rows, not at the end of the list. Preserve incomplete-source
         // and unknown-rate caveats rather than inventing a precise total.
         item(key = "combined-compact-count") {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(combinedShowingText(result.transfers.size,
-                    result.sources.sumOf { it.transfers.size }) +
-                    if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
-                    style = MaterialTheme.typography.bodySmall)
-                Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
-                    style = MaterialTheme.typography.bodySmall)
-            }
+            Text(combinedCompactSummaryText(
+                shown = result.transfers.size,
+                inSelectedEnvironments = result.sources.sumOf { it.transfers.size },
+                totals = io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result),
+                incompleteOrStale = result.hasIncompleteOrStaleSource
+            ), style = MaterialTheme.typography.bodySmall)
         }
         // A local-only cold launch can have no running native engine, even
         // when saved jobs await explicit restoration. Never call that state
@@ -2242,6 +2240,33 @@ internal fun EnvironmentDot(hue: EnvironmentHue?, size: Int = 12) {
 /** "Showing 4", or "Showing 1 of 4" when search or a filter narrows the selected environments. */
 internal fun combinedShowingText(shown: Int, inSelectedEnvironments: Int): String =
     if (shown >= inSelectedEnvironments) "Showing $shown" else "Showing $shown of $inSelectedEnvironments"
+
+/** One scan-friendly summary above the first card. Only verified LIVE rates contribute.
+ * Unknown rates and excluded sources remain visibly qualified, never rendered as live zeros.
+ */
+internal fun combinedCompactSummaryText(
+    shown: Int,
+    inSelectedEnvironments: Int,
+    totals: io.github.gamesbyian.chunks.model.UnifiedTransferTotals,
+    incompleteOrStale: Boolean
+): String {
+    val noun = if (inSelectedEnvironments == 1) "transfer" else "transfers"
+    val count = if (shown >= inSelectedEnvironments) "$shown $noun"
+        else "$shown of $inSelectedEnvironments transfers"
+    val down = if (totals.downloadTotalBeyondRange) "above reporting range"
+        else Units.bytes(totals.downloadBytesPerSecond) + "/s"
+    val up = if (totals.uploadTotalBeyondRange) "above reporting range"
+        else Units.bytes(totals.uploadBytesPerSecond) + "/s"
+    val warnings = buildList {
+        if (totals.rowsWithUnknownRate > 0)
+            add("${totals.rowsWithUnknownRate} rates unknown")
+        if (totals.excludedEnvironments > 0)
+            add("${totals.excludedEnvironments} sources excluded")
+        else if (incompleteOrStale) add("some sources incomplete")
+    }
+    return "$count · Live ↓ $down · ↑ $up" +
+        if (warnings.isEmpty()) "" else " · " + warnings.joinToString(" · ")
+}
 
 internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTransferTotals): String =
     "Live total: ↓ " + (if (t.downloadTotalBeyondRange) "exceeds reporting range"
