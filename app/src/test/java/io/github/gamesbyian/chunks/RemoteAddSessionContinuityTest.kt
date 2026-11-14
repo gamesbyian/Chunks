@@ -274,12 +274,27 @@ class RemoteAddSessionContinuityTest {
             // explicit acknowledgement instead of allowing a generic new Add
             // to clear any uncertain write latch. Scroll to the exact button,
             // not similarly worded lazy-list guidance above it.
-            rule.onNode(hasScrollToIndexAction())
-                .performScrollToNode(hasText("Acknowledge session and start another Add"))
+            // Remount can recompose the LazyColumn between a semantics query
+            // and a pointer click. Capture the exact enabled action while the
+            // acknowledged session is visible, then invoke it exactly once.
+            // This remains the real production OnClick handler: no private
+            // coordinator state is modified by the test.
+            var acknowledge: (() -> Boolean)? = null
+            rule.waitUntil(15_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction())
+                        .performScrollToNode(hasText("Acknowledge session and start another Add"))
+                    val button = rule.onNodeWithText("Acknowledge session and start another Add")
+                    button.assertIsEnabled()
+                    acknowledge = button.fetchSemanticsNode().config[
+                        androidx.compose.ui.semantics.SemanticsActions.OnClick].action
+                    acknowledge != null
+                }.getOrDefault(false)
+            }
             assertEquals("Remount must not claim recovered registration as Chunks' new Add", 0, verified)
             assertFalse("Remount must not erase another draft's metadata choice", artwork.value)
-            rule.onNodeWithText("Acknowledge session and start another Add")
-                .assertIsEnabled().performClick()
+            rule.runOnIdle { assertTrue("Acknowledgement action must execute once",
+                requireNotNull(acknowledge).invoke()) }
             rule.waitUntil(15_000) { consumed == 1 }
             reveal("test.txt")
             assertEquals(nextSource, source.value)
