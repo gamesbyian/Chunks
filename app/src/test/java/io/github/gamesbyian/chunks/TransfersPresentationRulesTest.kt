@@ -33,7 +33,7 @@ class TransfersPresentationRulesTest {
     }
 
     @Test fun shortNamesAndMetadataPlaceholders() {
-        assertEquals(LOCAL_ENVIRONMENT_LABEL, environmentToggleName(local, "anything"))
+        assertEquals("Local", environmentToggleName(local, "anything"))
         assertEquals("ianseeds", environmentToggleName(a, "Server · ianseeds"))
         assertEquals("Magnet abcdef01… (fetching metadata)",
             compactTransferTitle("ABCDEF01" + "0".repeat(32) + ".meta"))

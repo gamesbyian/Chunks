@@ -1,10 +1,12 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.Surface
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.performScrollToNode
 import io.github.gamesbyian.chunks.model.EnvironmentId
@@ -28,6 +30,11 @@ class CombinedCompactLabelTest {
     private val a = EnvironmentId("server-a")
     private val b = EnvironmentId("server-b")
     private val c = EnvironmentId("server-c")
+
+    @Test fun localChipUsesTheRequestedShortNameWithoutChangingSpokenIdentity() {
+        assertEquals("Local", environmentToggleName(EnvironmentSnapshots.LOCAL, LOCAL_ENVIRONMENT_LABEL))
+        assertEquals("Wood", environmentToggleName(a, "Server · Wood"))
+    }
 
     @Test fun uniqueFriendlyNamesAreCompactAndCollisionsKeepExactLabels() {
         val exact = mapOf(
@@ -71,6 +78,15 @@ class CombinedCompactLabelTest {
         } } }
         val exact = serverEnvironmentLabel(scope)
         val details = "Details for Big Archive on $exact"
+        // The summary is a first-fold status line ABOVE the transfer cards,
+        // preserving its live-only caveats rather than duplicating it below.
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Live total:", substring = true).fetchSemanticsNodes().size == 1
+        }
+        val summaryTop = rule.onNodeWithText("Live total:", substring = true)
+            .getUnclippedBoundsInRoot().top
+        val rowTop = rule.onNodeWithContentDescription(details).getUnclippedBoundsInRoot().top
+        assertTrue("Transfer totals are above the first card", summaryTop < rowTop)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasContentDescription(details))
         rule.onNodeWithContentDescription(details).assertExists()
         assertTrue("row shows the short profile origin beside its colour",

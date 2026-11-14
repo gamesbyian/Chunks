@@ -1521,11 +1521,16 @@ internal fun CombinedTransfersScreen(
             }
         }
         }
+        // Inventory count and aggregate live speeds belong together ABOVE the
+        // transfer rows, not at the end of the list. Preserve incomplete-source
+        // and unknown-rate caveats rather than inventing a precise total.
         item(key = "combined-compact-count") {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(combinedShowingText(result.transfers.size,
                     result.sources.sumOf { it.transfers.size }) +
                     if (result.hasIncompleteOrStaleSource) " · some environments are missing or out of date" else "",
+                    style = MaterialTheme.typography.bodySmall)
+                Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
                     style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -1690,8 +1695,6 @@ internal fun CombinedTransfersScreen(
                     (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected environment is" else "$n selected environments are" }) + " no longer set up. " +
                         "Choose All or reselect environments.", style = MaterialTheme.typography.bodySmall,
                     color = ChunksColors.Yellow)
-                Text(combinedTotalsText(io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result)),
-                    style = MaterialTheme.typography.bodySmall)
             }
         }
         // Colour choices live under Connections (each saved profile) and
@@ -1833,7 +1836,7 @@ internal fun rowKeyText(key: UnifiedTransferKey): String = key.environment.value
 
 /** Compact toggle text: the device, or a server's short profile name without its prefix. */
 internal fun environmentToggleName(id: EnvironmentId, label: String): String =
-    if (id == EnvironmentSnapshots.LOCAL) LOCAL_ENVIRONMENT_LABEL
+    if (id == EnvironmentSnapshots.LOCAL) "Local"
     else label.removePrefix("Server · ").trim().ifEmpty { label }
 
 internal fun environmentVisible(scope: EnvironmentViewScope, id: EnvironmentId): Boolean =
