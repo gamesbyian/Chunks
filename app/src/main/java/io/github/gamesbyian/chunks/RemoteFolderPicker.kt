@@ -174,6 +174,7 @@ internal fun RemoteFolderPicker(
                                     showNewFolder = false
                                     createStatus = null
                                 },
+                                enabled = !creating && !reconciling,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                             ) { Text("↑ Parent folder") }
                         }
@@ -187,6 +188,7 @@ internal fun RemoteFolderPicker(
                                     showNewFolder = false
                                     createStatus = null
                                 },
+                                enabled = !creating && !reconciling,
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                                     .semantics { contentDescription = "Open folder " + folder }
                             ) { Image(painter = painterResource(R.drawable.chunks_ic_folder),
