@@ -6,7 +6,8 @@ import sys
 import unittest
 import xml.etree.ElementTree as ET
 
-from tools.parse_instrumentation_stream import failure_locations, parse_stream, write_junit
+from tools.parse_instrumentation_stream import (failure_locations, parse_stream,
+                                                safe_stopped_magnet_failure, write_junit)
 
 
 def event(klass, method, outcome=0, total=1, started=True):
@@ -69,6 +70,48 @@ class InstrumentationStreamTests(unittest.TestCase):
         self.assertNotIn("secret", result.stdout)
         self.assertNotIn("private.invalid", result.stdout)
         self.assertNotIn("third.party", result.stdout)
+
+    def test_only_named_failed_stopped_magnet_emits_bounded_predicates(self):
+        cls = "io.github.gamesbyian.chunks.LocalStoppedRecheckInstrumentedTest"
+        method = "stoppedMagnetOverPartialDataVerifiesWhenMetadataArrives"
+        safe_message = ("java.lang.AssertionError: stopped-magnet timeout: "
+                        "handle=true metadata=false stopped=false stopsAfterCheck=false "
+                        "checking=false valid64KiBpieces=0 peers=0 errorPresent=false "
+                        "seedStarted=true seedPeers=0")
+        failed = stream(event(cls, method, -2).replace(
+            "INSTRUMENTATION_STATUS_CODE: -2",
+            "INSTRUMENTATION_STATUS: stack=" + safe_message +
+            "\nINSTRUMENTATION_STATUS_CODE: -2"))
+        expected = ("handle=true metadata=false stopped=false stopsAfterCheck=false "
+                    "checking=false valid64KiBpieces=0 peers=0 errorPresent=false "
+                    "seedStarted=true seedPeers=0")
+        self.assertEqual(expected, safe_stopped_magnet_failure(failed))
+        with tempfile.TemporaryDirectory() as tmp:
+            source, report = Path(tmp) / "raw.txt", Path(tmp) / "TEST.xml"
+            source.write_text(failed)
+            result = subprocess.run([sys.executable, "tools/parse_instrumentation_stream.py",
+                                     "--raw", str(source), "--junit", str(report)],
+                                    text=True, capture_output=True)
+            # The temporary JUnit receipt exists only inside this context.
+            # Verify it before cleanup, while keeping the failing CLI result.
+            self.assertNotEqual(0, result.returncode)
+            self.assertIn("CHUNKS_PREBUILT_SAFE_STOPPED_MAGNET: " + expected, result.stdout)
+            self.assertEqual("1", ET.parse(report).getroot().get("failures"))
+
+        # Every other test, passing outcome, wrong type/length, or appended
+        # arbitrary URL or error string stays redacted without exception.
+        for klass, method_name, outcome, message in (
+            ("other.ProjectTest", method, -2, safe_message),
+            (cls, "otherMethod", -2, safe_message),
+            (cls, method, 0, safe_message),
+            (cls, method, -2, safe_message + " https://private.invalid/token"),
+            (cls, method, -2, safe_message.replace("peers=0", "peers=0;secret")),
+        ):
+            raw = stream(event(klass, method_name, outcome).replace(
+                f"INSTRUMENTATION_STATUS_CODE: {outcome}",
+                "INSTRUMENTATION_STATUS: stack=" + message +
+                f"\nINSTRUMENTATION_STATUS_CODE: {outcome}"))
+            self.assertIsNone(safe_stopped_magnet_failure(raw))
 
     def test_exact_pass_and_ignore_create_structural_junit(self):
         cases = parse_stream(stream(

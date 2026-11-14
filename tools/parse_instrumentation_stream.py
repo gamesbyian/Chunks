@@ -48,6 +48,55 @@ def failure_locations(text: str) -> list[str]:
     return result
 
 
+# A deliberately narrow exception to the default stack-message redaction:
+# one project-owned local fixture test reports only fixed Boolean/integer native
+# state. Never forward arbitrary stack/error text or values from sources.
+_SAFE_RECHECK_TEST = (
+    "io.github.gamesbyian.chunks.LocalStoppedRecheckInstrumentedTest",
+    "stoppedMagnetOverPartialDataVerifiesWhenMetadataArrives",
+)
+_RECHECK_FINGERPRINT = re.compile(
+    r"^java\.lang\.AssertionError: stopped-magnet timeout: "
+    r"handle=(true|false) metadata=(true|false|null) "
+    r"stopped=(true|false|null) stopsAfterCheck=(true|false|null) "
+    r"checking=(true|false) valid64KiBpieces=(-?[0-9]{1,12}) "
+    r"peers=(-?[0-9]{1,12}) errorPresent=(true|false) "
+    r"seedStarted=(true|false) seedPeers=(-?[0-9]{1,12})$"
+)
+
+
+def safe_stopped_magnet_failure(text: str) -> str | None:
+    """Only emit verified, bounded condition flags for one failed fixture test.
+
+    The raw instrumentation stream may contain passkeys and private paths. Do
+    not copy arbitrary exception text, stdout, source names or Android frames.
+    """
+    fields: dict[str, str] = {}
+    stack: str | None = None
+    for line in text.splitlines():
+        if line.startswith(STATUS):
+            value = line[len(STATUS):]
+            if value.startswith("class="):
+                fields["class"] = value[len("class="):]
+            elif value.startswith("test="):
+                fields["test"] = value[len("test="):]
+            elif value.startswith("stack="):
+                stack = value[len("stack="):]
+        elif line.startswith(STATUS_CODE):
+            if (line[len(STATUS_CODE):].strip() == "-2" and
+                    (fields.get("class"), fields.get("test")) == _SAFE_RECHECK_TEST and
+                    stack is not None):
+                match = _RECHECK_FINGERPRINT.fullmatch(stack)
+                if match:
+                    keys = ("handle", "metadata", "stopped", "stopsAfterCheck",
+                            "checking", "valid64KiBpieces", "peers", "errorPresent",
+                            "seedStarted", "seedPeers")
+                    return " ".join(f"{key}={value}" for key, value in zip(keys, match.groups()))
+            fields = {}
+            stack = None
+    return None
+
+
 @dataclass(frozen=True)
 class TestResult:
     classname: str
@@ -148,6 +197,9 @@ def main() -> None:
     if values["failed"] or values["error"] or not values["passed"]:
         for location in failure_locations(raw):
             print("CHUNKS_PREBUILT_FAILURE_LOCATION: " + location)
+        safe_recheck = safe_stopped_magnet_failure(raw)
+        if safe_recheck is not None:
+            print("CHUNKS_PREBUILT_SAFE_STOPPED_MAGNET: " + safe_recheck)
         raise SystemExit("Android instrumentation has failed or no executed tests")
 
 

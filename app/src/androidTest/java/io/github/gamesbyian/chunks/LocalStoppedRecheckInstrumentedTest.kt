@@ -155,9 +155,28 @@ class LocalStoppedRecheckInstrumentedTest {
         assertTrue(local.addMagnet("magnet:?xt=urn:btih:" + seed.infoHash, destination,
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
             autoStartAfterMetadata = false) is LocalAddResult.FetchingMetadata)
-        waitFor { local.status(seed.infoHash)?.let {
-            it.metadataKnown && it.stopped && !it.stopsAfterCheck && it.state != LocalTransferState.CHECKING &&
-                it.doneBytes == 10L * 65536 } == true }
+        try {
+            waitFor { local.status(seed.infoHash)?.let {
+                it.metadataKnown && it.stopped && !it.stopsAfterCheck &&
+                    it.state != LocalTransferState.CHECKING &&
+                    it.doneBytes == 10L * 65536 } == true }
+        } catch (timeout: AssertionError) {
+            // Bounded non-sensitive evidence. Do not print hash, file names,
+            // destination paths, trackers or raw native error text in CI logs.
+            val observed = runCatching { local.status(seed.infoHash) }.getOrNull()
+            val seedObserved = runCatching { seeder.status(seed.infoHash) }.getOrNull()
+            val pieces = observed?.doneBytes?.div(65_536)
+            fail("stopped-magnet timeout: handle=${observed != null}" +
+                " metadata=${observed?.metadataKnown}" +
+                " stopped=${observed?.stopped}" +
+                " stopsAfterCheck=${observed?.stopsAfterCheck}" +
+                " checking=${observed?.state == LocalTransferState.CHECKING}" +
+                " valid64KiBpieces=${pieces ?: -1}" +
+                " peers=${observed?.peers ?: -1}" +
+                " errorPresent=${observed?.error != null}" +
+                " seedStarted=${seedObserved?.stopped == false}" +
+                " seedPeers=${seedObserved?.peers ?: -1}")
+        }
         Thread.sleep(2_000)
         val idle = requireNotNull(local.status(seed.infoHash))
         assertTrue("still stopped: $idle", idle.stopped)
