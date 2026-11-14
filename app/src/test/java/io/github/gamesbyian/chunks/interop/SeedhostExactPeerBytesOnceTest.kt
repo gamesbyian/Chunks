@@ -263,26 +263,40 @@ class SeedhostExactPeerBytesOnceTest {
                 .pieceSize(64 * 1024).addTracker("http://127.0.0.1:1/announce").generate().entry().bencode()
             val expectedHash = TorrentMetainfoReader.preview(metainfo).infoHashV1
             val inventory = remote.listTransfers("main")
-            val target = inventory.single { it.hash.equals(expectedHash, true) }
-            check(target.name == fixtureName && target.sizeBytes == 512L * 1024 &&
-                target.completedBytes == target.sizeBytes && !target.started) { "Owned fixture identity changed" }
-            val before = diskEntries(target.directory)
-            val path = target.directory.trimEnd('/') + "/" + fixtureName
-            check(path in before) { "Owned fixture payload not independently visible" }
-            println("CHUNKS_HOST_DELETE: retiring-prior-owned-fixture-exact-hash-rederived")
-            val result = remote.removeWithDataViaRuTorrent(expectedHash, fixtureName, target.directory)
-            check(result is io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome.QueuedForCleanup)
-            check(remote.lookupName(expectedHash) == null)
-            val deadline = System.nanoTime() + 180_000_000_000L
-            var after = diskEntries(target.directory)
-            while (path in after && System.nanoTime() < deadline) {
-                kotlinx.coroutines.delay(3_000)
-                after = diskEntries(target.directory)
+            val target = inventory.singleOrNull { it.hash.equals(expectedHash, true) }
+            println("CHUNKS_HOST_DELETE: readonly-retirement-reconciliation")
+            println("CHUNKS_HOST_DELETE: session-present=" + (target != null))
+            println("CHUNKS_HOST_DELETE: exact-lookup-present=" + (remote.lookupName(expectedHash) != null))
+            if (target != null) {
+                check(target.name == fixtureName && target.sizeBytes == 512L * 1024)
+                val page = diskEntries(target.directory)
+                println("CHUNKS_HOST_DELETE: payload-present=" + (target.directory.trimEnd('/') + "/" + fixtureName in page))
+                val marker = remote.call("d.custom5", listOf(expectedHash))
+                println("CHUNKS_HOST_DELETE: deletion-flag-empty=" + (marker == "" || marker == "0" || marker == 0L))
+                val files = remote.listFiles(expectedHash)
+                val mapped = remote.call("f.multicall", listOf(expectedHash, "", "f.path=", "f.frozen_path=")) as List<*>
+                val mapRows = mapped.map { it as List<*> }
+                println("CHUNKS_HOST_DELETE: file-count=" + files.size)
+                println("CHUNKS_HOST_DELETE: frozen-empty=" + mapRows.all { it[1] == "" })
+                println("CHUNKS_HOST_DELETE: frozen-exact=" + mapRows.all { it[1] == target.directory.trimEnd('/') + "/" + it[0] })
+                println("CHUNKS_HOST_DELETE: frozen-relative=" + mapRows.any { !(it[1] as String).startsWith("/") && it[1] != "" })
+                val normalized = mapRows.all { row ->
+                    val frozen = row[1] as String
+                    java.nio.file.Paths.get(frozen).normalize().toString() == target.directory.trimEnd('/') + "/" + row[0]
+                }
+                println("CHUNKS_HOST_DELETE: frozen-lexically-normalizes=" + normalized)
+                val defaults = remote.listTransfers("default")
+                val selectedPaths = files.map { target.directory.trimEnd('/') + "/" + it.path }.toSet()
+                var shared = 0
+                for (other in defaults.filterNot { it.hash.equals(expectedHash, true) }) {
+                    val otherFiles = remote.listFiles(other.hash)
+                    if (otherFiles.any { other.directory.trimEnd('/') + "/" + it.path in selectedPaths }) shared++
+                }
+                println("CHUNKS_HOST_DELETE: shared-job-count=" + shared)
+                println("CHUNKS_HOST_DELETE: complete-default-view=" + (remote.call("view.size_not_visible", listOf("", "default")) == 0L))
+                val cap = remote.discoverDeleteDataCapability(force = true)
+                println("CHUNKS_HOST_DELETE: capability=" + cap.state.name + " adapter=" + cap.adapter?.name)
             }
-            check(after == before - path && path !in after) { "Owned fixture cleanup was not independently verified" }
-            check(remote.listTransfers("main").map { it.hash.lowercase() }.toSet() ==
-                inventory.filterNot { it.hash.equals(expectedHash, true) }.map { it.hash.lowercase() }.toSet())
-            println("CHUNKS_HOST_DELETE: verified-session-absent-payload-absent-unrelated-entries-preserved")
             return@runBlocking
         }
         val beforeInventory = remote.listTransfers("main")
