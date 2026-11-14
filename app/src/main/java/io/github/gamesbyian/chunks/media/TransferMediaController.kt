@@ -490,7 +490,9 @@ class TransferMediaController(
                         cur.copy(assignment = updated,
                             automaticMessage = if (verifiedArt == null) updated.lastMessage else null) else cur }
                     if (verifiedArt != null) {
-                        if (flow(key) != null) loadArtwork(key)
+                        // A retained StateFlow is not a live row/Details lease.
+                        // Use the inventory witness below after that row leaves.
+                        if (flow(key) != null && authorization(key)()) loadArtwork(key)
                         else if (permitted() && preferences.showArtwork && preferences.downloadArtwork) {
                             val net = network()
                             if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {
@@ -548,7 +550,9 @@ class TransferMediaController(
                         automaticMessage = artworkGapReason(assignment) ?: if (assignment.displayMatch != null) null else outcome.message) else cur
                 }
                 val match = assignment.displayMatch ?: return
-                if (flow(key) != null) loadArtwork(key)
+                // A retained StateFlow is not a live row/Details lease. After
+                // that observer leaves, use the inventory's own witness below.
+                if (flow(key) != null && authorization(key)()) loadArtwork(key)
                 else if (permitted() && preferences.showArtwork && preferences.downloadArtwork && recognition.kind != MediaKind.ADULT) {
                     val net = network()
                     if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {

@@ -772,6 +772,28 @@ class TransferMediaControllerTest {
             assertEquals(beforeOffline, http.requests.size)
         }
 
+    /** A historical row StateFlow cannot suppress an authorized offscreen image fetch. */
+    @Test fun filteredOutPreviouslyObservedRowStillPrefetchesArtworkFromTheInventory() =
+        kotlinx.coroutines.runBlocking {
+            settings = MediaPrivacySettings(onlineLookupConsent = true, automaticLookup = false)
+            val c = controller()
+            val rowLease: () -> Boolean = { true }
+            c.observe(server, name, isAuthorized = rowLease)
+            c.stopObserving(server, rowLease)
+            assertTrue("No lookup before explicit automatic enable", http.requests.isEmpty())
+            settings = settings.copy(automaticLookup = true)
+            c.enrichInventory(listOf(server to name)) { true }
+            assertEquals(MediaAssignmentState.AUTOMATIC,
+                FileTransferMediaAssignmentStore(File(dir, "assign.json")).get(server)?.state)
+            assertTrue("The fresh inventory fetches the image without a row lease",
+                http.requests.any { it.contains("static.tvmaze.com") })
+            val beforeOffline = http.requests.size
+            http.offline = true
+            val restored = controller().observe(server, name)
+            assertNotNull("The offscreen image survives offline process recreation", restored.value.artwork)
+            assertEquals(beforeOffline, http.requests.size)
+        }
+
     @Test fun offscreenArtworkPrefetchHonorsConsentExclusionAndRevokedSession() =
         kotlinx.coroutines.runBlocking {
             val original = MediaCandidate(

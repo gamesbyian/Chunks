@@ -446,8 +446,8 @@ internal fun CombinedTransfersScreen(
         onScopeFocusConsumed()
     }
 
-    // Local: read only an engine already running in this process. Opening this
-    // view never starts the local device engine or its service (remote-only use).
+    // Local: observe a running engine or restore an authorized saved session
+    // stopped, as the device controls do. No saved session state means no start.
     var localFrame by remember { mutableStateOf(LocalInventoryFrame<LocalTransferStatus>(emptyList(), stale = false)) }
     var localConfirmed by remember { mutableStateOf(false) }
     var localRunning by remember { mutableStateOf(LocalEngineHolder.current() != null) }
@@ -477,35 +477,6 @@ internal fun CombinedTransfersScreen(
     var listings by remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { delay(10_000); now = System.currentTimeMillis() } }
-    LaunchedEffect(Unit) {
-        while (true) {
-            when (val outcome = CombinedLocalReader.pump.takeCompleted()) {
-                is LocalScreenPollOutcome.Fresh -> {
-                    val (list, sample) = outcome.value
-                    localRunning = list != null
-                    if (list == null) {
-                        // The engine went away: nothing here is live any more.
-                        localConfirmed = false
-                        localFrame = LocalInventoryFrame(emptyList(), stale = false)
-                        localObservedAt = null
-                    }
-                    // A read sampled before or during a local command cannot clear its readback latch.
-                    if (list != null && LocalMutationFence.revision.acceptObservation(sample, list)) {
-                        localFrame = LocalInventoryFrame(list, stale = false)
-                        localConfirmed = true
-                        localObservedAt = System.currentTimeMillis()
-                    }
-                }
-                LocalScreenPollOutcome.Unavailable -> localFrame = localFrame.copy(stale = true)
-                null -> Unit
-            }
-            if ((CombinedLocalReader.pump.inFlightMillis() ?: 0L) >= 15_000L)
-                localFrame = localFrame.copy(stale = true)
-            val sample = LocalMutationFence.revision.snapshot()
-            CombinedLocalReader.pump.tryObserve { LocalEngineHolder.current()?.list() to sample }
-            delay(1_000)
-        }
-    }
 
     // Privacy policy storage and SHA-256 preference-key derivation must never
     // run during composition. Until a cancellable, exact-scope asynchronous
@@ -558,6 +529,55 @@ internal fun CombinedTransfersScreen(
     val deviceSecure = activity != null && TransferDeviceAuthenticator.hasSecureLock(activity)
     val localPrivacy = privacyEvidence?.decision(localPrivacyScope, privacySession, deviceSecure)
         ?: CombinedPrivacyEvidence.LOCKED
+    val localReaderMounted = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
+    DisposableEffect(Unit) {
+        localReaderMounted.set(true)
+        onDispose { localReaderMounted.set(false) }
+    }
+    val mayRestoreLocal = rememberUpdatedState {
+        // The worker may run after a lock, policy/lifecycle revision, or route
+        // disposal but before another composition. Never borrow its old grant.
+        localReaderMounted.get() && localPrivacy.mayShow &&
+            privacyEvidence?.current(requestedPrivacyScopes,
+                TransferPrivacyPolicyStore.revision, TransferPrivacyRuntime.lifecycleRevision) == true &&
+            privacySession.mayAct(localPrivacyScope)
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            when (val outcome = CombinedLocalReader.pump.takeCompleted()) {
+                is LocalScreenPollOutcome.Fresh -> {
+                    val (list, sample) = outcome.value
+                    localRunning = list != null
+                    if (list == null) {
+                        // The engine went away: nothing here is live any more.
+                        localConfirmed = false
+                        localFrame = LocalInventoryFrame(emptyList(), stale = false)
+                        localObservedAt = null
+                    }
+                    // A read sampled before or during a local command cannot clear its readback latch.
+                    if (list != null && LocalMutationFence.revision.acceptObservation(sample, list)) {
+                        localFrame = LocalInventoryFrame(list, stale = false)
+                        localConfirmed = true
+                        localObservedAt = System.currentTimeMillis()
+                    }
+                }
+                LocalScreenPollOutcome.Unavailable -> localFrame = localFrame.copy(stale = true)
+                null -> Unit
+            }
+            if ((CombinedLocalReader.pump.inFlightMillis() ?: 0L) >= 15_000L)
+                localFrame = localFrame.copy(stale = true)
+            val sample = LocalMutationFence.revision.snapshot()
+            CombinedLocalReader.pump.tryObserve {
+                // Reuse the existing stopped-only restore path. Fresh/remote-only
+                // installs with no saved local session never open a native engine.
+                // Unknown/locked privacy cannot initiate restoration.
+                val engine = LocalEngineHolder.current() ?: if (mayRestoreLocal.value())
+                    LocalEngineHolder.restoreIfSaved(context) else null
+                engine?.list() to sample
+            }
+            delay(1_000)
+        }
+    }
     val serverPrivacy = serverPrivacyScope?.let {
         privacyEvidence?.decision(it, privacySession, deviceSecure) ?: CombinedPrivacyEvidence.LOCKED
     }
@@ -1750,8 +1770,8 @@ internal fun combinedBatchItemIndex(
 /** A confirmed empty engine is distinct from a pending or locked read. */
 internal fun localOnlyEmptyInventoryMessage(confirmedCurrent: Boolean): String =
     if (confirmedCurrent) "No transfers on this device yet. Review a torrent to add one."
-    else "No verified transfer list is available yet. Saved transfers may need " +
-        "to be restored in device controls."
+    else "No verified transfer list is available yet. Saved transfers restore stopped " +
+        "when Local Device access is available."
 
 /** Unconditional leading items: header (0), Add destinations (1), batch (2), view (3). */
 private const val COMBINED_ADD_ITEM_KEY = "combined-add-destinations"

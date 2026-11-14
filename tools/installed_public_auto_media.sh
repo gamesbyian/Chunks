@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# Explicit, one-shot PUBLIC TVmaze acceptance on a disposable Android emulator.
+# Explicit, bounded PUBLIC TVmaze acceptance on a disposable Android emulator.
 # Reuse one source-exact build and independently verify installed APK bytes.
 set -euo pipefail
-test "${CHUNKS_PUBLIC_MEDIA_AUTHORIZED:-}" = "one-shot-20261110"
-test "${GITHUB_EVENT_NAME:-}" = "pull_request"
-test "${GITHUB_HEAD_REF:-}" = "qa/media-public-installed-20261110"
+test "${CHUNKS_PUBLIC_MEDIA_AUTHORIZED:-}" = "bounded-public-tvmaze"
+test "${GITHUB_EVENT_NAME:-}" = "workflow_dispatch"
 test "$(adb shell getprop ro.kernel.qemu | tr -d '[:space:]')" = "1"
 
 pkg=io.github.gamesbyian.chunks

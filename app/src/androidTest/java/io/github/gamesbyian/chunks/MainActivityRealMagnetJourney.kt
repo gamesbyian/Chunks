@@ -414,23 +414,44 @@ internal class MainActivityRealMagnetJourney(
                 if (!expanded) heading.performClick()
                 val artworkToggle = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
                 var choice: androidx.compose.ui.state.ToggleableState? = null
+                var lastChoiceFailure = "none"
                 fun readReadyChoice(): Boolean = runCatching {
+                    // A lazy item's semantics may exist but remain outside the
+                    // viewport after the disclosure expands. Always scroll the
+                    // actual LazyColumn to the tagged choice before reading it.
+                    // The old nested-scroll heuristic raced the preceding
+                    // disclosure layout and could read a stale/offscreen node.
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(artworkToggle)
                     val node = rule.onNode(artworkToggle)
-                    // If the expanded choice is offscreen, the canonical
-                    // LazyColumn must compose it before the semantics read.
-                    if (rule.onAllNodes(artworkToggle).fetchSemanticsNodes().isEmpty())
-                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(artworkToggle)
-                    node.performScrollTo()
                     node.assertIsEnabled().assertIsDisplayed()
                     choice = node.fetchSemanticsNode().config[
                         androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]
                     choice in setOf(androidx.compose.ui.state.ToggleableState.On,
                         androidx.compose.ui.state.ToggleableState.Off)
-                }.getOrDefault(false)
-                rule.waitUntil(45_000) { readReadyChoice() }
+                }.onFailure { lastChoiceFailure = it.javaClass.simpleName }.getOrDefault(false)
+                try {
+                    rule.waitUntil(45_000) { readReadyChoice() }
+                } catch (failure: Throwable) {
+                    // Diagnostics contain counts and failure type only: no
+                    // connection endpoint, hashes, source URLs or credentials.
+                    val merged = runCatching {
+                        rule.onAllNodes(artworkToggle).fetchSemanticsNodes().size
+                    }.getOrDefault(-1)
+                    val raw = runCatching {
+                        rule.onAllNodes(artworkToggle, useUnmergedTree = true)
+                            .fetchSemanticsNodes().size
+                    }.getOrDefault(-1)
+                    throw AssertionError("Artwork choice not ready after expansion; " +
+                        "merged=$merged unmerged=$raw lastFailure=$lastChoiceFailure " +
+                        "state=$choice (no checkbox click attempted)", failure)
+                }
                 when (choice) {
+                    // Invoke the tagged control's production handler once; a
+                    // changing lazy layout must not turn its touch coordinate
+                    // into a missed opt-out. Dedicated Add accessibility tests
+                    // retain pointer/hit-target coverage.
                     androidx.compose.ui.state.ToggleableState.On ->
-                        rule.onNode(artworkToggle).performClick()
+                        rule.onNode(artworkToggle).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
                     androidx.compose.ui.state.ToggleableState.Off -> Unit
                     else -> fail("Remote Add artwork choice must have a definite state")
                 }

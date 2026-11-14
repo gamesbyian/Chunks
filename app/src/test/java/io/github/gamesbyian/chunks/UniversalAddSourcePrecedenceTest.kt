@@ -4,7 +4,10 @@ import android.app.Activity
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.ui.test.SemanticsNodeInteraction
-import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -27,6 +30,9 @@ import java.util.concurrent.CopyOnWriteArrayList
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertSame
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -184,6 +190,9 @@ class UniversalAddSourcePrecedenceTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()
         waitForText("newer-server.mkv")
+        assertNull("A different server-picked file cannot inherit the old document URI",
+            androidx.lifecycle.ViewModelProvider(rule.activity)[LocalAddAttemptOwner::class.java]
+                .reviewedTorrent.value?.originalDocument)
         assertTrue("Device target must review the newer file",
             rule.onAllNodesWithText("older-device.mkv", substring = true).fetchSemanticsNodes().isEmpty())
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
@@ -241,10 +250,58 @@ class UniversalAddSourcePrecedenceTest {
 
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()
+        waitForText("newest.mkv")
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
+        assertTrue("The chosen file is immediately usable on Local; no competing text warning",
+            rule.onAllNodesWithText("A newer torrent source is entered", substring = true)
+                .fetchSemanticsNodes().isEmpty())
+        assertTrue("The superseded magnet must not become Local's active source",
+            rule.onAllNodesWithText("NewerTypedMagnet", substring = true).fetchSemanticsNodes().isEmpty())
+
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
         rule.waitForIdle()
-        list().performScrollToNode(hasText(".torrent file"))
-        rule.onNodeWithText(".torrent file").assertIsSelected()
+        waitForText("newest.mkv")
+        // The one source is still the selected file. The alternate-source chips
+        // disappear once the inactive text is cleared; their presence is not a contract.
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString("")))
         assertNoWriteRpc()
     }
+    /** A text edit after file selection is newer authority when changing targets. */
+    @Test fun newerRemoteTextIsKeptWhenSwitchingToLocal() {
+        connect()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.waitForIdle()
+        pickTorrentThroughAndroidPicker()
+        val newer = "magnet:?xt=urn:btih:" + "f".repeat(40) + "&dn=LatestExplicitText"
+        list().performScrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement(newer)
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assert(SemanticsMatcher.expectValue(SemanticsProperties.EditableText, AnnotatedString(newer)))
+        waitForText("LatestExplicitText")
+        assertNoWriteRpc()
+    }
+
+    /** Source-file handling authority survives only a round trip of the identical source. */
+    @Test fun localDocumentAuthoritySurvivesAnUnchangedRemoteTargetRoundTrip() {
+        connect()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
+        rule.waitForIdle()
+        pickTorrentThroughAndroidPicker()
+        val owner = androidx.lifecycle.ViewModelProvider(rule.activity)[LocalAddAttemptOwner::class.java]
+        val original = requireNotNull(owner.reviewedTorrent.value)
+        assertNotNull("Android picker retains source-document authority", original.originalDocument)
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.waitForIdle()
+        waitForText("newest.mkv")
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
+        rule.waitForIdle()
+        waitForText("newest.mkv")
+        assertSame("Returning to Local preserves the exact document review and its handling authority",
+            original, owner.reviewedTorrent.value)
+        assertNoWriteRpc()
+    }
+
 }

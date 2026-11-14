@@ -88,49 +88,58 @@ class ClipboardUriIntakeInstrumentedTest {
         }
         val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40) + "&dn=ClipboardUri"
         val torrentLink = "https://example.org/releases/test.torrent"
-        rule.runOnUiThread {
-            val manager = rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            fun evaluate(clip: ClipData): Pair<String?, String?> {
-                manager.setPrimaryClip(clip)
-                val raw = ClipboardMagnetPrefill.readText(rule.activity)
-                return raw to ClipboardMagnetPrefill.decide(
-                    enabled = true, currentDraft = "", otherSourcePresent = false, clipText = raw)
+        val manager = rule.activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        fun evaluate(clip: ClipData): Pair<String?, String?> {
+            rule.runOnUiThread { manager.setPrimaryClip(clip) }
+            // Clipboard changes cause asynchronous Android window/clipboard UI
+            // work. Let those events run between fixtures, and require real
+            // foreground focus for EACH read, not only before the entire batch.
+            // The production read itself is invoked exactly once, never polled.
+            rule.waitForIdle()
+            rule.waitUntil(5_000) { rule.activity.hasWindowFocus() }
+            var raw: String? = null
+            rule.runOnUiThread {
+                org.junit.Assert.assertTrue("Every clipboard read requires a focused Activity",
+                    rule.activity.hasWindowFocus())
+                raw = ClipboardMagnetPrefill.readText(rule.activity)
             }
-
-            // A real URI-list ClipData.Item has no CharSequence text.
-            assertEquals(magnet to magnet,
-                evaluate(ClipData.newRawUri("magnet", Uri.parse(magnet))))
-            assertEquals(torrentLink to torrentLink,
-                evaluate(ClipData.newRawUri("torrent", Uri.parse(torrentLink))))
-
-            // Text clips continue to work, including an HTTPS torrent link.
-            assertEquals(magnet to magnet, evaluate(ClipData.newPlainText("magnet", magnet)))
-            assertEquals(torrentLink to torrentLink,
-                evaluate(ClipData.newPlainText("torrent", torrentLink)))
-
-            // Content providers are not opened, coerced or mistaken for
-            // .torrent sources just because their URI ends with .torrent.
-            assertEquals(null to null, evaluate(ClipData.newRawUri(
-                "provider", Uri.parse("content://documents.example/share/file.torrent"))))
-            assertEquals(null to null, evaluate(ClipData.newRawUri(
-                "insecure", Uri.parse("http://example.org/file.torrent"))))
-
-            // Never silently select a first source from ambiguous clipboard
-            // material. The person may copy one source explicitly instead.
-            val multipleTexts = ClipData.newPlainText("first", magnet).apply {
-                addItem(ClipData.Item(torrentLink))
-            }
-            assertEquals(null to null, evaluate(multipleTexts))
-            val multipleUris = ClipData.newRawUri("first", Uri.parse(magnet)).apply {
-                addItem(ClipData.Item(Uri.parse(torrentLink)))
-            }
-            assertEquals(null to null, evaluate(multipleUris))
-
-            // A prior typed draft or external Share always overrides the
-            // eligible URI-list clipboard suggestion.
-            val raw = evaluate(ClipData.newRawUri("magnet", Uri.parse(magnet))).first
-            assertNull(ClipboardMagnetPrefill.decide(true, "existing", false, raw))
-            assertNull(ClipboardMagnetPrefill.decide(true, "", true, raw))
+            return raw to ClipboardMagnetPrefill.decide(
+                enabled = true, currentDraft = "", otherSourcePresent = false, clipText = raw)
         }
+
+        // A real URI-list ClipData.Item has no CharSequence text.
+        assertEquals(magnet to magnet,
+            evaluate(ClipData.newRawUri("magnet", Uri.parse(magnet))))
+        assertEquals(torrentLink to torrentLink,
+            evaluate(ClipData.newRawUri("torrent", Uri.parse(torrentLink))))
+
+        // Text clips continue to work, including an HTTPS torrent link.
+        assertEquals(magnet to magnet, evaluate(ClipData.newPlainText("magnet", magnet)))
+        assertEquals(torrentLink to torrentLink,
+            evaluate(ClipData.newPlainText("torrent", torrentLink)))
+
+        // Content providers are not opened, coerced or mistaken for
+        // .torrent sources just because their URI ends with .torrent.
+        assertEquals(null to null, evaluate(ClipData.newRawUri(
+            "provider", Uri.parse("content://documents.example/share/file.torrent"))))
+        assertEquals(null to null, evaluate(ClipData.newRawUri(
+            "insecure", Uri.parse("http://example.org/file.torrent"))))
+
+        // Never silently select a first source from ambiguous clipboard
+        // material. The person may copy one source explicitly instead.
+        val multipleTexts = ClipData.newPlainText("first", magnet).apply {
+            addItem(ClipData.Item(torrentLink))
+        }
+        assertEquals(null to null, evaluate(multipleTexts))
+        val multipleUris = ClipData.newRawUri("first", Uri.parse(magnet)).apply {
+            addItem(ClipData.Item(Uri.parse(torrentLink)))
+        }
+        assertEquals(null to null, evaluate(multipleUris))
+
+        // A prior typed draft or external Share always overrides the
+        // eligible URI-list clipboard suggestion.
+        val raw = evaluate(ClipData.newRawUri("magnet", Uri.parse(magnet))).first
+        assertNull(ClipboardMagnetPrefill.decide(true, "existing", false, raw))
+        assertNull(ClipboardMagnetPrefill.decide(true, "", true, raw))
     }
 }

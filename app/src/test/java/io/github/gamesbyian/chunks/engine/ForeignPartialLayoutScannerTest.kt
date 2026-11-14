@@ -74,4 +74,26 @@ class ForeignPartialLayoutScannerTest {
         val r = S.scan(root, names) as S.Result.Found
         assertEquals(S.MAX_CANDIDATES, r.candidates.size); assertTrue(r.truncated)
     }
+    /** Behavioral/data preservation: truncating display rows never resolves an ambiguous source. */
+    @Test fun ambiguityIsPreservedWhenTheSecondCandidateFallsBeyondTheDisplayCap() {
+        val root = tmp.newFolder()
+        val names = (0 until S.MAX_CANDIDATES - 1).map { "f$it.bin" }
+        names.forEach { file(root, "$it.part", 1) }
+        file(root, "last.bin.!qB", 2)
+        file(root, "last.bin.part", 3)
+        val result = S.scan(root, names + "last.bin") as S.Result.Found
+        assertEquals(S.MAX_CANDIDATES, result.candidates.size)
+        assertTrue(result.truncated)
+        assertEquals(setOf("last.bin"), result.ambiguous)
+        assertEquals(listOf(S.Kind.QBITTORRENT),
+            result.candidates.filter { it.declaredPath == "last.bin" }.map { it.kind })
+
+        val offer = requireNotNull(ForeignPartialAddPlan.offerForPaths(names + "last.bin", root))
+        assertEquals(1, offer.ambiguousFiles)
+        assertEquals(names.toSet(), offer.reusable.map { it.declaredPath }.toSet())
+        assertTrue("The scan never renames either possible source", File(root, "last.bin.!qB").isFile)
+        assertTrue(File(root, "last.bin.part").isFile)
+        assertFalse(File(root, "last.bin").exists())
+    }
+
 }

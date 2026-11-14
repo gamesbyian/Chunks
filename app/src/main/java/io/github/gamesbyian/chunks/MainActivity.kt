@@ -507,13 +507,21 @@ internal fun ChunksApp(
     fun selectLocalAddTarget() {
         val remoteReview = aliasScope.takeIf { it.isNotBlank() }
             ?.let { remoteAddSessions.forAccount(it) }
-        if (magnet.isBlank() && localReviewedTorrent.value == null &&
-            activeLocalAddAttempt.attemptedTicket == null &&
-            remoteReview?.useFile == true && remoteReview.selectedTorrent != null &&
-            remoteReview.selectedBytes != null) {
-            localReviewedTorrent.value = PendingLocalAdd(
-                requireNotNull(remoteReview.selectedTorrent),
-                requireNotNull(remoteReview.selectedBytes).copyOf())
+        // The explicit remote file choice may supersede text that remains in
+        // its source field. Transfer that chosen file, not the inactive text,
+        // into the one local draft. A later text edit revokes the file choice.
+        if (activeLocalAddAttempt.attemptedTicket == null &&
+            remoteReview?.alreadyAttempted == false && remoteReview.useFile &&
+            remoteReview.textAtFileSelection == magnet &&
+            remoteReview.selectedTorrent != null && remoteReview.selectedBytes != null) {
+            val bytes = requireNotNull(remoteReview.selectedBytes)
+            // Preserve an Android document's original URI/handling authority
+            // when this is already the very same reviewed source.
+            localReviewedTorrent.value = localReviewedTorrent.value?.takeIf {
+                it.stillMatchesReviewedSource(bytes)
+            } ?: PendingLocalAdd(requireNotNull(remoteReview.selectedTorrent), bytes.copyOf())
+            magnet = ""
+            remoteReview.textAtFileSelection = ""
         }
         addUsingAuthenticatedRemote = false
         section = Section.ADD_CHOOSE

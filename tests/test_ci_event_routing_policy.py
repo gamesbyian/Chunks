@@ -137,6 +137,27 @@ class CiDispatchRelevance(unittest.TestCase):
                 self.assertTrue(dispatches_for_changed_paths(
                     native, (path, APP_TEST_ROOT + "NewSharedInstrumentedTest.kt")))
 
+    def test_manual_public_artwork_test_runs_only_in_its_explicit_installed_gate(self):
+        path = APP_TEST_ROOT + "InstalledAutomaticPublicMediaInstrumentedTest.kt"
+        native = workflow("native-add-instrumentation.yml")
+        owner = workflow("installed-public-auto-media-one-shot.yml")
+        events = block(owner, "on")
+        self.assertIn("  workflow_dispatch:", events)
+        self.assertNotIn("  pull_request:", events)
+        self.assertNotIn("  push:", events)
+        self.assertIn("inputs.public_media", owner)
+        self.assertIn("android-emulator-runner@v2", owner)
+        self.assertIn("bash tools/installed_public_auto_media.sh", owner)
+        runner = (ROOT / "tools/installed_public_auto_media.sh").read_text()
+        self.assertIn("InstalledAutomaticPublicMediaInstrumentedTest", runner)
+        self.assertIn("run_phase phaseA_liveAutomaticArtworkWithoutIdentify", runner)
+        self.assertIn("run_phase phaseB_offlineColdProcessRestoresRealArtwork", runner)
+        self.assertFalse(dispatches_for_changed_paths(native, (path,)))
+        self.assertTrue(dispatches_for_changed_paths(native,
+            (path, "app/src/main/java/io/github/gamesbyian/chunks/MainActivity.kt")))
+        self.assertTrue(dispatches_for_changed_paths(native,
+            (path, APP_TEST_ROOT + "NewSharedInstrumentedTest.kt")))
+
     def test_merged_workflow_only_edits_do_not_repeat_pr_validation(self):
         # A changed font/render tool still selects both PR and main workflows.
         # Changing only its YAML runs the cheap documentation routing check;
