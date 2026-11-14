@@ -98,6 +98,7 @@ internal fun RemoteFolderPicker(
     var manualMode by remember(remote) { mutableStateOf(false) }
     var manualPath by remember(remote) { mutableStateOf(initialFolder.orEmpty()) }
     var createCapability by remember(remote) { mutableStateOf<RemoteFolderCreateCapability?>(null) }
+    var createCapabilityParent by remember(remote) { mutableStateOf<String?>(null) }
     var showNewFolder by remember(remote) { mutableStateOf(false) }
     var newFolderName by remember(remote) { mutableStateOf("") }
     var creating by remember(remote) { mutableStateOf(false) }
@@ -106,12 +107,22 @@ internal fun RemoteFolderPicker(
     var uncertainPath by remember(remote) { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(remote, observedRoot) {
+    // A capability is valid only for the exact directory currently on screen.
+    // Do not momentarily offer root authority after navigating elsewhere.
+    val currentPage = (result as? RemoteDirectoryLookup.Ready)?.page
+    val visibleCreateCapability = createCapability.takeIf {
+        createCapabilityParent == currentPage?.path && currentPage != null
+    }
+    LaunchedEffect(remote, observedRoot, currentPage?.path) {
         createCapability = null
+        createCapabilityParent = null
         val root = observedRoot ?: return@LaunchedEffect
-        createCapability = withContext(Dispatchers.IO) {
-            remote.folderCreateCapability(root)
+        val parent = currentPage?.path ?: return@LaunchedEffect
+        val checked = withContext(Dispatchers.IO) {
+            remote.folderCreateCapability(root, parent)
         }
+        createCapabilityParent = parent
+        createCapability = checked
     }
 
     LaunchedEffect(remote, current, revision, manualMode) {
@@ -132,7 +143,6 @@ internal fun RemoteFolderPicker(
         }
     }
 
-    val currentPage = (result as? RemoteDirectoryLookup.Ready)?.page
     val root = observedRoot
     val parent = currentPage?.path?.substringBeforeLast('/', "").orEmpty().ifBlank { "/" }
     val canGoUp = currentPage != null && root != null &&
@@ -281,7 +291,7 @@ internal fun RemoteFolderPicker(
                                 }
                         ) { Text(if (reconciling) "Checking folder…" else "Check folder (read-only)") }
                     }
-                    if (createCapability is RemoteFolderCreateCapability.Ready &&
+                    if (visibleCreateCapability is RemoteFolderCreateCapability.Ready &&
                         currentPage != null) {
                         if (!showNewFolder) TextButton(
                             onClick = {
@@ -360,8 +370,8 @@ internal fun RemoteFolderPicker(
                                 ) { Text(if (creating) "Creating…" else "Create folder") }
                             }
                         }
-                    } else if (createCapability is RemoteFolderCreateCapability.Unavailable) {
-                        val unavailable = createCapability as RemoteFolderCreateCapability.Unavailable
+                    } else if (visibleCreateCapability is RemoteFolderCreateCapability.Unavailable) {
+                        val unavailable = visibleCreateCapability
                         val explanation = when (unavailable.reason) {
                             RemoteFolderCreateCapability.Reason.NOT_INSTALLED ->
                                 "The server's File Manager folder-creation endpoint is unavailable."
@@ -369,6 +379,8 @@ internal fun RemoteFolderPicker(
                                 "The server denied access to File Manager's folder controls."
                             RemoteFolderCreateCapability.Reason.ROOT_MISMATCH ->
                                 "File Manager cannot verify the chosen download tree beneath its permitted root."
+                            RemoteFolderCreateCapability.Reason.INCOMPLETE_PARENT ->
+                                "The server's directory services disagree here. New folder is disabled in this directory."
                             RemoteFolderCreateCapability.Reason.CANNOT_VERIFY ->
                                 "The server's folder-creation capability could not be verified."
                         }

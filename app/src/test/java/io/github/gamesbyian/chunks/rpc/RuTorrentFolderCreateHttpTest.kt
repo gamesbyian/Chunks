@@ -236,6 +236,31 @@ class RuTorrentFolderCreateHttpTest {
         }
     }
 
+    @Test fun createCapabilityTracksExactParentInsteadOfAssumingRootCanCreateEverywhere() = runBlocking {
+        Fixture().use { fx ->
+            val remote = fx.remote()
+            assertEquals(RemoteFolderCreateCapability.Ready("/srv/tenant"),
+                remote.folderCreateCapability("/srv/tenant", "/srv/tenant/TV"))
+            fx.created.add("Existing")
+            fx.partialTypedParentChildren = true
+            assertEquals(RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.INCOMPLETE_PARENT),
+                remote.folderCreateCapability("/srv/tenant", "/srv/tenant/TV"))
+            // This root remains consistent while its child parent is not.
+            assertEquals(RemoteFolderCreateCapability.Ready("/srv/tenant"),
+                remote.folderCreateCapability("/srv/tenant"))
+            fx.partialTypedParentChildren = false
+            assertEquals(RemoteFolderCreateCapability.Ready("/srv/tenant"),
+                remote.folderCreateCapability("/srv/tenant", "/srv/tenant/TV"))
+            fx.extraTypedParentChild = true
+            assertEquals(RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.INCOMPLETE_PARENT),
+                remote.folderCreateCapability("/srv/tenant", "/srv/tenant/TV"))
+            assertEquals(0, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
+        }
+    }
+
     @Test fun partiallyOverlappingParentInventoriesRefuseBeforeAnyMkdir() = runBlocking {
         Fixture().use { fx ->
             fx.created.add("Existing")
