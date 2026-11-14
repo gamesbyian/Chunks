@@ -1,0 +1,19 @@
+real-deletion	Record exact test source	2026-11-14T02:33:36.7749689Z CHUNKS_HOST_DELETE_SOURCE 9d2a00662e6a259c8b2b6a73b40fc8f9e8dd144e 00fdfb7a0d2b8518772f3e14dede76daaa118d2b
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8295584Z CHUNKS_HOST_BYTES_STAGE: preflight
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8296104Z CHUNKS_HOST_BYTES_STAGE: destination
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8296469Z CHUNKS_HOST_DELETE: independent-parent-observed-before-add
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8296817Z CHUNKS_HOST_BYTES_STAGE: peer
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8297084Z CHUNKS_HOST_BYTES_STAGE: seed-ready
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8297357Z CHUNKS_HOST_BYTES_STAGE: added-started
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8297627Z CHUNKS_HOST_BYTES_STAGE: started
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8297903Z CHUNKS_HOST_BYTES_STAGE: bytes-verified
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8298179Z CHUNKS_HOST_BYTES_STAGE: stopped
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8298984Z CHUNKS_HOST_DELETE: capability=REGISTERED_ERASE_HOOKS
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8299303Z CHUNKS_HOST_DELETE: actual-payload-present
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8299642Z CHUNKS_HOST_DELETE: stale-review-refused-files-preserved
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8300016Z CHUNKS_HOST_DELETE: session-only-removed-payload-preserved
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8300366Z CHUNKS_HOST_DELETE: outcome=QueuedForCleanup
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8300805Z CHUNKS_HOST_DELETE: verified-session-absent-payload-absent-unrelated-entries-preserved
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8301238Z CHUNKS_HOST_BYTES_STAGE: removed
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8301509Z CHUNKS_HOST_BYTES_STAGE: inventory-restored
+real-deletion	Verify actual Kotlin deletion and independent filesystem outcomes	2026-11-14T02:37:33.8301982Z CHUNKS_HOST_DELETE: tests=3 failed=0 skipped=0

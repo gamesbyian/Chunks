@@ -1,0 +1,19 @@
+Acceptance report for exact commit 9d2a00662e6a259c8b2b6a73b40fc8f9e8dd144e (profile: integration-real-peer)
+
+  PASSED        check  [success]
+  PASSED        build  [success]
+  PASSED        build-once  [success]
+  PASSED        add-review-device-test (0)  [success]
+  PASSED        add-review-device-test (1)  [success]
+  PASSED        verify-complete-native-add  [success]
+  PASSED        android-native-atlas  [success]
+  PASSED        minified-smoke  [success]
+  PASSED        api29-downloads  [success]
+  PASSED        two-server-combined  [success]
+  PASSED        remote-delete-data  [success]
+  PASSED        installed-magnet-lifecycle  [success]
+
+Other checks on this commit (not part of the profile): add-review-device-test, legacy-real-engine, modern-real-engine (arch-latest, archlinux:latest)
+
+ACCEPTABLE: every required gate executed and passed on this exact commit.
+Skipped, cancelled or absent gates are not passes; emulator results are not physical-device evidence.

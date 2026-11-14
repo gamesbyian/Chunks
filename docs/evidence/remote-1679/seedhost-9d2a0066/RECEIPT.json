@@ -1,0 +1,108 @@
+{
+  "schema": "chunks.remote-deletion-acceptance.v1",
+  "candidate_sha": "9d2a00662e6a259c8b2b6a73b40fc8f9e8dd144e",
+  "candidate_tree": "00fdfb7a0d2b8518772f3e14dede76daaa118d2b",
+  "seedhost_run": 43546968883,
+  "seedhost": {
+    "tests": 3,
+    "failures": 0,
+    "skipped": 0,
+    "peer_verified_bytes": 524288,
+    "adapter": "REGISTERED_ERASE_HOOKS",
+    "stale_review_refused": true,
+    "session_only_kept_payload": true,
+    "independent_payload_entry_absent": true,
+    "unrelated_entries_preserved": true,
+    "other_session_hashes_preserved": true,
+    "unrelated_file_bytes_audited": false
+  },
+  "installed_disposable": {
+    "run": 43546974495,
+    "checkout_sha": "0cc6064a3e4be3a66cdc2f3dfbf768785f7a37c1",
+    "tree": "00fdfb7a0d2b8518772f3e14dede76daaa118d2b",
+    "installed_apk_size_bytes": 72288164,
+    "installed_apk_sha256": "b34b7ea329fbb04021a97ee591b155c032bff796a3a41df1f454bb2a692f98e5",
+    "independent_collector_payload_absent": true,
+    "foreign_canary_bytes_preserved": true
+  },
+  "not_claimed": [
+    "physical Pixel / human TalkBack / OEM acceptance",
+    "APK publication",
+    "portable deletion on servers lacking required getters or adapter evidence"
+  ],
+  "prior_failed_runs": [
+    {
+      "run": 43545246997,
+      "source": "4b367f15",
+      "phase": "independent observer after real peer verification and Stop; before deletion"
+    },
+    {
+      "run": 43546155602,
+      "source": "6951ed11",
+      "phase": "observer subprocess path before Add; no transfer created"
+    }
+  ],
+  "integration": {
+    "profile": "integration-real-peer",
+    "required_gates_passed": 12,
+    "required_gates_total": 12,
+    "foundation": {
+      "run": 43546974608,
+      "tests": 2466,
+      "executed": 2404,
+      "failed": 0,
+      "skipped": 62
+    },
+    "runs": {
+      "documentation": 43546974538,
+      "native_add": 43546988447,
+      "native_atlas": 43547001483,
+      "r8": 43546988391,
+      "api29_downloads": 43547004277,
+      "two_server_combined": 43547006734,
+      "installed_remote_delete": 43546974495,
+      "installed_magnet_lifecycle": 43546988402,
+      "disposable_legacy_and_modern_engines": 43546974469
+    }
+  },
+  "local": {
+    "rpc_and_removal_ui_executed": 441,
+    "failed": 0,
+    "conditional_skips": 39,
+    "native_default_add_regression_cases": 7,
+    "native_started_add_regression_cases": 6,
+    "later_head_405_and_cancellation_regressions_passed": true,
+    "file_witness_unit_cases": 4,
+    "docs_unit_cases": 4,
+    "ci_routing_unit_cases": 6,
+    "tier": "supporting pre-final local runs; exact final acceptance is the matching CI cohort"
+  },
+  "experience": {
+    "viewport": "320x700 mdpi, 200% text, Robolectric API35",
+    "captures": "temporary capture-only instrumentation in existing passing UI cases; tracked sources restored",
+    "review": "primary and independent reviewers found no blocking wrapping, touch target, state truth or recovery issue; component acceptance only"
+  },
+  "merge_sha": "8d485caa5884e12b4af13eb10e6448c2ccda4a6f",
+  "merge_tree": "00fdfb7a0d2b8518772f3e14dede76daaa118d2b",
+  "fixture_retirement": {
+    "mutation_run": 43547710272,
+    "source": "047ce20274f768aff46113cb507b5183ee414292",
+    "complete_retirement_receipt": "failed; not promoted to success",
+    "readonly_runs": [
+      43548332508,
+      43548913178,
+      43549473356
+    ],
+    "final_readonly_source": "28acef01",
+    "exact_session_absent": true,
+    "remaining_sessions": 50,
+    "current_declared_parents": 38,
+    "independently_observed_parents": 8,
+    "retired_payload_leaf_matches_in_observed_parents": 0,
+    "original_parent_coverage_certified": false,
+    "unrelated_preservation_for_retirement_certified": false,
+    "mutation_replayed": false,
+    "experiment_branch_merged": false,
+    "note": "Read-only collection ran3cases/0failures/0skips; its deletion-acceptance workflow correctly remained red without a new physical-deletion terminal witness. The separate accepted9d end-to-end journey remains fully qualified."
+  }
+}
