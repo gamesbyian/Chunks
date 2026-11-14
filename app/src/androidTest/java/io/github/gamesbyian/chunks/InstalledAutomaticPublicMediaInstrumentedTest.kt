@@ -72,9 +72,16 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
     private fun exactAssignment() = FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json")).get(key())
     private fun displayed(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     private fun openCanonicalTransfers() {
-        rule.waitUntil(25_000) { displayed("Transfers") }
-        rule.onNodeWithText("Transfers", substring = false).performClick()
-        rule.waitUntil(30_000) { displayed("All environments") }
+        rule.waitUntil(25_000) {
+            rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_TRANSFERS)).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+        // Local-only canonical Transfers has no All chip. Its search appears
+        // after the real stopped fixture restores, instead of Welcome chrome.
+        rule.waitUntil(30_000) {
+            rule.onAllNodes(hasSetTextAction() and hasText("Search names or hashes"))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
     }
     private fun search(value: String) {
         rule.onNodeWithText("Search names or hashes").performTextReplacement(value)
@@ -116,7 +123,7 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
         // Synthetic public TV fixture is explicitly authorized only by this one-shot
         // test flag. No other app or tracker consent is inferred from these settings.
         media.updateSettings(MediaPrivacySettings(
-            onlineLookupConsent = true, automaticLookup = true,
+            onlineLookupConsent = true, automaticLookup = false,
             disabledProviders = setOf("tmdb", "wikidata", "anilist", "musicbrainz", "openlibrary")))
         val original = ProxySelector.getDefault()
         val network = Observer(original, offline = false)
@@ -125,12 +132,6 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { activity = it }
                 rule.waitUntil(30_000) { displayed("Transfers") }
-                // Keep the only canonical catalog mounted while filtering every
-                // fixture row OUT of LazyColumn composition. A passing identity
-                // cannot be attributed to per-row rememberTransferMedia effects.
-                openCanonicalTransfers()
-                search("qa-intentionally-no-matching-transfers")
-                assertFalse("No transfer row should exist before fixture admission", displayed(originalName))
                 // Register a stopped native transfer. It is never started or sent to
                 // a remote tracker; merely seeing the fresh inventory causes lookup.
                 val engine = LocalEngineHolder.get(context)
@@ -146,6 +147,14 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                 val torrentHash = (added as LocalAddResult.AddedStopped).status.infoHash
                 assertTrue(prefs.edit().putString("hash", torrentHash).commit())
                 assertTrue(engine.saveResumeDataFor(torrentHash, 30_000))
+                // A real job makes this the canonical list rather than Welcome.
+                // Keep lookup OFF until the row is filtered out: per-row effects
+                // cannot be responsible for the later provider request.
+                openCanonicalTransfers()
+                search("qa-intentionally-no-matching-transfers")
+                assertFalse("Filter must hide the fixture before enabling lookup", displayed(originalName))
+                assertTrue("No provider HTTP while automatic lookup is off", network.uris.isEmpty())
+                media.updateSettings(media.loadSettings().copy(automaticLookup = true))
                 // No row is composed while the only backend session enriches
                 // this hidden, newly arrived exact-key native inventory.
                 assertFalse("Filter must still hide the newly observed row", displayed(originalName))

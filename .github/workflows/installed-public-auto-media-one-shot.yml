@@ -1,33 +1,36 @@
-name: Chunks one-shot installed public TVmaze artwork
+name: Installed public automatic artwork and offline restart
 
-# Scope is intentionally the exact owner-authorized QA branch; do not turn
-# third-party HTTP into a default pull-request job. No user keys or servers.
+# Deliberate public-provider HTTP only; never run from PR/push or against owner accounts.
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/installed-public-auto-media-one-shot.yml"
-    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+    inputs:
+      public_media:
+        description: "Authorize this bounded disposable-emulator TVmaze/CDN proof"
+        type: boolean
+        default: false
+        required: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: chunks-one-shot-public-media-${{ github.event.pull_request.number }}
+  group: chunks-public-auto-media-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   live-public-tvmaze-offline-restart:
-    if: github.event.pull_request.head.repo.full_name == 'gamesbyian/Chunks' && github.head_ref == 'qa/media-public-installed-20261110'
+    if: github.event_name == 'workflow_dispatch' && inputs.public_media
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      CHUNKS_PUBLIC_MEDIA_AUTHORIZED: one-shot-20261110
+      CHUNKS_PUBLIC_MEDIA_AUTHORIZED: bounded-public-tvmaze
       CHUNKS_SOURCE_SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
       - name: Verify one-shot script and safe installed-byte test contract before toolchain allocation
         run: |
           bash -n tools/installed_public_auto_media.sh tools/verify_installed_apk_bytes.sh
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_public_auto_media_authorization.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_apk_identity.py
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_instrumentation_stream.py
       - uses: actions/setup-java@v4
