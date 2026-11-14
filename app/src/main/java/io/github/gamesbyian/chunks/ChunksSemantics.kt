@@ -25,6 +25,8 @@ internal object ChunksSemantics {
     const val FOOTER_OPTIONS = "chunks.footer.options"
 
     const val CONNECTION_ADD = "chunks.connection.add"
+    /** Submit a reviewed connection; stable across keyboard and roster layout. */
+    const val CONNECTION_CONNECT = "chunks.connection.connect"
     const val CONNECTION_NAME = "chunks.connection.name"
 
     // Universal Add: one source, one submission action, one Start preference.
@@ -48,6 +50,8 @@ internal object ChunksSemantics {
     const val DETAILS_LOCAL_TRACKERS = "chunks.details.local.trackers"
     const val DETAILS_REMOTE_RECHECK = "chunks.details.remote.recheck"
     const val REMOTE_RECHECK_STATUS = "chunks.remote.recheck.status"
+    /** Exact Add-draft artwork choice, independent of its disclosure label. */
+    const val ADD_ARTWORK_CHOICE = "chunks.add.artwork-choice"
     const val ADD_START_PREFERENCE = "chunks.add.start-preference"
     /** Inline Add-to choice for this device. Selected state is a Compose semantic. */
     const val ADD_TARGET_DEVICE = "chunks.add.target.device"

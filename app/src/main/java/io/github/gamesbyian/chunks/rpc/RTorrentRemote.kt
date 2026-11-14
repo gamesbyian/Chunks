@@ -226,6 +226,20 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         class Failed(val cause: Exception) : DefaultDirectoryReport()
     }
 
+    /** Read-only, same-tenant ruTorrent folder listing. Never creates a folder. */
+    internal suspend fun browseDirectories(path: String): RemoteDirectoryLookup =
+        RuTorrentDirectoryListing.read(endpoint, auth, path)
+
+    /** Separately verify the ruTorrent File Manager root before offering New folder. */
+    internal suspend fun folderCreateCapability(root: String): RemoteFolderCreateCapability =
+        RuTorrentFileManager.capability(endpoint, auth, root)
+
+    /** One reviewed child-folder create; never repeated after uncertain acknowledgements. */
+    internal suspend fun createServerFolder(
+        root: String, parent: String, childName: String
+    ): RemoteFolderCreateOutcome =
+        RuTorrentFileManager.create(endpoint, auth, root, parent, childName)
+
     /** Read-only classification of `directory.default`; never throws except cancellation. */
     suspend fun defaultDirectoryReport(): DefaultDirectoryReport {
         val value = try {

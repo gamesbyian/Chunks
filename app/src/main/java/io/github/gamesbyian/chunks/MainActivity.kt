@@ -2799,6 +2799,7 @@ internal fun ConnectionScreen(
                 enabled = !loading && endpoint.isNotBlank() && validName,
                 shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                    .testTag(ChunksSemantics.CONNECTION_CONNECT)
             ) { Text(if (loading) "Finding secure rTorrent…" else "Connect to rTorrent") }
         }
         if (connectedSessionName == null) {

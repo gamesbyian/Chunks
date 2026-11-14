@@ -1,6 +1,6 @@
 # Remote download folder picker: interaction and visual design
 
-**Status: approved design target; no rendered/installed implementation accepted.** [Canonical behavior and security](../REMOTE-DIRECTORY-BROWSER.md) are binding; this file owns placement, composition, view states and visual acceptance. Reuse the existing Chunks theme, iconography and shared Compose controls; use the approved [folder icon](svg/icons/files/folder.svg) and [new-folder icon](svg/icons/files/new-folder.svg) when visually suitable, avoiding generic placeholder vectors. Keep the one-row Transfers / + Add / Connections / Options footer under the parent Add screen; picker overlay must respect system insets and not duplicate navigation.
+**Status: implemented candidate in [PR #1710](https://github.com/gamesbyian/Chunks/pull/1710), with rendered/installed and actual Seedhost acceptance still pending.** [Canonical behavior and security](../REMOTE-DIRECTORY-BROWSER.md) are binding; this file owns placement, composition, view states and visual acceptance. Reuse the existing Chunks theme, iconography and shared Compose controls; use the approved [folder icon](svg/icons/files/folder.svg) and [new-folder icon](svg/icons/files/new-folder.svg) when visually suitable, avoiding generic placeholder vectors. Keep the one-row Transfers / + Add / Connections / Options footer under the parent Add screen; picker overlay must respect system insets and not duplicate navigation.
 
 ## Entry and hierarchy
 
