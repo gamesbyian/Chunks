@@ -414,6 +414,20 @@ internal fun VerifiedAddScreen(
         null
     }
 
+    // Reconciliation changes the coordinator after asynchronous exact-server
+    // reads. Observe its settled phase in this composition, together with the
+    // read/write activity states. Item-only state reads otherwise update the
+    // result card but can leave LazyColumn's acknowledgment item list stale.
+    // The coordinator remains the sole authority; this is presentation only.
+    val settledPhase = draft.coordinator.phase.takeUnless { submitting || rechecking }
+    val exactSessionConfirmed = settledPhase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+    val addedByThisAttempt = settledPhase == UniversalAddCoordinator.Phase.VERIFIED
+    val registeredStartUnverified =
+        settledPhase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED
+    val canAcknowledge = settledPhase?.let {
+        canCloseRemoteAddReview(it, verifiedHash, uncertain)
+    } == true
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
@@ -1067,12 +1081,6 @@ internal fun VerifiedAddScreen(
         // Read-only recovery can prove the exact hash, Place and Start
         // without proving that Chunks originally registered the job. Never
         // present this as an ordinary newly verified Add.
-        val exactSessionConfirmed =
-            draft.coordinator.phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
-        val addedByThisAttempt =
-            draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED
-        val registeredStartUnverified =
-            draft.coordinator.phase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED
         if (alreadyAttempted && (initialTorrent != null ||
                 (magnet.isNotBlank() && magnet != draft.attemptSource))) item {
             Text(when {
@@ -1105,7 +1113,7 @@ internal fun VerifiedAddScreen(
         }
         // The Add coordinator owns acknowledgment eligibility, not an
         // incomplete screen-only hash after a read-only Recheck.
-        if (canCloseRemoteAddReview(draft.coordinator.phase, verifiedHash, uncertain)) item {
+        if (canAcknowledge) item {
             OutlinedButton(onClick = {
                 val oldSource = draft.attemptSource
                 // The single explicit click acknowledges a confirmed session
