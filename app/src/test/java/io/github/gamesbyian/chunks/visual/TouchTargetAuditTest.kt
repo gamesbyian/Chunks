@@ -103,8 +103,8 @@ class CombinedTouchTargetAuditTest {
             hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
         rule.waitForIdle()
         small += rule.smallTouchTargets(density)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filters"))
-        rule.onNodeWithText("Filters").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT).performScrollTo().performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText("Device transfer controls"))
         rule.waitForIdle()

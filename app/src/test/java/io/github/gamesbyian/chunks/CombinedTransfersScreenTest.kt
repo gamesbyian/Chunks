@@ -65,6 +65,16 @@ class CombinedTransfersScreenTest {
     }
     private fun revealText(text: String) = reveal(hasText(text, substring = true))
     private fun revealDescription(description: String) = reveal(hasContentDescription(description))
+    private fun openFilters() {
+        reveal(hasText("Search names or hashes"))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT)
+            .performScrollTo().assertIsDisplayed().performClick()
+    }
+    private fun openBatch() {
+        reveal(hasText("Search names or hashes"))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_BATCH_TOOLS)
+            .performScrollTo().assertIsDisplayed().performClick()
+    }
 
     private val commands = ArrayList<Pair<String, Boolean>>()
     private var settles = 0
@@ -93,8 +103,7 @@ class CombinedTransfersScreenTest {
         show()
         rule.onNodeWithText("Search names or hashes").assertExists()
         rule.onNodeWithText("Change sort & grouping", substring = true).assertDoesNotExist()
-        revealText("Filters")
-        rule.onNodeWithText("Filters", substring = true).performClick()
+        openFilters()
         revealText("Search names or hashes")
         rule.onNodeWithText("Change sort & grouping", substring = true).assertExists()
         assertTrue(commands.isEmpty())
@@ -175,6 +184,7 @@ class CombinedTransfersScreenTest {
                 )
             } }
         }
+        openFilters()
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").assertExists()
         rule.runOnIdle { showAllRevision++ }
@@ -192,6 +202,7 @@ class CombinedTransfersScreenTest {
             pendingFocus = currentId
             mounted = true
         }
+        openFilters()
         revealText("Show all transfers")
         assertTrue("old All request must stay consumed on remount", consumedRevision == showAllRevision)
         assertTrue("view scope reset can never dispatch an rTorrent mutation", commands.isEmpty())
@@ -335,8 +346,7 @@ class CombinedTransfersScreenTest {
             } }
         }
         if (LocalEngineHolder.current() == null) {
-            revealText("Filters")
-            rule.onNodeWithText("Filters").performClick()
+            openFilters()
             revealText("Device transfer controls")
             rule.onNodeWithText("Device transfer controls").performClick()
             assertEquals(1, openedDevice)
@@ -428,8 +438,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun sortDirectionScopeAndGroupingPersistAcrossReopen() {
         show()
-        revealText("Filters")
-        rule.onNodeWithText("Filters", substring = true).performClick()
+        openFilters()
         revealText("Change sort & grouping")
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         revealText("Size")
@@ -507,8 +516,7 @@ class CombinedTransfersScreenTest {
     @Test fun clearSearchRestoresAllMatchesWithoutChangingSelectedEnvironments() {
         show()
         rule.onNodeWithText("Search names or hashes").assertExists()
-        revealText("Filters")
-        rule.onNodeWithText("Filters", substring = true).performClick()
+        openFilters()
         revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
         revealText("Showing 1 of 2")
@@ -534,8 +542,7 @@ class CombinedTransfersScreenTest {
         CombinedViewPreferences(context).save(io.github.gamesbyian.chunks.model.UnifiedTransferQuery(
             sortKey = UnifiedSortKey.SIZE, direction = UnifiedSortDirection.ASCENDING))
         show()
-        revealText("Filters")
-        rule.onNodeWithText("Filters", substring = true).performClick()
+        openFilters()
         revealText("Search names or hashes")
         rule.onNodeWithText("Search names or hashes").performTextInput("not-in-any-transfer")
         revealText("Showing 0")
@@ -565,8 +572,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun entirelyHiddenFilteredSearchExplainsWhyAddMayNotAppear() {
         show()
-        revealText("Filters")
-        rule.onNodeWithText("Filters", substring = true).performClick()
+        openFilters()
         revealText("Stopped")
         rule.onNodeWithText("Stopped").performClick()
         revealText("Search names or hashes")
@@ -585,8 +591,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun combinedFilterIsAppliedToUnionAndPersistsForNextOpening() {
         show()
-        revealText("Filters")
-        rule.onNodeWithText("Filters", substring = true).performClick()
+        openFilters()
         rule.onNodeWithText("Filter transfers").assertExists()
         rule.onNodeWithText("Stopped").performClick()
         revealText("Small Episode")
@@ -637,8 +642,7 @@ class CombinedTransfersScreenTest {
             ": Out of date, showing last list · 2 transfers"
         revealText(staleLabel)
         rule.onNodeWithText(staleLabel).assertExists()
-        revealText("Batch tools")
-        rule.onNodeWithText("Batch tools").performClick()
+        openBatch()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -658,8 +662,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun unsignedInSyntheticBatchCannotDispatchUnderARealServerIdentity() {
         show()
-        revealText("Batch tools")
-        rule.onNodeWithText("Batch tools").performClick()
+        openBatch()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -704,8 +707,7 @@ class CombinedTransfersScreenTest {
                     onOpenLocal = {}, onOpenServer = {}, onBack = {})
             } }
         }
-        revealText("Batch tools")
-        rule.onNodeWithText("Batch tools").performClick()
+        openBatch()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -756,8 +758,7 @@ class CombinedTransfersScreenTest {
                     onOpenLocal = {}, onOpenServer = {}, onBack = {})
             } }
         }
-        revealText("Batch tools")
-        rule.onNodeWithText("Batch tools").performClick()
+        openBatch()
         revealText("Select…")
         rule.onNodeWithText("Select…").performClick()
         val selectRow = "Select Big Archive on " + serverEnvironmentLabel(aliasScope)
@@ -863,6 +864,9 @@ class CombinedTransfersScreenTest {
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isEmpty()
         }
+        // Ordinary scoped catalog stays compact. The read-only scope summary
+        // remains available inside Filters, not as a top-of-list banner.
+        openFilters()
         revealText("Viewing:")
         rule.onNodeWithText("Viewing:", substring = true).assertExists()
         assertEquals(selected, CombinedViewPreferences(context).load().scope)

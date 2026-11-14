@@ -55,6 +55,10 @@ internal object ChunksSemantics {
     const val ADD_TARGET_REMOTE = "chunks.add.target.remote"
     /** The always-visible row of per-environment show/hide toggles above Transfers. */
     const val TRANSFERS_ENVIRONMENT_TOGGLES = "chunks.transfers.environmentToggles"
+    /** Search-adjacent disclosure for existing filter, sort and grouping controls. */
+    const val TRANSFERS_FILTER_SORT = "chunks.transfers.filterSort"
+    /** Search-adjacent disclosure for existing exact-job batch review. */
+    const val TRANSFERS_BATCH_TOOLS = "chunks.transfers.batchTools"
     /** An expanded Transfers row's quick operations (Start/Stop). */
     const val TRANSFER_ROW_QUICK_CONTROLS = "chunks.transfers.row.quickControls"
     /** Remote Add effective Save to status (custom, saved default, rTorrent default or why none). */

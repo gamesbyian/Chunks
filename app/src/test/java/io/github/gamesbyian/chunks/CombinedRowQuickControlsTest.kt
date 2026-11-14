@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performScrollTo
@@ -158,8 +159,8 @@ class CombinedRowQuickControlsTest {
                 setOf(EnvironmentSnapshots.LOCAL, io.github.gamesbyian.chunks.model.EnvironmentId(other.id))
         }
         // A status filter composes with the toggles instead of resetting them.
-        reveal(hasText("Filters"))
-        rule.onNodeWithText("Filters").performClick()
+        reveal(androidx.compose.ui.test.hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT).performScrollTo().performClick()
         reveal(hasText("Started"))
         rule.onNodeWithText("Started").performClick()
         rule.waitUntil(5_000) { CombinedViewPreferences(context).load().filter == UnifiedTransferFilter.STARTED }
