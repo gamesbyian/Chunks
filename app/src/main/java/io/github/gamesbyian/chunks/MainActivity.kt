@@ -1381,6 +1381,18 @@ internal fun ChunksApp(
                     }?.label ?: "Connected rTorrent server"
                 },
                 connectedVersion = version,
+                remoteForDefaultFolder = server,
+                savedDefaultFolder = remember(aliasScope, recentPlaceRevision) {
+                    if (aliasScope.isBlank()) null
+                    else runCatching { recentPlaceStore.savedDefault(aliasScope) }.getOrNull()
+                },
+                onSaveDefaultFolder = { newDefault ->
+                    val saved = aliasScope.isNotBlank() && server != null && runCatching {
+                        recentPlaceStore.setSavedDefault(aliasScope, newDefault)
+                    }.getOrDefault(false)
+                    if (saved) recentPlaceRevision++
+                    saved
+                },
                 connectedRequestedView = requestedView,
                 onSelectConnectedView = { requestedView = it },
                 onLoadConnectedView = refresh,
@@ -2411,6 +2423,9 @@ internal fun ConnectionScreen(
     onPassword: (String) -> Unit, onConnect: () -> Unit,
     connectedSessionName: String? = null,
     connectedVersion: String = "",
+    remoteForDefaultFolder: RTorrentRemote? = null,
+    savedDefaultFolder: String? = null,
+    onSaveDefaultFolder: (String?) -> Boolean = { false },
     connectedRequestedView: String = "main",
     onSelectConnectedView: (String) -> Unit = {},
     onLoadConnectedView: () -> Unit = {},
@@ -2435,6 +2450,23 @@ internal fun ConnectionScreen(
     var pendingForget by remember { mutableStateOf<String?>(null) }
     var extraToolsOpen by rememberSaveable { mutableStateOf(false) }
     var currentServerToolsOpen by rememberSaveable { mutableStateOf(false) }
+    var editingRemoteDefault by remember(remoteForDefaultFolder) { mutableStateOf(false) }
+    var remoteDefaultNotice by remember(remoteForDefaultFolder) { mutableStateOf<String?>(null) }
+    if (editingRemoteDefault && remoteForDefaultFolder != null) {
+        RemoteFolderPicker(
+            remote = remoteForDefaultFolder,
+            connectionName = connectedSessionName ?: "rTorrent",
+            initialFolder = savedDefaultFolder,
+            onChoose = { selected ->
+                if (onSaveDefaultFolder(selected)) {
+                    editingRemoteDefault = false
+                    remoteDefaultNotice = "Default download folder saved for this server."
+                } else remoteDefaultNotice = "Could not save the server's default folder."
+            },
+            onDismiss = { editingRemoteDefault = false },
+            savedDefaultMode = true
+        )
+    }
     var renameProfileId by remember { mutableStateOf<String?>(null) }
     var renameDraft by remember { mutableStateOf("") }
     var renameBusy by remember { mutableStateOf(false) }
@@ -2503,6 +2535,33 @@ internal fun ConnectionScreen(
                         OutlinedButton(onClick = onDisconnectCurrent, enabled = !loading,
                             modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                             Text("Disconnect")
+                        }
+                    }
+                    if (remoteForDefaultFolder != null) {
+                        Text(
+                            "New downloads: " + (savedDefaultFolder ?: "rTorrent default folder"),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                editingRemoteDefault = true
+                                remoteDefaultNotice = null
+                            },
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        ) { Text("Choose default download folder") }
+                        if (savedDefaultFolder != null) {
+                            TextButton(
+                                onClick = {
+                                    remoteDefaultNotice =
+                                        if (onSaveDefaultFolder(null))
+                                            "This server will use its rTorrent default again."
+                                        else "Could not clear the saved default folder."
+                                },
+                                modifier = Modifier.heightIn(min = 48.dp)
+                            ) { Text("Use rTorrent default") }
+                        }
+                        remoteDefaultNotice?.let { notice ->
+                            Text(notice, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                     OutlinedButton(onClick = { currentServerToolsOpen = !currentServerToolsOpen },
