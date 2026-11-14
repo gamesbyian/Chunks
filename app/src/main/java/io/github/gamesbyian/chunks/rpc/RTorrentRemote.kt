@@ -230,9 +230,11 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     internal suspend fun browseDirectories(path: String): RemoteDirectoryLookup =
         RuTorrentDirectoryListing.read(endpoint, auth, path)
 
-    /** Separately verify the ruTorrent File Manager root before offering New folder. */
-    internal suspend fun folderCreateCapability(root: String): RemoteFolderCreateCapability =
-        RuTorrentFileManager.capability(endpoint, auth, root)
+    /** Validate the exact visible parent before offering New folder. */
+    internal suspend fun folderCreateCapability(
+        root: String, parent: String = root
+    ): RemoteFolderCreateCapability =
+        RuTorrentFileManager.capability(endpoint, auth, root, parent)
 
     /** One reviewed child-folder create; never repeated after uncertain acknowledgements. */
     internal suspend fun createServerFolder(
