@@ -75,8 +75,17 @@ class RemoteMagnetDraftCheckTest {
                     } }
                 }
             }
-            reveal("Add transfer")
-            // One explicit Add transfer click is the sole submission action.
+            // The Add review LazyColumn can remeasure as its contents settle.
+            // Observe the stable capability tag and enabled state before the
+            // single reviewed click. Never retry a possibly dispatched Add.
+            val addControl = androidx.compose.ui.test.hasTestTag(ChunksSemantics.ADD_SUBMIT)
+            rule.waitUntil(15_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(addControl)
+                    rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+            }
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }
             reveal("The artwork exclusion could not be saved. Nothing was added. Try again or change Artwork & metadata.")
