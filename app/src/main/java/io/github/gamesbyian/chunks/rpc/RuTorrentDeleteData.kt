@@ -27,6 +27,35 @@ internal object RuTorrentDeleteData {
         return URI.create("${rpc.scheme}://${rpc.rawAuthority}$path")
     }
 
+    /** Existing account-specific ruTorrent hooks, never a custom5 convention alone. */
+    fun registeredLegacyHooks(value: Any?, principal: String): Boolean {
+        if (principal.isBlank()) return false
+        val hooks = value as? Map<*, *> ?: return false
+        val collect = hooks["erasedata0$principal"] as? String ?: return false
+        val finish = hooks["erasedata1$principal"] as? String ?: return false
+        if (collect.length !in 1..8192 || finish.length !in 1..8192) return false
+        // Legacy ruTorrent registers these only after successful initialization.
+        // Read the existing definitions; never install hooks or submit execute.*.
+        return collect.contains("d.open=") && collect.contains("custom5=") &&
+            collect.contains("f.multicall=") && collect.contains("file.append=") &&
+            collect.contains("frozen_path=") && collect.contains("/erasedata/") &&
+            finish.contains("custom5=") && finish.contains("/erasedata/fin.sh") &&
+            finish.contains("system.pid=") && finish.contains("base_path=") &&
+            finish.contains("is_multi_file=")
+    }
+
+    fun legacyBrowserAdapter(script: String): Boolean = script.length <= 150_000 &&
+        script.contains("rTorrentStub.prototype.removewithdata") &&
+        listOf("d.set_custom5", "d.delete_tied", "d.erase").all(script::contains)
+
+    fun acceptedLegacyResponse(value: Any?): Boolean {
+        val results = value as? List<*> ?: return false
+        if (results.size != 3) return false
+        val values = results.map { (it as? List<*>)?.singleOrNull() }
+        return values[0] in listOf("", "1", 1L, 0L, "0") &&
+            values.drop(1).all { it == 0L || it == "0" }
+    }
+
     /**
      * A remote directory must be a canonical absolute path before its string
      * can prove filesystem non-overlap. Dot segments, duplicate separators
@@ -81,7 +110,8 @@ internal object RuTorrentDeleteData {
 sealed class RemoteDeleteDataOutcome {
     data object Unsupported : RemoteDeleteDataOutcome()
     data class Refused(val reason: RemoteDeleteRefusal) : RemoteDeleteDataOutcome()
-    data class QueuedForCleanup(val hash: String) : RemoteDeleteDataOutcome()
+    data class QueuedForCleanup(val hash: String, val sessionRemoved: Boolean = true) : RemoteDeleteDataOutcome()
+    data class Partial(val hash: String) : RemoteDeleteDataOutcome()
     data class Uncertain(val hash: String) : RemoteDeleteDataOutcome()
 }
 
@@ -96,10 +126,14 @@ enum class RemoteDeleteRefusal(val explanation: String) {
     SHARED_FILES("Another server transfer shares these payload files, or its file mapping could not be verified."),
     SESSION_CHANGED("The server jobs or file mappings changed during review. Refresh before a new review."),
     AUTHENTICATION("The server rejected authentication or access. Reconnect this exact profile."),
+    CAPABILITY_RESTRICTED("The server restricts data-deletion capability discovery. Session-only Remove remains available; inspect permissions in ruTorrent."),
+    CAPABILITY_UNKNOWN("A safe data-deletion adapter could not be verified. Recheck server capabilities; session-only Remove remains available."),
+    PLUGIN_METHOD_REFUSED("The selected deletion endpoint rejected this HTTP method (405). No alternative deletion was attempted."),
     PLUGIN_UNAVAILABLE("The ruTorrent erasedata endpoint is unavailable on this exact server route.")
 }
 
 enum class RemoteRemovalStage(val label: String) {
+    CAPABILITY("Checking this server’s data-deletion support…"),
     TARGET("Checking the reviewed transfer…"),
     SESSION("Checking complete server session coverage…"),
     FILES("Checking payload paths and shared files…"),

@@ -161,6 +161,70 @@ class SeedhostExactPeerBytesOnceTest {
         }
     }
 
+    /** Independent out-of-process PHP filesystem view, never torrent membership. */
+    private fun diskEntries(place: String): Set<String> {
+        val output = java.nio.file.Files.createTempFile("chunks-private-file-witness-", ".txt")
+        val script = java.nio.file.Paths.get(requireNotNull(System.getenv("GITHUB_WORKSPACE")),
+            "tools", "seedhost_file_witness.py").toFile()
+        check(script.isFile) { "Independent filesystem witness script missing" }
+        val process = ProcessBuilder("python3", script.absolutePath)
+            .redirectOutput(output.toFile()).start()
+        try {
+            process.outputStream.bufferedWriter().use { it.write(place + "\n") }
+            check(process.waitFor(45, java.util.concurrent.TimeUnit.SECONDS)) { "Filesystem observer deadline exceeded" }
+            if (process.exitValue() != 0) {
+                val reason = process.errorStream.bufferedReader().use { it.readLine().orEmpty() }
+                if (Regex("FILESYSTEM_WITNESS [A-Za-z]+(?: code=[0-9]{3})?").matches(reason))
+                    println("CHUNKS_HOST_DELETE: " + reason)
+                error("Independent exact-parent filesystem observer unavailable")
+            }
+            check(java.nio.file.Files.size(output) <= 2_000_000)
+            return java.nio.file.Files.readAllLines(output).filter { it.isNotBlank() }
+                .map { String(java.util.Base64.getDecoder().decode(it), Charsets.UTF_8) }.toSet()
+                .also { check(place.trimEnd('/') + "/" in it) }
+        } finally {
+            if (process.isAlive) process.destroyForcibly()
+            java.nio.file.Files.deleteIfExists(output)
+        }
+    }
+
+    private suspend fun qualifyDeletion(remote: RTorrentRemote, hash: String, name: String,
+        place: String, metainfo: ByteArray) {
+        require(System.getenv("GITHUB_REF") == "refs/heads/main")
+        val cap = remote.discoverDeleteDataCapability(force = true)
+        check(cap.actionable) { "No verified deletion adapter" }
+        println("CHUNKS_HOST_DELETE: capability=" + cap.adapter!!.name)
+        val before = diskEntries(place)
+        val payloadPath = place.trimEnd('/') + "/" + name
+        check(payloadPath in before) { "Exact completed payload not independently observable" }
+        println("CHUNKS_HOST_DELETE: actual-payload-present")
+        check(remote.removeWithDataViaRuTorrent(hash, "incorrect-reviewed-name", place) ==
+            io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome.Refused(io.github.gamesbyian.chunks.rpc.RemoteDeleteRefusal.TARGET_CHANGED))
+        check(remote.lookupName(hash) == name && diskEntries(place) == before)
+        println("CHUNKS_HOST_DELETE: stale-review-refused-files-preserved")
+        check(remote.eraseFromSession(hash, name, place) is SessionEraseOutcome.VerifiedRemoved)
+        check(remote.lookupName(hash) == null && diskEntries(place) == before)
+        println("CHUNKS_HOST_DELETE: session-only-removed-payload-preserved")
+        val added = remote.loadStoppedTorrentBytes(metainfo, place)
+        check(added is RemoteAddOutcome.VerifiedStopped) { "Stopped re-registration not verified" }
+        check(remote.lookupName(hash) == name && diskEntries(place) == before)
+        // Exactly one destructive submission. A failure from this point is
+        // reconciled read-only; it must never fall into session-only cleanup.
+        val outcome = remote.removeWithDataViaRuTorrent(hash, name, place)
+        println("CHUNKS_HOST_DELETE: outcome=" + outcome.javaClass.simpleName)
+        check(outcome is io.github.gamesbyian.chunks.rpc.RemoteDeleteDataOutcome.QueuedForCleanup)
+        check(remote.lookupName(hash) == null) { "Exact session not removed" }
+        val deadline = System.nanoTime() + 180_000_000_000L
+        var after = diskEntries(place)
+        while (payloadPath in after && System.nanoTime() < deadline) {
+            kotlinx.coroutines.delay(3_000)
+            after = diskEntries(place)
+        }
+        check(payloadPath !in after) { "Collector did not delete actual payload within 180 seconds" }
+        check(after == before - payloadPath) { "Unrelated filesystem entries changed" }
+        println("CHUNKS_HOST_DELETE: verified-session-absent-payload-absent-unrelated-entries-preserved")
+    }
+
     @Test fun approvedHostedRTorrentReceivesVerifiedPeerBytesFromRunner() = runBlocking {
         assumeTrue("Protected manual host acceptance only",
             System.getenv("CHUNKS_HOST_PEER_PROOF") == "authorized")
@@ -212,6 +276,10 @@ class SeedhostExactPeerBytesOnceTest {
             remote.defaultDirectory(), observations
         )) { "No corroborated server parent: no Add allowed" }.directory
         stage("destination")
+        if (System.getenv("CHUNKS_HOST_DELETE_PROOF") == "authorized") {
+            diskEntries(place)
+            println("CHUNKS_HOST_DELETE: independent-parent-observed-before-add")
+        }
 
         // Inspect the same verified server's actual peer port/address before
         // creating *anything* on it. This TCP preflight sends no BitTorrent
@@ -362,7 +430,10 @@ class SeedhostExactPeerBytesOnceTest {
                         stopped.name == name && stopped.directory == place &&
                         runCatching { remote.readTrafficSample(hash).active == false }.getOrDefault(false)) {
                         stage("stopped")
-                        val removed = runCatching {
+                        val removed = if (System.getenv("CHUNKS_HOST_DELETE_PROOF") == "authorized") {
+                            qualifyDeletion(remote, hash, name, place, metainfo)
+                            SessionEraseOutcome.VerifiedRemoved(hash)
+                        } else runCatching {
                             remote.eraseFromSession(hash, name, place)
                         }.getOrNull()
                         // A PendingRemoval still has an exact-session hash.

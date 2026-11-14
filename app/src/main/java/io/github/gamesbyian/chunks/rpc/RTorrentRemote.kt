@@ -1192,6 +1192,12 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             "Torrent name or location changed; refresh before removal"
         }
         check(sessionContainsExactHash(hash)) { "Torrent disappeared before removal; refresh" }
+        if (deletionCapability?.adapter == RemoteDeleteAdapter.REGISTERED_ERASE_HOOKS) {
+            val marker = call("d.custom5", listOf(hash))
+            check(marker == "" || marker == "0" || marker == 0L) {
+                "This session already has a pending data-deletion flag. Inspect its cleanup before session-only removal."
+            }
+        }
         try {
             call("d.erase", listOf(hash))
         } catch (cancel: kotlinx.coroutines.CancellationException) {
@@ -1213,8 +1219,71 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
     }
 
 
-    /** Endpoint shape permits an erasedata request; plugin presence is verified by its POST receipt. */
-    fun supportsRuTorrentDeleteData(): Boolean = RuTorrentDeleteData.endpoint(endpoint) != null
+    @Volatile private var deletionCapability: RemoteDeleteCapability? = null
+
+    /** Bounded, non-mutating discovery, scoped to this immutable endpoint/principal. */
+    suspend fun discoverDeleteDataCapability(force: Boolean = false): RemoteDeleteCapability {
+        deletionCapability?.takeIf { !force && it.isFresh(addAccountScope()) }?.let { return it }
+        fun snapshot(state: RemoteCapabilityState, adapter: RemoteDeleteAdapter?, reason: String) =
+            RemoteDeleteCapability(state, adapter, reason, System.currentTimeMillis(), addAccountScope())
+                .also { deletionCapability = it }
+        val plugin = RuTorrentDeleteData.endpoint(endpoint) ?: return snapshot(
+            RemoteCapabilityState.UNSUPPORTED, null, "This connection has no validated ruTorrent mount.")
+        return try {
+            val status = readDeleteResource(plugin, "HEAD").first
+            if (status in setOf(401, 403, 407)) return snapshot(RemoteCapabilityState.RESTRICTED,
+                null, "This server denied access to the deletion endpoint.")
+            val scriptUri = URI.create(plugin.toString().removeSuffix("action.php") + "init.js")
+            val (scriptStatus, script) = readDeleteResource(scriptUri, "GET")
+            if (scriptStatus == 200 && script.contains("plugins/erasedata/action.php") &&
+                script.contains("rTorrentStub.prototype.removewithdata") &&
+                script.contains("mode=removewithdata") && (status in 200..299 || status in setOf(405, 500)))
+                return snapshot(RemoteCapabilityState.SUPPORTED, RemoteDeleteAdapter.ERASEDATA_HTTP,
+                    "The ruTorrent client advertises its deletion endpoint; write permission is unverified.")
+            if (scriptStatus == 200 && RuTorrentDeleteData.legacyBrowserAdapter(script) &&
+                RuTorrentDeleteData.registeredLegacyHooks(call("method.get", listOf("", "event.download.erased")), auth.username))
+                snapshot(RemoteCapabilityState.SUPPORTED, RemoteDeleteAdapter.REGISTERED_ERASE_HOOKS,
+                    "The ruTorrent client and this account’s registered deletion hooks agree. Cleanup is asynchronous.")
+            else snapshot(if (status == 404 && scriptStatus == 404) RemoteCapabilityState.UNSUPPORTED
+                else RemoteCapabilityState.UNKNOWN, null,
+                if (status == 405) "The plugin route refused HEAD (405); no supported adapter was verified."
+                else if (status == 404) "The plugin endpoint was not found (404); no safe alternative adapter was verified."
+                else "No safe deletion adapter was verified (endpoint HTTP $status, client HTTP $scriptStatus).")
+        } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+          catch (_: RpcFault) { snapshot(RemoteCapabilityState.RESTRICTED, null,
+              "This server restricts deletion capability introspection.") }
+          catch (failure: Exception) { snapshot(RemoteCapabilityState.UNKNOWN, null,
+              "Server deletion support could not be checked (${failure.javaClass.simpleName}). Reconnect or recheck.") }
+    }
+
+    /** Read-only same-instance resources; authenticate only after their own challenge. */
+    private suspend fun readDeleteResource(uri: URI, method: String): Pair<Int, String> = withContext(Dispatchers.IO) {
+        var authorization: String? = null
+        repeat(2) { attempt ->
+            val connection = uri.toURL().openConnection() as HttpURLConnection
+            connection.connectTimeout = 5_000
+            connection.readTimeout = 5_000
+            connection.instanceFollowRedirects = false
+            connection.requestMethod = method
+            if (authorization != null) connection.setRequestProperty("Authorization", authorization)
+            try {
+                val status = connection.responseCode
+                if (status == 401 && attempt == 0 && auth.username.isNotEmpty()) {
+                    val headers = connection.headerFields.entries.filter { it.key?.equals("WWW-Authenticate", true) == true }
+                        .flatMap { it.value }
+                    authorization = HttpRpcAuthorization.fromChallenge(headers, auth, method, uri.rawPath)
+                } else {
+                    val text = if (method == "GET" && status == 200) {
+                        val bytes = connection.inputStream.use { it.readNBytes(150_001) }
+                        check(bytes.size <= 150_000) { "Oversized capability resource" }
+                        bytes.toString(Charsets.UTF_8)
+                    } else ""
+                    return@withContext status to text
+                }
+            } finally { connection.disconnect() }
+        }
+        401 to ""
+    }
 
     /**
      * Remove one exact reviewed rTorrent transfer AND ask ruTorrent erasedata
@@ -1230,6 +1299,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         hash: String, expectedName: String, expectedDirectory: String,
         onStage: (RemoteRemovalStage) -> Unit
     ): RemoteDeleteDataOutcome {
+        onStage(RemoteRemovalStage.CAPABILITY)
+        val capability = discoverDeleteDataCapability(force = true)
         onStage(RemoteRemovalStage.TARGET)
         fun refused(reason: RemoteDeleteRefusal) = RemoteDeleteDataOutcome.Refused(reason)
         fun readFailure(failure: Exception, fallback: RemoteDeleteRefusal) = refused(
@@ -1238,6 +1309,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         require(Regex("[0-9a-fA-F]{40}").matches(hash))
         val plugin = RuTorrentDeleteData.endpoint(endpoint)
             ?: return RemoteDeleteDataOutcome.Unsupported
+        if (!capability.actionable) return refused(
+            if (capability.state == RemoteCapabilityState.RESTRICTED) RemoteDeleteRefusal.CAPABILITY_RESTRICTED
+            else RemoteDeleteRefusal.CAPABILITY_UNKNOWN)
         if (expectedName.isBlank() ||
             !RuTorrentDeleteData.safeDirectory(expectedDirectory))
             return refused(RemoteDeleteRefusal.INVALID_REVIEW)
@@ -1353,9 +1427,35 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.SESSION_CHANGED) }
         if (latestFiles != files) return refused(RemoteDeleteRefusal.SESSION_CHANGED)
 
+        if (capability.adapter == RemoteDeleteAdapter.REGISTERED_ERASE_HOOKS) {
+            val mapped = try {
+                extractRows(call("f.multicall", listOf(hash, "", "f.path=", "f.frozen_path="))).map { raw ->
+                    val row = raw as? List<*> ?: error("Invalid frozen file mapping")
+                    require(row.size == 2)
+                    val path = row[0] as? String ?: error("Invalid file path")
+                    val frozen = row[1] as? String ?: error("Invalid frozen path")
+                    path to frozen
+                }
+            } catch (cancel: kotlinx.coroutines.CancellationException) { throw cancel }
+              catch (failure: Exception) { return readFailure(failure, RemoteDeleteRefusal.FILES_UNAVAILABLE) }
+            if (mapped.map { it.first } != files.map { it.path } || mapped.any { (path, frozen) ->
+                    frozen.isNotEmpty() && frozen != expectedDirectory.trimEnd('/') + "/" + path })
+                return refused(RemoteDeleteRefusal.UNSAFE_FILES)
+        }
         onStage(RemoteRemovalStage.AUTHORIZATION)
         val accepted = try {
-            withContext(Dispatchers.IO) {
+            if (capability.adapter == RemoteDeleteAdapter.REGISTERED_ERASE_HOOKS) {
+                // Revalidate existing hooks immediately before the single batch.
+                if (!RuTorrentDeleteData.registeredLegacyHooks(
+                        call("method.get", listOf("", "event.download.erased")), auth.username))
+                    return refused(RemoteDeleteRefusal.CAPABILITY_UNKNOWN)
+                onStage(RemoteRemovalStage.SUBMITTING)
+                val commands = listOf(
+                    mapOf("methodName" to "d.custom5.set", "params" to listOf(hash, "1")),
+                    mapOf("methodName" to "d.delete_tied", "params" to listOf(hash)),
+                    mapOf("methodName" to "d.erase", "params" to listOf(hash)))
+                RuTorrentDeleteData.acceptedLegacyResponse(call("system.multicall", listOf(commands)))
+            } else withContext(Dispatchers.IO) {
                 val target = plugin.rawPath
                 // Credentials, when required, are learned through a harmless
                 // HEAD challenge at this exact plugin endpoint, not a POST retry.
@@ -1392,14 +1492,17 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             throw cancel
         } catch (failure: RpcHttpStatusException) {
             return refused(if (failure.status in setOf(401, 403, 407))
-                RemoteDeleteRefusal.AUTHENTICATION else RemoteDeleteRefusal.PLUGIN_UNAVAILABLE)
+                RemoteDeleteRefusal.AUTHENTICATION else if (failure.status == 405)
+                RemoteDeleteRefusal.PLUGIN_METHOD_REFUSED else RemoteDeleteRefusal.PLUGIN_UNAVAILABLE)
         } catch (_: Exception) { return RemoteDeleteDataOutcome.Uncertain(hash) }
         onStage(RemoteRemovalStage.VERIFYING)
-        if (!accepted) return RemoteDeleteDataOutcome.Uncertain(hash)
+        if (accepted) deletionCapability = capability.copy(authorization = RemoteCapabilityState.SUPPORTED)
         // A valid plugin response means it staged cleanup; its collector may
         // take a while and may refuse unsafe targets. No false "files deleted".
         return try {
-            if (confirmedAbsentExactHash(hash)) RemoteDeleteDataOutcome.QueuedForCleanup(hash)
+            val absent = confirmedAbsentExactHash(hash)
+            if (accepted) RemoteDeleteDataOutcome.QueuedForCleanup(hash, absent)
+            else if (absent) RemoteDeleteDataOutcome.Partial(hash)
             else RemoteDeleteDataOutcome.Uncertain(hash)
         } catch (cancel: kotlinx.coroutines.CancellationException) {
             throw cancel
@@ -2209,6 +2312,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 connection.doOutput = true
                 connection.setFixedLengthStreamingMode(request.size)
                 try {
+                    // A deadline may expire during blocking auth preflight.
+                    // It must revoke dispatch before a destructive body is sent.
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     connection.outputStream.use { it.write(request) }
                     val status = connection.responseCode
                     if (status == HttpURLConnection.HTTP_UNAUTHORIZED &&
@@ -2294,10 +2400,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             "d.peers_connected", "d.down.total", "d.tracker_size",
             // Explicit rTorrent read-only diagnostic getters. Never classify
             // methods by name prefix; .set variants remain write-only.
-            "d.message", "d.hashing", "d.hashing_failed", "d.is_hash_checking", "d.is_meta"
+            "d.custom5", "d.message", "d.hashing", "d.hashing_failed", "d.is_hash_checking", "d.is_meta"
         )
         private val FILE_READ_FIELDS = setOf(
-            "f.path=", "f.size_bytes=", "f.priority=",
+            "f.path=", "f.size_bytes=", "f.priority=", "f.frozen_path=",
             "f.completed_chunks=", "f.size_chunks=",
             "f.range_first=", "f.range_second="
         )
@@ -2307,6 +2413,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         )
 
         private fun isReadOnlyRpcMethod(method: String, params: List<Any>): Boolean {
+            if (method == "method.get") return params == listOf("", "event.download.erased")
             if (method in DIRECT_READ_METHODS) return true
             if (method == "d.multicall2") {
                 return params.size in 3..(3 + EXTENDED_FIELDS.size) &&
@@ -2326,8 +2433,10 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         val fields = item as? Map<*, *> ?: return@all false
                         val name = fields["methodName"] as? String ?: return@all false
                         val args = fields["params"] as? List<*> ?: return@all false
-                        name in DIRECT_READ_METHODS && name.startsWith("d.") &&
-                            args.size == 1 && args.single() is String
+                        (name in DIRECT_READ_METHODS && name.startsWith("d.") &&
+                            args.size == 1 && args.single() is String) ||
+                            (name == "f.multicall" && args.size == 3 &&
+                                args[0] is String && args[1] == "" && args[2] == "f.path=")
                     }
             }
             return false // all unknown future RPCs are single-dispatch

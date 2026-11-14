@@ -6,6 +6,7 @@ import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.Collections
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -247,6 +248,29 @@ class RemoteMutationAuthorizationPreflightTest {
                 RTorrentRemote(RemoteCredentials(gateway.endpoint, "alice", "secret")).version())
             assertEquals(listOf("system.client_version", "system.client_version"),
                 gateway.sent.map { it.method })
+        }
+    }
+    /** Cancellation during an auth read cannot authorize a later mutation. */
+    @Test fun cancelledAuthenticationPreflightNeverDispatchesTheWrite() = runBlocking {
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        Gateway { exchange, method, _ ->
+            if (method == "system.client_version") {
+                entered.countDown()
+                check(release.await(5, java.util.concurrent.TimeUnit.SECONDS))
+                reply(exchange, 401, challenge = basic)
+            } else reply(exchange, 200, ok)
+        }.use { gateway ->
+            val remote = RTorrentRemote(RemoteCredentials(gateway.endpoint, "alice", "secret"))
+            val operation = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                remote.call("d.erase", listOf(hash))
+            }
+            check(entered.await(5, java.util.concurrent.TimeUnit.SECONDS))
+            operation.cancel()
+            release.countDown()
+            operation.join()
+            assertTrue(operation.isCancelled)
+            assertEquals(listOf("system.client_version"), gateway.sent.map { it.method })
         }
     }
 }
