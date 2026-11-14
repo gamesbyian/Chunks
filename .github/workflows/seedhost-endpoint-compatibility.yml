@@ -142,7 +142,7 @@ jobs:
         # fresh Digest authorization; inspect only that separate fixed target
         # using the already corrected exact-RPC read-only path.
         # This main-only check submits zero writes and never reruns.
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && (contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_CORRECT_ENDPOINT_V3') || contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_READBACK_V4')) }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && (contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_CORRECT_ENDPOINT_V3') || (contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_READBACK_V4') || contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_PROVIDER_DIVERGENCE_V5'))) }}
         env:
           CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
@@ -150,7 +150,7 @@ jobs:
           CHUNKS_FOLDER_RECONCILE_ONLY: authorized
           # A fixed allowlist: select exact target by trusted main commit marker.
           # Never read the previous run's name when inspecting the new attempt.
-          CHUNKS_FOLDER_RECONCILE_RUN: ${{ contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_READBACK_V4') && '43587333772' || '43570367968' }}
+          CHUNKS_FOLDER_RECONCILE_RUN: ${{ (contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_READBACK_V4') || contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_PROVIDER_DIVERGENCE_V5')) && '43587333772' || '43570367968' }}
         run: |
           private_log=$(mktemp)
           trap 'rm -f "$private_log"' EXIT
@@ -173,7 +173,8 @@ jobs:
           lines = (root.findtext('system-out') or '').splitlines()
           evidence = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: evidence=')]
           checkpoints = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: checkpoint=')]
-          for item in evidence + checkpoints:
+          providers = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: providers=')]
+          for item in evidence + checkpoints + providers:
               print(item[:160])
           print('CHUNKS_CREATE_RECONCILE: tests=' + root.get('tests', '?') +
                 ' failures=' + root.get('failures', '?') +

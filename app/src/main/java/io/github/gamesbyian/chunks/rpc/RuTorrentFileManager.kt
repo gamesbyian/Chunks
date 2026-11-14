@@ -35,6 +35,23 @@ internal enum class RemoteFolderReadback {
     VERIFIED_DIRECTORY, NOT_PRESENT, INCONSISTENT, CANNOT_VERIFY
 }
 
+/** Fixed, path-free read-only witness: never grants permission to write. */
+internal enum class RemoteFolderPresence {
+    BOTH_DIRECTORIES, BOTH_ABSENT, BROWSER_ONLY, FILE_MANAGER_ONLY,
+    FILE_MANAGER_NON_DIRECTORY
+}
+
+/** Classify two independent directory witnesses without exposing a tenant path. */
+internal fun folderPresence(
+    inBrowser: Boolean, inFileManager: Boolean, nonDirectoryEntry: Boolean
+): RemoteFolderPresence = when {
+    inBrowser && inFileManager -> RemoteFolderPresence.BOTH_DIRECTORIES
+    nonDirectoryEntry -> RemoteFolderPresence.FILE_MANAGER_NON_DIRECTORY
+    inBrowser -> RemoteFolderPresence.BROWSER_ONLY
+    inFileManager -> RemoteFolderPresence.FILE_MANAGER_ONLY
+    else -> RemoteFolderPresence.BOTH_ABSENT
+}
+
 internal object RuTorrentFileManager {
     private const val MAX_RESPONSE_BYTES = 64_000
     private data class Reply(val code: Int, val body: String, val challenges: List<String>)
@@ -214,7 +231,8 @@ internal object RuTorrentFileManager {
      */
     suspend fun observeChild(
         rpc: URI, credentials: RemoteCredentials, observedRoot: String,
-        parent: String, child: String
+        parent: String, child: String,
+        onPresence: ((RemoteFolderPresence) -> Unit)? = null
     ): RemoteFolderReadback = withContext(Dispatchers.IO) {
         if (!validLeaf(child) || relative(observedRoot, parent) == null)
             return@withContext RemoteFolderReadback.CANNOT_VERIFY
@@ -234,6 +252,7 @@ internal object RuTorrentFileManager {
             if (entries == null) return@withContext RemoteFolderReadback.CANNOT_VERIFY
             val inBrowser = child in direct.page.folders
             val inFileManager = (child + "/") in entries
+            onPresence?.invoke(folderPresence(inBrowser, inFileManager, child in entries))
             when {
                 inBrowser && inFileManager -> RemoteFolderReadback.VERIFIED_DIRECTORY
                 !inBrowser && !inFileManager && child !in entries ->
