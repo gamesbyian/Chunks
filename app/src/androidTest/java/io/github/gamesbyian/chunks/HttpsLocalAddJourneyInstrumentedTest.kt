@@ -83,6 +83,12 @@ class HttpsLocalAddJourneyInstrumentedTest {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
         rule.onNodeWithText(text).performScrollTo()
     }
+    /** Device management moved under Filters on the canonical Transfers list.
+     * Keep the same native engine/Stop/Remove acceptance after entering. */
+    private fun enterDeviceControlsFromCatalog() {
+        if (!visible("Hide filters")) click("Filters")
+        click("Device transfer controls")
+    }
     private fun click(text: String) {
         if (text == "Stop") stage("stop-lookup")
         rule.waitUntil(30_000) { runCatching {
@@ -451,7 +457,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 rule.waitUntil(30_000) {
                     rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_HEADING).fetchSemanticsNodes().isNotEmpty()
                 }
-                click("Open device transfer controls")
+                enterDeviceControlsFromCatalog()
                 rule.waitUntil(30_000) { visible("This device") }
                 stage("local-details-verified")
                 stage("local-open")
@@ -466,7 +472,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                     "pieces_bytes=${status.doneBytes} complete=false default_preserved=true " +
                     "piece_sha256=" + MessageDigest.getInstance("SHA-256").digest(piece).joinToString("") { "%02x".format(it) })
                 click("Transfers")
-                click("Open device transfer controls")
+                enterDeviceControlsFromCatalog()
                 stage("next-default-verified")
                 click("Remove…")
                 click("Remove transfer, keep data")

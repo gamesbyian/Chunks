@@ -48,15 +48,27 @@ class LocalAddHiddenInCombinedInstrumentedTest {
 
     private fun reachLocal() {
         val local = SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Transfers on this device")
-        val entry = hasText("Open device transfer controls") and hasClickAction()
+        if (rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty()) return
+        // The former bottom-of-list device button was removed. Find the
+        // disclosed management route without assuming the first lazy viewport.
         waitFor(30_000) {
-            rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty() ||
-                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Open device transfer controls")) }.isSuccess
+            runCatching {
+                rule.onNode(hasScrollToIndexAction())
+                    .performScrollToNode(hasText("Filters"))
+                true
+            }.getOrDefault(false)
         }
-        if (rule.onAllNodes(local).fetchSemanticsNodes().isEmpty()) {
-            rule.onNode(entry).performScrollTo().performClick()
-            waitFor { rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty() }
+        if (rule.onAllNodes(hasText("Hide filters")).fetchSemanticsNodes().isEmpty())
+            rule.onNodeWithText("Filters").performClick()
+        waitFor(30_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction())
+                    .performScrollToNode(hasText("Device transfer controls"))
+                true
+            }.getOrDefault(false)
         }
+        rule.onNodeWithText("Device transfer controls").performClick()
+        waitFor { rule.onAllNodes(local).fetchSemanticsNodes().isNotEmpty() }
     }
 
     @Test fun anAcknowledgedLocalAddHiddenByTheCombinedSearchIsExplained() {
