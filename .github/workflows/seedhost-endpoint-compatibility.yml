@@ -127,56 +127,46 @@ jobs:
           raise SystemExit(0 if ok else 1)
           PY
 
-      - name: One-time owner-authorized verified empty-folder creation
-        # This exact production workflow already has proven access to the
-        # configured primary Seedhost secrets. Run ONLY the sixth invocation,
-        # on a trusted-main merge bearing this exact acceptance marker. This
-        # rule prevents both a rerun and any later main push from replaying.
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_number == 6 && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_CREATE_ONCE_COMPAT_V1') }}
+      - name: Reconcile the single historical mkdir by read-only evidence
+        # The earlier one-shot attempt from 43570367968 was inconclusive.
+        # This step cannot submit a new mkdir, runs only on the marked main
+        # merge commit, and is not repeated by reruns or unrelated pushes.
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_ONLY_V1') }}
         env:
           CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
-          CHUNKS_HOST_FOLDER_READONLY: authorized
-          CHUNKS_HOST_FOLDER_CREATE: authorized
-          CHUNKS_HOST_FOLDER_RUN_ID: ${{ github.run_id }}
+          CHUNKS_FOLDER_RECONCILE_ONLY: authorized
+          CHUNKS_FOLDER_RECONCILE_RUN: "43570367968"
         run: |
-          # Exactly one new empty directory, bounded by all the code-level
-          # root, parent, symlink and dual-provider verification checks.
-          # Even an uncertain outcome is final; never run this step again.
           private_log=$(mktemp)
           trap 'rm -f "$private_log"' EXIT
           test -n "$CHUNKS_LIVE_RTORRENT_USER" && test -n "$CHUNKS_LIVE_RTORRENT_PASS" || {
-            echo '::error::Credential access unavailable; no folder operation attempted'
+            echo '::error::Read-only evidence unavailable: credentials missing'
             exit 1
           }
           set +e
           gradle --no-daemon --console=plain :app:testDebugUnitTest \
-            --tests io.github.gamesbyian.chunks.rpc.SeedhostDirectoryAcceptanceTest > "$private_log" 2>&1
-          exit_code=$?
+            --tests io.github.gamesbyian.chunks.rpc.SeedhostFolderCreateReconcileReadOnlyTest > "$private_log" 2>&1
+          status=$?
           set -e
-          python3 - "$exit_code" <<'PY'
+          python3 - "$status" <<'PY'
           import pathlib, sys, xml.etree.ElementTree as ET
-          path = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostDirectoryAcceptanceTest.xml')
-          if not path.exists():
-              print('CHUNKS_CREATE_ONCE: private test receipt missing; no retry')
+          report = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostFolderCreateReconcileReadOnlyTest.xml')
+          if not report.exists():
+              print('CHUNKS_CREATE_RECONCILE: test-receipt-missing no-mutations=true')
               raise SystemExit(1)
-          root = ET.parse(path).getroot()
-          output = (root.findtext('system-out') or '').splitlines()
-          prefixes = (
-              'CHUNKS_SEEDHOST_FOLDER: browse-verified',
-              'CHUNKS_SEEDHOST_FOLDER: filemanager-root-verified',
-              'CHUNKS_SEEDHOST_FOLDER: filemanager-reason',
-              'CHUNKS_SEEDHOST_FOLDER: create-outcome',
-              'CHUNKS_SEEDHOST_FOLDER: created-single-child-and-independently-relisted')
-          for line in output:
-              if line.startswith(prefixes):
-                  print(line[:180])
-          success = (
-              sys.argv[1] == '0' and int(root.get('tests', '0')) == 1
-              and all(int(root.get(k, '0')) == 0 for k in ('failures','errors','skipped'))
-              and any(s.startswith('CHUNKS_SEEDHOST_FOLDER: created-single-child-and-independently-relisted')
-                      for s in output))
-          print('CHUNKS_CREATE_ONCE: result=' + ('verified' if success else 'unverified; do not retry'))
-          raise SystemExit(0 if success else 1)
+          root = ET.parse(report).getroot()
+          lines = (root.findtext('system-out') or '').splitlines()
+          evidence = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: evidence=')]
+          for item in evidence:
+              print(item[:160])
+          passed = (
+              sys.argv[1] == '0' and
+              int(root.get('tests', '0')) == 1 and
+              all(int(root.get(k,'0')) == 0 for k in ('failures', 'errors', 'skipped')) and
+              len(evidence) == 1 and evidence[0].endswith('writes=zero'))
+          print('CHUNKS_CREATE_RECONCILE: protected-readback=' +
+                ('passed' if passed else 'unverified') + ' mutation-replay=never')
+          raise SystemExit(0 if passed else 1)
           PY
