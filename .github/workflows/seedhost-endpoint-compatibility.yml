@@ -1,18 +1,10 @@
-name: Seedhost endpoint compatibility (manual plus one trusted-main read-only browse acceptance)
+name: Seedhost endpoint compatibility (explicit manual probe)
 
-# Protected main-only push verifies directory browsing, without exposing secrets
-# to pull requests. A single reviewed commit marker may authorize exactly one
-# NEW uniquely run-ID-named EMPTY child on the primary Seedhost account,
-# guarded by run_attempt=1; never the historical ambiguous directory.
-# No rerun or unmarked push can create a folder. Manual workflow_dispatch
-# retains its separately reviewed create_test_folder opt-in.
+# All historical push-authorized one-shot write/readback markers are consumed.
+# No push, merge, rerun or PR can create or inspect a remote folder here.
+# Manual workflow_dispatch requires exact main profile and a separate explicit
+# create_test_folder checkbox; no automatic cleanup or repeat after uncertainty.
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/seedhost-endpoint-compatibility.yml
-      - app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentFileManager.kt
-      - app/src/test/java/io/github/gamesbyian/chunks/rpc/SeedhostDirectoryAcceptanceTest.kt
   workflow_dispatch:
     inputs:
       profile:
@@ -94,16 +86,14 @@ jobs:
           echo '::error::Folder acceptance is authorized only for the selected primary ruTorrent profile'
           exit 1
       - name: Verify real primary folder browse and optionally one explicitly authorized new folder
-        if: ${{ (github.event_name == 'push' || inputs.probe_folders && inputs.profile == 'primary-rutorrent-https') && github.run_attempt == 1 }}
+        if: ${{ inputs.probe_folders && inputs.profile == 'primary-rutorrent-https' && github.run_attempt == 1 }}
         env:
           CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
           CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
           CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
           CHUNKS_HOST_FOLDER_READONLY: authorized
-          # This exact marker is consumed by one protected main merge only.
-          # The created child uses github.run_id, never the old ambiguous id.
-          # A rerun (run_attempt > 1) skips this entire step.
-          CHUNKS_HOST_FOLDER_CREATE: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_ONCE_V2')) && 'authorized' || (github.event_name == 'workflow_dispatch' && inputs.create_test_folder && inputs.probe_folders && inputs.profile == 'primary-rutorrent-https') && 'authorized' || '' }}
+          # Manual owner opt-in only; never enabled by a commit message.
+          CHUNKS_HOST_FOLDER_CREATE: ${{ inputs.create_test_folder && inputs.probe_folders && inputs.profile == 'primary-rutorrent-https' && github.run_attempt == 1 && 'authorized' || '' }}
           CHUNKS_HOST_FOLDER_RUN_ID: ${{ github.run_id }}
         run: |
           private_log=$(mktemp)
@@ -130,62 +120,4 @@ jobs:
                 and any(l.startswith('CHUNKS_SEEDHOST_FOLDER: browse-verified') for l in lines))
           print('CHUNKS_SEEDHOST_FOLDER: real-host-acceptance=' + ('passed' if ok else 'failed'))
           raise SystemExit(0 if ok else 1)
-          PY
-
-      # The one-shot marker above permits no retries. A local create outcome
-      # must be independently verified by both directory providers. A missing
-      # success receipt is NOT permission to repeat the write on this or any
-      # other run; use only a subsequent nonmutating exact-child readback.
-      - name: Reconcile exactly one reviewed mkdir by read-only evidence
-        # The previous attempt from 43570367968 has since been independently
-        # shown absent. The new 43587333772 one-shot was still uncertain after
-        # fresh Digest authorization; inspect only that separate fixed target
-        # using the already corrected exact-RPC read-only path.
-        # This main-only check submits zero writes and never reruns.
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.run_attempt == 1 && (contains(github.event.head_commit.message, 'CHUNKS_RECONCILE_CORRECT_ENDPOINT_V3') || (contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_READBACK_V4') || contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_PROVIDER_DIVERGENCE_V5'))) }}
-        env:
-          CHUNKS_LIVE_RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
-          CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
-          CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
-          CHUNKS_FOLDER_RECONCILE_ONLY: authorized
-          # A fixed allowlist: select exact target by trusted main commit marker.
-          # Never read the previous run's name when inspecting the new attempt.
-          CHUNKS_FOLDER_RECONCILE_RUN: ${{ (contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_NEW_CHILD_READBACK_V4') || contains(github.event.head_commit.message, 'CHUNKS_SEEDHOST_PROVIDER_DIVERGENCE_V5')) && '43587333772' || '43570367968' }}
-        run: |
-          private_log=$(mktemp)
-          trap 'rm -f "$private_log"' EXIT
-          test -n "$CHUNKS_LIVE_RTORRENT_USER" && test -n "$CHUNKS_LIVE_RTORRENT_PASS" || {
-            echo '::error::Read-only evidence unavailable: credentials missing'
-            exit 1
-          }
-          set +e
-          gradle --no-daemon --console=plain :app:testDebugUnitTest \
-            --tests io.github.gamesbyian.chunks.rpc.SeedhostFolderCreateReconcileReadOnlyTest > "$private_log" 2>&1
-          status=$?
-          set -e
-          python3 - "$status" <<'PY'
-          import pathlib, sys, xml.etree.ElementTree as ET
-          report = pathlib.Path('app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SeedhostFolderCreateReconcileReadOnlyTest.xml')
-          if not report.exists():
-              print('CHUNKS_CREATE_RECONCILE: test-receipt-missing no-mutations=true')
-              raise SystemExit(1)
-          root = ET.parse(report).getroot()
-          lines = (root.findtext('system-out') or '').splitlines()
-          evidence = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: evidence=')]
-          checkpoints = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: checkpoint=')]
-          providers = [s for s in lines if s.startswith('CHUNKS_CREATE_RECONCILE: providers=')]
-          for item in evidence + checkpoints + providers:
-              print(item[:160])
-          print('CHUNKS_CREATE_RECONCILE: tests=' + root.get('tests', '?') +
-                ' failures=' + root.get('failures', '?') +
-                ' errors=' + root.get('errors', '?') +
-                ' skipped=' + root.get('skipped', '?'))
-          passed = (
-              sys.argv[1] == '0' and
-              int(root.get('tests', '0')) == 1 and
-              all(int(root.get(k,'0')) == 0 for k in ('failures', 'errors', 'skipped')) and
-              len(evidence) == 1 and evidence[0].endswith('writes=zero'))
-          print('CHUNKS_CREATE_RECONCILE: protected-readback=' +
-                ('passed' if passed else 'unverified') + ' mutation-replay=never')
-          raise SystemExit(0 if passed else 1)
           PY
