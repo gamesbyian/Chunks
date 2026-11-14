@@ -18,7 +18,7 @@ import org.json.JSONObject
 internal sealed interface RemoteFolderCreateCapability {
     data class Ready(val root: String) : RemoteFolderCreateCapability
     data class Unavailable(val reason: Reason) : RemoteFolderCreateCapability
-    enum class Reason { NOT_INSTALLED, ACCESS_DENIED, ROOT_MISMATCH, CANNOT_VERIFY }
+    enum class Reason { NOT_INSTALLED, ACCESS_DENIED, ROOT_MISMATCH, INCOMPLETE_PARENT, CANNOT_VERIFY }
 }
 
 internal sealed interface RemoteFolderCreateOutcome {
@@ -193,32 +193,74 @@ internal object RuTorrentFileManager {
         return Configuration.Accepted(Verified(fileRoot, authorization, challenges))
     }
 
+    /**
+     * Create eligibility belongs to the currently viewed parent, not merely
+     * to an installed File Manager plugin. On the real Seedhost account the
+     * root has 250 browser directories but File Manager sees only 69; three
+     * sampled small nested parents had complete agreement. Never imply New
+     * folder is usable until the exact current parent has matching evidence.
+     */
     suspend fun capability(
-        rpc: URI, credentials: RemoteCredentials, observedRoot: String
+        rpc: URI, credentials: RemoteCredentials, observedRoot: String,
+        selectedParent: String = observedRoot
     ): RemoteFolderCreateCapability = withContext(Dispatchers.IO) {
         val uri = endpoint(rpc) ?: return@withContext RemoteFolderCreateCapability.Unavailable(
             RemoteFolderCreateCapability.Reason.NOT_INSTALLED)
         val root = RuTorrentDirectoryListing.canonical(observedRoot)
             ?: return@withContext RemoteFolderCreateCapability.Unavailable(
                 RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
+        if (!RuTorrentDirectoryListing.contains(root, selectedParent))
+            return@withContext RemoteFolderCreateCapability.Unavailable(
+                RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
         try {
-            when (val configuration = config(uri, credentials, root)) {
-                is Configuration.Rejected ->
-                    RemoteFolderCreateCapability.Unavailable(configuration.reason)
-                is Configuration.Accepted -> {
-                    // One read-only typed listing demonstrates more than PHP reachability.
-                    val list = read(uri, credentials, JSONObject()
-                        .put("method", "listDirectory").put("dir", "/")).first
-                    val reason = when (list.code) {
-                        401, 403, 407 -> RemoteFolderCreateCapability.Reason.ACCESS_DENIED
-                        404, 405 -> RemoteFolderCreateCapability.Reason.NOT_INSTALLED
-                        else -> RemoteFolderCreateCapability.Reason.CANNOT_VERIFY
-                    }
-                    if (list.code == 200 && directoryNames(list.body) != null)
-                        RemoteFolderCreateCapability.Ready(root)
-                    else RemoteFolderCreateCapability.Unavailable(reason)
-                }
+            val configuration = config(uri, credentials, root)
+            if (configuration is Configuration.Rejected)
+                return@withContext RemoteFolderCreateCapability.Unavailable(configuration.reason)
+            val fileRoot = (configuration as Configuration.Accepted).value.fileRoot
+            val rel = relative(fileRoot, selectedParent)
+                ?: return@withContext RemoteFolderCreateCapability.Unavailable(
+                    RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
+            // Prove each component of the selected parent is a typed directory.
+            // A symlink may be listable by _getdir but cannot authorize mkdir.
+            var walked = ""
+            for (segment in rel.split('/').filter { it.isNotEmpty() }) {
+                val result = read(uri, credentials, JSONObject()
+                    .put("method", "listDirectory")
+                    .put("dir", if (walked.isEmpty()) "/" else walked)).first
+                if (result.code != 200) return@withContext RemoteFolderCreateCapability.Unavailable(
+                    if (result.code in listOf(401, 403, 407))
+                        RemoteFolderCreateCapability.Reason.ACCESS_DENIED
+                    else RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
+                val entries = directoryNames(result.body)
+                    ?: return@withContext RemoteFolderCreateCapability.Unavailable(
+                        RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
+                if (segment + "/" !in entries)
+                    return@withContext RemoteFolderCreateCapability.Unavailable(
+                        RemoteFolderCreateCapability.Reason.ROOT_MISMATCH)
+                walked = if (walked.isEmpty()) segment else walked + "/" + segment
             }
+            val typedReply = read(uri, credentials, JSONObject()
+                .put("method", "listDirectory")
+                .put("dir", if (rel.isEmpty()) "/" else rel)).first
+            if (typedReply.code != 200) return@withContext RemoteFolderCreateCapability.Unavailable(
+                when (typedReply.code) {
+                    401, 403, 407 -> RemoteFolderCreateCapability.Reason.ACCESS_DENIED
+                    404, 405 -> RemoteFolderCreateCapability.Reason.NOT_INSTALLED
+                    else -> RemoteFolderCreateCapability.Reason.CANNOT_VERIFY
+                })
+            val entries = directoryNames(typedReply.body)
+                ?: return@withContext RemoteFolderCreateCapability.Unavailable(
+                    RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
+            val browser = RuTorrentDirectoryListing.read(rpc, credentials, selectedParent)
+            if (browser !is RemoteDirectoryLookup.Ready || browser.page.path != selectedParent)
+                return@withContext RemoteFolderCreateCapability.Unavailable(
+                    RemoteFolderCreateCapability.Reason.CANNOT_VERIFY)
+            val overlap = folderInventoryComparison(browser.page.folders, entries)
+            if (overlap.sharedDirectories != overlap.browserDirectories ||
+                overlap.sharedDirectories != overlap.fileManagerDirectories)
+                RemoteFolderCreateCapability.Unavailable(
+                    RemoteFolderCreateCapability.Reason.INCOMPLETE_PARENT)
+            else RemoteFolderCreateCapability.Ready(root)
         } catch (cancel: CancellationException) { throw cancel }
           catch (_: Exception) {
               RemoteFolderCreateCapability.Unavailable(
