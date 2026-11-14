@@ -28,6 +28,9 @@ on:
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ExperimentalTypefaceNativeInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/AndroidNativeLowStorageRecoveryInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SourceTorrentArchiveInstrumentedTest.kt"
+      # This opt-in class is skipped by native Add; its explicit public-provider
+      # workflow owns both installed phases, source digest and zero-request proof.
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAutomaticPublicMediaInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"
