@@ -45,6 +45,7 @@ class RuTorrentFolderCreateHttpTest {
         var hideTypedParentChildren = false
         var applyWrite = true
         var ackStatus = 200
+        var ackBody = JSONObject().put("error", false).toString()
         private fun send(ex: HttpExchange, code: Int, body: String = "") {
             val bytes = body.toByteArray(Charsets.UTF_8)
             if (code == 401)
@@ -115,7 +116,7 @@ class RuTorrentFolderCreateHttpTest {
                             if (applyWrite && (target.startsWith("TV/") ||
                                     target.startsWith("tenant/TV/")))
                                 created.add(target.substringAfterLast('/'))
-                            send(ex, ackStatus, JSONObject().put("error", false).toString())
+                            send(ex, ackStatus, ackBody)
                         }
                         else -> send(ex, 404)
                     }
@@ -309,12 +310,32 @@ class RuTorrentFolderCreateHttpTest {
         }
     }
 
+    @Test fun rejectedOrMalformedWriteReceiptCannotClaimCreatedEvenIfBothServicesSeeFolder() = runBlocking {
+        for (receipt in listOf(
+            JSONObject().put("error", true).toString(),
+            JSONObject().put("errcode", 1).toString(),
+            "{}",
+            "not-json"
+        )) {
+            Fixture().use { fx ->
+                fx.ackBody = receipt
+                val remote = fx.remote()
+                val outcome = remote.createServerFolder(
+                    "/srv/tenant", "/srv/tenant/TV", "Ambiguous-child")
+                assertEquals(RemoteFolderCreateOutcome.Uncertain, outcome)
+                assertEquals(1, fx.writes.get())
+                assertEquals(RemoteFolderReadback.VERIFIED_DIRECTORY,
+                    remote.observeServerFolder("/srv/tenant", "/srv/tenant/TV", "Ambiguous-child"))
+            }
+        }
+    }
+
     @Test fun lostAcknowledgementNeverReplaysTheWrite() = runBlocking {
         Fixture().use { fx ->
             fx.ackStatus = 500
             val result = fx.remote().createServerFolder("/srv/tenant",
                 "/srv/tenant/TV", "Lost-ack")
-            assertEquals(RemoteFolderCreateOutcome.Created("/srv/tenant/TV/Lost-ack"), result)
+            assertEquals(RemoteFolderCreateOutcome.Uncertain, result)
             assertEquals(1, fx.writes.get())
         }
         Fixture().use { fx ->
