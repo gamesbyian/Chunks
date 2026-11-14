@@ -164,7 +164,10 @@ class SeedhostExactPeerBytesOnceTest {
     /** Independent out-of-process PHP filesystem view, never torrent membership. */
     private fun diskEntries(place: String): Set<String> {
         val output = java.nio.file.Files.createTempFile("chunks-private-file-witness-", ".txt")
-        val process = ProcessBuilder("python3", "tools/seedhost_file_witness.py")
+        val script = java.nio.file.Paths.get(requireNotNull(System.getenv("GITHUB_WORKSPACE")),
+            "tools", "seedhost_file_witness.py").toFile()
+        check(script.isFile) { "Independent filesystem witness script missing" }
+        val process = ProcessBuilder("python3", script.absolutePath)
             .redirectOutput(output.toFile()).start()
         try {
             process.outputStream.bufferedWriter().use { it.write(place + "\n") }

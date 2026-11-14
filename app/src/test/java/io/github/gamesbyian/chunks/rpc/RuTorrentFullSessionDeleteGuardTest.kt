@@ -329,11 +329,12 @@ class RuTorrentFullSessionDeleteGuardTest {
             assertFalse(cap.actionable)
             assertEquals(0, posts.get())
         }
-    @Test fun phpEndpointRequiringPostCanBeDiscoveredFromItsGenuineBrowserAdapter() =
-        fixture(listOf(selected), pluginHeadStatus = 500) { remote, _, _, posts ->
+    @Test fun phpEndpointRequiringPostCanBeDiscoveredFromItsGenuineBrowserAdapter() {
+        for (head in listOf(405, 500)) fixture(listOf(selected), pluginHeadStatus = head) { remote, _, _, posts ->
             val cap = remote.discoverDeleteDataCapability()
             assertTrue(cap.reason, cap.actionable)
             assertEquals(RemoteDeleteAdapter.ERASEDATA_HTTP, cap.adapter)
             assertEquals(0, posts.get())
         }
+    }
 }

@@ -1237,7 +1237,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             val (scriptStatus, script) = readDeleteResource(scriptUri, "GET")
             if (scriptStatus == 200 && script.contains("plugins/erasedata/action.php") &&
                 script.contains("rTorrentStub.prototype.removewithdata") &&
-                script.contains("mode=removewithdata") && (status in 200..299 || status == 500))
+                script.contains("mode=removewithdata") && (status in 200..299 || status in setOf(405, 500)))
                 return snapshot(RemoteCapabilityState.SUPPORTED, RemoteDeleteAdapter.ERASEDATA_HTTP,
                     "The ruTorrent client advertises its deletion endpoint; write permission is unverified.")
             if (scriptStatus == 200 && RuTorrentDeleteData.legacyBrowserAdapter(script) &&
@@ -2312,6 +2312,9 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                 connection.doOutput = true
                 connection.setFixedLengthStreamingMode(request.size)
                 try {
+                    // A deadline may expire during blocking auth preflight.
+                    // It must revoke dispatch before a destructive body is sent.
+                    kotlinx.coroutines.currentCoroutineContext().ensureActive()
                     connection.outputStream.use { it.write(request) }
                     val status = connection.responseCode
                     if (status == HttpURLConnection.HTTP_UNAUTHORIZED &&

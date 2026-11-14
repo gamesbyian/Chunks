@@ -17,7 +17,7 @@ The two public downloads proved **partial pieces**, not completed publisher payl
 Full synthetic multi-file byte equality is separate local authenticated interop proof
 in the [ledger](../../QUALITY-LEDGER.md). No owner-host, physical Pixel, human
 TalkBack, OEM/Doze or signing acceptance follows from this emulator/disposable proof.
-All three original owner-installed failures remain **unclosed** under #1679.
+The owner confirmed the blank optional Add destination and paused-new-transfer symptoms resolved on 2026-11-13. Preserve those regressions. Remove+data has separate actual-host qualification under #1679; the older disposable receipts alone do not establish it. See the [current deletion contract](../../REMOTE-CAPABILITY-DISCOVERY-AND-DELETION.md).
 
 ## Inspected component renders
 
