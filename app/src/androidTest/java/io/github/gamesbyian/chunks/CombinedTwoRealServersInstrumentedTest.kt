@@ -272,8 +272,8 @@ class CombinedTwoRealServersInstrumentedTest {
         }
         rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
         enterConnectedCanonicalTransfers(url, user)
-        scrollTo("Showing 2")
-        assertTrue("The exact scoped server must show its two real jobs", visible("Showing 2"))
+        scrollTo("2 transfers")
+        assertTrue("The exact scoped server must show its two real jobs", visible("2 transfers"))
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         waitFor("named verified profile persisted") {
             RememberedRemoteProfileRoster(context).list().any {
@@ -407,8 +407,8 @@ class CombinedTwoRealServersInstrumentedTest {
             // result before proceeding with all per-server identity checks.
             waitFor("union of both real servers", 60_000) {
                 runCatching {
-                    scrollTo("Showing 4")
-                    visible("Showing 4")
+                    scrollTo("4 transfers")
+                    visible("4 transfers")
                 }.getOrDefault(false)
             }
             stage("combined-union")
@@ -464,7 +464,7 @@ class CombinedTwoRealServersInstrumentedTest {
                 }
                 rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
                 // The catalog restores its previous scrolled viewport: the
-                // offscreen summary ("Showing 4") is not a valid visible-node
+                // offscreen summary ("4 transfers") is not a valid visible-node
                 // gate after returning from a row near the bottom. Verify
                 // the actual lazy catalog and direct-Details rows are present;
                 // exact server/hash/Place authority is asserted above and
@@ -658,8 +658,8 @@ class CombinedTwoRealServersInstrumentedTest {
                 // lazy catalog. Require the truthful four-row summary after
                 // bringing its item back into composition.
                 runCatching {
-                    scrollTo("Showing 4")
-                    visible("Showing 4")
+                    scrollTo("4 transfers")
+                    visible("4 transfers")
                 }.getOrDefault(false)
             }
             fun fault(action: String) {
@@ -724,9 +724,9 @@ class CombinedTwoRealServersInstrumentedTest {
             // before checking the truthful, specific out-of-date claim.
             // This remains an assertion on the production wording, not a
             // substitute for the independently verified A/B status rows.
-            scrollTo("some environments are missing or out of date")
+            scrollTo("1 source excluded")
             assertTrue("Combined must flag an out-of-date source",
-                visible("some environments are missing or out of date"))
+                visible("1 source excluded"))
             stage("c2-offline-truthful")
         }
     }

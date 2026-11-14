@@ -2261,7 +2261,8 @@ internal fun combinedCompactSummaryText(
         if (totals.rowsWithUnknownRate > 0)
             add("${totals.rowsWithUnknownRate} rates unknown")
         if (totals.excludedEnvironments > 0)
-            add("${totals.excludedEnvironments} sources excluded")
+            add(if (totals.excludedEnvironments == 1) "1 source excluded"
+                else "${totals.excludedEnvironments} sources excluded")
         else if (incompleteOrStale) add("some sources incomplete")
     }
     return "$count · Live ↓ $down · ↑ $up" +

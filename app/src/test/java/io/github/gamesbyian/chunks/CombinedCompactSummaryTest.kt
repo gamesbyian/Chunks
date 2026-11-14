@@ -20,7 +20,7 @@ class CombinedCompactSummaryTest {
             UnifiedTransferTotals(2, 2048, 0, 1, 1), true)
         assertTrue(text.startsWith("3 of 151 transfers · Live ↓ "))
         assertTrue(text.contains("1 rates unknown"))
-        assertTrue(text.contains("1 sources excluded"))
+        assertTrue(text.contains("1 source excluded"))
     }
 
     @Test fun overflowDoesNotWrapAndMissingSourcesNeverMasqueradeAsZero() {
