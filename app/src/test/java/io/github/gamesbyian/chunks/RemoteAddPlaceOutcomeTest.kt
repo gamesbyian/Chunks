@@ -30,4 +30,18 @@ class RemoteAddPlaceOutcomeTest {
         assertTrue(verifiedCustomPlaceOutcome(
             RemoteAddAndStart.StartNotVerified(hash, LifecycleOutcome.Pending(true, true)), true))
     }
+    @Test fun compactFolderSummaryStatesWhatIsKnownWithoutBlockingBlankDefault() {
+        assertEquals("Save to: /custom (this Add only)",
+            remoteAddSaveToSummary("/custom", "/stored", false, "/observed"))
+        assertEquals("Save to: /stored (saved default)",
+            remoteAddSaveToSummary("", "/stored", true, "/observed"))
+        assertEquals("Save to: Server default (checking; Add is available)",
+            remoteAddSaveToSummary("", null, false, null))
+        assertEquals("Save to: /observed (rTorrent default)",
+            remoteAddSaveToSummary("", null, true, "/observed"))
+        assertEquals("Save to: Server default (confirm after adding)",
+            remoteAddSaveToSummary("", null, true, null))
+    }
+
+
 }

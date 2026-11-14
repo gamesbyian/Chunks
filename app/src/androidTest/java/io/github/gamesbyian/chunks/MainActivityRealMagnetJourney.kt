@@ -412,10 +412,16 @@ internal class MainActivityRealMagnetJourney(
                 // successful semantics lookups. Settle the complete read,
                 // including enabled/visible/toggle state, before choosing one
                 // click; retries here perform only reads and scrolling.
+                // Read the actual Checkbox-row semantics, not a transient
+                // merged Text node. The review can gain or lose earlier lazy
+                // rows as the server default-folder read settles. A retry here
+                // performs only read/scroll probes; the opt-out click is once.
+                val artworkToggle = hasText(artworkChoice) and
+                    androidx.compose.ui.test.isToggleable()
                 var choice: androidx.compose.ui.state.ToggleableState? = null
                 fun readReadyChoice(): Boolean = runCatching {
                     scroll(artworkChoice)
-                    val node = rule.onNodeWithText(artworkChoice)
+                    val node = rule.onNode(artworkToggle)
                     node.assertIsEnabled().assertIsDisplayed()
                     choice = node.fetchSemanticsNode()
                         .config[androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]
@@ -424,7 +430,8 @@ internal class MainActivityRealMagnetJourney(
                 }.getOrDefault(false)
                 rule.waitUntil(45_000) { readReadyChoice() }
                 when (choice) {
-                    androidx.compose.ui.state.ToggleableState.On -> click(artworkChoice)
+                    androidx.compose.ui.state.ToggleableState.On ->
+                        rule.onNode(artworkToggle).performClick()
                     androidx.compose.ui.state.ToggleableState.Off -> Unit
                     else -> fail("Remote Add artwork choice must have a definite state")
                 }
