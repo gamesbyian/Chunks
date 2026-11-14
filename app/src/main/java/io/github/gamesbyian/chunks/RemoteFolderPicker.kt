@@ -44,6 +44,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
 
+/** A newly created child directly beneath / still has / as its parent. */
+internal fun remoteFolderReadbackParent(target: String): String =
+    target.substringBeforeLast('/', "").ifEmpty { "/" }
+
 /** A plain read-only observation after an uncertain folder write; no success attribution. */
 internal fun remoteFolderReadbackMessage(outcome: RemoteFolderReadback): String = when (outcome) {
     RemoteFolderReadback.VERIFIED_DIRECTORY ->
@@ -199,7 +203,7 @@ internal fun RemoteFolderPicker(
                         OutlinedButton(
                             onClick = {
                                 val target = pendingReadback
-                                val parentFolder = target.substringBeforeLast('/', "")
+                                val parentFolder = remoteFolderReadbackParent(target)
                                 val leaf = target.substringAfterLast('/')
                                 reconciling = true
                                 scope.launch {
