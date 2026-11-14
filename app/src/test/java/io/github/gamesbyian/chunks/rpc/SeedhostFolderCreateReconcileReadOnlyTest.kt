@@ -10,8 +10,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
 /**
- * Protected read-only reconciliation of the ONE attempted mkdir from
- * GitHub run 43570367968. Does not submit or retry any mutation.
+ * Protected read-only reconciliation of one of the TWO explicitly reviewed
+ * attempt identifiers (43570367968 and 43587333772).
+ * Does not submit or retry any mutation.
  * Receipts contain only a fixed enum and no server filesystem path.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -25,7 +26,9 @@ class SeedhostFolderCreateReconcileReadOnlyTest {
         assumeTrue(System.getenv("CHUNKS_FOLDER_RECONCILE_ONLY") == "authorized")
         checkpoint = "opt-in-confirmed"
         val runId = System.getenv("CHUNKS_FOLDER_RECONCILE_RUN").orEmpty()
-        require(runId == "43570367968") { "Unrecognized historical mkdir run" }
+        require(runId in setOf("43570367968", "43587333772")) {
+            "Unrecognized one-time mkdir run"
+        }
         val rawUrl = System.getenv("CHUNKS_LIVE_RUTORRENT_URL").orEmpty()
         val uri = URI(rawUrl)
         require(uri.scheme == "https" && uri.host?.endsWith(".seedhost.eu") == true &&
