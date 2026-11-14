@@ -336,12 +336,16 @@ internal object RuTorrentFileManager {
             val parentEntries = if (parentList.code == 200)
                 directoryNames(parentList.body) else null
             if (parentEntries == null) return@withContext RemoteFolderCreateOutcome.Refused
-            // If _getdir sees subdirectories while File Manager's shell-backed
-            // parent listing shares NONE of them, we have no independent proof
-            // both providers are looking at the same directory. Refuse the
-            // proposed write rather than risking an unrelated destination.
+            // A partial positive File Manager list is not a complete witness:
+            // actual Seedhost readback saw 250 _getdir directories but only
+            // 69 typed File Manager directories, all shared. In that condition
+            // we cannot establish a fresh child after a write, and must not
+            // dispatch a write that cannot be independently verified.
+            // Refuse any parent with non-identical real-directory inventories,
+            // including browser-followed symlinks and extra FM-only entries.
             val overlap = folderInventoryComparison(before.page.folders, parentEntries)
-            if (overlap.browserDirectories > 0 && overlap.sharedDirectories == 0)
+            if (overlap.sharedDirectories != overlap.browserDirectories ||
+                overlap.sharedDirectories != overlap.fileManagerDirectories)
                 return@withContext RemoteFolderCreateOutcome.Refused
             if (name in parentEntries || name + "/" in parentEntries)
                 return@withContext RemoteFolderCreateOutcome.AlreadyExists
