@@ -28,6 +28,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
 
 /** 
  * Product-wide collection/display must both be enabled to offer a per-Add choice.
@@ -60,6 +61,7 @@ internal fun AddArtworkChoice(automatic: Boolean, enabled: Boolean, onAutomatic:
             }) { Text("Artwork & metadata") }
         if (expanded) {
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .testTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
                 .toggleable(automatic, enabled = enabled, role = Role.Checkbox, onValueChange = onAutomatic),
                 verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = automatic, onCheckedChange = null, enabled = enabled)

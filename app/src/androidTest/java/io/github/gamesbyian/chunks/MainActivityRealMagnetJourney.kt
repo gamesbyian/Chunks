@@ -244,6 +244,15 @@ internal class MainActivityRealMagnetJourney(
         require(arg("chunks_real_add") == "authorized")
         report("chunks_real_add_app_stage", "runner-ready")
         val disposable = arg("chunks_disposable") == "authorized"
+        if (disposable) {
+            // A previous installed journey may disable global artwork display
+            // in the same reusable emulator. Stabilize this test's optional
+            // Add control without granting online provider consent.
+            val media = io.github.gamesbyian.chunks.media.ChunksMedia.get(rule.activity)
+            val before = media.loadSettings()
+            if (!before.showArtwork || !before.downloadArtwork)
+                media.updateSettings(before.copy(showArtwork = true, downloadArtwork = true))
+        }
         val publicDiscovery = arg("chunks_public_discovery") == "authorized"
         val url = decoded("chunks_live_url_b64")
         if (disposable) require(url == "http://127.0.0.1:18080/RPC2")
@@ -386,45 +395,34 @@ internal class MainActivityRealMagnetJourney(
                 // of inferring it from whether the lazy option happens to be composed or visible:
                 // a blind click on an already-expanded disclosure would collapse the opt-out.
                 val disclosure = "Artwork & metadata"
-                // Opening or closing the disclosure is a UI toggle only (no write). The form can
-                // recompose between steps, so (re)establish "expanded" and tap the exact option in
-                // one pass; the option tap itself is the user's choice and is never retried.
+                val disclosureAction = hasText(disclosure) and hasClickAction()
                 rule.waitUntil(60_000) {
                     runCatching {
                         scroll(disclosure)
-                        val state = rule.onAllNodes(hasText(disclosure) and androidx.compose.ui.test.hasClickAction())
-                            .fetchSemanticsNodes().firstOrNull()?.config?.let {
-                                runCatching { it[androidx.compose.ui.semantics.SemanticsProperties.StateDescription] }.getOrNull()
-                            }
-                        if (rule.onAllNodesWithText(artworkChoice).fetchSemanticsNodes().isEmpty() && state != "Expanded") {
-                            rule.onNode(hasText(disclosure) and androidx.compose.ui.test.hasClickAction()).performClick()
-                            rule.waitForIdle()
-                        }
-                        rule.onAllNodesWithText(artworkChoice).fetchSemanticsNodes().isNotEmpty()
+                        rule.onAllNodes(disclosureAction).fetchSemanticsNodes().isNotEmpty()
                     }.getOrDefault(false)
                 }
-                report("chunks_real_add_app_stage", "artwork-choice")
-                // An acknowledged uncertain Add may retain the person's OFF
-                // draft choice. Select OFF explicitly rather than toggling it
-                // back ON on the next Add. A click is dispatched at most once,
-                // and the exact-scoped persisted exclusion is still required.
-                // Lazy disclosure children can be recycled between separate
-                // successful semantics lookups. Settle the complete read,
-                // including enabled/visible/toggle state, before choosing one
-                // click; retries here perform only reads and scrolling.
-                // Read the actual Checkbox-row semantics, not a transient
-                // merged Text node. The review can gain or lose earlier lazy
-                // rows as the server default-folder read settles. A retry here
-                // performs only read/scroll probes; the opt-out click is once.
-                val artworkToggle = hasText(artworkChoice) and
-                    androidx.compose.ui.test.isToggleable()
+                // Read disclosure semantics first. Open it at most once, outside
+                // waitUntil polling: repeated clicks could collapse it during a
+                // slow LazyColumn recomposition, hiding the exact opt-out.
+                val heading = rule.onNode(disclosureAction)
+                val expanded = runCatching {
+                    heading.fetchSemanticsNode().config[
+                        androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
+                }.getOrNull() == "Expanded"
+                if (!expanded) heading.performClick()
+                val artworkToggle = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
                 var choice: androidx.compose.ui.state.ToggleableState? = null
                 fun readReadyChoice(): Boolean = runCatching {
-                    scroll(artworkChoice)
                     val node = rule.onNode(artworkToggle)
+                    // If the expanded choice is offscreen, the canonical
+                    // LazyColumn must compose it before the semantics read.
+                    if (rule.onAllNodes(artworkToggle).fetchSemanticsNodes().isEmpty())
+                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(artworkToggle)
+                    node.performScrollTo()
                     node.assertIsEnabled().assertIsDisplayed()
-                    choice = node.fetchSemanticsNode()
-                        .config[androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]
+                    choice = node.fetchSemanticsNode().config[
+                        androidx.compose.ui.semantics.SemanticsProperties.ToggleableState]
                     choice in setOf(androidx.compose.ui.state.ToggleableState.On,
                         androidx.compose.ui.state.ToggleableState.Off)
                 }.getOrDefault(false)
