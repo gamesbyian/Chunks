@@ -245,6 +245,7 @@ internal fun VerifiedAddScreen(
     var showFolderShortcuts by rememberSaveable(finishInOrderScope, environmentLabel) {
         mutableStateOf(false)
     }
+    var showServerFolderPicker by remember(remote) { mutableStateOf(false) }
     val finishInOrderStore = remember(finishInOrderScope) { finishInOrderScope?.let { FinishInOrderStore(context, it) } }
     var finishInOrderDefault by remember(finishInOrderScope) { mutableStateOf(finishInOrderStore?.defaultForNewAdds() == true) }
     if (!draft.finishInOrderInitialized || draft.finishInOrderHash != selectedTorrent?.infoHashV1) {
@@ -664,10 +665,33 @@ internal fun VerifiedAddScreen(
             // Only the actionable location stays in the default view.
             // Technical rTorrent working-directory/getter details are opt-in;
             // lack of a resolved absolute default never disables blank-place Add.
-            Text(remoteAddSaveToSummary(destination, savedDefaultPlace,
-                defaultReadComplete, configuredDefault),
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(remoteAddSaveToSummary(destination, savedDefaultPlace,
+                    defaultReadComplete, configuredDefault),
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.weight(1f).testTag(ChunksSemantics.ADD_REMOTE_SAVE_TO))
+                TextButton(
+                    onClick = { showServerFolderPicker = true },
+                    enabled = !submitting && !alreadyAttempted,
+                    modifier = Modifier.heightIn(min = 48.dp)
+                ) { Text("Change") }
+            }
+            if (showServerFolderPicker) RemoteFolderPicker(
+                remote = remote,
+                connectionName = environmentLabel ?: "rTorrent",
+                initialFolder = destination.takeIf(String::isNotBlank)
+                    ?: savedDefaultPlace ?: configuredDefault,
+                onChoose = { selected ->
+                    onDestination(selected)
+                    awaitingConfirmation = false
+                    showServerFolderPicker = false
+                },
+                onDismiss = { showServerFolderPicker = false }
+            )
             val unresolvedDefault = destination.isBlank() && savedDefaultPlace == null &&
                 defaultReadComplete && configuredDefault == null
             var showFolderExplanation by rememberSaveable(finishInOrderScope) {

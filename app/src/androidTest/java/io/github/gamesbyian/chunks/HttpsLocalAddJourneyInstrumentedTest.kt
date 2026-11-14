@@ -83,10 +83,23 @@ class HttpsLocalAddJourneyInstrumentedTest {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text))
         rule.onNodeWithText(text).performScrollTo()
     }
-    /** Device management moved under Filters on the canonical Transfers list.
-     * Keep the same native engine/Stop/Remove acceptance after entering. */
+    /** Enter the existing Local maintenance panel through the compact toolbar.
+     * This exact capability tag survives wording/placement changes. */
     private fun enterDeviceControlsFromCatalog() {
-        if (!visible("Hide filters")) click("Filters")
+        val tag = hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT)
+        rule.waitUntil(30_000) {
+            runCatching {
+                if (rule.onAllNodes(tag).fetchSemanticsNodes().isEmpty())
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(tag)
+                rule.onAllNodes(tag).fetchSemanticsNodes().isNotEmpty()
+            }.getOrDefault(false)
+        }
+        val filters = rule.onNode(tag)
+        val expanded = runCatching {
+            filters.fetchSemanticsNode().config[
+                androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
+        }.getOrNull() == "Expanded"
+        if (!expanded) filters.performClick()
         click("Device transfer controls")
     }
     private fun click(text: String) {
@@ -304,16 +317,9 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 click("Transfers")
                 // The persistent footer now opens the canonical catalog.
                 // Enter this exact device's existing lifecycle controls.
-                // Transfers now keeps device maintenance inside the
-                // Filters disclosure. Reach the same Start control explicitly.
-                val filterTools = androidx.compose.ui.test.hasText("Filters")
-                rule.waitUntil(30_000) { runCatching {
-                    rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
-                        .performScrollToNode(filterTools)
-                    true
-                }.getOrDefault(false) }
-                click("Filters")
-                click("Device transfer controls")
+                // The compact Search-adjacent Filters/Sort affordance opens
+                // the same safe Local lifecycle controls as before.
+                enterDeviceControlsFromCatalog()
                 click("Start")
                 rule.waitForIdle() // Dispatch queued Start before checking the OS permission prompt.
                 // Connect the verified piece-0 publisher immediately when Start is dispatched.

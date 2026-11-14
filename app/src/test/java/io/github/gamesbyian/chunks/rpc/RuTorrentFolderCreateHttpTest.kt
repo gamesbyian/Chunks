@@ -1,0 +1,163 @@
+package io.github.gamesbyian.chunks.rpc
+
+import com.sun.net.httpserver.HttpExchange
+import com.sun.net.httpserver.HttpServer
+import java.net.InetAddress
+import java.net.InetSocketAddress
+import java.net.URLDecoder
+import java.util.Base64
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
+import org.json.JSONObject
+import org.junit.Assert.*
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+/**
+ * Disposable same-tenant File Manager contract, with real HTTP Basic challenge,
+ * exact root readback and one authorized newDirectory POST. No public network.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class RuTorrentFolderCreateHttpTest {
+    private inner class Fixture : AutoCloseable {
+        private val server = HttpServer.create(
+            InetSocketAddress(InetAddress.getByName("127.0.0.1"), 0), 0)
+        val base get() = "http://127.0.0.1:" + server.address.port
+        val rpc get() = base + "/tenant/rutorrent2/plugins/httprpc/action.php"
+        val authHeader = "Basic " + Base64.getEncoder()
+            .encodeToString("alice:secret".toByteArray(Charsets.UTF_8))
+        val created = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+        val writes = AtomicInteger()
+        val siblingCalls = AtomicInteger()
+        var configuredRoot = "/srv/tenant"
+        var symlinkParent = false
+        var applyWrite = true
+        var ackStatus = 200
+        private fun send(ex: HttpExchange, code: Int, body: String = "") {
+            val bytes = body.toByteArray(Charsets.UTF_8)
+            if (code == 401)
+                ex.responseHeaders.add("WWW-Authenticate", "Basic realm=\"tenant\"")
+            if (code == 200) {
+                ex.responseHeaders.add("Content-Type", "application/json")
+                ex.sendResponseHeaders(200, bytes.size.toLong())
+                ex.responseBody.use { it.write(bytes) }
+            } else {
+                ex.sendResponseHeaders(code, -1)
+                ex.close()
+            }
+        }
+        private fun folders(path: String): List<String> =
+            when (path) {
+                "/srv/tenant" -> listOf("TV")
+                "/srv/tenant/TV" -> listOf("Season 1") + created.toList()
+                else -> emptyList()
+            }
+        init {
+            server.createContext("/tenant/rutorrent2/plugins/_getdir/listdir.php") { ex ->
+                require(ex.requestMethod == "GET")
+                val dir = URLDecoder.decode(
+                    ex.requestURI.rawQuery.orEmpty().substringAfter("dir=", ""),
+                    Charsets.UTF_8.name()).ifEmpty { "/srv/tenant" }
+                send(ex, 200, JSONObject().put("path", dir)
+                    .put("directories", JSONArray(folders(dir))).put("files", JSONArray()).toString())
+            }
+            server.createContext("/tenant/rutorrent2/plugins/filemanager/action.php") { ex ->
+                require(ex.requestMethod == "POST")
+                val body = ex.requestBody.use { it.readBytes().toString(Charsets.UTF_8) }
+                if (ex.requestHeaders.getFirst("Authorization") != authHeader) {
+                    send(ex, 401)
+                } else {
+                    val command = JSONObject(URLDecoder.decode(
+                        body.substringAfter("action="), Charsets.UTF_8.name()))
+                    when (command.getString("method")) {
+                        "getConfig" -> send(ex, 200,
+                            JSONObject().put("homedir", configuredRoot).toString())
+                        "listDirectory" -> {
+                            val path = command.getString("dir").trim('/').let {
+                                if (it.isEmpty()) "/srv/tenant" else "/srv/tenant/" + it
+                            }
+                            val names = when (path) {
+                                "/srv/tenant" -> listOf(if (symlinkParent) "TV" else "TV/")
+                                "/srv/tenant/TV" -> listOf("Season 1/") +
+                                    created.map { it + "/" }
+                                else -> emptyList()
+                            }
+                            send(ex, 200, JSONObject().put("listing",
+                                JSONArray(names.map { JSONObject().put("name", it) })).toString())
+                        }
+                        "newDirectory" -> {
+                            writes.incrementAndGet()
+                            val target = command.getString("target")
+                            if (applyWrite && target.startsWith("TV/"))
+                                created.add(target.removePrefix("TV/"))
+                            send(ex, ackStatus, JSONObject().put("error", false).toString())
+                        }
+                        else -> send(ex, 404)
+                    }
+                }
+            }
+            server.createContext("/other-tenant/") { ex ->
+                siblingCalls.incrementAndGet()
+                send(ex, 200, "{}")
+            }
+            server.start()
+        }
+        fun remote() = RTorrentRemote(RemoteCredentials(rpc, "alice", "secret"))
+        override fun close() = server.stop(0)
+    }
+
+    @Test fun verifiedRootAllowsOnlyOneChildAndIndependentlyWitnessesCreation() = runBlocking {
+        Fixture().use { fx ->
+            val remote = fx.remote()
+            assertEquals(RemoteFolderCreateCapability.Ready("/srv/tenant"),
+                remote.folderCreateCapability("/srv/tenant"))
+            val result = remote.createServerFolder("/srv/tenant",
+                "/srv/tenant/TV", "Season 2")
+            assertEquals(RemoteFolderCreateOutcome.Created("/srv/tenant/TV/Season 2"), result)
+            assertEquals(1, fx.writes.get())
+            assertEquals(0, fx.siblingCalls.get())
+            assertEquals(listOf("Season 1", "Season 2"),
+                (remote.browseDirectories("/srv/tenant/TV") as
+                    RemoteDirectoryLookup.Ready).page.folders)
+        }
+    }
+
+    @Test fun foreignRootSymlinkParentExistingAndTraversalRefuseBeforeWrite() = runBlocking {
+        Fixture().use { fx ->
+            val remote = fx.remote()
+            assertTrue(remote.folderCreateCapability("/srv/other") is
+                RemoteFolderCreateCapability.Unavailable)
+            assertEquals(RemoteFolderCreateOutcome.Refused,
+                remote.createServerFolder("/srv/other", "/srv/other/TV", "New"))
+            assertEquals(RemoteFolderCreateOutcome.Refused,
+                remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "../escape"))
+            assertEquals(RemoteFolderCreateOutcome.AlreadyExists,
+                remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "Season 1"))
+            fx.symlinkParent = true
+            assertEquals(RemoteFolderCreateOutcome.Refused,
+                remote.createServerFolder("/srv/tenant", "/srv/tenant/TV", "Season 2"))
+            assertEquals(0, fx.writes.get())
+        }
+    }
+
+    @Test fun lostAcknowledgementNeverReplaysTheWrite() = runBlocking {
+        Fixture().use { fx ->
+            fx.ackStatus = 500
+            val result = fx.remote().createServerFolder("/srv/tenant",
+                "/srv/tenant/TV", "Lost-ack")
+            assertEquals(RemoteFolderCreateOutcome.Created("/srv/tenant/TV/Lost-ack"), result)
+            assertEquals(1, fx.writes.get())
+        }
+        Fixture().use { fx ->
+            fx.applyWrite = false
+            val result = fx.remote().createServerFolder("/srv/tenant",
+                "/srv/tenant/TV", "No-ack")
+            assertEquals(RemoteFolderCreateOutcome.Uncertain, result)
+            assertEquals(1, fx.writes.get())
+        }
+    }
+}
