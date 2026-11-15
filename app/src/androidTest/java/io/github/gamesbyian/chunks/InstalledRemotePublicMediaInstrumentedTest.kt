@@ -117,7 +117,12 @@ class InstalledRemotePublicMediaInstrumentedTest {
         val environment = requireNotNull(EnvironmentSnapshots.serverIdOfAliasScope(
             RemoteVerifiedUiIdentity.aliasScopeOf(credentials)))
         val key = MediaTransferKey.of(UnifiedTransferKey.of(environment, hash))
-        val assignments = FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json"))
+        // A store instance caches its file when constructed: read through a fresh one each
+        // time (as the local proof does), or a later automatic assignment is never seen.
+        val assignments = object {
+            fun get(k: MediaTransferKey) =
+                FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json")).get(k)
+        }
 
         RememberedRemoteLogin(context).clear()
         RememberedRemoteProfileRoster(context).clearAll()
