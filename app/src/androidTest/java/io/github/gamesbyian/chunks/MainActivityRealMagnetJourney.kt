@@ -285,14 +285,16 @@ internal class MainActivityRealMagnetJourney(
             }
         }
         require(fixtures.values.map { it.infoHashV1 }.toSet().size == fixtures.size)
-        // Enter the real Connections destination, never an implicit login. A first
-        // launch can compose both Welcome's "Connections" button and the footer
-        // destination, so never require exactly one node (live run 43762449778 failed
-        // here before any Connect); same locator as the passing protected journeys.
+        // Enter the real Connections destination, never an implicit login. Never
+        // require exactly one node (live run 43762449778 failed here before any
+        // Connect). Prefer the first text entry, which is what the exactly-one
+        // lookup used to find on the disposable host: entering through the footer
+        // instead failed the later second Add's artwork choice twice (PR #1772
+        // run 43763235677). Fall back to the footer destination by description.
         rule.waitUntil(30_000) { visible("Connections") }
-        val byDescription = rule.onAllNodes(hasContentDescription("Connections"))
-        if (byDescription.fetchSemanticsNodes().isNotEmpty()) byDescription.onFirst().performClick()
-        else rule.onAllNodesWithText("Connections").onFirst().performClick()
+        val byText = rule.onAllNodesWithText("Connections")
+        if (byText.fetchSemanticsNodes().isNotEmpty()) byText.onFirst().performClick()
+        else rule.onAllNodes(hasContentDescription("Connections")).onFirst().performClick()
         // Real connection UI; its ordinary authentication, saved profile,
         // selected environment and mutation fence remain in the call chain.
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
