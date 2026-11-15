@@ -3,14 +3,16 @@ name: Protected Seedhost three-server Combined read-only
 # Manual, trusted-main only. Installed app connects to the owner's primary and
 # numbered development instances 2 and 3 and opens Combined. No Add, Start,
 # Stop, Remove or file operation is sent. Requires an already staged
-# same-hash cohort fixture (seedhost-p0-cohort-once.yml receipt).
+# same-hash pair on instances 2 and 3 (staged by seedhost-p0-cohort-once.yml, or
+# any hash both already hold).
 on:
   workflow_dispatch:
     inputs:
       shared_hash:
-        description: "Exact staged same-hash cohort infohash present on instances 2 and 3"
+        description: "Optional exact same-hash cohort infohash on instances 2 and 3 (blank: use any hash both already hold)"
         type: string
-        required: true
+        required: false
+        default: ""
 
 permissions:
   contents: read

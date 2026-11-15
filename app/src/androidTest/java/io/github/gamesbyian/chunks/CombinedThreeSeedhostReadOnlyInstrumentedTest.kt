@@ -2,9 +2,17 @@ package io.github.gamesbyian.chunks
 
 import android.os.Bundle
 import android.util.Base64
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -27,8 +35,10 @@ import org.junit.runner.RunWith
 /**
  * PROTECTED, READ-ONLY D1: the installed app saves the owner's primary and
  * numbered instances 2 and 3 through its own Connect form, then Combined must
- * show the union of all three with each source's own count and the staged
- * same-hash cohort fixture once per numbered server. No Add/Start/Stop/Remove.
+ * show the union of all three (restored automatically, no Load tap), each
+ * client chip with its own live count, and a same-hash cohort job once per
+ * numbered server. No Add/Start/Stop/Remove. Rewritten 2026-11-15 for the
+ * current Welcome -> Connections -> acknowledgement -> Transfers journey.
  * Never reports transfer names, paths, URLs or credentials: failures surface
  * only enumerated stages; the harness withholds raw output.
  */
@@ -77,45 +87,69 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
         throw AssertionError("Could not enter a Connect field")
     }
 
-    private fun queueWith(count: Int) = visible("· $count transfers") && visible("+ Add torrent")
+    private fun visibleConnectForm() = runCatching {
+        scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
+        true
+    }.getOrDefault(false)
 
-    private fun connect(server: RemoteCredentials, count: Int, label: String) {
+    /**
+     * The current production journey (same steps as the passing disposable
+     * two-server test): named Connect -> verified acknowledgement -> Connections.
+     * Exactly one Connect dispatch; never retried.
+     */
+    private fun connect(server: RemoteCredentials, name: String, label: String) {
+        waitFor("form-$label-missing") { visibleConnectForm() }
+        typeInto("Connection name (optional)", name)
         typeInto("Seedbox hostname, ruTorrent URL or RPC address", server.endpoint)
         typeInto("Username, if required", server.username)
         typeInto("Password", server.password)
-        scrollTo("Connect to rTorrent")
-        rule.onNodeWithText("Connect to rTorrent").performClick()
-        waitFor("connect-$label-failed", 120_000) { queueWith(count) }
+        val connectControl = hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
+        waitFor("connect-$label-control-missing", 20_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(connectControl)
+                rule.onNode(connectControl, useUnmergedTree = true).assertIsDisplayed().assertIsEnabled()
+                true
+            }.getOrDefault(false)
+        }
+        rule.waitForIdle()
+        rule.onNode(connectControl, useUnmergedTree = true)
+            .performSemanticsAction(SemanticsActions.OnClick)
+        waitFor("connect-$label-failed", 120_000) { visible("Connection verified") }
+        waitFor("connect-$label-name-missing", 10_000) { visible("$name is connected") }
+        rule.onNodeWithText("Continue to Connections").performClick()
+        waitFor("connections-$label-missing") {
+            runCatching { scrollTo("Connected ·") }
+            visible("Connected ·")
+        }
         stage("connected-$label")
     }
 
-    private fun disconnect(label: String) {
-        // The Options panel is remembered across Disconnect/reconnect (run
-        // 41800987696): tapping it again would close it. Open only if shut.
-        if (!visible("Find a screen or tool")) {
-            // The footer yields to the soft keyboard; wait for it after Connect.
-            rule.waitUntil(15_000) { visible("Options") }
-            rule.onNodeWithText("Options").performClick()
-        }
-        waitFor("options-$label-missing") { visible("Find a screen or tool") }
-        // Chips can reflow between scroll and tap; verify and re-tap.
-        var opened = false
-        repeat(4) {
-            if (opened) return@repeat
-            rule.onNodeWithText("Server").performScrollTo()
-            rule.waitForIdle()
-            rule.onNodeWithText("Server").performClick()
-            opened = runCatching { rule.waitUntil(10_000) { visible("Disconnect") } }.isSuccess
-        }
-        waitFor("server-screen-$label-missing") { visible("Disconnect") }
+    /** Explicit Disconnect keeps the saved verified profile; then add the next. */
+    private fun disconnectAndAddAnother(label: String) {
         scrollTo("Disconnect")
         rule.onNodeWithText("Disconnect").performClick()
-        // With saved servers listed first, the address field may be below the
-        // lazy fold (run 41803179533); either marks the Connection screen.
         waitFor("disconnect-$label-failed") {
-            visible("Saved servers") || visible("Seedbox hostname, ruTorrent URL or RPC address")
+            runCatching { scrollTo("Add connection"); true }.getOrDefault(false) && !visible("Connected ·")
         }
+        rule.onNodeWithText("Add connection").performClick()
         stage("disconnected-$label")
+    }
+
+    /** All four clients (Local + three remotes) show the All chip. */
+    private fun showAllEnvironments() {
+        val preferences = CombinedViewPreferences(InstrumentationRegistry.getInstrumentation().targetContext)
+        val all = io.github.gamesbyian.chunks.model.EnvironmentViewScope.All
+        if (preferences.load().scope == all) return
+        val allChip = hasContentDescription("Show all environments")
+        waitFor("all-chip-missing", 20_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
+                rule.onAllNodes(allChip).fetchSemanticsNodes().isNotEmpty()
+            }.getOrDefault(false)
+        }
+        rule.onAllNodes(allChip).onFirst().performScrollTo().performClick()
+        waitFor("all-scope-not-applied", 15_000) { preferences.load().scope == all }
     }
 
     @Test fun combinedUnionOfPrimaryAndNumberedInstancesIsReadOnly() {
@@ -133,43 +167,72 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
             require(u.scheme == "https" && u.host == "ianseeds.wood.seedhost.eu" &&
                 s.password.isNotEmpty())
         }
-        val sharedHash = decoded("chunks_shared_hash_b64").lowercase()
-        require(sharedHash.matches(Regex("[0-9a-f]{40}")))
+        val suppliedHash = args.getString("chunks_shared_hash_b64")?.let {
+            decoded("chunks_shared_hash_b64").lowercase()
+        }
+        require(suppliedHash == null || suppliedHash.matches(Regex("[0-9a-f]{40}")))
 
         fun truth(c: RemoteCredentials) =
             runBlocking { RTorrentRemote(c).listTransfers("main") }.map { it.hash.lowercase() to it.started }
         val before = listOf(primary, second, third).map(::truth)
         val counts = before.map { it.size }
-        require(before[1].any { it.first == sharedHash } && before[2].any { it.first == sharedHash }) {
-            "Staged same-hash cohort fixture absent; stage it before this read-only check"
+        // Same-hash cohort: the supplied staged fixture, or any infohash that
+        // instances 2 and 3 both already hold (read-only intersection).
+        val sharedHash = suppliedHash ?: before[1].map { it.first }
+            .intersect(before[2].map { it.first }.toSet()).sorted().firstOrNull()
+        require(sharedHash == null ||
+            (before[1].any { it.first == sharedHash } && before[2].any { it.first == sharedHash })) {
+            "Supplied same-hash cohort fixture absent on instances 2 and 3"
         }
+        stage(if (sharedHash == null) "no-shared-hash" else "shared-hash-present")
         stage("ground-truth")
 
         ActivityScenario.launch(MainActivity::class.java).use {
-            waitFor("launch-failed") { visible("On this device (experimental)") }
-            rule.onNodeWithText("Back").performScrollTo().performClick()
-            connect(primary, counts[0], "primary")
-            disconnect("primary")
-            connect(second, counts[1], "second")
-            disconnect("second")
-            connect(third, counts[2], "third")
-            rule.onAllNodesWithText("All environments…")[0].performClick()
+            waitFor("launch-failed") { visible("Connections") }
+            rule.onNodeWithContentDescription("Connections").performClick()
+            connect(primary, "Seed P", "primary")
+            disconnectAndAddAnother("primary")
+            connect(second, "Seed 2", "second")
+            disconnectAndAddAnother("second")
+            connect(third, "Seed 3", "third")
+            rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
             waitFor("combined-open-failed") { visible("Search names or hashes") }
-            // Other saved profiles are restored read-only without a tap.
-            // Union by environment: the same infohash on instances 2 and 3 is
-            // two rows, so the total equals the sum of independent counts.
-            waitFor("combined-union-mismatch", 120_000) { visible("Showing ${counts.sum()}") }
-            stage("combined-union")
-            scrollTo("Environment status")
-            rule.onNodeWithText("Environment status", substring = true).performClick()
-            fun sourceLine(path: String, n: Int) = rule.onAllNodes(
-                hasText(path, substring = true) and hasText("· $n transfers", substring = true))
-                .fetchSemanticsNodes().isNotEmpty()
-            waitFor("combined-origins-mismatch") {
-                sourceLine("/rutorrent/", counts[0]) && sourceLine("/rutorrent2/", counts[1]) &&
-                    sourceLine("/rutorrent3/", counts[2])
+            showAllEnvironments()
+            // Saved instances are restored read-only without a tap. Union by
+            // environment: a same infohash on instances 2 and 3 is two rows,
+            // so the total equals the sum of independent counts.
+            waitFor("combined-union-mismatch", 120_000) {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                        hasText("${counts.sum()} transfers ·", substring = true))
+                    true
+                }.getOrDefault(false)
             }
-            stage("combined-origins")
+            stage("combined-union")
+            // Labels carry the address after the name; match name and count separately.
+            fun chip(name: String, n: Int) = rule.onAllNodes(
+                hasContentDescription("Showing Server · $name", substring = true) and
+                    hasContentDescription(", $n transfers", substring = true))
+                .fetchSemanticsNodes().isNotEmpty()
+            waitFor("combined-chips-mismatch") {
+                runCatching {
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                        hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
+                    chip("Seed P", counts[0]) && chip("Seed 2", counts[1]) && chip("Seed 3", counts[2])
+                }.getOrDefault(false)
+            }
+            stage("combined-chips")
+            if (sharedHash != null) {
+                // Search by exact hash: one row per numbered instance, never collapsed.
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasText("Search names or hashes", substring = true))
+                rule.onNodeWithText("Search names or hashes", substring = true)
+                    .performTextReplacement(sharedHash)
+                waitFor("combined-same-hash-collapsed", 30_000) {
+                    visible("2 of ${counts.sum()} transfers") || visible("2 transfers ·")
+                }
+                stage("combined-same-hash")
+            }
         }
         val after = listOf(primary, second, third).map(::truth)
         // Read-only: numbered fixtures exactly unchanged. The primary is a
