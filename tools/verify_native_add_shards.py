@@ -59,7 +59,12 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
     # Needs the disposable ruTorrent server; executes in installed-remote-delete-data.yml.
     hashlib.sha256((
         "io.github.gamesbyian.chunks.RemoteOriginalTorrentHandlingInstalledInstrumentedTest" +
-        "\\0" + "archiveThenSeparatelyRemoveOriginalAfterVerifiedNewRemoteAdd").encode()).hexdigest()
+        "\\0" + "archiveThenSeparatelyRemoveOriginalAfterVerifiedNewRemoteAdd").encode()).hexdigest(),
+    # Needs a disposable rTorrent and public TVmaze HTTP; executes only in the
+    # manual installed-remote-public-media-one-shot.yml workflow.
+    hashlib.sha256((
+        "io.github.gamesbyian.chunks.InstalledRemotePublicMediaInstrumentedTest" +
+        "\\0" + "remoteInventoryGetsAutomaticArtworkWithoutIdentify").encode()).hexdigest(),
 })
 
 

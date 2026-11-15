@@ -1,0 +1,110 @@
+name: Installed remote automatic artwork (disposable rTorrent, public TVmaze)
+
+# Manual one-shot only: automatic identification/artwork for a REMOTE rTorrent
+# inventory through the installed app. One DISPOSABLE loopback rTorrent with a
+# stopped public-title fixture; no secrets, no owner host, no PR/push trigger.
+on:
+  workflow_dispatch:
+    inputs:
+      public_media:
+        description: "Authorize this bounded disposable-emulator TVmaze/CDN proof"
+        type: boolean
+        default: false
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-remote-public-media-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  remote-public-media:
+    if: github.event_name == 'workflow_dispatch' && inputs.public_media
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start one disposable real rTorrent behind an SCGI proxy
+        run: |
+          bash tools/apt_install_retry.sh rtorrent nginx
+          root="$RUNNER_TEMP/chunks-remote-media"
+          mkdir -p "$root/data" "$root/session"
+          cat > "$root/rtorrent.rc" <<RC
+          directory.default.set = $root/data
+          session.path.set = $root/session
+          network.scgi.open_port = 127.0.0.1:5001
+          network.port_range.set = 6891-6891
+          network.port_random.set = no
+          protocol.pex.set = no
+          dht.mode.set = disable
+          system.daemon.set = true
+          RC
+          nohup rtorrent -n -o "import=$root/rtorrent.rc" > "$root/rtorrent.log" 2>&1 < /dev/null &
+          echo $! > "$root/rtorrent.pid"
+          cat > "$root/nginx.conf" <<NGINX
+          worker_processes 1;
+          pid $root/nginx.pid;
+          error_log $root/nginx.error notice;
+          events { worker_connections 64; }
+          http {
+            server { listen 127.0.0.1:18082; location /RPC2 { include /etc/nginx/scgi_params; scgi_pass 127.0.0.1:5001; } }
+          }
+          NGINX
+          sudo nginx -c "$root/nginx.conf"
+          for i in $(seq 1 40); do
+            curl -fsS -H 'Content-Type: text/xml' --data '<?xml version="1.0"?><methodCall><methodName>system.client_version</methodName></methodCall>' \
+              http://127.0.0.1:18082/RPC2 >/dev/null && break
+            sleep 0.5
+          done
+      - name: Stage one stopped public-title fixture
+        run: |
+          python3 tools/preload_remote_media_fixture.py --url http://127.0.0.1:18082/RPC2 \
+            --dir "$RUNNER_TEMP/chunks-remote-media/data" --run "$GITHUB_RUN_ID" \
+            --receipt "$RUNNER_TEMP/chunks-remote-media/receipt.json"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build app and instrumentation APKs
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Prepare emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed remote inventory automatic artwork
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/installed_remote_public_media.sh
+      - name: Stop disposable rTorrent
+        if: always()
+        run: |
+          f="$RUNNER_TEMP/chunks-remote-media/rtorrent.pid"
+          [ -f "$f" ] && kill -TERM "$(cat "$f")" 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chunks-installed-remote-public-media
+          path: |
+            ${{ runner.temp }}/chunks-remote-media/receipt.json
+            ${{ runner.temp }}/chunks-remote-media/evidence/
+          retention-days: 14
+          if-no-files-found: warn
