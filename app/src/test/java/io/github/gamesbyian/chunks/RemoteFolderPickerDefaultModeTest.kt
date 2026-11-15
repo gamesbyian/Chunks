@@ -2,7 +2,10 @@ package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
-import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
@@ -43,7 +46,11 @@ class RemoteFolderPickerDefaultModeTest {
         rule.onNodeWithText("Enter path").performClick()
         // If _getdir is unavailable, no verified browsed folder can replace
         // the saved initial draft on entry to manual mode.
-        rule.onNode(hasSetTextAction()).assertTextEquals("/srv/old")
+        rule.onNode(hasSetTextAction()).assert(
+            SemanticsMatcher.expectValue(
+                SemanticsProperties.EditableText, AnnotatedString("/srv/old")
+            )
+        )
         rule.onNode(hasSetTextAction()).performTextReplacement("/srv/new")
         rule.waitForIdle()
         assertEquals(0, commits)
