@@ -71,6 +71,9 @@ echo "CHUNKS_REMOTE_DELETE_INSTALLED: app queued exact erasedata; collector dele
 
 # Remote Universal Add original .torrent Archive + separately confirmed removal,
 # on the same disposable server. Session-only cleanup of its own stopped job.
+# Start from a fresh install state: the journey above saved its connection,
+# so Connections would show that roster instead of the first-run form.
+adb shell pm clear "$pkg" >/dev/null
 set +e
 adb shell am instrument -w -r \
   -e class io.github.gamesbyian.chunks.RemoteOriginalTorrentHandlingInstalledInstrumentedTest \
