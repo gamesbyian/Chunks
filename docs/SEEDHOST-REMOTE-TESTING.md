@@ -6,6 +6,13 @@ The primary Seedhost and numbered rTorrent instances are **real integration targ
 
 This does not license accidental loss of unrelated transfers: identify the exact profile/hash, destination and affected files before writes; check shared-file conflicts and verify the actual outcome independently. Preserve the distinction between a user-authorized target and an unrelated library item, and never blindly repeat an uncertain mutation. Protected credentials and workflows **remain trusted-main/manual-authorized**, not automatically triggered by ordinary PRs. These execution gates restrict *how* a test is run, not whether the owner has permitted real-server testing. If a tool lacks manual workflow-dispatch support, record real-host execution as pending rather than silently replacing it with a disposable-server pass.
 
+## Current installed protected journeys (2026-11-15)
+
+All are manual `workflow_dispatch` on `main` only; failures report fixed stage markers only.
+- `seedhost-android-readonly.yml`: primary account, named Connect → verified → canonical Transfers. The count must equal an independent read-only count, and the server Add review must keep Add disabled without a source.
+- `seedhost-combined-three-readonly.yml`: primary, instance 2 and instance 3; automatic saved-server restore, per-chip counts and the union. It passed on `c4c8eac` (run 43696941156).
+- `seedhost-existing-stop-start-once.yml`: explicit `apply_stop_start` input, first attempt only. The installed app Stops and then Starts **one existing** completed seeding transfer with a unique name, by its canonical row, with exact-hash readback after each single dispatch, ending in its original state. If Stop is verified but Start is not, the job may remain stopped; there is no automatic retry, and the stage summary says so.
+
 ## Proposed manual, exact-infohash hosted received-byte proof (2026-11-01, not accepted)
 
 The [owner-authorized synthetic peer-byte workflow](../.github/workflows/seedhost-exact-peer-bytes-once.yml)

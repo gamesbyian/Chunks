@@ -237,6 +237,10 @@ class ShardedNativeAddTests(unittest.TestCase):
         expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
             "InstalledRemotePublicMediaInstrumentedTest" + "\\0" +
             "remoteInventoryGetsAutomaticArtworkWithoutIdentify").encode()).hexdigest())
+        # Protected manual existing-transfer Stop/Start on the primary Seedhost.
+        expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
+            "SeedhostExistingTransferStopStartInstrumentedTest" + "\\0" +
+            "existingSeedingTransferStopsAndStartsFromTheInstalledApp").encode()).hexdigest())
         self.assertEqual(expected, DEDICATED_WORKFLOW_OPT_IN_IDS)
         ids = sorted(DEDICATED_WORKFLOW_OPT_IN_IDS)
 
