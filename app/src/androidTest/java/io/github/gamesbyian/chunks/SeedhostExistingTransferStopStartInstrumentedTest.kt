@@ -117,7 +117,11 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
 
         // Installed journey: named Connect -> verified -> Connections -> View transfers.
         waitOrStage("launch-failed", 30_000) { textVisible("Connections") }
-        rule.onNodeWithContentDescription("Connections").performClick()
+        // The footer destination (description) or Welcome's own text button; never
+        // require exactly one node, as both can be composed on a first launch.
+        val byDescription = rule.onAllNodes(hasContentDescription("Connections"))
+        if (byDescription.fetchSemanticsNodes().isNotEmpty()) byDescription.onFirst().performClick()
+        else rule.onAllNodesWithText("Connections").onFirst().performClick()
         waitOrStage("form-missing", 30_000) {
             textVisible("Seedbox hostname, ruTorrent URL or RPC address") ||
                 runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(

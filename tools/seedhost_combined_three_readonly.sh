@@ -41,6 +41,8 @@ if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$log"; then
   # transport or assertion failure apart without exposing private data.
   grep -oE '^(java|kotlin|org\.junit|androidx\.compose\.ui\.test|io\.github\.gamesbyian)[A-Za-z0-9_.$]*(Exception|Error)\b' "$log" \
     | sort -u | head -5 | sed 's/^/CHUNKS_FAILURE_CLASS: /' || true
+  # Test source file:line frames only (no messages, names, URLs or credentials).
+  grep -oE 'CombinedThreeSeedhostReadOnlyInstrumentedTest\.kt:[0-9]+' "$log" | head -4 | sed 's/^/CHUNKS_FAILURE_FRAME: /' || true
   grep -oE '^(OK \(1 test\)|OK \(0 tests\)|Tests run: [0-9]+,  Failures: [0-9]+)' "$log" | head -2 || true
   echo "::error::Protected three-server Combined read-only check failed or skipped. Raw output withheld."
   exit 1
