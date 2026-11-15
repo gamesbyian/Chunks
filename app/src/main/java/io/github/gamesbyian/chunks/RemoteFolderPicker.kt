@@ -66,6 +66,16 @@ internal fun remoteFolderBreadcrumbs(root: String?, current: String?): List<Remo
 internal fun remoteFolderReadbackParent(target: String): String =
     target.substringBeforeLast('/', "").ifEmpty { "/" }
 
+/**
+ * Switching from verified browsing to manual input should begin at the
+ * currently browsed directory. Never overwrite a person's independently
+ * typed draft, including when they switch modes several times. An unavailable
+ * server leaves the initial/manual draft alone.
+ */
+internal fun remoteManualEntrySeed(
+    draft: String, typedByUser: Boolean, verifiedBrowserFolder: String?
+): String = if (!typedByUser && verifiedBrowserFolder != null) verifiedBrowserFolder else draft
+
 /** A plain read-only observation after an uncertain folder write; no success attribution. */
 internal fun remoteFolderReadbackMessage(outcome: RemoteFolderReadback): String = when (outcome) {
     RemoteFolderReadback.VERIFIED_DIRECTORY ->
@@ -97,6 +107,7 @@ internal fun RemoteFolderPicker(
     var revision by remember(remote) { mutableIntStateOf(0) }
     var manualMode by remember(remote) { mutableStateOf(false) }
     var manualPath by remember(remote) { mutableStateOf(initialFolder.orEmpty()) }
+    var manualPathEdited by remember(remote) { mutableStateOf(false) }
     var createCapability by remember(remote) { mutableStateOf<RemoteFolderCreateCapability?>(null) }
     var createCapabilityParent by remember(remote) { mutableStateOf<String?>(null) }
     var showNewFolder by remember(remote) { mutableStateOf(false) }
@@ -162,7 +173,12 @@ internal fun RemoteFolderPicker(
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = manualPath,
-                        onValueChange = { manualPath = it },
+                        onValueChange = { value ->
+                            if (value != manualPath) {
+                                manualPath = value
+                                manualPathEdited = true
+                            }
+                        },
                         label = { Text("Remote folder path") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = false,
@@ -390,7 +406,13 @@ internal fun RemoteFolderPicker(
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
-                        onClick = { manualMode = !manualMode },
+                        onClick = {
+                            if (!manualMode) {
+                                manualPath = remoteManualEntrySeed(
+                                    manualPath, manualPathEdited, currentPage?.path)
+                            }
+                            manualMode = !manualMode
+                        },
                         enabled = !creating && !reconciling,
                         modifier = Modifier.heightIn(min = 48.dp)
                     ) { Text(if (manualMode) "Browse" else "Enter path") }
