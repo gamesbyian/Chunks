@@ -267,6 +267,20 @@ internal fun listingFailure(failure: Throwable): String = when (failure) {
     else -> "unexpected reply"
 }
 
+/**
+ * Listings retained across a screen re-entry: a cancelled in-flight read keeps
+ * its last-known rows/error (no longer loading) or is dropped if it had none.
+ */
+internal fun retainedSavedListings(
+    listings: Map<EnvironmentId, SavedServerListing>
+): Map<EnvironmentId, SavedServerListing> = listings.mapNotNull { (id, listing) ->
+    when {
+        !listing.loading -> id to listing
+        listing.observedAtEpochMillis != null || listing.error != null -> id to listing.copy(loading = false)
+        else -> null
+    }
+}.toMap()
+
 /** A listing older than this is shown as out of date until a newer read succeeds. */
 internal const val SAVED_LISTING_FRESH_MS = EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS
 
@@ -387,6 +401,14 @@ internal fun CombinedTransfersScreen(
      * list and coming Back. It is still never written to preferences.
      */
     searchState: androidx.compose.runtime.MutableState<String>? = null,
+    /**
+     * Caller-owned last read-only listings of other saved profiles, so returning
+     * from Add/Connections/Options shows last-known counts and rows instead of
+     * `?` while the next automatic read runs. Rows are still shown only when the
+     * exact profile scope and its privacy gate currently allow them; the caller
+     * must drop this state on any privacy lifecycle change.
+     */
+    savedListingsState: androidx.compose.runtime.MutableState<Map<EnvironmentId, SavedServerListing>>? = null,
     /** Caller-supplied verified Add identity, never inferred from a title or an inventory delta. */
     recentlyAddedTransfer: UnifiedTransferKey? = null,
     /** The same app-wide Connections destination as local and signed-in-server lists. */
@@ -507,7 +529,12 @@ internal fun CombinedTransfersScreen(
     }
     val detailKey = restoreCombinedDetailTarget(savedDetailTarget)
     val batchScope = rememberCoroutineScope()
-    var listings by remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
+    val listingsHolder = savedListingsState
+        ?: remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
+    var listings by listingsHolder
+    // A read that was in flight when an earlier screen left composition was
+    // cancelled with it; never let its loading flag block the next read.
+    LaunchedEffect(listingsHolder) { listings = retainedSavedListings(listings) }
     var now by remember { mutableStateOf(System.currentTimeMillis()) }
     LaunchedEffect(Unit) { while (true) { delay(10_000); now = System.currentTimeMillis() } }
 
@@ -638,13 +665,21 @@ internal fun CombinedTransfersScreen(
     }.map { EnvironmentId(it.id) }.toSet()
     val currentSavedScopes = rememberUpdatedState(activeSavedScopes)
     val savedListingFence = remember { SavedListingResponseFence() }
-    LaunchedEffect(activeSavedScopes) {
+    // Privacy evidence is re-read asynchronously on every (re)entry. Until it
+    // arrives nothing saved is shown (sources require activeSavedScopes), but a
+    // retained listing for an unchanged, verifiable profile is not discarded.
+    val privacyPending = privacyEvidence == null
+    LaunchedEffect(activeSavedScopes, privacyPending) {
         savedListingFence.retireOutside(activeSavedScopes)
         // A profile with changed credentials/endpoint or a locked gate must not
         // leave its old rows or network status in this view.
         listings = listings.filter { (id, listing) ->
-            activeSavedScopes[id] != null &&
-                activeSavedScopes[id] == listing.sourceAliasScope
+            activeSavedScopes[id]?.let { it == listing.sourceAliasScope }
+                ?: (privacyPending && savedProfiles.any { profile ->
+                    profile.id == id.value && profile.aliasScope != null &&
+                        profile.aliasScope == listing.sourceAliasScope &&
+                        SavedProfileIdentity.matches(profile.id, profile.aliasScope)
+                })
         }
     }
     val loadable = savedProfiles.filter { profile ->
@@ -1713,17 +1748,11 @@ internal fun CombinedTransfersScreen(
                         else "Environment status · ${result.sources.size} sources") }
                 }
                 // The first-fold count is recycled when the user scrolls down
-                // to investigate a failed server. Keep its freshness warning
+                // to investigate a failed server. Keep ONE freshness warning
                 // beside the exact-source rows without moving diagnostics up.
                 if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
-                    Text("some environments are missing or out of date · last-known rows are not current",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = ChunksColors.Yellow)
-                }
-                // When the first-fold count has scrolled away, preserve an
-                // explicit stale-source warning here with the detailed status.
-                if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
-                    Text("Some environments are missing or out of date. Exact per-source status follows.",
+                    Text("Some environments are missing or out of date. Last-known rows are not current; " +
+                        "exact per-source status follows.",
                         style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
                 }
                 if (showingSourceStatus) result.sources.forEach { source ->
