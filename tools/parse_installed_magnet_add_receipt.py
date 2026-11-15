@@ -20,6 +20,10 @@ FAILURE_TYPES = {
     "AssertionError", "IllegalStateException", "IllegalArgumentException",
     "SocketTimeoutException", "ConnectException", "IOException", "ComposeTimeoutException",
     "ComposeNotIdleException", "PerformException", "NullPointerException", "SecurityException",
+    # Network failures that otherwise collapse into OtherFailure (live run 43759727012
+    # failed its first read-only RPC in 14 s with an unlisted class). Names only.
+    "SocketException", "SSLHandshakeException", "SSLException", "EOFException",
+    "UnknownHostException", "ProtocolException", "SSLPeerUnverifiedException",
 }
 
 

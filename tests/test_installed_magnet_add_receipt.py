@@ -201,6 +201,18 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         self.assertEqual(receipt["app_stage_evidence"], sanitized["app_stage_evidence"])
         self.assertNotIn("SECRET", str(sanitized))
 
+    def test_network_exception_class_is_named_but_its_message_never_is(self):
+        raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=read-only-exhausted\n"
+               "INSTRUMENTATION_STATUS: stack=java.net.SocketException: Connection reset by "
+               "https://private.example/?passkey=SECRET\n"
+               "INSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_CODE: -1")
+        receipt = parse(raw, 1, self.env)
+        self.assertEqual(["SocketException"], receipt["runner"]["exception_classes"])
+        self.assertEqual("failed-or-inconclusive", receipt["result"])
+        self.assertNotIn("SECRET", str(receipt))
+        unknown = parse(raw.replace("java.net.SocketException", "com.example.Leaky"), 1, self.env)
+        self.assertEqual(["OtherFailure"], unknown["runner"]["exception_classes"])
+
     def test_native_place_stages_are_fixed_diagnostics_without_certifying_the_journey(self):
         raw = "\n".join("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=" + stage for stage in
                         ["native-default-ready", "native-place-awaits-metadata", "https://private.invalid/path"])
