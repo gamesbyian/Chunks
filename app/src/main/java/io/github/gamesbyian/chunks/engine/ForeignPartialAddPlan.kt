@@ -21,11 +21,14 @@ internal object ForeignPartialAddPlan {
         val ambiguousFiles: Int,
         /** aria2 control or BitComet fragment state: recognised, never trusted or removed. */
         val untouchedAuxiliary: Int,
-        val truncated: Boolean
+        val truncated: Boolean,
+        /** Partial copies sharing their data with another file name (hard links), or unknown: never adopted. */
+        val linkedFiles: Int = 0
     ) {
         val reusableBytes: Long get() = reusable.sumOf { it.sizeBytes }
         val clients: List<ForeignPartialLayoutScanner.Kind> get() = reusable.map { it.kind }.distinct()
-        val hasAnything: Boolean get() = reusable.isNotEmpty() || ambiguousFiles > 0 || untouchedAuxiliary > 0
+        val hasAnything: Boolean get() =
+            reusable.isNotEmpty() || ambiguousFiles > 0 || untouchedAuxiliary > 0 || linkedFiles > 0
     }
 
     sealed interface Adoption {
@@ -43,13 +46,15 @@ internal object ForeignPartialAddPlan {
         if (!folder.isDirectory || declaredPaths.isEmpty()) return null
         val found = ForeignPartialLayoutScanner.scan(folder, declaredPaths)
             as? ForeignPartialLayoutScanner.Result.Found ?: return null
-        val reusable = found.candidates.filter { it.kind.importable && it.declaredPath !in found.ambiguous }
+        val unambiguous = found.candidates.filter { it.kind.importable && it.declaredPath !in found.ambiguous }
+        val reusable = unambiguous.filterNot { it.sharedOrUnknownLinks }
         val offer = Offer(
             folder = canonical(folder) ?: return null,
             reusable = reusable,
             ambiguousFiles = found.ambiguous.size,
             untouchedAuxiliary = found.candidates.count { !it.kind.importable },
-            truncated = found.truncated)
+            truncated = found.truncated,
+            linkedFiles = unambiguous.count { it.sharedOrUnknownLinks })
         return offer.takeIf { it.hasAnything }
     }
 
@@ -85,6 +90,7 @@ internal object ForeignPartialAddPlan {
         ForeignPartialLayoutScanner.Kind.QBITTORRENT -> "qBittorrent (.!qB)"
         ForeignPartialLayoutScanner.Kind.TRANSMISSION -> "Transmission (.part)"
         ForeignPartialLayoutScanner.Kind.UTORRENT -> "µTorrent (.!ut)"
+        ForeignPartialLayoutScanner.Kind.BITTORRENT -> "BitTorrent (.!bt)"
         ForeignPartialLayoutScanner.Kind.BITCOMET -> "BitComet (.bc!)"
         ForeignPartialLayoutScanner.Kind.ARIA2_CONTROL -> "aria2 control file"
         ForeignPartialLayoutScanner.Kind.BITCOMET_PIECE_PART -> "BitComet piece fragment"

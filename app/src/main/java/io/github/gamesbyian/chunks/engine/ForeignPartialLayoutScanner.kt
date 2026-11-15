@@ -20,8 +20,16 @@ internal object ForeignPartialLayoutScanner {
         QBITTORRENT(".!qB", true),
         TRANSMISSION(".part", true),
         UTORRENT(".!ut", true),
+        /** BitTorrent (Windows, µTorrent-derived) "Append .!bt to incomplete files". */
+        BITTORRENT(".!bt", true),
         BITCOMET(".bc!", true),
-        /** aria2 control file: unsupported auxiliary state, never trusted or removed. */
+        /**
+         * aria2 control file: unsupported auxiliary state, never trusted or removed.
+         * aria2 writes BitTorrent payload at the exact declared paths (usually
+         * preallocated) and keeps `<file>.aria2` beside a single-file torrent, or
+         * `<torrent name>.aria2` beside a multi-file torrent's top directory. Those
+         * exact files are ordinary exact-path reuse verified by libtorrent's check.
+         */
         ARIA2_CONTROL(".aria2", false),
         /** BitComet partial-piece fragment: unsupported auxiliary state. */
         BITCOMET_PIECE_PART(".piece_part.bc!", false)
@@ -31,7 +39,14 @@ internal object ForeignPartialLayoutScanner {
         val declaredPath: String,
         val relativeCandidatePath: String,
         val kind: Kind,
-        val sizeBytes: Long
+        val sizeBytes: Long,
+        /**
+         * True when the candidate shares its inode with another name (link count > 1)
+         * or the count cannot be read. libtorrent writes into an adopted file in
+         * place, which would silently change every other name of that inode, so
+         * such candidates are disclosed but never adopted.
+         */
+        val sharedOrUnknownLinks: Boolean = false
     )
 
     sealed interface Result {
@@ -50,7 +65,9 @@ internal object ForeignPartialLayoutScanner {
     /**
      * Probes only the exact sibling names `<declared><suffix>` of declared paths whose exact
      * file is absent. Declared paths that already exist as regular files are the exact-path
-     * reuse case and are not scanned. Unsafe layouts yield [Result.Unknown].
+     * reuse case and are not scanned for partial copies. aria2 control files are disclosed
+     * wherever aria2 actually puts them (see [Kind.ARIA2_CONTROL]), including beside exact
+     * files. Unsafe layouts yield [Result.Unknown].
      */
     fun scan(root: File, relativePaths: List<String>): Result {
         if (relativePaths.isEmpty() || relativePaths.size > MAX_DECLARED_PATHS)
@@ -67,6 +84,15 @@ internal object ForeignPartialLayoutScanner {
         val found = ArrayList<Candidate>()
         val importableByDeclared = HashMap<String, Int>()
         var truncated = false
+        val aria2Seen = HashSet<String>()
+        // A multi-file torrent's aria2 control file is named after its top directory.
+        val top = relativePaths.first().substringBefore('/', "")
+        if (top.isNotEmpty() && top != "." && top != ".." && relativePaths.all { it.startsWith("$top/") }) {
+            aria2Seen += top
+            try {
+                aria2Control(base, top)?.let { found += Candidate(top, top + Kind.ARIA2_CONTROL.suffix, Kind.ARIA2_CONTROL, it) }
+            } catch (_: Exception) { return Result.Unknown("Torrent payload path cannot be inspected") }
+        }
         for (relative in relativePaths) {
             if (relative.isBlank() || relative.length > 4096 || relative.startsWith('/') ||
                 relative.contains('\\') || relative.any { it.code < 32 || it.code == 127 })
@@ -87,8 +113,16 @@ internal object ForeignPartialLayoutScanner {
                 }
                 if (!parentsOk) continue
                 val exact = dir.resolve(segments.last())
+                if (relative !in aria2Seen) {
+                    aria2Seen += relative
+                    aria2Control(dir, segments.last())?.let { size ->
+                        if (found.size >= MAX_CANDIDATES) truncated = true
+                        else found += Candidate(relative, relative + Kind.ARIA2_CONTROL.suffix, Kind.ARIA2_CONTROL, size)
+                    }
+                }
                 if (Files.exists(exact, LinkOption.NOFOLLOW_LINKS)) continue
                 for (kind in Kind.values()) {
+                    if (kind == Kind.ARIA2_CONTROL) continue
                     val sibling = dir.resolve(segments.last() + kind.suffix)
                     if (!Files.exists(sibling, LinkOption.NOFOLLOW_LINKS)) continue
                     // Symlinks, directories and special files are ignored, never followed.
@@ -98,7 +132,8 @@ internal object ForeignPartialLayoutScanner {
                     // importable siblings even when their rows are omitted.
                     if (kind.importable) importableByDeclared.merge(relative, 1, Int::plus)
                     if (found.size >= MAX_CANDIDATES) { truncated = true; continue }
-                    found += Candidate(relative, relative + kind.suffix, kind, Files.size(sibling))
+                    found += Candidate(relative, relative + kind.suffix, kind, Files.size(sibling),
+                        sharedOrUnknownLinks = kind.importable && PayloadLinkCount.of(sibling).let { it == null || it > 1 })
                 }
             } catch (_: Exception) {
                 return Result.Unknown("Torrent payload path cannot be inspected")
@@ -106,5 +141,11 @@ internal object ForeignPartialLayoutScanner {
         }
         val ambiguous = importableByDeclared.filterValues { it > 1 }.keys
         return Result.Found(found, ambiguous, truncated)
+    }
+
+    /** Size of a regular, non-link `<name>.aria2` in [dir], or null. Never opened. */
+    private fun aria2Control(dir: Path, name: String): Long? {
+        val control = dir.resolve(name + Kind.ARIA2_CONTROL.suffix)
+        return if (Files.isRegularFile(control, LinkOption.NOFOLLOW_LINKS)) Files.size(control) else null
     }
 }

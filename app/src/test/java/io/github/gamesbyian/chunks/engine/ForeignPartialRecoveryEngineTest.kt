@@ -58,8 +58,17 @@ class ForeignPartialRecoveryEngineTest {
         assertEquals(LocalCommandOutcome.VERIFIED, receiver.resume(r.infoHash).outcome)
         assertTrue(receiver.connectPeer(r.infoHash, InetSocketAddress("127.0.0.1", seeder.listenPort())))
         waitFor { receiver.status(r.infoHash)?.progressPpm == 1_000_000 }
-        val downloaded = requireNotNull(receiver.status(r.infoHash)).payloadDownloadedBytes
-        assertTrue("reused pieces must not be refetched: $downloaded",
-            downloaded <= data.size - keptPieces * pieceSize.toLong() + pieceSize)
+        // all-time counters refresh on libtorrent's second tick; an immediate read can be 0.
+        var downloaded = -1L; var stableSince = System.currentTimeMillis()
+        val end = stableSince + 15_000
+        while (System.currentTimeMillis() < end) {
+            val now = requireNotNull(receiver.status(r.infoHash)).payloadDownloadedBytes
+            if (now != downloaded) { downloaded = now; stableSince = System.currentTimeMillis() }
+            else if (now > 0 && System.currentTimeMillis() - stableSince >= 2_500) break
+            Thread.sleep(100)
+        }
+        val missing = data.size - keptPieces * pieceSize.toLong()
+        assertTrue("reused pieces must not be refetched: $downloaded", downloaded <= missing + pieceSize)
+        assertTrue("the missing tail must actually be fetched: $downloaded", downloaded >= missing - pieceSize)
     }
 }
