@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+> **LIVE INSTALLED ADD/STOP/START/REMOVE ON THE PRIMARY SEEDHOST: RED BEFORE ANY ADD · 2026-11-15:**
+> - [43759727012](https://github.com/gamesbyian/Chunks/actions/runs/43759727012) ran `installed-rtorrent-magnets.yml` on `main` `317e977` with `environment=live discovery=public source=magnet apply=true`. The installed APK matched (72,583,116 bytes, SHA-256 `f076fc0c…eadc`).
+> - The test failed after **14 s**: app stages `runner-ready → read-only-exhausted`, first frame `RTorrentRemote.kt:2340` (`responseCode`). All four of the test's own read-only RPC attempts failed fast.
+> - **No Connect, Add or any mutation was sent.** The peer receipt shows 0 peer connections.
+> - The receipt's exception class was `OtherFailure`: the parser allowlist lacked common network classes (`SocketException`, `SSLHandshakeException`, `EOFException`, …), now added. The Nov-9 live run failed the same way. The protected Stop/Start and inventory-media journeys reached this host from the emulator today, so the cause is specific to this harness, the host or the runner, and is not established.
+
 > **V2 COMPOSE RULE SWEEP + PROTECTED REAL-INVENTORY ARTWORK JOURNEY · 2026-11-15:**
 > - The remaining 105 JVM Compose test classes were moved from the deprecated v1 rule to v2, changing imports only. Two full local `:app:testDebugUnitTest` runs (511 classes each) were clean apart from the known container-only `CreateSeedCopyAcquisitionRaceTest` (JDK 21 SecurityManager) and `LocalCheckedPayloadReservationsTest` (no UTF-8 locale) failures.
 > - `CombinedTransfersScreenTest` stays on v1. Under v2 and full-suite load, a stale-source label intermittently never appeared: `oldSignedIn…` in run 1, then `staleServerListIsLabelledAsLastKnown` in run 2, even with a 30 s wait. The class passed 3 of 3 isolated runs. The cause is not established.
