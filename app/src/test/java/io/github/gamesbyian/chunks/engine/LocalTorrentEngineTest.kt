@@ -915,6 +915,49 @@ class LocalTorrentEngineTest {
     }
 
     /**
+     * The same damage while Chunks keeps running: a stopped, complete job
+     * whose file another app truncated must not resume as a complete seed
+     * serving a short file. Start re-hashes what is really on disk first and
+     * then downloads only the missing pieces to the exact source bytes.
+     */
+    @Test fun startAfterPayloadTruncatedWhileStoppedRehashesAndRefetchesMissingPieces() {
+        val fixture = fixture()
+        val seeder = engine()
+        val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = temp.newFolder("truncated while running")
+        val local = engine()
+        val leech = added(local.addStoppedChecked(fixture.torrent, destination)).infoHash
+        assertEquals(LocalCommandOutcome.VERIFIED, local.resume(leech).outcome)
+        assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))
+        requireFlushed(local, leech)
+        assertEquals(LocalCommandOutcome.VERIFIED, local.pause(leech).outcome)
+
+        val episode = File(destination, "Chunks public fixture/episode.bin")
+        java.io.RandomAccessFile(episode, "rw").use { it.setLength(episode.length() / 3) }
+        val before = requireNotNull(local.status(leech)).payloadDownloadedBytes
+
+        assertEquals(LocalCommandOutcome.VERIFIED, local.resume(leech).outcome)
+        assertTrue("Start must re-hash the shortened payload first", leech in local.startPayloadRechecks)
+        // The asynchronous check ends in an honest partial download, never a seed.
+        waitFor { local.status(leech)?.state == LocalTransferState.DOWNLOADING }
+        val rechecked = requireNotNull(local.status(leech))
+        assertTrue("Only bytes still on disk count: $rechecked",
+            rechecked.doneBytes <= episode.length() + fixture.files.getValue("extras/notes.txt").size)
+        assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))
+        requireFlushed(local, leech)
+        for ((name, bytes) in fixture.files)
+            assertArrayEquals(bytes, File(destination, "Chunks public fixture/$name").readBytes())
+        // All-time counters lag the stats tick; a later sample can only grow.
+        Thread.sleep(3_000)
+        val fetched = requireNotNull(local.status(leech)).payloadDownloadedBytes - before
+        assertTrue("Only the truncated remainder is fetched again: $fetched",
+            fetched in 1..(fixture.files.getValue("episode.bin").size * 2L / 3 + 2L * 64 * 1024))
+    }
+
+    /**
      * A tracker-backed download stopped part-way keeps its verified pieces
      * across an engine restart, comes back stopped and silent, and after an
      * explicit Start finishes from where it was rather than starting over.

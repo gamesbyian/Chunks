@@ -1073,6 +1073,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             storageFileErrors.remove(key)
             // An ordinary Start must never inherit a recheck's auto-stop.
             handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
+            // Files shortened or removed while stopped would otherwise be
+            // served as complete: libtorrent re-hashes before any transfer,
+            // then downloads only what is really missing.
+            if (state.hasMetadata() && runCatching {
+                    restoredPayloadIsShort(handle, handle.status(TorrentHandle.QUERY_PIECES).pieces())
+                }.getOrDefault(false)) {
+                handle.forceRecheck()
+                startPayloadRechecks += key
+            }
             handle.resume()
             // Only after native Start submission: an exception keeps the gate.
             // Future Stop/Start and process restoration remain separate P0.
@@ -2209,6 +2218,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         }
         restoreProblems = problems
     }
+
+    /** Diagnostic: Starts that found saved pieces missing on disk and re-hashed first. */
+    internal val startPayloadRechecks: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     /** Diagnostic: restored jobs whose saved pieces were missing on disk and were re-hashed. */
     internal val restoredPayloadRechecks: MutableSet<String> = ConcurrentHashMap.newKeySet()
