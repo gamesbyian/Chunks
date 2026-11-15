@@ -60,7 +60,7 @@ class ForeignPartialRebindTest {
         put(root, "b.bin.part", "UNRELATED")
         val base = root.toPath().toRealPath()
         val moved = listOf("a.bin", "b.bin", "c.bin").map {
-            base.resolve("$"+"{it}.part") to base.resolve(it)
+            base.resolve("${it}.part") to base.resolve(it)
         }
         assertFalse(R.rollbackMovedFiles(base, moved))
         assertEquals("A", File(root, "a.bin.part").readText())
