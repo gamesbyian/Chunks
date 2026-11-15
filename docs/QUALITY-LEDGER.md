@@ -1,5 +1,18 @@
 # Chunks evidence and release gate ledger
 
+> **FIRST FULL INSTALLED ADD → PIECES → STOP/START → REMOVE ON THE REAL PRIMARY SEEDHOST: PASSED · 2026-11-15:**
+> - [43769370130](https://github.com/gamesbyian/Chunks/actions/runs/43769370130) ran `installed-rtorrent-magnets.yml` on `main` `78827f3` with `environment=live discovery=public source=magnet`. It used the actual MainActivity Connect → Universal Add (public magnet, original trackers) → Transfers → Details → Stop → Start → Remove (keep data) path, with real public swarms.
+> - **Debian 13 ppc64el netinst** (new `magnet5`): 653,798,469 B received and **651,841,536 / 651,841,536 B piece-verified**, then Stop/Start/Remove with exact cleanup.
+> - **Blender Sintel**: 129,317,850 B received and **129,302,391 / 129,302,391 B verified**, then the same lifecycle.
+> - Skipped as designed: Debian arm64 was precompleted on the host, and only its job was removed (exact readback). Debian amd64 was an existing session, untouched.
+> - The **peerless negative passed**: Add and Transfers UI stayed truthful and the job was removed.
+> - The installed APK matched the built bytes: `chunks-magnet-verified-preview-78827f333229.apk`, SHA-256 `20d9e0e3cd7f04cd65ed36d445b7280009b23ee25e269aad36067fda7bec0f13`, 72,583,116 B. Runtime 447 s, 1 test passed.
+> - **Limits:**
+>   - Both payloads completed before Stop, so the receipt is `completed-at-stop`. Resumed partial-byte growth after Start is **not** shown on this host; the disposable gate shows it.
+>   - Session-only Remove left both complete payloads on the Seedhost.
+>   - This was an emulator, not a physical Pixel, TalkBack or a release-signed build.
+> - Earlier reds preserved: 43759727012 (transient read failure before Connect), 43762449778 (duplicate Connections node), 43766050784 (group 1 exhausted, #1041).
+
 > **LIVE INSTALLED ADD/STOP/START/REMOVE ON THE PRIMARY SEEDHOST: RED BEFORE ANY ADD · 2026-11-15:**
 > - [43759727012](https://github.com/gamesbyian/Chunks/actions/runs/43759727012) ran `installed-rtorrent-magnets.yml` on `main` `317e977` with `environment=live discovery=public source=magnet apply=true`. The installed APK matched (72,583,116 bytes, SHA-256 `f076fc0c…eadc`).
 > - The test failed after **14 s**: app stages `runner-ready → read-only-exhausted`, first frame `RTorrentRemote.kt:2340` (`responseCode`). All four of the test's own read-only RPC attempts failed fast.
@@ -11,6 +24,9 @@
 >   - The group's other candidate (Debian amd64) was `already-present` as a session and was untouched.
 >   - The run then failed at `MainActivityRealMagnetJourney.kt:949`: every group-1 candidate was unavailable or precompleted (#1041).
 >   - No other inventory changed. Pieces, Stop/Start growth and the peerless negative remain unproven on the real host.
+> - #1773 (`78827f3`) added Debian ppc64el as a third group-1 candidate. Its disposable gate [43767245237](https://github.com/gamesbyian/Chunks/actions/runs/43767245237) **attempt 1 failed**, before the new candidate was reached, at the second Add's artwork opt-out (`MainActivityRealMagnetJourney.kt:467`): after one click the toggle never read Off. Attempt 2 passed.
+>   - That spot failed in 3 of 5 disposable runs today (#1772 ×2, #1773 ×1), so it may be a real lost-opt-out defect.
+>   - JVM `RemoteSecondAddArtworkChoiceTest` (verified first Add → Start another Add → one opt-out → still Off after 10 s) passes and does **not** reproduce it. The installed path differs: the first Add is metadata-pending with a blank Place and is acknowledged, and the second source is a fetched HTTPS link then switched to a magnet.
 
 > **V2 COMPOSE RULE SWEEP + PROTECTED REAL-INVENTORY ARTWORK JOURNEY · 2026-11-15:**
 > - The remaining 105 JVM Compose test classes were moved from the deprecated v1 rule to v2, changing imports only. Two full local `:app:testDebugUnitTest` runs (511 classes each) were clean apart from the known container-only `CreateSeedCopyAcquisitionRaceTest` (JDK 21 SecurityManager) and `LocalCheckedPayloadReservationsTest` (no UTF-8 locale) failures.
