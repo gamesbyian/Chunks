@@ -5,7 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import io.github.gamesbyian.chunks.media.artwork.ArtworkDiskCache
 import io.github.gamesbyian.chunks.media.artwork.ArtworkRepository
 import io.github.gamesbyian.chunks.media.providers.TvMazeProvider
