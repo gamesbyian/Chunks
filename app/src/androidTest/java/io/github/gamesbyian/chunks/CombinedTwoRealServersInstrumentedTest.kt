@@ -395,8 +395,7 @@ class CombinedTwoRealServersInstrumentedTest {
                 visible("Search names or hashes") && !visible("All environments…")
             }
             stage("combined-open")
-            scrollTo("Load other saved servers (read-only)")
-            rule.onNodeWithText("Load other saved servers (read-only)").performClick()
+            // The other saved server is restored read-only without a tap.
             // Two real sources, two rows each: the union must keep the
             // same-hash transfer once PER SERVER, never collapse it by hash.
             // The compact count is an earlier LazyColumn item. Clicking the
@@ -651,8 +650,7 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("canonical Combined browser for C2") {
                 visible("Search names or hashes") && !visible("All environments…")
             }
-            scrollTo("Load other saved servers (read-only)")
-            rule.onNodeWithText("Load other saved servers (read-only)").performClick()
+            // Automatic read-only restore of the other saved server.
             waitFor("union before fault", 60_000) {
                 // Opening the read-only secondary server loader scrolls the
                 // lazy catalog. Require the truthful four-row summary after

@@ -48,14 +48,14 @@ class CombinedSavedServersTest {
             hasText("Environment status", substring = true))
         rule.onNodeWithText("Environment status", substring = true).performClick()
     }
-    private fun loadOtherSavedServers() {
+    private fun refreshOtherSavedServers() {
         // The privacy-policy read also runs outside the Compose test clock.
-        // Require its actual enabled entry point before sending one tap.
+        // Require its actual entry point before sending one explicit refresh.
         rule.waitUntil(5_000) {
-            rule.onAllNodesWithText("Load other saved servers (read-only)")
+            rule.onAllNodesWithText("Refresh other saved servers")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Load other saved servers (read-only)").performScrollTo().performClick()
+        rule.onNodeWithText("Refresh other saved servers").performScrollTo().performClick()
     }
 
     /**
@@ -78,7 +78,12 @@ class CombinedSavedServersTest {
         } }
     }
 
-    @Test fun loadsOtherSavedServersOnlyWhenAskedAndReportsFailures() {
+    /**
+     * UX "Restore connections": every other saved profile's inventory is read
+     * automatically (read-only, once per exact identity) so its chip count and
+     * rows appear without a bottom-of-list tap. Failures stay isolated per source.
+     */
+    @Test fun restoresOtherSavedServersAutomaticallyReadOnlyAndReportsFailures() {
         // Dispatcher.IO work does not participate in the Compose test clock.
         // Count loader completion separately from its main-thread UI apply:
         // a heavily loaded runner must never pass because one read finished
@@ -102,24 +107,13 @@ class CombinedSavedServersTest {
                     completedReads.incrementAndGet()
                 }
             }))
-        rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertDoesNotExist()
-        discloseSourceStatus()
-        // Disclosure updates Compose state asynchronously. Wait for the actual
-        // visible status instead of depending on runner/looper timing; neither
-        // loader callback may run before the separate explicit Load action.
-        rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers")
-                .fetchSemanticsNodes().isNotEmpty()
-        }
-        rule.onNodeWithText("Server · ann @ a.example/RPC2: Not connected · 0 transfers").assertExists()
-        assertEquals("nothing is fetched until the user asks", 0, calls.get())
-        assertEquals("no list callback may finish before the explicit tap", 0, completedReads.get())
-        loadOtherSavedServers()
+        // No tap: the privacy gate opens, then each profile is read once.
         // First qualify both real background callbacks. This wait is not a
         // UI assertion and does not use blocking CountDownLatch.await(), which
         // could starve Robolectric's main looper during Compose resumption.
         rule.waitUntil(15_000) { completedReads.get() == 2 }
         assertEquals("both saved servers fetched exactly once", 2, calls.get())
+        discloseSourceStatus()
         // Then independently qualify both UI outcomes after their suspended
         // Dispatchers.IO continuations return to the composition.
         try {
@@ -144,6 +138,10 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Server · bob @ b.example/RPC2: Could not load (connection refused) · 0 transfers")
             .assertExists()
         rule.onNodeWithText("Refresh other saved servers").assertExists()
+        // The failed source is not hammered and the healthy one is not
+        // re-read early: still exactly one read each after settling.
+        rule.waitForIdle()
+        assertEquals("no automatic replay inside the refresh/backoff window", 2, calls.get())
         // A saved-only row opens read-only full Details without a command
         // or a misleading handoff to an unauthenticated owning list.
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
@@ -185,7 +183,7 @@ class CombinedSavedServersTest {
         discloseSourceStatus()
 
         val name = "Server · Account slot"
-        loadOtherSavedServers()
+        // Automatic restore starts the first account's read without a tap.
         rule.waitUntil(5_000) { entered.get() == 1 }
         rule.runOnIdle {
             // Simulate a restored/edited profile retaining the same list slot
@@ -208,8 +206,8 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("Old account private payload").assertDoesNotExist()
         // An edited account cannot inherit the saved environment ID of A.
         // Refuse both disclosure and fetching until account B has its own
-        // independently verifiable ID; a hidden load button is intentional.
-        rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
+        // independently verifiable ID; a hidden refresh button is intentional.
+        rule.onNodeWithText("Refresh other saved servers").assertDoesNotExist()
         assertEquals("A mismatched saved identity cannot fetch B", 0, newReads.get())
 
         rule.runOnIdle {
@@ -220,7 +218,7 @@ class CombinedSavedServersTest {
                     2048, 1024, true, "/new"))
             }
         }
-        loadOtherSavedServers()
+        // The verified replacement is restored automatically, exactly once.
         rule.waitUntil(5_000) {
             newReads.get() == 1 &&
                 rule.onAllNodesWithText(name + ": Live · 1 transfers")
@@ -230,6 +228,8 @@ class CombinedSavedServersTest {
         rule.onNodeWithText("New account ISO").assertExists()
         rule.onNodeWithText("Old account private payload").assertDoesNotExist()
         // Returning to the first identity must not resurrect an earlier reply.
+        // It is restored by one FRESH read of that identity (empty here), never
+        // by replaying the abandoned request or reusing B's rows.
         rule.runOnIdle {
             current = CombinedSavedProfile(sameSlot, "Account slot", scopeA) {
                 entered.incrementAndGet()
@@ -237,11 +237,13 @@ class CombinedSavedServersTest {
             }
         }
         rule.waitUntil(5_000) {
-            hiddenSavedSlot(name)
+            entered.get() == 2 &&
+                rule.onAllNodesWithText(name + ": Live · 0 transfers").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("New account ISO").assertDoesNotExist()
+        rule.onNodeWithText("Old account private payload").assertDoesNotExist()
         assertEquals("No silent read of the new account", 1, newReads.get())
-        assertEquals("No automatic replay of the old request", 1, entered.get())
+        assertEquals("Exactly one fresh read of the restored identity, no replay", 2, entered.get())
     }
 
     @Test fun failedRefreshImmediatelyInvalidatesOldLiveSnapshotWithoutDeletingRows() {
@@ -275,11 +277,10 @@ class CombinedSavedServersTest {
             else throw java.net.ConnectException("refused")
         }))
         discloseSourceStatus()
-        loadOtherSavedServers()
         rule.waitUntil(5_000) {
             rule.onAllNodesWithText(label + ": Live · 1 transfers").fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Refresh other saved servers").performScrollTo().performClick()
+        refreshOtherSavedServers()
         rule.waitUntil(5_000) {
             rule.onAllNodesWithText(label + ": Refresh failed (connection refused), showing last list · 1 transfers")
                 .fetchSemanticsNodes().isNotEmpty()
@@ -302,8 +303,9 @@ class CombinedSavedServersTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Server · ann @ a.example/RPC2: Locked, open it to unlock · 0 transfers").assertExists()
-        rule.onNodeWithText("Load other saved servers (read-only)").assertDoesNotExist()
-        assertEquals(0, calls.get())
+        rule.onNodeWithText("Refresh other saved servers").assertDoesNotExist()
+        rule.waitForIdle()
+        assertEquals("an unverifiable profile is never read, even automatically", 0, calls.get())
     }
     @Test fun tappingOneSavedProfileLoadsOnlyItsExactReadOnlyScopeAfterPrivacy() {
         CombinedViewPreferences(androidx.test.core.app.ApplicationProvider

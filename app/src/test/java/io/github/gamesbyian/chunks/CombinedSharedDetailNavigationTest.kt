@@ -106,11 +106,7 @@ class CombinedSharedDetailNavigationTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Filter transfers"))
         rule.onNodeWithText("Filter transfers").assertExists()
 
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Load other saved servers (read-only)"))
-        rule.onNodeWithText("Load other saved servers (read-only)")
-            .performScrollTo()
-            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        // The other saved profile is restored read-only without a tap.
         rule.waitUntil(10_000) { requests.get() == 1 }
         rule.waitForIdle()
         rule.onNode(hasScrollToIndexAction())
@@ -128,7 +124,7 @@ class CombinedSharedDetailNavigationTest {
         // A saved profile is read-only here: no switch to signed-in server list.
         rule.onNodeWithText("Open Server · $savedLabel transfers").assertDoesNotExist()
         rule.onNodeWithText("Capabilities in this environment").performScrollTo().assertExists()
-        assertEquals("Explicit saved-list fetch only", 1, requests.get())
+        assertEquals("One automatic read-only saved-list fetch, no replay", 1, requests.get())
         assertTrue("Details never mutate, probe or start the local device engine", commands.isEmpty())
         assertNull(LocalEngineHolder.current())
     }
