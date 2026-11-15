@@ -38,6 +38,16 @@ import org.robolectric.annotation.GraphicsMode
 @Config(sdk = [35], qualifiers = "w320dp-h700dp-mdpi")
 class CombinedSharedDetailNavigationTest {
     @get:Rule val rule = createComposeRule()
+
+    // Server rows stay hidden until the screen's privacy evidence is read on
+    // Dispatchers.IO, which is not a Compose idling resource: under load the
+    // first scroll can run before any row exists (local full-suite run,
+    // 2026-11-15: 6-item list, no rows). Wait for the row; assertions unchanged.
+    private fun awaitFirstRow(text: String) {
+        rule.waitUntil(15_000) {
+            runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text)) }.isSuccess
+        }
+    }
     private val context get() = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val hash = "a".repeat(40)
     private val connectedScope = "https://source.example/rutorrent2/RPC2\u0000ian"
@@ -80,8 +90,7 @@ class CombinedSharedDetailNavigationTest {
         }
 
         val connectedName = serverEnvironmentLabel(connectedScope)
-        rule.onNode(hasScrollToIndexAction())
-            .performScrollToNode(hasText("Instance two download"))
+        awaitFirstRow("Instance two download")
         // Exercise the real touch-coordinate path at 200% text with
         // the compact floating Back-to-top control from merged #681.
         rule.onNodeWithContentDescription("Details for Instance two download on $connectedName")
@@ -140,7 +149,7 @@ class CombinedSharedDetailNavigationTest {
             } }
         }
         val origin = serverEnvironmentLabel(connectedScope)
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Instance two download"))
+        awaitFirstRow("Instance two download")
         rule.onNodeWithContentDescription("Details for Instance two download on $origin")
             .performScrollTo().performClick()
         rule.onNodeWithText("Observation: The last transfer observation is out of date.", substring = true)
