@@ -170,6 +170,9 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                     visible("was moved into Chunks")
                 }
                 stage("original-removed")
+                // The share opens another MainActivity over the scenario's own;
+                // finish the whole task so ActivityScenario.close() can reach DESTROYED.
+                scenario.onActivity { it.finishAffinity() }
             }
             assertTrue("The confirmed original is gone", !stillReadable(document))
             assertTrue("Unrelated documents are untouched", stillReadable(sibling))
