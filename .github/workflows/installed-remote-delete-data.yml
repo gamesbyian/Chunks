@@ -12,6 +12,12 @@ on:
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDeleteData.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RTorrentRemote.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
+      # Remote Add original .torrent Archive/remove journey on the same disposable server.
+      - "app/src/main/java/io/github/gamesbyian/chunks/VerifiedAddScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteAddSession.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/OriginalTorrentHandlingUi.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/SourceTorrentArchive.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
       - "tools/installed_remote_delete_data.sh"
       - "tools/stage_disposable_rutorrent_adapter_delete.py"
       - ".github/workflows/installed-remote-delete-data.yml"

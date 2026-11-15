@@ -68,3 +68,23 @@ fi
 python3 tools/stage_disposable_rutorrent_adapter_delete.py verify | tee "$out/collector.txt"
 grep -q '^PASS production Kotlin adapter' "$out/collector.txt"
 echo "CHUNKS_REMOTE_DELETE_INSTALLED: app queued exact erasedata; collector deleted exact file; canary intact" | tee -a "$GITHUB_STEP_SUMMARY"
+
+# Remote Universal Add original .torrent Archive + separately confirmed removal,
+# on the same disposable server. Session-only cleanup of its own stopped job.
+set +e
+adb shell am instrument -w -r \
+  -e class io.github.gamesbyian.chunks.RemoteOriginalTorrentHandlingInstalledInstrumentedTest \
+  -e chunks_remote_original authorized \
+  -e chunks_remote_url_b64 "$(b64 http://127.0.0.1:18082/rutorrent1/)" \
+  io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner \
+  > "$out/original-instrumentation.txt" 2>&1
+status=$?
+set -e
+grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$out/original-instrumentation.txt" | tee "$out/original-stages.txt" || true
+if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$out/original-instrumentation.txt" ||
+   ! grep -q 'chunks_stage=cleaned-up' "$out/original-instrumentation.txt"; then
+  tail -80 "$out/original-instrumentation.txt"
+  echo "::error::Installed remote original .torrent Archive/remove journey failed"
+  exit 1
+fi
+echo "CHUNKS_REMOTE_ORIGINAL_INSTALLED: verified new exact remote job, archived exact bytes, separately confirmed original removal, sibling intact, session-only cleanup" | tee -a "$GITHUB_STEP_SUMMARY"

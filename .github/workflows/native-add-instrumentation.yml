@@ -33,6 +33,7 @@ on:
       # workflow owns both installed phases, source digest and zero-request proof.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAutomaticPublicMediaInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/storage/OwnedMediaStoreDocumentPublicationInstrumentedTest.kt"
