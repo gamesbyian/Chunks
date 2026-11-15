@@ -41,9 +41,7 @@ internal object ForeignPartialRebind {
             return Result.Refused("Candidate set changed or is ambiguous", true)
         val base = root.toPath().toAbsolutePath().normalize().toRealPath()
         val done = ArrayList<Pair<Path, Path>>()
-        fun rollback(): Boolean = done.asReversed().all { (from, to) ->
-            try { Files.move(to, from); true } catch (_: Exception) { false }
-        }
+        fun rollback(): Boolean = rollbackMovedFiles(base, done)
         for (c in approved) {
             val match = fresh.candidates.firstOrNull {
                 it.declaredPath == c.declaredPath && it.kind == c.kind && it.sizeBytes == c.sizeBytes
@@ -57,8 +55,20 @@ internal object ForeignPartialRebind {
                 require(from.startsWith(base) && to.startsWith(base))
                 if (!Files.isRegularFile(from, LinkOption.NOFOLLOW_LINKS))
                     return Result.Refused("Candidate is no longer a regular file", rollback())
-                Files.move(from, to) // fails if destination exists; no REPLACE_EXISTING
+                // Explicitly reject an occupied destination regardless of provider
+                // implementation details for Files.move without REPLACE_EXISTING.
+                if (Files.exists(to, LinkOption.NOFOLLOW_LINKS))
+                    return Result.Refused("Destination appeared during adoption", rollback())
+                // The scan is not a permanent lease. Re-read the link count as
+                // close to the mutation as possible; an unknown count is unsafe.
+                if (PayloadLinkCount.of(from) != 1)
+                    return Result.Refused("Candidate shares data with another file name", rollback())
+                Files.move(from, to)
                 done += from to to
+                // A late hard link made after the scan must not reach native
+                // piece-check/write. Undo this rename before returning to Add.
+                if (PayloadLinkCount.of(to) != 1)
+                    return Result.Refused("Candidate became shared during adoption", rollback())
             } catch (_: FileAlreadyExistsException) {
                 return Result.Refused("Destination appeared during adoption", rollback())
             } catch (_: Exception) {
@@ -69,18 +79,60 @@ internal object ForeignPartialRebind {
             base.relativize(it.second).toString().replace(File.separatorChar, '/') }))
     }
 
-    /** Reverses [adopt]; refuses (touching nothing further) if a source name is occupied or a file vanished. */
-    fun undo(root: File, receipt: Receipt): Boolean {
-        val base = try { root.toPath().toAbsolutePath().normalize().toRealPath() } catch (_: Exception) { return false }
-        for ((from, to) in receipt.renames.asReversed()) {
-            val src = base.resolve(from); val dst = base.resolve(to)
-            if (!src.startsWith(base) || !dst.startsWith(base)) return false
-            try {
-                if (!Files.isRegularFile(dst, LinkOption.NOFOLLOW_LINKS) ||
-                    Files.exists(src, LinkOption.NOFOLLOW_LINKS)) return false
-                Files.move(dst, src)
-            } catch (_: Exception) { return false }
+    /**
+     * Reverses all still-safe renames after a partially failed adoption.
+     * Never short-circuit on one failed reverse: every other file still needs
+     * its own independent recovery attempt. Never overwrite an occupied name.
+     */
+    internal fun rollbackMovedFiles(base: Path, done: List<Pair<Path, Path>>): Boolean {
+        var allRestored = true
+        for ((from, to) in done.asReversed()) {
+            val restored = try {
+                if (!withinDirectParents(base, from) || !withinDirectParents(base, to) ||
+                    !Files.isRegularFile(to, LinkOption.NOFOLLOW_LINKS) ||
+                    Files.exists(from, LinkOption.NOFOLLOW_LINKS)) false
+                else { Files.move(to, from); true }
+            } catch (_: Exception) { false }
+            if (!restored) allRestored = false
         }
-        return true
+        return allRestored
+    }
+
+    /** A parent symbolic link must never redirect a rollback outside the reviewed root. */
+    private fun withinDirectParents(base: Path, child: Path): Boolean {
+        if (child == base || !child.normalize().startsWith(base)) return false
+        var parent = child.parent
+        while (parent != null && parent != base) {
+            if (Files.isSymbolicLink(parent) ||
+                !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) return false
+            parent = parent.parent
+        }
+        return parent == base
+    }
+
+    /**
+     * Reverse an accepted adoption only if every receipt path and name still
+     * qualifies. Preflight ALL entries before moving the first file; otherwise
+     * an occupied original near the end would cause a needlessly partial undo.
+     * A concurrent filesystem change can still prevent full rollback, so the
+     * result must be checked by the caller rather than presumed successful.
+     */
+    fun undo(root: File, receipt: Receipt): Boolean {
+        val base = try { root.toPath().toAbsolutePath().normalize().toRealPath() }
+            catch (_: Exception) { return false }
+        if (receipt.renames.isEmpty()) return false
+        val done = ArrayList<Pair<Path, Path>>()
+        for ((from, to) in receipt.renames) {
+            val src = base.resolve(from).normalize()
+            val dst = base.resolve(to).normalize()
+            if (src == dst || !withinDirectParents(base, src) || !withinDirectParents(base, dst) ||
+                !Files.isRegularFile(dst, LinkOption.NOFOLLOW_LINKS) ||
+                Files.exists(src, LinkOption.NOFOLLOW_LINKS) ||
+                done.any { (priorSrc, priorDst) ->
+                    src == priorSrc || dst == priorDst || src == priorDst || dst == priorSrc
+                }) return false
+            done += src to dst
+        }
+        return rollbackMovedFiles(base, done)
     }
 }
