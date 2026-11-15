@@ -154,10 +154,8 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
             disconnect("second")
             connect(third, counts[2], "third")
             rule.onAllNodesWithText("All environments…")[0].performClick()
-            waitFor("combined-open-failed") { visible("Load other saved servers (read-only)") ||
-                visible("Refresh other saved servers") }
-            scrollTo("Load other saved servers (read-only)")
-            rule.onNodeWithText("Load other saved servers (read-only)").performClick()
+            waitFor("combined-open-failed") { visible("Search names or hashes") }
+            // Other saved profiles are restored read-only without a tap.
             // Union by environment: the same infohash on instances 2 and 3 is
             // two rows, so the total equals the sum of independent counts.
             waitFor("combined-union-mismatch", 120_000) { visible("Showing ${counts.sum()}") }

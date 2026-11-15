@@ -267,8 +267,41 @@ internal fun listingFailure(failure: Throwable): String = when (failure) {
     else -> "unexpected reply"
 }
 
-/** A listing older than this is shown as out of date; it is never refreshed silently. */
+/** A listing older than this is shown as out of date until a newer read succeeds. */
 internal const val SAVED_LISTING_FRESH_MS = EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS
+
+/**
+ * Restore-connections policy for saved, non-active profiles (UX "Restore
+ * connections, not merely credentials"): their `main` inventory is READ
+ * automatically while Transfers is visible, so chips and rows reflect every
+ * configured client without a bottom-of-list tap. This only governs *when* the
+ * existing fenced, privacy-gated, read-only loader runs; it never signs in,
+ * switches the active server, sends a command or retries a write.
+ *
+ * Healthy reads refresh inside the freshness window so a working source is not
+ * shown as out of date; a failed read backs off to a slower cadence, and an
+ * in-flight read is never duplicated. Attempts are keyed by exact profile ID
+ * plus verified account scope, so a reconfigured account is read afresh rather
+ * than inheriting the previous account's schedule or rows.
+ */
+internal object SavedProfileAutoRead {
+    const val HEALTHY_REFRESH_MS = 60_000L
+    const val FAILED_RETRY_MS = 300_000L
+    const val TICK_MS = 5_000L
+
+    data class Key(val environment: EnvironmentId, val aliasScope: String)
+
+    fun due(listing: SavedServerListing?, lastAttemptAt: Long?, now: Long): Boolean {
+        if (listing?.loading == true) return false
+        // Never read under this exact identity, or its rows were retired
+        // (privacy lock / account change) and must be restored afresh.
+        if (lastAttemptAt == null || listing == null) return true
+        // A device clock moved backwards must not suppress reads indefinitely.
+        if (now < lastAttemptAt) return true
+        val wait = if (listing.error != null) FAILED_RETRY_MS else HEALTHY_REFRESH_MS
+        return now - lastAttemptAt >= wait
+    }
+}
 
 /** A failed refresh invalidates live status immediately, while preserving last-known rows. */
 internal fun savedListingIsStale(listing: SavedServerListing, now: Long): Boolean =
@@ -619,13 +652,16 @@ internal fun CombinedTransfersScreen(
         id != serverId && profile.listOnly != null && profile.aliasScope != null &&
             activeSavedScopes[id] == profile.aliasScope
     }
-    // Both the all-server and exact-server buttons share the same fenced, read-only path.
+    // Last read attempt per exact profile + account scope (automatic or tapped).
+    val autoReadAttempts = remember { mutableMapOf<SavedProfileAutoRead.Key, Long>() }
+    // Automatic restore, the all-server and exact-server buttons share the same fenced, read-only path.
     fun loadSavedServers(profiles: List<CombinedSavedProfile>) {
         profiles.forEach { profile ->
             val id = EnvironmentId(profile.id)
             val load = profile.listOnly ?: return@forEach
             val identity = profile.aliasScope ?: return@forEach
             if (activeSavedScopes[id] != identity || listings[id]?.loading == true) return@forEach
+            autoReadAttempts[SavedProfileAutoRead.Key(id, identity)] = System.currentTimeMillis()
             val ticket = savedListingFence.begin(
                 SavedListingResponseFence.Source(id, identity))
             val previous = listings[id]?.takeIf { it.sourceAliasScope == identity }
@@ -656,6 +692,27 @@ internal fun CombinedTransfersScreen(
                     now = System.currentTimeMillis()
                 }
             }
+        }
+    }
+
+    // Restore every other saved profile's read-only inventory without a tap.
+    // The loader re-checks exact identity and privacy itself, and drops any
+    // response whose account scope changed while it was in flight.
+    val currentLoadable = rememberUpdatedState(loadable)
+    val currentLoader = rememberUpdatedState<(List<CombinedSavedProfile>) -> Unit> {
+        loadSavedServers(it)
+    }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val nowMs = System.currentTimeMillis()
+            val due = currentLoadable.value.filter { profile ->
+                val scope = profile.aliasScope ?: return@filter false
+                val key = SavedProfileAutoRead.Key(EnvironmentId(profile.id), scope)
+                val listing = listings[key.environment]?.takeIf { it.sourceAliasScope == scope }
+                SavedProfileAutoRead.due(listing, autoReadAttempts[key], nowMs)
+            }
+            if (due.isNotEmpty()) currentLoader.value(due)
+            delay(SavedProfileAutoRead.TICK_MS)
         }
     }
 
@@ -1707,7 +1764,9 @@ internal fun CombinedTransfersScreen(
                     onClick = {
                         loadSavedServers(loadable)
                     }, modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (listings.isEmpty()) "Load other saved servers (read-only)" else "Refresh other saved servers")
+                    // Reads already happen automatically; this is an immediate
+                    // read-only refresh, never a sign-in or command.
+                    Text("Refresh other saved servers")
                 }
                 if (result.missingSelectedEnvironments.isNotEmpty()) Text(
                     (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected environment is" else "$n selected environments are" }) + " no longer set up. " +

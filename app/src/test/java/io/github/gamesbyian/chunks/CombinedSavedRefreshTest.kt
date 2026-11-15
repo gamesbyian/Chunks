@@ -54,15 +54,21 @@ class CombinedSavedRefreshTest {
                 }.isSuccess
             }
         }
+        // Both saved servers are restored automatically, read-only, once each.
+        rule.waitUntil(10_000) { first.get() == 1 && second.get() == 1 }
         reveal("Environment status · 3 sources")
         rule.onNodeWithText("Environment status · 3 sources").performClick()
-        reveal("Load Server · Server 2 transfers")
-        rule.onNodeWithContentDescription("Load transfers on Server · Server 2; read only").performClick()
-        rule.waitUntil(10_000) { first.get() == 1 }
         reveal("Server · Server 2: Could not load (did not answer in time) · 0 transfers")
         reveal("Load Server · Server 2 transfers")
         rule.onNodeWithContentDescription("Load transfers on Server · Server 2; read only").performClick()
         rule.waitUntil(10_000) { first.get() == 2 }
-        assertEquals(0, second.get())
+        reveal("Server · Server 2: Could not load (did not answer in time) · 0 transfers")
+        reveal("Load Server · Server 2 transfers")
+        rule.onNodeWithContentDescription("Load transfers on Server · Server 2; read only").performClick()
+        rule.waitUntil(10_000) { first.get() == 3 }
+        rule.waitForIdle()
+        // Retrying one failed server never reloads the other, and the failed
+        // automatic read is not replayed inside its backoff window.
+        assertEquals(1, second.get())
     }
 }

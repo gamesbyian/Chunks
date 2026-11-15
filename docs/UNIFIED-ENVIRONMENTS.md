@@ -142,9 +142,10 @@ The server label comes from the authenticated alias scope via the same address f
   - the local device, server, Add-review and Seeding-rule environment badges.
 - **Still uncoloured:** notifications.
 
-**Other saved servers, read-only (PARTIAL).** *Load other saved servers (read-only)* fetches each other saved profile's `main` list with that profile's own saved credentials. HTTPS is enforced by `RTorrentRemote`.
-- **Consent and scope:** it runs only when pressed, on each press, and never signs in, switches the active server or sends a command.
-- **Privacy and failures:** a privacy-locked profile is neither fetched nor shown. Failures read "Could not load (…)".
+**Other saved servers, read-only (PARTIAL).** While Transfers is visible, each other saved profile's `main` list is **read automatically** with that profile's own saved credentials, implementing the binding [UX restore-connections rule](UX.md) so client chips show real counts (e.g. `Wood (151)`) and rows appear without a tap. HTTPS is enforced by `RTorrentRemote`. **Refresh other saved servers** and the per-source **Load/Refresh** in Environment status request an immediate read. (Supersedes the earlier "only when pressed" behaviour, 2026-11-15.)
+- **Scope:** automatic restore only reads; it never signs in, switches the active server, sends a command or retries a write. Attempts are keyed by exact profile ID + verified account scope; a reconfigured account is read afresh and a late reply for a previous account is still discarded.
+- **Cadence (`SavedProfileAutoRead`):** first read on appearance; healthy refresh every 60 s (inside the two-minute freshness window); a failed source backs off to 5 minutes; an in-flight read is never duplicated.
+- **Privacy and failures:** a privacy-locked or unverifiable profile is neither fetched nor shown. Failures read "Could not load (…)" and stay isolated per source.
 - **Freshness:** a listing older than two minutes is marked out of date.
 - **Actions:** batch Start/Stop refuses rows from these servers: "only listed here; sign in to this server to change it".
 
