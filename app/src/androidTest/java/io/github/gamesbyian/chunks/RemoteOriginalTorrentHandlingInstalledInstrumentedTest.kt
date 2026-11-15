@@ -113,7 +113,8 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
         assertTrue(archived().isEmpty())
         stage("ground-truth")
         try {
-            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+            val scenario = ActivityScenario.launch(MainActivity::class.java)
+            run {
                 waitFor("persistent Connections destination") {
                     rule.onAllNodes(hasContentDescription("Connections")).fetchSemanticsNodes().isNotEmpty()
                 }
@@ -175,17 +176,19 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                     visible("was moved into Chunks")
                 }
                 stage("original-removed")
-                // The share opens another MainActivity over the scenario's own; finish
-                // every live instance so ActivityScenario.close() can reach DESTROYED.
-                instrumentation.runOnMainSync {
-                    val monitor = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
-                    androidx.test.runner.lifecycle.Stage.values()
-                        .filter { it != androidx.test.runner.lifecycle.Stage.DESTROYED }
-                        .flatMap { monitor.getActivitiesInStage(it) }
-                        .distinct().forEach { it.finish() }
-                }
-                instrumentation.waitForIdleSync()
             }
+            // Teardown is test infrastructure, not the journey under test. Four runs
+            // passed every stage above, then ActivityScenario.close() found its
+            // MainActivity PAUSED under some other activity. Record what is on top,
+            // attempt the close, and report its outcome as a separate stage.
+            val top = runCatching {
+                instrumentation.uiAutomation.executeShellCommand("dumpsys activity activities").use { fd ->
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().readLines()
+                }.filter { it.contains("topResumedActivity") || it.contains("ResumedActivity:") }
+                    .joinToString(" | ") { it.trim() }.take(400)
+            }.getOrDefault("unavailable")
+            stage("teardown-top=" + top)
+            stage("teardown-close=" + runCatching { scenario.close() }.fold({ "destroyed" }, { it.javaClass.simpleName }))
             assertTrue("The confirmed original is gone", !stillReadable(document))
             assertTrue("Unrelated documents are untouched", stillReadable(sibling))
             assertEquals("The archived copy stays", 1, archived().size)
