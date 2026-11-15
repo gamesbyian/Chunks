@@ -54,6 +54,116 @@ class LocalStoppedRecheckInstrumentedTest {
         }
     }
 
+
+    /**
+     * Installed Android/POSIX negative: a source file and a partial sharing an inode must
+     * never be renamed into libtorrent's writable payload path. A link created after review
+     * must also revoke the earlier offer; all original bytes and names remain untouched.
+     */
+    @Test fun androidHardLinkCountRefusesReviewedAndLateLinkedForeignPartials() {
+        val dir = File(work, "linked-partials").apply { mkdirs() }
+        val library = File(dir, "library/keep.bin").apply {
+            parentFile!!.mkdirs()
+            writeBytes(ByteArray(4096) { (it % 251).toByte() })
+        }
+        val originalBytes = library.readBytes()
+        val foreign = File(dir, "Album/track.bin.!qB").apply { parentFile!!.mkdirs() }
+        // Android's application sandbox may reject link(2) even for two
+        // regular files owned by this app. That is a valid safety boundary,
+        // but it does NOT qualify Chunks' shared-inode rejection on this OS.
+        // Exercise the real rejection path wherever the kernel permits it;
+        // record a distinct capability outcome when it refuses the fixture.
+        val hardLinkAvailable = try {
+            android.system.Os.link(library.absolutePath, foreign.absolutePath)
+            true
+        } catch (denial: android.system.ErrnoException) {
+            val unsupported = denial.errno in setOf(
+                android.system.OsConstants.EPERM,
+                android.system.OsConstants.EACCES,
+                android.system.OsConstants.EOPNOTSUPP,
+                android.system.OsConstants.ENOSYS,
+                android.system.OsConstants.EROFS
+            )
+            if (!unsupported) throw denial
+            android.util.Log.i("ChunksForeignPartial",
+                "CHUNKS_FOREIGN_LINK: kernel_denied_create errno=${denial.errno}; " +
+                    "Android shared-inode rejection not exercised")
+            false
+        }
+        if (!hardLinkAvailable) {
+            assertFalse("A denied link syscall cannot publish a partial", foreign.exists())
+            assertEquals("Kernel must report ordinary source's single link", 1,
+                PayloadLinkCount.of(library.toPath()))
+            assertArrayEquals("Kernel refusal cannot alter the original", originalBytes, library.readBytes())
+            return
+        }
+        android.util.Log.i("ChunksForeignPartial", "CHUNKS_FOREIGN_LINK: actual_hardlink_created")
+        assertEquals("Android Os.lstat must see both names", 2, PayloadLinkCount.of(foreign.toPath()))
+
+        val declared = listOf("Album/track.bin")
+        val blocked = requireNotNull(ForeignPartialAddPlan.offerForPaths(declared, dir))
+        assertEquals(1, blocked.linkedFiles)
+        assertTrue(blocked.reusable.isEmpty())
+        assertEquals(ForeignPartialAddPlan.Adoption.NotRequested,
+            ForeignPartialAddPlan.adoptReviewedPaths(declared, dir, blocked))
+        assertFalse(File(dir, "Album/track.bin").exists())
+        assertArrayEquals(originalBytes, foreign.readBytes())
+        assertArrayEquals(originalBytes, library.readBytes())
+
+        // The second candidate is normal at review, but an independent name is
+        // linked to it before Add. The authorized review is no longer valid.
+        val later = File(dir, "Album/later.bin.part").apply {
+            writeBytes(ByteArray(8192) { (it % 193).toByte() })
+        }
+        val laterBytes = later.readBytes()
+        val secondDeclared = listOf("Album/later.bin")
+        val reviewed = requireNotNull(ForeignPartialAddPlan.offerForPaths(secondDeclared, dir))
+        assertEquals(1, reviewed.reusable.size)
+        val newLibraryName = File(dir, "library/second.bin")
+        android.system.Os.link(later.absolutePath, newLibraryName.absolutePath)
+        assertEquals(2, PayloadLinkCount.of(later.toPath()))
+        val refused = ForeignPartialAddPlan.adoptReviewedPaths(secondDeclared, dir, reviewed)
+        assertTrue(refused.toString(), refused is ForeignPartialAddPlan.Adoption.Refused)
+        assertFalse(File(dir, "Album/later.bin").exists())
+        assertArrayEquals(laterBytes, later.readBytes())
+        assertArrayEquals(laterBytes, newLibraryName.readBytes())
+        assertArrayEquals(originalBytes, library.readBytes())
+    }
+
+    /** Installed POSIX rollback: one occupied original never causes a partial multi-file undo. */
+    @Test fun androidUndoPreflightsEveryPartialNameAndPreservesUnrelatedCollision() {
+        val dir = File(work, "undo-partials").apply { mkdirs() }
+        val a = File(dir, "Album/a.bin.part").apply {
+            parentFile!!.mkdirs(); writeBytes(ByteArray(2048) { 11 })
+        }
+        val b = File(dir, "Album/b.bin.part").apply { writeBytes(ByteArray(1024) { 23 }) }
+        val aBytes = a.readBytes()
+        val bBytes = b.readBytes()
+        val declared = listOf("Album/a.bin", "Album/b.bin")
+        val reviewed = requireNotNull(ForeignPartialAddPlan.offerForPaths(declared, dir))
+        assertEquals(2, reviewed.reusable.size)
+        val adopted = ForeignPartialAddPlan.adoptReviewedPaths(declared, dir, reviewed)
+        assertTrue(adopted.toString(), adopted is ForeignPartialAddPlan.Adoption.Renamed)
+        assertFalse(a.exists())
+        assertFalse(b.exists())
+
+        // Undo normally reverses b then a. Occupying a's original name must
+        // reject the entire undo BEFORE b is moved, not leave a half-restored set.
+        a.writeBytes(byteArrayOf(99, 98, 97))
+        assertFalse(ForeignPartialAddPlan.undo(dir, adopted))
+        assertArrayEquals(byteArrayOf(99, 98, 97), a.readBytes())
+        assertArrayEquals(aBytes, File(dir, "Album/a.bin").readBytes())
+        assertArrayEquals(bBytes, File(dir, "Album/b.bin").readBytes())
+        assertFalse(b.exists())
+
+        assertTrue(a.delete())
+        assertTrue(ForeignPartialAddPlan.undo(dir, adopted))
+        assertArrayEquals(aBytes, a.readBytes())
+        assertArrayEquals(bBytes, b.readBytes())
+        assertFalse(File(dir, "Album/a.bin").exists())
+        assertFalse(File(dir, "Album/b.bin").exists())
+    }
+
     /** all-time payload counters refresh on libtorrent's second tick; an immediate read can be 0. */
     private fun settledDownloaded(engine: LocalTorrentEngine, hash: String): Long {
         var last = -1L; var stableSince = System.currentTimeMillis()
