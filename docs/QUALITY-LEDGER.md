@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+> **#1760 MERGED + REMOTE ARTWORK INSTALLED PROOF · 2026-11-15:**
+> - [#1760](https://github.com/gamesbyian/Chunks/pull/1760) (`516bcd2`, head `34a5b75`). `MediaInventoryHost` now accepts a snapshot that arrived before its privacy generation was confirmed. This is unit-tier hardening with a negative control; there is **no** installed evidence of the race. It also fixed the remote-artwork proof's stale store read. All 11 integration gates passed.
+> - Preserved red: native Add shard 0 attempt 1 [43697649219](https://github.com/gamesbyian/Chunks/actions/runs/43697649219), `LocalToolFocusReturnInstrumentedTest.keyboardFocusReturnsToSeedingRules` (Options focus return after Back). The PR touched no code on that path, there is no prior record of this failure, and the diagnostic re-run passed. Treat it as a new intermittent to watch.
+> - **Installed remote automatic artwork PASSED** on `main` `516bcd2`: [43699504841](https://github.com/gamesbyian/Chunks/actions/runs/43699504841). Disposable loopback rTorrent with a stopped public-title job; the installed app connected through Connections. Witness `CHUNKS_REMOTE_PUBLIC_MEDIA automatic=true provider=tvmaze row_pixels=true sanitized=true job_unchanged=true`. Installed APK SHA-256 `6ed9f2da665747626517b49904081bb1cdf9bd87f1697f5367d4eb462cfd0f73`, 72,583,064 bytes. The row screenshot shows the square poster, matching stripe/label colour, chip count and summary line. Emulator tier only; physical Pixel not run.
+> - Local note: a `CombinedTransfersScreenTest.rootTransfersTapClosesFullDetailsWithoutIssuingLifecycleCommand` intermittent (Compose "performMeasureAndLayout called during measure layout") appeared 3 times in 11 local JDK 21 runs with an unmerged Transfers tidy-up applied, and 0 times in 22 runs on `main`. The tidy-up was **dropped**, not merged.
+
 > **#1757–#1759 MERGED · 2026-11-15:**
 > - [#1757](https://github.com/gamesbyian/Chunks/pull/1757) (`6858670`, head `a8d1750`) keeps last-known saved-server counts and rows across Transfers navigation. All 11 integration gates passed on the exact head. Negative control: the retention test fails without the hoisted state.
 > - [#1758](https://github.com/gamesbyian/Chunks/pull/1758) (`b2f1d4a`, test/harness only):
