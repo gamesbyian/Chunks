@@ -22,6 +22,10 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal val finishInOrder = mutableStateOf(false)
     internal var finishInOrderInitialized = false
     internal var finishInOrderHash: String? = null
+    /** Reviewed "Files to download" skips (native metainfo indexes) for [skippedFilesHash]. */
+    internal var skippedFiles by mutableStateOf<Set<Int>>(emptySet())
+    internal var skippedFilesHash by mutableStateOf<String?>(null)
+    internal var fileChoiceOpen by mutableStateOf(false)
     internal var submitting by mutableStateOf(false)
     internal var alreadyAttempted by mutableStateOf(false)
     internal var attemptSource by mutableStateOf<String?>(null)

@@ -60,4 +60,16 @@ class RemoteAddStarterTest {
             start = { LifecycleOutcome.Verified(false) })
         assertTrue(result is RemoteAddAndStart.StartNotVerified)
     }
+
+    @Test fun aVetoedStartAfterUnconfirmedSetupLeavesTheVerifiedJobStopped() = runBlocking {
+        var starts = 0
+        var allowed = true
+        val verified = RemoteAddOutcome.VerifiedStopped(hash, dest)
+        val result = RemoteAddStarter.run(true,
+            add = { allowed = false; verified },
+            start = { starts++; LifecycleOutcome.Verified(true) },
+            startAllowed = { allowed })
+        assertEquals(RemoteAddAndStart.AddedStopped(verified), result)
+        assertEquals("No Start is sent once setup vetoes it", 0, starts)
+    }
 }

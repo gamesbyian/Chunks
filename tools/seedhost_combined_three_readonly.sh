@@ -30,12 +30,18 @@ adb shell am instrument -w -r \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
 set -e
-allowed='^(ground-truth|no-shared-hash|shared-hash-present|launch-failed|form-input-failed|form-(primary|second|third)-missing|connect-(primary|second|third)(-failed|-control-missing|-name-missing)?|connected-(primary|second|third)|connections-(primary|second|third)-missing|disconnect-(primary|second)-failed|disconnected-(primary|second)|combined-open-failed|all-chip-missing|all-scope-not-applied|combined-union(-mismatch)?|combined-chips(-mismatch)?|combined-same-hash(-collapsed)?|unchanged)$'
-grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$log" | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//; s/[[:cntrl:]]//g' |
+allowed='^(ground-truth|truth-(primary|second|third)-failed-[A-Za-z]{1,60}|no-shared-hash|shared-hash-present|launch-failed|form-input-failed|form-(primary|second|third)-missing|connect-(primary|second|third)(-failed|-control-missing|-name-missing)?|connected-(primary|second|third)|connections-(primary|second|third)-missing|disconnect-(primary|second)-failed|disconnected-(primary|second)|combined-open-failed|all-chip-missing|all-scope-not-applied|combined-union(-mismatch)?|combined-chips(-mismatch)?|combined-same-hash(-collapsed)?|unchanged)$'
+# No stage at all (e.g. a skip or a pre-stage crash) must still reach the error report below.
+{ grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$log" || true; } | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//; s/[[:cntrl:]]//g' |
   while read -r stage; do
     if [[ "$stage" =~ $allowed ]]; then echo "CHUNKS_STAGE: $stage"; else echo "CHUNKS_STAGE: unlisted"; fi
   done | tee -a "$GITHUB_STEP_SUMMARY"
 if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$log"; then
+  # Exception CLASS names only (never messages): enough to tell a skip, auth,
+  # transport or assertion failure apart without exposing private data.
+  grep -oE '^(java|kotlin|org\.junit|androidx\.compose\.ui\.test|io\.github\.gamesbyian)[A-Za-z0-9_.$]*(Exception|Error)\b' "$log" \
+    | sort -u | head -5 | sed 's/^/CHUNKS_FAILURE_CLASS: /' || true
+  grep -oE '^(OK \(1 test\)|OK \(0 tests\)|Tests run: [0-9]+,  Failures: [0-9]+)' "$log" | head -2 || true
   echo "::error::Protected three-server Combined read-only check failed or skipped. Raw output withheld."
   exit 1
 fi

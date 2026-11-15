@@ -354,6 +354,84 @@ class RTorrentLibtorrentInteropTest {
     }
 
     /**
+     * Universal Add "Files to download" on a REAL rTorrent through the production
+     * entry point: RemoteUniversalAddAdapter.submit loads the reviewed .torrent
+     * stopped, RemoteAddFileSkips sets the unticked file to 0 with readback, and
+     * only then is the requested Start sent. A real local seeder supplies bytes:
+     * wanted files must arrive exactly; the skipped file gets no pieces beyond
+     * chunks it shares with wanted files.
+     */
+    @Test fun universalAddWithAFileSkippedNeverDownloadsThatFileOnRealRTorrent() = runBlocking {
+        val rig = rig()
+        val seedParent = kotlin.io.path.createTempDirectory("chunks-interop-add-skip-seed").toFile()
+        try {
+            val (root, files) = fixture(seedParent, "Interop add skip", System.nanoTime())
+            val torrent = torrentFor(root)
+            val local = engine()
+            val seed = (local.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+            local.resume(seed.infoHash).let { assertEquals(it.toString(), LocalCommandOutcome.VERIFIED, it.outcome) }
+            waitFor("local engine to verify its seed") {
+                local.status(seed.infoHash)?.state == LocalTransferState.SEEDING
+            }
+            val leechParent = File(rig.dataRoot, "interop-add-skip-" + System.nanoTime()).apply { mkdirs() }
+            val preview = TorrentMetainfoReader.preview(torrent)
+            val hash = preview.infoHashV1
+            val layout = requireNotNull(io.github.gamesbyian.chunks.AddFileChoices.declared(preview))
+            val skipped = layout.filter { it.path.endsWith("video/part-2.bin") }
+            assertEquals(1, skipped.size)
+            val intent = io.github.gamesbyian.chunks.model.UniversalAddIntent(
+                io.github.gamesbyian.chunks.model.UniversalAddSource.metainfo(torrent, hash),
+                io.github.gamesbyian.chunks.model.UniversalAddTarget.AuthenticatedServer(rig.remote.addAccountScope()),
+                io.github.gamesbyian.chunks.model.UniversalAddPlace.ServerCustom(leechParent.absolutePath),
+                startWhenAdded = true, allowArtwork = false)
+            val coordinator = io.github.gamesbyian.chunks.model.UniversalAddCoordinator()
+            assertTrue(coordinator.review(intent,
+                io.github.gamesbyian.chunks.model.EnvironmentCapabilities.unprobed(intent.target.environment),
+                io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE).accepted)
+            assertTrue(coordinator.authorizeByUser())
+            val ticket = requireNotNull(coordinator.beginSubmission(System.currentTimeMillis()))
+            val execution = io.github.gamesbyian.chunks.rpc.RemoteUniversalAddAdapter(rig.remote).submit(
+                ticket, prioritiesBeforeStart = true) { added ->
+                io.github.gamesbyian.chunks.rpc.RemoteAddFileSkips.apply(rig.remote, added, skipped, true)
+            }
+            println("CHUNKS_RT_ADD_SKIP: result=${execution.result::class.simpleName} note=${execution.orderNote}")
+            assertEquals(io.github.gamesbyian.chunks.rpc.RemoteAddAndStart.Started(hash), execution.result)
+            assertEquals("Skipping 1 file as chosen; they will not download.", execution.orderNote)
+            val listed = rig.remote.listFiles(hash)
+            val skipIndex = skipped.single().index
+            assertEquals("video/part-2.bin", listed[skipIndex].path)
+            assertEquals("Only the reviewed file is off", listed.indices.map { if (it == skipIndex) 0 else 1 },
+                listed.map { it.priority })
+            suspend fun chunks(index: Int, method: String) =
+                (rig.remote.call(method, listOf("$hash:f$index")) as Number).toLong()
+            val wanted = listed.indices.filter { it != skipIndex }
+            waitFor("rTorrent completes every wanted file from the local device peer") {
+                runBlocking { wanted.all { chunks(it, "f.completed_chunks") == chunks(it, "f.size_chunks") } }
+            }
+            Thread.sleep(3_000)
+            suspend fun range(index: Int) =
+                chunks(index, "f.range_first") until chunks(index, "f.range_second")
+            val skippedRange = range(skipIndex)
+            val shared = skippedRange.count { chunk -> wanted.map { range(it) }.any { chunk in it } }
+            val skippedDone = chunks(skipIndex, "f.completed_chunks")
+            val skippedTotal = chunks(skipIndex, "f.size_chunks")
+            println("CHUNKS_RT_ADD_SKIP: skipped completed_chunks=$skippedDone size_chunks=$skippedTotal shared=$shared")
+            assertTrue("fixture skipped file must span many pieces", skippedTotal >= 10)
+            assertTrue("Skipped file received pieces beyond its $shared shared boundary chunk(s): " +
+                "$skippedDone/$skippedTotal", skippedDone <= shared)
+            for (index in wanted) {
+                val path = listed[index].path
+                assertArrayEquals("Exact wanted bytes for $path", files.getValue(path),
+                    File(leechParent, "Interop add skip/$path").readBytes())
+            }
+            rig.remote.setStarted(hash, false)
+            Unit
+        } finally {
+            seedParent.deleteRecursively()
+        }
+    }
+
+    /**
      * "Copy files to this device": the local device gets ONLY an exact-hash magnet
      * naming the server as a direct peer (no .torrent, no tracker, no DHT).
      * rTorrent must serve the metadata and every piece; the local device verifies

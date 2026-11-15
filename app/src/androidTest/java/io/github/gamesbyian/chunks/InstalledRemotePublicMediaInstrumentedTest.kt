@@ -161,12 +161,24 @@ class InstalledRemotePublicMediaInstrumentedTest {
                     runCatching { scrollTo(originalName); true }.getOrDefault(false)
                 }
                 // Merely observing the remote inventory must identify it automatically.
-                waitFor("automatic TVmaze assignment for the exact remote key", 90_000) {
-                    runBlocking(Dispatchers.IO) {
-                        assignments.get(key)?.let { a ->
-                            a.state == MediaAssignmentState.AUTOMATIC && a.match?.ref?.provider == "tvmaze"
-                        } == true
+                try {
+                    rule.waitUntil(90_000) {
+                        runBlocking(Dispatchers.IO) {
+                            assignments.get(key)?.let { a ->
+                                a.state == MediaAssignmentState.AUTOMATIC && a.match?.ref?.provider == "tvmaze"
+                            } == true
+                        }
                     }
+                } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+                    // Disposable loopback fixture with a public title: safe, specific diagnostics.
+                    val hosts = synchronized(network.uris) { network.uris.map { it.host } }.groupingBy { it }.eachCount()
+                    val observed = runCatching { media.controller.observe(key, originalName).value.toString() }
+                        .getOrDefault("unavailable").take(800)
+                    throw AssertionError("No automatic TVmaze assignment for the remote key " +
+                        "env=${environment.value.take(12)} hash=$hash; https hosts=$hosts; " +
+                        "assignment=${runBlocking(Dispatchers.IO) { assignments.get(key) }}; observed=$observed; " +
+                        "settings=${media.loadSettings()}; cache=${runCatching { media.cacheSummary() }.getOrNull()}",
+                        failure)
                 }
                 assertEquals("475", assignments.get(key)?.match?.ref?.externalId)
                 waitFor("cached provider image", 60_000) {

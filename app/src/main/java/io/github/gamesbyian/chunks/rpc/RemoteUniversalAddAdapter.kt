@@ -81,7 +81,7 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
     suspend fun submit(
         ticket: UniversalAddCoordinator.Ticket,
         prioritiesBeforeStart: Boolean = false,
-        onVerifiedStoppedBeforeStart: (suspend (String) -> String?)? = null
+        onVerifiedStoppedBeforeStart: (suspend (String) -> RemotePreStartSetup)? = null
     ): RemoteAddExecution {
         // This entire block is pure local validation. The ticket has been
         // acquired, but no network request or non-idempotent load can have
@@ -96,8 +96,10 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
             throw RemotePreWriteRefusal()
         }
         val intent = ticket.intent
+        // File priorities need the reviewed metainfo's file layout: a magnet
+        // has none before metadata. With or without Start, the job is loaded
+        // stopped first and the hook runs only after that is verified.
         if (prioritiesBeforeStart && !(
-                intent.startWhenAdded &&
                 intent.source.kind == UniversalAddSource.Kind.TORRENT_METAINFO &&
                 onVerifiedStoppedBeforeStart != null))
             throw RemotePreWriteRefusal()
@@ -126,15 +128,20 @@ internal class RemoteUniversalAddAdapter(private val remote: RTorrentRemote) {
             return RemoteAddExecution(outcome, null)
         }
         var note: String? = null
+        var startAllowed = true
         val result = RemoteAddStarter.run(
             startAfterVerifiedAdd = intent.startWhenAdded,
             add = {
                 val added = loadStoppedPreflighted()
-                if (prioritiesBeforeStart && added is RemoteAddOutcome.VerifiedStopped)
-                    note = requireNotNull(onVerifiedStoppedBeforeStart).invoke(added.hash)
+                if (prioritiesBeforeStart && added is RemoteAddOutcome.VerifiedStopped) {
+                    val setup = requireNotNull(onVerifiedStoppedBeforeStart).invoke(added.hash)
+                    note = setup.note
+                    startAllowed = setup.startAllowed
+                }
                 added
             },
-            start = { hash -> remote.setStarted(hash, true) }
+            start = { hash -> remote.setStarted(hash, true) },
+            startAllowed = { startAllowed }
         )
         return RemoteAddExecution(result, note)
     }

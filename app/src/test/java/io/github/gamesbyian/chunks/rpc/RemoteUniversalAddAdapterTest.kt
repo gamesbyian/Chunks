@@ -672,10 +672,12 @@ class RemoteUniversalAddAdapterTest {
             assertTrue(methods.isEmpty())
         }
 
-    @Test fun priorityModeCannotBeAppliedToMagnetOrStoppedOnlyAdd() =
+    // Stopped-only .torrent Adds may now apply reviewed file skips (see
+    // RemoteAddFileSkipsTest); a magnet still has no file layout to act on.
+    @Test fun priorityModeCannotBeAppliedToMagnetAdd() =
         withFixture { adapter, approved, methods, _ ->
             try {
-                adapter.submit(approved, prioritiesBeforeStart = true) { "priority" }
+                adapter.submit(approved, prioritiesBeforeStart = true) { RemotePreStartSetup("priority") }
                 fail("A magnet cannot claim metainfo priority support")
             } catch (_: RemotePreWriteRefusal) {}
             assertTrue(methods.isEmpty())

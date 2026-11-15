@@ -16,8 +16,13 @@ data class TorrentMetainfoPreview(
     /** Lower-case tracker host names only (no paths, passkeys or ports), for rule matching. */
     val trackerHosts: List<String> = emptyList(),
     /** The info dictionary's private flag. */
-    val isPrivate: Boolean = false
+    val isPrivate: Boolean = false,
+    /** Multi-file layout in metainfo order (the engine's file index); empty for a single file. */
+    val files: List<TorrentMetainfoFile> = emptyList()
 )
+
+/** One declared file: "name/sub/file" path, byte length, and BEP 47 padding flag. */
+data class TorrentMetainfoFile(val path: String, val sizeBytes: Long, val padding: Boolean)
 
 /**
  * Bounded bencode reader for BitTorrent v1 metainfo. Computes infohash from
@@ -69,6 +74,7 @@ object TorrentMetainfoReader {
         val files = info["files"]
         val fileCount: Int
         val total: Long
+        val layout = ArrayList<TorrentMetainfoFile>()
         if (files == null) {
             fileCount = 1
             total = nonnegative(info["length"])
@@ -100,6 +106,9 @@ object TorrentMetainfoReader {
                 }
                 seenFilePaths += components
                 val length = nonnegative(row["length"])
+                val attr = (row["attr"] as? ByteArray)?.toString(Charsets.UTF_8).orEmpty()
+                layout += TorrentMetainfoFile((listOf(name) + components).joinToString("/"), length,
+                    padding = 'p' in attr)
                 require(sum <= Long.MAX_VALUE - length) { "Torrent size overflow" }
                 sum += length
             }
@@ -118,7 +127,7 @@ object TorrentMetainfoReader {
             .digest(bytes.copyOfRange(reader.infoStart, reader.infoEnd))
             .joinToString("") { "%02x".format(it.toInt() and 255) }
         return TorrentMetainfoPreview(name, hash, fileCount, total, pieceLength, trackerCount(root),
-            trackerHosts(root), info["private"] == 1L)
+            trackerHosts(root), info["private"] == 1L, layout)
     }
 
     /**
