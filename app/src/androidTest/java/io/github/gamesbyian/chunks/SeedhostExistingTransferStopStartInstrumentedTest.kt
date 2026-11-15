@@ -87,6 +87,13 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
         return false
     }
 
+    /** A clickable whose description STARTS with "<verb> " (the row's quick lifecycle button). */
+    private fun lifecycleButton(verb: String) = androidx.compose.ui.test.SemanticsMatcher("description starts with $verb") { node ->
+        node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ContentDescription) { null }
+            ?.any { it.startsWith("$verb ") } == true &&
+            node.config.contains(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+    }
+
     @Test fun existingSeedingTransferStopsAndStartsFromTheInstalledApp() {
         assumeTrue("Protected explicit owner-authorized existing-transfer operation only",
             args.getString("chunks_existing_stop_start") == "authorized")
@@ -160,26 +167,28 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
 
         // Narrow the canonical list to the exact hash, then expand that one row.
         rule.onNodeWithText("Search names or hashes").performTextReplacement(hash.lowercase())
-        val row = hasContentDescription(" on Server", substring = true)
+        // The row's own description is "<name> on <server label>"; its nested
+        // "Details for <name> on <server label>" button must not be clicked.
+        val row = hasContentDescription(" on Server", substring = true) and
+            !hasContentDescription("Details for", substring = true)
         waitOrStage("row-missing", 30_000) {
             runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(row); true }.getOrDefault(false)
         }
         rule.onAllNodes(row).onFirst().performClick()
-        // Only the one exact-hash row is expanded; its quick-control group holds the
-        // single lifecycle button (labelled with the row's display name).
-        fun control(verb: String) = hasContentDescription("$verb ", substring = true) and
-            hasAnyAncestor(hasTestTag(ChunksSemantics.TRANSFER_ROW_QUICK_CONTROLS))
+        waitOrStage("row-not-expanded", 15_000) {
+            rule.onAllNodes(lifecycleButton("Stop")).fetchSemanticsNodes().isNotEmpty()
+        }
         waitOrStage("stop-control-missing", 30_000) {
             runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(control("Stop"))
-                rule.onNode(control("Stop")).assertIsEnabled()
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(lifecycleButton("Stop"))
+                rule.onNode(lifecycleButton("Stop")).assertIsEnabled()
                 true
             }.getOrDefault(false)
         }
         stage("row-expanded")
 
         // STOP: exactly one dispatch, then independent exact-hash readback.
-        rule.onNode(control("Stop")).performSemanticsAction(SemanticsActions.OnClick)
+        rule.onNode(lifecycleButton("Stop")).performSemanticsAction(SemanticsActions.OnClick)
         stage("stop-sent")
         waitOrStage("stop-unverified", 60_000) { exact(remote, hash)?.started == false }
         stage("stopped-readback")
@@ -187,12 +196,12 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
         // START: the refreshed row now offers Start for the same exact job.
         waitOrStage("start-control-missing", 60_000) {
             runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(control("Start"))
-                rule.onNode(control("Start")).assertIsEnabled()
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(lifecycleButton("Start"))
+                rule.onNode(lifecycleButton("Start")).assertIsEnabled()
                 true
             }.getOrDefault(false)
         }
-        rule.onNode(control("Start")).performSemanticsAction(SemanticsActions.OnClick)
+        rule.onNode(lifecycleButton("Start")).performSemanticsAction(SemanticsActions.OnClick)
         stage("start-sent")
         waitOrStage("start-unverified", 60_000) { exact(remote, hash)?.started == true }
         stage("started-readback")
@@ -207,7 +216,7 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
 
     private companion object {
         val STAGES = setOf("authorized", "no-candidate", "candidate", "launch-failed", "form-missing", "form-input-failed", "connect-control-missing",
-            "connect-failed", "connections-missing", "transfers-missing", "connected", "row-missing",
+            "connect-failed", "connections-missing", "transfers-missing", "connected", "row-missing", "row-not-expanded",
             "stop-control-missing", "row-expanded", "stop-sent", "stop-unverified", "stopped-readback",
             "start-control-missing", "start-sent", "start-unverified", "started-readback", "restored")
     }
