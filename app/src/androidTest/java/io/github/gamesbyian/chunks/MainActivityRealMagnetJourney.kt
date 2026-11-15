@@ -459,13 +459,32 @@ internal class MainActivityRealMagnetJourney(
                     // changing lazy layout must not turn its touch coordinate
                     // into a missed opt-out. Dedicated Add accessibility tests
                     // retain pointer/hit-target coverage.
-                    androidx.compose.ui.state.ToggleableState.On ->
+                    androidx.compose.ui.state.ToggleableState.On -> {
                         rule.onNode(artworkToggle).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+                        report("chunks_real_add_app_stage", "artwork-optout-clicked")
+                    }
                     androidx.compose.ui.state.ToggleableState.Off -> Unit
                     else -> fail("Remote Add artwork choice must have a definite state")
                 }
-                rule.waitUntil(45_000) {
-                    readReadyChoice() && choice == androidx.compose.ui.state.ToggleableState.Off
+                try {
+                    rule.waitUntil(45_000) {
+                        readReadyChoice() && choice == androidx.compose.ui.state.ToggleableState.Off
+                    }
+                } catch (lost: androidx.compose.ui.test.ComposeTimeoutException) {
+                    // One opt-out click did not stick (#1774). Name only what the
+                    // toggle shows now: refused (disabled), overwritten/ignored
+                    // (still on) or no longer readable. Never click it again.
+                    val node = runCatching { rule.onNode(artworkToggle).fetchSemanticsNode() }.getOrNull()
+                    val disabled = node?.config?.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) == true
+                    val state = node?.config?.getOrElseNullable(
+                        androidx.compose.ui.semantics.SemanticsProperties.ToggleableState) { null }
+                    report("chunks_real_add_app_stage", when {
+                        node == null -> "artwork-optout-unreadable"
+                        disabled -> "artwork-optout-disabled"
+                        state == androidx.compose.ui.state.ToggleableState.On -> "artwork-optout-still-on"
+                        else -> "artwork-optout-unreadable"
+                    })
+                    throw lost
                 }
                 report("chunks_real_add_app_stage", "artwork-chosen")
             }

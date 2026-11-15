@@ -243,6 +243,18 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         unknown = parse(raw.replace("java.net.SocketException", "com.example.Leaky"), 1, self.env)
         self.assertEqual(["OtherFailure"], unknown["runner"]["exception_classes"])
 
+    def test_artwork_optout_diagnostics_are_fixed_names_only(self):
+        raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-heading\n"
+               "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-optout-clicked\n"
+               "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-optout-still-on\n"
+               "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-optout-SECRET\n"
+               "INSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_CODE: -1")
+        receipt = parse(raw, 1, self.env)
+        self.assertEqual(["artwork-heading", "artwork-optout-clicked", "artwork-optout-still-on"],
+                         receipt["app_stage_evidence"])
+        self.assertEqual("failed-or-inconclusive", receipt["result"])
+        self.assertNotIn("SECRET", str(receipt))
+
     def test_native_place_stages_are_fixed_diagnostics_without_certifying_the_journey(self):
         raw = "\n".join("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=" + stage for stage in
                         ["native-default-ready", "native-place-awaits-metadata", "https://private.invalid/path"])
