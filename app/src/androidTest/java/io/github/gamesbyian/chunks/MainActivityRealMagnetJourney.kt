@@ -13,6 +13,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.AndroidComposeTestRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -284,8 +285,14 @@ internal class MainActivityRealMagnetJourney(
             }
         }
         require(fixtures.values.map { it.infoHashV1 }.toSet().size == fixtures.size)
-        // Enter the real Connections destination, never an implicit login.
-        rule.onNodeWithText("Connections").assertExists().performClick()
+        // Enter the real Connections destination, never an implicit login. A first
+        // launch can compose both Welcome's "Connections" button and the footer
+        // destination, so never require exactly one node (live run 43762449778 failed
+        // here before any Connect); same locator as the passing protected journeys.
+        rule.waitUntil(30_000) { visible("Connections") }
+        val byDescription = rule.onAllNodes(hasContentDescription("Connections"))
+        if (byDescription.fetchSemanticsNodes().isNotEmpty()) byDescription.onFirst().performClick()
+        else rule.onAllNodesWithText("Connections").onFirst().performClick()
         // Real connection UI; its ordinary authentication, saved profile,
         // selected environment and mutation fence remain in the call chain.
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
