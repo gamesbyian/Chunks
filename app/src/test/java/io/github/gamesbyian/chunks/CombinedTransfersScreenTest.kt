@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
@@ -57,10 +57,9 @@ class CombinedTransfersScreenTest {
     // The saved view preference loads off the main thread (not an idling
     // resource) and can recompose the list mid-scroll (CI foundation
     // 41888303641 attempt 1). Retry the scroll until the list settles; the
-    // assertions that follow are unchanged. 30 s, not 10 s: one full-suite local run
-    // under load timed out at 10 s here (oldSignedIn..., 2026-11-15); isolated runs pass.
+    // assertions that follow are unchanged.
     private fun reveal(matcher: androidx.compose.ui.test.SemanticsMatcher) {
-        rule.waitUntil(30_000) {
+        rule.waitUntil(10_000) {
             runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(matcher) }.isSuccess
         }
     }

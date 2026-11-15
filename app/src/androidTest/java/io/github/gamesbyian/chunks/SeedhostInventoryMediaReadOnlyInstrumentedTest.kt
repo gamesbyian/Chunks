@@ -204,8 +204,9 @@ class SeedhostInventoryMediaReadOnlyInstrumentedTest {
             .groupingBy { it }.eachCount().toSortedMap()
             .entries.joinToString(",") { (p, n) -> "${p.filter { it.isLetterOrDigit() }.take(16)}:$n" }
         val requests = synchronized(network.uris) { network.uris.toList() }
-        val providerRequests = requests.filterNot { it.host.equals(SEEDHOST, true) }
-        val hosts = providerRequests.groupingBy { host ->
+        val providerRequests = requests.filterNot { it.host.orEmpty().equals(SEEDHOST, true) }
+        val hosts = providerRequests.groupingBy { uri ->
+            val host = uri.host.orEmpty()
             PUBLIC_PROVIDER_DOMAINS.firstOrNull { host.equals(it, true) || host.endsWith(".$it", true) } ?: "other"
         }.eachCount().toSortedMap().entries.joinToString(",") { (h, n) -> "$h:$n" }
         result("inventory=${hashes.size} assigned=${found.size} automatic=$automatic " +
