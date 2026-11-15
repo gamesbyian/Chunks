@@ -9,9 +9,9 @@ This does not license accidental loss of unrelated transfers: identify the exact
 ## Current installed protected journeys (2026-11-15)
 
 All are manual `workflow_dispatch` on `main` only; failures report fixed stage markers only.
-- `seedhost-android-readonly.yml`: primary account, named Connect → verified → canonical Transfers. The count must equal an independent read-only count, and the server Add review must keep Add disabled without a source.
+- `seedhost-android-readonly.yml`: primary account, named Connect → verified → canonical Transfers. The count must equal an independent read-only count, and the server Add review must keep Add disabled without a source. It passed on `8877316` (run 43710675997).
 - `seedhost-combined-three-readonly.yml`: primary, instance 2 and instance 3; automatic saved-server restore, per-chip counts and the union. It passed on `c4c8eac` (run 43696941156).
-- `seedhost-existing-stop-start-once.yml`: explicit `apply_stop_start` input, first attempt only. The installed app Stops and then Starts **one existing** completed seeding transfer with a unique name, by its canonical row, with exact-hash readback after each single dispatch, ending in its original state. If Stop is verified but Start is not, the job may remain stopped; there is no automatic retry, and the stage summary says so.
+- `seedhost-existing-stop-start-once.yml`: explicit `apply_stop_start` input, first attempt only. The installed app Stops and then Starts **one existing** completed seeding transfer with a unique name, by its canonical row, with exact-hash readback after each single dispatch, ending in its original state. It passed on `421ea3f` (run 43747059356). If Stop is verified but Start is not, the job may remain stopped; there is no automatic retry, and the stage summary says so.
 
 ## Proposed manual, exact-infohash hosted received-byte proof (2026-11-01, not accepted)
 
