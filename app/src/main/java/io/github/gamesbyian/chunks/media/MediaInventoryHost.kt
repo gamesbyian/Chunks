@@ -25,6 +25,13 @@ class MediaInventoryHost internal constructor(
     private val lock = Any()
     @Volatile private var latest: AuthorizedMediaInventorySnapshot? = null
     private var currentEpoch: String? = null
+    // A feed built under a generation this host has not observed yet. The screen can
+    // read a new privacy/policy generation before the activity's epoch collector does;
+    // an unchanged inventory (e.g. a stopped remote job) is then never fed again, so a
+    // refused snapshot would starve enrichment forever. It is accepted only if the host
+    // later confirms exactly that generation; epochs are monotonic counters and never
+    // repeat, so an older stale snapshot can never be resurrected this way.
+    private var awaitingEpoch: AuthorizedMediaInventorySnapshot? = null
     private var closed = false
 
     /** The inventory currently authorized for background work; null when revoked or never fed. */
@@ -39,15 +46,23 @@ class MediaInventoryHost internal constructor(
         synchronized(lock) {
             if (closed) return
             val epoch = currentEpoch
-            if (epoch != null && epoch != snapshot.privacyEpoch) return
-            currentEpoch = snapshot.privacyEpoch
-            latest = snapshot
-            session.replace(snapshot.entries) { key ->
-                // Never accept the historical lookup's cached authorization: compare against
-                // the current privacy/profile scope, fresh source and exact job membership.
-                val current = latest ?: return@replace false
-                snapshot.stillAuthorizes(key, current)
+            if (epoch != null && epoch != snapshot.privacyEpoch) {
+                awaitingEpoch = snapshot
+                return
             }
+            acceptLocked(snapshot)
+        }
+    }
+
+    private fun acceptLocked(snapshot: AuthorizedMediaInventorySnapshot) {
+        awaitingEpoch = null
+        currentEpoch = snapshot.privacyEpoch
+        latest = snapshot
+        session.replace(snapshot.entries) { key ->
+            // Never accept the historical lookup's cached authorization: compare against
+            // the current privacy/profile scope, fresh source and exact job membership.
+            val current = latest ?: return@replace false
+            snapshot.stillAuthorizes(key, current)
         }
     }
 
@@ -61,7 +76,12 @@ class MediaInventoryHost internal constructor(
         synchronized(lock) {
             if (closed || currentEpoch == epoch) return
             currentEpoch = epoch
-            if (latest != null) {
+            val waiting = awaitingEpoch?.takeIf { it.privacyEpoch == epoch }
+            awaitingEpoch = null
+            if (waiting != null) {
+                // Built under exactly the generation now confirmed: not stale.
+                acceptLocked(waiting)
+            } else if (latest != null) {
                 latest = null
                 session.replace(emptyList()) { false }
             }
