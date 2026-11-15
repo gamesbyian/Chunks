@@ -241,6 +241,10 @@ class ShardedNativeAddTests(unittest.TestCase):
         expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
             "SeedhostExistingTransferStopStartInstrumentedTest" + "\\0" +
             "existingSeedingTransferStopsAndStartsFromTheInstalledApp").encode()).hexdigest())
+        # Protected manual read-only real-inventory artwork on the primary Seedhost.
+        expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
+            "SeedhostInventoryMediaReadOnlyInstrumentedTest" + "\\0" +
+            "realInventoryGetsAutomaticArtworkWithoutIdentifyOrMutation").encode()).hexdigest())
         self.assertEqual(expected, DEDICATED_WORKFLOW_OPT_IN_IDS)
         ids = sorted(DEDICATED_WORKFLOW_OPT_IN_IDS)
 

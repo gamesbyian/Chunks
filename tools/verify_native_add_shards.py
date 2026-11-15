@@ -70,6 +70,11 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
     hashlib.sha256((
         "io.github.gamesbyian.chunks.SeedhostExistingTransferStopStartInstrumentedTest" +
         "\\0" + "existingSeedingTransferStopsAndStartsFromTheInstalledApp").encode()).hexdigest(),
+    # Protected read-only real-inventory automatic artwork on the primary Seedhost;
+    # executes only in the manual seedhost-inventory-media-readonly.yml workflow.
+    hashlib.sha256((
+        "io.github.gamesbyian.chunks.SeedhostInventoryMediaReadOnlyInstrumentedTest" +
+        "\\0" + "realInventoryGetsAutomaticArtworkWithoutIdentifyOrMutation").encode()).hexdigest(),
 })
 
 

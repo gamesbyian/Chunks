@@ -20,8 +20,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import io.github.gamesbyian.chunks.ChunksColors
 import io.github.gamesbyian.chunks.ChunksTheme
 import io.github.gamesbyian.chunks.CombinedServerSource
