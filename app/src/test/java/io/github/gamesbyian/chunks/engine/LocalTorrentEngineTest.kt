@@ -1288,9 +1288,29 @@ class LocalTorrentEngineTest {
             listOf(InetSocketAddress("127.0.0.1", seeder.listenPort())),
             autoStartAfterMetadata = false) is LocalAddResult.FetchingMetadata)
         val reusable = partial.reusablePieces.toLong() * partial.pieceSize
-        waitFor { receiver.status(seed.infoHash)?.let {
-            it.metadataKnown && it.stopped && !it.stopsAfterCheck && it.state != LocalTransferState.CHECKING &&
-                it.doneBytes == reusable } == true }
+        try {
+            waitFor { receiver.status(seed.infoHash)?.let {
+                it.metadataKnown && it.stopped && !it.stopsAfterCheck &&
+                    it.state != LocalTransferState.CHECKING &&
+                    it.doneBytes == reusable } == true }
+        } catch (timeout: AssertionError) {
+            // Native metadata/check/stop transitions can race under full-suite
+            // load. Report only bounded state, never torrent identity, paths,
+            // announce URLs, payload bytes or native error message.
+            val observed = runCatching { receiver.status(seed.infoHash) }.getOrNull()
+            val seedObserved = runCatching { seeder.status(seed.infoHash) }.getOrNull()
+            org.junit.Assert.fail("stopped-magnet JVM timeout:" +
+                " handle=${observed != null}" +
+                " metadata=${observed?.metadataKnown}" +
+                " stopped=${observed?.stopped}" +
+                " stopsAfterCheck=${observed?.stopsAfterCheck}" +
+                " checking=${observed?.state == LocalTransferState.CHECKING}" +
+                " reusableBytes=${observed?.doneBytes == reusable}" +
+                " peers=${observed?.peers ?: -1}" +
+                " errorPresent=${observed?.error != null}" +
+                " seedRunning=${seedObserved?.stopped == false}" +
+                " seedPeers=${seedObserved?.peers ?: -1}")
+        }
         Thread.sleep(1_500)
         val idle = requireNotNull(receiver.status(seed.infoHash))
         assertTrue("still stopped: $idle", idle.stopped)
