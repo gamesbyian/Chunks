@@ -11,6 +11,9 @@
 >   - The group's other candidate (Debian amd64) was `already-present` as a session and was untouched.
 >   - The run then failed at `MainActivityRealMagnetJourney.kt:949`: every group-1 candidate was unavailable or precompleted (#1041).
 >   - No other inventory changed. Pieces, Stop/Start growth and the peerless negative remain unproven on the real host.
+> - #1773 (`78827f3`) added Debian ppc64el as a third group-1 candidate. Its disposable gate [43767245237](https://github.com/gamesbyian/Chunks/actions/runs/43767245237) **attempt 1 failed**, before the new candidate was reached, at the second Add's artwork opt-out (`MainActivityRealMagnetJourney.kt:467`): after one click the toggle never read Off. Attempt 2 passed.
+>   - That spot failed in 3 of 5 disposable runs today (#1772 ×2, #1773 ×1), so it may be a real lost-opt-out defect.
+>   - JVM `RemoteSecondAddArtworkChoiceTest` (verified first Add → Start another Add → one opt-out → still Off after 10 s) passes and does **not** reproduce it. The installed path differs: the first Add is metadata-pending with a blank Place and is acknowledged, and the second source is a fetched HTTPS link then switched to a magnet.
 
 > **V2 COMPOSE RULE SWEEP + PROTECTED REAL-INVENTORY ARTWORK JOURNEY · 2026-11-15:**
 > - The remaining 105 JVM Compose test classes were moved from the deprecated v1 rule to v2, changing imports only. Two full local `:app:testDebugUnitTest` runs (511 classes each) were clean apart from the known container-only `CreateSeedCopyAcquisitionRaceTest` (JDK 21 SecurityManager) and `LocalCheckedPayloadReservationsTest` (no UTF-8 locale) failures.
