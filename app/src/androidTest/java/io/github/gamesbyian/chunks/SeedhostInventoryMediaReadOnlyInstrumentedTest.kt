@@ -25,7 +25,6 @@ import io.github.gamesbyian.chunks.media.ChunksMedia
 import io.github.gamesbyian.chunks.media.FileTransferMediaAssignmentStore
 import io.github.gamesbyian.chunks.media.MediaAssignmentState
 import io.github.gamesbyian.chunks.media.MediaPrivacySettings
-import io.github.gamesbyian.chunks.model.EnvironmentSnapshots
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import java.io.File
@@ -128,12 +127,12 @@ class SeedhostInventoryMediaReadOnlyInstrumentedTest {
         val hashes = before.map { it.hash.lowercase() }.toSet()
         stage("inventory-read")
 
-        val environment = requireNotNull(EnvironmentSnapshots.serverIdOfAliasScope(
-            RemoteVerifiedUiIdentity.aliasScopeOf(credentials)))
-        val prefix = environment.value + "|"
+        // The store is cleared below and only this account is connected, so every
+        // assignment for an inventory hash comes from this journey. Match by the
+        // key's infohash: the app keys the profile by its verified (resolved) RPC
+        // endpoint, which need not equal the ruTorrent URL typed here (run 43753355373).
         fun assignments() = FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json"))
-            .all().filter { it.key.value.startsWith(prefix) &&
-                it.key.value.removePrefix(prefix).lowercase() in hashes }
+            .all().filter { it.key.value.substringAfterLast('|').lowercase() in hashes }
 
         val media = ChunksMedia.get(context)
         RememberedRemoteLogin(context).clear()
@@ -209,7 +208,9 @@ class SeedhostInventoryMediaReadOnlyInstrumentedTest {
             val host = uri.host.orEmpty()
             PUBLIC_PROVIDER_DOMAINS.firstOrNull { host.equals(it, true) || host.endsWith(".$it", true) } ?: "other"
         }.eachCount().toSortedMap().entries.joinToString(",") { (h, n) -> "$h:$n" }
-        result("inventory=${hashes.size} assigned=${found.size} automatic=$automatic " +
+        val stored = FileTransferMediaAssignmentStore(File(context.filesDir, "media/assignments.json")).all().size
+        val environments = found.map { it.key.value.substringBeforeLast('|') }.toSet().size
+        result("inventory=${hashes.size} stored=$stored envs=$environments assigned=${found.size} automatic=$automatic " +
             "couldnt=${found.count { it.state == MediaAssignmentState.COULDNT_IDENTIFY }} " +
             "providers=${providers.ifEmpty { "none" }} hosts=${hosts.ifEmpty { "none" }}")
 
