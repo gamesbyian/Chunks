@@ -57,9 +57,10 @@ class CombinedTransfersScreenTest {
     // The saved view preference loads off the main thread (not an idling
     // resource) and can recompose the list mid-scroll (CI foundation
     // 41888303641 attempt 1). Retry the scroll until the list settles; the
-    // assertions that follow are unchanged.
+    // assertions that follow are unchanged. 30 s, not 10 s: one full-suite local run
+    // under load timed out at 10 s here (oldSignedIn..., 2026-11-15); isolated runs pass.
     private fun reveal(matcher: androidx.compose.ui.test.SemanticsMatcher) {
-        rule.waitUntil(10_000) {
+        rule.waitUntil(30_000) {
             runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(matcher) }.isSuccess
         }
     }
