@@ -30,6 +30,8 @@ allowed='^(authorized|no-candidate|candidate|launch-failed|form-missing|form-inp
 if [ "$status" -ne 0 ] || ! grep -q '^OK (1 test)' "$log"; then
   grep -oE '^(java|kotlin|org\.junit|androidx\.compose\.ui\.test|io\.github\.gamesbyian)[A-Za-z0-9_.$]*(Exception|Error)\b' "$log" \
     | sort -u | head -5 | sed 's/^/CHUNKS_FAILURE_CLASS: /' || true
+  # Test source file:line frames only (no messages, names, URLs or credentials).
+  grep -oE 'SeedhostExistingTransferStopStartInstrumentedTest\.kt:[0-9]+' "$log" | head -4 | sed 's/^/CHUNKS_FAILURE_FRAME: /' || true
   echo "::error::Existing-transfer Stop/Start journey failed or skipped. Raw output withheld; if stopped-readback appears without started-readback, the transfer may remain stopped."
   exit 1
 fi

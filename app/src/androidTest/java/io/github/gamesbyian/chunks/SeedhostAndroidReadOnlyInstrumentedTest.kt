@@ -15,6 +15,8 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
@@ -137,7 +139,11 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
             checkpoint("launch-failed"); throw AssertionError("App did not launch to a Connections entry")
         }
-        rule.onNodeWithContentDescription("Connections").performClick()
+        // The footer destination (description) or Welcome's own text button; never
+        // require exactly one node, as both can be composed on a first launch.
+        val byDescription = rule.onAllNodes(hasContentDescription("Connections"))
+        if (byDescription.fetchSemanticsNodes().isNotEmpty()) byDescription.onFirst().performClick()
+        else rule.onAllNodesWithText("Connections").onFirst().performClick()
         try {
             rule.waitUntil(30_000) { textVisible("Seedbox hostname, ruTorrent URL or RPC address") ||
                 runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(

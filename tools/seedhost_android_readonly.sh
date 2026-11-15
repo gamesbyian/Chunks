@@ -47,6 +47,7 @@ if [ "$status" -ne 0 ] || ! grep -q '^INSTRUMENTATION_CODE: -1' "$log" ||
     arguments|ground-truth|launch-failed|form-missing|form-open|form-input-failed|form|connect-visible|connect|verified|connections|transfers|inventory|inventory-mismatch|first-capture|add-open|add-preview|add-return|connect-error|connect-busy|connect-login-form|connect-no-visible-state|connect-identity-unverified|connect-auth-rejected|connect-tls-failed|connect-network-failed|connect-protocol-failed|connect-service-failed|connect-endpoint-missing|connect-proxy-or-rate-limited) ;;
     *) checkpoint=unavailable ;;
   esac
+  grep -oE 'SeedhostAndroidReadOnlyInstrumentedTest\.kt:[0-9]+' "$log" | head -4 | sed 's/^/CHUNKS_FAILURE_FRAME: /' || true
   echo "::error::Protected Android Seedhost UI acceptance failed or skipped. Last safe stage: $checkpoint. Raw output withheld."
   exit 1
 fi
