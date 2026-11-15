@@ -28,7 +28,7 @@ allowed='^(authorized|inventory-empty|inventory-read|launch-failed|form-missing|
     if [[ "$stage" =~ $allowed ]]; then echo "CHUNKS_STAGE: $stage"; else echo "CHUNKS_STAGE: unlisted"; fi
   done | tee -a "$GITHUB_STEP_SUMMARY"
 # Counts, fixed provider ids and allowlisted public provider domains only.
-counts='^inventory=[0-9]+ assigned=[0-9]+ automatic=[0-9]+ couldnt=[0-9]+ providers=(none|[a-z0-9]+:[0-9]+(,[a-z0-9]+:[0-9]+)*) hosts=(none|[a-z0-9.]+:[0-9]+(,[a-z0-9.]+:[0-9]+)*)$'
+counts='^inventory=[0-9]+ stored=[0-9]+ envs=[0-9]+ assigned=[0-9]+ automatic=[0-9]+ couldnt=[0-9]+ providers=(none|[a-z0-9]+:[0-9]+(,[a-z0-9]+:[0-9]+)*) hosts=(none|[a-z0-9.]+:[0-9]+(,[a-z0-9.]+:[0-9]+)*)$'
 { grep -E '^INSTRUMENTATION_STATUS: chunks_result=' "$log" || true; } | sed 's/^INSTRUMENTATION_STATUS: chunks_result=//; s/[[:cntrl:]]//g' |
   while read -r line; do
     if [[ "$line" =~ $counts ]]; then echo "CHUNKS_RESULT: $line"; else echo "CHUNKS_RESULT: unlisted"; fi
