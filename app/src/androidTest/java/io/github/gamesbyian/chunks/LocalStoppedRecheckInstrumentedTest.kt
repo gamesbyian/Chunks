@@ -2,11 +2,13 @@ package io.github.gamesbyian.chunks
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.gamesbyian.chunks.engine.ForeignPartialAddPlan
 import io.github.gamesbyian.chunks.engine.LocalAddResult
 import io.github.gamesbyian.chunks.engine.LocalCommandOutcome
 import io.github.gamesbyian.chunks.engine.LocalEngineConfig
 import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.engine.LocalTransferState
+import io.github.gamesbyian.chunks.engine.PayloadLinkCount
 import java.io.File
 import java.net.InetSocketAddress
 import java.util.Random
@@ -50,6 +52,78 @@ class LocalStoppedRecheckInstrumentedTest {
             if (System.currentTimeMillis() > deadline) fail("Timed out waiting for local engine")
             Thread.sleep(100)
         }
+    }
+
+    /** all-time payload counters refresh on libtorrent's second tick; an immediate read can be 0. */
+    private fun settledDownloaded(engine: LocalTorrentEngine, hash: String): Long {
+        var last = -1L; var stableSince = System.currentTimeMillis()
+        val end = stableSince + 15_000
+        while (System.currentTimeMillis() < end) {
+            val now = requireNotNull(engine.status(hash)).payloadDownloadedBytes
+            if (now != last) { last = now; stableSince = System.currentTimeMillis() }
+            else if (now > 0 && System.currentTimeMillis() - stableSince >= 2_500) return now
+            Thread.sleep(100)
+        }
+        return last
+    }
+
+    /**
+     * FOREIGN-PARTIAL-TORRENT-RECOVERY P1 on the Android native library and kernel:
+     * qBittorrent's interrupted mixed state (first file already final, second still `.!qB`,
+     * third absent) is offered, adopted by rename only, verified by libtorrent and finished
+     * from a loopback seeder. Also proves the Android `Os.lstat` link count is readable, so
+     * ordinary single-link partials are not mistaken for shared inodes.
+     */
+    @Test fun foreignQbittorrentMixedPartialIsAdoptedVerifiedAndFinished() {
+        val seedParent = File(work, "foreign-seed").apply { mkdirs() }
+        val root = File(seedParent, "Album").apply { mkdirs() }
+        val rnd = Random(17)
+        val a = ByteArray(100_000).also(rnd::nextBytes)
+        val b = ByteArray(150_000).also(rnd::nextBytes)
+        val c = ByteArray(90_000).also(rnd::nextBytes)
+        File(root, "01.flac").writeBytes(a); File(root, "02.flac").writeBytes(b); File(root, "03.flac").writeBytes(c)
+        val pieceSize = 32 * 1024
+        val torrent = TorrentBuilder().path(root).pieceSize(pieceSize).generate().entry().bencode()
+        val seeder = engine()
+        val seed = (seeder.addStopped(torrent, seedParent) as LocalAddResult.AddedStopped).status
+        seeder.resume(seed.infoHash)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+
+        val destination = File(work, "foreign-destination").apply { mkdirs() }
+        File(destination, "Album").mkdirs()
+        File(destination, "Album/01.flac").writeBytes(a)
+        val partialFile = File(destination, "Album/02.flac.!qB").apply { writeBytes(b.copyOf(120_000)) }
+        assertEquals("Android lstat link count of an ordinary partial",
+            1, PayloadLinkCount.of(partialFile.toPath()))
+
+        val offer = requireNotNull(ForeignPartialAddPlan.offer(torrent, destination))
+        assertEquals(listOf("Album/02.flac"), offer.reusable.map { it.declaredPath })
+        assertEquals(0, offer.linkedFiles)
+        val adoption = ForeignPartialAddPlan.adoptReviewed(torrent, destination, offer)
+        assertTrue(adoption.toString(), adoption is ForeignPartialAddPlan.Adoption.Renamed)
+        assertFalse(partialFile.exists())
+
+        val local = engine()
+        val job = (local.addStoppedChecked(torrent, destination,
+            listOf(InetSocketAddress("127.0.0.1", seeder.listenPort()))) as LocalAddResult.AddedStopped).status
+        assertTrue(local.beginStoppedVerification(job.infoHash))
+        waitFor { local.status(job.infoHash)?.let { it.stopped && !it.stopsAfterCheck &&
+            it.state != LocalTransferState.CHECKING } == true }
+        val verified = requireNotNull(local.status(job.infoHash)).doneBytes
+        val total = (a.size + b.size + c.size).toLong()
+        assertTrue("whole verified pieces of 01 + adopted 02 are counted: $verified",
+            verified >= ((a.size + 120_000L) / pieceSize - 1) * pieceSize && verified <= a.size + 120_000L)
+        assertEquals("no payload downloaded while stopped", 0L, requireNotNull(local.status(job.infoHash)).payloadDownloadedBytes)
+
+        assertEquals(LocalCommandOutcome.VERIFIED, local.resume(job.infoHash).outcome)
+        waitFor { local.status(job.infoHash)?.progressPpm == 1_000_000 }
+        assertTrue(local.flushCompletedForLibraryRead(job.infoHash, timeoutMs = 30_000L))
+        assertArrayEquals(a, File(destination, "Album/01.flac").readBytes())
+        assertArrayEquals(b, File(destination, "Album/02.flac").readBytes())
+        assertArrayEquals(c, File(destination, "Album/03.flac").readBytes())
+        val downloaded = settledDownloaded(local, job.infoHash)
+        assertTrue("verified pieces not downloaded again: $downloaded",
+            downloaded <= total - verified + 2L * pieceSize && downloaded >= total - (a.size + 120_000L) - pieceSize)
     }
 
     @Test fun stoppedRecheckCountsPiecesWithoutDownloadingAndStartRepairs() {
@@ -131,8 +205,11 @@ class LocalStoppedRecheckInstrumentedTest {
         waitFor { local.status(job.infoHash)?.progressPpm == 1_000_000 }
         assertTrue(local.flushCompletedForLibraryRead(job.infoHash, timeoutMs = 30_000L))
         assertArrayEquals("Start fetches only the missing tail", payload, episode.readBytes())
-        assertTrue("verified pieces were not downloaded again",
-            local.status(job.infoHash)!!.payloadDownloadedBytes <= payload.size - 10L * 65536 + 65536)
+        val downloaded = settledDownloaded(local, job.infoHash)
+        assertTrue("verified pieces were not downloaded again: $downloaded",
+            downloaded <= payload.size - 10L * 65536 + 65536)
+        assertTrue("the missing tail was actually fetched: $downloaded",
+            downloaded >= payload.size - 10L * 65536 - 65536)
     }
 
     /** A Start-off magnet over exact-path partial data is verified when its metadata arrives and stays stopped. */
