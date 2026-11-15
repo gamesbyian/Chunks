@@ -35,6 +35,8 @@ on:
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
       # Manual public-provider remote artwork proof owns this opt-in class.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledRemotePublicMediaInstrumentedTest.kt"
+      # Protected manual existing-transfer Stop/Start owns this opt-in class.
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/SeedhostExistingTransferStopStartInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"

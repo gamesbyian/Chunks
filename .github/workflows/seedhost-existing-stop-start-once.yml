@@ -1,0 +1,65 @@
+name: Protected Seedhost existing-transfer Stop/Start (installed app)
+
+# Owner-authorized (2026-11-14) real-host operation: the installed app Stops and
+# then Starts ONE existing completed seeding transfer on the primary instance,
+# with exact-hash readback after each single dispatch, ending in its original
+# state. No Add/Remove/priority/path/file operation. Manual, main only,
+# explicit apply input and first attempt only: never PR/push, never a retry.
+on:
+  workflow_dispatch:
+    inputs:
+      apply_stop_start:
+        description: "Permit one Stop then Start of one existing completed seeding transfer on the primary Seedhost"
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-seedhost-android-manual
+  cancel-in-progress: false
+
+jobs:
+  existing-stop-start:
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && github.run_attempt == 1 &&
+          github.event_name == 'workflow_dispatch' && inputs.apply_stop_start }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      CHUNKS_LIVE_RTORRENT_USER: ${{ secrets.rtorrent_user }}
+      CHUNKS_LIVE_RTORRENT_PASS: ${{ secrets.rtorrent_pass }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Refuse missing secrets before any request
+        run: test -n "$CHUNKS_LIVE_RTORRENT_USER" && test -n "$CHUNKS_LIVE_RTORRENT_PASS"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Build app and instrumentation APKs
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+          gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Permit hardware accelerated emulator
+        run: |
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed app stops and restarts one existing transfer
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/seedhost_existing_stop_start_once.sh
