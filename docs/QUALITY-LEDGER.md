@@ -1,5 +1,18 @@
 # Chunks evidence and release gate ledger
 
+> **FIRST FULL INSTALLED ADD → PIECES → STOP/START → REMOVE ON THE REAL PRIMARY SEEDHOST: PASSED · 2026-11-15:**
+> - [43769370130](https://github.com/gamesbyian/Chunks/actions/runs/43769370130) ran `installed-rtorrent-magnets.yml` on `main` `78827f3` with `environment=live discovery=public source=magnet`. It used the actual MainActivity Connect → Universal Add (public magnet, original trackers) → Transfers → Details → Stop → Start → Remove (keep data) path, with real public swarms.
+> - **Debian 13 ppc64el netinst** (new `magnet5`): 653,798,469 B received and **651,841,536 / 651,841,536 B piece-verified**, then Stop/Start/Remove with exact cleanup.
+> - **Blender Sintel**: 129,317,850 B received and **129,302,391 / 129,302,391 B verified**, then the same lifecycle.
+> - Skipped as designed: Debian arm64 was precompleted on the host, and only its job was removed (exact readback). Debian amd64 was an existing session, untouched.
+> - The **peerless negative passed**: Add and Transfers UI stayed truthful and the job was removed.
+> - The installed APK matched the built bytes: `chunks-magnet-verified-preview-78827f333229.apk`, SHA-256 `20d9e0e3cd7f04cd65ed36d445b7280009b23ee25e269aad36067fda7bec0f13`, 72,583,116 B. Runtime 447 s, 1 test passed.
+> - **Limits:**
+>   - Both payloads completed before Stop, so the receipt is `completed-at-stop`. Resumed partial-byte growth after Start is **not** shown on this host; the disposable gate shows it.
+>   - Session-only Remove left both complete payloads on the Seedhost.
+>   - This was an emulator, not a physical Pixel, TalkBack or a release-signed build.
+> - Earlier reds preserved: 43759727012 (transient read failure before Connect), 43762449778 (duplicate Connections node), 43766050784 (group 1 exhausted, #1041).
+
 > **LIVE INSTALLED ADD/STOP/START/REMOVE ON THE PRIMARY SEEDHOST: RED BEFORE ANY ADD · 2026-11-15:**
 > - [43759727012](https://github.com/gamesbyian/Chunks/actions/runs/43759727012) ran `installed-rtorrent-magnets.yml` on `main` `317e977` with `environment=live discovery=public source=magnet apply=true`. The installed APK matched (72,583,116 bytes, SHA-256 `f076fc0c…eadc`).
 > - The test failed after **14 s**: app stages `runner-ready → read-only-exhausted`, first frame `RTorrentRemote.kt:2340` (`responseCode`). All four of the test's own read-only RPC attempts failed fast.
