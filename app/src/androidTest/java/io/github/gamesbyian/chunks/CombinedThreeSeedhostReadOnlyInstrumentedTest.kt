@@ -174,7 +174,14 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
 
         fun truth(c: RemoteCredentials) =
             runBlocking { RTorrentRemote(c).listTransfers("main") }.map { it.hash.lowercase() to it.started }
-        val before = listOf(primary, second, third).map(::truth)
+        // A failed read names only the instance and the exception class: never
+        // a message, URL, account, path or transfer name.
+        val before = listOf("primary" to primary, "second" to second, "third" to third).map { (label, c) ->
+            try { truth(c) } catch (failure: Exception) {
+                stage("truth-$label-failed-" + failure::class.java.simpleName)
+                throw AssertionError("Ground-truth read failed: $label")
+            }
+        }
         val counts = before.map { it.size }
         // Same-hash cohort: the supplied staged fixture, or any infohash that
         // instances 2 and 3 both already hold (read-only intersection).
