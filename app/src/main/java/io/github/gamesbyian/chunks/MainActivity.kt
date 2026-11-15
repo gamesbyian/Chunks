@@ -448,6 +448,11 @@ internal fun ChunksApp(
     val combinedListState = rememberLazyListState()
     // Combined search text, like the local device's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
+    // Last read-only listings of other saved profiles survive navigation between
+    // roots, but never a privacy lock/unlock or policy lifecycle change.
+    val combinedSavedListings = remember(TransferPrivacyRuntime.lifecycleRevision) {
+        mutableStateOf<Map<io.github.gamesbyian.chunks.model.EnvironmentId, SavedServerListing>>(emptyMap())
+    }
     // Per exact rTorrent account: list position and search survive route
     // switches (local, All environments, Places) and Activity recreation.
     val remoteContinuity = rememberSaveable(saver = RemoteListContinuity.Saver) {
@@ -1133,6 +1138,7 @@ internal fun ChunksApp(
                 onWelcomeAdd = { section = Section.ADD_CHOOSE },
                 listState = combinedListState,
                 searchState = combinedSearch,
+                savedListingsState = combinedSavedListings,
                 // Only this session's positively verified Add on the current account.
                 recentlyAddedTransfer = latestAdded?.takeIf { key ->
                     key.environment == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL ||
