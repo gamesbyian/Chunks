@@ -45,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
@@ -93,6 +94,8 @@ internal fun VerifiedAddScreen(
     onCustomPlaceVerified: (String) -> Boolean = { true },
     /** A local-prepared .torrent draft (transfer export or Android file); never auto-submitted. */
     initialTorrent: ByteArray? = null,
+    /** The person's own Android document behind [initialTorrent], if it came from one. */
+    initialTorrentDocument: android.net.Uri? = null,
     onInitialTorrentConsumed: () -> Unit = {},
     /** Authenticated endpoint + account scope; null hides the Finish in Order option. */
     finishInOrderScope: String? = null,
@@ -124,7 +127,7 @@ internal fun VerifiedAddScreen(
      * A .torrent the person explicitly chose here (picker or HTTPS intake) becomes the app's
      * ONE reviewed document, so another Add target reviews the same newest file.
      */
-    onTorrentAdopted: (TorrentMetainfoPreview, ByteArray) -> Unit = { _, _ -> },
+    onTorrentAdopted: (TorrentMetainfoPreview, ByteArray, android.net.Uri?) -> Unit = { _, _, _ -> },
     /** Read-only injectable HTTPS intake for deterministic stalled-request UI tests. */
     fetchTorrentLink: suspend (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { link ->
         withContext(Dispatchers.IO) { TorrentLinkFetcher().fetch(link) }
@@ -271,6 +274,22 @@ internal fun VerifiedAddScreen(
     val defaultReadComplete = defaultReport != null
 
     var fromLocal by draft::fromLocal
+    // Keep/Archive/Delete applies only to the person's own document behind the
+    // exact selected bytes; magnets, HTTPS fetches and local exports have none.
+    val originalDocument = if (useFile) draft.originalDocumentFor(selectedBytes) else null
+    var originalHandling by remember(originalDocument) { mutableStateOf<OriginalTorrentHandling?>(null) }
+    var originalDeletable by remember(originalDocument) { mutableStateOf(false) }
+    var originalDeleting by remember { mutableStateOf(false) }
+    LaunchedEffect(originalDocument) {
+        val document = originalDocument ?: return@LaunchedEffect
+        val (saved, deletable) = withContext(Dispatchers.IO) {
+            OriginalTorrentHandlingStore(context).default to
+                OriginalTorrentDocuments.supportsDelete(context, document)
+        }
+        originalDeletable = deletable
+        originalHandling = if (saved == OriginalTorrentHandling.DELETE && !deletable)
+            OriginalTorrentHandling.ARCHIVE else saved
+    }
     LaunchedEffect(initialTorrent, alreadyAttempted) {
         val document = initialTorrent ?: return@LaunchedEffect
         if (submitting || alreadyAttempted) return@LaunchedEffect
@@ -279,6 +298,7 @@ internal fun VerifiedAddScreen(
             val bytes = document.copyOf()
             selectedTorrent = TorrentMetainfoReader.preview(bytes)
             selectedBytes = bytes
+            draft.bindOriginalDocument(initialTorrentDocument, bytes)
             draft.textAtFileSelection = magnet
             useFile = true
             fromLocal = true
@@ -315,6 +335,8 @@ internal fun VerifiedAddScreen(
                     }
                     selectedTorrent = result.first
                     selectedBytes = result.second
+                    // Only a document the person opened here can be archived or deleted later.
+                    draft.bindOriginalDocument(uri, result.second)
                     // An explicitly opened .torrent is the newest source and replaces
                     // older typed text, exactly as local Add and HTTPS intake do. A
                     // lingering magnet would otherwise win a later Add-target switch.
@@ -322,7 +344,7 @@ internal fun VerifiedAddScreen(
                     fromLocal = false
                     useFile = true
                     onMagnet("")
-                    onTorrentAdopted(result.first, result.second)
+                    onTorrentAdopted(result.first, result.second, uri)
                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                     throw cancel
                 } catch (_: Exception) {
@@ -509,7 +531,9 @@ internal fun VerifiedAddScreen(
                                     awaitingConfirmation = false
                                     clipboardFilled = null
                                     onMagnet("")
-                                    onTorrentAdopted(result.preview, result.bytes)
+                                    // A fetched link has no deletable or archivable original.
+                                    draft.bindOriginalDocument(null, null)
+                                    onTorrentAdopted(result.preview, result.bytes, null)
                                 }
                                 is TorrentLinkResult.Refused -> {
                                     // A refused old URL must not pollute a newer
@@ -580,6 +604,14 @@ internal fun VerifiedAddScreen(
                     )
                 }
             }
+        }
+        val shownHandling = originalHandling
+        if (!alreadyAttempted && originalDocument != null && shownHandling != null) item {
+            OriginalTorrentHandlingChoice(
+                "Original .torrent file", selected = shownHandling,
+                enabled = !submitting && !choosing,
+                deleteAvailable = originalDeletable,
+                onSelect = { originalHandling = it })
         }
         if (!alreadyAttempted && addDestinationPicker != null) item {
             addDestinationPicker()
@@ -655,6 +687,41 @@ internal fun VerifiedAddScreen(
                         }
                     }
                 }
+            }
+        }
+        draft.originalDeletion?.let { request ->
+            item {
+                OriginalDeletionPrompt(request, busy = originalDeleting,
+                    onDelete = {
+                        if (!originalDeleting) {
+                            originalDeleting = true
+                            scope.launch {
+                                try {
+                                    val deleted = withContext(Dispatchers.IO) {
+                                        OriginalTorrentDocuments.deleteReviewed(context.contentResolver, request)
+                                    }
+                                    draft.originalNote = originalDeletionMessage(deleted, request.archived)
+                                } finally {
+                                    originalDeleting = false
+                                    if (draft.originalDeletion === request) draft.originalDeletion = null
+                                }
+                            }
+                        }
+                    },
+                    onKeep = {
+                        if (draft.originalDeletion === request) draft.originalDeletion = null
+                        draft.originalNote = if (request.archived)
+                            "The original .torrent file was kept; Chunks also keeps its archived copy."
+                        else "The original .torrent file was kept."
+                    })
+            }
+        }
+        draft.originalNote?.let { note ->
+            item {
+                Text(note, style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.semantics {
+                        liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite
+                    })
             }
         }
         item {
@@ -921,6 +988,16 @@ internal fun VerifiedAddScreen(
                             outcome = null
                             observedProgress = null
                             draft.attemptTicket = ticket
+                            // Frozen with this ticket: a later draft edit cannot redirect it.
+                            draft.frozenOriginal = bytes?.let { reviewed ->
+                                draft.originalDocumentFor(reviewed)?.let { document ->
+                                    RemoteAddSession.FrozenOriginalHandling(document,
+                                        originalHandling ?: OriginalTorrentHandling.KEEP,
+                                        originalDeletable, reviewed.copyOf())
+                                }
+                            }
+                            draft.originalDeletion = null
+                            draft.originalNote = null
                             draft.submittedDisplayName = environmentLabel?.trim()?.takeIf(String::isNotBlank)
                             draft.attemptSource = magnet
                             draft.frozenAlias = aliasAtClick
@@ -1008,6 +1085,8 @@ internal fun VerifiedAddScreen(
                                         }
                                     }
                                     engineOutcomeRecorded = true
+                                    applyRemoteOriginalHandling(context, draft, ticket, result)
+                                        ?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (result is RemoteAddAndStart.StartNotVerified) {
                                         // One exact-hash READ-ONLY diagnosis, never a remedial Start/Add.
                                         // The inspector returns fixed categories, not private d.message text.
@@ -1483,4 +1562,54 @@ internal fun retainedAcknowledgedHash(
     phase: UniversalAddCoordinator.Phase
 ): String? = current ?: previous?.takeIf {
     phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED
+}
+
+/**
+ * Keep/Archive/Delete for the person's own .torrent document, after a remote
+ * Add the engine positively verified as a NEW exact job of the reviewed
+ * infohash on this exact account. Already-present, refused, uncertain or
+ * Start-unverified results keep the original. Delete is only ever a separate
+ * request the person must confirm; nothing here touches the document itself.
+ */
+internal suspend fun applyRemoteOriginalHandling(
+    context: android.content.Context,
+    draft: RemoteAddSession,
+    ticket: UniversalAddCoordinator.Ticket,
+    result: RemoteAddAndStart
+): String? {
+    val frozen = draft.frozenOriginal ?: return null
+    draft.frozenOriginal = null
+    if (frozen.handling == OriginalTorrentHandling.KEEP) return null
+    val verifiedNew = remoteVerifiedNewSourceHash(result, ticket.intent.source.expectedInfoHash)
+        ?: return "The original .torrent file was kept because this Add did not verify a new transfer."
+    val archived = try {
+        withContext(Dispatchers.IO) {
+            SourceTorrentArchive(context.filesDir).apply(frozen.handling,
+                OriginalTorrentOrigin.ANDROID_DOCUMENT, frozen.bytes,
+                SourceAddVerification(ticket.intent.target.environment.value, verifiedNew, verifiedNew = true))
+        }
+    } catch (cancel: kotlinx.coroutines.CancellationException) {
+        throw cancel
+    } catch (_: Exception) { SourceArchiveOutcome.IoFailure }
+    suspend fun request(archivedCopy: Boolean) = OriginalDeletionRequest(frozen.document,
+        withContext(Dispatchers.IO) {
+            OriginalTorrentDocuments.displayName(context.contentResolver, frozen.document)
+        }, OriginalTorrentDocuments.sha256(frozen.bytes),
+        runCatching { TorrentMetainfoReader.preview(frozen.bytes).name }.getOrDefault("this transfer"),
+        archived = archivedCopy)
+    if (archived == SourceArchiveOutcome.OriginalDeletionRequiresApproval) {
+        draft.originalDeletion = request(archivedCopy = false)
+        return null
+    }
+    // Archive prefers a move: removing an original its app lets us delete is a separate question.
+    if (archived is SourceArchiveOutcome.ArchivedCopy && frozen.deletable)
+        draft.originalDeletion = request(archivedCopy = true)
+    return archiveOutcomeMessage(archived, frozen.handling)
+}
+
+/** The reviewed infohash, lower-case, only when [result] verified a NEW job of exactly it. */
+internal fun remoteVerifiedNewSourceHash(result: RemoteAddAndStart, reviewedInfoHash: String?): String? {
+    val reviewed = reviewedInfoHash?.lowercase(java.util.Locale.ROOT) ?: return null
+    val verified = verifiedAddNavigationHash(result) ?: return null
+    return reviewed.takeIf { verified.equals(it, ignoreCase = true) }
 }
