@@ -1,6 +1,6 @@
 # Chunks evidence and release gate ledger
 
-> **V2 COMPOSE RULE SWEEP + PROTECTED REAL-INVENTORY ARTWORK JOURNEY (proposed) · 2026-11-15:**
+> **V2 COMPOSE RULE SWEEP + PROTECTED REAL-INVENTORY ARTWORK JOURNEY · 2026-11-15:**
 > - The remaining 105 JVM Compose test classes were moved from the deprecated v1 rule to v2, changing imports only. Two full local `:app:testDebugUnitTest` runs (511 classes each) were clean apart from the known container-only `CreateSeedCopyAcquisitionRaceTest` (JDK 21 SecurityManager) and `LocalCheckedPayloadReservationsTest` (no UTF-8 locale) failures.
 > - `CombinedTransfersScreenTest` stays on v1. Under v2 and full-suite load, a stale-source label intermittently never appeared: `oldSignedIn…` in run 1, then `staleServerListIsLabelledAsLastKnown` in run 2, even with a 30 s wait. The class passed 3 of 3 isolated runs. The cause is not established.
 > - New manual read-only `seedhost-inventory-media-readonly.yml` (`SeedhostInventoryMediaReadOnlyInstrumentedTest`): real primary inventory, shipped media defaults, at least one automatic assignment, no hash/host/account in provider requests, inventory unchanged.
@@ -8,6 +8,11 @@
 >   - The app made real provider requests: tvmaze.com 61, wikidata.org 16, openlibrary.org 2.
 >   - Yet `assigned=0, couldnt=0` under the key the test derived from the typed ruTorrent URL. This is consistent with a **test key mismatch**: the app keys the profile by its verified, resolved endpoint. It is not evidence that enrichment failed.
 >   - The test now matches assignments by infohash and also reports `stored` and `envs` counts.
+> - **PASSED after #1768** (`65dd489`): [43755660193](https://github.com/gamesbyian/Chunks/actions/runs/43755660193), installed debug APK on an API35 emulator against the **real primary Seedhost**.
+>   - Stages: authorized → inventory-read → connected → unchanged → automatic-assignment.
+>   - Result: `inventory=48 stored=19 envs=1 assigned=19 automatic=14 couldnt=5 providers=tvmaze:9,wikidata:5 hosts=openlibrary.org:2,tvmaze.com:27,wikidata.org:10`.
+>   - Real existing transfers received automatic provider assignments with no Identify tap and no remote command. No provider request carried an infohash, the host or the account name, and the inventory was unchanged.
+>   - Not proven: row pixel painting on the real host, Pixel visuals, the correctness of individual matches.
 
 > **#1762–#1765 MERGED + PROTECTED INSTALLED STOP/START ON THE REAL PRIMARY SEEDHOST · 2026-11-15:**
 > - [#1765](https://github.com/gamesbyian/Chunks/pull/1765) (`421ea3f`, head `58bd07f`, foundation [43745821820](https://github.com/gamesbyian/Chunks/actions/runs/43745821820)). It fixed the Stop/Start row-control locators: the quick-control tag is merged into the row card, and the row matcher could hit the nested Details button. `ExistingTransferStopStartLocatorTest` (JVM, FakeRTorrent) runs the exact sequence and fails with the old locators. `RepeatedAndroidIntakeTest` moved to the v2 Compose rule: it failed 1 of 10 local runs ("LayoutNode should be attached to an owner") and timed out in CI on head `a7b1826` ([43714020758](https://github.com/gamesbyian/Chunks/actions/runs/43714020758), red, preserved); after the move it passed 10 of 10. No assertion changed.
