@@ -19,6 +19,8 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import io.github.gamesbyian.chunks.media.ChunksMedia
+import io.github.gamesbyian.chunks.media.MediaPrivacySettings
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
@@ -44,6 +46,11 @@ class RemoteSecondAddArtworkChoiceTest {
     private val server = FakeRTorrent()
 
     @Before fun launch() {
+        // ChunksMedia is process-wide: an earlier class in the same JVM may have
+        // turned artwork display off, which hides this per-Add choice entirely
+        // (CI foundation 43770779896). Start from the shipped defaults.
+        ChunksMedia.get(androidx.test.core.app.ApplicationProvider.getApplicationContext())
+            .updateSettings(MediaPrivacySettings())
         rule.setContent {
             ChunksTheme {
                 ChunksApp(sharedMagnet = null, incomingTorrent = null,
@@ -85,7 +92,10 @@ class RemoteSecondAddArtworkChoiceTest {
     }
 
     private fun openArtworkDisclosure() {
-        list().performScrollToNode(hasText("Artwork & metadata"))
+        // The choice is offered only after local settings load off the main thread.
+        rule.waitUntil(15_000) {
+            runCatching { list().performScrollToNode(hasText("Artwork & metadata")) }.isSuccess
+        }
         if (rule.onAllNodesWithText("Automatically identify and fetch artwork & metadata")
                 .fetchSemanticsNodes().isEmpty())
             rule.onNodeWithText("Artwork & metadata").performClick()
