@@ -66,6 +66,11 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
             throw AssertionError("Timed out: $what", failure)
         }
     }
+    /** Lazy remote Add items exist only once scrolled into composition. */
+    private fun bringTag(tag: String) {
+        runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(tag)) }
+        rule.waitForIdle()
+    }
     private fun tagged(tag: String) = rule.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
     private fun stillReadable(document: Uri): Boolean = try {
         context.contentResolver.openInputStream(document)?.use { true } ?: false
@@ -132,21 +137,25 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                     tagged(originalHandlingTag(OriginalTorrentHandling.ARCHIVE))
                 }
                 stage("remote-review")
-                rule.onNodeWithTag(originalHandlingTag(OriginalTorrentHandling.ARCHIVE)).performScrollTo().performClick()
-                val start = rule.onNodeWithTag(ChunksSemantics.ADD_START_PREFERENCE).performScrollTo()
+                bringTag(originalHandlingTag(OriginalTorrentHandling.ARCHIVE))
+                rule.onNodeWithTag(originalHandlingTag(OriginalTorrentHandling.ARCHIVE)).performClick()
+                bringTag(ChunksSemantics.ADD_START_PREFERENCE)
+                val start = rule.onNodeWithTag(ChunksSemantics.ADD_START_PREFERENCE)
                 if (start.fetchSemanticsNode().config
                         .getOrElseNullable(SemanticsProperties.ToggleableState) { null }?.name != "Off")
                     start.performClick()
                 val add = hasText("Add transfer") and hasClickAction()
+                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(add) }
                 waitFor("enabled Add transfer", 60_000) {
                     rule.onAllNodes(add).fetchSemanticsNodes().any {
                         it.config.getOrElseNullable(SemanticsProperties.Disabled) { null } == null
                     }
                 }
                 assertTrue("Nothing is archived before the Add", archived().isEmpty())
-                rule.onNode(add).performScrollTo().performClick()
+                rule.onNode(add).performClick()
                 stage("add-submitted")
                 waitFor("separate original removal question after the verified Add", 90_000) {
+                    bringTag(ChunksSemantics.ADD_ORIGINAL_DELETE_PROMPT)
                     tagged(ChunksSemantics.ADD_ORIGINAL_DELETE_PROMPT)
                 }
                 assertTrue("A verified new exact job exists on the server",
@@ -154,8 +163,12 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 assertArrayEquals("Exactly the reviewed bytes are archived", bytes, archived().single().readBytes())
                 assertTrue("Archive alone never removes the original", stillReadable(document))
                 stage("archived")
-                rule.onNodeWithTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM).performScrollTo().performClick()
-                waitFor("confirmed move into Chunks") { visible("was moved into Chunks") }
+                bringTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM)
+                rule.onNodeWithTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM).performClick()
+                waitFor("confirmed move into Chunks") {
+                    runCatching { scrollTo("was moved into Chunks") }
+                    visible("was moved into Chunks")
+                }
                 stage("original-removed")
             }
             assertTrue("The confirmed original is gone", !stillReadable(document))
