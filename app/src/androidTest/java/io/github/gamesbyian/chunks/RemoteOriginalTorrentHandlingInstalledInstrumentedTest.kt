@@ -91,6 +91,11 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
         val url = String(Base64.decode(requireNotNull(args.getString("chunks_remote_url_b64")), Base64.NO_WRAP))
         require(url == "http://127.0.0.1:18082/rutorrent1/")
         val remote = RTorrentRemote(RemoteCredentials(url, "", ""))
+        // As in the local source-handling journey: a system notification-permission
+        // dialog (another process) would otherwise sit over MainActivity at teardown.
+        if (android.os.Build.VERSION.SDK_INT >= 33)
+            instrumentation.uiAutomation.grantRuntimePermission(context.packageName,
+                android.Manifest.permission.POST_NOTIFICATIONS)
 
         // A unique stopped fixture: its payload never exists on the server.
         val work = File(context.cacheDir, "remote-original-" + System.nanoTime().toString(16)).apply { mkdirs() }
