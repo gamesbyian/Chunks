@@ -78,7 +78,14 @@ data class LocalEngineConfig(
      * DEFAULT (libtorrent's mmap) remains only for explicit comparison; a
      * persistent zero block after CACHE_FLUSHED was reproduced only with it.
      */
-    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.POSIX
+    val diskIoMode: LocalDiskIoMode = LocalDiskIoMode.POSIX,
+    /**
+     * Engine-owned crash checkpoint for transfers whose verified pieces,
+     * state, configuration or metadata changed (libtorrent's
+     * need_save_resume_data). Independent of any screen or service poll so a
+     * background download killed by Android keeps its progress. 0 disables.
+     */
+    val resumeCheckpointIntervalMs: Long = 60_000L
 )
 
 enum class LocalTransferState { CHECKING, DOWNLOADING_METADATA, DOWNLOADING, FINISHED, SEEDING, UNKNOWN }
@@ -677,7 +684,46 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // success here: this runs only once on a fresh engine start.
             restore(store)
             reconcileColdRemovalIntents(store)
+            val interval = config.resumeCheckpointIntervalMs
+            if (interval > 0) {
+                checkpointTimer = java.util.concurrent.Executors.newSingleThreadScheduledExecutor { task ->
+                    Thread(task, "chunks-resume-checkpoint").apply { isDaemon = true }
+                }.also {
+                    it.scheduleWithFixedDelay({
+                        try { checkpointChangedTransfers() } catch (_: Throwable) { }
+                    }, interval, interval, java.util.concurrent.TimeUnit.MILLISECONDS)
+                }
+            }
         }
+    }
+
+    @Volatile private var checkpointTimer: java.util.concurrent.ScheduledExecutorService? = null
+
+    /**
+     * Request (never await) a resume save for each current handle whose
+     * durable state changed since its last save, excluding mere transfer
+     * counters. Upstream libtorrent and qBittorrent checkpoint the same way;
+     * otherwise the newest record of a background download killed before
+     * any Stop or screen save is its zero-piece Add snapshot, which libtorrent
+     * trusts without recheck, discarding every downloaded piece.
+     * The handle-fenced write path is shared with completion saves, so a
+     * removed or replaced handle can never be persisted by this request.
+     */
+    internal fun checkpointChangedTransfers(): Int {
+        if (config.stateDirectory == null) return 0
+        var requested = 0
+        synchronized(handles) {
+            if (!started) return 0
+            for ((key, handle) in handles.entries.toList()) {
+                val due = try {
+                    handle.isValid && handle.swig().need_save_resume_data(CHECKPOINT_CHANGES)
+                } catch (_: Exception) { false }
+                if (!due || pendingSaves.pendingFor(key, handle) != null) continue
+                pendingSaves.acquire(key, handle) { handle.saveResumeData(TorrentHandle.SAVE_INFO_DICT) }
+                requested++
+            }
+        }
+        return requested
     }
 
     /**
@@ -1027,6 +1073,15 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             storageFileErrors.remove(key)
             // An ordinary Start must never inherit a recheck's auto-stop.
             handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
+            // Files shortened or removed while stopped would otherwise be
+            // served as complete: libtorrent re-hashes before any transfer,
+            // then downloads only what is really missing.
+            if (state.hasMetadata() && runCatching {
+                    restoredPayloadIsShort(handle, handle.status(TorrentHandle.QUERY_PIECES).pieces())
+                }.getOrDefault(false)) {
+                handle.forceRecheck()
+                startPayloadRechecks += key
+            }
             handle.resume()
             // Only after native Start submission: an exception keeps the gate.
             // Future Stop/Start and process restoration remain separate P0.
@@ -2094,6 +2149,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     @Synchronized
     override fun close() {
         if (!started) return
+        // Never join: a timer blocked on the handles monitor sees !started or no handles.
+        checkpointTimer?.shutdownNow()
+        checkpointTimer = null
         saveResumeData()
         pendingSaves.cancelAll()
         completionResaveWanted.clear()
@@ -2130,6 +2188,10 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             if (params == null) { problems += store.savedSourceName(key); continue }
             // A single invalid native record must not abort restoration of
             // unrelated, valid transfers. Preserve every failed input on disk.
+            // The saved verified-piece claim, read from the record itself rather
+            // than from asynchronous post-add native state.
+            val claimed = try { org.libtorrent4j.PieceIndexBitfield(params.swig().get_have_pieces()) }
+                catch (_: Exception) { null }
             val restored = try {
                 val info = params.torrentInfo
                 if (info == null || !info.isValid || identity(info) != key) null
@@ -2149,11 +2211,56 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // Reserve before subsequent fresh checked Adds register native
             // handles. A failed reservation leaves this restored job stopped
             // and visible, with a refusal until the conflict is resolved.
-            reserveRestoredJobPaths(key, restored)?.let {
-                checkedStartProblems[key] = "Restored path admission: $it"
-            }
+            val admission = reserveRestoredJobPaths(key, restored)
+            if (admission != null) checkedStartProblems[key] = "Restored path admission: $admission"
+            // Only paths the admission survey just accepted inside the Place are stat'ed.
+            else if (claimed != null && restoredPayloadIsShort(restored, claimed)) armRestoredRecheck(key, restored)
         }
         restoreProblems = problems
+    }
+
+    /** Diagnostic: Starts that found saved pieces missing on disk and re-hashed first. */
+    internal val startPayloadRechecks: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    /** Diagnostic: restored jobs whose saved pieces were missing on disk and were re-hashed. */
+    internal val restoredPayloadRechecks: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    private fun restoredPayloadIsShort(handle: TorrentHandle, pieces: org.libtorrent4j.PieceIndexBitfield): Boolean = try {
+        val info = handle.torrentFile()
+        if (info == null || !info.isValid || pieces.isNoneSet()) false
+        else {
+            val files = info.files()
+            val count = files.numFiles()
+            val layout = LocalRestoredPayloadShortfall.Layout(files.pieceLength(), files.numPieces(),
+                LongArray(count) { files.fileOffset(it) }, LongArray(count) { files.fileSize(it) },
+                BooleanArray(count) { files.padFileAt(it) })
+            val root = File(handle.savePath())
+            LocalRestoredPayloadShortfall.firstShortFile(layout, { it < pieces.size() && pieces.getBit(it) }) { index ->
+                try {
+                    val path = File(root, files.filePath(index)).toPath()
+                    val attributes = Files.readAttributes(path,
+                        java.nio.file.attribute.BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+                    if (attributes.isRegularFile) attributes.size() else null
+                } catch (_: Exception) { null }
+            } != null
+        }
+    } catch (_: Exception) { false }
+
+    /**
+     * libtorrent's own stopped recheck, as Recheck files does: it re-hashes
+     * what is really on disk and pauses itself when the check ends, with no
+     * peer or payload traffic. Progress then reflects only verified bytes.
+     */
+    private fun armRestoredRecheck(key: String, handle: TorrentHandle) {
+        try {
+            handle.forceRecheck()
+            handle.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
+            handle.resume()
+            restoredPayloadRechecks += key
+        } catch (_: Exception) {
+            runCatching { handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); handle.pause() }
+            checkedStartProblems[key] = "Restored files are shorter than their saved progress and could not be rechecked"
+        }
     }
 
     /** Append through an exclusive original descriptor; never replace a known path. */
@@ -2273,5 +2380,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     private companion object {
         val identityPattern = Regex("^[0-9a-f]{40}([0-9a-f]{24})?$")
         const val MAX_RESUME_BYTES = 16L * 1024 * 1024
+        /** Durable changes only; upload/download counters alone never wear storage. */
+        val CHECKPOINT_CHANGES: org.libtorrent4j.swig.resume_data_flags_t =
+            org.libtorrent4j.swig.torrent_handle.if_download_progress
+                .or_(org.libtorrent4j.swig.torrent_handle.if_state_changed)
+                .or_(org.libtorrent4j.swig.torrent_handle.if_config_changed)
+                .or_(org.libtorrent4j.swig.torrent_handle.if_metadata_changed)
     }
 }

@@ -488,6 +488,9 @@ internal fun ChunksApp(
     // A local transfer's exported .torrent waiting for the server Add review.
     // Process memory only; consumed by that review, never auto-submitted.
     var serverHandoffTorrent by remember { mutableStateOf<ByteArray?>(null) }
+    // The person's own Android document behind those bytes, if any. The remote
+    // review binds it to the exact byte digest, so a stale value cannot attach.
+    var serverHandoffDocument by remember { mutableStateOf<Uri?>(null) }
     // Account-scoped recovery outlives Add's composition, including privacy gates
     // and reconnects. Process memory only; Activity/process restoration is separate.
     val remoteAddSessions = retainedAddOwner?.remoteSessions ?: remember { RemoteAddSessions() }
@@ -544,6 +547,7 @@ internal fun ChunksApp(
         if (magnet.isBlank() && !remoteReview.alreadyAttempted &&
             localReviewedTorrent.value != null) {
             serverHandoffTorrent = requireNotNull(localReviewedTorrent.value).bytes.copyOf()
+            serverHandoffDocument = localReviewedTorrent.value?.originalDocument
         } else if (magnet.isNotBlank() && !fileChosenOverCurrentText) {
             remoteReview.preferMagnet()
         }
@@ -740,6 +744,7 @@ internal fun ChunksApp(
                 serverHandoffTorrent = if (addUsingAuthenticatedRemote && server != null &&
                     RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
                     reviewed.bytes.copyOf() else null
+                serverHandoffDocument = document.takeIf { serverHandoffTorrent != null }
                 localHandoffTorrentUri = null
                 magnet = ""
                 remoteAddSessions.clearPendingSourceSelection()
@@ -1217,6 +1222,7 @@ internal fun ChunksApp(
                                     magnet = ""
                                     remoteAddSessions.clearPendingSourceSelection()
                                     serverHandoffTorrent = reviewed.bytes
+                                    serverHandoffDocument = sharedDocument
                                     onIncomingTorrentConsumed()
                                     selectAuthenticatedAddTarget()
                                 } else {
@@ -2262,11 +2268,15 @@ internal fun ChunksApp(
                         session = addSession,
                         observedPlaces = observedPlaces,
                         initialTorrent = serverHandoffTorrent,
-                        onInitialTorrentConsumed = { serverHandoffTorrent = null },
+                        initialTorrentDocument = serverHandoffDocument,
+                        onInitialTorrentConsumed = {
+                            serverHandoffTorrent = null
+                            serverHandoffDocument = null
+                        },
                         // The newest explicit server-form .torrent replaces any older local
                         // review, so a target switch can never resurrect the superseded file.
-                        onTorrentAdopted = { preview, bytes ->
-                            localReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf())
+                        onTorrentAdopted = { preview, bytes, document ->
+                            localReviewedTorrent.value = PendingLocalAdd(preview, bytes.copyOf(), document)
                             serverHandoffTorrent = null
                             localHandoffTorrentUri = null
                         },

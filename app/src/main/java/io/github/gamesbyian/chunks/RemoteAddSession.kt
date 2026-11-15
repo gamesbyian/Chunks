@@ -42,6 +42,40 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
     internal var resetArtworkAfterVerification = true
     internal var observedProgress by mutableStateOf<RemoteAddProgress?>(null)
 
+    // The user's own Android document behind the reviewed .torrent bytes, if
+    // any. Bound to the WHOLE reviewed byte digest, so a later different
+    // source can never inherit this document's Archive/Delete authority.
+    // Process memory only, like the bytes themselves.
+    private var originalDocument: android.net.Uri? = null
+    private var originalDocumentSha256: ByteArray? = null
+    /** Handling frozen with the Add click; only a verified NEW exact job may act on it. */
+    internal var frozenOriginal: FrozenOriginalHandling? = null
+    /** The separately approved deletion still awaiting the person's answer. */
+    internal var originalDeletion by mutableStateOf<OriginalDeletionRequest?>(null)
+    internal var originalNote by mutableStateOf<String?>(null)
+
+    internal class FrozenOriginalHandling(
+        val document: android.net.Uri,
+        val handling: OriginalTorrentHandling,
+        val deletable: Boolean,
+        val bytes: ByteArray
+    )
+
+    internal fun bindOriginalDocument(document: android.net.Uri?, bytes: ByteArray?) {
+        originalDocument = document?.takeIf { bytes != null }
+        originalDocumentSha256 = if (originalDocument != null) sha256(requireNotNull(bytes)) else null
+    }
+
+    /** The bound document only while [bytes] are byte-for-byte the reviewed ones. */
+    internal fun originalDocumentFor(bytes: ByteArray?): android.net.Uri? {
+        val document = originalDocument ?: return null
+        val digest = originalDocumentSha256 ?: return null
+        if (bytes == null || !java.security.MessageDigest.isEqual(digest, sha256(bytes))) return null
+        return document
+    }
+
+    private fun sha256(bytes: ByteArray) = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+
     /** An explicit magnet handoff selects text without reviving an attempted Add. */
     internal fun preferMagnet() {
         if (!alreadyAttempted) useFile = false
@@ -55,6 +89,7 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
         attemptTicket?.let(coordinator::refusedBeforeAnyWrite)
         attemptTicket = null
         uncertain = false
+        frozenOriginal = null
     }
 
     /**
@@ -101,6 +136,10 @@ class RemoteAddSession(val accountScope: String?, initialDestination: String = "
         submittedDisplayName = null
         resetArtworkAfterVerification = true
         observedProgress = null
+        bindOriginalDocument(null, null)
+        frozenOriginal = null
+        originalDeletion = null
+        originalNote = null
         destination = ""
         return true
     }

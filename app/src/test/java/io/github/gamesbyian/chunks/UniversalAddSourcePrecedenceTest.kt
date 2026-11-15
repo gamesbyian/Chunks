@@ -190,7 +190,10 @@ class UniversalAddSourcePrecedenceTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_DEVICE).performScrollTo().performClick()
         rule.waitForIdle()
         waitForText("newer-server.mkv")
-        assertNull("A different server-picked file cannot inherit the old document URI",
+        // Requirement: never inherit the OLDER file's document authority. Since remote
+        // Add gained Keep/Archive/Delete, the newer server-picked file carries its own.
+        assertEquals("A different server-picked file carries only its own document URI",
+            Uri.parse("content://chunks.test.documents/newer-server.mkv.torrent"),
             androidx.lifecycle.ViewModelProvider(rule.activity)[LocalAddAttemptOwner::class.java]
                 .reviewedTorrent.value?.originalDocument)
         assertTrue("Device target must review the newer file",
