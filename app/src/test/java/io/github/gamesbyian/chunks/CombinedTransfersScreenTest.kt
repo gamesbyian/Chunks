@@ -8,7 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
@@ -64,6 +64,17 @@ class CombinedTransfersScreenTest {
         }
     }
     private fun revealText(text: String) = reveal(hasText(text, substring = true))
+    // A touch click can miss when the list re-lays out between lookup and injection
+    // (full-suite v2 run, 2026-11-15: the panel stayed "Environment status · 3 sources").
+    // Toggle by its semantic action, then wait until it reports itself expanded.
+    private fun openEnvironmentStatus() {
+        rule.onNodeWithText("Environment status", substring = true)
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithText("Hide environment status").fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
     private fun revealDescription(description: String) = reveal(hasContentDescription(description))
     private fun openFilters() {
         reveal(hasText("Search names or hashes"))
@@ -416,7 +427,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("On this device: Engine not running", substring = true).assertDoesNotExist()
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-compact-first-viewport.png")
         revealText("Environment status")
-        rule.onNodeWithText("Environment status", substring = true).performClick()
+        openEnvironmentStatus()
         // Lazy rows below the fold are composed only after scrolling to them.
         fun seen(text: String) {
             rule.onNode(androidx.compose.ui.test.hasScrollToIndexAction())
@@ -621,7 +632,7 @@ class CombinedTransfersScreenTest {
     @Test fun staleServerListIsLabelledAsLastKnown() {
         show(stale = true)
         revealText("Environment status")
-        rule.onNodeWithText("Environment status", substring = true).performClick()
+        openEnvironmentStatus()
         // Expanded environment rows live in a LazyColumn and may be outside
         // the composed viewport. Reveal the exact row before asserting it.
         val staleLabel = serverEnvironmentLabel(aliasScope) +
@@ -639,7 +650,7 @@ class CombinedTransfersScreenTest {
         show(observedAtEpochMillis = System.currentTimeMillis() -
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS - 1)
         revealText("Environment status")
-        rule.onNodeWithText("Environment status", substring = true).performClick()
+        openEnvironmentStatus()
         // Expanded environment rows live in a LazyColumn and may be outside
         // the composed viewport. Reveal the exact row before asserting it.
         val staleLabel = serverEnvironmentLabel(aliasScope) +
