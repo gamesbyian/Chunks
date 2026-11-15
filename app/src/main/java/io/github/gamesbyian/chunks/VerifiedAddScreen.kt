@@ -259,15 +259,15 @@ internal fun VerifiedAddScreen(
         draft.finishInOrderHash = selectedTorrent?.infoHashV1
     }
     var finishInOrderAfterAdd by draft.finishInOrder
-    // Reviewed file skips belong to exactly one selected .torrent identity.
-    if (draft.skippedFilesHash != selectedTorrent?.infoHashV1) {
-        draft.skippedFiles = emptySet()
-        draft.fileChoiceOpen = false
-        draft.skippedFilesHash = selectedTorrent?.infoHashV1
-    }
+    // Reviewed file skips belong to exactly one selected .torrent identity. Derived
+    // (never reset by a write during composition): another source starts unskipped.
+    val reviewedHash = selectedTorrent?.infoHashV1
+    val skippedFiles = if (reviewedHash != null && draft.skippedFilesHash == reviewedHash)
+        draft.skippedFiles else emptySet()
+    val fileChoiceOpen = reviewedHash != null && draft.skippedFilesHash == reviewedHash && draft.fileChoiceOpen
     val declaredFiles = remember(selectedTorrent) { selectedTorrent?.let { AddFileChoices.declared(it) } }
     val noFileChosen = useFile && declaredFiles != null &&
-        declaredFiles.none { it.index !in draft.skippedFiles }
+        declaredFiles.none { it.index !in skippedFiles }
     var rechecking by remember { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
     // Typed, read-only discovery of rTorrent's own default. A late reply only fills this
@@ -942,16 +942,24 @@ internal fun VerifiedAddScreen(
             // "Files to download": the same reviewed-skip control as a Local Add.
             val reviewedFiles = declaredFiles
             if (useFile && reviewedFiles != null) item {
-                AddFileChoice(reviewedFiles, draft.skippedFiles, draft.fileChoiceOpen,
+                AddFileChoice(reviewedFiles, skippedFiles, fileChoiceOpen,
                     enabled = !submitting,
-                    onExpanded = { draft.fileChoiceOpen = it },
-                    onSkippedChange = { draft.skippedFiles = it; awaitingConfirmation = false })
+                    onExpanded = { open ->
+                        if (draft.skippedFilesHash != reviewedHash) draft.skippedFiles = emptySet()
+                        draft.skippedFilesHash = reviewedHash
+                        draft.fileChoiceOpen = open
+                    },
+                    onSkippedChange = { chosen ->
+                        draft.skippedFilesHash = reviewedHash
+                        draft.skippedFiles = chosen
+                        awaitingConfirmation = false
+                    })
             }
             // Finish-in-order is eligible only for multi-file .torrent sources
             // where every file downloads (it manages all file priorities).
             val fioStore = finishInOrderStore
             if (plan != null && fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2 &&
-                draft.skippedFiles.isEmpty()) item {
+                skippedFiles.isEmpty()) item {
                 FinishInOrderAddChoice(
                     "Finish in Order: the first episode or numbered file gets High, then the next " +
                         "(set before downloading starts; advances while Chunks is open and connected)",
@@ -979,9 +987,13 @@ internal fun VerifiedAddScreen(
                                 runCatching { AddFileChoices.declared(TorrentMetainfoReader.preview(reviewed)) }
                                     .getOrNull()
                             }
-                            if (layoutAtClick != null && layoutAtClick.none { it.index !in draft.skippedFiles })
+                            // Skips count only for the identity they were reviewed against.
+                            val clickSkips = if (bytes != null && draft.skippedFilesHash ==
+                                    runCatching { TorrentMetainfoReader.preview(bytes).infoHashV1 }.getOrNull())
+                                draft.skippedFiles else emptySet()
+                            if (layoutAtClick != null && layoutAtClick.none { it.index !in clickSkips })
                                 return@addClick
-                            val skippedAtClick = layoutAtClick?.filter { it.index in draft.skippedFiles }.orEmpty()
+                            val skippedAtClick = layoutAtClick?.filter { it.index in clickSkips }.orEmpty()
                             val orderScope = finishInOrderScope?.takeIf {
                                 bytes != null && requestedStart && finishInOrderAfterAdd &&
                                     (selectedTorrent?.fileCount ?: 0) >= 2 && skippedAtClick.isEmpty()

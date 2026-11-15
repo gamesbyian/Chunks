@@ -37,13 +37,13 @@ import org.robolectric.annotation.GraphicsMode
 class RemoteAddFileChoiceTest {
     @get:Rule val rule = createComposeRule()
 
-    private fun twoFileTorrent(): ByteArray {
+    private fun twoFileTorrent(root: String = "Show S01"): ByteArray {
         fun b(text: String) = "${text.toByteArray().size}:$text"
         fun file(name: String, length: Long) = "d" + b("length") + "i${length}e" + b("path") + "l" + b(name) + "ee"
         val total = 40_000L + 25_000L
         val pieces = ((total + 16_383) / 16_384).toInt()
         val info = "d" + b("files") + "l" + file("Episode 01.mkv", 40_000) + file("Episode 02.mkv", 25_000) + "e" +
-            b("name") + b("Show S01") + b("piece length") + "i16384e" + "6:pieces" + "${pieces * 20}:"
+            b("name") + b(root) + b("piece length") + "i16384e" + "6:pieces" + "${pieces * 20}:"
         return ("d" + b("announce") + b("https://tracker.example/announce") + b("info")).toByteArray() +
             info.toByteArray() + ByteArray(pieces * 20) { 7 } + "ee".toByteArray()
     }
@@ -81,5 +81,13 @@ class RemoteAddFileChoiceTest {
         list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
         rule.onRoot().captureRoboImage("build/chunks-visual/remote-add-file-choice-none.png")
+        // Another reviewed .torrent never inherits these skips.
+        val other = twoFileTorrent("Show S02")
+        rule.runOnIdle {
+            session.selectedTorrent = TorrentMetainfoReader.preview(other)
+            session.selectedBytes = other
+        }
+        list.performScrollToNode(hasTestTag(ChunksSemantics.ADD_FILE_CHOICE))
+        rule.onNodeWithText("Files to download (2 of 2", substring = true).assertExists()
     }
 }
