@@ -6,9 +6,15 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Base64
 import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollToNode
@@ -20,7 +26,10 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import io.github.gamesbyian.chunks.rpc.RTorrentRemote
+import io.github.gamesbyian.chunks.rpc.RemoteCredentials
 import java.net.URI
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -49,9 +58,9 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
      */
     private fun checkpoint(stage: String) {
         require(stage in setOf(
-            "arguments", "form", "connect-visible", "connect", "queue", "inventory",
-            "first-capture", "refresh-click", "refresh-busy",
-            "refresh-idle", "final-capture", "add-open", "add-preview", "add-return",
+            "arguments", "ground-truth", "form", "connect-visible", "connect", "verified",
+            "connections", "transfers", "inventory", "inventory-mismatch", "first-capture",
+            "add-open", "add-preview", "add-return",
             "connect-error", "connect-busy", "connect-login-form", "connect-no-visible-state",
             "connect-identity-unverified", "connect-auth-rejected", "connect-tls-failed",
             "connect-network-failed", "connect-protocol-failed", "connect-service-failed",
@@ -93,26 +102,43 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             target.scheme.equals("https", true) && target.host != null &&
                 target.userInfo == null && target.rawQuery == null && target.rawFragment == null)
 
-        // All interaction uses the REAL installed application's Compose fields.
-        // Fresh installation opens local Transfers; Back reaches server setup.
-        rule.onNodeWithText("Connections").assertExists().performClick()
-        // The Connect list composes lazily; at large text the field starts below the fold.
+        // Independent read-only ground truth through the same adapter class.
+        fun serverCount() = runBlocking {
+            RTorrentRemote(RemoteCredentials(url, user!!, password!!)).listTransfers("main").size
+        }
+        val before = serverCount()
+        assertTrue("Real development server returned an empty queue", before > 0)
+        checkpoint("ground-truth")
+
+        // Current journey (2026-11-15): Welcome -> Connections -> named Connect ->
+        // verified acknowledgement -> Connections -> View transfers (canonical list).
+        rule.waitUntil(30_000) {
+            rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_CONNECTIONS)).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connection name (optional)"))
+        rule.onNodeWithText("Connection name (optional)").performTextReplacement("Wood")
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
         rule.onNodeWithText("Username, if required").performTextReplacement(user!!)
         rule.onNodeWithText("Password").performTextReplacement(password!!)
         checkpoint("form")
-        // Connect is below several text fields inside a LazyColumn. After the
-        // password IME opens, its item can be completely uncomposed, so
-        // onNodeWithText(...).performScrollTo() cannot find it. Ask the lazy
-        // container to compose and scroll to the item BEFORE finding the node.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connect to rTorrent"))
+        val connect = hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
+        rule.waitUntil(20_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(connect)
+                rule.onNode(connect, useUnmergedTree = true).assertIsEnabled()
+                true
+            }.getOrDefault(false)
+        }
         checkpoint("connect-visible")
-        rule.onNodeWithText("Connect to rTorrent").performClick()
+        rule.waitForIdle()
+        // Exactly one Connect dispatch.
+        rule.onNode(connect, useUnmergedTree = true).performSemanticsAction(SemanticsActions.OnClick)
         checkpoint("connect")
         try {
             rule.waitUntil(90_000) {
-                rule.onAllNodesWithText("It's all here.").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("Connection verified").fetchSemanticsNodes().isNotEmpty()
             }
         } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
             // Only branch on fixed, nonsecret UI titles. Never emit the actual
@@ -153,69 +179,63 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             throw AssertionError("The installed app did not reach the real server queue. " +
                 "See only the fixed private-safe stage marker; raw failure withheld.")
         }
-        checkpoint("queue")
-        rule.onNodeWithText("It's all here.").assertExists()
+        checkpoint("verified")
+        rule.onNodeWithText("Continue to Connections").performClick()
+        rule.waitUntil(30_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connected ·", substring = true))
+                true
+            }.getOrDefault(false)
+        }
+        checkpoint("connections")
+        rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+        rule.waitUntil(60_000) {
+            rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
+        }
+        checkpoint("transfers")
         // No screenshot is permitted while the credentials field is onscreen.
         rule.onNodeWithText("Password").assertDoesNotExist()
-
-        val totals = rule.onAllNodesWithText("transfers in the 'main' server view", substring = true)
-            .fetchSemanticsNodes()
-        assertTrue("The actual main view should render a server inventory summary", totals.isNotEmpty())
-        val summary = totals.first().config[SemanticsProperties.Text].joinToString(" ")
-        val count = Regex("(\\d+) transfers in the 'main' server view").find(summary)
-            ?.groupValues?.get(1)?.toIntOrNull()
-        assertTrue("Real development server returned an empty or malformed queue", count != null && count > 0)
-
-        // Only the authenticated transfer screen is captured. Never record login.
+        // The canonical summary counts the exact signed-in scope. The primary is a
+        // live seedbox, so accept the independent count read before or after.
+        var shown: Int? = null
+        try {
+            rule.waitUntil(60_000) {
+                val text = rule.onAllNodesWithText(" transfers · ", substring = true).fetchSemanticsNodes()
+                    .firstOrNull()?.config?.let { c -> if (androidx.compose.ui.semantics.SemanticsProperties.Text in c) c[androidx.compose.ui.semantics.SemanticsProperties.Text] else null }
+                    ?.joinToString(" ").orEmpty()
+                shown = Regex("^(\\d+) transfers · ").find(text)?.groupValues?.get(1)?.toIntOrNull()
+                shown != null && (shown == before || shown == serverCount())
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            checkpoint("inventory-mismatch")
+            throw AssertionError("Installed count did not match the independent read-only count")
+        }
         checkpoint("inventory")
         captureConnectedQueue("seedhost-android-queue-live")
         checkpoint("first-capture")
-        rule.onNodeWithText("Refresh").performClick()
-        checkpoint("refresh-click")
-        rule.waitUntil(30_000) {
-            rule.onAllNodesWithText("Refreshing…").fetchSemanticsNodes().isNotEmpty()
-        }
-        checkpoint("refresh-busy")
-        rule.waitUntil(90_000) {
-            rule.onAllNodesWithText("Refresh", substring = false).fetchSemanticsNodes().isNotEmpty()
-        }
-        rule.onNodeWithText("It's all here.").assertExists()
-        rule.onNodeWithText("Refresh problem").assertDoesNotExist()
-        checkpoint("refresh-idle")
-        captureConnectedQueue("seedhost-android-queue-refreshed-live")
-        checkpoint("final-capture")
 
-        // This is an additional READ-ONLY installed UI journey. It never
-        // supplies a magnet, selects a .torrent, or presses Review/Confirm.
-        // The same actual Seedhost adapter must render the Add destinations
-        // without inventing a Chunks folder on the remote server.
-        rule.onNodeWithText("+ Add torrent").performClick()
+        // Additional READ-ONLY Add review on the same account: no source is
+        // supplied, so the single Add action must stay unusable while the
+        // server's own Save-to is shown. Nothing is created on the server.
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
         rule.waitUntil(30_000) {
-            rule.onAllNodesWithText("A place for every download.").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_TARGET_REMOTE)).fetchSemanticsNodes().isNotEmpty()
+        }
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("Adding to: Wood", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         checkpoint("add-open")
-        // The Add screen is another LazyColumn. Once the destination-status
-        // request settles, explicitly compose the custom folder item before
-        // asserting it exists; a label offscreen is otherwise not discoverable.
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Custom server folder (optional)")
-        )
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Custom server folder (optional)"))
         rule.onNodeWithText("Custom server folder (optional)").assertExists()
-        rule.waitUntil(30_000) {
-            val hasDefault = rule.onAllNodesWithText("Using rTorrent default Place:", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
-            val unavailable = rule.onAllNodesWithText("Using the server default without a folder override.", substring = true)
-                .fetchSemanticsNodes().isNotEmpty()
-            hasDefault || unavailable
-        }
-        rule.onNodeWithText("Add transfer").assertDoesNotExist()
-        // No preview candidate exists, so the Add mutation must remain
-        // impossible while we inspect this genuine connected screen.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsNotEnabled()
         captureConnectedQueue("seedhost-android-add-readonly-live")
         checkpoint("add-preview")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Back to transfers"))
-        rule.onNodeWithText("Back to transfers").performClick()
-        rule.onNodeWithText("It's all here.").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+        rule.waitUntil(30_000) {
+            rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
+        }
         checkpoint("add-return")
     }
 }
