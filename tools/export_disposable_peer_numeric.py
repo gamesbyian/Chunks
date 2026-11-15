@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import re
 
-SOURCES = ("magnet0", "magnet", "magnet3", "magnet2", "magnet4")
+SOURCES = ("magnet0", "magnet", "magnet3", "magnet5", "magnet2", "magnet4")
 PHASES = frozenset(("preflight", "metadata", "payload", "resume"))
 METRICS = ("epoch_ms", "verified_bytes", "available_pieces",
            "uploaded_bytes", "upload_rate", "peer_count")

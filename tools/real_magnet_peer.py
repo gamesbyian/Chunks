@@ -63,7 +63,7 @@ def fetch(url, limit, offset=0):
 
 def prepare(root):
     sources = {}
-    for label, architecture in (("magnet", "arm64"), ("magnet3", "amd64")):
+    for label, architecture in (("magnet", "arm64"), ("magnet3", "amd64"), ("magnet5", "ppc64el")):
         manifest, raw = debian_fixture(2 * 1024**3, architecture=architecture)
         sources[label] = (raw, manifest["torrent_url"].replace("/bt-cd/", "/iso-cd/").removesuffix(".torrent"),
                           manifest["source_url"], manifest["license"])
@@ -128,7 +128,7 @@ def prepare(root):
                 early_out.truncate(length)
                 wanted = min(remaining, length)
                 if wanted:
-                    url = payload_source if label in ("magnet", "magnet3") else payload_source + urllib.parse.quote(str(relative))
+                    url = payload_source if label in ("magnet", "magnet3", "magnet5") else payload_source + urllib.parse.quote(str(relative))
                     source_bytes = fetch(url, wanted)
                     out.write(source_bytes)
                     early_wanted = min(early_remaining, wanted)
@@ -144,7 +144,7 @@ def prepare(root):
             "prefix_bytes": budget, "early_prefix_bytes": early_budget,
             "source": source, "license": license_text,
             "torrent_url": (payload_source.replace("/iso-cd/", "/bt-cd/") + ".torrent"
-                            if label in ("magnet", "magnet3") else source),
+                            if label in ("magnet", "magnet3", "magnet5") else source),
             "metainfo_sha256": hashlib.sha256(raw).hexdigest(),
             "original_source_metainfo_sha256": source_meta_sha256,
             "tracker_scope": "disposable-loopback" if isolate_discovery else "original-public",

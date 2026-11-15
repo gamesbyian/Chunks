@@ -38,7 +38,8 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
                  "INSTRUMENTATION_STATUS_CODE: 1",
                  "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet0=" + "f" * 40,
                  "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet3=" + "d" * 40,
-                 "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet4=" + "e" * 40]
+                 "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet4=" + "e" * 40,
+                 "INSTRUMENTATION_STATUS: chunks_real_add_hash_magnet5=" + "9" * 40]
         for stage in ("preflight", "review", "ui-verified", "registered", "metadata", "fixture-precompleted", "removed"):
             lines.append("INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet0-" + stage)
         lines.append("INSTRUMENTATION_STATUS: chunks_real_add_traffic_magnet0_initial=0,65536,65536,0,0")
@@ -133,6 +134,35 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
                     raw + "\nINSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-uncertain",
                     raw + "\nINSTRUMENTATION_STATUS: chunks_real_add_traffic_magnet_initial=0,1000000,1000000,0,0",
                     raw.replace("chunks_real_add_stage=magnet3-passed", "ignored=exhausted")):
+            self.assertNotEqual("passed", parse(bad, 0, env)["result"])
+
+    def test_third_candidate_passes_after_precompleted_and_existing_session(self):
+        # Live run 43766050784: the Seedhost already held the arm64 payload and an
+        # amd64 session; only a third, untouched candidate can still qualify.
+        env = dict(self.env, CHUNKS_CONTROLLED_PEER="1", CHUNKS_DISPOSABLE="1")
+        lines = self.controlled_log().splitlines()
+        start = next(i for i, s in enumerate(lines) if s.endswith("stage=magnet-preflight"))
+        end = next(i for i, s in enumerate(lines) if "traffic_magnet_resumed=" in s)
+        third = [s.replace("stage=magnet-", "stage=magnet5-")
+                   .replace("traffic_magnet_", "traffic_magnet5_") for s in lines[start:end + 1]]
+        precompleted = [
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-" + stage for stage in
+            ("preflight", "review", "ui-verified", "registered", "metadata")] + [
+            "INSTRUMENTATION_STATUS: chunks_real_add_traffic_magnet_initial=0,1000000,1000000,0,0",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-fixture-precompleted",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet-removed",
+            "INSTRUMENTATION_STATUS: chunks_real_add_stage=magnet3-already-present"]
+        raw = "\n".join(lines[:start] + precompleted + third + lines[end + 1:])
+        result = parse(raw, 0, env)
+        self.assertEqual("passed", result["result"])
+        self.assertTrue(result["sources"]["magnet5"]["passed"])
+        self.assertEqual("debian-ppc64el", result["sources"]["magnet5"]["source_id"])
+        # Negative controls: a skipped candidate that was not really skipped,
+        # a second pass in the same group, or the third never passing.
+        for bad in (raw.replace("chunks_real_add_stage=magnet3-already-present", "ignored=missing"),
+                    raw.replace("chunks_real_add_stage=magnet-removed", "ignored=missing"),
+                    raw + "\nINSTRUMENTATION_STATUS: chunks_real_add_stage=magnet3-registered",
+                    raw.replace("chunks_real_add_stage=magnet5-passed", "ignored=exhausted")):
             self.assertNotEqual("passed", parse(bad, 0, env)["result"])
 
     def test_existing_session_rotates_without_claiming_cleanup(self):
