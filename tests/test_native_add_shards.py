@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from verify_native_add_shards import (
     verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS,
-    HTTPS_LOCAL_ID, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS,
+    HTTPS_LOCAL_ID, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS, RESUME_DEATH_OPT_IN_IDS,
 )
 
 
@@ -220,6 +220,32 @@ class ShardedNativeAddTests(unittest.TestCase):
         self.change(0, lambda d: d["test_cases"][36].update(id_sha256=media_ids[1]))
         self.change(1, lambda d: d["test_cases"][0].update(id_sha256=media_ids[1]))
         with self.assertRaisesRegex(ValueError, "overlapping shard identity"):
+            self.check()
+
+    def test_only_both_exact_resume_death_phases_can_extend_existing_skip_ceiling(self):
+        # Both phases need a real process kill between them, so they execute only
+        # in installed-partial-resume-death.yml; native Add reports them skipped.
+        expected = {
+            hashlib.sha256(("io.github.gamesbyian.chunks.engine."
+                "LocalPartialResumeProcessDeathInstrumentedTest" + "\\0" + name).encode()).hexdigest()
+            for name in ("downloadThenDie", "restoreKeepsCheckpointedPieces")
+        }
+        self.assertEqual(expected, RESUME_DEATH_OPT_IN_IDS)
+        ids = sorted(RESUME_DEATH_OPT_IN_IDS)
+
+        def reviewed_skips(d):
+            for case in d["test_cases"][:36]:
+                case["outcome"] = "skipped"
+            d["test_cases"][34]["id_sha256"] = ids[0]
+            d["test_cases"][35]["id_sha256"] = ids[1]
+            d["junit"]["executed"] = 145
+            d["junit"]["skipped"] = 36
+
+        self.change(0, reviewed_skips)
+        self.assertEqual(36, self.check()["junit"]["skipped"])
+        # No other test can borrow either exemption.
+        self.change(0, lambda d: d["test_cases"][35].update(id_sha256="e" * 64))
+        with self.assertRaisesRegex(ValueError, "excessive skips"):
             self.check()
 
     def test_reject_shard_without_executed_evidence(self):

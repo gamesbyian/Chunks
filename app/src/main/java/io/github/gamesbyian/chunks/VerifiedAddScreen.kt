@@ -605,6 +605,11 @@ internal fun VerifiedAddScreen(
                 }
             }
         }
+        if (!alreadyAttempted && addDestinationPicker != null) item {
+            addDestinationPicker()
+        }
+        // Below the target row, as on Local: this choice appears only after an IO
+        // read, and must never shift the Add-to controls under a pending tap.
         val shownHandling = originalHandling
         if (!alreadyAttempted && originalDocument != null && shownHandling != null) item {
             OriginalTorrentHandlingChoice(
@@ -612,9 +617,6 @@ internal fun VerifiedAddScreen(
                 enabled = !submitting && !choosing,
                 deleteAvailable = originalDeletable,
                 onSelect = { originalHandling = it })
-        }
-        if (!alreadyAttempted && addDestinationPicker != null) item {
-            addDestinationPicker()
         }
         // The same position owns the target and subsequent operation status.
         // A result replaces the intro rather than creating a second status card.

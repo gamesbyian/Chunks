@@ -744,6 +744,7 @@ internal fun ChunksApp(
                 serverHandoffTorrent = if (addUsingAuthenticatedRemote && server != null &&
                     RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope) != null)
                     reviewed.bytes.copyOf() else null
+                serverHandoffDocument = document.takeIf { serverHandoffTorrent != null }
                 localHandoffTorrentUri = null
                 magnet = ""
                 remoteAddSessions.clearPendingSourceSelection()
