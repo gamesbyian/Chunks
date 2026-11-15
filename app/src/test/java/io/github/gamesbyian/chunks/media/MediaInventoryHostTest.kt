@@ -105,4 +105,33 @@ class MediaInventoryHostTest {
         h.host.feed(snapshot("epoch-1", local to "Hackers.1995"))
         assertNull(h.host.retained)
     }
+
+    /**
+     * The screen can observe a new privacy/policy generation (e.g. connecting a server)
+     * before the activity's epoch collector does. An unchanged inventory, such as a stopped
+     * remote job, is never fed again, so refusing that early feed starved enrichment forever
+     * (installed remote-artwork run 43692524940). It must start once the host confirms it.
+     */
+    @Test fun aFeedThatArrivesBeforeItsGenerationIsConfirmedStartsOnceConfirmed() = runBlocking {
+        val h = Harness()
+        h.host.privacyEpoch("1/0")
+        h.host.feed(snapshot("1/1", remote to "Babylon.5.S02E07.Soul.Mates.1080p.WEB-DL.x264-GRP.mkv"))
+        assertNull("Not yet confirmed: no authority", h.host.retained)
+        h.host.privacyEpoch("1/1")
+        assertTrue("Enrichment must start once the generation is confirmed",
+            kotlinx.coroutines.withTimeoutOrNull(5_000) { h.entered.await() } != null)
+        h.release.complete(Unit)
+        assertEquals(listOf("Babylon.5.S02E07.Soul.Mates.1080p.WEB-DL.x264-GRP.mkv"), h.committed)
+        assertEquals(setOf(key(remote)), h.host.retained?.entries?.map { it.first }?.toSet())
+    }
+
+    @Test fun aStaleRefusedFeedIsNeverAcceptedUnderALaterGeneration() = runBlocking {
+        val h = Harness()
+        h.host.privacyEpoch("epoch-2")
+        h.host.feed(snapshot("epoch-1", local to "Hackers.1995"))
+        h.host.privacyEpoch("epoch-3")
+        assertNull(h.host.retained)
+        assertFalse(h.entered.isCompleted)
+        assertEquals(emptyList<String>(), h.committed)
+    }
 }
