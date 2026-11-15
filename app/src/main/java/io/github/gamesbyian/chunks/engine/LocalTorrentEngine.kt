@@ -277,7 +277,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             AlertType.SAVE_RESUME_DATA_FAILED.swig(), AlertType.METADATA_RECEIVED.swig(),
             AlertType.CACHE_FLUSHED.swig(), AlertType.TORRENT_DELETED.swig(),
             AlertType.TORRENT_DELETE_FAILED.swig(), AlertType.TORRENT_FINISHED.swig(),
-            AlertType.FILE_ERROR.swig())
+            AlertType.FILE_ERROR.swig(), AlertType.TORRENT_CHECKED.swig())
         override fun alert(alert: Alert<*>) {
             // Removed handles disappear from handles[] before the async alert.
             // Consume exactly the matching v1 infohash without acquiring the
@@ -304,6 +304,25 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             }
             val handle = (alert as? TorrentAlert<*>)?.handle() ?: return
             val key = synchronized(handles) { handles.entries.firstOrNull { it.value == handle }?.key } ?: return
+            if (alert.type() == AlertType.TORRENT_CHECKED) {
+                // Checking is complete, even if stop_when_ready fired early
+                // while the magnet was still transferring its metadata.
+                // The still-set UPLOAD_MODE prevents payload download between
+                // this alert and the pause. An explicit Start/Stop or Remove
+                // revokes this exact-handle intent before the callback.
+                synchronized(handles) {
+                    if (handles[key] == handle && stopAfterMagnetCheck.remove(key, handle)) {
+                        try {
+                            handle.pause()
+                            handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
+                        } catch (_: Exception) {
+                            // No false stopped claim; the native state remains
+                            // observable. Never blind-retry this mutation.
+                        }
+                    }
+                }
+                return
+            }
             if (alert.type() == AlertType.FILE_ERROR) {
                 // Keep the first failure; it is the one that left bytes unwritten.
                 storageFileErrors.putIfAbsent(key, handle to
@@ -359,6 +378,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
 
     // Keys whose TORRENT_FINISHED arrived while an earlier save was pending.
     private val completionResaveWanted = ConcurrentHashMap.newKeySet<String>()
+    // A Start-off magnet can already be downloading metadata when the
+    // edge-triggered STOP_WHEN_READY flag is set. Native may fire/clear it
+    // before the resume() required to check existing files. Preserve the
+    // explicit stopped intent for the exact handle through TORRENT_CHECKED.
+    private val stopAfterMagnetCheck = ConcurrentHashMap<String, TorrentHandle>()
 
     /**
      * Non-blocking, handle-fenced completion checkpoint; safe on the alert
@@ -405,14 +429,19 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                     // "Stopped after verification" for a Start-off magnet over files already
                     // at its exact paths: libtorrent's own check (peers disconnected while
                     // checking) stops the job itself before any transfer. Never a Start.
+                    stopAfterMagnetCheck[key] = handle
                     try {
                         handle.forceRecheck()
                         handle.setFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
                         handle.resume()
                     } catch (_: Exception) {
+                        stopAfterMagnetCheck.remove(key, handle)
                         runCatching { handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY); handle.pause() }
                     }
-                } else handle.pause()
+                } else {
+                    stopAfterMagnetCheck.remove(key, handle)
+                    handle.pause()
+                }
             } else {
                 handle.unsetFlags(org.libtorrent4j.TorrentFlags.UPLOAD_MODE)
                 handle.resume()
@@ -1071,7 +1100,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
             // An explicit Start is the retry after the person freed space or
             // fixed access; a new failed write records a fresh error.
             storageFileErrors.remove(key)
-            // An ordinary Start must never inherit a recheck's auto-stop.
+            // An explicit Start supersedes the Start-off magnet's deferred
+            // checked-alert pause as well as the native auto-stop flag.
+            stopAfterMagnetCheck.remove(key, handle)
             handle.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
             // Files shortened or removed while stopped would otherwise be
             // served as complete: libtorrent re-hashes before any transfer,
@@ -1258,7 +1289,9 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         command(infoHash, wantStopped = true, readbackTimeoutMs) {
             // User Stop overrides any earlier Add-and-start consent while
             // magnet metadata is in flight, and any pending recheck auto-stop.
-            startWhenMetadataArrives.remove(normal(infoHash))
+            val key = normal(infoHash)
+            startWhenMetadataArrives.remove(key)
+            stopAfterMagnetCheck.remove(key, it)
             it.unsetFlags(org.libtorrent4j.TorrentFlags.STOP_WHEN_READY)
             it.pause()
             true
@@ -1977,6 +2010,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         nativeReviewTokens.remove(key)
         awaitingMetadata.remove(key)
         startWhenMetadataArrives.remove(key)
+        stopAfterMagnetCheck.remove(key)
         magnetCollisionProblems.remove(key)
         checkedFirstStarts.remove(key)
         restoredNativeJobs.remove(key)
@@ -2160,6 +2194,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         handles.clear()
         awaitingMetadata.clear()
         startWhenMetadataArrives.clear()
+        stopAfterMagnetCheck.clear()
         magnetCollisionProblems.clear()
         checkedFirstStarts.clear()
         restoredNativeJobs.clear()
