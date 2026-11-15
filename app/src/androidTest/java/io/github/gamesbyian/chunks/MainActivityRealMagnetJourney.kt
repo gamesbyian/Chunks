@@ -145,7 +145,7 @@ internal class MainActivityRealMagnetJourney(
         rule.waitForIdle()
     }
     private fun report(key: String, value: String) {
-        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[0234]?|negative)|traffic_magnet[0234]?_(initial|resumed)|diagnostic_magnet[0234]?|negative|negative_stage|app_stage)")))
+        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[02345]?|negative)|traffic_magnet[02345]?_(initial|resumed)|diagnostic_magnet[02345]?|negative|negative_stage|app_stage)")))
         require(value.length <= 160 && value.matches(Regex("[a-z0-9,=-]+")))
         InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply { putString(key, value) })
     }
@@ -215,7 +215,7 @@ internal class MainActivityRealMagnetJourney(
         throw last!!
     }
     private fun controller(path: String, port: Long? = null): ByteArray {
-        require(path.matches(Regex("/magnet[0234]?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
+        require(path.matches(Regex("/magnet[02345]?(\\.(torrent|magnet)|/(metadata|payload|resume))")))
         val connection = URL("http://127.0.0.1:18081$path").openConnection() as HttpURLConnection
         connection.connectTimeout = 5_000; connection.readTimeout = 60_000
         connection.instanceFollowRedirects = false
@@ -278,7 +278,7 @@ internal class MainActivityRealMagnetJourney(
             "No independently corroborated server Place; no Add allowed"
         }
         val groups = listOf((if (disposable && !publicDiscovery) listOf("magnet0") else emptyList()) +
-            listOf("magnet", "magnet3"), listOf("magnet2", "magnet4"))
+            listOf("magnet", "magnet3", "magnet5"), listOf("magnet2", "magnet4"))
         val fixtures = groups.flatten().associateWith { label ->
             TorrentMetainfoReader.preview(controller("/$label.torrent")).also { preview ->
                 report("chunks_real_add_hash_$label", preview.infoHashV1)

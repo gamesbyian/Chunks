@@ -11,7 +11,7 @@ from pathlib import Path
 import re
 
 SOURCES = ("magnet", "magnet2")
-CANDIDATE_GROUPS = (("magnet", "magnet3"), ("magnet2", "magnet4"))
+CANDIDATE_GROUPS = (("magnet", "magnet3", "magnet5"), ("magnet2", "magnet4"))
 CANDIDATES = tuple(source for group in CANDIDATE_GROUPS for source in group)
 PHASES = ("preflight", "review", "ui-verified", "registered",
           "readback-error", "metadata", "metadata-already-resolved", "peer-progress", "bytes-verified",
@@ -57,8 +57,8 @@ def parse(raw, exit_code, env=None):
     runner = {"started_tests": 0, "passed_tests": 0, "failed_tests": 0,
               "total_test_end_codes": 0, "runner_finished": False,
               "exception_classes": []}
-    allow = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet[0234]?)-([a-z-]+)$")
-    hashes = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_hash_(magnet[0234]?)=([a-f0-9]{40})$")
+    allow = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_stage=(magnet[02345]?)-([a-z-]+)$")
+    hashes = re.compile(r"^INSTRUMENTATION_STATUS: chunks_real_add_hash_(magnet[02345]?)=([a-f0-9]{40})$")
     for line in raw.splitlines():
         if line.startswith("INSTRUMENTATION_STATUS: class="):
             candidate_class = line.split("class=", 1)[1]
@@ -84,7 +84,7 @@ def parse(raw, exit_code, env=None):
             peerless += 1
         if line == "INSTRUMENTATION_CODE: -1":
             terminal_count += 1
-        sample = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_traffic_(magnet[0234]?)_(initial|resumed)=([0-9,]{1,120})", line)
+        sample = re.fullmatch(r"INSTRUMENTATION_STATUS: chunks_real_add_traffic_(magnet[02345]?)_(initial|resumed)=([0-9,]{1,120})", line)
         if sample and sample.group(1) in traffic:
             values = sample.group(3).split(",")
             if len(values) == 5 and all(v.isdecimal() and 0 <= int(v) < 2**63 for v in values):
@@ -92,7 +92,7 @@ def parse(raw, exit_code, env=None):
                 traffic[sample.group(1)][sample.group(2)] = dict(zip(
                     ("received", "verified", "expected", "peers", "rate"), map(int, values)))
         diagnostic = re.fullmatch(
-            r"INSTRUMENTATION_STATUS: chunks_real_add_diagnostic_(magnet[0234]?)="
+            r"INSTRUMENTATION_STATUS: chunks_real_add_diagnostic_(magnet[02345]?)="
             r"(state=[01],active=[01],open=[01],phase=[0-3x],"
             r"hashfailed=[01x],hashing=[01x],meta=[01x],"
             r"message=(?:none|storage|tracker-or-network|hash-check|other|unknown)|unavailable)",
@@ -127,7 +127,7 @@ def parse(raw, exit_code, env=None):
     for source in sources:
         counts = phases[source]
         per_source[source] = {
-            "source_id": ({"magnet0": "disposable-precompleted-negative", "magnet": "debian-arm64", "magnet3": "debian-amd64", "magnet2": "blender-sintel", "magnet4": "blender-big-buck-bunny"}[source] if controlled else
+            "source_id": ({"magnet0": "disposable-precompleted-negative", "magnet": "debian-arm64", "magnet3": "debian-amd64", "magnet5": "debian-ppc64el", "magnet2": "blender-sintel", "magnet4": "blender-big-buck-bunny"}[source] if controlled else
                           ("ubuntu-25.10-live-server" if source == "magnet" else "ubuntu-25.10-desktop")),
             "traffic": traffic[source],
             "traffic_sample_counts": traffic_counts[source],
@@ -186,12 +186,22 @@ def parse(raw, exit_code, env=None):
                 item["traffic"]["initial"].get("verified") == item["traffic"]["initial"]["expected"])
         if has_negative:
             complete = complete and precompleted(per_source["magnet0"])
+        def skipped(item):
+            return (item["phase_counts"]["already-present"] == 1 and
+                    sum(item["phase_counts"].values()) == 1) or precompleted(item)
+
+        def unused(item):
+            return sum(item["phase_counts"].values()) == 0 and not item["traffic"]
+
         for group in CANDIDATE_GROUPS:
-            first, alternate = (per_source[source] for source in group)
-            skipped = (first["phase_counts"]["already-present"] == 1 and
-                       sum(first["phase_counts"].values()) == 1) or precompleted(first)
-            unused = sum(alternate["phase_counts"].values()) == 0 and not alternate["traffic"]
-            complete = complete and ((first["passed"] and unused) or (skipped and alternate["passed"]))
+            # Candidates are tried in order: every one before the single passing
+            # candidate was skipped (an existing session or precompleted payload),
+            # and every one after it was never touched.
+            items = [per_source[source] for source in group]
+            passing = [index for index, item in enumerate(items) if item["passed"]]
+            complete = complete and len(passing) == 1 and \
+                all(skipped(item) for item in items[:passing[0]]) and \
+                all(unused(item) for item in items[passing[0] + 1:])
         for source in sources:
             if not per_source[source]["passed"]:
                 continue

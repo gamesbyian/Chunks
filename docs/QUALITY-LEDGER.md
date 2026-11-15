@@ -6,6 +6,11 @@
 > - **No Connect, Add or any mutation was sent.** The peer receipt shows 0 peer connections.
 > - The receipt's exception class was `OtherFailure`: the parser allowlist lacked common network classes (`SocketException`, `SSLHandshakeException`, `EOFException`, …), now added. The Nov-9 live run failed the same way. The protected Stop/Start and inventory-media journeys reached this host from the emulator today, so the cause is specific to this harness, the host or the runner, and is not established.
 > - Second dispatch [43762449778](https://github.com/gamesbyian/Chunks/actions/runs/43762449778) on `9063607` (after #1771): the read-only RPCs **succeeded**, so the first red was transient. The run then failed at `MainActivityRealMagnetJourney.kt:288`, `onNodeWithText("Connections").assertExists()`, still at `runner-ready` and before any Connect or Add. A fresh install composes both Welcome's and the footer's "Connections", the same defect #1764 fixed in the protected journeys. Now fixed with the same locator.
+> - Third dispatch [43766050784](https://github.com/gamesbyian/Chunks/actions/runs/43766050784) on `a0cab06` (after #1772) **reached real mutation on the primary through the installed app**. App stages: Connect → queue → Add (Debian arm64 public magnet) → registered → Details → Stop → **Remove, keep data**, with cleanup `verified-by-exact-readback`.
+>   - That candidate was already complete on the host: 735,358,976 of 735,358,976 bytes verified, 0 received. It was correctly treated as `fixture-precompleted`, so no download is claimed.
+>   - The group's other candidate (Debian amd64) was `already-present` as a session and was untouched.
+>   - The run then failed at `MainActivityRealMagnetJourney.kt:949`: every group-1 candidate was unavailable or precompleted (#1041).
+>   - No other inventory changed. Pieces, Stop/Start growth and the peerless negative remain unproven on the real host.
 
 > **V2 COMPOSE RULE SWEEP + PROTECTED REAL-INVENTORY ARTWORK JOURNEY · 2026-11-15:**
 > - The remaining 105 JVM Compose test classes were moved from the deprecated v1 rule to v2, changing imports only. Two full local `:app:testDebugUnitTest` runs (511 classes each) were clean apart from the known container-only `CreateSeedCopyAcquisitionRaceTest` (JDK 21 SecurityManager) and `LocalCheckedPayloadReservationsTest` (no UTF-8 locale) failures.

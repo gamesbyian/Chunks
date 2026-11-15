@@ -336,7 +336,7 @@ def archive_fixture(identifier, max_total_bytes):
 
 def debian_fixture(max_total_bytes, architecture="amd64"):
     """One current official netinst torrent, verified by SHA256SUMS."""
-    if architecture not in ("amd64", "arm64"):
+    if architecture not in ("amd64", "arm64", "ppc64el"):
         raise ValueError("Unsupported official Debian architecture")
     base = DEBIAN_BT_CD.replace("/amd64/", "/" + architecture + "/")
     pattern = re.compile(DEBIAN_NETINST.pattern.replace("amd64", architecture))
