@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 from verify_native_add_shards import (
     verify, BASELINE_JUNIT_TESTS, BASELINE_EXECUTED_TESTS,
-    HTTPS_LOCAL_ID, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS, RESUME_DEATH_OPT_IN_IDS,
+    HTTPS_LOCAL_ID, INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS, DEDICATED_WORKFLOW_OPT_IN_IDS,
 )
 
 
@@ -222,7 +222,7 @@ class ShardedNativeAddTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "overlapping shard identity"):
             self.check()
 
-    def test_only_both_exact_resume_death_phases_can_extend_existing_skip_ceiling(self):
+    def test_only_exact_dedicated_workflow_cases_can_extend_existing_skip_ceiling(self):
         # Both phases need a real process kill between them, so they execute only
         # in installed-partial-resume-death.yml; native Add reports them skipped.
         expected = {
@@ -230,8 +230,11 @@ class ShardedNativeAddTests(unittest.TestCase):
                 "LocalPartialResumeProcessDeathInstrumentedTest" + "\\0" + name).encode()).hexdigest()
             for name in ("downloadThenDie", "restoreKeepsCheckpointedPieces")
         }
-        self.assertEqual(expected, RESUME_DEATH_OPT_IN_IDS)
-        ids = sorted(RESUME_DEATH_OPT_IN_IDS)
+        expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
+            "RemoteOriginalTorrentHandlingInstalledInstrumentedTest" + "\\0" +
+            "archiveThenSeparatelyRemoveOriginalAfterVerifiedNewRemoteAdd").encode()).hexdigest())
+        self.assertEqual(expected, DEDICATED_WORKFLOW_OPT_IN_IDS)
+        ids = sorted(DEDICATED_WORKFLOW_OPT_IN_IDS)
 
         def reviewed_skips(d):
             for case in d["test_cases"][:36]:

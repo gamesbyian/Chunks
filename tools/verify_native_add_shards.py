@@ -50,12 +50,17 @@ INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS = frozenset(
 # Both phases of the installed process-death witness execute only from
 # tools/installed_partial_resume_death.sh (installed-partial-resume-death.yml),
 # where a real kill separates them. Exactly these identities may skip here.
-RESUME_DEATH_OPT_IN_IDS = frozenset(
+DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
     hashlib.sha256((
         "io.github.gamesbyian.chunks.engine.LocalPartialResumeProcessDeathInstrumentedTest" +
         "\\0" + name).encode()).hexdigest()
     for name in ("downloadThenDie", "restoreKeepsCheckpointedPieces")
-)
+) | frozenset({
+    # Needs the disposable ruTorrent server; executes in installed-remote-delete-data.yml.
+    hashlib.sha256((
+        "io.github.gamesbyian.chunks.RemoteOriginalTorrentHandlingInstalledInstrumentedTest" +
+        "\\0" + "archiveThenSeparatelyRemoveOriginalAfterVerifiedNewRemoteAdd").encode()).hexdigest()
+})
 
 
 def verify(root, count, sha, screenshot_manifest=None):
@@ -69,7 +74,7 @@ def verify(root, count, sha, screenshot_manifest=None):
     known_test_ids = set()
     https_local_skipped = 0
     installed_media_opt_in_skipped = 0
-    resume_death_opt_in_skipped = 0
+    dedicated_workflow_opt_in_skipped = 0
     for index in range(count):
         path = root / f"chunks-native-add-receipt-shard-{index}" / "digest.json"
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -99,8 +104,8 @@ def verify(root, count, sha, screenshot_manifest=None):
                 https_local_skipped += 1
             if ident in INSTALLED_PUBLIC_MEDIA_OPT_IN_IDS and case["outcome"] == "skipped":
                 installed_media_opt_in_skipped += 1
-            if ident in RESUME_DEATH_OPT_IN_IDS and case["outcome"] == "skipped":
-                resume_death_opt_in_skipped += 1
+            if ident in DEDICATED_WORKFLOW_OPT_IN_IDS and case["outcome"] == "skipped":
+                dedicated_workflow_opt_in_skipped += 1
         if int(j.get("tests", -1)) != int(j["executed"]) + int(j["skipped"]):
             raise ValueError("shard inconsistent JUnit skip/execute counts")
         if sum(case["outcome"] == "skipped" for case in cases) != int(j["skipped"]):
@@ -122,7 +127,7 @@ def verify(root, count, sha, screenshot_manifest=None):
     if (totals['tests'] < BASELINE_JUNIT_TESTS or
             totals['executed'] < BASELINE_EXECUTED_TESTS or
             totals['skipped'] - https_local_skipped -
-            installed_media_opt_in_skipped - resume_death_opt_in_skipped > MAX_BASELINE_SKIPPED):
+            installed_media_opt_in_skipped - dedicated_workflow_opt_in_skipped > MAX_BASELINE_SKIPPED):
         raise ValueError('below accepted complete JUnit coverage or excessive skips')
     screenshots = {}
     for name in manifest:
