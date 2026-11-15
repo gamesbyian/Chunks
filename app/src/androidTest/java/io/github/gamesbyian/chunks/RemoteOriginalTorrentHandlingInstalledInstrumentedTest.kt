@@ -170,9 +170,16 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                     visible("was moved into Chunks")
                 }
                 stage("original-removed")
-                // The share opens another MainActivity over the scenario's own;
-                // finish the whole task so ActivityScenario.close() can reach DESTROYED.
-                scenario.onActivity { it.finishAffinity() }
+                // The share opens another MainActivity over the scenario's own; finish
+                // every live instance so ActivityScenario.close() can reach DESTROYED.
+                instrumentation.runOnMainSync {
+                    val monitor = androidx.test.runner.lifecycle.ActivityLifecycleMonitorRegistry.getInstance()
+                    androidx.test.runner.lifecycle.Stage.values()
+                        .filter { it != androidx.test.runner.lifecycle.Stage.DESTROYED }
+                        .flatMap { monitor.getActivitiesInStage(it) }
+                        .distinct().forEach { it.finish() }
+                }
+                instrumentation.waitForIdleSync()
             }
             assertTrue("The confirmed original is gone", !stillReadable(document))
             assertTrue("Unrelated documents are untouched", stillReadable(sibling))
