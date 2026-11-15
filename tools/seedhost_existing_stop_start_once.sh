@@ -22,7 +22,7 @@ adb shell am instrument -w -r \
   io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
 status=$?
 set -e
-allowed='^(authorized|no-candidate|candidate|launch-failed|connect-control-missing|connect-failed|connections-missing|transfers-missing|connected|row-missing|stop-control-missing|row-expanded|stop-sent|stop-unverified|stopped-readback|start-control-missing|start-sent|start-unverified|started-readback|restored)$'
+allowed='^(authorized|no-candidate|candidate|launch-failed|form-missing|form-input-failed|connect-control-missing|connect-failed|connections-missing|transfers-missing|connected|row-missing|stop-control-missing|row-expanded|stop-sent|stop-unverified|stopped-readback|start-control-missing|start-sent|start-unverified|started-readback|restored)$'
 { grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$log" || true; } | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//; s/[[:cntrl:]]//g' |
   while read -r stage; do
     if [[ "$stage" =~ $allowed ]]; then echo "CHUNKS_STAGE: $stage"; else echo "CHUNKS_STAGE: unlisted"; fi

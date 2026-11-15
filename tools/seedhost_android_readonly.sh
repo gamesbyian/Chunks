@@ -44,7 +44,7 @@ if [ "$status" -ne 0 ] || ! grep -q '^INSTRUMENTATION_CODE: -1' "$log" ||
   # those could include user/pass or auth headers.
   checkpoint=$(grep -E '^INSTRUMENTATION_STATUS: chunks_stage=' "$log" | tail -n 1 | sed 's/^INSTRUMENTATION_STATUS: chunks_stage=//' | sed 's/[[:cntrl:]]//g' || true)
   case "$checkpoint" in
-    arguments|ground-truth|form|connect-visible|connect|verified|connections|transfers|inventory|inventory-mismatch|first-capture|add-open|add-preview|add-return|connect-error|connect-busy|connect-login-form|connect-no-visible-state|connect-identity-unverified|connect-auth-rejected|connect-tls-failed|connect-network-failed|connect-protocol-failed|connect-service-failed|connect-endpoint-missing|connect-proxy-or-rate-limited) ;;
+    arguments|ground-truth|launch-failed|form-missing|form-open|form-input-failed|form|connect-visible|connect|verified|connections|transfers|inventory|inventory-mismatch|first-capture|add-open|add-preview|add-return|connect-error|connect-busy|connect-login-form|connect-no-visible-state|connect-identity-unverified|connect-auth-rejected|connect-tls-failed|connect-network-failed|connect-protocol-failed|connect-service-failed|connect-endpoint-missing|connect-proxy-or-rate-limited) ;;
     *) checkpoint=unavailable ;;
   esac
   echo "::error::Protected Android Seedhost UI acceptance failed or skipped. Last safe stage: $checkpoint. Raw output withheld."

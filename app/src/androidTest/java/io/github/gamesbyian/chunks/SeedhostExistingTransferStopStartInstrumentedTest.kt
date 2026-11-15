@@ -67,6 +67,26 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
         remote.listTransfers("main").singleOrNull { it.hash.equals(hash, ignoreCase = true) }
     }
 
+    private fun textVisible(text: String) =
+        rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+
+    /** The same proven retrying entry used by the passing three-Seedhost journey. */
+    private fun typeInto(label: String, value: String): Boolean {
+        repeat(5) {
+            try {
+                if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label, substring = true))
+                rule.waitForIdle()
+                rule.onNodeWithText(label).performTextReplacement(value)
+                rule.waitForIdle()
+                return true
+            } catch (_: AssertionError) {
+                Thread.sleep(400)
+            }
+        }
+        return false
+    }
+
     @Test fun existingSeedingTransferStopsAndStartsFromTheInstalledApp() {
         assumeTrue("Protected explicit owner-authorized existing-transfer operation only",
             args.getString("chunks_existing_stop_start") == "authorized")
@@ -96,16 +116,18 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
         stage("candidate")
 
         // Installed journey: named Connect -> verified -> Connections -> View transfers.
-        waitOrStage("launch-failed", 30_000) {
-            rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_CONNECTIONS)).fetchSemanticsNodes().isNotEmpty()
+        waitOrStage("launch-failed", 30_000) { textVisible("Connections") }
+        rule.onNodeWithContentDescription("Connections").performClick()
+        waitOrStage("form-missing", 30_000) {
+            textVisible("Seedbox hostname, ruTorrent URL or RPC address") ||
+                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasText("Seedbox hostname, ruTorrent URL or RPC address")); true }.getOrDefault(false)
         }
-        rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connection name (optional)"))
-        rule.onNodeWithText("Connection name (optional)").performTextReplacement("Wood")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
-        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
-        rule.onNodeWithText("Username, if required").performTextReplacement(user)
-        rule.onNodeWithText("Password").performTextReplacement(password)
+        if (!(typeInto("Connection name (optional)", "Wood") &&
+                typeInto("Seedbox hostname, ruTorrent URL or RPC address", url) &&
+                typeInto("Username, if required", user) && typeInto("Password", password))) {
+            stage("form-input-failed"); throw AssertionError("Could not enter a Connect field")
+        }
         val connect = hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
         waitOrStage("connect-control-missing", 20_000) {
             runCatching {
@@ -180,7 +202,7 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
     }
 
     private companion object {
-        val STAGES = setOf("authorized", "no-candidate", "candidate", "launch-failed", "connect-control-missing",
+        val STAGES = setOf("authorized", "no-candidate", "candidate", "launch-failed", "form-missing", "form-input-failed", "connect-control-missing",
             "connect-failed", "connections-missing", "transfers-missing", "connected", "row-missing",
             "stop-control-missing", "row-expanded", "stop-sent", "stop-unverified", "stopped-readback",
             "start-control-missing", "start-sent", "start-unverified", "started-readback", "restored")

@@ -58,7 +58,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
      */
     private fun checkpoint(stage: String) {
         require(stage in setOf(
-            "arguments", "ground-truth", "form", "connect-visible", "connect", "verified",
+            "arguments", "ground-truth", "launch-failed", "form-missing", "form-open", "form-input-failed", "form", "connect-visible", "connect", "verified",
             "connections", "transfers", "inventory", "inventory-mismatch", "first-capture",
             "add-open", "add-preview", "add-return",
             "connect-error", "connect-busy", "connect-login-form", "connect-no-visible-state",
@@ -89,6 +89,26 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
         }, null, null) == 1)
     }
 
+    private fun textVisible(text: String) =
+        rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+
+    /** The same proven retrying entry used by the passing three-Seedhost journey. */
+    private fun typeInto(label: String, value: String): Boolean {
+        repeat(5) {
+            try {
+                if (rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty())
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(label, substring = true))
+                rule.waitForIdle()
+                rule.onNodeWithText(label).performTextReplacement(value)
+                rule.waitForIdle()
+                return true
+            } catch (_: AssertionError) {
+                Thread.sleep(400)
+            }
+        }
+        return false
+    }
+
     @Test fun authenticHttpsSeedhostInventoryRendersInTheInstalledApp() {
         val url = decoded("chunks_live_url_b64")
         val user = decoded("chunks_live_user_b64")
@@ -112,16 +132,25 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
 
         // Current journey (2026-11-15): Welcome -> Connections -> named Connect ->
         // verified acknowledgement -> Connections -> View transfers (canonical list).
-        rule.waitUntil(30_000) {
-            rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_CONNECTIONS)).fetchSemanticsNodes().isNotEmpty()
+        try {
+            rule.waitUntil(30_000) { textVisible("Connections") }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            checkpoint("launch-failed"); throw AssertionError("App did not launch to a Connections entry")
         }
-        rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connection name (optional)"))
-        rule.onNodeWithText("Connection name (optional)").performTextReplacement("Wood")
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
-        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
-        rule.onNodeWithText("Username, if required").performTextReplacement(user!!)
-        rule.onNodeWithText("Password").performTextReplacement(password!!)
+        rule.onNodeWithContentDescription("Connections").performClick()
+        try {
+            rule.waitUntil(30_000) { textVisible("Seedbox hostname, ruTorrent URL or RPC address") ||
+                runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(
+                    hasText("Seedbox hostname, ruTorrent URL or RPC address")); true }.getOrDefault(false) }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            checkpoint("form-missing"); throw AssertionError("Connection form did not open")
+        }
+        checkpoint("form-open")
+        if (!(typeInto("Connection name (optional)", "Wood") &&
+                typeInto("Seedbox hostname, ruTorrent URL or RPC address", url) &&
+                typeInto("Username, if required", user!!) && typeInto("Password", password!!))) {
+            checkpoint("form-input-failed"); throw AssertionError("Could not enter a Connect field")
+        }
         checkpoint("form")
         val connect = hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
         rule.waitUntil(20_000) {
