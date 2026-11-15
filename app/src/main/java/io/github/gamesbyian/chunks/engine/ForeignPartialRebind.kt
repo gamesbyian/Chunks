@@ -29,6 +29,8 @@ internal object ForeignPartialRebind {
     fun adopt(root: File, approved: List<ForeignPartialLayoutScanner.Candidate>): Result {
         if (approved.isEmpty()) return Result.Refused("Nothing approved", true)
         if (approved.any { !it.kind.importable }) return Result.Refused("Auxiliary state cannot be adopted", true)
+        if (approved.any { it.sharedOrUnknownLinks })
+            return Result.Refused("A partial file shares its data with another file name", true)
         if (approved.map { it.declaredPath }.toSet().size != approved.size)
             return Result.Refused("Several candidates approved for one file", true)
         // Revalidate against the live filesystem instead of trusting a stale scan.
@@ -46,6 +48,9 @@ internal object ForeignPartialRebind {
             val match = fresh.candidates.firstOrNull {
                 it.declaredPath == c.declaredPath && it.kind == c.kind && it.sizeBytes == c.sizeBytes
             } ?: return Result.Refused("Candidate changed since review", rollback())
+            // The fresh scan re-read the link count; writes through a hard link would change another file.
+            if (match.sharedOrUnknownLinks)
+                return Result.Refused("A partial file shares its data with another file name", rollback())
             val to = base.resolve(match.declaredPath)
             val from = base.resolve(match.relativeCandidatePath)
             try {

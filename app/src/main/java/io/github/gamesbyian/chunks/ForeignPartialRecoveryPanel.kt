@@ -142,6 +142,10 @@ private fun ForeignPartialOfferFacts(offer: ForeignPartialAddPlan.Offer) {
     if (offer.untouchedAuxiliary > 0) Text(offer.untouchedAuxiliary.toString() +
         (if (offer.untouchedAuxiliary == 1) " control or fragment file is" else " control or fragment files are") +
         " not supported and will be left untouched.", style = MaterialTheme.typography.bodySmall)
+    if (offer.linkedFiles > 0) Text(offer.linkedFiles.toString() +
+        (if (offer.linkedFiles == 1) " partial file shares" else " partial files share") +
+        " its data with another file name and will be left untouched, so that file cannot change.",
+        style = MaterialTheme.typography.bodySmall)
     if (offer.truncated) Text("Only the first partial files were listed.",
         style = MaterialTheme.typography.bodySmall)
 }
