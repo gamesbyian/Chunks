@@ -33,6 +33,8 @@ on:
       # workflow owns both installed phases, source digest and zero-request proof.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledAutomaticPublicMediaInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteDeleteDataInstalledInstrumentedTest.kt"
+      # Manual public-provider remote artwork proof owns this opt-in class.
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/InstalledRemotePublicMediaInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/RemoteOriginalTorrentHandlingInstalledInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksLauncherIconInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ChunksBrandHeaderInstrumentedTest.kt"
