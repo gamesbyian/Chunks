@@ -36,6 +36,20 @@ class RemoteFolderBreadcrumbsTest {
         assertTrue(remoteFolderBreadcrumbs("/srv/wood/downloads", null).isEmpty())
     }
 
+    @Test fun manualModeStartsAtTheActuallyBrowsedFolderWithoutDiscardingTypedDraft() {
+        assertEquals("/srv/wood/downloads/TV",
+            remoteManualEntrySeed("/srv/wood/downloads", false,
+                "/srv/wood/downloads/TV"))
+        // After one manual edit, toggling Browse and returning cannot replace
+        // the user-entered path with a different browsed directory.
+        assertEquals("/srv/wood/custom",
+            remoteManualEntrySeed("/srv/wood/custom", true,
+                "/srv/wood/downloads/Movies"))
+        // Manual fallback when listing is unavailable is still usable.
+        assertEquals("/srv/wood/initial",
+            remoteManualEntrySeed("/srv/wood/initial", false, null))
+    }
+
     @Test fun filesystemRootDoesNotProduceDoubleSlashes() {
         assertEquals(
             listOf(RemoteFolderCrumb("/", "Root"), RemoteFolderCrumb("/TV", "TV")),
