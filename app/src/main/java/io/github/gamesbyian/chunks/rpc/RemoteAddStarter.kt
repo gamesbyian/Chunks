@@ -19,10 +19,12 @@ internal object RemoteAddStarter {
     suspend fun run(
         startAfterVerifiedAdd: Boolean,
         add: suspend () -> RemoteAddOutcome,
-        start: suspend (String) -> LifecycleOutcome
+        start: suspend (String) -> LifecycleOutcome,
+        /** Evaluated after a verified stopped Add: false keeps the job stopped (no Start sent). */
+        startAllowed: () -> Boolean = { true }
     ): RemoteAddAndStart {
         val result = add()
-        if (!startAfterVerifiedAdd || result !is RemoteAddOutcome.VerifiedStopped)
+        if (!startAfterVerifiedAdd || result !is RemoteAddOutcome.VerifiedStopped || !startAllowed())
             return RemoteAddAndStart.AddedStopped(result)
         // The newly added exact hash, never a filename, supplies the target.
         val followup = try {

@@ -45,6 +45,15 @@ internal object AddFileChoices {
     } catch (_: Exception) { null }
 
     /**
+     * Pure-Kotlin layout for a remote (rTorrent) Add: no native engine is needed
+     * to review files sent to a server. Index = metainfo order, as rTorrent uses.
+     */
+    fun declared(preview: io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview): List<DeclaredAddFile>? =
+        preview.files.withIndex().filterNot { it.value.padding }
+            .map { DeclaredAddFile(it.index, it.value.path, it.value.sizeBytes) }
+            .takeIf { it.size >= 2 }
+
+    /**
      * The registered job's own files that the person chose to skip, matched by native
      * index AND path to what they reviewed. Null when the job no longer matches the
      * reviewed layout (then nothing is written).

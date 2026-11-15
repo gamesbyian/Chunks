@@ -59,6 +59,8 @@ import io.github.gamesbyian.chunks.rpc.RTorrentRemote
 import io.github.gamesbyian.chunks.rpc.RemoteAddOutcome
 import io.github.gamesbyian.chunks.rpc.RemoteUniversalAddAdapter
 import io.github.gamesbyian.chunks.rpc.RemotePreWriteRefusal
+import io.github.gamesbyian.chunks.rpc.RemoteAddFileSkips
+import io.github.gamesbyian.chunks.rpc.RemotePreStartSetup
 import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
 import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
@@ -257,6 +259,15 @@ internal fun VerifiedAddScreen(
         draft.finishInOrderHash = selectedTorrent?.infoHashV1
     }
     var finishInOrderAfterAdd by draft.finishInOrder
+    // Reviewed file skips belong to exactly one selected .torrent identity.
+    if (draft.skippedFilesHash != selectedTorrent?.infoHashV1) {
+        draft.skippedFiles = emptySet()
+        draft.fileChoiceOpen = false
+        draft.skippedFilesHash = selectedTorrent?.infoHashV1
+    }
+    val declaredFiles = remember(selectedTorrent) { selectedTorrent?.let { AddFileChoices.declared(it) } }
+    val noFileChosen = useFile && declaredFiles != null &&
+        declaredFiles.none { it.index !in draft.skippedFiles }
     var rechecking by remember { mutableStateOf(false) }
     var fileError by remember { mutableStateOf<String?>(null) }
     // Typed, read-only discovery of rTorrent's own default. A late reply only fills this
@@ -928,9 +939,19 @@ internal fun VerifiedAddScreen(
         // The one Add action is ALWAYS present before an attempt. When it cannot be used yet it
         // is shown disabled with the exact unmet requirement, never silently omitted.
         if (!alreadyAttempted) {
-            // Finish-in-order is eligible only for multi-file .torrent sources.
+            // "Files to download": the same reviewed-skip control as a Local Add.
+            val reviewedFiles = declaredFiles
+            if (useFile && reviewedFiles != null) item {
+                AddFileChoice(reviewedFiles, draft.skippedFiles, draft.fileChoiceOpen,
+                    enabled = !submitting,
+                    onExpanded = { draft.fileChoiceOpen = it },
+                    onSkippedChange = { draft.skippedFiles = it; awaitingConfirmation = false })
+            }
+            // Finish-in-order is eligible only for multi-file .torrent sources
+            // where every file downloads (it manages all file priorities).
             val fioStore = finishInOrderStore
-            if (plan != null && fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2) item {
+            if (plan != null && fioStore != null && useFile && (selectedTorrent?.fileCount ?: 0) >= 2 &&
+                draft.skippedFiles.isEmpty()) item {
                 FinishInOrderAddChoice(
                     "Finish in Order: the first episode or numbered file gets High, then the next " +
                         "(set before downloading starts; advances while Chunks is open and connected)",
@@ -953,10 +974,19 @@ internal fun VerifiedAddScreen(
                             val bytes = if (useFile) selectedBytes?.copyOf() else null
                             val requestedStart = startAfterAdd
                             val allowArtwork = automaticArtwork
+                            // Frozen at the click: the reviewed skips for exactly these bytes.
+                            val layoutAtClick = bytes?.let { reviewed ->
+                                runCatching { AddFileChoices.declared(TorrentMetainfoReader.preview(reviewed)) }
+                                    .getOrNull()
+                            }
+                            if (layoutAtClick != null && layoutAtClick.none { it.index !in draft.skippedFiles })
+                                return@addClick
+                            val skippedAtClick = layoutAtClick?.filter { it.index in draft.skippedFiles }.orEmpty()
                             val orderScope = finishInOrderScope?.takeIf {
                                 bytes != null && requestedStart && finishInOrderAfterAdd &&
-                                    (selectedTorrent?.fileCount ?: 0) >= 2
+                                    (selectedTorrent?.fileCount ?: 0) >= 2 && skippedAtClick.isEmpty()
                             }
+                            val prioritiesFirst = orderScope != null || skippedAtClick.isNotEmpty()
                             var mutationGateAcquired = false
                             val ticket = runCatching {
                                 val reviewedSource = if (bytes != null)
@@ -1025,11 +1055,14 @@ internal fun VerifiedAddScreen(
                                     // passing it through the optional parameter. A
                                     // nested let infers Function1 instead and fails
                                     // the Kotlin compile despite compatible bodies.
-                                    val priorityCallback: (suspend (String) -> String?)? =
-                                        if (orderScope == null) null
+                                    val priorityCallback: (suspend (String) -> RemotePreStartSetup)? =
+                                        if (skippedAtClick.isNotEmpty()) { hash: String ->
+                                            // Start follows only if every skip reads back as 0.
+                                            RemoteAddFileSkips.apply(remote, hash, skippedAtClick, requestedStart)
+                                        } else if (orderScope == null) null
                                         else { hash: String ->
-                                            enableRemoteFinishInOrderAfterAdd(
-                                                context, remote, orderScope, hash)
+                                            RemotePreStartSetup(enableRemoteFinishInOrderAfterAdd(
+                                                context, remote, orderScope, hash))
                                         }
                                     // Record the evidence's acquisition order
                                     // before any suspend/RPC. Translating a late
@@ -1037,12 +1070,12 @@ internal fun VerifiedAddScreen(
                                     // make an older read overwrite a newer one.
                                     val submissionReadStartedAt = System.currentTimeMillis()
                                     val execution = adapter.submit(
-                                        ticket, prioritiesBeforeStart = orderScope != null,
+                                        ticket, prioritiesBeforeStart = prioritiesFirst,
                                         onVerifiedStoppedBeforeStart = priorityCallback)
                                     // A second Start in priority mode verifies active
                                     // state, but only this read-only pass verifies Place
                                     // after that second mutation as well.
-                                    val (result, evidenceReadStartedAt) = if (orderScope != null &&
+                                    val (result, evidenceReadStartedAt) = if (prioritiesFirst &&
                                         execution.result is RemoteAddAndStart.Started) {
                                         val at = System.currentTimeMillis()
                                         adapter.reconcile(ticket) to at
@@ -1102,7 +1135,7 @@ internal fun VerifiedAddScreen(
                                     }
                                     orderNote?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (!plan.useServerDefault &&
-                                        verifiedCustomPlaceOutcome(result, priorityBeforeStart = orderScope != null)) {
+                                        verifiedCustomPlaceOutcome(result, priorityBeforeStart = prioritiesFirst)) {
                                         val saved = runCatching {
                                             onCustomPlaceVerified(plan.destination)
                                         }.getOrDefault(false)
@@ -1147,7 +1180,7 @@ internal fun VerifiedAddScreen(
                             }
                         },
                         enabled = plan != null && !submitting && !choosing && !externalSourceReading &&
-                            validUniversalAddAlias(addAliasState?.value.orEmpty()),
+                            !noFileChosen && validUniversalAddAlias(addAliasState?.value.orEmpty()),
                         modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
                             .testTag(ChunksSemantics.ADD_SUBMIT)
                             .semantics { if (plan == null) stateDescription = "Unavailable: " + addGuidance }
