@@ -83,7 +83,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Seeding rules", style = MaterialTheme.typography.headlineSmall)
         Text(
-            "Local device rules affect new transfers only. Server rules are saved for later and are not applied yet.",
+            "Rules on this device apply only to new transfers. Server rules are saved but aren't active yet.",
             style = MaterialTheme.typography.bodySmall
         )
         OutlinedButton(
@@ -95,23 +95,21 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
         ) { Text(if (explanationOpen) "Hide rule explanation" else "What these rules do today") }
         if (explanationOpen) {
             ChunksBanner("What these rules do today",
-                "On this device, rules apply to transfers added from now on, while Chunks is running: upload limits " +
-                    "are set and confirmed, and a reached stop condition pauses the transfer once. Transfers you already " +
-                    "have are not changed, and editing a rule does not change transfers it was already applied to. " +
-                    "Server rules are saved but not applied yet. Nothing is ever removed or deleted.", ChunksTone.PAUSED)
+                "New transfers on this device get any matching upload limit while Chunks is running. " +
+                    "When a stop condition is reached, Chunks pauses the transfer once. " +
+                    "Existing transfers won't change when you edit a rule. " +
+                    "Server rules are saved for later but aren't active yet. Nothing is deleted.", ChunksTone.PAUSED)
         }
         if (snapshot.quarantinedRemoteRules.isNotEmpty() ||
             snapshot.quarantinedRemoteDefaults.isNotEmpty()) {
             ChunksBanner("Older server assignments need review",
-                "Older server rule targets and defaults are safely preserved but inactive. " +
-                    "They may refer to a different account under today's exact server identities. " +
-                    "Review and choose each intended server again before relying on those rules. " +
-                    "Local assignments remain available.",
+                "Older server rules are saved but turned off because they may now refer to a different account. " +
+                    "Choose the right server for each rule before using it. Local rules are unchanged.",
                 ChunksTone.PAUSED)
         }
         if (snapshot.unreadable) {
             ChunksBanner("Saved rules could not be read",
-                "They are kept as they are. Start over only if you are sure; that replaces them.", ChunksTone.ERROR)
+                "Your saved rules are unchanged. Starting over will replace them.", ChunksTone.ERROR)
             OutlinedButton(onClick = { persist(SeedingRuleStore.Snapshot(emptyList(), emptyMap()), replaceUnreadable = true) },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("Start over with no rules") }
         }
@@ -227,8 +225,8 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                         Text((if (explicitDefault == null) "Automatic default" else "Using your saved preference") +
                             " · " + (explicitDefault ?: SeedingPolicy()).describe(),
                             style = MaterialTheme.typography.bodySmall)
-                        Text(if (env.server) "Saved here for later remote support; this server is not being changed."
-                            else "Affects future local transfers, not existing downloads.",
+                        Text(if (env.server) "Saved for future server support. Nothing was sent to this server."
+                            else "Applies to new transfers on this device. Existing downloads won't change.",
                             style = MaterialTheme.typography.bodySmall)
                         OutlinedButton(onClick = {
                             editingDefault = env; pendingResetDefault = null; message = null
@@ -320,7 +318,7 @@ private fun SeedingRuleEditor(
     Text("When a torrent's tracker is", fontWeight = FontWeight.Bold)
     OutlinedTextField(trackers, { trackers = it }, label = { Text("Tracker domains (comma separated)") },
         modifier = Modifier.fillMaxWidth(), isError = domainError != null)
-    Text(domainError ?: "Matches the domain and its subdomains, never look-alike names.", style = MaterialTheme.typography.bodySmall)
+    Text(domainError ?: "Also matches subdomains, but not similar-looking domains.", style = MaterialTheme.typography.bodySmall)
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf(null to "Any torrent", true to "Private only", false to "Public only").forEach { (value, label) ->
             FilterChip(privateOnly == value, { privateOnly = value }, { Text(label) }, Modifier.heightIn(min = 48.dp))
