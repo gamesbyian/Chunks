@@ -49,6 +49,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
+import io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector
 import io.github.gamesbyian.chunks.model.UniversalAddSource
 import io.github.gamesbyian.chunks.model.UniversalAddTarget
 import io.github.gamesbyian.chunks.model.UniversalAddPlace
@@ -669,17 +670,20 @@ internal fun VerifiedAddScreen(
                         else MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         val targetName = draft.submittedDisplayName ?: environmentLabel?.takeIf(String::isNotBlank) ?: "rTorrent"
-                        Text(when {
-                            nativePlaceAwaitingConfirmation -> "Checking $targetName"
-                            uncertain -> "Couldn't confirm Add on $targetName"
-                            draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED ->
-                                "Added to $targetName"
-                            draft.coordinator.phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED ->
-                                "Confirmed on $targetName"
-                            outcome.orEmpty().contains("refused", ignoreCase = true) ->
-                                "Couldn't add to $targetName"
-                            else -> "Add result on $targetName"
-                        }, fontWeight = FontWeight.Bold)
+                        // One shared status projection for Local, rTorrent and
+                        // future clients. The engine-specific outcome below may
+                        // add diagnostics but cannot redefine the receipt stage.
+                        val display = UniversalAddDisplayProjector.from(
+                            phase = draft.coordinator.phase,
+                            clientLabel = targetName,
+                            submitting = submitting,
+                            knownNoWrite = !draft.alreadyAttempted
+                        )
+                        Text(
+                            if (nativePlaceAwaitingConfirmation) "Checking $targetName"
+                            else display?.title ?: "Add result on $targetName",
+                            fontWeight = FontWeight.Bold
+                        )
                         Text(if (nativePlaceAwaitingConfirmation) {
                             if (observedProgress?.metadataPending == true)
                                 "Waiting for magnet metadata. rTorrent reports this exact transfer active; its payload folder and final Add result are not yet verified. No Add or Start will be repeated."
