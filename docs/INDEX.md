@@ -1,3 +1,11 @@
+> **Current UI naming rule (2026-11-15):** [User-facing client terminology and included source count](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md) replaces *environment* on UI surfaces and mandates a correctly computed **N clients included** summary (not misleading *sources excluded*), preserving internal stable environment IDs.
+
+> **Root visual geometry (2026-11-15):** [Compact root headings and control geometry](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md) removes duplicate Transfers/Options screen titles, unifies footer selected/unselected rounded-rectangle shapes and specifies rounded-square Filters/Sort and Batch buttons. Approved design awaiting code and Pixel visual acceptance.
+
+> **Artwork formats and Details alias (2026-11-15):** [Category-specific transfer artwork](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md) supersedes video-square preference; the [unified Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md) uses only short connection alias and natural media art formats. Pending implementation and installed acceptance.
+
+> **Approved Transfer Details design (2026-11-15):** [Unified identity-first Details](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md) is the current presentation contract: merge torrent and media identity at top, preserve separate name/identification/artwork actions and fixed-footer navigation, eliminate duplicate headings/back/artwork panel. Implementation and Pixel acceptance remain separate.
+
 > **Approved Connections design (2026-11-15):** [Unified saved-profile roster](design/CONNECTIONS-UNIFIED-ROSTER.md) replaces duplicate active/saved sections with connected-first, one-card-per-profile status and contextual actions, compact zero-state onboarding and per-profile Manage. Implementation/installed acceptance pending.
 
 **Owner-approved Add/environment polish (2026-11-13):** [Add destination and outcome UX](design/ADD-DESTINATION-AND-OUTCOME.md) binds compact Local/named-connection Add chips, short-name-only status, one in-place operation outcome, matched transfer stripe/label/dot colours and contextual rather than permanent remote folder explanations. Integrate with existing R1 UX work; implementation and installed acceptance remain pending.

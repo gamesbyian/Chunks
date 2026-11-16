@@ -1,0 +1,25 @@
+# User-facing client terminology and Transfers scope count (owner approved, 2026-11-15)
+
+**Binding correction** to Chunks interface copy, accessibility labels and user-facing help. Internal domain concepts such as `environmentId`, `UnifiedTransferKey`, engine routing, durable persistence, RPC account scoping and already-existing code symbols may **continue to use environment**; do not mass-rename stable IDs, migrations or protocol contracts for this display change.
+
+## Display vocabulary
+
+- In visible Chunks UI, use **client** instead of **environment** where referring to a local or remote BitTorrent client. Examples: **All clients**, **Client colour**, **Show client colours**, **Choose client**, **2 clients included**. Do not use awkward `Environment: Server · Wood · <endpoint>` wording.
+- Preserve established **Local** for the on-device transfer-scope chip, **Local Device** when its fuller name is specifically needed, and user-assigned short names such as **Wood** for remote scope chips, transfer cards, Details and Add destinations. Prefer the short custom name alone where source context is clear; no need to prefix `Remote client:` or `Server:`. Distinct duplicate display names are still disambiguated contextually without leaking URLs or changing stable IDs.
+- Use **Connections** for the footer destination and the unified remote profile roster, **Manage** for advanced remote settings, and **Transfers** for the one canonical inventory screen. A connection/profile is persistent saved configuration; a live connected session, read-only accessible inventory and the selected client scope are separate states. Do not call a disconnected source 'connected' merely because cached or read-only rows are available.
+- Update user-visible strings in Compose, Android string resources, screen-reader/TalkBack descriptions, notifications, widgets, menus, labels, help, confirmations and screenshots/tests **where they refer to clients**. Preserve **environment** in historical documents, source-level architecture discussion, external protocol terms, logs/debugging where needed, and any truly different domain meaning. Avoid blind global replacement that alters code APIs or changes meaning.
+
+## Transfers summary: included, not excluded
+
+In the compact Transfers summary immediately above rows, a scope count representing the sources **selected to participate in the current transfer-view scope** is labelled **`N clients included`**, never `N sources excluded` or `N environments excluded`. Example: **`48 transfers · No live rates · 2 clients included`**.
+
+- Inspect the current summary's actual count derivation before changing copy. Ensure **N is computed from the selected client scope**, not from an internal excluded-source variable accidentally relabelled as included. If the old implementation counts excluded sources, update its derivation and tests to correctly count included clients.
+- A selected client counts as included even when currently disconnected, locked, unavailable or presenting stale cached inventory, provided it is genuinely in the selected view's source scope. Included **does not imply Connected**, current speeds or valid inventory count. Distinguish known/stale/unknown outcomes independently. Do not count sources omitted by the user-selected scope. Do not conflate client count with the number of visible matching rows or deduplicate jobs between clients.
+- If the scope count is not meaningful or not reliably known, use a truthful unavailable/omitted state rather than fabricating a number; preserve existing live-rate and excluded/unknown *diagnostic* distinctions elsewhere. If a separate legitimate diagnostic counts excluded sources, label it accurately in its own context; do not silently flip its semantic meaning.
+- For user-selectable scopes (All/Local/Wood/other clients), test 0/1/2/N configured and selected clients, offline/locked clients, stale cached rows, search/status filters, disconnected sources, 4+ All chip threshold, duplicate hashes across clients, and rate availability changes. Keep the status sentence compact at 320/412dp and 200% font.
+
+## Implementation and acceptance
+
+Audit hard-coded UI strings and Compose-derived messages with references to **environment**, **server**, **source**, **excluded** and **included**, distinguishing real client semantics from technical terms. Adjust the shared UI model and tests once, across All/Local/remote scopes, instead of patching text separately. Ensure existing client short-name and colour parity from the Transfer Details, Add and compact-list contracts. New testing must reject outdated assertions expecting `sources excluded`, `environment colours` or verbose `Server · Wood · endpoint` on primary UI, but must **not** rewrite protocol security assertions or persistence IDs.
+
+The final installed Pixel acceptance must show the correct `clients included` count and new terminology on Transfers, Options, Connections, Add and Details without creating unsafe routing or misleading live-session claims. Documentation changes alone are not implementation or test evidence.

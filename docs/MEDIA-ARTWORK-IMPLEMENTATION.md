@@ -1,5 +1,11 @@
 # Media/artwork integration implementation instructions
 
+> **IMPLEMENTATION UPDATE · 2026-11-15:** Follow [media-category aspect ratio design](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md). Stop requiring `SQUARE` for video transfer rows; prefer existing true poster aspect when available, preserve native format, 60dp-bounded row slot, manual overrides and image cache. For music/audiobook/software use square, books/comics 2:3, magazine 3:4 unless actual/provider/user image dimensions differ. Details uses the same natural-format policy. Replace verbose `Environment: Server · Wood · endpoint` text with short **Wood** and connection colour token; preserve exact routing keys and secondary endpoint diagnostics. Evaluate and update image role selection, Compose layout and picker rankings together; test physical Pixel rather than merely changing provider ranking. No code implementation claimed.
+
+
+> **NEXT MEDIA/DETAILS PRESENTATION SLICE · owner-approved 2026-11-15:** Follow [unified Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md). Refactor the existing media section into the top full-Details transfer-identity header: poster/title/year/source plus original filename/status/short environment and independent **Change list name**, **Edit identification**, **Choose artwork** controls. Remove redundant in-page Back, Transfer details title and the duplicate lower artwork panel **after** moving functionality. Preserve correction handlers, manual artwork override, privacy, provider provenance, and the Add-only automatic-enrichment toggle contract. Verify actual installed phone visual results and no lost actions; docs are not completion.
+
+
 **Use this as the technical work plan, not a previous-run narrative.** Prior test results, exact source heads and provider explorations are retained in [MEDIA-ARTWORK-IMPLEMENTATION-HISTORY-2026-11-09.md](MEDIA-ARTWORK-IMPLEMENTATION-HISTORY-2026-11-09.md). Product authority: [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [next-push UX/media contract](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). Current priority: [WORK-QUEUE](WORK-QUEUE.md) #1453.
 
 ## First repair feature placement
