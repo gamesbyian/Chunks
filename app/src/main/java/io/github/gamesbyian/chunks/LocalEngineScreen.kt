@@ -2660,7 +2660,7 @@ internal fun LocalEngineScreen(
         } // Transfers presentation
         if (pane == LocalPane.OPTIONS) {
         // App-wide settings live behind a real Options destination.
-        if (optionsCategory != null) Text(optionsCategory.title, style = MaterialTheme.typography.titleLarge,
+        if (optionsCategory != null) Text(optionsCategory?.title.orEmpty(), style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 12.dp)
                 .bringIntoViewRequester(optionsRequester)
