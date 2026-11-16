@@ -420,7 +420,10 @@ internal class MainActivityRealMagnetJourney(
                     heading.fetchSemanticsNode().config[
                         androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
                 }.getOrNull() == "Expanded"
-                if (!expanded) heading.performClick()
+                // Semantic action, not a touch: a touch can miss while the lazy Add
+                // form re-lays out, leaving the disclosure collapsed and the choice
+                // absent (installed run 43783877250 timed out waiting for it).
+                if (!expanded) heading.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
                 val artworkToggle = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
                 var choice: androidx.compose.ui.state.ToggleableState? = null
                 var lastChoiceFailure = "none"
@@ -450,6 +453,18 @@ internal class MainActivityRealMagnetJourney(
                         rule.onAllNodes(artworkToggle, useUnmergedTree = true)
                             .fetchSemanticsNodes().size
                     }.getOrDefault(-1)
+                    // The receipt omits messages: name the readiness failure with a
+                    // fixed stage so a greyed-out (disabled) choice is distinguishable
+                    // from an absent, duplicated or off-screen one.
+                    val only = if (merged == 1) runCatching { rule.onNode(artworkToggle).fetchSemanticsNode() }.getOrNull() else null
+                    report("chunks_real_add_app_stage", when {
+                        merged == 0 -> "artwork-ready-absent"
+                        merged > 1 -> "artwork-ready-duplicate"
+                        only?.config?.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) == true ->
+                            "artwork-ready-disabled"
+                        merged == 1 -> "artwork-ready-hidden"
+                        else -> "artwork-ready-unknown"
+                    })
                     throw AssertionError("Artwork choice not ready after expansion; " +
                         "merged=$merged unmerged=$raw lastFailure=$lastChoiceFailure " +
                         "state=$choice (no checkbox click attempted)", failure)

@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+> **MINSDK 29 CRASH FIX + ARTWORK-CHOICE READINESS · 2026-11-16:**
+> - #1779: `:app:lintDebug` NewApi errors showed `InputStream.readNBytes(int)` (API 33) in four remote reads under minSdk 29 without desugaring. These were the capability probe, the ruTorrent delete-data acceptance, `_getdir` and File Manager. On Android 10–12 they would throw `NoSuchMethodError`, which `catch (Exception)` does not catch. They are replaced by `rpc.readAtMost`, with a source guard test.
+>   - All exact-head gates are green, including the legacy and modern real-engine and remote-delete-data gates. No API 29–32 run of these paths exists.
+>   - Its installed magnet run [43783877250](https://github.com/gamesbyian/Chunks/actions/runs/43783877250) **attempt 1 failed** at the second Add's artwork choice. This time it failed at the readiness wait (`MainActivityRealMagnetJourney.kt:453`), before any click: after expansion the toggle never became readable, enabled and displayed. Attempt 2 passed.
+>   - The earlier "opt-out lost" reds may therefore share one cause, an unusable choice on that second Add. Readiness timeouts now report `artwork-ready-absent|duplicate|disabled|hidden|unknown`.
+
 > **SUMMARY TRUTHFULNESS + INTAKE TEST DIAGNOSIS · 2026-11-16:**
 > - #1777 (`Never show live zero rates…`): with every selected source excluded, the Transfers summary read "Live ↓ 0 B/s · ↑ 0 B/s" over last-known rows. It now reads "No live rates". All exact-head gates are green, including native Add, two-server Combined and R8. Its foundation run [43779794967](https://github.com/gamesbyian/Chunks/actions/runs/43779794967) **attempt 1 failed** in the unrelated `RepeatedAndroidIntakeTest.secondOpenWithAfterAVerifiedAddGetsAUsableAddForTheNewTorrent` (line 115, waiting 30 s for the second source name). Attempt 2 passed. The failure was not reproduced locally in 6 runs under CPU load.
 > - The likely test-side cause is that `waitForText` saw only composed nodes while the Add list sat at its outcome end. The wait now scrolls toward the text (read-only) and names the visible texts on timeout. A real "second Open With lost" regression would still fail it.

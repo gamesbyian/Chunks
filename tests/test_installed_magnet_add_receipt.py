@@ -247,10 +247,12 @@ class InstalledMagnetReceiptTests(unittest.TestCase):
         raw = ("INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-heading\n"
                "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-optout-clicked\n"
                "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-optout-still-on\n"
+               "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-ready-disabled\n"
                "INSTRUMENTATION_STATUS: chunks_real_add_app_stage=artwork-optout-SECRET\n"
                "INSTRUMENTATION_STATUS_CODE: -2\nINSTRUMENTATION_CODE: -1")
         receipt = parse(raw, 1, self.env)
-        self.assertEqual(["artwork-heading", "artwork-optout-clicked", "artwork-optout-still-on"],
+        self.assertEqual(["artwork-heading", "artwork-optout-clicked", "artwork-optout-still-on",
+                          "artwork-ready-disabled"],
                          receipt["app_stage_evidence"])
         self.assertEqual("failed-or-inconclusive", receipt["result"])
         self.assertNotIn("SECRET", str(receipt))
