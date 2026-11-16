@@ -150,7 +150,7 @@ class SeedingRulesScreenTest {
         field("Find client defaults").performScrollTo().performTextReplacement("no-such-environment")
         rule.runOnIdle { available.value = listOf(SeedingEnvironment.local()) }
         field("Find client defaults").performScrollTo().performTextReplacement("")
-        rule.onNodeWithText("Affects future local transfers", substring = true).assertExists()
+        rule.onNodeWithText("Applies to new transfers on this device", substring = true).assertExists()
     }
 
     @Test fun ambiguousUnitsBlockSavingAndDeleteNeedsConfirmation() {
