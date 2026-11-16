@@ -39,6 +39,8 @@ internal object ChunksSemantics {
     /** Read-only effective policy line on Add; the choice itself lives in Options. */
     const val ADD_ORIGINAL_HANDLING_SUMMARY = "chunks.add.original_handling.summary"
     const val OPTIONS_ADD_AND_FILES = "chunks.options.add_and_files"
+    const val REMOTE_FOLDER_NEW_DISABLED = "chunks.remote_folder.new.disabled"
+    const val REMOTE_FOLDER_RENAME_UNAVAILABLE = "chunks.remote_folder.rename.unavailable"
     const val ADD_FILE_CHOICE = "chunks.add.file_choice"
     const val ADD_ORIGINAL_DELETE_PROMPT = "chunks.add.original_delete.prompt"
     const val ADD_ORIGINAL_DELETE_CONFIRM = "chunks.add.original_delete.confirm"
