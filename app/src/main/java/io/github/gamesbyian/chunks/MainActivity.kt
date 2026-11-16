@@ -3541,32 +3541,27 @@ private fun TransferCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransferRowArtwork(rememberRemoteTransferKey(progressEnvironmentId, transfer.hash), transfer.name)
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val artMaxWidth = minOf(maxWidth * 0.32f, 112.dp,
+                    (maxWidth - 164.dp).coerceAtLeast(48.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TransferRowArtwork(rememberRemoteTransferKey(progressEnvironmentId, transfer.hash),
+                        transfer.name, modifier = Modifier.testTag("remote-card-artwork"),
+                        height = if (detailsOpen) 132.dp else 112.dp, maxWidth = artMaxWidth)
+                    Column(Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(9.dp)) {
                 Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                     // Collapsed rows stay compact, but full names are available
                     // to TalkBack and when the user expands this exact card.
-                    modifier = Modifier.weight(1f).semantics {
+                    modifier = Modifier.fillMaxWidth().semantics {
                         contentDescription = alias ?: transfer.name
                     },
                     maxLines = if (detailsOpen) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis)
-            }
-            if (detailsOpen) {
-            if (alias != null) {
-                Text("Original torrent: " + transfer.name,
-                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary,
-                    maxLines = Int.MAX_VALUE, overflow = TextOverflow.Clip)
-            }
-            TransferAliasEditor(
-                originalName = transfer.name, hash = transfer.hash,
-                alias = alias, onSave = onAliasSave, session = aliasSession
-            )
-            }
             if (transfer.metadataPending != true && transfer.sizeBytes > 0) ChunkedProgressBar(
                 progress = transfer.fractionComplete,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().testTag("remote-card-progress"),
                 historyKey = progressEnvironmentId?.let {
                     ProgressChunkStore.identity(it, transfer.hash)
                 },
@@ -3626,6 +3621,16 @@ private fun TransferCard(
                     onClick = { detailsOpen = !detailsOpen },
                     modifier = disclosureModifier.fillMaxWidth()
                 ) { Text(disclosureLabel) }
+            }
+                    } // Compact title, rates and progress belong to the right-hand column.
+                }
+            }
+            if (detailsOpen) {
+                if (alias != null) Text("Original torrent: " + transfer.name,
+                    style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
+                TransferAliasEditor(
+                    originalName = transfer.name, hash = transfer.hash,
+                    alias = alias, onSave = onAliasSave, session = aliasSession)
             }
             if (detailsOpen) {
             if (transfer.started && transfer.downBytesPerSecond == 0L &&
