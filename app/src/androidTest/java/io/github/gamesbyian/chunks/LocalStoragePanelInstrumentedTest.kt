@@ -68,14 +68,14 @@ class LocalStoragePanelInstrumentedTest {
         }
         rule.onNodeWithText("Local device storage").assertExists()
         rule.onNodeWithText("1.0 GiB free of 10.0 GiB").assertExists()
-        rule.onNodeWithText("Android reports low local device storage. Avoid adding large local downloads.")
+        rule.onNodeWithText("This device is running low on space. Free some space before adding large downloads.")
             .assertExists()
-        rule.onNodeWithText("Occupied or reserved on this volume, including other apps. Not Chunks torrent usage.")
+        rule.onNodeWithText("Space used or reserved by this device, including other apps. This isn't just Chunks downloads.")
             .assertExists()
         capture("local-storage-low-native-compose")
         rule.onNodeWithText("Refresh local space").performScrollTo().performClick()
         rule.onNodeWithText("5.0 GiB free of 10.0 GiB").performScrollTo().assertExists()
-        rule.onNodeWithText("No active Android low-storage alert detected. The numeric threshold is not exposed to apps.").assertExists()
+        rule.onNodeWithText("Android isn't reporting low storage right now.").assertExists()
         capture("local-storage-normal-native-compose")
     }
 
