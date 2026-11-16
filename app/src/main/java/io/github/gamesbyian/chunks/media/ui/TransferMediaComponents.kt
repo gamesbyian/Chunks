@@ -70,20 +70,21 @@ import io.github.gamesbyian.chunks.media.MediaTransferKey
 import io.github.gamesbyian.chunks.media.providerOn
 
 /**
- * Square transfer artwork: real art only for a confident automatic match or a user choice,
- * otherwise bundled category art. Fixed size, so loading never shifts row layout. Decorative by
+ * Aspect-preserving transfer artwork: real art only for a confident automatic match or a user choice,
+ * otherwise bundled category art. Callers reserve the tile bounds before image loading. Decorative by
  * default (the transfer name is the label); pass [description] to expose it to TalkBack.
  */
 @Composable
 fun TransferMediaArtwork(state: TransferMediaUiState, size: Dp, modifier: Modifier = Modifier,
-                         showArtwork: Boolean = true, description: String? = null) {
+                         showArtwork: Boolean = true, description: String? = null,
+                         width: Dp = size, height: Dp = size) {
     val shape = RoundedCornerShape(8.dp)
     val bitmap = state.artwork?.takeIf { showArtwork && state.mayShowRealArt }
     val semantics = if (description != null) Modifier.semantics { contentDescription = description } else Modifier.clearAndSetSemantics {}
-    Box(modifier.size(size).then(semantics), contentAlignment = Alignment.Center) {
+    Box(modifier.size(width, height).then(semantics), contentAlignment = Alignment.Center) {
         if (bitmap != null) {
             val image = remember(bitmap) { bitmap.asImageBitmap() }
-            val fitted = artworkBounds(bitmap.width, bitmap.height, size.value, size.value)
+            val fitted = artworkBounds(bitmap.width, bitmap.height, width.value, height.value)
             Image(image, contentDescription = null, contentScale = ContentScale.Fit,
                 modifier = Modifier.size(fitted.first.dp, fitted.second.dp).clip(shape).border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape))
         } else {
