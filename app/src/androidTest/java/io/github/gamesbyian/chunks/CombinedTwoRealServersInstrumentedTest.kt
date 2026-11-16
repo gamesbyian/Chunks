@@ -687,7 +687,7 @@ class CombinedTwoRealServersInstrumentedTest {
                 scrollTo("Refresh other saved servers")
                 rule.onNodeWithText("Refresh other saved servers").performClick()
                 // Expanded, the toggle reads "Hide client status".
-                scrollTo("nvironment status")
+                scrollTo("lient status")
                 if (!visible("Hide client status"))
                     rule.onNodeWithText("Client status", substring = true).performClick()
             }
