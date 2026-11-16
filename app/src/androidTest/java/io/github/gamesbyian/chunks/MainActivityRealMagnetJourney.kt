@@ -420,7 +420,10 @@ internal class MainActivityRealMagnetJourney(
                     heading.fetchSemanticsNode().config[
                         androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
                 }.getOrNull() == "Expanded"
-                if (!expanded) heading.performClick()
+                // Semantic action, not a touch: a touch can miss while the lazy Add
+                // form re-lays out, leaving the disclosure collapsed and the choice
+                // absent (installed run 43783877250 timed out waiting for it).
+                if (!expanded) heading.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
                 val artworkToggle = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
                 var choice: androidx.compose.ui.state.ToggleableState? = null
                 var lastChoiceFailure = "none"
