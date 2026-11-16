@@ -1,3 +1,5 @@
+> **Root visual geometry (2026-11-15):** [Compact root headings and control geometry](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md) removes duplicate Transfers/Options screen titles, unifies footer selected/unselected rounded-rectangle shapes and specifies rounded-square Filters/Sort and Batch buttons. Approved design awaiting code and Pixel visual acceptance.
+
 > **Artwork formats and Details alias (2026-11-15):** [Category-specific transfer artwork](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md) supersedes video-square preference; the [unified Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md) uses only short connection alias and natural media art formats. Pending implementation and installed acceptance.
 
 > **Approved Transfer Details design (2026-11-15):** [Unified identity-first Details](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md) is the current presentation contract: merge torrent and media identity at top, preserve separate name/identification/artwork actions and fixed-footer navigation, eliminate duplicate headings/back/artwork panel. Implementation and Pixel acceptance remain separate.
