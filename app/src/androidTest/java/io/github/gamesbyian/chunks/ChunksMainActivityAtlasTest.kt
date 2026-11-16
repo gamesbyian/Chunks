@@ -613,7 +613,11 @@ class ChunksMainActivityAtlasTest {
             "Details for A deliberately very long test filename", substring = true)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(returnRow)
         rule.onNode(returnRow).performClick()
-        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
+        // Details' owning-list action names the short client origin (identity-first Details).
+        rule.onNode(androidx.compose.ui.test.SemanticsMatcher("Open <client> transfers") { node ->
+            node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+                .orEmpty().any { it.text.startsWith("Open ") && it.text.endsWith(" transfers") }
+        }).performScrollTo().performClick()
         // The owner link scopes the SAME canonical browser. Reopen that exact
         // row's full Details and its canonical file controls, without a legacy list.
         rule.onNodeWithText("Search names or hashes").assertExists()

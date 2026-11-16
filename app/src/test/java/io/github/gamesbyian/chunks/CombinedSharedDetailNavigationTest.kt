@@ -132,7 +132,11 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Download rate: not reported").assertExists()
         rule.onNodeWithText("Upload rate: 55 B/s").assertExists()
         // A saved profile is read-only here: no switch to signed-in server list.
-        rule.onNodeWithText("Open Server · $savedLabel transfers").assertDoesNotExist()
+        // Any owning-list action, whatever the (now short) client label: none for saved-only.
+        rule.onNode(androidx.compose.ui.test.SemanticsMatcher("Open <client> transfers") { node ->
+            node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+                .orEmpty().any { it.text.startsWith("Open ") && it.text.endsWith(" transfers") }
+        }).assertDoesNotExist()
         rule.onNodeWithText("Capabilities in this client").performScrollTo().assertExists()
         assertEquals("One automatic read-only saved-list fetch, no replay", 1, requests.get())
         assertTrue("Details never mutate, probe or start the local device engine", commands.isEmpty())

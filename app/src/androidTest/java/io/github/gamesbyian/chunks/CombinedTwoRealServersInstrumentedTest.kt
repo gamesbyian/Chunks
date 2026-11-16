@@ -601,15 +601,12 @@ class CombinedTwoRealServersInstrumentedTest {
             rule.openConnectedManageIfNeeded()
         scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
-            waitFor("B connection form") {
+            // Disconnect returns to the unified roster (as at stage disconnected-a); the
+            // saved login is not silently reused, and connect() opens a new form.
+            waitFor("A disconnected back on the Connections roster") {
                 runCatching {
-                    // Two saved profiles push the ordinary login fields below
-                    // the first lazy viewport. Require the actual editable
-                    // input instead of inferring it from a visible summary.
-                    scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
-                    rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
-                        .assertIsEnabled()
-                    true
+                    scrollTo("Disconnected · saved profile")
+                    visible("Disconnected · saved profile")
                 }.getOrDefault(false)
             }
             connect(urlB)
