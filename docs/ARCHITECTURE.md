@@ -1,3 +1,5 @@
+> **Universal Add architecture · owner 2026-11-16:** [One cross-client Add contract](design/UNIVERSAL-ADD-CLIENT-PARITY.md) supersedes separate user-visible Local/rTorrent Add lifecycles. Keep native/RPC adapters, the one-shot coordinator and truthful exact readback; converge Compose screen orchestration into an app-owned shared attempt controller. Shared receipt projection is the initial slice only.
+
 # Chunks architecture and behavior contracts
 
 > **Remote capability and deletion seam (2026-11-13):** [REMOTE-CAPABILITY-DISCOVERY-AND-DELETION](REMOTE-CAPABILITY-DISCOVERY-AND-DELETION.md) refines the existing backend-neutral adapter contract without adding a new executor. Per exact authenticated environment, distinguish observed method, authority, prerequisites and outcome; read-only connect/reconnect probes cannot establish destructive permission. Session-only rTorrent removal remains independent of optional ruTorrent erasedata; never infer plugin presence from an HTTP-RPC path or implement remote arbitrary shell/custom5 as a general delete-data fallback. Bind capability freshness, UI availability and destructive recheck to the same identity/lease.
