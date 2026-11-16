@@ -24,11 +24,25 @@ class CombinedCompactSummaryTest {
     }
 
     @Test fun overflowDoesNotWrapAndMissingSourcesNeverMasqueradeAsZero() {
-        val text = combinedCompactSummaryText(0, 0,
-            UnifiedTransferTotals(0, 0, 0, 0, 2,
+        // Overflow needs live rows (totals sum only fully observed sources).
+        val text = combinedCompactSummaryText(4, 4,
+            UnifiedTransferTotals(2, 0, 0, 0, 2,
                 downloadTotalBeyondRange = true), true)
         assertTrue(text.contains("above reporting range"))
         assertTrue(text.contains("2 sources excluded"))
+    }
+
+    @Test fun onlyExcludedSourcesNeverClaimLiveZeroRates() {
+        // Stale server rows were visible while the header read "Live ↓ 0 B/s · ↑ 0 B/s".
+        val text = combinedCompactSummaryText(2, 2,
+            UnifiedTransferTotals(0, 0, 0, 0, 3), true)
+        assertTrue(text.startsWith("2 transfers · No live rates"))
+        assertFalse(text.contains("Live ↓"))
+        assertFalse(text.contains("0 B/s"))
+        assertTrue(text.contains("3 sources excluded"))
+        // A fully observed source with no transfers is still a genuine live zero.
+        assertTrue(combinedCompactSummaryText(0, 0, UnifiedTransferTotals(0, 0, 0, 0, 0), false)
+            .startsWith("0 transfers · Live ↓ 0 B/s"))
     }
 
     @Test fun singleTransferUsesSingularNoun() {
