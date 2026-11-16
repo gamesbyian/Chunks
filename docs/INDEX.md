@@ -1,3 +1,5 @@
+> **Current UI naming rule (2026-11-15):** [User-facing client terminology and included source count](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md) replaces *environment* on UI surfaces and mandates a correctly computed **N clients included** summary (not misleading *sources excluded*), preserving internal stable environment IDs.
+
 > **Root visual geometry (2026-11-15):** [Compact root headings and control geometry](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md) removes duplicate Transfers/Options screen titles, unifies footer selected/unselected rounded-rectangle shapes and specifies rounded-square Filters/Sort and Batch buttons. Approved design awaiting code and Pixel visual acceptance.
 
 > **Artwork formats and Details alias (2026-11-15):** [Category-specific transfer artwork](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md) supersedes video-square preference; the [unified Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md) uses only short connection alias and natural media art formats. Pending implementation and installed acceptance.
