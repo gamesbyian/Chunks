@@ -1,5 +1,10 @@
 # Chunks: canonical decision ledger
 
+## D-DETAILS-IDENTITY-FIRST-20261115 | Owner, binding; implementation pending
+
+The owner approved one compact top-of-screen Transfer Details identity area beneath the chunks. wordmark, merging original torrent release name and transfer state/source with recognized media title, year, portrait poster and identification provenance. Remove the redundant **Back to transfers** control, **Transfer details** title and duplicated lower **Artwork & media information** card. Navigation lives in the fixed footer; returning to Transfers preserves previous list state and scroll. The unified area retains three **separate, visible** actions: **Change list name**, **Edit identification**, **Choose artwork**. Choosing alternate/custom artwork is independent of identification. Maintain manual overrides, Add-only enrichment consent semantics, fallback for unidentified transfers, and full name/short server identity. See [Details target design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md). Owner approval does not establish implementation or physical acceptance.
+
+
 ## D-REMOTE-DIRECTORY-BROWSER-20261113 | Owner, binding scope; planned
 
 Authenticated rTorrent **Save to → Change** must support browsing the actual folders exposed by that exact server and **New folder** only with separately verified safe permission. Preserve automatic default Add without mandatory picker or custom text, profile-scoped recents/defaults, a fully usable manual-path fallback, and independent Add submit authority. No speculative shell/`execute.*` privilege or remote `Chunks Downloads` creation. Reuse a single picker in Add and per-profile default setting. [Canonical spec](REMOTE-DIRECTORY-BROWSER.md), [UI design](design/REMOTE-DIRECTORY-BROWSER.md), [queue](WORK-QUEUE.md), [#1680](https://github.com/gamesbyian/Chunks/issues/1680).
