@@ -1,3 +1,5 @@
+> **Binding settings composition architecture (2026-11-15):** [SETTINGS-REGISTRY.md](SETTINGS-REGISTRY.md) establishes unique reusable setting definitions, typed per-scope instances, existing single-store authority, and declarative page placement. Preserve all existing immediate-apply rules and eight-category taxonomy. Initial code registry is metadata-only, not implemented generic Settings UI.
+
 # Chunks Options: canonical information architecture and UX contract
 
 > **Client vocabulary · owner 2026-11-15:** Label relevant user-visible settings **client** (e.g. *Show client colours*) rather than *environment*. Retain existing setting identity/persistence and actual connection semantics. Refer to [client terminology contract](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md); avoid globally renaming technical keys.
