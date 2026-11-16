@@ -10,6 +10,7 @@ import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -2084,6 +2085,19 @@ private fun CombinedTransferRow(
                 if (onToggleExpanded != null) stateDescription = if (expanded) "Expanded" else "Collapsed"
             },
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                // Keep a usable text column at 320dp while letting native poster,
+                // square and landscape widths determine where that column begins.
+                val artMaxWidth = minOf(maxWidth * 0.32f, 112.dp,
+                    (maxWidth - 164.dp).coerceAtLeast(48.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TransferRowArtwork(row.key, row.originalName,
+                        hidden = source?.availability == EnvironmentAvailability.LOCKED,
+                        height = if (expanded) 132.dp else 108.dp,
+                        maxWidth = artMaxWidth)
+                    Column(Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 EnvironmentDot(hue, size = 8)
                 // Short profile name beside its colour; the exact server identity stays in
@@ -2098,8 +2112,6 @@ private fun CombinedTransferRow(
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransferRowArtwork(row.key, row.originalName,
-                    hidden = source?.availability == EnvironmentAvailability.LOCKED)
                 Text(compactTransferTitle(row.displayName), style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
@@ -2137,6 +2149,9 @@ private fun CombinedTransferRow(
             if (row.hasError) Text("Needs attention in its own list",
                 color = ChunksColors.Red, style = MaterialTheme.typography.bodySmall)
             if (expanded) quickControls?.invoke()
+                    }
+                }
+            }
         }
     }
 }
