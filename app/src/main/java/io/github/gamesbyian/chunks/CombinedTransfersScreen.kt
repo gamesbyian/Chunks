@@ -2373,7 +2373,12 @@ internal fun combinedCompactSummaryText(
                 else "${totals.excludedEnvironments} sources excluded")
         else if (incompleteOrStale) add("some sources incomplete")
     }
-    return "$count · Live ↓ $down · ↑ $up" +
+    // With every selected source excluded (out of date, offline, locked or
+    // incomplete) there is no live rate to report: "Live ↓ 0 B/s" would present
+    // last-known rows as measured live zeros.
+    val rates = if (totals.liveRows == 0 && totals.excludedEnvironments > 0) "No live rates"
+        else "Live ↓ $down · ↑ $up"
+    return "$count · $rates" +
         if (warnings.isEmpty()) "" else " · " + warnings.joinToString(" · ")
 }
 
