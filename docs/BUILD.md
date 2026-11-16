@@ -84,17 +84,41 @@ The manual-only [Disposable rTorrent protocol proof](https://github.com/gamesbyi
 
 Current `main` includes device-local editable transfer aliases (#74), lazy-queue alias sort optimizations (#78), read-only ZIP structural inventory (#79/#85), Android platform XML-RPC parser compatibility (#81), storage-warning policy hysteresis (#87) and session mutation confirmation recycling safety (#89). The #89 merge `3e11d502dca11513e7b272676aab49079280e10d` had Android/JVM [40143850496](https://github.com/gamesbyian/Chunks/actions/runs/40143850496) and API35 [40143850653](https://github.com/gamesbyian/Chunks/actions/runs/40143850653) green at source `cdea90ce1e62cd7d82c6013a24a1dc17846e5389`. Native installed-app populated synthetic acceptance [#82](https://github.com/gamesbyian/Chunks/pull/82) **merged** at `6dd07cb36df1df674b2a9a210c8ab6c0b7e22b27`; exact source `5b26357b2c67b54ebb688e1d62107c13bdbc1fa0` passed [Android/JVM 40155244595](https://github.com/gamesbyian/Chunks/actions/runs/40155244595), [API35 40155244582](https://github.com/gamesbyian/Chunks/actions/runs/40155244582) (17/17) and [four-viewport 40155244601](https://github.com/gamesbyian/Chunks/actions/runs/40155244601), with inspected native PNGs; physical phone, full hosted Seedhost adapter inventory, local download/seeding engine, real quota enforcement/extraction and filesystem mutation acceptance are still outstanding. Consult WORK-QUEUE and QUALITY-LEDGER for live gates; historical build examples above are not the present feature inventory.
 
-## Signed release APK (manual, owner secrets required)
+## Persistent-signature owner APK updates
 
-`release-apk.yml` is `workflow_dispatch`-only and refuses to run off `main`. Inputs: `version_name` (semantic version) and a monotonic `version_code`. It requires four repository secrets and fails before building if any is missing — it never produces or uploads an unsigned release:
+**Use [Build signed Chunks release APK (manual)](../.github/workflows/release-apk.yml) for all future owner-installed Chunks updates.** This is a new, opt-in channel distinct from the historical `publish-debug-apk.yml` test channel. Debug / Preview builds are not suitable for updating this signed install. The package remains `io.github.gamesbyian.chunks`. The workflow automatically assigns `versionCode = github.run_number` (monotonically increasing *for this workflow*) and `versionName = 0.1.0-alpha.<run_number>`. It verifies the packaged manifest, signing scheme, immutable signing certificate, and exact source commit before publishing a new GitHub prerelease `android-update-v<versionCode>` containing `chunks.apk` and `CHUNKS-RELEASE-SHA256.txt`. It never replaces or deletes an older signed update release.
 
-| Secret | Content |
-|---|---|
-| `CHUNKS_RELEASE_KEYSTORE_BASE64` | base64 of the upload/release keystore (`base64 -w0 chunks-release.jks`) |
-| `CHUNKS_RELEASE_STORE_PASSWORD` | keystore password |
-| `CHUNKS_RELEASE_KEY_ALIAS` | key alias |
-| `CHUNKS_RELEASE_KEY_PASSWORD` | key password |
+### One-time key provisioning
 
-The keystore is decoded to a 0600 file in `$RUNNER_TEMP` and deleted on exit. After JVM tests, `assembleRelease` signs via the Gradle `release` signing config (populated only from `CHUNKS_RELEASE_*` environment variables), `apksigner verify` must report a v2/v3 signature (minSdk 29 ⇒ AGP signs v3), and the artifact `chunks-release-<version>.apk` is uploaded with `CHUNKS-RELEASE-SHA256.txt` (APK SHA-256, signing-certificate SHA-256, source commit). No GitHub Release is created automatically. Release builds are non-debuggable and not shrunk (R8 keep rules for libtorrent4j JNI are not yet audited).
+On a trusted machine with `keytool`, generate a **private permanent keystore**, ideally using a strong unique password:
 
-Creating the key is an owner action: generate it offline (e.g. `keytool -genkeypair -keystore chunks-release.jks -alias chunks -keyalg RSA -keysize 4096 -validity 10000`), keep an offline backup, and record the certificate SHA-256 so users can verify future builds. **A signed APK proves publisher identity only; it is not physical-device or release acceptance.**
+```sh
+keytool -genkeypair -keystore chunks-owner-release.jks -alias chunks -keyalg RSA -keysize 4096 -validity 10000 -dname "CN=Chunks Owner"
+keytool -list -v -keystore chunks-owner-release.jks -alias chunks
+```
+
+Save the keystore and its passwords **offline** in protected backup storage. Losing them means future APKs cannot update this signing identity; the repo cannot recover the signing key. Never commit or post keystore bytes, passwords or credentials in issues, pull requests, chat transcripts or CI logs.
+
+In **GitHub → gamesbyian/Chunks → Settings → Secrets and variables → Actions**, create these repository *secrets*:
+
+| Secret | Contents |
+| --- | --- |
+| `CHUNKS_RELEASE_KEYSTORE_BASE64` | Base64-encoded bytes of the permanent `.jks` (e.g. `base64 -w0 chunks-owner-release.jks` on Linux) |
+| `CHUNKS_RELEASE_STORE_PASSWORD` | Keystore password |
+| `CHUNKS_RELEASE_KEY_ALIAS` | `chunks` |
+| `CHUNKS_RELEASE_KEY_PASSWORD` | Private-key password |
+
+Also create the **repository variable** `CHUNKS_SIGNING_CERT_SHA256` containing the public **SHA256 certificate fingerprint** from `keytool -list -v`, with colon-separated hexadecimal pairs (e.g. `AA:BB:…`; exactly 32 bytes). This public fingerprint is the signing-identity pin. On *every* future build, the workflow checks that the signed APK matches it. Missing secrets, missing certificate pin, failed JVM tests, a signature mismatch or an invalid manifest prevent publication.
+
+The GitHub app connector cannot provision these repository secrets. The owner must do this one time via GitHub Settings from a trusted device. Do not generate a new signing key on a GitHub runner for each build.
+
+### First installation and subsequent updates
+
+1. Finish provisioning and manually dispatch the signed release workflow on `main`. Confirm all steps pass and download `chunks.apk` with its checksum file from the newest `android-update-v…` GitHub prerelease.
+2. For **this one transition only**, uninstall the old *debug-signed* ordinary Chunks (after safely handling any local app-owned torrent data). Then install this **signed** `chunks.apk` and configure rTorrent/TMDB again. Installing over a debug-signed app usually fails on certificate mismatch; **do not attempt to force it**.
+3. On subsequent builds, dispatch the **same** workflow, download the new `chunks.apk` and open/install it over the running Chunks **without uninstalling**. Android keeps the app's sandboxed data and stored settings when package identity, certificate and version progression are compatible. Test that both remote connection and TMDB credentials survived before declaring the update path accepted.
+
+The signing contract protects upgrades but cannot guarantee against a future app bug that deletes or fails to migrate stored credentials. Changes to persistence must be covered by old-populated-data migration tests. The app is pre-alpha; security/physical Pixel acceptance remain separate release gates.
+
+**Version caveat:** GitHub's `run_number` increases for each invocation of this workflow. Never manually ship APKs under this same signing identity using larger versionCodes than those assigned by this channel. If you do, later lower-numbered updates will be rejected until the version sequence is advanced deliberately.
+
