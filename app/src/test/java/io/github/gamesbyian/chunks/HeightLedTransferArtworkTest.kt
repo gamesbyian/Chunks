@@ -7,6 +7,18 @@ import org.junit.Test
 
 /** Geometry for the canonical transfer-card artwork column. No provider or engine side effects. */
 class HeightLedTransferArtworkTest {
+    @Test fun largerArtworkPreferenceIncreasesHeightWhereRoomAllows() {
+        assertEquals(108.dp, requestedListArtworkHeight(108.dp, false))
+        assertEquals(135.dp, requestedListArtworkHeight(108.dp, true))
+        val normalPoster = heightLedArtworkBounds(requestedListArtworkHeight(108.dp, false), 112.dp, 2f / 3f)
+        val largePoster = heightLedArtworkBounds(requestedListArtworkHeight(108.dp, true), 112.dp, 2f / 3f)
+        assertTrue(largePoster.first > normalPoster.first)
+        assertTrue(largePoster.second > normalPoster.second)
+        // An extreme panorama cannot steal width from a legible information column.
+        assertEquals(48.dp, heightLedArtworkBounds(
+            requestedListArtworkHeight(108.dp, true), 48.dp, 5f).first)
+    }
+
     @Test fun naturalPosterAndSquareArtHaveDifferentTextColumnOffsets() {
         val poster = heightLedArtworkBounds(108.dp, 108.dp, 2f / 3f)
         val square = heightLedArtworkBounds(108.dp, 108.dp, 1f)
