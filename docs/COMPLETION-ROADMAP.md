@@ -1,5 +1,8 @@
 # Chunks: dependency-ordered completion and validation
 
+> **Owner client naming and summary count · 2026-11-15:** R1 batch must adopt [user-facing client terminology and included scope](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md), validate actual selected-client count backing `N clients included`, and preserve internal stable environment identities. Include All/Local/remote, offline/stale, number of configured/selected clients and accessibility acceptance.
+
+
 > **Root header/footer/toolbar UI acceptance · owner 2026-11-15:** Include [compact root header and control geometry](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md) in coordinated R1/R2 visible-screen refinement. Drop redundant Transfers and Options headings, unify selected/unselected footer rounded-rectangle bounds, and make Filters/Sort and Batch icons matching rounded squares. Accept only with installed Pixel and narrow/large-font screenshot plus functional/a11y checks; documentation itself is not UI implementation.
 
 
