@@ -545,8 +545,14 @@ class CombinedTwoRealServersInstrumentedTest {
             // Both saved profiles deliberately have the same custom name.
             // The direct Add chip must be distinct, and selecting saved A only
             // begins authentication: it cannot borrow B's current Add authority.
+            // Invoke the chip's own click action (as #1776 did for the status toggle): an
+            // injected touch can miss it while Add relayouts after the source edit
+            // (intermittent on run 43815510926; the outcome assertions are unchanged).
             rule.onNodeWithContentDescription("Connect to Studio (2) before adding")
-                .performScrollTo().performClick()
+                .performScrollTo()
+            rule.waitForIdle()
+            rule.onNodeWithContentDescription("Connect to Studio (2) before adding")
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
             // This must show an ACTUAL login, not B's already authenticated
             // server UI with A's address painted into editable fields.
             waitFor("explicit A authentication rather than stale B", 30_000) {
