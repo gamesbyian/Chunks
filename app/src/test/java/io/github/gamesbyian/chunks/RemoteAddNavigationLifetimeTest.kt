@@ -40,6 +40,14 @@ class RemoteAddNavigationLifetimeTest {
         val server = com.sun.net.httpserver.HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         val registered = java.util.concurrent.atomic.AtomicBoolean(false)
         server.createContext("/RPC2") { exchange ->
+            // RTorrentRemote preauthorizes authenticated writes with a HEAD
+            // request. A missing response here would be a pre-write refusal,
+            // not the deliberate delayed positive Add this test exercises.
+            if (exchange.requestMethod == "HEAD") {
+                exchange.sendResponseHeaders(204, -1)
+                exchange.close()
+                return@createContext
+            }
             val body = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(body)?.groupValues?.get(1)
                 ?: error("No XML-RPC method")
