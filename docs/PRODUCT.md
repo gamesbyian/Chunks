@@ -1,5 +1,8 @@
 # Chunks canonical product contract
 
+> **OWNER ARTWORK/DETAILS PRESENTATION CORRECTION · 2026-11-15:** Transfer list art is category-shaped rather than square-only: movies and TV 2:3 posters; album, audiobook and software square; books/comics 2:3; magazines 3:4. Honor natural source ratios and user overrides, keep compact list height. The Details origin indicator is only the short custom profile name such as **Wood** with its optional colour dot; remove the verbose `Environment: Server · Wood · <RPC endpoint>` display, leaving endpoint diagnostics in Connections → Manage. This supersedes former square-film/TV artwork requirements. [Aspect-ratio design](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md) · [Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md).
+
+
 > **BINDING TRANSFER DETAILS IDENTITY · 2026-11-15:** The single full Details screen begins under the Chunks wordmark with a unified transfer-and-media identity: identified title/year/provenance and portrait poster (if present), original torrent/release name, truthful observed state, short Local/remote name, and independent **Change list name / Edit identification / Choose artwork** actions. Remove redundant **Transfer details** heading, **Back to transfers** button and lower duplicate **Artwork & media information** section. Persistent Transfers footer returns to the prior list context. Preserve manual artwork overrides, provider consent and unknown/non-media fallbacks. See [binding Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md). This is approved target, not accepted implementation.
 
 
