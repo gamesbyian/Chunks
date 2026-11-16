@@ -80,13 +80,13 @@ internal fun remoteManualEntrySeed(
 /** A plain read-only observation after an uncertain folder write; no success attribution. */
 internal fun remoteFolderReadbackMessage(outcome: RemoteFolderReadback): String = when (outcome) {
     RemoteFolderReadback.VERIFIED_DIRECTORY ->
-        "Folder is present and verified by both directory services. You can select it."
+        "Folder found and confirmed. You can select it."
     RemoteFolderReadback.NOT_PRESENT ->
-        "Both directory services report the folder absent. Chunks will not retry creation."
+        "The folder wasn't found. Chunks won't try to create it again."
     RemoteFolderReadback.INCONSISTENT ->
-        "Directory services disagree or the entry is not a real folder. No creation will be repeated."
+        "Chunks couldn't confirm this is a folder. It won't try to create it again."
     RemoteFolderReadback.CANNOT_VERIFY ->
-        "The folder cannot be independently verified yet. Chunks will not retry creation."
+        "Chunks couldn't confirm this folder exists. It won't try to create it again."
 }
 
 /**
@@ -170,7 +170,7 @@ internal fun RemoteFolderPicker(
                 Text((if (savedDefaultMode) "Default folder · " else "Save to · ") + connectionName,
                     style = MaterialTheme.typography.titleLarge)
                 if (manualMode) {
-                    Text("Enter a server folder manually. Chunks will check the actual destination during Add.",
+                    Text("Enter a folder path. Chunks will check it when you add the transfer.",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedTextField(
                         value = manualPath,
@@ -226,13 +226,13 @@ internal fun RemoteFolderPicker(
                         is RemoteDirectoryLookup.Unavailable -> {
                             val message = when (state.reason) {
                                 RemoteDirectoryLookup.Reason.UNSUPPORTED ->
-                                    "This server does not expose the supported folder-listing plugin."
+                                    "This server doesn't support folder browsing in Chunks."
                                 RemoteDirectoryLookup.Reason.AUTHENTICATION ->
-                                    "The server denied folder browsing. Check this connection's access."
+                                    "The server won't allow folder browsing. Check your access settings."
                                 RemoteDirectoryLookup.Reason.OUTSIDE_SCOPE ->
-                                    "The server changed the requested directory. No folder was selected."
+                                    "The server opened a different folder. Nothing was selected."
                                 RemoteDirectoryLookup.Reason.INVALID_RESPONSE ->
-                                    "The server returned an invalid folder listing."
+                                    "The server sent a folder list Chunks couldn't read."
                                 RemoteDirectoryLookup.Reason.CONNECTION ->
                                     "Cannot list server folders right now."
                             }
@@ -368,11 +368,11 @@ internal fun RemoteFolderPicker(
                                                         RemoteFolderCreateOutcome.AlreadyExists ->
                                                             createStatus = "That folder already exists. Choose it from the list."
                                                         RemoteFolderCreateOutcome.Refused ->
-                                                            createStatus = "Folder creation was refused. No success was verified."
+                                                            createStatus = "The server refused to create the folder. Nothing was confirmed."
                                                         RemoteFolderCreateOutcome.Uncertain -> {
                                                             uncertainPath = parentForCreate.trimEnd('/') + "/" + nameForCreate
                                                             showNewFolder = false
-                                                            createStatus = "Result uncertain; check the folder listing. Chunks will not repeat creation."
+                                                            createStatus = "Chunks couldn't confirm whether the folder was created. Check the folder list. Chunks won't try again automatically."
                                                             revision++
                                                         }
                                                     }
@@ -395,7 +395,7 @@ internal fun RemoteFolderPicker(
                             is RemoteFolderCreateCapability.Unavailable ->
                                 remoteFolderCreateUnavailableText(unavailable.reason)
                             else -> if (observedRoot == null)
-                                "New folder needs the server's verified download folder, which isn't known yet."
+                                "Chunks needs to confirm the server's download folder first."
                             else "Checking whether this folder allows a new folder…"
                         }
                         TextButton(onClick = {}, enabled = false,
@@ -454,13 +454,13 @@ internal fun RemoteFolderPicker(
 /** Why New folder is disabled in the current directory; creation stays capability-gated. */
 internal fun remoteFolderCreateUnavailableText(reason: RemoteFolderCreateCapability.Reason): String = when (reason) {
     RemoteFolderCreateCapability.Reason.NOT_INSTALLED ->
-        "The server's File Manager folder-creation endpoint is unavailable."
+        "This server doesn't support creating folders through Chunks."
     RemoteFolderCreateCapability.Reason.ACCESS_DENIED ->
-        "The server denied access to File Manager's folder controls."
+        "The server won't allow Chunks to create folders."
     RemoteFolderCreateCapability.Reason.ROOT_MISMATCH ->
-        "File Manager cannot verify the chosen download tree beneath its permitted root."
+        "Chunks can't confirm access to this download folder."
     RemoteFolderCreateCapability.Reason.INCOMPLETE_PARENT ->
-        "The server's directory services disagree here. New folder is disabled in this directory; open a smaller subfolder to create one there."
+        "Chunks can't confirm this folder is safe for creating new folders. Try a folder inside it."
     RemoteFolderCreateCapability.Reason.CANNOT_VERIFY ->
-        "The server's folder-creation capability could not be verified."
+        "Chunks couldn't confirm that this server can create folders."
 }

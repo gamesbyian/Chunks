@@ -185,12 +185,12 @@ private fun TransferPrivacyGate(
                 store.mode(scope) == challenge.originalMode &&
                 activity != null && TransferDeviceAuthenticator.hasSecureLock(activity)
             if (!successful) {
-                notice = "Android screen-lock confirmation cancelled or out of date."
+                notice = "Screen-lock confirmation was cancelled or expired."
             } else if (challenge.requestedMode == null) {
                 val fresh = session.beginUnlock(scope)
                 val admitted = fresh != null && session.finishUnlock(fresh, true)
                 notice = if (admitted) null else
-                    "A fresh transfer-session authorization could not be confirmed."
+                    "Chunks couldn't confirm your unlock. Try again."
             } else {
                 // A foreground-return policy may revoke the earlier view grant.
                 // The trusted OS result first restores it, then authorizes one
@@ -208,10 +208,9 @@ private fun TransferPrivacyGate(
                     settingsOpen = false
                     if (requested != TransferLockMode.NEVER && redactLocalService)
                         LocalEngineService.redactActiveNotification(context)
-                    notice = "Privacy policy updated after device credential confirmation."
+                    notice = "Privacy settings updated after screen-lock confirmation."
                 } else {
-                    notice = "Privacy policy unchanged. The verified device " +
-                        "credential could not authorize the requested change."
+                    notice = "Privacy settings weren't changed. Chunks couldn't confirm your screen-lock approval."
                 }
             }
         }
@@ -232,7 +231,7 @@ private fun TransferPrivacyGate(
             if (requestedMode == null) session.onCancelUnlock(ticket)
             else session.onCancelPolicyChange(ticket)
             busy = false
-            notice = "Android 10 could not open device credential confirmation."
+            notice = "Android couldn't open screen-lock confirmation."
             return
         }
         android10Challenge = Android10CredentialChallenge(ticket, mode, requestedMode)
@@ -255,7 +254,7 @@ private fun TransferPrivacyGate(
         if (busy || activity == null) return
         val ticket = session.beginUnlock(scope)
         if (ticket == null) {
-            notice = "This scope is already unlocked or has an authentication pending."
+            notice = "This screen is already unlocked, or an unlock is in progress."
             return
         }
         unlockTicket = ticket
@@ -297,7 +296,7 @@ private fun TransferPrivacyGate(
                 notice = null
                 localRevision++
             } else {
-                notice = "Could not persist privacy protection. No unlock was granted."
+                notice = "Couldn't save privacy protection. This screen remains locked."
             }
             return
         }
@@ -359,7 +358,7 @@ private fun TransferPrivacyGate(
                     else "Unlock " + lockedTitle.lowercase())
             }
             if (activity == null || !TransferDeviceAuthenticator.hasSecureLock(activity))
-                Text("This device currently has no usable secure screen lock. " +
+                Text("This device needs a secure screen lock. " +
                     "Set up a PIN, pattern or password in Android Settings, then retry.",
                     color = MaterialTheme.colorScheme.error)
             notice?.let { Text(it, color = MaterialTheme.colorScheme.error) }

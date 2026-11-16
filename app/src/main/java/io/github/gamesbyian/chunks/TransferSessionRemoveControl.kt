@@ -46,13 +46,13 @@ import kotlinx.coroutines.withTimeout
  */
 internal fun sessionEraseFeedback(response: SessionEraseOutcome): String = when (response) {
     is SessionEraseOutcome.VerifiedRemoved ->
-        "Verified: this exact infohash is absent from rTorrent's session. Physical files were not inspected."
+        "Confirmed: this transfer is gone from the server list. Its downloaded files weren't checked."
     is SessionEraseOutcome.AlreadyAbsent ->
-        "Already absent from rTorrent's session by exact infohash check. No erase command was sent."
+        "This transfer is already absent from the server. No removal request was sent."
     is SessionEraseOutcome.PendingRemoval ->
         "rTorrent still reports this exact infohash in its session after the removal request. Refresh and inspect before another action."
     is SessionEraseOutcome.Uncertain ->
-        "Removal outcome uncertain. The server may already have removed this exact infohash. Refresh by hash; never blindly repeat."
+        "Chunks couldn't confirm removal. The server may have removed this transfer. Refresh its status before trying again."
 }
 
 /**
@@ -131,7 +131,7 @@ fun TransferSessionRemoveControl(
     } == true
 
     if (!validHash) {
-        Text("Remove is available only for torrents with an exact v1 infohash.",
+        Text("Chunks can remove only torrents with a supported v1 identity.",
             style = MaterialTheme.typography.bodySmall)
         return
     }
@@ -194,15 +194,15 @@ fun TransferSessionRemoveControl(
                                         feedback = when (response) {
                                             is RemoteDeleteDataOutcome.QueuedForCleanup ->
                                                 (if (response.sessionRemoved) "Verified: this exact rTorrent session is absent. " else "Session removal is still pending. ") +
-                                                    "Queued: ruTorrent accepted nonforce data cleanup. physical data deletion is NOT yet verified."
+                                                    "The server accepted the file-deletion request, but Chunks hasn't confirmed the files are gone."
                                             is RemoteDeleteDataOutcome.Partial ->
                                                 "Partial result: the exact session is absent, but data cleanup was not acknowledged. Inspect server files; no request will be retried."
                                             RemoteDeleteDataOutcome.Unsupported ->
-                                                "No deletion command was sent. This server route does not expose the required ruTorrent erasedata plugin."
+                                                "This server doesn't support deleting files through Chunks. No deletion request was sent."
                                             is RemoteDeleteDataOutcome.Refused ->
                                                 "No deletion was accepted. " + response.reason.explanation
                                             is RemoteDeleteDataOutcome.Uncertain ->
-                                                "Data deletion outcome is uncertain. No request will be retried automatically. Inspect the exact rTorrent session and server files."
+                                                "Chunks couldn't confirm whether the files were deleted. Check the server's transfer list and files. Chunks won't retry automatically."
                                         }
                                     } catch (_: TimeoutCancellationException) {
                                         feedback = "Removal timed out during: " + stage.label +
@@ -269,7 +269,7 @@ fun TransferSessionRemoveControl(
                                             feedback = sessionEraseFeedback(response)
                                         } catch (_: TimeoutCancellationException) {
                                             verified = false
-                                            feedback = "Session removal timed out. The request may have reached the server. Check the current session; no automatic retry."
+                                            feedback = "Removal timed out. It may still have worked. Check the server's transfer list; Chunks won't retry automatically."
                                         } catch (cancel: CancellationException) {
                                             feedback = "Removal was interrupted. Check the current session; no automatic retry."
                                             throw cancel
@@ -288,7 +288,7 @@ fun TransferSessionRemoveControl(
                                     verified = false
                                     pending = false
                                     confirming = false
-                                    feedback = "No Remove command was sent. Refresh and try again after the current command settles."
+                                    feedback = "Another server action is still running. Refresh before trying again; no removal was sent."
                                 }
                             },
                             enabled = environmentLabel != null && !pending && mainView && !snapshotStale,

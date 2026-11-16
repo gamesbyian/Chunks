@@ -413,8 +413,8 @@ class CombinedTransfersScreenTest {
         // A deliberately narrowed empty view is neither fresh-install proof
         // nor permission to infer a current native inventory. Recover scope
         // explicitly, then use the same Welcome/Add callback as all entries.
-        revealText("No transfers are visible with these view choices.")
-        rule.onNodeWithText("No transfers are visible with these view choices.",
+        revealText("No transfers to show in this view.")
+        rule.onNodeWithText("No transfers to show in this view.",
             substring = true).assertExists()
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").performClick()
@@ -555,7 +555,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Search names or hashes").performTextInput("Small Episode")
         revealText("1 of 2 transfers")
         rule.onNodeWithText("1 of 2 transfers", substring = true).assertExists()
-        rule.onNodeWithText("New downloads may not match this search.", substring = true)
+        rule.onNodeWithText("A new download may be hidden by this search.", substring = true)
             .assertExists()
         // This 411dp Robolectric viewport has 16dp list padding on each side:
         // the field itself is 379dp and deliberately chooses the compact
@@ -566,7 +566,7 @@ class CombinedTransfersScreenTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(clearAction)
         rule.onNode(clearAction).assertIsDisplayed().performClick()
         rule.onNodeWithText("2 transfers", substring = true).assertExists()
-        rule.onNodeWithText("New downloads may not match this search.", substring = true)
+        rule.onNodeWithText("A new download may be hidden by this search.", substring = true)
             .assertDoesNotExist()
         assertTrue("Viewing and clearing a search must issue no server lifecycle commands",
             commands.isEmpty())
@@ -581,8 +581,8 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Search names or hashes").performTextInput("not-in-any-transfer")
         revealText("0 of 2 transfers")
         rule.onNodeWithText("0 of 2 transfers", substring = true).assertExists()
-        revealText("New downloads may not match this search.")
-        rule.onNodeWithText("New downloads may not match this search.", substring = true)
+        revealText("A new download may be hidden by this search.")
+        rule.onNodeWithText("A new download may be hidden by this search.", substring = true)
             .assertExists()
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").performClick()
@@ -613,8 +613,10 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Search names or hashes").performTextInput("Big Archive")
         revealText("0 of 2 transfers")
         rule.onNodeWithText("0 of 2 transfers", substring = true).assertExists()
-        revealText("New downloads may be hidden by this view.")
-        rule.onNodeWithText("New downloads may be hidden by this view.", substring = true)
+        // Once both filter and search hide every row, the empty-view recovery
+        // replaces the non-empty filter explanation. Assert the visible contract.
+        revealText("No transfers to show in this view.")
+        rule.onNodeWithText("No transfers to show in this view.", substring = true)
             .assertExists()
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").performClick()
@@ -633,8 +635,8 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Big Archive").assertDoesNotExist()
         revealText("1 of 2 transfers")
         rule.onNodeWithText("1 of 2 transfers", substring = true).assertExists()
-        revealText("New downloads may be hidden by this view.")
-        rule.onNodeWithText("New downloads may be hidden by this view.", substring = true)
+        revealText("A new download may be hidden by your filters.")
+        rule.onNodeWithText("A new download may be hidden by your filters.", substring = true)
             .assertExists()
         assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.STOPPED,
             CombinedViewPreferences(context).load().filter)
@@ -642,7 +644,7 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("All transfers").performClick()
         revealText("Big Archive")
         rule.onNodeWithText("Big Archive").assertExists()
-        rule.onNodeWithText("New downloads may be hidden by this view.", substring = true)
+        rule.onNodeWithText("A new download may be hidden by your filters.", substring = true)
             .assertDoesNotExist()
         assertEquals(io.github.gamesbyian.chunks.model.UnifiedTransferFilter.ALL,
             CombinedViewPreferences(context).load().filter)
@@ -660,8 +662,8 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText(staleLabel).assertExists()
         // The first-fold count is recycled after scrolling. The expanded
         // source diagnostics must themselves explain what is out of date.
-        revealText("Some clients are missing or out of date.")
-        rule.onNodeWithText("Some clients are missing or out of date.",
+        revealText("Some clients are offline or out of date.")
+        rule.onNodeWithText("Some clients are offline or out of date.",
             substring = true).assertExists()
     }
 
