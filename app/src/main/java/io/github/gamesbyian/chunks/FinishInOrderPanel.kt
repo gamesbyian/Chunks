@@ -65,14 +65,13 @@ internal fun FinishInOrderReview(
     val pages = (order.size + REVIEW_ROWS - 1) / REVIEW_ROWS
 
     Text(when (source) {
-        FinishInOrderPlanner.OrderSource.EPISODES -> "Order detected from episode numbers. Check it before starting."
-        FinishInOrderPlanner.OrderSource.FILENAMES -> "Order taken from numbered file names. Check it before starting."
+        FinishInOrderPlanner.OrderSource.EPISODES -> "Found an episode order. Check it before starting."
+        FinishInOrderPlanner.OrderSource.FILENAMES -> "Found an order from numbered filenames. Check it before starting."
         null -> "Arrange the files in the order you want them finished."
     }, style = MaterialTheme.typography.bodySmall)
-    Text("Chunks gives the first unfinished file High priority and moves to the next " +
-        "only after every piece of it passes its hash check. Which pieces arrive depends " +
-        "on what peers have, so the order is a preference, not a guarantee. Skipped " +
-        "files stay skipped, and any priority you change by hand later is left alone.",
+    Text("Chunks prioritizes the first unfinished file, then moves on once that file is verified. " +
+        "Download order depends on available peers, so it's not guaranteed. " +
+        "Skipped files stay skipped, and manual priority changes are respected.",
         style = MaterialTheme.typography.bodySmall)
     Column(Modifier.selectableGroup()) {
         (listOf(Mode.BALANCED to "Balanced: next file at Normal, the rest Low",
@@ -205,13 +204,13 @@ internal fun FinishInOrderPanel(
 
     fun describe(step: FinishInOrderRunner.Step?): String? = when (step) {
         null, FinishInOrderRunner.Step.NotObservable ->
-            "The local engine is not reporting this transfer yet; Finish in Order will start when it does."
+            "Finish in Order will start once this transfer appears on your device."
         is FinishInOrderRunner.Step.Applied -> "File priorities updated and confirmed by the engine."
         is FinishInOrderRunner.Step.Idle -> null
-        is FinishInOrderRunner.Step.Reconciled -> "The last interrupted change was checked; nothing was repeated."
+        is FinishInOrderRunner.Step.Reconciled -> "Checked the interrupted change. Nothing was repeated."
         is FinishInOrderRunner.Step.Suspended -> step.record.suspendedReason
         is FinishInOrderRunner.Step.StorageFailed ->
-            "Chunks could not save its change journal, so no priority was changed."
+            "Couldn't save the pending change. File priorities weren't changed."
     }
 
     val current = record
@@ -240,7 +239,7 @@ internal fun FinishInOrderPanel(
                             withContext(Dispatchers.IO) {
                                 val policy = FinishInOrderPlanner.policyFor(mode, files, order)
                                 if (!FinishInOrderController.exclusive { store.save(infoHash, FinishInOrderRecord(policy)) })
-                                    "Chunks could not save Finish in Order. Nothing changed."
+                                    "Couldn't save Finish in Order. Nothing changed."
                                 else describe(FinishInOrderController.stepNow(context, infoHash))
                             }
                         }
@@ -337,7 +336,7 @@ internal fun FinishInOrderPanel(
                     act {
                         withContext(Dispatchers.IO) {
                             FinishInOrderController.turnOff(context, infoHash)
-                                ?: "Chunks could not turn Finish in Order off. Nothing changed; try again."
+                                ?: "Couldn't turn off Finish in Order. Nothing changed; try again."
                         }
                     }
                 }, enabled = !working,
