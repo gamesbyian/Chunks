@@ -1,22 +1,12 @@
 name: Build signed Chunks release APK (manual)
 
-# Manual and main-only. Produces a signed, verified chunks-release APK plus a
-# SHA-256 / signing-certificate receipt as a workflow artifact. It never
-# creates a GitHub Release and never publishes an unsigned APK. A signed
-# build is publisher authenticity only: it is not physical-device or
-# release acceptance (see docs/QUALITY-LEDGER.md and docs/BUILD.md).
+# Manual main-only persistent-key owner-update release. A stable signing key and
+# certificate pin are mandatory; no unpublished / unsigned fallback.
 on:
   workflow_dispatch:
-    inputs:
-      version_name:
-        description: "Semantic version, e.g. 0.2.0-alpha.1"
-        required: true
-      version_code:
-        description: "Monotonic Android versionCode (integer > previous release)"
-        required: true
 
 permissions:
-  contents: read
+  contents: write
 
 # Actions are pinned to reviewed immutable git SHAs to prevent mutable tag drift.
 # Keep manual, trusted main-only signing and exact-artifact verification.
@@ -32,22 +22,28 @@ jobs:
     timeout-minutes: 30
     env:
       CHUNKS_SOURCE_SHA: ${{ github.sha }}
-      CHUNKS_VERSION_NAME: ${{ inputs.version_name }}
-      CHUNKS_VERSION_CODE: ${{ inputs.version_code }}
+      CHUNKS_VERSION_NAME: 0.1.0-alpha.${{ github.run_number }}
+      CHUNKS_VERSION_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - name: Validate inputs and required signing secrets
+      - name: Validate signing secrets and certificate pin
         env:
           KEYSTORE_B64: ${{ secrets.CHUNKS_RELEASE_KEYSTORE_BASE64 }}
           STORE_PASSWORD: ${{ secrets.CHUNKS_RELEASE_STORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.CHUNKS_RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.CHUNKS_RELEASE_KEY_PASSWORD }}
+          EXPECTED_CERT: ${{ vars.CHUNKS_SIGNING_CERT_SHA256 }}
         run: |
           set -euo pipefail
           [[ "$CHUNKS_VERSION_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "Invalid version_name"; exit 1; }
           [[ "$CHUNKS_VERSION_CODE" =~ ^[1-9][0-9]{0,9}$ ]] || { echo "Invalid version_code"; exit 1; }
+          (( CHUNKS_VERSION_CODE <= 2100000000 )) || { echo "versionCode too large"; exit 1; }
+          [[ "$EXPECTED_CERT" =~ ^([[:xdigit:]]{2}:){31}[[:xdigit:]]{2}$ ]] || {
+            echo "::error::Set CHUNKS_SIGNING_CERT_SHA256 repository variable to the SHA-256 signing certificate fingerprint."
+            exit 1
+          }
           for name in KEYSTORE_B64 STORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
               echo "Missing signing secret for $name; refusing to build an unsigned release."
@@ -86,6 +82,8 @@ jobs:
           printf '%s' "$KEYSTORE_B64" | base64 -d > "$CHUNKS_RELEASE_KEYSTORE"
           gradle --no-daemon :app:testDebugUnitTest :app:assembleRelease
       - name: Verify signature, rename and write receipt
+        env:
+          EXPECTED_CERT: ${{ vars.CHUNKS_SIGNING_CERT_SHA256 }}
         run: |
           set -euo pipefail
           out=app/build/outputs/apk/release
@@ -95,6 +93,12 @@ jobs:
           "$apksigner" verify --verbose --print-certs "$out/app-release.apk" > "$RUNNER_TEMP/signature.txt"
           # minSdk 29: a v3 (or v2) APK Signature Scheme block is required.
           grep -Eq "Verified using v[23] scheme \(APK Signature Scheme v[23]\): true" "$RUNNER_TEMP/signature.txt"
+          actual_cert="$(sed -n 's/.*Signer #1 certificate SHA-256 digest: //p' "$RUNNER_TEMP/signature.txt" | head -n 1 | tr '[:lower:]' '[:upper:]' | tr -d ':')"
+          expected_cert="$(printf '%s' "$EXPECTED_CERT" | tr '[:lower:]' '[:upper:]' | tr -d ':')"
+          [ -n "$actual_cert" ] && [ "$actual_cert" = "$expected_cert" ] || {
+            echo "::error::Signing certificate changed; refusing incompatible Chunks update."
+            exit 1
+          }
           # A valid signature does not establish the manifest identity that
           # will be printed in the release receipt. Check packaged bytes.
           python3 tools/verify_release_apk_identity.py \
@@ -111,9 +115,25 @@ jobs:
             echo "Publisher authenticity only; not physical-device or release acceptance."
           } > "$out/CHUNKS-RELEASE-SHA256.txt"
           cat "$out/CHUNKS-RELEASE-SHA256.txt"
+      - name: Publish immutable signed owner-update prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="android-update-v$CHUNKS_VERSION_CODE"
+          apk="app/build/outputs/apk/release/chunks-release-$CHUNKS_VERSION_NAME.apk"
+          receipt="app/build/outputs/apk/release/CHUNKS-RELEASE-SHA256.txt"
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::Signed APK release tag already exists; refusing to overwrite update bytes."
+            exit 1
+          fi
+          gh release create "$tag" "$apk#chunks.apk" "$receipt#CHUNKS-RELEASE-SHA256.txt" \
+            --repo "$GITHUB_REPOSITORY" --target "$CHUNKS_SOURCE_SHA" \
+            --title "Chunks owner update $CHUNKS_VERSION_NAME" --prerelease \
+            --notes "Persistent-key signed Chunks update. Keep the app installed for future updates. Verify the matching SHA-256 receipt. This is not physical-device acceptance."
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: chunks-release-${{ inputs.version_name }}
+          name: chunks-release-${{ github.run_number }}
           path: |
             app/build/outputs/apk/release/chunks-release-*.apk
             app/build/outputs/apk/release/CHUNKS-RELEASE-SHA256.txt
