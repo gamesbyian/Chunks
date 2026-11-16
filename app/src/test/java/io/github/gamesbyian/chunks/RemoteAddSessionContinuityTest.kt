@@ -22,6 +22,24 @@ import org.robolectric.annotation.GraphicsMode
 class RemoteAddSessionContinuityTest {
     @get:Rule val rule = createComposeRule()
     private fun reveal(text: String) = rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(text, substring = true))
+    /**
+     * Discover the enabled Add action as often as needed, then invoke the *current*
+     * attached semantics node exactly once. A cached OnClick lambda may belong to a
+     * recycled LazyColumn Modifier node and throw before the user's Add can run.
+     * Never retry a dispatched mutation; tests below verify one exact submission.
+     */
+    private fun submitReviewedAddOnce() {
+        rule.waitUntil(15_000) {
+            runCatching {
+                rule.onNode(hasScrollToIndexAction())
+                    .performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
+                rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
+                true
+            }.getOrDefault(false)
+        }
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT)
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+    }
 
     @Test fun uncertainAttemptCannotBecomeAnotherAddAfterNavigation() {
         val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
@@ -69,20 +87,8 @@ class RemoteAddSessionContinuityTest {
                     onMutationStarted = { attempts++; true }, onMutationSettled = { settled++ },
                     finishInOrderScope = endpoint + "\u0000", session = session)
             } } }
-            // Acquire the enabled UI semantic action while its lazy item exists,
-            // then invoke it ONCE. A touch re-fetch after a late default-folder
-            // layout update can lose the node. Only discovery may be retried.
-            var submitAction: (() -> Boolean)? = null
-            rule.waitUntil(15_000) {
-                runCatching {
-                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
-                    rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
-                    submitAction = rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT)
-                        .fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.OnClick].action
-                    submitAction != null
-                }.getOrDefault(false)
-            }
-            rule.runOnIdle { assertTrue(requireNotNull(submitAction).invoke()) }
+            // Only discovery can repeat; the attached submit action is invoked once.
+            submitReviewedAddOnce()
             rule.waitUntil(15_000) { settled == 1 }
             reveal("Check server state (read only)")
             reveal("Back to transfers")
@@ -223,20 +229,8 @@ class RemoteAddSessionContinuityTest {
                     initialTorrent = incoming.value, onInitialTorrentConsumed = { incoming.value = null; consumed++ },
                     finishInOrderScope = account, addStartState = start, addArtworkState = artwork, session = session)
             } } }
-            // Acquire the enabled UI semantic action while its lazy item exists,
-            // then invoke it ONCE. A touch re-fetch after a late default-folder
-            // layout update can lose the node. Only discovery may be retried.
-            var submitAction: (() -> Boolean)? = null
-            rule.waitUntil(15_000) {
-                runCatching {
-                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
-                    rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
-                    submitAction = rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT)
-                        .fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.OnClick].action
-                    submitAction != null
-                }.getOrDefault(false)
-            }
-            rule.runOnIdle { assertTrue(requireNotNull(submitAction).invoke()) }
+            // Only discovery can repeat; the attached submit action is invoked once.
+            submitReviewedAddOnce()
             try {
                 rule.waitUntil(15_000) { received.count == 0L }
             } catch (failure: Throwable) {
@@ -400,20 +394,8 @@ class RemoteAddSessionContinuityTest {
                     onMutationStarted = { true }, onMutationSettled = { settled++ },
                     finishInOrderScope = account, session = session)
             } } }
-            // Acquire the enabled UI semantic action while its lazy item exists,
-            // then invoke it ONCE. A touch re-fetch after a late default-folder
-            // layout update can lose the node. Only discovery may be retried.
-            var submitAction: (() -> Boolean)? = null
-            rule.waitUntil(15_000) {
-                runCatching {
-                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.ADD_SUBMIT))
-                    rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
-                    submitAction = rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT)
-                        .fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsActions.OnClick].action
-                    submitAction != null
-                }.getOrDefault(false)
-            }
-            rule.runOnIdle { assertTrue(requireNotNull(submitAction).invoke()) }
+            // Only discovery can repeat; the attached submit action is invoked once.
+            submitReviewedAddOnce()
             rule.waitUntil(15_000) { settled == 1 }
             assertFalse("An existing-hash preflight sent no mutation; the user may correct the draft", session.alreadyAttempted)
             reveal("Magnet or torrent link")

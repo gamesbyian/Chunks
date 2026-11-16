@@ -15,6 +15,7 @@ import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performScrollTo
@@ -208,7 +209,14 @@ class TransferRowArtworkTest {
             }
         }
         rule.onNodeWithContentDescription("Artwork: Babylon 5 (automatic). $format").assertExists()
-            .assertWidthIsEqualTo(40.dp)
+            .assertHeightIsEqualTo(112.dp)
+        val artwork = rule.onNodeWithTag("local-card-artwork", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        val progress = rule.onNodeWithTag("local-card-progress", useUnmergedTree = true)
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue("All local progress belongs right of artwork", progress.left >= artwork.right)
+        assertTrue("The local progress bar must remain visible at 320dp/200% text",
+            progress.width > 0f && progress.height > 0f)
         rule.onRoot().captureRoboImage("build/chunks-visual/media-row-local-320dp-200pct.png")
         rule.onNodeWithContentDescription("More details for $name on this device").performScrollTo().performClick()
         rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
