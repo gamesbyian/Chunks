@@ -1,5 +1,8 @@
 # Transfers: compact list-first screen (owner-approved binding UI contract, 2026-11-13)
 
+> **Client naming and summary correction (2026-11-15):** [Client terminology and included scope](CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md) is binding. Replace visible *environment* with *client*, retaining short scope chips **Local** and **Wood**. Summary above rows must say **N clients included** when reporting scope membership, never **N sources/environments excluded**. Inspect/repair the actual count computation rather than merely reversing the label; included clients may be offline/stale but are still selected. Preserve status truth and the All threshold. Supersedes previous count wording.
+
+
 > **Root geometry update · owner-approved 2026-11-15:** [Compact root headers and control geometry](ROOT-HEADERS-AND-CONTROL-GEOMETRY.md) supersedes item 1 below where it calls for a visible **Transfers heading**: after the chunks. wordmark render the environment chips immediately, without a duplicate root title or dead space. Filters/Sort and Batch icons use matching **rounded-square**, not circular, controls. All four fixed-footer tabs have the same rounded-rectangle shape as their selected highlights, Add included. Preserve 48dp taps and existing functionality.
 
 
