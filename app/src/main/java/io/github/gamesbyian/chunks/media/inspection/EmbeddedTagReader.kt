@@ -268,5 +268,5 @@ object EmbeddedTagReader {
     private fun year(s: String?): Int? = s?.let { Regex("(1[89]|20)\\d{2}").find(it)?.value?.toIntOrNull() }
 
     /** Tag text is untrusted UI input: strip controls, trim, cap length. */
-    private fun clean(s: String?): String? = s?.filter { !it.isISOControl() && it != '﻿' }?.trim()?.take(300)?.ifEmpty { null }
+    private fun clean(s: String?): String? = s?.filter { !it.isISOControl() && it != '\uFEFF' }?.trim()?.take(300)?.ifEmpty { null }
 }
