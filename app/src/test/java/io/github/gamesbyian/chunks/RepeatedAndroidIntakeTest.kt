@@ -64,8 +64,26 @@ class RepeatedAndroidIntakeTest {
         .toByteArray()
 
     private fun list(): SemanticsNodeInteraction = rule.onNode(hasScrollToIndexAction())
-    private fun waitForText(text: String, timeout: Long = 30_000) = rule.waitUntil(timeout) {
-        rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+    // Only composed nodes are found: after the first Add the list sits at its
+    // outcome/submit end, so a new source's row near the top may be off-screen
+    // (CI foundation 43779794967 timed out here). Scroll toward it read-only
+    // while waiting, and name what was visible on timeout (synthetic fixture
+    // names only).
+    private fun waitForText(text: String, timeout: Long = 30_000) {
+        try {
+            rule.waitUntil(timeout) {
+                runCatching { list().performScrollToNode(hasText(text, substring = true)) }
+                rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (failure: androidx.compose.ui.test.ComposeTimeoutException) {
+            val visible = runCatching {
+                rule.onAllNodes(hasText("", substring = true), useUnmergedTree = true).fetchSemanticsNodes()
+                    .flatMap { n -> n.config.getOrElseNullable(
+                        androidx.compose.ui.semantics.SemanticsProperties.Text) { null }.orEmpty().map { it.text } }
+                    .filter { it.length < 140 }
+            }.getOrDefault(emptyList())
+            throw AssertionError("Timed out waiting for \"$text\"; visible: " + visible.joinToString(" | "), failure)
+        }
     }
 
     private fun connect() {
