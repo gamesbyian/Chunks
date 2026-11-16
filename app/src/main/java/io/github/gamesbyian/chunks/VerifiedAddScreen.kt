@@ -655,6 +655,8 @@ internal fun VerifiedAddScreen(
                     Text("Adding to " + (draft.submittedDisplayName ?: environmentLabel ?: "rTorrent"),
                         fontWeight = FontWeight.Bold)
                     Text("Submitting and checking the exact transfer. Do not submit again.")
+                    if (attemptScope != null)
+                        Text("You can return to Transfers while this client's result is checked.")
                 }
             } else RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
         }
@@ -1413,7 +1415,10 @@ internal fun VerifiedAddScreen(
             }
         }
         item {
-            OutlinedButton(onClick = onBack, enabled = !submitting,
+            // Production passes an app-root attempt scope. Leaving Add only
+            // removes the screen, never cancels its authorized RPC/readback.
+            // Standalone screen-owned tests retain the old cancellation gate.
+            OutlinedButton(onClick = onBack, enabled = !submitting || attemptScope != null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                 Text("Back to transfers")
             }
