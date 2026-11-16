@@ -1,5 +1,8 @@
 # Chunks canonical product contract
 
+> **BINDING CONNECTIONS ROSTER · 2026-11-15:** Show one unified Connections list keyed by stable remote-profile ID: one card per saved connection, verified connected profiles first, other saved/disconnected/attention profiles after. Display short name and honest status with contextual View transfers/Connect and Manage actions; keep endpoint, colour, remote folder, credentials and server tools in per-profile Manage. Replace the oversized Connect to another computer/server panel with a compact zero-profiles purple card titled **Connect to a remote client**, description **Manage torrents on another computer or server**, and **+ Add connection** *inside* the card. With profiles present, use a compact + Add connection control, no onboarding panel. Preserve read-only/privacy/auth distinctions and one canonical scoped Transfers browser. [Binding design](design/CONNECTIONS-UNIFIED-ROSTER.md). Approved, not yet implemented.
+
+
 **Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID `local`. Remote environments are independently named profiles. Phone/handset/tablet refers only to physical hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
 
 **Naming requirement:** Public/full title **Chunks Torrent Client & Remote**; installed Android label **Chunks**; in-app visual wordmark **chunks.**. Preserve explicit preview labels for side-by-side builds and do not change the app ID or system notification attribution. See [branding and app identity contract](BRANDING-AND-APP-IDENTITY.md).
