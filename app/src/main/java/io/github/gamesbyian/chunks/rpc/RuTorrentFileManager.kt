@@ -126,7 +126,7 @@ internal object RuTorrentFileManager {
                 it.key?.equals("WWW-Authenticate", true) == true
             }.flatMap { it.value }.take(8).filter { it.length <= 8192 }
             val body = if (status == 200) {
-                val result = connection.inputStream.use { it.readNBytes(MAX_RESPONSE_BYTES + 1) }
+                val result = connection.inputStream.use { it.readAtMost(MAX_RESPONSE_BYTES + 1) }
                 if (result.size > MAX_RESPONSE_BYTES) throw IOException("Oversized File Manager response")
                 result.toString(Charsets.UTF_8)
             } else ""

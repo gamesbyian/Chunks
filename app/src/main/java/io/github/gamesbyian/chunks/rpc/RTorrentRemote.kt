@@ -1296,7 +1296,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                     authorization = HttpRpcAuthorization.fromChallenge(headers, auth, method, uri.rawPath)
                 } else {
                     val text = if (method == "GET" && status == 200) {
-                        val bytes = connection.inputStream.use { it.readNBytes(150_001) }
+                        val bytes = connection.inputStream.use { it.readAtMost(150_001) }
                         check(bytes.size <= 150_000) { "Oversized capability resource" }
                         bytes.toString(Charsets.UTF_8)
                     } else ""
@@ -1505,7 +1505,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
                         return@withContext false
                     if (connection.contentLengthLong > 16_384L)
                         return@withContext false
-                    val response = connection.inputStream.use { it.readNBytes(16_385) }
+                    val response = connection.inputStream.use { it.readAtMost(16_385) }
                     response.size <= 16_384 && RuTorrentDeleteData.acceptedResponse(
                         response.toString(Charsets.UTF_8))
                 } finally { connection.disconnect() }

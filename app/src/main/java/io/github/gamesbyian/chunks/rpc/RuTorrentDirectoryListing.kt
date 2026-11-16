@@ -147,7 +147,7 @@ internal object RuTorrentDirectoryListing {
                     } else {
                         return@withContext when (status) {
                             200 -> {
-                                val bytes = connection.inputStream.use { it.readNBytes(150_001) }
+                                val bytes = connection.inputStream.use { it.readAtMost(150_001) }
                                 if (bytes.size > 150_000) RemoteDirectoryLookup.Unavailable(
                                     RemoteDirectoryLookup.Reason.INVALID_RESPONSE)
                                 else parse(bytes.toString(Charsets.UTF_8), path, legacy)
