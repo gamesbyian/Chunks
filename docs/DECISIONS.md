@@ -1,5 +1,10 @@
 # Chunks: canonical decision ledger
 
+## D-CONNECTIONS-UNIFIED-ROSTER-20261115 | Owner, binding; implementation pending
+
+Use one Connections list in which each saved remote profile appears exactly once, keyed by stable ID even for duplicate names or numbered ruTorrent routes. Verified connected first, saved disconnected/attention states after with stable ordering. Compact cards show short name, truthful state and contextual View transfers or Connect plus Manage. Move advanced connection actions and full endpoint into one exact-profile Manage view, preserving existing auth/privacy, disconnection versus forgetting and confirmation safeguards. With no profiles show a small purple **Connect to a remote client** onboarding card, one plain-language line and **+ Add connection** inside it; with profiles show only compact **+ Add connection** alongside/after roster. Remove duplicate Connected/Saved servers cards, long security explanations and giant onboarding card from normal populated view. Opening View transfers uses the canonical exact-profile Transfers screen. See [design](design/CONNECTIONS-UNIFIED-ROSTER.md). This is a presentation decision; saved and live session states remain distinct internally.
+
+
 ## D-REMOTE-DIRECTORY-BROWSER-20261113 | Owner, binding scope; planned
 
 Authenticated rTorrent **Save to → Change** must support browsing the actual folders exposed by that exact server and **New folder** only with separately verified safe permission. Preserve automatic default Add without mandatory picker or custom text, profile-scoped recents/defaults, a fully usable manual-path fallback, and independent Add submit authority. No speculative shell/`execute.*` privilege or remote `Chunks Downloads` creation. Reuse a single picker in Add and per-profile default setting. [Canonical spec](REMOTE-DIRECTORY-BROWSER.md), [UI design](design/REMOTE-DIRECTORY-BROWSER.md), [queue](WORK-QUEUE.md), [#1680](https://github.com/gamesbyian/Chunks/issues/1680).
