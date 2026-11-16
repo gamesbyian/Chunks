@@ -1,5 +1,10 @@
 # Chunks: canonical decision ledger
 
+## D-ARTWORK-FORMATS-AND-SHORT-ORIGIN-20261115 | Owner, binding; implementation pending
+
+Transfer list thumbnails prefer native media shapes: movies and TV portrait 2:3 posters; music albums, audiobooks, software square 1:1; books and comics portrait 2:3; magazines portrait 3:4. Do not distort or forcibly crop authentic images or discard user-selected alternate shapes. Preserve compact list row height with bounded slots, and apply natural artwork formats within the unified top Details identity. Display only custom short origin **Wood** or **Local** plus optional corresponding colour dot on Details; no `Environment: Server · Wood · <hostname/path>` or duplicated endpoint text. Network and session authority remain keyed by stable ID, and full endpoint remains in Connections → Manage. See [artwork design](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md) and [Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md); both await installed acceptance.
+
+
 ## D-DETAILS-IDENTITY-FIRST-20261115 | Owner, binding; implementation pending
 
 The owner approved one compact top-of-screen Transfer Details identity area beneath the chunks. wordmark, merging original torrent release name and transfer state/source with recognized media title, year, portrait poster and identification provenance. Remove the redundant **Back to transfers** control, **Transfer details** title and duplicated lower **Artwork & media information** card. Navigation lives in the fixed footer; returning to Transfers preserves previous list state and scroll. The unified area retains three **separate, visible** actions: **Change list name**, **Edit identification**, **Choose artwork**. Choosing alternate/custom artwork is independent of identification. Maintain manual overrides, Add-only enrichment consent semantics, fallback for unidentified transfers, and full name/short server identity. See [Details target design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md). Owner approval does not establish implementation or physical acceptance.
