@@ -311,6 +311,20 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 // this alert and the pause. An explicit Start/Stop or Remove
                 // revokes this exact-handle intent before the callback.
                 synchronized(handles) {
+                    // libtorrent also checks existing files on its own when magnet metadata
+                    // arrives and posts TORRENT_CHECKED for that check. If that earlier alert
+                    // is dispatched after transitionMagnetMetadata() started our forced
+                    // stop_when_ready recheck, pausing here would freeze the forced check
+                    // mid-way (a paused torrent never progresses its check): the job stayed
+                    // "stopped, checking" indefinitely (intermittent JVM/installed stopped-
+                    // magnet tests). Still checking now means this alert is stale; keep the
+                    // intent for the real completion, which stop_when_ready also stops.
+                    if (handles[key] == handle && stopAfterMagnetCheck[key] == handle &&
+                        runCatching {
+                            val state = handle.status().state()
+                            state == TorrentStatus.State.CHECKING_FILES ||
+                                state == TorrentStatus.State.CHECKING_RESUME_DATA
+                        }.getOrDefault(false)) return
                     if (handles[key] == handle && stopAfterMagnetCheck.remove(key, handle)) {
                         try {
                             handle.pause()
