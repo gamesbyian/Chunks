@@ -66,6 +66,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
 import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -116,6 +117,9 @@ internal fun VerifiedAddScreen(
     onVerifiedAlias: (String, String) -> Boolean = { _, _ -> false },
     /** Parent-owned exact-account review; remounting must not revive Add authority. */
     session: RemoteAddSession? = null,
+    /** App-root scope keeps one authorized RPC attempt alive across Add/Transfers navigation.
+     * If absent, standalone screen tests retain their screen-scoped execution. */
+    attemptScope: CoroutineScope? = null,
     /** Inline shared Add-to selector; never grants remote admission. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
     externalSourceReading: Boolean = false,
@@ -144,6 +148,10 @@ internal fun VerifiedAddScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // The mutation/readback must outlive this Add composable when users switch
+    // to Transfers. Still cancel on app-root teardown (e.g. Activity death),
+    // preserving the uncertain ticket rather than resending an RPC load.
+    val submitScope = attemptScope ?: scope
     val draft = session ?: remember(remote, finishInOrderScope) { RemoteAddSession(finishInOrderScope) }
     require(draft.accountScope == finishInOrderScope) { "Add review belongs to another server account" }
     var selectedTorrent by draft::selectedTorrent
@@ -1058,7 +1066,7 @@ internal fun VerifiedAddScreen(
                             draft.attemptSource = magnet
                             draft.frozenAlias = aliasAtClick
                             val artworkEnvironment = ticket.intent.target.environment
-                            scope.launch {
+                            submitScope.launch {
                                 var engineOutcomeRecorded = false
                                 try {
                                     if (!allowArtwork && withContext(Dispatchers.IO) {
