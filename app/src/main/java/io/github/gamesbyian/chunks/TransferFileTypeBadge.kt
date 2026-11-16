@@ -14,6 +14,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import java.util.Locale
 
@@ -48,11 +49,11 @@ internal fun transferNameFormatHint(name: String): TransferNameFormatHint {
 
 /** Small no-network transfer art fallback with text for non-colour identification. */
 @Composable
-internal fun TransferFileTypeBadge(name: String, modifier: Modifier = Modifier) {
+internal fun TransferFileTypeBadge(name: String, modifier: Modifier = Modifier, size: Dp = 40.dp) {
     val hint = transferNameFormatHint(name)
     val shape = RoundedCornerShape(8.dp)
     Box(
-        modifier = modifier.size(40.dp).clip(shape)
+        modifier = modifier.size(size).clip(shape)
             .background(ChunksColors.Background)
             .border(1.dp, ChunksColors.Outline, shape)
             .semantics { contentDescription = hint.explanation },
