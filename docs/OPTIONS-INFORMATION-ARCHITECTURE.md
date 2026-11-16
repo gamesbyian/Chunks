@@ -1,5 +1,8 @@
 # Chunks Options: canonical information architecture and UX contract
 
+> **Binding Options root header · 2026-11-15:** Follow [root-header and control geometry specification](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md). Remove the redundant displayed **Options** heading beneath chunks. on the root index, leaving Search options followed by the existing solid-colour category cards. Do not remove category/nested-screen headings or screen-reader naming. Footer tabs use identical rounded-rectangle selected/unselected bounds.
+
+
 > **BINDING COLOUR SETTINGS PLACEMENT · 2026-11-13:** [Compact Transfers and environment-colour contract](design/TRANSFERS-COMPACT-LIST-FIRST.md): Each remote profile's colour palette and Restore automatic colour reside in its Connections settings; Local colour resides in its Local settings. The global default-enabled **Show environment colours** switch resides under **Appearance & accessibility** and suppresses environment styling without erasing chosen colours, affecting semantic warning/progress colours or losing source identity. The standalone Transfers Environment colours button is removed. Retain one settings authority and existing eight-card taxonomy.
 
 
