@@ -64,12 +64,15 @@ internal fun mediaCategoryStyle(kind: MediaKind): MediaCategoryStyle {
  * clears semantics by default. A label appears at ≥56dp for redundant, non-colour identification.
  */
 @Composable
-fun MediaCategoryTile(kind: MediaKind, size: Dp, modifier: Modifier = Modifier, showLabel: Boolean = size >= 56.dp) {
+fun MediaCategoryTile(kind: MediaKind, size: Dp, modifier: Modifier = Modifier,
+                      showLabel: Boolean = size >= 56.dp,
+                      width: Dp = size, height: Dp = size) {
     val style = mediaCategoryStyle(kind)
-    val shape = RoundedCornerShape(size * 0.18f)
+    val tileUnit = minOf(width, height)
+    val shape = RoundedCornerShape(tileUnit * 0.18f)
     val top = lerp(style.accent, Color.White, 0.12f)
     val bottom = lerp(style.accent, ChunksColors.Background, 0.38f)
-    BoxWithConstraints(modifier.size(size).clip(shape).background(Brush.linearGradient(listOf(top, bottom),
+    BoxWithConstraints(modifier.size(width, height).clip(shape).background(Brush.linearGradient(listOf(top, bottom),
         start = Offset.Zero, end = Offset.Infinite)), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             drawChunkMotif(style.glyph.copy(alpha = 0.10f))
@@ -81,8 +84,8 @@ fun MediaCategoryTile(kind: MediaKind, size: Dp, modifier: Modifier = Modifier, 
             // Decorative, redundant label sized to the tile (dp, not sp) and fitted to its length, so
             // 200% system text cannot clip it; the transfer's own name carries the scalable text.
             val density = LocalDensity.current
-            val labelDp = minOf(size.value * 0.12f, size.value * 0.80f / (style.label.length * 0.72f)).coerceAtLeast(6f)
-            Text(style.label, Modifier.align(Alignment.BottomCenter).padding(bottom = size * 0.08f),
+            val labelDp = minOf(tileUnit.value * 0.12f, tileUnit.value * 0.80f / (style.label.length * 0.72f)).coerceAtLeast(6f)
+            Text(style.label, Modifier.align(Alignment.BottomCenter).padding(bottom = tileUnit * 0.08f),
                 style = TextStyle(fontSize = with(density) { labelDp.dp.toSp() }, fontWeight = FontWeight.ExtraBold,
                     letterSpacing = with(density) { (labelDp * 0.05f).dp.toSp() }, color = style.glyph), maxLines = 1, softWrap = false)
         }
