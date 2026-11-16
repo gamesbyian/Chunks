@@ -1,3 +1,7 @@
+## D-UNIVERSAL-ADD-CLIENT-PARITY-20261116 | Owner, binding; implementation partial
+
+Local, authenticated rTorrent and future torrent clients are interchangeable destinations behind **one** user-visible Add flow, outcome vocabulary and navigation experience. Native libtorrent and remote XML-RPC may require different write/readback operations, but remote Add must not impose a separate wait-for-verification ceremony. Preserve exact source/client/Place/Start authorization, positive registration provenance, explicit acknowledgment of incomplete results and no automatic write retry after lost ACK. Migrate both screen-owned flows into an app-owned shared attempt controller and one form, with truthful read-only continuation and client-scoped recovery. [Binding design, phased plan and acceptance matrix](design/UNIVERSAL-ADD-CLIENT-PARITY.md). A shared display projection alone does not qualify full delivery.
+
 # Chunks: canonical decision ledger
 
 ## D-CLIENT-VOCABULARY-AND-INCLUDED-COUNT-20261115 | Owner, binding; implementation pending
