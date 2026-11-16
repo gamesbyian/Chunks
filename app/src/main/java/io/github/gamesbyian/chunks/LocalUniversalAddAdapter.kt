@@ -211,6 +211,10 @@ internal class LocalAddAttemptSession(
     val attemptedTicket: UniversalAddCoordinator.Ticket?
         get() = coordinator.retainedTicket
 
+    /** Positive native provenance, never inferred from a matching inventory row. */
+    val registrationFromThisSubmission: Boolean
+        get() = ticketWithReceipt === attemptedTicket && !nativeGenerationReceipt.isNullOrBlank()
+
     /** Bind the exact Place alongside the ticket before any native Add call. */
     fun bindPlace(ticket: UniversalAddCoordinator.Ticket, place: LocalDownloadPlace) {
         require(coordinator.retainedTicket === ticket) { "Not the current local Add attempt" }
