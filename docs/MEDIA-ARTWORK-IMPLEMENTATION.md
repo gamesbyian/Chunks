@@ -1,5 +1,8 @@
 # Media/artwork integration implementation instructions
 
+> **NEXT MEDIA/DETAILS PRESENTATION SLICE · owner-approved 2026-11-15:** Follow [unified Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md). Refactor the existing media section into the top full-Details transfer-identity header: poster/title/year/source plus original filename/status/short environment and independent **Change list name**, **Edit identification**, **Choose artwork** controls. Remove redundant in-page Back, Transfer details title and the duplicate lower artwork panel **after** moving functionality. Preserve correction handlers, manual artwork override, privacy, provider provenance, and the Add-only automatic-enrichment toggle contract. Verify actual installed phone visual results and no lost actions; docs are not completion.
+
+
 **Use this as the technical work plan, not a previous-run narrative.** Prior test results, exact source heads and provider explorations are retained in [MEDIA-ARTWORK-IMPLEMENTATION-HISTORY-2026-11-09.md](MEDIA-ARTWORK-IMPLEMENTATION-HISTORY-2026-11-09.md). Product authority: [TRANSFER-ARTWORK](TRANSFER-ARTWORK.md), [next-push UX/media contract](NEXT-PUSH-UX-RECONCILIATION-2026-11-09.md). Current priority: [WORK-QUEUE](WORK-QUEUE.md) #1453.
 
 ## First repair feature placement
