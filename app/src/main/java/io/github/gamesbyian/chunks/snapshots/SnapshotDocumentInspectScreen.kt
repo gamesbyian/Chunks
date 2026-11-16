@@ -52,12 +52,12 @@ internal object SnapshotDocumentReaderV1 {
                 val n = stream.read(buffer)
                 if (n < 0) break
                 if (n == 0) {
-                    if (++emptyReads > 16) throw IOException("Document provider returned no data")
+                    if (++emptyReads > 16) throw IOException("This file appears to be empty")
                     continue
                 }
                 emptyReads = 0
                 if (output.size().toLong() + n > MAX_BYTES)
-                    throw IOException("Snapshot archive exceeds the 64 MiB limit")
+                    throw IOException("This backup exceeds the 64 MiB limit")
                 output.write(buffer, 0, n)
             }
             output.toByteArray()
@@ -102,7 +102,7 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
                 } catch (cancel: CancellationException) {
                     throw cancel
                 } catch (failure: Exception) {
-                    problem = "Snapshot cannot be trusted or opened: " +
+                    problem = "Chunks couldn't open or verify this backup: " +
                         (failure.message ?: "Invalid or unavailable document")
                 } finally { busy = false }
             }
@@ -138,7 +138,7 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
                 items.count { it.recovery == SnapshotManifestV1.Recovery.METAINFO })
             Text("Magnet fallbacks requiring network metadata discovery: " +
                 items.count { it.recovery == SnapshotManifestV1.Recovery.MAGNET })
-            Text("Inventory-only records (cannot restore by hash alone): " +
+            Text("Inventory only (can't restore from a hash alone): " +
                 items.count { it.recovery == SnapshotManifestV1.Recovery.INVENTORY })
             Text("Failed source records: " +
                 items.count { it.recovery == SnapshotManifestV1.Recovery.FAILED })
@@ -237,7 +237,7 @@ internal fun SnapshotDocumentInspectScreen(onBack: () -> Unit) {
                 }
             }
             if (result.items.isEmpty()) {
-                Text("No records match these filters. This does not alter the archive.")
+                Text("No records match your filters. The backup hasn't changed.")
             }
             if (result.hasPrevious || result.hasNext) {
                 Row(
