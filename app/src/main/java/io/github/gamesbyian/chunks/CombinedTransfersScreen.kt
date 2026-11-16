@@ -1350,8 +1350,8 @@ internal fun CombinedTransfersScreen(
             key.environment != EnvironmentSnapshots.LOCAL && key.environment != serverId ->
                 "Connect to this server in Connections to control its transfers."
             key.environment == EnvironmentSnapshots.LOCAL && !localRunning ->
-                "Open this device's transfer controls to start its engine first."
-            else -> "This list is not current yet. Refresh or reconnect before changing this transfer."
+                "Open transfers on this device to start the local client."
+            else -> "This transfer list is out of date. Refresh or reconnect before making changes."
         }
         val running = quickRunning == key
         val label = if (known == true) "Stop" else "Start"
@@ -1473,7 +1473,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
             if (query.scope == EnvironmentViewScope.Only(emptySet())) Text(
-                "No clients are selected. Tap one above to show its transfers.",
+                "Choose a client above to see its transfers.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp))
         }
@@ -1528,14 +1528,14 @@ internal fun CombinedTransfersScreen(
                     onClick = { update(CombinedViewPreferences.showAll(query)) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 ) { Text("Show all transfers") }
-                Text("New downloads may be hidden by this view. Resetting filters never changes your Add destination.",
+                Text("A new download may be hidden by your filters. Resetting filters won't change where downloads are saved.",
                     style = MaterialTheme.typography.bodySmall)
             }
         }
         if (showingViewOptions && query.search.isNotBlank() &&
             query.filter == UnifiedTransferFilter.ALL &&
             query.scope == EnvironmentViewScope.All) item {
-            Text("New downloads may not match this search. Clear search to see them.",
+            Text("A new download may be hidden by this search. Clear it to see all transfers.",
                 style = MaterialTheme.typography.bodySmall)
         }
         if (showingViewOptions) item {
@@ -1695,7 +1695,7 @@ internal fun CombinedTransfersScreen(
         if (!addedHidden && result.transfers.isEmpty() && CombinedViewPreferences.narrowingActive(query)) {
             item(key = "recover-empty-combined-view") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("No transfers are visible with these view choices. " +
+                    Text("No transfers to show in this view. " +
                         "Locked or offline clients may still need attention.",
                         style = MaterialTheme.typography.bodySmall)
                     if (query.filter != UnifiedTransferFilter.ALL ||
@@ -1771,8 +1771,8 @@ internal fun CombinedTransfersScreen(
                 // to investigate a failed server. Keep ONE freshness warning
                 // beside the exact-source rows without moving diagnostics up.
                 if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
-                    Text("Some clients are missing or out of date. Last-known rows are not current; " +
-                        "exact per-source status follows.",
+                    Text("Some clients are offline or out of date. Saved transfer lists may have changed. " +
+                        "Check each client's status below.",
                         style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
                 }
                 if (showingSourceStatus) result.sources.forEach { source ->
