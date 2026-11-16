@@ -1,5 +1,8 @@
 # Smart Connect: provider-aware rTorrent remote setup
 
+> **Current Connections presentation contract · 2026-11-15:** Follow [unified roster design](design/CONNECTIONS-UNIFIED-ROSTER.md). Display saved/connected versions of the same profile only once and sort verified connected profiles first. Maintain Add connection for 0/1/N, with an embedded Add button in the small zero-state purple card and a compact standalone Add action in populated roster. Profile Manage owns endpoint/rename/credentials/folder/colour/tools; View transfers keeps exact-profile canonical Transfers and privacy rules. Saved profile, saved credentials and current verified session remain separate states. This supersedes older separate saved/connected screen diagrams but not security or exact-endpoint connection semantics.
+
+
 **Owner requirement (2026-10-28):** Connecting Chunks to an existing rTorrent
 instance should require as little expertise as possible. Pasting a ruTorrent
 URL/hostname and entering the applicable login should normally be enough.
