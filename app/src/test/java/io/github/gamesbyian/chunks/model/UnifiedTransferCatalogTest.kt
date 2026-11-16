@@ -172,7 +172,7 @@ class UnifiedTransferCatalogTest {
         try {
             UnifiedTransferCatalog.query(listOf(snapshot(local), snapshot(local)),
                 UnifiedTransferQuery())
-            fail("Expected duplicate environment refusal")
+            fail("Expected duplicate client refusal")
         } catch (_: IllegalArgumentException) {}
     }
 

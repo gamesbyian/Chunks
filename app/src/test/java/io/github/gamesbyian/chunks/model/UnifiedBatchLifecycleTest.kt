@@ -145,7 +145,7 @@ class UnifiedBatchLifecycleTest {
         assertEquals(first.key, report.haltedOn)
         assertEquals(listOf(CommandEvidence.REFUSED, CommandEvidence.NOT_ATTEMPTED),
             report.items.map { it.evidence })
-        assertEquals("No longer in this environment", report.items[0].reason)
+        assertEquals("No longer in this client", report.items[0].reason)
         assertTrue(report.describe { it.value }.last().contains("transfer disappeared"))
     }
 

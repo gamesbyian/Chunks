@@ -23,9 +23,10 @@ class LocalZipOfflineNavigationInstrumentedTest {
         // New installations correctly start in local Transfers instead.
         rule.waitForIdle()
         rule.onNodeWithContentDescription("Connections").performClick()
-        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Connect to a remote client").assertExists()
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
+        rule.onNodeWithText("+ Add connection").performClick()
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect a local ZIP without connecting"))
         rule.onNodeWithText("Inspect a local ZIP without connecting").performClick()
@@ -35,7 +36,7 @@ class LocalZipOfflineNavigationInstrumentedTest {
         rule.onNodeWithText("Back").performClick()
         // Return to the approved Connections card, not the removed local promo.
         rule.onNode(hasScrollToIndexAction()).performScrollToIndex(0)
-        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Connect to a remote client").assertExists()
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
     }
 }

@@ -147,11 +147,11 @@ class MediaComponentsRenderTest {
             MediaMetadataSummary(state(4, "random_stuff").copy(assignment = TransferMediaAssignment(key(4), MediaAssignmentState.COULDNT_IDENTIFY)), onChange = {})
         } } } }
         rule.onRoot().captureRoboImage("build/chunks-visual/media-detail-summary.png")
-        rule.onAllNodesWithText("Change identification or artwork…").fetchSemanticsNodes().let { assertEquals(5, it.size) }
+        rule.onAllNodesWithText("Edit identification").fetchSemanticsNodes().let { assertEquals(5, it.size) }
         rule.onNodeWithText("Couldn't identify").assertExists()
         rule.onNodeWithText("Chosen by you").assertExists()
         rule.onNodeWithText("Suggested").assertExists()
-        rule.onAllNodesWithText("Change identification or artwork…")[0].assertHeightIsAtLeast(48.dp).performClick()
+        rule.onAllNodesWithText("Edit identification")[0].assertHeightIsAtLeast(48.dp).performClick()
         assertEquals(1, changed)
     }
 
@@ -165,7 +165,7 @@ class MediaComponentsRenderTest {
         rule.onNodeWithText("Recognized from filename · unverified").assertExists()
         rule.onNodeWithText("Online identification needs your consent in Options").assertExists()
         assertTrue(rule.onAllNodesWithText("Not identified").fetchSemanticsNodes().isEmpty())
-        rule.onNodeWithText("Change identification or artwork…").assertHeightIsAtLeast(48.dp)
+        rule.onNodeWithText("Edit identification").assertHeightIsAtLeast(48.dp)
     }
 
     @Test fun identifyPanelConsentOffThenSuggestions() {

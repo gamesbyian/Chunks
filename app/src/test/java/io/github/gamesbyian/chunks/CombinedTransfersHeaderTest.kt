@@ -43,7 +43,7 @@ class CombinedTransfersHeaderTest {
     @Test fun twoHundredPercentNarrowLayoutKeepsBackBelowTitleInBounds() {
         val clicks = intArrayOf(0)
         show(288, 2f, clicks)
-        val title = rule.onNodeWithText("All environments").getUnclippedBoundsInRoot()
+        val title = rule.onNodeWithText("All clients").getUnclippedBoundsInRoot()
         val back = rule.onNodeWithText("Back").getUnclippedBoundsInRoot()
         val container = rule.onNodeWithTag("header-container").getUnclippedBoundsInRoot()
         assertTrue("Back must be below the wrapped title", back.top >= title.bottom)
@@ -57,7 +57,7 @@ class CombinedTransfersHeaderTest {
     @Test fun widerDefaultTextKeepsHeaderHorizontal() {
         val clicks = intArrayOf(0)
         show(500, 1f, clicks)
-        val title = rule.onNodeWithText("All environments").getUnclippedBoundsInRoot()
+        val title = rule.onNodeWithText("All clients").getUnclippedBoundsInRoot()
         val back = rule.onNodeWithText("Back").getUnclippedBoundsInRoot()
         assertTrue("Back must follow title on wide layouts", title.right < back.left)
         rule.onNodeWithText("Back").performClick()

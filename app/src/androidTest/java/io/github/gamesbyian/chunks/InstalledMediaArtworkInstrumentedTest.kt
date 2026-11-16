@@ -200,6 +200,8 @@ class InstalledMediaArtworkInstrumentedTest {
     @Test fun installedRemoteRowShowsUserArtworkAndOptionsSettingTurnsItOff() {
         val endpoint = startLoopback()
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
+        rule.openConnectionFormIfNeeded()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)
         hideKeyboard()

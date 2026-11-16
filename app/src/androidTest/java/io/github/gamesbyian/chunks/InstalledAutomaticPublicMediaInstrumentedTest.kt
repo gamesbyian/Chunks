@@ -99,7 +99,7 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
             "Canonical row must show the verified provider bitmap"
         }
         val tile = found.onFirst().captureToImage().asAndroidBitmap()
-        val expected = Bitmap.createScaledBitmap(bitmap, tile.width, tile.height, true)
+        val expected = fitArtworkForPixelCheck(bitmap, tile.width, tile.height)
         var total = 0L
         for (y in 3..6) for (x in 3..6) {
             val actual = tile.getPixel(tile.width * x / 10, tile.height * y / 10)
@@ -192,7 +192,8 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                 search(torrentHash)
                 rule.onNode(hasContentDescription("Details for $originalName", substring = true))
                     .performScrollTo().performClick()
-                rule.onNodeWithText("Artwork & media information").assertExists()
+                rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
+        rule.onNodeWithText("Choose artwork").assertExists()
                 rule.waitUntil(30_000) { media.controller.observe(key(), originalName).value.poster != null }
                 assertTrue(prefs.edit().putInt("pid", android.os.Process.myPid()).commit())
                 android.util.Log.i("ChunksAutoMedia", "CHUNKS_AUTO_PUBLIC phase=online consent=true automatic=true verified=true row_pixels=true details_poster=true sanitized=true")
@@ -230,7 +231,8 @@ class InstalledAutomaticPublicMediaInstrumentedTest {
                 search(hash())
                 rule.onNode(hasContentDescription("Details for $originalName", substring = true))
                     .performScrollTo().performClick()
-                rule.onNodeWithText("Artwork & media information").assertExists()
+                rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
+        rule.onNodeWithText("Choose artwork").assertExists()
                 rule.waitUntil(30_000) { media.controller.observe(key(), originalName).value.poster != null }
                 assertTrue("Offline list + full Details must make zero HTTPS requests", network.uris.isEmpty())
                 android.util.Log.i("ChunksAutoMedia", "CHUNKS_AUTO_PUBLIC phase=offline new_process=true persisted=true row_pixels=true requests=0")

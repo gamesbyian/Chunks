@@ -192,7 +192,7 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                     style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary)
             }
             if (showChangeAction) TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 48.dp)) {
-                Text("Change identification or artwork…")
+                Text("Edit identification")
             }
         }
     }

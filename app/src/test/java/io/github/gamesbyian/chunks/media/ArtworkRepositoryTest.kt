@@ -35,15 +35,14 @@ class ArtworkRepositoryTest {
 
     private val poster = ArtworkCandidate("tvmaze", "https://static.tvmaze.com/uploads/p.jpg", ArtworkRole.POSTER)
 
-    @Test fun portraitPosterComposesIntoSquareWithFillAndIsCached() {
+    @Test fun portraitPosterRetainsNaturalRatioAndIsCached() {
         val http = FakeMediaHttp().onBytes("p.jpg", image(680, 1000), headers = mapOf("Content-Type" to "image/jpeg"))
         val dir = Files.createTempDirectory("art").toFile()
         val r = repo(http, dir).load(listOf(poster), ArtworkRole.SQUARE, allowNetwork = true) as ArtworkLoadResult.Loaded
-        assertEquals(ArtworkRepository.SQUARE_SIZE, r.bitmap.width); assertEquals(ArtworkRepository.SQUARE_SIZE, r.bitmap.height)
+        assertEquals(680f / 1000f, r.bitmap.width.toFloat() / r.bitmap.height, 0.01f)
+        assertTrue(r.bitmap.height <= ArtworkRepository.SQUARE_SIZE)
         assertFalse(r.fromCache)
-        // Left edge is blurred fill (opaque), centre is the original image content (yellow-ish).
-        assertEquals(255, Color.alpha(r.bitmap.getPixel(2, 192)))
-        val centre = r.bitmap.getPixel(192, 192)
+        val centre = r.bitmap.getPixel(r.bitmap.width / 2, r.bitmap.height / 2)
         assertTrue(Color.red(centre) > 200 && Color.green(centre) > 200)
         // A new repository (new process) is served from disk, offline.
         val again = repo(FakeMediaHttp(), dir).load(listOf(poster), ArtworkRole.SQUARE, allowNetwork = false) as ArtworkLoadResult.Loaded
@@ -307,13 +306,10 @@ class ArtworkRepositoryTest {
     @Test fun formerlyPinnedProviderArtworkMigratesAfterUpgradeWithoutAnIdentityChange() {
         val cache = Files.createTempDirectory("old-pinned-cache").toFile()
         val durable = Files.createTempDirectory("new-pinned-storage").toFile()
-        val wire = FakeMediaHttp().onBytes("p.jpg", image(680, 1000))
-        val legacy = ArtworkRepository(wire, ArtworkDiskCache(cache), hostPolicyFor = { tvmaze })
-        assertTrue(legacy.loadOne(poster, ArtworkRole.SQUARE, true) is ArtworkLoadResult.Loaded)
-        legacy.pin(poster, ArtworkRole.SQUARE)
-        assertTrue(ArtworkDiskCache(cache).isPinned(
-            io.github.gamesbyian.chunks.media.artwork.ArtworkBytesPolicy.cacheKey(
-                poster.url, ArtworkRole.SQUARE, ArtworkRepository.SQUARE_SIZE)))
+        val legacyKey = io.github.gamesbyian.chunks.media.artwork.ArtworkBytesPolicy.cacheKey(
+            poster.url, ArtworkRole.SQUARE, ArtworkRepository.SQUARE_SIZE)
+        ArtworkDiskCache(cache).putPinned(legacyKey, image(384, 384))
+        assertTrue(ArtworkDiskCache(cache).isPinned(legacyKey))
 
         fun upgraded() = ArtworkRepository(FakeMediaHttp(), ArtworkDiskCache(cache),
             hostPolicyFor = { tvmaze }, importedDisk = ArtworkDiskCache(durable))

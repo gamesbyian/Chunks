@@ -63,7 +63,7 @@ internal class MainActivityRealMagnetJourney(
         rule.onNode(hasTestTag(tag)).performClick()
     }
     private fun waitTransfersCatalog() = rule.waitUntil(60_000) {
-        hasTag(ChunksSemantics.TRANSFERS_HEADING) && visible("Search names or hashes")
+        hasTag(ChunksSemantics.TRANSFERS_SCREEN) && visible("Search names or hashes")
     }
     private fun click(text: String) {
         // Names the control about to be clicked so a failure reports the exact step.
@@ -295,8 +295,10 @@ internal class MainActivityRealMagnetJourney(
         val byText = rule.onAllNodesWithText("Connections")
         if (byText.fetchSemanticsNodes().isNotEmpty()) byText.onFirst().performClick()
         else rule.onAllNodes(hasContentDescription("Connections")).onFirst().performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         // Real connection UI; its ordinary authentication, saved profile,
         // selected environment and mutation fence remain in the call chain.
+        rule.openConnectionFormIfNeeded()
         type("Seedbox hostname, ruTorrent URL or RPC address", url)
         type("Username, if required", user)
         type("Password", password)
@@ -640,13 +642,13 @@ internal class MainActivityRealMagnetJourney(
                 node.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
             else node.performClick()
             try {
-                rule.waitUntil(30_000) { visible("Transfer details") }
+                rule.waitUntil(30_000) { visible("Edit identification") }
             } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
                 // Bounded, fixed-vocabulary state for the receipt: no name, hash, path or URL.
                 val rows = rule.onAllNodes(anyRow).fetchSemanticsNodes().size
                 val expanded = rule.onAllNodes(hasStateDescription("Expanded")).fetchSemanticsNodes().isNotEmpty()
                 report("chunks_real_add_app_stage",
-                    "details-timeout-rows=$rows-expanded=${if (expanded) 1 else 0}-catalog=${if (hasTag(ChunksSemantics.TRANSFERS_HEADING)) 1 else 0}")
+                    "details-timeout-rows=$rows-expanded=${if (expanded) 1 else 0}-catalog=${if (hasTag(ChunksSemantics.TRANSFERS_SCREEN)) 1 else 0}")
                 throw timeout
             }
         }
@@ -700,10 +702,10 @@ internal class MainActivityRealMagnetJourney(
             // First tap enters full exact authenticated Details, no second disclosure.
             rule.onNode(rowMatch).performClick()
             rule.waitUntil(30_000) {
-                visible("Transfer details") && visible("Environment:")
+                hasTag(ChunksSemantics.DETAILS_SCREEN) && visible("Edit identification")
             }
             assertFalse("Signed-in rTorrent detail opened local instead",
-                visible("Environment: On this device"))
+                visible("Local"))
             rule.onNodeWithText("Show technical details").performScrollTo().performClick()
             assertTrue("Combined Details lost the exact authenticated rTorrent hash",
                 visible("Exact infohash: $hash"))
@@ -711,7 +713,7 @@ internal class MainActivityRealMagnetJourney(
                 visible("Save folder reported by engine: $expectedPlace"))
             // Reading a transfer never grants a Start/Stop/Remove authority,
             // changes its target, or performs any write.
-            rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
+            clickTag(ChunksSemantics.FOOTER_TRANSFERS)
             waitTransfersCatalog()
             val after = requireNotNull(row(hash))
             assertTrue("Details altered authenticated source Place", after.directory == original.directory)
@@ -863,7 +865,7 @@ internal class MainActivityRealMagnetJourney(
                 report("chunks_real_add_app_stage", "click-after-back")
                 refreshAndFind(hash)
                 report("chunks_real_add_app_stage", "click-found-by-hash")
-                // The compact row's accessible name is "Details for <display name> on <environment>",
+                // The compact row's accessible name is "Details for <display name> on <client>",
                 // so the original metadata name is asserted through that stable semantics rather than
                 // a literal text node (the title Text overrides its own description when merged).
                 val named = hasContentDescription("Details for " + preview.name, substring = true)

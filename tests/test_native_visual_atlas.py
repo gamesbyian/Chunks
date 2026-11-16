@@ -66,7 +66,7 @@ class NativeAtlasFirstLaunchReceiptTest(unittest.TestCase):
         # atlas, not a speculative test requirement. Do not count a Welcome
         # heading as success while the empty catalog remains above it.
         observed = (
-            "This device", "All environments", "Search transfers on this device",
+            "This device", "All clients", "Search transfers on this device",
             "Batch tools", "Choose filters & sort · All · Name · A–Z",
         )
         for label in observed:

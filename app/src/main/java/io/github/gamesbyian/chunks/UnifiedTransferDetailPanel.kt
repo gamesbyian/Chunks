@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -84,7 +85,7 @@ internal fun UnifiedTransferDetailPanel(
         // dedicated Details is a distinct screen-reader window. Never put
         // a file name, passkey or remote account in this route announcement.
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
-            .semantics { paneTitle = "Transfer details" },
+            .testTag(ChunksSemantics.DETAILS_SCREEN).semantics { paneTitle = "Transfer details" },
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (!hidden) detail.observation?.let { transfer ->

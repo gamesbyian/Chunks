@@ -27,6 +27,7 @@ class SmartConnectProviderHintInstrumentedTest {
     @Test fun cataloguedHostShowsDocumentedHintAndUnknownHostShowsNone() {
         val field = "Seedbox hostname, ruTorrent URL or RPC address"
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(field))
         rule.onNodeWithText(field).performTextInput("box.whatbox.ca")
         rule.waitForIdle()

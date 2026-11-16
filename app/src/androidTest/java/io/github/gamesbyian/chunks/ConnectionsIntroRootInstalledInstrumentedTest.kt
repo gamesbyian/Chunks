@@ -53,12 +53,12 @@ class ConnectionsIntroRootInstalledInstrumentedTest {
         connectionsFooter().performClick()
         rule.waitForIdle()
 
-        val title = "Connect to another computer or server (optional)"
+        val title = "Connect to a remote client"
         rule.onNodeWithText(title).assertIsDisplayed()
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         rule.onNodeWithText("Open local downloads").assertDoesNotExist()
-        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
+        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertDoesNotExist()
 
         // Purple Add stays prominent as an action but is not the selected tab.
         connectionsFooter().assertIsSelected()

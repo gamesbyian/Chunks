@@ -51,7 +51,7 @@ class CombinedSearchContinuityTest {
 
     @Test fun canonicalScopedSearchSurvivesOptionsAndTransfersRoundTrip() {
         enterExplicitDeviceView()
-        pane("All environments")
+        pane("All clients")
         rule.onNode(hasSetTextAction() and hasText("Search names or hashes"))
             .performScrollTo().performTextInput("ubuntu")
         rule.onNodeWithContentDescription("Options").performClick()
@@ -59,7 +59,7 @@ class CombinedSearchContinuityTest {
         pane("Options")
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
-        pane("All environments")
+        pane("All clients")
         rule.onNode(hasSetTextAction() and hasText("ubuntu")).assertExists()
     }
 

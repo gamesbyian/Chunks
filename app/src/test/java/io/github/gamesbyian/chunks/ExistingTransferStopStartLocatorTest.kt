@@ -78,7 +78,7 @@ class ExistingTransferStopStartLocatorTest {
                 rule.onAllNodes(lifecycleButton("Stop")).fetchSemanticsNodes().isNotEmpty()
             }
             assertTrue("Expanding must not open full Details",
-                rule.onAllNodes(androidx.compose.ui.test.hasText("Transfer details")).fetchSemanticsNodes().isEmpty())
+                rule.onAllNodes(androidx.compose.ui.test.hasTestTag(ChunksSemantics.DETAILS_SCREEN)).fetchSemanticsNodes().isEmpty())
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(lifecycleButton("Stop"))
             rule.onNode(lifecycleButton("Stop")).assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
             rule.waitUntil(15_000) { !fake.jobs.getValue(target).started }

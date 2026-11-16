@@ -67,7 +67,7 @@ class CombinedAddedBrowsingInstrumentedTest {
             }
         }
         rule.onNodeWithTag("combined-browsing-viewport").assertWidthIsEqualTo(320.dp).assertHeightIsEqualTo(700.dp)
-        val notice = "Your new transfer on ${serverEnvironmentLabel(scope)} is hidden by the current search, filter or environment view."
+        val notice = "Your new transfer on ${serverEnvironmentLabel(scope)} is hidden by the current search, filter or client view."
         rule.waitUntil(10_000) {
             runCatching {
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(notice))
@@ -113,8 +113,8 @@ class CombinedAddedBrowsingInstrumentedTest {
         // Both saved servers are restored automatically (read-only, once each);
         // server two's first automatic read times out.
         rule.waitUntil(10_000) { first.get() == 1 && other.get() == 1 }
-        reveal("Environment status · 3 sources")
-        rule.onNodeWithText("Environment status · 3 sources").performClick()
+        reveal("Client status · 3 sources")
+        rule.onNodeWithText("Client status · 3 sources").performClick()
         reveal("Server · Server 2: Could not load (did not answer in time) · 0 transfers")
         reveal("Load Server · Server 2 transfers")
         rule.onNodeWithText("Load Server · Server 2 transfers").assertHeightIsAtLeast(48.dp).performClick()

@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -71,11 +72,12 @@ class UnifiedTransferDetailPanelTest {
                 }
             }
         }
-        rule.onNodeWithText("Transfer details").assertExists()
-        rule.onNodeWithText("Environment: Server two / rutorrent2").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
+        rule.onNodeWithText("Server two / rutorrent2").assertExists()
         rule.onNodeWithText("Accessible selected transfer").assertExists()
-        rule.onNodeWithText("Artwork & media information").assertExists()
-        rule.onNodeWithText("Change identification or artwork…").performScrollTo().performClick()
+        rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
+        rule.onNodeWithText("Choose artwork").assertExists()
+        rule.onNodeWithText("Edit identification").performScrollTo().performClick()
         rule.onNodeWithText("Close media identification").performScrollTo().performClick()
         rule.onNodeWithText("Needs attention: an error was reported.").assertExists()
         rule.onNodeWithText("Start state set; peer activity has not been verified.").assertExists()
@@ -96,8 +98,8 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Start and stop:", substring = true).performScrollTo().assertExists()
         rule.onNodeWithText("File list and priorities:", substring = true).performScrollTo().assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-capabilities-320x700-200pct.png")
-        rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
-        assertEquals(1, backs)
+        rule.onNodeWithText("Back to transfers").assertDoesNotExist()
+        assertEquals(0, backs)
         assertEquals(1, opens)
         assertEquals(1, refreshes)
     }
@@ -158,9 +160,9 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Open Locked server transfers").assertDoesNotExist()
         rule.onNodeWithText("Refresh Locked server").assertDoesNotExist()
-        rule.onNodeWithText("Capabilities in this environment").assertDoesNotExist()
+        rule.onNodeWithText("Capabilities in this client").assertDoesNotExist()
         rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
-        rule.onNodeWithText("Environment: Locked server").assertExists()
+        rule.onNodeWithText("Locked server").assertDoesNotExist()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-locked-320x700.png")
     }
 

@@ -105,7 +105,7 @@ class CombinedDetailSessionCapabilityTest {
         rule.waitUntil(5_000) { firstResponded.get() }
         rule.waitForIdle()
         rule.onNodeWithText(
-            "Start and stop: Capability has not been checked recently for this exact environment.")
+            "Start and stop: Capability has not been checked recently for this exact client.")
             .performScrollTo().assertExists()
         rule.onNodeWithText("Not advertised by rTorrent old-session.", substring = true)
             .assertDoesNotExist()

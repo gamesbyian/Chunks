@@ -26,7 +26,7 @@ class RemoteCapabilityProbeSessionGateTest {
         fence.bind(null, server2, sameHash2)
         assertNull(fence.begin())
         fence.bind(Session("two"), server2, sameHash3)
-        assertNull("Wrong-environment key never arms probe", fence.begin())
+        assertNull("Wrong-client key never arms probe", fence.begin())
         fence.bind(Session("two"), server2, null)
         assertNull(fence.begin())
     }

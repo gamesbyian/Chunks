@@ -67,11 +67,13 @@ class ConnectionsScreenPresentationTest {
 
     @Test fun purpleIntroductionIsRemoteOnlyAndLoginFormFollows() {
         render()
-        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Connect to a remote client").assertExists()
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         rule.onNodeWithText("This device").assertDoesNotExist()
         rule.onNodeWithText("Open local downloads").assertDoesNotExist()
-        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
+        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).assertExists()
     }
 
     @Test fun savedProfileOpensThatExactProfileWithoutAConnectAttempt() {
@@ -83,8 +85,8 @@ class ConnectionsScreenPresentationTest {
         var selectedId: String? = null
         render(profiles = listOf(profile), onProfile = { selectedId = it.id })
         // The button's accessible name carries the exact saved profile (label and address).
-        rule.onNode(androidx.compose.ui.test.hasContentDescription(
-            "View transfers for saved Studio", substring = true)).performClick()
+        rule.onNodeWithText("Manage").performClick()
+        rule.onNodeWithText("View available inventory (read only)").performClick()
         assertEquals(profile.id, selectedId)
     }
 
@@ -93,7 +95,7 @@ class ConnectionsScreenPresentationTest {
         var disconnects = 0
         render(connected = "Studio", onViewCurrent = { views++ },
             onDisconnect = { disconnects++ })
-        rule.onNodeWithText("Connected · Studio").assertExists()
+        rule.onNodeWithText("Connected · login not remembered").assertExists()
         rule.onNodeWithText("View transfers").performClick()
         assertEquals(1, views)
         assertEquals(0, disconnects)
@@ -110,15 +112,15 @@ class ConnectionsScreenPresentationTest {
 
     @Test fun blankOptionalNameKeepsTheNextKeyboardActionAndNewProfileEntry() {
         render()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME)
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Next))
-        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).assertIsEnabled()
     }
 
     @Test fun runningVerificationCannotStartAnotherProfileOrEditItsName() {
         render(name = "Studio", loading = true)
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).assertIsNotEnabled()
-        rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).assertIsNotEnabled()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).assertDoesNotExist()
     }
 
     @Test fun newProfileFormIsBroughtIntoViewPastThreeSavedProfiles() {

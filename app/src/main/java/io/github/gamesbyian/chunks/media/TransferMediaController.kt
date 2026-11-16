@@ -908,7 +908,10 @@ class TransferMediaController(
         if (prev.state != MediaAssignmentState.CHOSEN_BY_USER || prev.stateBeforeImage == MediaAssignmentState.AUTOMATIC) return
         val m = prev.match ?: return
         val shared = store.all().any { it.key != prev.key && it.state == MediaAssignmentState.CHOSEN_BY_USER && it.match?.ref == m.ref }
-        if (!shared) m.artwork.forEach { artwork.unpin(it, ArtworkRole.SQUARE) }
+        if (!shared) m.artwork.forEach {
+            artwork.unpin(it, ArtworkRole.SQUARE)
+            if (m.kind.preferredArtworkRole != ArtworkRole.SQUARE) artwork.unpin(it, m.kind.preferredArtworkRole)
+        }
     }
 
     /** Unpin a chosen detail poster unless another transfer's choice still uses the same image. */

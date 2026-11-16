@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.visual
 
+import io.github.gamesbyian.chunks.openConnectionFormIfNeeded
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -85,6 +86,8 @@ class OptionsSettingSearchTest {
         Thread { while (!listening.isClosed) try { serve(listening.accept()) } catch (_: Exception) {} }
             .apply { isDaemon = true; start() }
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
+        rule.openConnectionFormIfNeeded()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
             .performTextInput("http://127.0.0.1:${listening.localPort}/RPC2")

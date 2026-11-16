@@ -25,10 +25,10 @@ REQUIRED_FIRST_LAUNCH_TEXT = frozenset({
 FORBIDDEN_FIRST_LAUNCH_TEXT = frozenset({
     "Your transfers will appear here",
     "This device",
-    "All environments",
+    "All clients",
     "Search transfers on this device",
     "Search names or hashes",
-    "Group by environment",
+    "Group by client",
     "Batch tools",
     "Batch & tools",
     "Filter transfers",

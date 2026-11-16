@@ -78,7 +78,7 @@ class SeedingRulesScreenTest {
         assertEquals(setOf("iptorrents.com"), stored.trackerDomains)
         assertEquals(setOf(SeedingEnvironment.LOCAL_ID), stored.environments)
         assertEquals(3_000L, stored.policy.uploadLimit!!.bytesPerSecond)
-        assertTrue("the server is known, so it is not a future environment", box.id in stored.knownEnvironments)
+        assertTrue("the server is known, so it is not a future client", box.id in stored.knownEnvironments)
         assertFalse(stored.nameIsCustom)
         // Searching changes only the visible list, never its persisted policy.
         field("Find seeding rules").performTextReplacement("unrelated-query")
@@ -98,7 +98,7 @@ class SeedingRulesScreenTest {
         rule.setContent {
             ChunksTheme { Surface(color = ChunksColors.Background) { SeedingRulesScreen(environments) {} } }
         }
-        rule.onNodeWithText("Review defaults · 2 environments · 1 saved").assertExists()
+        rule.onNodeWithText("Review defaults · 2 clients · 1 saved").assertExists()
         rule.onNodeWithText("Using your saved preference", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Review defaults", substring = true).performClick()
         rule.onNodeWithText("Using your saved preference", substring = true).assertExists()
@@ -128,13 +128,13 @@ class SeedingRulesScreenTest {
             } }
         }
         rule.onNodeWithText("Review defaults", substring = true).performClick()
-        field("Find environment defaults").performScrollTo()
+        field("Find client defaults").performScrollTo()
             .performTextReplacement("no-such-environment")
-        rule.onNodeWithText("No environment defaults match this search", substring = true)
+        rule.onNodeWithText("No client defaults match this search", substring = true)
             .assertExists()
         assertTrue(store.load().defaults.containsKey(SeedingEnvironment.LOCAL_ID))
-        field("Find environment defaults").performScrollTo().performTextReplacement("local")
-        rule.onNodeWithText("Showing 1 of 2 environment defaults").assertExists()
+        field("Find client defaults").performScrollTo().performTextReplacement("local")
+        rule.onNodeWithText("Showing 1 of 2 client defaults").assertExists()
         rule.onNodeWithText("Using your saved preference", substring = true).assertExists()
         assertEquals(1, store.load().defaults.size)
     }
@@ -147,9 +147,9 @@ class SeedingRulesScreenTest {
             } }
         }
         rule.onNodeWithText("Review defaults", substring = true).performClick()
-        field("Find environment defaults").performScrollTo().performTextReplacement("no-such-environment")
+        field("Find client defaults").performScrollTo().performTextReplacement("no-such-environment")
         rule.runOnIdle { available.value = listOf(SeedingEnvironment.local()) }
-        field("Find environment defaults").performScrollTo().performTextReplacement("")
+        field("Find client defaults").performScrollTo().performTextReplacement("")
         rule.onNodeWithText("Affects future local transfers", substring = true).assertExists()
     }
 

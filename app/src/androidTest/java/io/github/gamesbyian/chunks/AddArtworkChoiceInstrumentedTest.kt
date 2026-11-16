@@ -73,7 +73,8 @@ class AddArtworkChoiceInstrumentedTest {
             }
         }
         rule.waitForIdle()
-        rule.onNodeWithText("Artwork & media information").assertExists()
+        rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
+        rule.onNodeWithText("Choose artwork").assertExists()
         rule.onNodeWithText(label).assertDoesNotExist()
     }
 

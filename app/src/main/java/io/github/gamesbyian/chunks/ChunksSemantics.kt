@@ -72,8 +72,9 @@ internal object ChunksSemantics {
     /** Observable pending/settled state for the existing exact-server removal control. */
     const val REMOTE_REMOVAL_STATUS = "chunks.remote.removal.status"
 
-    /** The canonical Transfers list title. It also hosts the first-install Welcome. */
-    const val TRANSFERS_HEADING = "chunks.transfers.heading"
+    /** Canonical list surface; its screen name is semantic, without a redundant visible title. */
+    const val TRANSFERS_SCREEN = "chunks.transfers.screen"
+    const val DETAILS_SCREEN = "chunks.details.screen"
 
     // First-install Welcome.
     const val WELCOME_HEADING = "chunks.welcome.heading"

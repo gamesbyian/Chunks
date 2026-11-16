@@ -33,6 +33,7 @@ class ConnectionDraftRestorationTest {
             ChunksTheme { ChunksApp(null, null, {}, {}) }
         }
         rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).performTextInput("Studio")
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
             .performTextInput("https://draft.invalid/RPC2")

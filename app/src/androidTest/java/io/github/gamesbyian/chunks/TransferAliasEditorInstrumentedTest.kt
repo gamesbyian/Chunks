@@ -119,7 +119,7 @@ class TransferAliasEditorInstrumentedTest {
             assertEquals("Celebrity Jeopardy S04E02", alias)
         }
         capture("alias-saved-real-compose")
-        rule.onNodeWithText("Edit list name").performClick()
+        rule.onNodeWithText("Change list name").performClick()
         rule.onNodeWithText("Use original torrent name").performClick()
         rule.runOnIdle {
             assertEquals(listOf("Celebrity Jeopardy S04E02", null), committed)

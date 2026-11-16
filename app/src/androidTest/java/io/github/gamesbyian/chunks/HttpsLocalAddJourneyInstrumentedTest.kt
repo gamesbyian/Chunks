@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onAllNodesWithTag
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -432,7 +434,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                     local.list().map { it.infoHash.lowercase() }.toSet())
                 click("Transfers")
                 rule.waitUntil(30_000) {
-                    rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_HEADING).fetchSemanticsNodes().isNotEmpty()
+                    rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_SCREEN).fetchSemanticsNodes().isNotEmpty()
                 }
                 // The Combined list reads local inventory and its privacy
                 // policy asynchronously; entering the screen does not mean
@@ -450,7 +452,7 @@ class HttpsLocalAddJourneyInstrumentedTest {
                 // No intermediate expansion or All-details CTA.
                 rule.onNode(localRow).performClick()
                 rule.waitUntil(30_000) {
-                    visible("Transfer details") && visible("Environment: On this device")
+                    visible("Edit identification") && visible("Local")
                 }
                 rule.onNodeWithText("Show technical details").performScrollTo().performClick()
                 assertTrue("Local Details lost the exact observed hash",
@@ -459,9 +461,9 @@ class HttpsLocalAddJourneyInstrumentedTest {
                     visible("Save folder reported by engine: ${destination.canonicalPath}"))
                 assertTrue("Read-only Details must not restart the native job",
                     local.status(preview.infoHashV1)?.stopped == true)
-                click("Back to transfers")
+                rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
                 rule.waitUntil(30_000) {
-                    rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_HEADING).fetchSemanticsNodes().isNotEmpty()
+                    rule.onAllNodesWithTag(ChunksSemantics.TRANSFERS_SCREEN).fetchSemanticsNodes().isNotEmpty()
                 }
                 enterDeviceControlsFromCatalog()
                 rule.waitUntil(30_000) { visible("This device") }

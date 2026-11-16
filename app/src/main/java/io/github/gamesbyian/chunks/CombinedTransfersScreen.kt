@@ -1140,6 +1140,8 @@ internal fun CombinedTransfersScreen(
         val canShowExactRemoval = exactRemoteRow != null &&
             serverPrivacy?.mayShow == true && verifiedOwner != null
         val renameScope = aliasScopes[focusedKey.environment]
+        Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) {
         UnifiedTransferDetailPanel(
             detail = details,
             rename = if (renameScope == null) null else ({ transfer ->
@@ -1315,6 +1317,16 @@ internal fun CombinedTransfersScreen(
                     onOpen = { key -> savedDetailTarget = arrayListOf(key.environment.value, key.infoHash) })
             }
         )
+        }
+        if (showNavigationFooter) AuthenticatedTransfersFooter(
+            optionsOpen = null,
+            onTransfers = { savedDetailTarget = null },
+            onAdd = onAddToLocal ?: onOpenLocal,
+            onOptions = { savedDetailTarget = null; showingViewOptions = true },
+            onConnections = onConnections,
+            activeDestination = FooterDestination.TRANSFERS
+        )
+        }
     } else {
     // The same measured Transfers / Add / Options footer as the local device and
     // rTorrent lists. Each action only moves within this view: Add leads to
@@ -1376,7 +1388,7 @@ internal fun CombinedTransfersScreen(
     }
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f)) {
-        LazyColumn(Modifier.fillMaxSize().semantics { paneTitle = "Transfers" }.padding(horizontal = 16.dp)
+        LazyColumn(Modifier.fillMaxSize().testTag(ChunksSemantics.TRANSFERS_SCREEN).semantics { paneTitle = "Transfers" }.padding(horizontal = 16.dp)
                 .onSizeChanged { viewportHeightPx = it.height },
             state = listState, contentPadding = PaddingValues(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {

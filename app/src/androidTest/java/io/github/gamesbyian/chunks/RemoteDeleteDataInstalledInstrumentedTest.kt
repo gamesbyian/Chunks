@@ -104,6 +104,8 @@ class RemoteDeleteDataInstalledInstrumentedTest {
                 rule.onAllNodes(hasContentDescription("Connections")).fetchSemanticsNodes().isNotEmpty()
             }
             rule.onNodeWithContentDescription("Connections").performClick()
+            rule.openConnectionFormIfNeeded(allowConnected = false)
+            rule.openConnectionFormIfNeeded()
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             typeInto("Seedbox hostname, ruTorrent URL or RPC address", url)
             scrollTo("Connect to rTorrent")
@@ -134,7 +136,7 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             }
             rule.onNode(exactRow).performClick()
             waitFor("full Details for authenticated exact transfer") {
-                visible("Transfer details") && visible("Remove from rTorrent…")
+                visible("Edit identification") && visible("Remove from rTorrent…")
             }
             // The actual existing guarded Remove control now lives inside the
             // same canonical Details as local, saved-server and All scopes.

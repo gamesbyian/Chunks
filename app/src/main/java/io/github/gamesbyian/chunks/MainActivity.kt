@@ -2426,6 +2426,7 @@ internal fun isLoginRefused(failure: Exception): Boolean =
     failure is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException &&
         (failure.status == 401 || failure.status == 403)
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
@@ -2547,11 +2548,11 @@ internal fun ConnectionScreen(
             }
         }
         if (rosterVisible) {
-            item {
-                if (savedProfiles.isEmpty() && connectedSessionName == null) {
+            if (savedProfiles.isEmpty() && connectedSessionName == null) item {
                     Card(colors = CardDefaults.cardColors(containerColor = Lilac)) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text("Connect to a remote client", style = MaterialTheme.typography.titleMedium,
+                            Text("Connect to a remote client", modifier = Modifier.semantics { heading() },
+                                style = MaterialTheme.typography.titleMedium,
                                 color = ChunksColors.Background)
                             Text("Manage torrents on another computer or server.", color = ChunksColors.Background)
                             OutlinedButton(onClick = openNewConnection, enabled = !loading,
@@ -2560,9 +2561,12 @@ internal fun ConnectionScreen(
                             }
                         }
                     }
-                } else OutlinedButton(onClick = openNewConnection, enabled = !loading,
+            } else stickyHeader(key = "add-connection") {
+                Surface(color = ChunksColors.Background) {
+                OutlinedButton(onClick = openNewConnection, enabled = !loading,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(ChunksSemantics.CONNECTION_ADD)) {
                     Text("+ Add connection")
+                }
                 }
             }
             items(unifiedConnectionRoster(savedProfiles, connectedProfileId, connectedSessionName, connectedSessionVerified), key = { it.id }) { entry ->
@@ -2595,7 +2599,7 @@ internal fun ConnectionScreen(
                                 .semantics { contentDescription = "View transfers on current verified server" }) {
                             Text("View transfers")
                         }
-                        OutlinedButton(onClick = onDisconnectCurrent, enabled = !loading,
+                        OutlinedButton(onClick = { onDisconnectCurrent(); managedProfileId = null }, enabled = !loading,
                             modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                             Text("Disconnect")
                         }

@@ -65,13 +65,13 @@ class CombinedTransfersScreenTest {
     }
     private fun revealText(text: String) = reveal(hasText(text, substring = true))
     // A touch click can miss when the list re-lays out between lookup and injection
-    // (full-suite v2 run, 2026-11-15: the panel stayed "Environment status · 3 sources").
+    // (full-suite v2 run, 2026-11-15: the panel stayed "Client status · 3 sources").
     // Toggle by its semantic action, then wait until it reports itself expanded.
     private fun openEnvironmentStatus() {
-        rule.onNodeWithText("Environment status", substring = true)
+        rule.onNodeWithText("Client status", substring = true)
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Hide environment status").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithText("Hide client status").fetchSemanticsNodes().isNotEmpty()
         }
     }
 
@@ -140,7 +140,7 @@ class CombinedTransfersScreenTest {
         }
         rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertExists()
         rule.onNodeWithText("Search names or hashes").assertDoesNotExist()
-        rule.onNodeWithText("All environments").assertDoesNotExist()
+        rule.onNodeWithText("All clients").assertDoesNotExist()
         rule.onNodeWithText("Batch & tools").assertDoesNotExist()
         rule.onNodeWithTag(ChunksSemantics.WELCOME_ADD).performClick()
         rule.onNodeWithText("Connections").performClick()
@@ -236,10 +236,10 @@ class CombinedTransfersScreenTest {
         val details = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(details)
         rule.onNodeWithContentDescription(details).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         rule.runOnIdle { catalogRevision++ }
         rule.waitForIdle()
-        rule.onNodeWithText("Transfer details").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertDoesNotExist()
         assertTrue("returning to Transfers is read-only", commands.isEmpty())
     }
 
@@ -249,8 +249,8 @@ class CombinedTransfersScreenTest {
         val details = "Details for Big Archive on " + origin
         revealDescription(details)
         rule.onNodeWithContentDescription(details).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
-        rule.onNodeWithText("Environment: " + origin).assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
+        rule.onNodeWithText(compactServerLabel(aliasScope).removePrefix("Server · ")).assertExists()
         rule.onNodeWithText("Exact infohash:", substring = true).assertDoesNotExist()
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
         rule.onNodeWithText("Exact infohash: " + "1".repeat(40)).performScrollTo().assertExists()
@@ -267,13 +267,13 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Open in its list").assertDoesNotExist()
         // The first tap opens the dedicated, exact-account Details destination.
         rule.onNodeWithContentDescription(action).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         rule.onNodeWithText("Size: 900 B", substring = true).assertExists()
         rule.onNodeWithText("Open " + label + " transfers").assertExists()
-        rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         revealDescription(action)
         rule.onNodeWithContentDescription(action).assertExists()
-        rule.onNodeWithText("Transfer details").assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertDoesNotExist()
         assertTrue("Details navigation cannot issue lifecycle commands", commands.isEmpty())
     }
 
@@ -334,7 +334,7 @@ class CombinedTransfersScreenTest {
         val action = "Details for Big Archive on " + serverName
         revealDescription(action)
         rule.onNodeWithContentDescription(action).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         assertTrue("Scope selection never executes a lifecycle command", commands.isEmpty())
     }
 
@@ -422,11 +422,11 @@ class CombinedTransfersScreenTest {
 
     @Test fun showsEveryEnvironmentHonestlyWithoutStartingTheLocalEngine() {
         show()
-        rule.onNodeWithText("All environments").assertExists()
+        rule.onNodeWithText("All clients").assertExists()
         // Ordinary list presentation is compact; source-by-source proof is available on request.
         rule.onNodeWithText("On this device: Engine not running", substring = true).assertDoesNotExist()
         rule.onRoot().captureRoboImage("build/chunks-visual/combined-compact-first-viewport.png")
-        revealText("Environment status")
+        revealText("Client status")
         openEnvironmentStatus()
         // Lazy rows below the fold are composed only after scrolling to them.
         fun seen(text: String) {
@@ -515,8 +515,8 @@ class CombinedTransfersScreenTest {
         val exact = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(exact)
         rule.onNodeWithContentDescription(exact).assertExists()
-        revealText("Group by environment")
-        rule.onNodeWithContentDescription("Group by environment").assertExists()
+        revealText("Group by client")
+        rule.onNodeWithContentDescription("Group by client").assertExists()
         rule.onNode(androidx.compose.ui.test.isToggleable()).performClick()
         revealText(serverEnvironmentLabel(aliasScope) + " · 2 shown")
         rule.onNodeWithText(serverEnvironmentLabel(aliasScope) + " · 2 shown").assertExists()
@@ -631,7 +631,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun staleServerListIsLabelledAsLastKnown() {
         show(stale = true)
-        revealText("Environment status")
+        revealText("Client status")
         openEnvironmentStatus()
         // Expanded environment rows live in a LazyColumn and may be outside
         // the composed viewport. Reveal the exact row before asserting it.
@@ -641,15 +641,15 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText(staleLabel).assertExists()
         // The first-fold count is recycled after scrolling. The expanded
         // source diagnostics must themselves explain what is out of date.
-        revealText("Some environments are missing or out of date.")
-        rule.onNodeWithText("Some environments are missing or out of date.",
+        revealText("Some clients are missing or out of date.")
+        rule.onNodeWithText("Some clients are missing or out of date.",
             substring = true).assertExists()
     }
 
     @Test fun oldSignedInServerRowsRemainVisibleButAreNotLiveOrActionable() {
         show(observedAtEpochMillis = System.currentTimeMillis() -
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots.SERVER_INVENTORY_FRESH_MS - 1)
-        revealText("Environment status")
+        revealText("Client status")
         openEnvironmentStatus()
         // Expanded environment rows live in a LazyColumn and may be outside
         // the composed viewport. Reveal the exact row before asserting it.
@@ -872,12 +872,12 @@ class CombinedTransfersScreenTest {
         val details = "Details for Big Archive on " + serverEnvironmentLabel(aliasScope)
         revealDescription(details)
         rule.onNodeWithContentDescription(details).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         // The parent root footer sends only a navigation revision. No Add,
         // Start/Stop, remote read or scope reset belongs to this action.
         rule.runOnIdle { returnRevision++ }
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isEmpty()
+            rule.onAllNodesWithTag(ChunksSemantics.DETAILS_SCREEN).fetchSemanticsNodes().isEmpty()
         }
         // Ordinary scoped catalog stays compact. The read-only scope summary
         // remains available inside Filters, not as a top-of-list banner.

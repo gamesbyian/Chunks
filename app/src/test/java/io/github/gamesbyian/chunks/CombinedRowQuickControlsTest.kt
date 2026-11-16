@@ -139,7 +139,7 @@ class CombinedRowQuickControlsTest {
         val details = "Details for Big Archive on $label"
         reveal(hasContentDescription(details))
         rule.onNodeWithContentDescription(details).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         assertTrue(commands.isEmpty())
     }
 
@@ -209,7 +209,7 @@ class CombinedRowQuickControlsTest {
         // The list now shows the display name; the original release name stays inspectable.
         rule.waitUntil(5_000) { rule.onAllNodes(hasText("Original torrent name: $release"))
             .fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("Edit list name").performScrollTo().performClick()
+        rule.onNodeWithText("Change list name").performScrollTo().performClick()
         rule.onNodeWithText("Use original torrent name").performScrollTo().performClick()
         rule.waitUntil(5_000) { TransferAliasStore(context).get(aliasScope, hash) == null }
         assertTrue("A display rename never commands or renames the torrent", commands.isEmpty())

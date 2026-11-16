@@ -87,7 +87,9 @@ class RepeatedAndroidIntakeTest {
     }
 
     private fun connect() {
+        rule.openConnectionFormIfNeeded()
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         list().performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(server.endpoint)
         list().performScrollToNode(hasText("Connect to rTorrent"))
@@ -172,7 +174,7 @@ class RepeatedAndroidIntakeTest {
         // (a read-only observation) rather than racing it in a loaded full suite.
         rule.waitUntil(15_000) { runCatching { list().performScrollToNode(row) }.isSuccess }
         rule.onNode(row).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         val before = server.methods.size
         rule.onNode(hasText("Open Server ·", substring = true)).performScrollTo().performClick()
         waitForText("Search names or hashes")

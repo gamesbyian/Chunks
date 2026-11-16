@@ -119,7 +119,9 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                     rule.onAllNodes(hasContentDescription("Connections")).fetchSemanticsNodes().isNotEmpty()
                 }
                 rule.onNodeWithContentDescription("Connections").performClick()
-                waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
+                rule.openConnectionFormIfNeeded(allowConnected = false)
+                rule.openConnectionFormIfNeeded()
+            waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
                 scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
                 rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
                 scrollTo("Connect to rTorrent")

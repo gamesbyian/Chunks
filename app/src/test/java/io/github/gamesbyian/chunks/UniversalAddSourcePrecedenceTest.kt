@@ -103,10 +103,12 @@ class UniversalAddSourcePrecedenceTest {
     }
 
     private fun connect() {
+        rule.openConnectionFormIfNeeded()
         val socket = ServerSocket(0, 16, InetAddress.getByName("127.0.0.1")).also { listening = it }
         Thread { while (!socket.isClosed) try { serve(socket.accept()) } catch (_: Exception) {} }
             .apply { isDaemon = true; start() }
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         list().performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
             .performTextInput("http://127.0.0.1:${socket.localPort}/RPC2")

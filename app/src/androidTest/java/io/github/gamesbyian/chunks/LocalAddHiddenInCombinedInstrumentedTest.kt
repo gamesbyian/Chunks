@@ -96,8 +96,8 @@ class LocalAddHiddenInCombinedInstrumentedTest {
         rule.onNode(androidx.compose.ui.test.hasTestTag(ChunksSemantics.FOOTER_TRANSFERS)).performClick()
         // The scope chip exists only when more than one environment is configured; a
         // local-only install is already showing every environment.
-        if (rule.onAllNodesWithText("All environments").fetchSemanticsNodes().isNotEmpty())
-            rule.onNodeWithText("All environments").performScrollTo().performClick()
+        if (rule.onAllNodesWithText("All clients").fetchSemanticsNodes().isNotEmpty())
+            rule.onNodeWithText("All clients").performScrollTo().performClick()
         // First demand a fresh, exact-hash local row in the canonical
         // Combined inventory. A mere native Add receipt is NOT sufficient to
         // claim that a new transfer is hidden; the notice is only allowed
@@ -119,7 +119,7 @@ class LocalAddHiddenInCombinedInstrumentedTest {
         // Once nonempty, the TextField semantics may expose its value instead
         // of the placeholder. Address the only editable search field by action.
         rule.onNode(hasSetTextAction()).performTextReplacement("no transfer is called this")
-        val notice = "Your new transfer on On this device is hidden by the current search, filter or environment view."
+        val notice = "Your new transfer on On this device is hidden by the current search, filter or client view."
         waitFor(30_000) { runCatching {
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(notice))
             true

@@ -62,7 +62,7 @@ class LocalTransferAliasInstrumentedTest {
             "More details for Original release name on this device"
         ).performClick()
         compose.onNodeWithText("Original torrent: " + original).assertExists()
-        compose.onNodeWithText("Edit list name").performClick()
+        compose.onNodeWithText("Change list name").performClick()
         compose.onNodeWithText(
             "Only the name shown in Chunks changes. The torrent, files and seeding remain untouched."
         ).assertExists()
