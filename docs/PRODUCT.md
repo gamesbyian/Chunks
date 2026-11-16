@@ -1,3 +1,5 @@
+> **Owner Add behavior · 2026-11-16:** Local, rTorrent and future BitTorrent clients are interchangeable destinations under one Add form, submission and continuation UX. Native/RPC transport and verification timing may differ internally; users must not be required to follow client-specific waiting or completion steps. Preserve one authorized write, exact-client/hash/Place authority and truthful status. [Binding parity architecture/UX/plan](design/UNIVERSAL-ADD-CLIENT-PARITY.md); end-to-end experience still pending.
+
 # Chunks canonical product contract
 
 > **Owner client vocabulary and scope-summary decision · 2026-11-15:** User-facing Chunks labels use **client** rather than **environment**, retaining **Local** and custom remote short names such as **Wood**. The summary above transfer cards reports **N clients included** when counting clients in the selected scope; never reverse an actual excluded-count variable by changing text alone. Included can be disconnected and stale; live connection status is independent. Keep internal environment identity/routing persistent and safe. [Binding copy/count design](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md).

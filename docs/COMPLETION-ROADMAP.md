@@ -1,3 +1,5 @@
+> **R1 Add client-neutral lifecycle dependency · 2026-11-16:** [Binding parity design and acceptance](design/UNIVERSAL-ADD-CLIENT-PARITY.md) sets ordered milestones: (1) pure shared receipt mapping and safety tests; (2) process-continuous single-ticket controller, safe read-only observation and navigation; (3) shared Add form and per-client capability/Place adapters; (4) installed Local/real rTorrent positive and uncertain/error parity, then Pixel/TalkBack. Do not trade away RPC proof for optimistic speed or claim complete delivery after step 1.
+
 # Chunks: dependency-ordered completion and validation
 
 > **Owner client naming and summary count · 2026-11-15:** R1 batch must adopt [user-facing client terminology and included scope](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md), validate actual selected-client count backing `N clients included`, and preserve internal stable environment identities. Include All/Local/remote, offline/stale, number of configured/selected clients and accessibility acceptance.

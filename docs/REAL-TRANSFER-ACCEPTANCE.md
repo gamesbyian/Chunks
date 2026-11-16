@@ -1,3 +1,5 @@
+> **Cross-client Add experience acceptance · 2026-11-16:** [One Add client journey and shared evidence matrix](design/UNIVERSAL-ADD-CLIENT-PARITY.md) must run through installed libtorrent Local and real authenticated rTorrent, including status/navigation parity despite different readback latency, no duplicate after lost ACK and proper exact Place/Start observation. Pure JVM parity tests only establish status projection, not installed user experience; physical Pixel/TalkBack remains separate.
+
 # Real-transfer-first acceptance and upstream reuse
 
 > **P0 execution:** [One full-journey daily-use campaign](P0-DAILY-USE-JOURNEYS.md) reuses a single [fixture cohort](P0-DAILY-USE-FIXTURES.tsv) and [scenario evidence index](P0-DAILY-USE-EVIDENCE.tsv) across local + 3 remote environments. This document continues to govern actual peer and installed-engine evidence, not a separate full-suite acceptance campaign.

@@ -2325,6 +2325,9 @@ internal fun ChunksApp(
                     VerifiedAddScreen(
                         remote = connectedRemote, magnet = magnet, destination = addSession.destination,
                         session = addSession,
+                        // App-root coroutine, not the disposable Add composable:
+                        // switching to Transfers cannot cancel its one-shot RPC.
+                        attemptScope = scope,
                         observedPlaces = observedPlaces,
                         initialTorrent = serverHandoffTorrent,
                         initialTorrentDocument = serverHandoffDocument,

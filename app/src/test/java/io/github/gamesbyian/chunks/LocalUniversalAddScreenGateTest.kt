@@ -79,7 +79,7 @@ class LocalUniversalAddScreenGateTest {
         val session = attempt()
         show(session)
         rule.waitUntil(15_000) {
-            rule.onAllNodes(hasText("Previous local Add:", substring = true))
+            rule.onAllNodes(hasText("Couldn't confirm Add on Local", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
@@ -107,7 +107,7 @@ class LocalUniversalAddScreenGateTest {
         assertFalse(session.acknowledgeObservedJob())
         show(session)
         rule.waitUntil(15_000) {
-            rule.onAllNodes(hasText("Previous local Add: waiting for exact local transfer verification", substring = true))
+            rule.onAllNodes(hasText("Couldn't confirm Add on Local", substring = true))
                 .fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()
@@ -151,7 +151,7 @@ class LocalUniversalAddScreenGateTest {
         assertFalse(session.finishReviewedAttempt())
         show(session)
         rule.waitUntil(15_000) {
-            rule.onAllNodes(hasText("Previous local Add: waiting for exact local transfer verification",
+            rule.onAllNodes(hasText("Couldn't confirm Add on Local",
                 substring = true)).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).assertIsNotEnabled()

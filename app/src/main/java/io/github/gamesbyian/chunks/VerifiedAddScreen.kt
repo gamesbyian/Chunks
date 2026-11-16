@@ -49,6 +49,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.Units
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
+import io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector
 import io.github.gamesbyian.chunks.model.UniversalAddSource
 import io.github.gamesbyian.chunks.model.UniversalAddTarget
 import io.github.gamesbyian.chunks.model.UniversalAddPlace
@@ -65,6 +66,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteAddAndStart
 import io.github.gamesbyian.chunks.rpc.StoppedRemoteAddPlan
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoPreview
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -115,6 +117,9 @@ internal fun VerifiedAddScreen(
     onVerifiedAlias: (String, String) -> Boolean = { _, _ -> false },
     /** Parent-owned exact-account review; remounting must not revive Add authority. */
     session: RemoteAddSession? = null,
+    /** App-root scope keeps one authorized RPC attempt alive across Add/Transfers navigation.
+     * If absent, standalone screen tests retain their screen-scoped execution. */
+    attemptScope: CoroutineScope? = null,
     /** Inline shared Add-to selector; never grants remote admission. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
     externalSourceReading: Boolean = false,
@@ -143,6 +148,10 @@ internal fun VerifiedAddScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    // The mutation/readback must outlive this Add composable when users switch
+    // to Transfers. Still cancel on app-root teardown (e.g. Activity death),
+    // preserving the uncertain ticket rather than resending an RPC load.
+    val submitScope = attemptScope ?: scope
     val draft = session ?: remember(remote, finishInOrderScope) { RemoteAddSession(finishInOrderScope) }
     require(draft.accountScope == finishInOrderScope) { "Add review belongs to another server account" }
     var selectedTorrent by draft::selectedTorrent
@@ -224,30 +233,30 @@ internal fun VerifiedAddScreen(
     val artworkHolder = addArtworkState ?: rememberSaveable { mutableStateOf(true) }
     var automaticArtwork by artworkHolder
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
-    LaunchedEffect(verifiedHash, draft.coordinator.phase) {
-        verifiedHash?.let {
-            // Merely finding the exact job after a lost acknowledgement does
-            // not prove Chunks registered it. Only a positively verified NEW
-            // Add may be reported to the parent as the app's latest Added job.
-            if (draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED &&
-                draft.reportedVerifiedHash != it) {
-                draft.reportedVerifiedHash = it
-                val submittedHash = draft.attemptTicket?.intent?.source?.expectedInfoHash
-                val verifiedAlias = exactNewAddAlias(
-                    draft.frozenAlias, submittedHash.orEmpty(), it)
-                if (verifiedAlias != null) {
-                    if (!runCatching { onVerifiedAlias(it, verifiedAlias) }.getOrDefault(false))
-                        outcome = outcome.orEmpty() +
-                        " The transfer was verified, but its Chunks display name could not be saved."
-                    else addAliasState?.let { aliasDraft ->
-                        if (aliasDraft.value == verifiedAlias) aliasDraft.value = ""
-                    }
-                }
-                onVerifiedAdd(it)
-                if (draft.resetArtworkAfterVerification && magnet == draft.attemptSource && initialTorrent == null)
-                    automaticArtwork = true
+    // Publish the exact client's confirmed new job while Add is visible OR
+    // after navigating away. Only the coordinator's VERIFIED provenance can
+    // release a new-registration notification; post-timeout session existence
+    // alone cannot. A single session-owned marker prevents double publishing.
+    fun publishVerifiedAdd(hash: String) {
+        if (draft.coordinator.phase != UniversalAddCoordinator.Phase.VERIFIED ||
+            draft.reportedVerifiedHash == hash) return
+        draft.reportedVerifiedHash = hash
+        val submittedHash = draft.attemptTicket?.intent?.source?.expectedInfoHash
+        val verifiedAlias = exactNewAddAlias(draft.frozenAlias, submittedHash.orEmpty(), hash)
+        if (verifiedAlias != null) {
+            if (!runCatching { onVerifiedAlias(hash, verifiedAlias) }.getOrDefault(false))
+                outcome = outcome.orEmpty() +
+                    " The transfer was verified, but its Chunks display name could not be saved."
+            else addAliasState?.let { aliasDraft ->
+                if (aliasDraft.value == verifiedAlias) aliasDraft.value = ""
             }
         }
+        onVerifiedAdd(hash)
+        if (draft.resetArtworkAfterVerification && magnet == draft.attemptSource && initialTorrent == null)
+            automaticArtwork = true
+    }
+    LaunchedEffect(verifiedHash, draft.coordinator.phase) {
+        verifiedHash?.let(::publishVerifiedAdd)
     }
     // Optional read-only shortcuts, keyed to the authenticated Add destination.
     // Never open another account's saved folder suggestions on a scope change.
@@ -646,6 +655,8 @@ internal fun VerifiedAddScreen(
                     Text("Adding to " + (draft.submittedDisplayName ?: environmentLabel ?: "rTorrent"),
                         fontWeight = FontWeight.Bold)
                     Text("Submitting and checking the exact transfer. Do not submit again.")
+                    if (attemptScope != null)
+                        Text("You can return to Transfers while this client's result is checked.")
                 }
             } else RemoteAddScopeIntro(environmentLabel, finishInOrderScope)
         }
@@ -669,17 +680,20 @@ internal fun VerifiedAddScreen(
                         else MaterialTheme.colorScheme.secondaryContainer)) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         val targetName = draft.submittedDisplayName ?: environmentLabel?.takeIf(String::isNotBlank) ?: "rTorrent"
-                        Text(when {
-                            nativePlaceAwaitingConfirmation -> "Checking $targetName"
-                            uncertain -> "Couldn't confirm Add on $targetName"
-                            draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED ->
-                                "Added to $targetName"
-                            draft.coordinator.phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED ->
-                                "Confirmed on $targetName"
-                            outcome.orEmpty().contains("refused", ignoreCase = true) ->
-                                "Couldn't add to $targetName"
-                            else -> "Add result on $targetName"
-                        }, fontWeight = FontWeight.Bold)
+                        // One shared status projection for Local, rTorrent and
+                        // future clients. The engine-specific outcome below may
+                        // add diagnostics but cannot redefine the receipt stage.
+                        val display = UniversalAddDisplayProjector.from(
+                            phase = draft.coordinator.phase,
+                            clientLabel = targetName,
+                            submitting = submitting,
+                            knownNoWrite = !draft.alreadyAttempted
+                        )
+                        Text(
+                            if (nativePlaceAwaitingConfirmation) "Checking $targetName"
+                            else display?.title ?: "Add result on $targetName",
+                            fontWeight = FontWeight.Bold
+                        )
                         Text(if (nativePlaceAwaitingConfirmation) {
                             if (observedProgress?.metadataPending == true)
                                 "Waiting for magnet metadata. rTorrent reports this exact transfer active; its payload folder and final Add result are not yet verified. No Add or Start will be repeated."
@@ -1054,7 +1068,7 @@ internal fun VerifiedAddScreen(
                             draft.attemptSource = magnet
                             draft.frozenAlias = aliasAtClick
                             val artworkEnvironment = ticket.intent.target.environment
-                            scope.launch {
+                            submitScope.launch {
                                 var engineOutcomeRecorded = false
                                 try {
                                     if (!allowArtwork && withContext(Dispatchers.IO) {
@@ -1140,6 +1154,9 @@ internal fun VerifiedAddScreen(
                                         }
                                     }
                                     engineOutcomeRecorded = true
+                                    // Continue the newly verified job into Transfers
+                                    // even when this Add composable is no longer mounted.
+                                    verifiedHash?.let(::publishVerifiedAdd)
                                     applyRemoteOriginalHandling(context, draft, ticket, result)
                                         ?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (result is RemoteAddAndStart.StartNotVerified) {
@@ -1398,7 +1415,10 @@ internal fun VerifiedAddScreen(
             }
         }
         item {
-            OutlinedButton(onClick = onBack, enabled = !submitting,
+            // Production passes an app-root attempt scope. Leaving Add only
+            // removes the screen, never cancels its authorized RPC/readback.
+            // Standalone screen-owned tests retain the old cancellation gate.
+            OutlinedButton(onClick = onBack, enabled = !submitting || attemptScope != null,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                 Text("Back to transfers")
             }

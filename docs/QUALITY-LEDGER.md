@@ -1,3 +1,5 @@
+> **Universal Add client-parity work in progress · 2026-11-16:** [Owner-approved Add parity contract and evidence matrix](design/UNIVERSAL-ADD-CLIENT-PARITY.md). Shared receipt mapping and localized screen wiring are implementation-only until CI confirms tests. No claim yet for unified app-owned lifecycle, navigation away while RPC readback continues, one composable, installed local/real-rTorrent UI equivalence or physical Pixel acceptance. Preserve earlier actual engine and lost-ACK safety evidence.
+
 # Chunks evidence and release gate ledger
 
 > **#1785 RECONCILIATION + #1786 OPEN WITH · 2026-11-16 (PR [#1790](https://github.com/gamesbyian/Chunks/pull/1790), merged `d37b4c9`):**
