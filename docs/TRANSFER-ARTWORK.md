@@ -1,5 +1,8 @@
 # Transfer artwork and media identification contract
 
+> **BINDING ARTWORK-SHAPE CORRECTION · 2026-11-15:** Transfer rows now prefer *native-format category artwork*: movies/TV 2:3 poster; music, audiobooks and software 1:1; books/comics 2:3; magazines 3:4. See [artwork aspect-ratio design and acceptance](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md). These are selection/layout preferences, never compulsory crops; preserve actual image geometry, user-selected alternatives, compact transfer rows and existing privacy/consent. **Supersedes the historical square-movie/TV-only instruction below.** Transfer Details shows the media-appropriate format too. For origin, show just the short custom connection name (e.g. Wood), with no endpoint dump. This change is specified, not implemented.
+
+
 > **BINDING DETAILS PRESENTATION · 2026-11-15:** Media title/year/type/provider, Details portrait poster, identification provenance and **Choose artwork** belong in the single top [unified transfer identity section](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md) with original torrent name, observed status, environment short name, **Change list name** and independent **Edit identification**. Retire the duplicated lower Artwork & media information presentation, but retain artwork picker, alternate selection, custom image import, provider provenance and manual overrides. Choosing artwork must never require changing identification or silently reset an override. The Add-only enrichment checkbox remains absent from active Details. This is a target placement contract, not shipped evidence.
 
 
