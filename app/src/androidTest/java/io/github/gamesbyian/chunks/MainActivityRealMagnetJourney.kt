@@ -450,6 +450,18 @@ internal class MainActivityRealMagnetJourney(
                         rule.onAllNodes(artworkToggle, useUnmergedTree = true)
                             .fetchSemanticsNodes().size
                     }.getOrDefault(-1)
+                    // The receipt omits messages: name the readiness failure with a
+                    // fixed stage so a greyed-out (disabled) choice is distinguishable
+                    // from an absent, duplicated or off-screen one.
+                    val only = if (merged == 1) runCatching { rule.onNode(artworkToggle).fetchSemanticsNode() }.getOrNull() else null
+                    report("chunks_real_add_app_stage", when {
+                        merged == 0 -> "artwork-ready-absent"
+                        merged > 1 -> "artwork-ready-duplicate"
+                        only?.config?.contains(androidx.compose.ui.semantics.SemanticsProperties.Disabled) == true ->
+                            "artwork-ready-disabled"
+                        merged == 1 -> "artwork-ready-hidden"
+                        else -> "artwork-ready-unknown"
+                    })
                     throw AssertionError("Artwork choice not ready after expansion; " +
                         "merged=$merged unmerged=$raw lastFailure=$lastChoiceFailure " +
                         "state=$choice (no checkbox click attempted)", failure)
