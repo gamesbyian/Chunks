@@ -233,30 +233,30 @@ internal fun VerifiedAddScreen(
     val artworkHolder = addArtworkState ?: rememberSaveable { mutableStateOf(true) }
     var automaticArtwork by artworkHolder
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
-    LaunchedEffect(verifiedHash, draft.coordinator.phase) {
-        verifiedHash?.let {
-            // Merely finding the exact job after a lost acknowledgement does
-            // not prove Chunks registered it. Only a positively verified NEW
-            // Add may be reported to the parent as the app's latest Added job.
-            if (draft.coordinator.phase == UniversalAddCoordinator.Phase.VERIFIED &&
-                draft.reportedVerifiedHash != it) {
-                draft.reportedVerifiedHash = it
-                val submittedHash = draft.attemptTicket?.intent?.source?.expectedInfoHash
-                val verifiedAlias = exactNewAddAlias(
-                    draft.frozenAlias, submittedHash.orEmpty(), it)
-                if (verifiedAlias != null) {
-                    if (!runCatching { onVerifiedAlias(it, verifiedAlias) }.getOrDefault(false))
-                        outcome = outcome.orEmpty() +
-                        " The transfer was verified, but its Chunks display name could not be saved."
-                    else addAliasState?.let { aliasDraft ->
-                        if (aliasDraft.value == verifiedAlias) aliasDraft.value = ""
-                    }
-                }
-                onVerifiedAdd(it)
-                if (draft.resetArtworkAfterVerification && magnet == draft.attemptSource && initialTorrent == null)
-                    automaticArtwork = true
+    // Publish the exact client's confirmed new job while Add is visible OR
+    // after navigating away. Only the coordinator's VERIFIED provenance can
+    // release a new-registration notification; post-timeout session existence
+    // alone cannot. A single session-owned marker prevents double publishing.
+    fun publishVerifiedAdd(hash: String) {
+        if (draft.coordinator.phase != UniversalAddCoordinator.Phase.VERIFIED ||
+            draft.reportedVerifiedHash == hash) return
+        draft.reportedVerifiedHash = hash
+        val submittedHash = draft.attemptTicket?.intent?.source?.expectedInfoHash
+        val verifiedAlias = exactNewAddAlias(draft.frozenAlias, submittedHash.orEmpty(), hash)
+        if (verifiedAlias != null) {
+            if (!runCatching { onVerifiedAlias(hash, verifiedAlias) }.getOrDefault(false))
+                outcome = outcome.orEmpty() +
+                    " The transfer was verified, but its Chunks display name could not be saved."
+            else addAliasState?.let { aliasDraft ->
+                if (aliasDraft.value == verifiedAlias) aliasDraft.value = ""
             }
         }
+        onVerifiedAdd(hash)
+        if (draft.resetArtworkAfterVerification && magnet == draft.attemptSource && initialTorrent == null)
+            automaticArtwork = true
+    }
+    LaunchedEffect(verifiedHash, draft.coordinator.phase) {
+        verifiedHash?.let(::publishVerifiedAdd)
     }
     // Optional read-only shortcuts, keyed to the authenticated Add destination.
     // Never open another account's saved folder suggestions on a scope change.
@@ -1152,6 +1152,9 @@ internal fun VerifiedAddScreen(
                                         }
                                     }
                                     engineOutcomeRecorded = true
+                                    // Continue the newly verified job into Transfers
+                                    // even when this Add composable is no longer mounted.
+                                    verifiedHash?.let(::publishVerifiedAdd)
                                     applyRemoteOriginalHandling(context, draft, ticket, result)
                                         ?.let { outcome = outcome.orEmpty() + " " + it }
                                     if (result is RemoteAddAndStart.StartNotVerified) {
