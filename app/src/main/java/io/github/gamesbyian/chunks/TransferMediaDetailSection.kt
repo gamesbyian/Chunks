@@ -29,8 +29,9 @@ import io.github.gamesbyian.chunks.model.UnifiedTransferObservation
 @Composable
 internal fun TransferMediaDetailSection(
     transfer: UnifiedTransferObservation,
-    modifier: Modifier = Modifier
-) = TransferMediaDetailSection(transfer.key, transfer.originalName, modifier)
+    modifier: Modifier = Modifier,
+    identity: (@Composable () -> Unit)? = null
+) = TransferMediaDetailSection(transfer.key, transfer.originalName, modifier, identity = identity)
 
 /**
  * The same section for the local device and rTorrent list cards' expanded details, keyed by the exact
@@ -43,27 +44,34 @@ internal fun TransferMediaDetailSection(
     originalName: String,
     modifier: Modifier = Modifier,
     /** Completed local files only; null for remote or Combined observations. */
-    localFiles: LocalCompletedMediaFiles? = null
+    localFiles: LocalCompletedMediaFiles? = null,
+    identity: (@Composable () -> Unit)? = null
 ) {
     val key = MediaTransferKey.of(transferKey)
-    var editing by rememberSaveable(key.value) { mutableStateOf(false) }
+    var editing by rememberSaveable(key.value) { mutableStateOf<String?>(null) }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Artwork & media information", style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.semantics { heading() })
         TransferMediaSummaryRoute(
-            key = key,
-            originalName = originalName,
-            onChange = { editing = !editing }
+            key = key, originalName = originalName,
+            onChange = { editing = "identification" }, showChangeAction = false
         )
-        if (editing) {
+        identity?.invoke()
+        ResponsiveActionGroup(maxColumns = 2) { cell ->
+            OutlinedButton(onClick = { editing = "identification" }, modifier = cell) {
+                Text("Edit identification")
+            }
+            OutlinedButton(onClick = { editing = "artwork" }, modifier = cell) {
+                Text("Choose artwork")
+            }
+        }
+        if (editing != null) {
             OutlinedButton(
-                onClick = { editing = false },
+                onClick = { editing = null },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            ) { Text("Close media identification") }
+            ) { Text(if (editing == "artwork") "Close artwork chooser" else "Close media identification") }
             // Remote listings never get a read callback: an rTorrent listing does not establish
             // device-side permission to read a payload. Local cards pass only verified completed files.
-            if (localFiles == null) TransferMediaIdentifyRoute(key = key, originalName = originalName)
-            else TransferMediaIdentifyRoute(key = key, originalName = originalName, files = localFiles.hints,
+            if (localFiles == null) TransferMediaIdentifyRoute(key = key, originalName = originalName, artworkOnly = editing == "artwork")
+            else TransferMediaIdentifyRoute(key = key, originalName = originalName, artworkOnly = editing == "artwork", files = localFiles.hints,
                 readLocalFile = localFiles::read, openLocalFile = localFiles::open)
         }
     }

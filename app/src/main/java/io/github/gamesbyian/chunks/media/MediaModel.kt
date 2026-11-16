@@ -27,6 +27,16 @@ enum class MediaConfidence { NONE, LOW, MEDIUM, HIGH }
 
 enum class ArtworkRole { SQUARE, POSTER, BANNER, THUMB }
 
+/** Category preferences guide selection; decoded images always retain their actual proportions. */
+val MediaKind.preferredArtworkRatio: Float get() = when (this) {
+    MediaKind.MOVIE, MediaKind.TV_SERIES, MediaKind.TV_SEASON, MediaKind.TV_EPISODE,
+    MediaKind.BOOK, MediaKind.COMIC -> 2f / 3f
+    MediaKind.MAGAZINE -> 3f / 4f
+    else -> 1f
+}
+val MediaKind.preferredArtworkRole: ArtworkRole get() =
+    if (preferredArtworkRatio < 1f) ArtworkRole.POSTER else ArtworkRole.SQUARE
+
 data class ArtworkCandidate(
     val provider: String,
     val url: String,

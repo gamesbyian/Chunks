@@ -1154,10 +1154,13 @@ internal fun CombinedTransfersScreen(
                             .getOrDefault(false)
                     },
                     identifiedSuggestions = identifiedMediaNameSuggestions(media.assignment))
-                // Collection membership in the same authorized display-name scope.
+            }),
+            collections = if (renameScope == null) null else ({ transfer ->
                 DetailsCollections(renameScope, transfer.key.infoHash, transfer.displayName)
             }),
-            environmentLabel = rowLabels[focusedKey.environment] ?: "Unconfigured client",
+            environmentLabel = if (focusedKey.environment == EnvironmentSnapshots.LOCAL) "Local"
+                else savedProfiles.firstOrNull { it.id == focusedKey.environment.value }?.shortLabel
+                    ?: rowLabels[focusedKey.environment]?.removePrefix("Server · ") ?: "Remote client",
             environmentHue = hueFor(focusedKey.environment),
             onBack = { savedDetailTarget = null },
             // A Remove's outcome is retained after its job leaves the list (incomplete or
@@ -2352,7 +2355,7 @@ internal fun combinedShowingText(shown: Int, inSelectedEnvironments: Int): Strin
  * Unknown rates and excluded sources remain visibly qualified, never rendered as live zeros.
  */
 internal fun includedClientCount(result: io.github.gamesbyian.chunks.model.UnifiedTransferQueryResult): Int =
-    (result.sources.map { it.environment }.toSet() + result.missingEnvironments).size
+    (result.sources.map { it.environment }.toSet() + result.missingSelectedEnvironments).size
 
 internal fun combinedCompactSummaryText(
     shown: Int,

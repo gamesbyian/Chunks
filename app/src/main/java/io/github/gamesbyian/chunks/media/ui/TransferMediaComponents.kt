@@ -75,13 +75,13 @@ import io.github.gamesbyian.chunks.media.providerOn
 @Composable
 fun TransferMediaArtwork(state: TransferMediaUiState, size: Dp, modifier: Modifier = Modifier,
                          showArtwork: Boolean = true, description: String? = null) {
-    val shape = RoundedCornerShape(size * 0.18f)
+    val shape = RoundedCornerShape(8.dp)
     val bitmap = state.artwork?.takeIf { showArtwork && state.mayShowRealArt }
     val semantics = if (description != null) Modifier.semantics { contentDescription = description } else Modifier.clearAndSetSemantics {}
-    Box(modifier.size(size).then(semantics)) {
+    Box(modifier.size(size).then(semantics), contentAlignment = Alignment.Center) {
         if (bitmap != null) {
             val image = remember(bitmap) { bitmap.asImageBitmap() }
-            Image(image, contentDescription = null, contentScale = ContentScale.Crop,
+            Image(image, contentDescription = null, contentScale = ContentScale.Fit,
                 modifier = Modifier.size(size).clip(shape).border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape))
         } else {
             MediaCategoryTile(state.displayKind, size)
@@ -129,7 +129,8 @@ internal fun candidateSubtitle(c: MediaCandidate): String = listOfNotNull(
  */
 @Composable
 fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modifier: Modifier = Modifier,
-                         showArtwork: Boolean = true, onRequestPoster: (() -> Unit)? = null) {
+                         showArtwork: Boolean = true, onRequestPoster: (() -> Unit)? = null,
+                         showChangeAction: Boolean = true) {
     val match = state.match
     // A verified work can gain a same-identity poster later (e.g. another provider
     // recovered after a cooldown). Key the effect by the eligible poster sources
@@ -147,16 +148,12 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
     androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
     val stacked = maxWidth < 360.dp && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.3f
     val content: @Composable () -> Unit = {
-        val poster = state.poster?.takeIf { showArtwork && state.mayShowRealArt && state.userArtwork == null }
-        if (poster != null) {
-            val image = remember(poster) { poster.asImageBitmap() }
-            val shape = RoundedCornerShape(12.dp)
-            // Original aspect, never stretched; width fixed so text layout is stable.
-            // Clamp extreme aspects to 1:2..2:1 so a tall strip never dominates the header.
-            val aspect = (poster.width.toFloat() / poster.height).coerceIn(0.5f, 2f)
-            Image(image, contentDescription = null, contentScale = ContentScale.Crop,
-                modifier = Modifier.width(96.dp).aspectRatio(aspect).clip(shape)
-                    .border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape).clearAndSetSemantics {})
+        val artwork = (state.userArtwork?.let { state.artwork } ?: state.poster ?: state.artwork)
+            ?.takeIf { showArtwork && state.mayShowRealArt }
+        if (artwork != null) {
+            val image = remember(artwork) { artwork.asImageBitmap() }
+            Image(image, contentDescription = null, contentScale = ContentScale.Fit,
+                modifier = Modifier.size(width = 96.dp, height = 144.dp).clearAndSetSemantics {})
         } else TransferMediaArtwork(state, 96.dp, showArtwork = showArtwork)
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (match != null) {
@@ -192,7 +189,7 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
                 Text("Source: ${it.attribution.providerName}" + (art?.let { " · art: $it" } ?: ""),
                     style = MaterialTheme.typography.labelSmall, color = ChunksColors.TextSecondary)
             }
-            TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 48.dp)) {
+            if (showChangeAction) TextButton(onClick = onChange, modifier = Modifier.heightIn(min = 48.dp)) {
                 Text("Change identification or artwork…")
             }
         }
@@ -215,6 +212,7 @@ fun MediaIdentifyPanel(
     onUseCategoryArt: (MediaKind) -> Unit,
     onReset: () -> Unit,
     modifier: Modifier = Modifier,
+    artworkOnly: Boolean = false,
     /** Opens the system Photo Picker; null hides the option. Works with online lookup off. */
     onPickImage: (() -> Unit)? = null,
     onRemoveImage: (() -> Unit)? = null,
@@ -247,12 +245,13 @@ fun MediaIdentifyPanel(
 ) {
     var showWhy by rememberSaveable { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Identify this transfer", style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text,
+        Text(if (artworkOnly) "Choose artwork" else "Identify this transfer", style = MaterialTheme.typography.titleMedium, color = ChunksColors.Text,
             modifier = Modifier.semantics { heading() })
         Text("Changes only how Chunks shows this transfer. Files, torrent data and names are never changed.",
             style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         MediaMetadataSummaryCompact(state)
 
+        if (!artworkOnly) {
         if (!settings.onlineLookupConsent) {
             ConsentCard(onEnableLookup)
         } else {
@@ -288,6 +287,7 @@ fun MediaIdentifyPanel(
             if (onRemoveRule != null) TextButton(onClick = onRemoveRule, modifier = Modifier.heightIn(min = 48.dp)) { Text("Remove rule") }
         }
 
+        } // Identification controls remain independent of the artwork chooser.
         val match = state.match
         if (match != null && onLoadAlternatives != null && onChooseAlternative != null &&
             state.displayKind != MediaKind.ADULT && match.artwork.distinctBy { it.url }.size > 1) {
@@ -305,7 +305,7 @@ fun MediaIdentifyPanel(
                         val selected = state.userArtwork == alt.candidate
                         val image = remember(alt.bitmap) { alt.bitmap.asImageBitmap() }
                         val dims = if (alt.candidate.width != null && alt.candidate.height != null) ", ${alt.candidate.width}×${alt.candidate.height}" else ""
-                        Image(image, contentDescription = null, contentScale = ContentScale.Crop,
+                        Image(image, contentDescription = null, contentScale = ContentScale.Fit,
                             modifier = Modifier.size(72.dp).clip(RoundedCornerShape(12.dp))
                                 .border(if (selected) 3.dp else 1.dp, if (selected) ChunksColors.Green else ChunksColors.Outline, RoundedCornerShape(12.dp))
                                 .selectable(selected, role = Role.RadioButton) { onChooseAlternative(alt.candidate) }
@@ -335,7 +335,7 @@ fun MediaIdentifyPanel(
                     posters.forEachIndexed { i, alt ->
                         val selected = state.assignment?.userPosterUrl == alt.candidate.url
                         val image = remember(alt.bitmap) { alt.bitmap.asImageBitmap() }
-                        Image(image, contentDescription = null, contentScale = ContentScale.Crop,
+                        Image(image, contentDescription = null, contentScale = ContentScale.Fit,
                             modifier = Modifier.size(width = 72.dp, height = 108.dp).clip(RoundedCornerShape(8.dp))
                                 .border(if (selected) 3.dp else 1.dp, if (selected) ChunksColors.Green else ChunksColors.Outline, RoundedCornerShape(8.dp))
                                 .selectable(selected, role = Role.RadioButton) { onChoosePoster(alt.candidate) }
@@ -345,7 +345,7 @@ fun MediaIdentifyPanel(
             }
         }
 
-        if (settings.onlineLookupConsent) ManualSearch(state, onSearch)
+        if (!artworkOnly && settings.onlineLookupConsent) ManualSearch(state, onSearch)
 
         if (onPickImage != null) {
             Text("Your own image", style = MaterialTheme.typography.titleSmall, color = ChunksColors.Text, modifier = Modifier.semantics { heading() })

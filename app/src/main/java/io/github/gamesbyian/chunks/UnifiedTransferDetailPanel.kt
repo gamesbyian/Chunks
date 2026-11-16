@@ -71,7 +71,8 @@ internal fun UnifiedTransferDetailPanel(
     /** Local-device-only operations for this exact job (e.g. foreign partial recovery). */
     localOperations: (@Composable () -> Unit)? = null,
     /** Display-name (Chunks alias) editor for an authorized owner; never renames payload. */
-    rename: (@Composable (UnifiedTransferObservation) -> Unit)? = null
+    rename: (@Composable (UnifiedTransferObservation) -> Unit)? = null,
+    collections: (@Composable (UnifiedTransferObservation) -> Unit)? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
     // Presentation state only. Never retain a mutation authority or stale command review.
@@ -86,33 +87,25 @@ internal fun UnifiedTransferDetailPanel(
             .semantics { paneTitle = "Transfer details" },
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Back to transfers")
-        }
-        Text("Transfer details", style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() })
         if (!hidden) detail.observation?.let { transfer ->
-            Text(transfer.displayName, style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.semantics { heading() })
-            Text((if (detail.readState == TransferDetailReadState.CURRENT) "" else "Last known: ") +
-                transferAtAGlance(transfer), style = MaterialTheme.typography.titleSmall)
-        }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            EnvironmentDot(environmentHue)
-            // Running text, not a heading: the readable sans per ChunksTypography.
-            Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(1f))
-        }
-        if (!hidden) detail.observation?.let { transfer ->
-            if (transfer.displayName != transfer.originalName)
-                Text("Original torrent name: " + transfer.originalName,
-                    style = MaterialTheme.typography.bodySmall)
-            rename?.invoke(transfer)
-        }
-        if (!hidden) detail.observation?.let { TransferDetailFacts(it) }
-        if (!hidden) detail.observation?.let { transfer ->
-            TransferMediaDetailSection(transfer)
+            TransferMediaDetailSection(transfer, identity = {
+                Text(transfer.displayName, style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.semantics { heading() })
+                if (transfer.displayName != transfer.originalName)
+                    Text("Original torrent name: " + transfer.originalName,
+                        style = MaterialTheme.typography.bodySmall)
+                Text((if (detail.readState == TransferDetailReadState.CURRENT) "" else "Last known: ") +
+                    transferAtAGlance(transfer), style = MaterialTheme.typography.titleSmall)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EnvironmentDot(environmentHue)
+                    Text(environmentLabel, style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f))
+                }
+                rename?.invoke(transfer)
+            })
+            collections?.invoke(transfer)
+            TransferDetailFacts(transfer)
             similar?.invoke(transfer)
         }
         Text("Observation: " + detail.readState.explanation,
