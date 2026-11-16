@@ -1,5 +1,10 @@
 # Chunks: canonical decision ledger
 
+## D-CLIENT-VOCABULARY-AND-INCLUDED-COUNT-20261115 | Owner, binding; implementation pending
+
+User-facing terminology throughout Chunks becomes **client**, not **environment**, where referring to torrent clients, while retaining user-chosen short labels like Wood and existing Local. Code/identity/authentication/routing may keep stable `environment` concepts and identifiers. The compact Transfers summary shall use **N clients included** for actual selected client scope (including selected offline/stale sources without asserting live rates), instead of misleading **N sources excluded**. Verify and correct underlying count derivation before changing copy. Preserve diagnostic exclusion semantics separately. See [client terminology/count contract](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md). Pending Android verification.
+
+
 ## D-ROOT-HEADERS-AND-CONTROL-GEOMETRY-20261115 | Owner, binding; implementation pending
 
 Remove redundant large **Transfers** and **Options** headings at their root destinations beneath the chunks. wordmark; keep meaningful content headings and accessible screen names. Standardize all four persistent-footer tabs on the more rectangular **rounded-rectangle geometry already used by the selected highlights**, ensuring selected/unselected frames coincide and purple Add preserves its fill. The compact Transfers Filters/Sort and Batch icon controls are **equal rounded squares** rather than circles. Pill-shaped filter chips remain valid where semantically appropriate. Preserve 48dp targets, focus/TalkBack, layouts under font scaling, and all actions. [Canonical design](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md). No physical acceptance implied.
