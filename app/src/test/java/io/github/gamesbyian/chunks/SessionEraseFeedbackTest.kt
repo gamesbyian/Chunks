@@ -18,7 +18,7 @@ class SessionEraseFeedbackTest {
 
     @Test fun alreadyAbsentDidNotSendAnotherErase() {
         val text = sessionEraseFeedback(SessionEraseOutcome.AlreadyAbsent(hash))
-        assertTrue(text.contains("session"))
+        assertTrue(text.contains("already absent from the server"))
         assertTrue(text.contains("No removal request was sent"))
         assertFalse(text.contains("main view"))
     }
