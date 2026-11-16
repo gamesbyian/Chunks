@@ -1,5 +1,10 @@
 # Chunks: canonical decision ledger
 
+## D-ROOT-HEADERS-AND-CONTROL-GEOMETRY-20261115 | Owner, binding; implementation pending
+
+Remove redundant large **Transfers** and **Options** headings at their root destinations beneath the chunks. wordmark; keep meaningful content headings and accessible screen names. Standardize all four persistent-footer tabs on the more rectangular **rounded-rectangle geometry already used by the selected highlights**, ensuring selected/unselected frames coincide and purple Add preserves its fill. The compact Transfers Filters/Sort and Batch icon controls are **equal rounded squares** rather than circles. Pill-shaped filter chips remain valid where semantically appropriate. Preserve 48dp targets, focus/TalkBack, layouts under font scaling, and all actions. [Canonical design](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md). No physical acceptance implied.
+
+
 ## D-ARTWORK-FORMATS-AND-SHORT-ORIGIN-20261115 | Owner, binding; implementation pending
 
 Transfer list thumbnails prefer native media shapes: movies and TV portrait 2:3 posters; music albums, audiobooks, software square 1:1; books and comics portrait 2:3; magazines portrait 3:4. Do not distort or forcibly crop authentic images or discard user-selected alternate shapes. Preserve compact list row height with bounded slots, and apply natural artwork formats within the unified top Details identity. Display only custom short origin **Wood** or **Local** plus optional corresponding colour dot on Details; no `Environment: Server · Wood · <hostname/path>` or duplicated endpoint text. Network and session authority remain keyed by stable ID, and full endpoint remains in Connections → Manage. See [artwork design](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md) and [Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md); both await installed acceptance.
