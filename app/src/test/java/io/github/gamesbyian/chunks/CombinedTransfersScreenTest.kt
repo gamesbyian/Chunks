@@ -110,6 +110,21 @@ class CombinedTransfersScreenTest {
         } }
     }
 
+    @Test fun cardProgressAndTitleStayToRightOfNaturalRatioArtwork() {
+        show()
+        revealText("Big Archive")
+        val artwork = rule.onAllNodesWithTag("combined-card-artwork", useUnmergedTree = true)
+            .fetchSemanticsNodes().minBy { it.boundsInRoot.top }.boundsInRoot
+        val progress = rule.onAllNodesWithTag("combined-card-progress", useUnmergedTree = true)
+            .fetchSemanticsNodes().minBy { it.boundsInRoot.top }.boundsInRoot
+        assertTrue("Progress must begin beyond artwork, not under it",
+            progress.left >= artwork.right)
+        assertTrue("Both artwork and progress must have measured width",
+            progress.width > 0f && artwork.width > 0f)
+        assertTrue("Artwork should be taller than the old thumbnail (40dp versus a 12dp bar)",
+            artwork.height > progress.height * 6f)
+    }
+
     @Test fun defaultCombinedTransfersDefersSearchAndSortUntilRequested() {
         show()
         rule.onNodeWithText("Search names or hashes").assertExists()

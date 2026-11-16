@@ -8,6 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.media.MediaKind
+import io.github.gamesbyian.chunks.media.preferredArtworkRatio
 import io.github.gamesbyian.chunks.media.MediaTransferKey
 import io.github.gamesbyian.chunks.media.TransferMediaUiState
 import io.github.gamesbyian.chunks.media.rememberTransferMedia
@@ -20,7 +21,19 @@ internal val TransferRowArtworkSize: Dp = 40.dp
 internal val TransferRowArtworkLargeSize: Dp = 64.dp
 
 /**
- * Fixed-size, read-only artwork for a transfer list row (local, rTorrent and Combined).
+ * Width follows the *drawn* image ratio, not a fixed thumbnail slot. Landscape art
+ * is reduced proportionally when its natural width would starve the adjacent text.
+ * The caller controls its height budget and the viewport-derived width cap.
+ */
+internal fun heightLedArtworkBounds(height: Dp, maxWidth: Dp, ratio: Float): Pair<Dp, Dp> {
+    require(height.value > 0f && maxWidth.value > 0f)
+    val validRatio = ratio.takeIf { it.isFinite() && it > 0f } ?: 1f
+    val width = minOf(height.value * validRatio, maxWidth.value)
+    return width.dp to (width / validRatio).dp
+}
+
+/**
+ * Read-only artwork for a transfer list row (local, rTorrent and Combined).
  *
  * Recognition always uses the [originalName] (never the user's display alias). Only local state is
  * read: an assignment the user made, a consented automatic match, or bundled category art. No
@@ -33,10 +46,13 @@ internal fun TransferRowArtwork(
     key: UnifiedTransferKey?,
     originalName: String,
     modifier: Modifier = Modifier,
-    hidden: Boolean = false
+    hidden: Boolean = false,
+    /** Height-led layout opt-in; omitted for legacy square rows. */
+    height: Dp? = null,
+    maxWidth: Dp = 112.dp
 ) {
     if (key == null || hidden) {
-        TransferFileTypeBadge(originalName, modifier)
+        TransferFileTypeBadge(originalName, modifier, height?.let { minOf(it, maxWidth) } ?: TransferRowArtworkSize)
         return
     }
     val mediaKey = remember(key) { MediaTransferKey.of(key) }
@@ -45,8 +61,14 @@ internal fun TransferRowArtwork(
     val description = transferRowArtworkDescription(state, format)
     val large = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
         ?.largeListArtwork?.collectAsState()?.value == true
-    TransferMediaArtwork(state, if (large) TransferRowArtworkLargeSize else TransferRowArtworkSize,
-        modifier = modifier, description = description)
+    val baseSize = if (large) TransferRowArtworkLargeSize else TransferRowArtworkSize
+    val bitmap = state.artwork?.takeIf { state.mayShowRealArt }
+    val ratio = bitmap?.let { it.width.toFloat() / it.height.toFloat() }
+        ?: state.displayKind.preferredArtworkRatio
+    val bounds = height?.let { heightLedArtworkBounds(it, maxWidth, ratio) }
+        ?: (baseSize to baseSize)
+    TransferMediaArtwork(state, baseSize, modifier = modifier, description = description,
+        width = bounds.first, height = bounds.second)
 }
 
 /** TalkBack text: what is drawn and its provenance first (never a provider title for adult content), then the format hint. */

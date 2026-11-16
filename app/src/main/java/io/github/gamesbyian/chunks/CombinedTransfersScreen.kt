@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -2084,6 +2085,26 @@ private fun CombinedTransferRow(
                 if (onToggleExpanded != null) stateDescription = if (expanded) "Expanded" else "Collapsed"
             },
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            // Intrinsic-height rows cannot query a BoxWithConstraints/SubcomposeLayout.
+            // Observe only the available horizontal size, leaving the source-colour rail
+            // and right-column intrinsic height free of unsupported measurements.
+            val density = LocalDensity.current
+            var measuredWidth by remember { mutableStateOf(0.dp) }
+            val artMaxWidth = if (measuredWidth > 0.dp)
+                minOf(measuredWidth * 0.32f, 112.dp,
+                    (measuredWidth - 164.dp).coerceAtLeast(48.dp))
+            else 96.dp
+            Row(Modifier.fillMaxWidth().onSizeChanged {
+                    measuredWidth = with(density) { it.width.toDp() }
+                }, verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TransferRowArtwork(row.key, row.originalName,
+                        modifier = Modifier.testTag("combined-card-artwork"),
+                        hidden = source?.availability == EnvironmentAvailability.LOCKED,
+                        height = if (expanded) 132.dp else 108.dp,
+                        maxWidth = artMaxWidth)
+                    Column(Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 EnvironmentDot(hue, size = 8)
                 // Short profile name beside its colour; the exact server identity stays in
@@ -2098,8 +2119,6 @@ private fun CombinedTransferRow(
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransferRowArtwork(row.key, row.originalName,
-                    hidden = source?.availability == EnvironmentAvailability.LOCKED)
                 Text(compactTransferTitle(row.displayName), style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
@@ -2121,7 +2140,7 @@ private fun CombinedTransferRow(
             row.progressPpm?.let { ppm ->
                 ChunkedProgressBar(
                     progress = ppm / 1_000_000f,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("combined-card-progress"),
                     historyKey = ProgressChunkStore.identity(
                         row.key.environment.value, row.key.infoHash),
                     observeFresh = source?.canClaimCompleteLiveInventory == true,
@@ -2137,6 +2156,8 @@ private fun CombinedTransferRow(
             if (row.hasError) Text("Needs attention in its own list",
                 color = ChunksColors.Red, style = MaterialTheme.typography.bodySmall)
             if (expanded) quickControls?.invoke()
+                    }
+                }
         }
     }
 }
