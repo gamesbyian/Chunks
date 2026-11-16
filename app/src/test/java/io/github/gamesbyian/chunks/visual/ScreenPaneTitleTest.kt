@@ -39,13 +39,13 @@ class ScreenPaneTitleTest {
 
     @Test fun screenTitlesFollowFourCanonicalRootDestinations() {
         rule.waitForIdle()
-        pane("All environments").assertExists()
+        pane("All clients").assertExists()
         rule.onNodeWithContentDescription("Options").performClick()
         rule.waitForIdle()
         pane("Options").assertExists()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
-        pane("All environments").assertExists()
+        pane("All clients").assertExists()
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.waitForIdle()
         pane("Connections").assertExists()

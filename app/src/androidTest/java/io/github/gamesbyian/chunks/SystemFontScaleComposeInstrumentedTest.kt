@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Context
+import androidx.compose.ui.test.hasTestTag
 import android.content.ContentValues
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.semantics.SemanticsActions
@@ -233,6 +234,7 @@ class SystemFontScaleComposeInstrumentedTest {
         // to the remote login form rather than assuming old startup navigation.
         savePixels("transfers-before-connection")
         rule.onNodeWithTag(ChunksSemantics.FOOTER_CONNECTIONS).assertIsDisplayed().performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         rule.waitForIdle()
         savePixels("connection")
         val policy = NetworkSecurityPolicy.getInstance()
@@ -249,6 +251,7 @@ class SystemFontScaleComposeInstrumentedTest {
         receivedMethods.clear()
         // At 200% type the local device and offline-tool tiles push the address field
         // below the fold; scroll so the lazy list composes it first.
+        rule.openConnectionFormIfNeeded()
         rule.onNode(hasScrollToIndexAction())
             .performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.waitForIdle()
@@ -309,12 +312,14 @@ class SystemFontScaleComposeInstrumentedTest {
         // Controls and actual remote rows must remain reachable through the
         // canonical scrolling Transfers catalog at real 200% system font size.
         val combinedList = rule.onNode(hasScrollToIndexAction())
-        combinedList.performScrollToNode(hasText("Filters"))
-        rule.onNodeWithText("Filters").performClick()
+        // The compact toolbar's Filters & sort control is an icon button named by
+        // ChunksSemantics, not a "Filters" text label (compact list-first toolbar).
+        combinedList.performScrollToNode(hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT).performClick()
         combinedList.performScrollToNode(hasText("Change sort & grouping", substring = true))
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
-        combinedList.performScrollToNode(hasText("Group by environment"))
-        rule.onNodeWithContentDescription("Group by environment").assertExists()
+        combinedList.performScrollToNode(hasText("Group by client"))
+        rule.onNodeWithContentDescription("Group by client").assertExists()
         combinedList.performScrollToNode(hasText("Big Buck Bunny public demo"))
         rule.onNodeWithText("Big Buck Bunny public demo").assertExists()
         savePixels("combined-filter-controls")

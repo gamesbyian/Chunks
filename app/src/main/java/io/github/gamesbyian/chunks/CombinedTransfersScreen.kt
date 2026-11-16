@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -426,6 +427,7 @@ internal fun CombinedTransfersScreen(
     onScopeFocusConsumed: () -> Unit = {},
     /** Root Transfers returns from full Details without changing filters or identity. */
     returnToCatalogRevision: Long = 0L,
+    onDetailVisibilityChanged: (Boolean) -> Unit = {},
     /** Explicit All environments navigation is distinct from a saved profile link. */
     showAllEnvironmentsRevision: Long = 0L,
     onShowAllEnvironmentsConsumed: (Long) -> Unit = {},
@@ -470,7 +472,7 @@ internal fun CombinedTransfersScreen(
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
 
-    // Only an explicit "All environments" action may clear the narrower
+    // Only an explicit "All clients" action may clear the narrower
     // previously selected saved-profile scope; Details return preserves it.
     LaunchedEffect(showAllEnvironmentsRevision) {
         val requested = showAllEnvironmentsRevision
@@ -528,6 +530,8 @@ internal fun CombinedTransfersScreen(
         if (returnToCatalogRevision > 0L) savedDetailTarget = null
     }
     val detailKey = restoreCombinedDetailTarget(savedDetailTarget)
+    LaunchedEffect(detailKey) { onDetailVisibilityChanged(detailKey != null) }
+    androidx.activity.compose.BackHandler(detailKey != null) { savedDetailTarget = null }
     val batchScope = rememberCoroutineScope()
     val listingsHolder = savedListingsState
         ?: remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
@@ -1139,6 +1143,8 @@ internal fun CombinedTransfersScreen(
         val canShowExactRemoval = exactRemoteRow != null &&
             serverPrivacy?.mayShow == true && verifiedOwner != null
         val renameScope = aliasScopes[focusedKey.environment]
+        Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f)) {
         UnifiedTransferDetailPanel(
             detail = details,
             rename = if (renameScope == null) null else ({ transfer ->
@@ -1153,11 +1159,15 @@ internal fun CombinedTransfersScreen(
                             .getOrDefault(false)
                     },
                     identifiedSuggestions = identifiedMediaNameSuggestions(media.assignment))
-                // Collection membership in the same authorized display-name scope.
+            }),
+            collections = if (renameScope == null) null else ({ transfer ->
                 DetailsCollections(renameScope, transfer.key.infoHash, transfer.displayName)
             }),
-            environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
+            environmentLabel = if (focusedKey.environment == EnvironmentSnapshots.LOCAL) "Local"
+                else savedProfiles.firstOrNull { it.id == focusedKey.environment.value }?.shortLabel
+                    ?: rowLabels[focusedKey.environment]?.removePrefix("Server · ") ?: "Remote client",
             environmentHue = hueFor(focusedKey.environment),
+            exactEnvironmentLabel = labels[focusedKey.environment]?.removePrefix("Server · "),
             onBack = { savedDetailTarget = null },
             // A Remove's outcome is retained after its job leaves the list (incomplete or
             // uncertain deletions must stay visible), so Details keeps showing it.
@@ -1228,6 +1238,7 @@ internal fun CombinedTransfersScreen(
                 batchScope.launch {
                     androidx.compose.runtime.withFrameNanos { }
                     listState.scrollToItem(combinedBatchItemIndex(
+                        headerVisible = showNavigationFooter,
                         addVisible = showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent,
                         filterOptionsVisible = showingViewOptions,
                         sortOptionsVisible = showingViewOptions && showingSortOptions))
@@ -1311,6 +1322,16 @@ internal fun CombinedTransfersScreen(
                     onOpen = { key -> savedDetailTarget = arrayListOf(key.environment.value, key.infoHash) })
             }
         )
+        }
+        if (showNavigationFooter) AuthenticatedTransfersFooter(
+            optionsOpen = null,
+            onTransfers = { savedDetailTarget = null },
+            onAdd = onAddToLocal ?: onOpenLocal,
+            onOptions = { savedDetailTarget = null; showingViewOptions = true },
+            onConnections = onConnections,
+            activeDestination = FooterDestination.TRANSFERS
+        )
+        }
     } else {
     // The same measured Transfers / Add / Options footer as the local device and
     // rTorrent lists. Each action only moves within this view: Add leads to
@@ -1372,18 +1393,15 @@ internal fun CombinedTransfersScreen(
     }
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f)) {
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
+        LazyColumn(Modifier.fillMaxSize().testTag(ChunksSemantics.TRANSFERS_SCREEN).semantics { paneTitle = "Transfers" }.padding(horizontal = 16.dp)
                 .onSizeChanged { viewportHeightPx = it.height },
             state = listState, contentPadding = PaddingValues(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
-        } else if (!firstRunVisible) item {
-            // Keep one compact, spoken view identity without a duplicate Back.
-            Text("Transfers", style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.testTag(ChunksSemantics.TRANSFERS_HEADING).semantics { heading() })
         }
+
         if (firstRunVisible) {
             item(key = "canonical-fresh-welcome") {
                 NoTransfersWelcome(
@@ -1427,7 +1445,7 @@ internal fun CombinedTransfersScreen(
                     selected = query.scope == EnvironmentViewScope.All,
                     onClick = { update(query.copy(scope = EnvironmentViewScope.All)) },
                     label = { Text("All") }, modifier = Modifier.heightIn(min = 48.dp)
-                        .semantics { contentDescription = "Show all environments" })
+                        .semantics { contentDescription = "Show all clients" })
                 labels.forEach { (id, label) ->
                     val visible = environmentVisible(query.scope, id)
                     // A locked/unobserved inventory must say ?, never invent 0.
@@ -1454,7 +1472,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
             if (query.scope == EnvironmentViewScope.Only(emptySet())) Text(
-                "No environments are selected. Tap one above to show its transfers.",
+                "No clients are selected. Tap one above to show its transfers.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp))
         }
@@ -1488,11 +1506,11 @@ internal fun CombinedTransfersScreen(
             (query.scope != EnvironmentViewScope.All ||
                 query.filter != UnifiedTransferFilter.ALL)) item {
             val scopeName = when (val scope = query.scope) {
-                EnvironmentViewScope.All -> "All environments"
+                EnvironmentViewScope.All -> "All clients"
                 is EnvironmentViewScope.Only ->
-                    if (scope.ids.isEmpty()) "No environments"
-                    else if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One environment"
-                    else "${scope.ids.size} environments"
+                    if (scope.ids.isEmpty()) "No clients"
+                    else if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One client"
+                    else "${scope.ids.size} clients"
             }
             val filterName = when (query.filter) {
                 UnifiedTransferFilter.ALL -> "All transfers"
@@ -1546,7 +1564,7 @@ internal fun CombinedTransfersScreen(
                 val name = CombinedSortChoices.firstOrNull { it.first == query.sortKey }?.second ?: "Name"
                 Text((if (showingSortOptions) "Hide" else "Change") + " sort & grouping · " +
                     name + " · " + TransferSortOrdering.label(query.sortKey.orderingKind(), query.direction) +
-                    (if (query.groupByEnvironment) " · By environment" else " · Together"))
+                    (if (query.groupByEnvironment) " · By client" else " · Together"))
             }
         }
         if (showingViewOptions && showingSortOptions) item {
@@ -1571,14 +1589,14 @@ internal fun CombinedTransfersScreen(
             // Stacked so the label can wrap at 320dp and 200% text without pushing the switch off-screen.
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Group by environment", style = MaterialTheme.typography.bodyMedium,
+                Text("Group by client", style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f))
                 Switch(checked = query.groupByEnvironment,
                     onCheckedChange = { update(query.copy(groupByEnvironment = it)) },
                     // The Switch itself, not only its enclosing Row, must have
                     // an accessible 48dp semantics/touch surface at large text.
                     modifier = Modifier.heightIn(min = 48.dp)
-                        .semantics { contentDescription = "Group by environment" })
+                        .semantics { contentDescription = "Group by client" })
             }
         }
         // Batch controls appear immediately upon request, ahead of rows only
@@ -1641,7 +1659,8 @@ internal fun CombinedTransfersScreen(
                 shown = result.transfers.size,
                 inSelectedEnvironments = result.sources.sumOf { it.transfers.size },
                 totals = io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result),
-                incompleteOrStale = result.hasIncompleteOrStaleSource
+                incompleteOrStale = result.hasIncompleteOrStaleSource,
+                includedClients = includedClientCount(result)
             ), style = MaterialTheme.typography.bodySmall)
         }
         // A local-only cold launch can have no running native engine, even
@@ -1676,7 +1695,7 @@ internal fun CombinedTransfersScreen(
             item(key = "recover-empty-combined-view") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("No transfers are visible with these view choices. " +
-                        "Locked or offline environments may still need attention.",
+                        "Locked or offline clients may still need attention.",
                         style = MaterialTheme.typography.bodySmall)
                     if (query.filter != UnifiedTransferFilter.ALL ||
                         query.scope != EnvironmentViewScope.All) {
@@ -1744,14 +1763,14 @@ internal fun CombinedTransfersScreen(
                     OutlinedButton(
                         onClick = { showingSourceStatus = !showingSourceStatus },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text(if (showingSourceStatus) "Hide environment status"
-                        else "Environment status · ${result.sources.size} sources") }
+                    ) { Text(if (showingSourceStatus) "Hide client status"
+                        else "Client status · ${result.sources.size} sources") }
                 }
                 // The first-fold count is recycled when the user scrolls down
                 // to investigate a failed server. Keep ONE freshness warning
                 // beside the exact-source rows without moving diagnostics up.
                 if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
-                    Text("Some environments are missing or out of date. Last-known rows are not current; " +
+                    Text("Some clients are missing or out of date. Last-known rows are not current; " +
                         "exact per-source status follows.",
                         style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
                 }
@@ -1798,8 +1817,8 @@ internal fun CombinedTransfersScreen(
                     Text("Refresh other saved servers")
                 }
                 if (result.missingSelectedEnvironments.isNotEmpty()) Text(
-                    (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected environment is" else "$n selected environments are" }) + " no longer set up. " +
-                        "Choose All or reselect environments.", style = MaterialTheme.typography.bodySmall,
+                    (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected client is" else "$n selected clients are" }) + " no longer set up. " +
+                        "Choose All or reselect clients.", style = MaterialTheme.typography.bodySmall,
                     color = ChunksColors.Yellow)
             }
         }
@@ -1850,8 +1869,9 @@ internal fun CombinedTransfersScreen(
 internal fun combinedBatchItemIndex(
     addVisible: Boolean,
     filterOptionsVisible: Boolean,
-    sortOptionsVisible: Boolean
-): Int = 3 + (if (addVisible) 1 else 0) +
+    sortOptionsVisible: Boolean,
+    headerVisible: Boolean = true
+): Int = 2 + (if (headerVisible) 1 else 0) + (if (addVisible) 1 else 0) +
     (if (filterOptionsVisible) 3 else 0) +
     (if (sortOptionsVisible) 1 else 0)
 
@@ -2329,7 +2349,7 @@ internal fun combinedBatchPreview(start: Boolean, selected: Set<UnifiedTransferK
         .sortedBy { labels[it.first] ?: it.first.value }
         .joinToString("; ") { (id, n) -> (labels[id] ?: id.value) + ": " + n }
     return (if (start) "Start" else "Stop") + " ${selected.size} selected, one at a time, each only in its own " +
-        "environment: $perEnvironment. Transfers already in that state are skipped. The first uncertain " +
+        "client: $perEnvironment. Transfers already in that state are skipped. The first uncertain " +
         "result stops the batch and nothing is retried."
 }
 
@@ -2352,11 +2372,15 @@ internal fun combinedShowingText(shown: Int, inSelectedEnvironments: Int): Strin
 /** One scan-friendly summary above the first card. Only verified LIVE rates contribute.
  * Unknown rates and excluded sources remain visibly qualified, never rendered as live zeros.
  */
+internal fun includedClientCount(result: io.github.gamesbyian.chunks.model.UnifiedTransferQueryResult): Int =
+    (result.sources.map { it.environment }.toSet() + result.missingSelectedEnvironments).size
+
 internal fun combinedCompactSummaryText(
     shown: Int,
     inSelectedEnvironments: Int,
     totals: io.github.gamesbyian.chunks.model.UnifiedTransferTotals,
-    incompleteOrStale: Boolean
+    incompleteOrStale: Boolean,
+    includedClients: Int
 ): String {
     val noun = if (inSelectedEnvironments == 1) "transfer" else "transfers"
     val count = if (shown >= inSelectedEnvironments) "$shown $noun"
@@ -2368,10 +2392,8 @@ internal fun combinedCompactSummaryText(
     val warnings = buildList {
         if (totals.rowsWithUnknownRate > 0)
             add("${totals.rowsWithUnknownRate} rates unknown")
-        if (totals.excludedEnvironments > 0)
-            add(if (totals.excludedEnvironments == 1) "1 source excluded"
-                else "${totals.excludedEnvironments} sources excluded")
-        else if (incompleteOrStale) add("some sources incomplete")
+        add(if (includedClients == 1) "1 client included" else "$includedClients clients included")
+        if (incompleteOrStale) add("some clients incomplete")
     }
     // With every selected source excluded (out of date, offline, locked or
     // incomplete) there is no live rate to report: "Live ↓ 0 B/s" would present
@@ -2389,7 +2411,7 @@ internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTran
                     else Units.bytes(t.uploadBytesPerSecond) + "/s") +
         " across ${t.liveRows} transfers" +
         (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
-        (if (t.excludedEnvironments > 0) " · " + (if (t.excludedEnvironments == 1) "1 environment" else "${t.excludedEnvironments} environments") + " excluded (not fully observed)" else "")
+        (if (t.excludedEnvironments > 0) " · " + (if (t.excludedEnvironments == 1) "1 client" else "${t.excludedEnvironments} clients") + " excluded (not fully observed)" else "")
 
 
 /** Progress colour shared with the local device and rTorrent cards; colour is never the only signal. */

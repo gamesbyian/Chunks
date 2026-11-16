@@ -34,7 +34,7 @@ class CombinedBatchFeedbackTest {
         assertEquals(1, output.size)
         assertTrue(output.single().contains("outcome unknown"))
         assertTrue(output.single().contains("may already have applied"))
-        assertTrue(output.single().contains("Refresh each owning environment"))
+        assertTrue(output.single().contains("Refresh each owning client"))
         assertFalse(output.single().contains("secret host token"))
         assertFalse(output.single().contains("No command was sent"))
     }
@@ -61,7 +61,7 @@ class CombinedBatchFeedbackTest {
                 }
             }
         }
-        rule.onNodeWithText("Working… each environment's list will refresh afterwards.")
+        rule.onNodeWithText("Working… each client's list will refresh afterwards.")
             .assert(SemanticsMatcher.expectValue(
                 SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
     }
@@ -78,7 +78,7 @@ class CombinedBatchFeedbackTest {
                 }
             }
         }
-        rule.onNodeWithText("Batch result available. Review outcomes for each environment.")
+        rule.onNodeWithText("Batch result available. Review outcomes for each client.")
             .assert(SemanticsMatcher.expectValue(
                 SemanticsProperties.LiveRegion, LiveRegionMode.Polite))
         result.forEach { rule.onNodeWithText(it).assertExists() }

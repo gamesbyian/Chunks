@@ -203,7 +203,7 @@ internal class UniversalAddCoordinator {
             phase == Phase.SESSION_CONFIRMED || phase == Phase.VERIFIED)
             return ReviewDecision(false, "Resolve or finish the previous exact Add first")
         if (capabilities.environment != intent.target.environment)
-            return ReviewDecision(false, "Capabilities belong to another environment")
+            return ReviewDecision(false, "Capabilities belong to another client")
         if ((intent.target is UniversalAddTarget.Local) != (intent.place is UniversalAddPlace.Local))
             return ReviewDecision(false, "Place belongs to a different engine")
         val operation = if (intent.source.kind == UniversalAddSource.Kind.MAGNET)

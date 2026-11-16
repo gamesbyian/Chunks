@@ -118,6 +118,10 @@ internal fun VerifiedAddScreen(
     /** Inline shared Add-to selector; never grants remote admission. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
     externalSourceReading: Boolean = false,
+    /** A shared Android source is held behind this screen's attempt (#1786). */
+    externalSourceWaiting: Boolean = false,
+    /** The held source may now become the next review; the parent re-checks occupancy. */
+    onVerifiedAttemptWithWaitingSource: () -> Unit = {},
     /** Enables deterministic delayed-preference tests without touching external Add or RPC. */
     clipboardEnabledReader: suspend (android.content.Context) -> Boolean = { context ->
         withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
@@ -461,6 +465,13 @@ internal fun VerifiedAddScreen(
         canCloseRemoteAddReview(it, verifiedHash, uncertain)
     } == true
 
+    // #1786: a held Open With must not vanish behind a finishing attempt. Presentation-only
+    // trigger; the parent re-runs its own verified-release and occupancy checks.
+    LaunchedEffect(addedByThisAttempt && canAcknowledge, externalSourceWaiting) {
+        if (addedByThisAttempt && canAcknowledge && externalSourceWaiting)
+            onVerifiedAttemptWithWaitingSource()
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp),
@@ -622,12 +633,9 @@ internal fun VerifiedAddScreen(
         // Below the target row, as on Local: this choice appears only after an IO
         // read, and must never shift the Add-to controls under a pending tap.
         val shownHandling = originalHandling
+        // The policy itself lives only in Options → Downloads & storage → Add & files (#1786).
         if (!alreadyAttempted && originalDocument != null && shownHandling != null) item {
-            OriginalTorrentHandlingChoice(
-                "Original .torrent file", selected = shownHandling,
-                enabled = !submitting && !choosing,
-                deleteAvailable = originalDeletable,
-                onSelect = { originalHandling = it })
+            OriginalTorrentHandlingSummary(shownHandling)
         }
         // The same position owns the target and subsequent operation status.
         // A result replaces the intro rather than creating a second status card.
@@ -1207,7 +1215,7 @@ internal fun VerifiedAddScreen(
         // Read-only recovery can prove the exact hash, Place and Start
         // without proving that Chunks originally registered the job. Never
         // present this as an ordinary newly verified Add.
-        if (alreadyAttempted && (initialTorrent != null ||
+        if (alreadyAttempted && (initialTorrent != null || externalSourceWaiting ||
                 (magnet.isNotBlank() && magnet != draft.attemptSource))) item {
             Text(when {
                 exactSessionConfirmed ->

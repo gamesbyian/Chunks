@@ -76,7 +76,7 @@ internal fun TransferAliasEditor(
             editor.editing = true
             showSuggestions = false
         }, modifier = Modifier.heightIn(min = 48.dp)) {
-            Text(if (alias == null) "Change list name" else "Edit list name")
+            Text("Change list name")
         }
         return
     }

@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -45,8 +46,8 @@ class CombinedSavedServersTest {
     }
     private fun discloseSourceStatus() {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Environment status", substring = true))
-        rule.onNodeWithText("Environment status", substring = true).performClick()
+            hasText("Client status", substring = true))
+        rule.onNodeWithText("Client status", substring = true).performClick()
     }
     private fun refreshOtherSavedServers() {
         // The privacy-policy read also runs outside the Compose test clock.
@@ -149,11 +150,14 @@ class CombinedSavedServersTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             androidx.compose.ui.test.hasContentDescription(action))
         rule.onNodeWithContentDescription(action).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         rule.onNodeWithText("This transfer is listed here for reference.", substring = true)
             .assertExists()
-        rule.onNodeWithText("Open Server · ann @ a.example/RPC2 transfers")
-            .assertDoesNotExist()
+        // Any owning-list action, whatever the (now short) client label: none for saved-only.
+        rule.onNode(androidx.compose.ui.test.SemanticsMatcher("Open <client> transfers") { node ->
+            node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+                .orEmpty().any { it.text.startsWith("Open ") && it.text.endsWith(" transfers") }
+        }).assertDoesNotExist()
     }
 
     @Test fun lateReadFromPreviousAccountCannotPublishIntoReconfiguredServerSlot() {

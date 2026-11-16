@@ -36,7 +36,7 @@ internal enum class OptionsCategory(
     private val synonyms: String
 ) {
     CONNECTIONS("Connections", "Remote clients, Smart Connect, saved profiles", Color(0xFF653184),
-        R.drawable.chunks_ic_server, "clients environments server remote account login endpoint profile password authentication"),
+        R.drawable.chunks_ic_server, "clients clients server remote account login endpoint profile password authentication"),
     DOWNLOADS("Downloads & storage", "Save to, ZIP archives and snapshot recovery", Color(0xFF765A00),
         R.drawable.chunks_ic_folder, "files place folder storage save path directory downloads zip extract snapshot restore collection original torrent archive keep delete source"),
     SEEDING("Seeding & limits", "Ratio rules, seeding time and speed limits", Color(0xFF006C80),
@@ -45,7 +45,7 @@ internal enum class OptionsCategory(
         R.drawable.chunks_ic_file_video_on_dark, "media intelligence cover image lookup consent provider tmdb cache"),
     NOTIFICATIONS("Notifications", "Android notification permissions and channels", Color(0xFF8C2664),
         R.drawable.chunks_ic_options_notifications, "alerts completion background channel permission"),
-    APPEARANCE("Appearance & accessibility", "Environment colours, artwork size and display", Color(0xFF81500E),
+    APPEARANCE("Appearance & accessibility", "Client colours, artwork size and display", Color(0xFF81500E),
         R.drawable.chunks_ic_options_appearance, "theme font motion larger touch targets colour color palette density widget display"),
     PRIVACY("Privacy & network", "Access protection, DHT and clipboard preferences", Color(0xFF006F70),
         R.drawable.chunks_ic_options_privacy, "lock biometric authentication wifi wi-fi network permissions dht peers clipboard copied prefill"),
@@ -96,6 +96,7 @@ internal val LocalOptionsShortcut.category: OptionsCategory get() = when (this) 
     LocalOptionsShortcut.DHT, LocalOptionsShortcut.CLIPBOARD_PREFILL, LocalOptionsShortcut.PRIVACY -> OptionsCategory.PRIVACY
     LocalOptionsShortcut.DOWNLOAD_LOCATION, LocalOptionsShortcut.SNAPSHOT_RESTORE,
     LocalOptionsShortcut.ZIP_REVIEW, LocalOptionsShortcut.COLLECTION_NAMES,
+    LocalOptionsShortcut.ORIGINAL_TORRENT_FILES,
     LocalOptionsShortcut.SERVER_PLACES, LocalOptionsShortcut.SERVER_ORGANIZE -> OptionsCategory.DOWNLOADS
     LocalOptionsShortcut.SERVER_NAMES -> OptionsCategory.APPEARANCE
     else -> OptionsCategory.ABOUT

@@ -33,6 +33,7 @@ class ConnectAdvancedPathTest {
     private fun enter(address: String, path: String) {
         // Every Transfers scope can reach remote Connect via the persistent footer.
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         scrollTo("Seedbox hostname")
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname", substring = true))
             .performTextReplacement(address)
@@ -48,7 +49,10 @@ class ConnectAdvancedPathTest {
 
     @Test fun remoteConnectionsIsOptionalAndDeviceTransfersStayAccessible() {
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
-        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        // Zero profiles: the compact purple intro card owns the embedded + Add connection
+        // (unified roster design); it is the entry, shown before the form opens.
+        rule.onNodeWithText("Connect to a remote client").assertExists()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         // Local management belongs in Transfers, not the remote-only intro.
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         // The connection form is lazy and must still be scroll-reachable.
@@ -63,7 +67,7 @@ class ConnectAdvancedPathTest {
         // other state shows the Combined-derived catalog. Both are the one canonical route.
         rule.waitUntil(10_000) {
             rule.onAllNodesWithTag(ChunksSemantics.WELCOME_HEADING).fetchSemanticsNodes().isNotEmpty() ||
-                rule.onAllNodesWithText("All environments").fetchSemanticsNodes().isNotEmpty()
+                rule.onAllNodesWithText("All clients").fetchSemanticsNodes().isNotEmpty()
         }
     }
 

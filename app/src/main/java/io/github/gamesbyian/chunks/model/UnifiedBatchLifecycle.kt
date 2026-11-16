@@ -68,7 +68,7 @@ object UnifiedBatchLifecycle {
         require(targets.isNotEmpty() && targets.size <= MAX_ITEMS) { "Select 1 to $MAX_ITEMS transfers" }
         require(targets.map { it.key }.toSet().size == targets.size) { "Batch contains duplicate identities" }
         require(sources.map { it.environment }.toSet().size == sources.size) {
-            "Duplicate environment snapshots cannot be merged by guessing"
+            "Duplicate client snapshots cannot be merged by guessing"
         }
         val byEnvironment = sources.associateBy { it.environment }
         // Order: environments as first selected, items in selection order.
@@ -121,7 +121,7 @@ object UnifiedBatchLifecycle {
                     halted = target.key
                 }
                 LifecycleReply.NOT_FOUND -> {
-                    out += ItemResult(target.key, CommandEvidence.REFUSED, "No longer in this environment")
+                    out += ItemResult(target.key, CommandEvidence.REFUSED, "No longer in this client")
                     // Actual adapter readback invalidated the reviewed list.
                     // Preflight refusals need not halt, but a failed attempted
                     // command must stop all later targets, even on other hosts.
@@ -138,14 +138,14 @@ object UnifiedBatchLifecycle {
     }
 
     private fun refusal(source: EnvironmentTransferSnapshot?, adapter: Adapter?, target: Target): String? = when {
-        source == null -> "Environment is not configured or not loaded"
-        source.availability == EnvironmentAvailability.LOCKED -> "Environment is locked"
-        source.availability == EnvironmentAvailability.OFFLINE -> "Environment is offline"
+        source == null -> "Client is not configured or not loaded"
+        source.availability == EnvironmentAvailability.LOCKED -> "Client is locked"
+        source.availability == EnvironmentAvailability.OFFLINE -> "Client is offline"
         source.availability == EnvironmentAvailability.STALE -> "Transfer list is out of date; refresh first"
         !source.inventoryComplete -> "Transfer list is incomplete; refresh the full inventory first"
         source.observedAtEpochMillis == null -> "Transfer list has no verified observation; refresh first"
-        adapter == null -> "This environment does not support Start/Stop here"
-        source.transfers.none { it.key == target.key } -> "Not in this environment's current list"
+        adapter == null -> "This client does not support Start/Stop here"
+        source.transfers.none { it.key == target.key } -> "Not in this client's current list"
         source.transfers.first { it.key == target.key }.started != target.started ->
             "Selected state has changed; review the current list before acting"
         target.started == null -> "Current state is unknown; refresh first"
@@ -192,7 +192,7 @@ fun UnifiedBatchLifecycle.Report.describe(label: (EnvironmentId) -> String): Lis
         haltedOn == null -> lines
         haltedEvidence == CommandEvidence.REFUSED ->
             lines + ("Stopped early: one requested change was explicitly refused or the " +
-                "transfer disappeared. Review the owning environment; nothing was retried.")
+                "transfer disappeared. Review the owning client; nothing was retried.")
         haltedEvidence == CommandEvidence.ACKNOWLEDGED ->
             lines + ("Stopped early: one request was accepted but its resulting state " +
                 "has not been verified. Refresh each list before continuing; nothing was retried.")

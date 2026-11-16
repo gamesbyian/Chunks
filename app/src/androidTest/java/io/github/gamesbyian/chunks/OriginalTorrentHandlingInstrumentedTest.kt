@@ -8,6 +8,7 @@ import android.provider.DocumentsContract
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
@@ -82,8 +83,11 @@ class OriginalTorrentHandlingInstrumentedTest {
         if (Build.VERSION.SDK_INT == 29) LocalDownloadPlaces.ANDROID_10_STORAGE_PERMISSIONS.forEach {
             instrumentation.uiAutomation.grantRuntimePermission(context.packageName, it)
         }
-        waitForText("Original .torrent file")
-        rule.onNodeWithTag(originalHandlingTag(handling)).performScrollTo().performClick()
+        // The read-only effective policy replaces the former per-Add radios (#1786).
+        waitFor { rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY))
+            .fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY).performScrollTo()
+            .assert(hasText(handling.label, substring = true))
         // A stopped Add is part of every case here: drive the exact tagged control and prove Off.
         // The control is disabled until a fresh local inventory is confirmed; a tap before
         // then is ignored, so wait for it to become actionable first.
@@ -99,6 +103,15 @@ class OriginalTorrentHandlingInstrumentedTest {
             it.config.getOrElseNullable(SemanticsProperties.Disabled) { null } == null } }
         rule.onNode(add).performScrollTo().performClick()
         assertTrue(document.toString().isNotEmpty())
+    }
+
+    /**
+     * #1786: the policy is one saved Options preference, chosen before the share arrives;
+     * Add shows only the read-only effective line. Same exact-document behavior as before.
+     */
+    private fun intent(document: Uri, handling: OriginalTorrentHandling): Intent {
+        check(OriginalTorrentHandlingStore(context).setDefault(handling))
+        return intent(document)
     }
 
     private fun intent(document: Uri) = Intent(context, MainActivity::class.java).apply {
@@ -130,7 +143,7 @@ class OriginalTorrentHandlingInstrumentedTest {
         val (bytes, hash) = torrent()
         hashes += hash
         val document = shareDocument(bytes, "archive-me.torrent")
-        ActivityScenario.launch<MainActivity>(intent(document)).use {
+        ActivityScenario.launch<MainActivity>(intent(document, OriginalTorrentHandling.ARCHIVE)).use {
             addStoppedFromShare(document, OriginalTorrentHandling.ARCHIVE)
             waitForExactStoppedJob(hash)
             waitForText("archived in Chunks; the original was kept")
@@ -153,7 +166,7 @@ class OriginalTorrentHandlingInstrumentedTest {
         hashes += hash
         val document = shareDocument(bytes, "delete-me.torrent")
         val sibling = shareDocument("unrelated".toByteArray(), "unrelated.torrent")
-        ActivityScenario.launch<MainActivity>(intent(document)).use {
+        ActivityScenario.launch<MainActivity>(intent(document, OriginalTorrentHandling.DELETE)).use {
             addStoppedFromShare(document, OriginalTorrentHandling.DELETE)
             waitForExactStoppedJob(hash)
             waitFor { rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_ORIGINAL_DELETE_PROMPT))
@@ -184,7 +197,7 @@ class OriginalTorrentHandlingInstrumentedTest {
         val document = shareDocument(bytes, "partial.torrent")
         var placed: File? = null
         try {
-            ActivityScenario.launch<MainActivity>(intent(document)).use {
+            ActivityScenario.launch<MainActivity>(intent(document, OriginalTorrentHandling.KEEP)).use {
                 waitForText("Original .torrent file")
                 // The review states the exact folder this Add writes into.
                 val saves = rule.onAllNodes(hasText("Saves into:", substring = true)).fetchSemanticsNodes()
@@ -220,7 +233,7 @@ class OriginalTorrentHandlingInstrumentedTest {
         val (bytes, hash) = torrent()
         hashes += hash
         val document = shareDocument(bytes, "move-me.torrent")
-        ActivityScenario.launch<MainActivity>(intent(document)).use {
+        ActivityScenario.launch<MainActivity>(intent(document, OriginalTorrentHandling.ARCHIVE)).use {
             addStoppedFromShare(document, OriginalTorrentHandling.ARCHIVE)
             waitForExactStoppedJob(hash)
             waitFor { rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_ORIGINAL_DELETE_CONFIRM))
@@ -246,7 +259,7 @@ class OriginalTorrentHandlingInstrumentedTest {
         val hash = requireNotNull(TorrentMetainfoReader.preview(bytes).infoHashV1)
         hashes += hash
         val document = shareDocument(bytes, "two-files.torrent")
-        ActivityScenario.launch<MainActivity>(intent(document)).use {
+        ActivityScenario.launch<MainActivity>(intent(document, OriginalTorrentHandling.KEEP)).use {
             waitFor { rule.onAllNodes(hasTestTag(ChunksSemantics.ADD_FILE_CHOICE)).fetchSemanticsNodes().isNotEmpty() }
             rule.onNodeWithTag(ChunksSemantics.ADD_FILE_CHOICE).performScrollTo().performClick()
             waitForText("skip.bin")

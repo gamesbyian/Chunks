@@ -29,7 +29,7 @@ internal fun combinedAddedTransferHidden(
 @Composable
 internal fun CombinedAddedHiddenNotice(environmentLabel: String, onShowAll: () -> Unit) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("Your new transfer on $environmentLabel is hidden by the current search, filter or environment view.",
+        Text("Your new transfer on $environmentLabel is hidden by the current search, filter or client view.",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         OutlinedButton(onClick = onShowAll,

@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onNodeWithTag
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
@@ -119,7 +121,7 @@ class CombinedTwoRealServersInstrumentedTest {
         if (preferences.load().scope == all) return
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasTestTag(ChunksSemantics.TRANSFERS_ENVIRONMENT_TOGGLES))
-        val allChip = hasContentDescription("Show all environments")
+        val allChip = hasContentDescription("Show all clients")
         if (rule.onAllNodes(allChip).fetchSemanticsNodes().isNotEmpty()) {
             clickScope(allChip)
         } else {
@@ -227,6 +229,7 @@ class CombinedTwoRealServersInstrumentedTest {
     }
 
     private fun connect(url: String, user: String = "", password: String = "") {
+        rule.openConnectionFormIfNeeded()
         typeInto("Connection name (optional)", "Studio")
         // Duplicate display names must never collapse numbered instances/accounts.
         // Server A sits behind basic auth; server B is anonymous, so its
@@ -267,10 +270,10 @@ class CombinedTwoRealServersInstrumentedTest {
             // Connections is a lazy list that can still be scrolled to the saved
             // profiles from an earlier step (two profiles are saved here); bring
             // the connected card back into composition before reading it.
-            runCatching { scrollTo("Connected ·") }
-            visible("Connected ·") && visible("View transfers")
+            runCatching { scrollTo("Connected") }
+            visible("Connected") && visible("View transfers")
         }
-        rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
         enterConnectedCanonicalTransfers(url, user)
         scrollTo("2 transfers")
         assertTrue("The exact scoped server must show its two real jobs", visible("2 transfers"))
@@ -344,6 +347,8 @@ class CombinedTwoRealServersInstrumentedTest {
         ActivityScenario.launch(MainActivity::class.java).use { scenario ->
             waitFor("persistent Connections destination") { visible("Connections") }
             rule.onNodeWithContentDescription("Connections").performClick()
+            rule.openConnectionFormIfNeeded(allowConnected = false)
+            rule.openConnectionFormIfNeeded()
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
             connect(urlA, userA, passA)
             stage("connected-a")
@@ -351,19 +356,22 @@ class CombinedTwoRealServersInstrumentedTest {
             // connected server's Disconnect remains distinct from Forget.
             waitFor("Connections destination") { visible("Connections") }
             rule.onNodeWithContentDescription("Connections").performClick()
+            rule.openConnectionFormIfNeeded(allowConnected = false)
+            rule.openConnectedManageIfNeeded()
             waitFor("connected server screen") { visible("Disconnect") }
-            scrollTo("Disconnect")
+            rule.openConnectedManageIfNeeded()
+        scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
             waitFor("explicit Disconnect remains on manual Connect form") {
                 runCatching {
-                    scrollTo("Connect to rTorrent")
-                    visible("Connect to rTorrent") && !visible("Connected ·")
+                    scrollTo("Disconnected · saved profile")
+                    visible("Disconnected · saved profile") && !visible("Connected")
                 }.getOrDefault(false)
             }
             rule.waitForIdle()
             assertTrue(
                 "A saved verified login must not silently reconnect after explicit Disconnect",
-                visible("Connect to rTorrent") && !visible("Connected ·")
+                visible("Disconnected · saved profile") && !visible("Connected")
             )
             stage("disconnected-a")
             // Explicit Disconnect is a navigation decision, not a request to
@@ -372,13 +380,13 @@ class CombinedTwoRealServersInstrumentedTest {
             scenario.recreate()
             waitFor("manual Connect remains after Disconnect + Activity recreation") {
                 runCatching {
-                    scrollTo("Connect to rTorrent")
-                    visible("Connect to rTorrent") && !visible("Connected ·")
+                    scrollTo("Disconnected · saved profile")
+                    visible("Disconnected · saved profile") && !visible("Connected")
                 }.getOrDefault(false)
             }
             stage("explicit-disconnect-restored")
-            scrollTo("Add connection")
-            rule.onNodeWithText("Add connection").performClick()
+            scrollTo("+ Add connection")
+            rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
             connect(urlB)
             val profiles = RememberedRemoteProfileRoster(InstrumentationRegistry.getInstrumentation().targetContext).list()
             assertEquals(2, profiles.size)
@@ -389,10 +397,10 @@ class CombinedTwoRealServersInstrumentedTest {
             showAllCanonicalTransfers()
             waitFor("canonical Combined-derived Transfers browser") {
                 // The catalog's actual heading is now "Transfers"; the old
-                // "All environments" screen name belonged to the legacy fork.
+                // "All clients" screen name belonged to the legacy fork.
                 // Require its unique search control and absence of the old
                 // switch before verifying the four-row real-account union.
-                visible("Search names or hashes") && !visible("All environments…")
+                visible("Search names or hashes") && !visible("All clients…")
             }
             stage("combined-open")
             // The other saved server is restored read-only without a tap.
@@ -411,8 +419,8 @@ class CombinedTwoRealServersInstrumentedTest {
                 }.getOrDefault(false)
             }
             stage("combined-union")
-            scrollTo("Environment status")
-            rule.onNodeWithText("Environment status", substring = true).performClick()
+            scrollTo("Client status")
+            rule.onNodeWithText("Client status", substring = true).performClick()
             waitFor("both server sources reported with their own port") {
                 rule.onAllNodesWithText(":$portA", substring = true).fetchSemanticsNodes().any() &&
                     rule.onAllNodesWithText(":$portB", substring = true).fetchSemanticsNodes().any() &&
@@ -436,11 +444,15 @@ class CombinedTwoRealServersInstrumentedTest {
                     hasContentDescription(":$port", substring = true)
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
                 rule.onNode(row).performClick()
-                waitFor("exact-environment Details for $port") {
-                    visible("Transfer details") && visible("Environment:") && visible(":$port")
+                waitFor("exact-client Details for $port") {
+                    rule.onAllNodesWithTag(ChunksSemantics.DETAILS_SCREEN).fetchSemanticsNodes().isNotEmpty() &&
+                        visible("Edit identification")
                 }
                 assertTrue("Details lost the selected transfer name on $port", visible(shared))
                 rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+                // The header names the client briefly (identity-first Details); the exact
+                // instance — here, which port — is proven in technical details.
+                waitFor("exact client identity for $port in technical details") { visible(":$port") }
                 assertTrue("Details borrowed another transfer hash on $port",
                     visible("Exact infohash: $sharedHash"))
                 assertTrue("Details borrowed another server's reported Place on $port",
@@ -461,7 +473,7 @@ class CombinedTwoRealServersInstrumentedTest {
                     assertTrue("Saved-only A cannot borrow B's mutation/file authority",
                         !visible("Files & priorities…"))
                 }
-                rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
+                rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
                 // The catalog restores its previous scrolled viewport: the
                 // offscreen summary ("4 transfers") is not a valid visible-node
                 // gate after returning from a row near the bottom. Verify
@@ -533,8 +545,14 @@ class CombinedTwoRealServersInstrumentedTest {
             // Both saved profiles deliberately have the same custom name.
             // The direct Add chip must be distinct, and selecting saved A only
             // begins authentication: it cannot borrow B's current Add authority.
+            // Invoke the chip's own click action (as #1776 did for the status toggle): an
+            // injected touch can miss it while Add relayouts after the source edit
+            // (intermittent on run 43815510926; the outcome assertions are unchanged).
             rule.onNodeWithContentDescription("Connect to Studio (2) before adding")
-                .performScrollTo().performClick()
+                .performScrollTo()
+            rule.waitForIdle()
+            rule.onNodeWithContentDescription("Connect to Studio (2) before adding")
+                .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
             // This must show an ACTUAL login, not B's already authenticated
             // server UI with A's address painted into editable fields.
             waitFor("explicit A authentication rather than stale B", 30_000) {
@@ -583,18 +601,18 @@ class CombinedTwoRealServersInstrumentedTest {
             // process-death/relaunch and source-isolation tests are unchanged.
             typeInto("Magnet or torrent link", "")
             rule.onNodeWithText("Connections").performClick()
+            rule.openConnectionFormIfNeeded(allowConnected = false)
+            rule.openConnectedManageIfNeeded()
             waitFor("A authenticated Connections management") { visible("Disconnect") }
-            scrollTo("Disconnect")
+            rule.openConnectedManageIfNeeded()
+        scrollTo("Disconnect")
             rule.onNodeWithText("Disconnect").performClick()
-            waitFor("B connection form") {
+            // Disconnect returns to the unified roster (as at stage disconnected-a); the
+            // saved login is not silently reused, and connect() opens a new form.
+            waitFor("A disconnected back on the Connections roster") {
                 runCatching {
-                    // Two saved profiles push the ordinary login fields below
-                    // the first lazy viewport. Require the actual editable
-                    // input instead of inferring it from a visible summary.
-                    scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
-                    rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
-                        .assertIsEnabled()
-                    true
+                    scrollTo("Disconnected · saved profile")
+                    visible("Disconnected · saved profile")
                 }.getOrDefault(false)
             }
             connect(urlB)
@@ -648,7 +666,7 @@ class CombinedTwoRealServersInstrumentedTest {
             waitFor("reconnect for C2", 90_000) { authenticatedCanonicalBrowser() }
             showAllCanonicalTransfers()
             waitFor("canonical Combined browser for C2") {
-                visible("Search names or hashes") && !visible("All environments…")
+                visible("Search names or hashes") && !visible("All clients…")
             }
             // Automatic read-only restore of the other saved server.
             waitFor("union before fault", 60_000) {
@@ -674,10 +692,10 @@ class CombinedTwoRealServersInstrumentedTest {
             fun refreshOthers() {
                 scrollTo("Refresh other saved servers")
                 rule.onNodeWithText("Refresh other saved servers").performClick()
-                // Expanded, the toggle reads "Hide environment status".
-                scrollTo("nvironment status")
-                if (!visible("Hide environment status"))
-                    rule.onNodeWithText("Environment status", substring = true).performClick()
+                // Expanded, the toggle reads "Hide client status".
+                scrollTo("lient status")
+                if (!visible("Hide client status"))
+                    rule.onNodeWithText("Client status", substring = true).performClick()
             }
             // Timeout: A's daemon is frozen (gateway accepts, no reply).
             fault("freeze-a")
@@ -722,9 +740,11 @@ class CombinedTwoRealServersInstrumentedTest {
             // include Local as well as server A, so match the truthful status
             // without presuming a fixed source count in this A/B fixture.
             // Independently verified A/B status rows remain authoritative.
-            scrollTo("excluded")
-            assertTrue("Combined must flag excluded, out-of-date sources",
-                visible("excluded"))
+            // The owner's client-terminology design counts *included* clients and flags
+            // stale/offline ones as "some clients incomplete" (no "N excluded" wording).
+            scrollTo("some clients incomplete")
+            assertTrue("Combined must flag out-of-date clients as incomplete",
+                visible("some clients incomplete"))
             stage("c2-offline-truthful")
         }
     }

@@ -156,12 +156,35 @@ class MainActivity : ComponentActivity() {
         // Invalid, malformed and unrelated Intents confer no source authority.
         // In particular, they cannot erase a valid source still awaiting the
         // exact local/server chooser or a privacy gate.
-        val candidate = ExternalAddSource.fromIntent(intent) ?: return
+        val candidate = ExternalAddSource.fromIntent(intent)
+        logIntake(intent, candidate)
+        if (candidate == null) return
         incomingCreate = null
         val pending = PendingExternalAddSource(incomingMagnet, incomingTorrent)
             .withIncoming(candidate)
         incomingTorrent = pending.torrentDocument
         incomingMagnet = pending.text
+    }
+
+    /**
+     * #1786 diagnostics: `adb logcat -s ChunksIntake` separates a refused handoff from a
+     * crash or lost task. Action, declared MIME, URI scheme and the outcome only — never the
+     * URI, display name, magnet, tracker or file content.
+     */
+    private fun logIntake(intent: Intent?, candidate: ExternalAddSource?) {
+        val action = intent?.action ?: return
+        if (action != Intent.ACTION_VIEW && action != Intent.ACTION_SEND) return
+        val outcome = when (candidate) {
+            null -> "refused"
+            is ExternalAddSource.TorrentDocument -> "document"
+            is ExternalAddSource.Magnet -> "magnet"
+            is ExternalAddSource.TorrentLink -> "link"
+        }
+        runCatching {
+            android.util.Log.i("ChunksIntake", "action=" + action.substringAfterLast('.') +
+                " type=" + (intent.type ?: "none") + " scheme=" + (intent.data?.scheme ?: "none") +
+                " outcome=" + outcome + " task=" + taskId)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -243,7 +266,7 @@ internal fun shouldConsumeReviewedSourceOnExit(
 ): Boolean = isCurrentDocument && !lifecycleCancelled
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 /** "12 shown", or "3 of 12 shown" when a search or filter narrows the list (as on the local device). */
@@ -446,6 +469,7 @@ internal fun ChunksApp(
     // No raw source, account identity or private tracker enters SavedState.
     val addArtworkChoices = retainedAddOwner?.artworkChoices ?: remember { AddArtworkDraftChoices() }
     val combinedListState = rememberLazyListState()
+    var combinedDetailsVisible by remember { mutableStateOf(false) }
     // Combined search text, like the local device's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
     // Last read-only listings of other saved profiles survive navigation between
@@ -698,6 +722,36 @@ internal fun ChunksApp(
         }
     }
 
+    /** An unsubmitted draft or a not-yet-releasable attempt holds a new shared source. */
+    fun addSourceOccupied(): Boolean {
+        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
+            ?.let { remoteAddSessions.forAccount(it) }
+        return magnet.isNotBlank() || localReviewedTorrent.value != null ||
+            serverHandoffTorrent != null ||
+            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
+            activeLocalAddAttempt.attemptedTicket != null ||
+            remoteDraft?.alreadyAttempted == true
+    }
+
+    /**
+     * #1786: an Open With that arrived while the previous Add was still settling was held
+     * (correctly: never replace an unfinished attempt) but nothing re-offered it once that
+     * Add verified, so the handoff silently vanished. Called when the Add screen observes its
+     * attempt reach a closable verified state: release exactly as a fresh share would and,
+     * only if nothing else occupies the draft, read the held document into the next review.
+     * Still no Add or Start; an unsubmitted draft keeps its explicit Use/Keep choice.
+     */
+    fun offerHeldSharedSourceAfterVerifiedAdd() {
+        val document = pendingSharedDocument ?: return
+        if (sharedTorrentReading || incomingDocumentRead != null) return
+        releaseVerifiedAttemptsForNewSource()
+        if (addSourceOccupied()) return
+        pendingSharedDocument = null
+        sharedTorrentError = null
+        sharedTorrentReading = true
+        incomingDocumentRead = document
+    }
+
     // Share/Open With only admits source data, never a local or remote Add.
     // An occupied draft is held until the user explicitly chooses replacement.
     LaunchedEffect(incomingTorrent) {
@@ -706,13 +760,7 @@ internal fun ChunksApp(
         sharedTorrentError = null
         pendingSharedMagnet = null
         pendingSharedDocument = null
-        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
-            ?.let { remoteAddSessions.forAccount(it) }
-        if (magnet.isNotBlank() || localReviewedTorrent.value != null ||
-            serverHandoffTorrent != null ||
-            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
-            activeLocalAddAttempt.attemptedTicket != null ||
-            remoteDraft?.alreadyAttempted == true) {
+        if (addSourceOccupied()) {
             pendingSharedDocument = document
         } else {
             sharedTorrentReading = true
@@ -1121,6 +1169,7 @@ internal fun ChunksApp(
                 scopeFocusRequest = savedProfileCatalogFocus,
                 onScopeFocusConsumed = { savedProfileCatalogFocus = null },
                 returnToCatalogRevision = returnToCatalogRevision,
+                onDetailVisibilityChanged = { combinedDetailsVisible = it },
                 showAllEnvironmentsRevision =
                     showAllEnvironmentsRevision.takeIf { it > consumedShowAllEnvironmentsRevision } ?: 0L,
                 onShowAllEnvironmentsConsumed = { consumed ->
@@ -1394,12 +1443,16 @@ internal fun ChunksApp(
             }
         } else if (server == null || section == Section.SERVER) {
             ConnectionScreen(
+                loginRequested = savedAddReconnect.awaitingAuthentication,
                 connectedSessionName = server?.let {
                     savedProfiles.firstOrNull { profile ->
                         profile.id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots
                             .serverIdOfAliasScope(aliasScope)?.value
                     }?.label ?: "Connected rTorrent server"
                 },
+                connectedProfileId = server?.let { io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+                    .serverIdOfAliasScope(aliasScope)?.value },
+                connectedSessionVerified = !stale && error == null,
                 connectedVersion = version,
                 remoteForDefaultFolder = server,
                 savedDefaultFolder = remember(aliasScope, recentPlaceRevision) {
@@ -2293,6 +2346,8 @@ internal fun ChunksApp(
                         addArtworkState = addArtworkChoices.onServer(aliasScope),
                         addDestinationPicker = addDestinationPicker,
                         externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
+                        externalSourceWaiting = pendingSharedDocument != null || pendingSharedMagnet != null,
+                        onVerifiedAttemptWithWaitingSource = ::offerHeldSharedSourceAfterVerifiedAdd,
                         addAliasState = addAliasDraft,
                         onVerifiedAlias = { hash, value ->
                             // The frozen coordinator confirms a new exact job,
@@ -2361,13 +2416,15 @@ internal fun ChunksApp(
                 // One canonical catalog in local-only, remote-only and mixed
                 // modes. Its chips change view scopes only; this route grants
                 // no engine, server or per-job mutation authority.
+                val retappingList = section == Section.COMBINED && !combinedDetailsVisible
                 section = Section.COMBINED
                 combinedFromConnections = false
                 returnToCatalogRevision++
                 // Re-tapping Transfers is useful even when already on this
                 // list: return to its first row without resetting search,
                 // filter, exact environment selection or any Add draft.
-                scope.launch { combinedListState.scrollToItem(0) }
+                // Only a re-tap of the already-visible list requests its top.
+                if (retappingList) scope.launch { combinedListState.scrollToItem(0) }
                 // Returning to Transfers re-reads the current server (read-only, fenced by the
                 // mutation gate), as ruTorrent/Transdroid lists do; otherwise a magnet stays
                 // listed under its pre-metadata name until some unrelated write settles.
@@ -2423,6 +2480,7 @@ internal fun isLoginRefused(failure: Exception): Boolean =
     failure is io.github.gamesbyian.chunks.rpc.RpcHttpStatusException &&
         (failure.status == 401 || failure.status == 403)
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 internal fun ConnectionScreen(
     endpoint: String, username: String, password: String, error: String?, loading: Boolean,
@@ -2445,7 +2503,10 @@ internal fun ConnectionScreen(
     onCreateTorrent: () -> Unit = {},
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit,
+    loginRequested: Boolean = false,
     connectedSessionName: String? = null,
+    connectedProfileId: String? = null,
+    connectedSessionVerified: Boolean = true,
     connectedVersion: String = "",
     remoteForDefaultFolder: RTorrentRemote? = null,
     savedDefaultFolder: String? = null,
@@ -2497,18 +2558,26 @@ internal fun ConnectionScreen(
     var renameNotice by remember { mutableStateOf<String?>(null) }
     val renameScope = rememberCoroutineScope()
     val connectionList = rememberLazyListState()
-    var showNewConnectionForm by remember { mutableStateOf(false) }
-    LaunchedEffect(showNewConnectionForm, connectedSessionName) {
-        if (showNewConnectionForm && connectedSessionName == null) {
-            showNewConnectionForm = false
-            // Intro, Add connection, then the optional roster and rename result.
-            // Bring the NEW profile form into view even with a long saved roster.
-            val formIndex = 2 +
-                (if (rememberLogin && savedProfiles.isNotEmpty()) 1 + savedProfiles.size else 0) +
-                (if (renameNotice != null) 1 else 0)
-            connectionList.scrollToItem(formIndex)
-        }
+    var showNewConnectionForm by rememberSaveable { mutableStateOf(loginRequested) }
+    LaunchedEffect(loginRequested) { if (loginRequested) showNewConnectionForm = true }
+    var managedProfileId by rememberSaveable { mutableStateOf<String?>(null) }
+    val activeCardId = connectedProfileId ?: "transient-verified-session"
+    val managingConnected = managedProfileId == activeCardId && connectedSessionName != null
+    val rosterVisible = managedProfileId == null && !showNewConnectionForm
+    val openNewConnection = {
+        onAddConnection()
+        managedProfileId = null
+        showNewConnectionForm = true
     }
+    androidx.activity.compose.BackHandler(!rosterVisible) {
+        managedProfileId = null
+        showNewConnectionForm = false
+        pendingForget = null
+    }
+    LaunchedEffect(connectedSessionName) {
+        if (connectedSessionName != null) showNewConnectionForm = false
+    }
+    LaunchedEffect(showNewConnectionForm, managedProfileId) { connectionList.scrollToItem(0) }
     // Reuse the exact existing verified Connect operation. No saved password or
     // endpoint is broadcast to an unverified profile, and no torrent mutation
     // occurs merely because the app opened. Consume before invoking the action
@@ -2525,30 +2594,62 @@ internal fun ConnectionScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         item {
-            // Connections manages rTorrent clients. Local transfers live in
-            // the canonical Transfers browser, even before remote setup.
-            ColoredPanel("Connect to another computer or server (optional)",
-                "Manage a seedbox or other rTorrent client from a secure endpoint. " +
-                    "Checking a connection never changes its transfers; each transfer action " +
-                    "requires separate review.", Lilac, titleAsHeading = true)
-        }
-        item {
-            OutlinedButton(onClick = {
-                onAddConnection()
-                showNewConnectionForm = true
-            }, enabled = !loading,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .testTag(ChunksSemantics.CONNECTION_ADD)) {
-                Text("Add connection")
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(if (rosterVisible) "Connections" else if (showNewConnectionForm) "Connect client" else "Manage client",
+                    style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+                if (!rosterVisible) OutlinedButton(onClick = {
+                    managedProfileId = null; showNewConnectionForm = false; pendingForget = null
+                }, modifier = Modifier.heightIn(min = 48.dp)) { Text("Connections") }
             }
         }
-        if (connectedSessionName != null) item {
+        if (rosterVisible) {
+            if (savedProfiles.isEmpty() && connectedSessionName == null) item {
+                    Card(colors = CardDefaults.cardColors(containerColor = Lilac)) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Connect to a remote client", modifier = Modifier.semantics { heading() },
+                                style = MaterialTheme.typography.titleMedium,
+                                color = ChunksColors.Background)
+                            Text("Manage torrents on another computer or server.", color = ChunksColors.Background)
+                            OutlinedButton(onClick = openNewConnection, enabled = !loading,
+                                modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.CONNECTION_ADD)) {
+                                Text("+ Add connection", color = ChunksColors.Background)
+                            }
+                        }
+                    }
+            } else stickyHeader(key = "add-connection") {
+                Surface(color = ChunksColors.Background) {
+                OutlinedButton(onClick = openNewConnection, enabled = !loading,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(ChunksSemantics.CONNECTION_ADD)) {
+                    Text("+ Add connection")
+                }
+                }
+            }
+            items(unifiedConnectionRoster(savedProfiles, connectedProfileId, connectedSessionName, connectedSessionVerified,
+                attentionProfileId = savedProfiles.firstOrNull { error != null &&
+                    it.credentials.endpoint == endpoint && it.credentials.username == username }?.id), key = { it.id }) { entry ->
+                ConnectionRosterCard(entry, loading = loading,
+                    onPrimary = {
+                        if (entry.connected) onViewConnectedTransfers()
+                        else entry.profile?.let { profile ->
+                            // Retire any different verified UI session before preparing this exact login.
+                            onAddConnection()
+                            onSelectProfile(profile)
+                            showNewConnectionForm = true
+                        }
+                    },
+                    onManage = { managedProfileId = entry.id })
+            }
+            if (error != null) item { Notice("Connection needs attention", error) }
+        }
+        if (managingConnected) item {
             Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
                 Column(Modifier.fillMaxWidth().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Connected · " + connectedSessionName,
+                    Text((if (connectedSessionVerified) "Connected · " else "Connection unverified · ") + connectedSessionName,
                         style = MaterialTheme.typography.titleMedium)
-                    Text("This verified session is available in Transfers. Browsing does not change its torrents.",
+                    Text(if (connectedSessionVerified) "This verified session is available in Transfers."
+                        else "Last connection is unverified. Inventory may be out of date.",
                         style = MaterialTheme.typography.bodySmall)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = onViewConnectedTransfers,
@@ -2556,7 +2657,7 @@ internal fun ConnectionScreen(
                                 .semantics { contentDescription = "View transfers on current verified server" }) {
                             Text("View transfers")
                         }
-                        OutlinedButton(onClick = onDisconnectCurrent, enabled = !loading,
+                        OutlinedButton(onClick = { onDisconnectCurrent(); managedProfileId = null }, enabled = !loading,
                             modifier = Modifier.weight(1f).heightIn(min = 48.dp)) {
                             Text("Disconnect")
                         }
@@ -2623,70 +2724,29 @@ internal fun ConnectionScreen(
                 }
             }
         }
-        if (rememberLogin && savedProfiles.isNotEmpty()) {
+        if (managedProfileId != null && savedProfiles.isNotEmpty()) {
+            /* Secondary profile settings, available independently of remembered-login preference. */
             item {
-                Text("Saved servers", style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold)
-                Text(
-                    if (onOpenProfileTransfers != null)
-                        "View transfers opens this exact saved client under its existing privacy and read-only access rules. Use saved login to prepare an explicit Connect."
-                    else
-                        "Choose an account, then Connect. Selection alone does not contact the server.",
-                    style = MaterialTheme.typography.bodySmall
-                )
+                Text("Profile settings", style = MaterialTheme.typography.titleMedium)
             }
-            items(savedProfiles, key = { "saved-profile-" + it.id }) { profile ->
+            items(savedProfiles.filter { it.id == managedProfileId }, key = { "manage-profile-" + it.id }) { profile ->
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (onOpenProfileTransfers != null) {
-                        Text(profile.label, fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.titleMedium)
-                        // Duplicate friendly labels cannot merge or disguise accounts.
-                        Text(profile.address, style = MaterialTheme.typography.bodySmall)
-                        Text(profile.lastVerifiedAt?.let {
-                            "Last connected " + android.text.format.DateUtils.getRelativeTimeSpanString(
-                                it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
-                        } ?: "Last connection time not recorded", style = MaterialTheme.typography.bodySmall)
-                        Row(Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = {
-                                pendingForget = null
-                                onOpenProfileTransfers(profile)
-                            }, enabled = !loading,
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                                    .semantics {
-                                        contentDescription =
-                                            "View transfers for saved " + profile.label + " on " + profile.address
-                                    }) {
-                                Text("View transfers")
-                            }
-                            OutlinedButton(onClick = {
-                                pendingForget = null
-                                onSelectProfile(profile)
-                            }, enabled = !loading && connectedSessionName == null,
-                                modifier = Modifier.weight(1f).heightIn(min = 48.dp)
-                                    .semantics {
-                                        contentDescription =
-                                            "Use saved login for " + profile.label + " on " + profile.address
-                                    }) {
-                                Text("Use saved login")
-                            }
-                        }
-                    } else {
-                        // Legacy standalone callers retain an explicit login
-                        // selection; they never silently acquire read authority.
-                        OutlinedButton(onClick = {
-                            pendingForget = null
-                            onSelectProfile(profile)
-                        }, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                            Column(Modifier.fillMaxWidth()) {
-                                Text("Use " + profile.label)
-                                Text(profile.address, style = MaterialTheme.typography.bodySmall)
-                                Text(profile.lastVerifiedAt?.let {
-                                    "Last connected " + android.text.format.DateUtils.getRelativeTimeSpanString(
-                                        it, System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS)
-                                } ?: "Last connection time not recorded", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
+                    Text(profile.label, style = MaterialTheme.typography.titleMedium)
+                    Text(profile.address, style = MaterialTheme.typography.bodySmall)
+                    if (!managingConnected) Text("Disconnected · connect to use remote folder browsing and server tools.",
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = {
+                        onAddConnection()
+                        onSelectProfile(profile)
+                        managedProfileId = null
+                        showNewConnectionForm = true
+                    }, enabled = !loading, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("Edit connection / login")
+                    }
+                    if (!managingConnected && onOpenProfileTransfers != null) OutlinedButton(
+                        onClick = { onOpenProfileTransfers(profile) }, enabled = !loading,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("View available inventory (read only)")
                     }
                     if (pendingForget == profile.id) {
                         Text("Forget saved credentials for this account? Torrents are unchanged.",
@@ -2780,6 +2840,7 @@ internal fun ConnectionScreen(
         if (renameNotice != null) item {
             Text(renameNotice.orEmpty(), style = MaterialTheme.typography.bodySmall)
         }
+        if (showNewConnectionForm) {
         if (connectedSessionName == null) {
         item {
             OutlinedTextField(
@@ -2893,6 +2954,9 @@ internal fun ConnectionScreen(
             Text("Protected HTTPS is required for remote servers. Login is encrypted and stored only on this device unless you opt out. No torrents or files are changed by connecting.",
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
+        } // Explicit Add/Edit connection form.
+        // Offline tools need no connection: keep them reachable from the roster itself
+        // (zero profiles included), not only after starting "+ Add connection".
         item {
             OutlinedButton(
                 onClick = { extraToolsOpen = !extraToolsOpen },

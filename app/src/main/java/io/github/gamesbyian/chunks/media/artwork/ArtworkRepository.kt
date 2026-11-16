@@ -110,15 +110,15 @@ class ArtworkRepository(
      * A cached derivative is already available to future rows; don't re-decode it on every
      * inventory notification. Negative cache deadlines still govern failed image URLs.
      */
-    fun hasCachedSquare(candidates: List<ArtworkCandidate>): Boolean =
-        ArtworkSelector.order(candidates, ArtworkRole.SQUARE).any { c ->
-            val k = key(c, ArtworkRole.SQUARE)
+    fun hasCachedSquare(candidates: List<ArtworkCandidate>, role: ArtworkRole = ArtworkRole.SQUARE): Boolean =
+        ArtworkSelector.order(candidates, role).any { c ->
+            val k = key(c, role)
             memory.get(k) != null || importedDisk.hasPlausibleProcessedJpeg(k) ||
                 disk.hasPlausibleProcessedJpeg(k)
         }
 
     private fun key(source: ArtworkCandidate, role: ArtworkRole) =
-        ArtworkBytesPolicy.cacheKey(source.url, role, if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE)
+        ArtworkBytesPolicy.cacheKey(if (source.provider == io.github.gamesbyian.chunks.media.LOCAL_PROVIDER) source.url else "natural|" + source.url, role, if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE)
 
     /** Explicitly selected images are durable, including official-provider alternatives.
      * An image chosen before its HTTP response is available is pinned first, then stored on fetch.
@@ -166,9 +166,9 @@ class ArtworkRepository(
     fun importLocal(bytes: ByteArray): Pair<ArtworkCandidate?, String?> {
         val check = ArtworkBytesPolicy.check(bytes, null)
         if (check is ArtworkBytesCheck.Rejected) return null to check.reason
-        val (decoded, err) = ArtworkComposer.decodeBounded(bytes, SQUARE_SIZE)
+        val (decoded, err) = ArtworkComposer.decodeBounded(bytes, POSTER_EDGE)
         if (decoded == null) return null to (err ?: "Image could not be decoded")
-        val square = ArtworkComposer.square(decoded, SQUARE_SIZE)
+        val square = ArtworkComposer.fit(decoded, POSTER_EDGE)
         if (square !== decoded) decoded.recycle()
         val encoded = ArtworkComposer.encode(square)
         val digest = java.security.MessageDigest.getInstance("SHA-256").digest(encoded).take(20).joinToString("") { "%02x".format(it) }
@@ -224,6 +224,19 @@ class ArtworkRepository(
         val local = c.provider == io.github.gamesbyian.chunks.media.LOCAL_PROVIDER
         val k = key(c, if (local) ArtworkRole.SQUARE else role)
         memory.get(k)?.let { return ArtworkLoadResult.Loaded(it, c, true) }
+        if (!local) synchronized(mutationLock) {
+            val legacyKey = ArtworkBytesPolicy.cacheKey(c.url, role,
+                if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE)
+            val legacy = listOf(importedDisk, disk).firstOrNull { it.isPinned(legacyKey) }
+            legacy?.get(legacyKey)?.let { bytes ->
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.let { bitmap ->
+                    importedDisk.putPinned(k, bytes)
+                    legacy.unpin(legacyKey)
+                    memory.put(k, bitmap)
+                    return ArtworkLoadResult.Loaded(bitmap, c, true)
+                }
+            }
+        }
         synchronized(mutationLock) {
             // User-imported images are durable presentation choices. Earlier app versions kept
             // them in cacheDir; migrate such an image on its first successful read without
@@ -267,7 +280,7 @@ class ArtworkRepository(
         val target = if (role == ArtworkRole.SQUARE) SQUARE_SIZE else POSTER_EDGE
         val (decoded, err) = ArtworkComposer.decodeBounded(resp.body, target)
         if (decoded == null) { markFailedIfAllowed(k, NOT_FOUND_TTL_MS, requestAllowed); return ArtworkLoadResult.Unavailable(listOf(err ?: "Decode failed")) }
-        val processed = if (role == ArtworkRole.SQUARE) ArtworkComposer.square(decoded, SQUARE_SIZE) else ArtworkComposer.fit(decoded, POSTER_EDGE)
+        val processed = ArtworkComposer.fit(decoded, target)
         if (processed !== decoded) decoded.recycle()
         val encoded = ArtworkComposer.encode(processed)
         synchronized(mutationLock) {

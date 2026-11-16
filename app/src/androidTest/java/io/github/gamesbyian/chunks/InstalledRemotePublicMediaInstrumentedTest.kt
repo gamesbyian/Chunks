@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Intent
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
 import android.graphics.Bitmap
 import android.util.Base64
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -138,7 +140,9 @@ class InstalledRemotePublicMediaInstrumentedTest {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use {
                 waitFor("persistent Connections destination") { visible("Connections") }
                 rule.onNodeWithContentDescription("Connections").performClick()
-                waitFor("connection form") {
+                rule.openConnectionFormIfNeeded(allowConnected = false)
+                rule.openConnectionFormIfNeeded()
+            waitFor("connection form") {
                     runCatching { scrollTo("Seedbox hostname, ruTorrent URL or RPC address"); true }
                         .getOrDefault(false)
                 }
@@ -158,10 +162,10 @@ class InstalledRemotePublicMediaInstrumentedTest {
                 waitFor("verified Connect acknowledgment", 90_000) { visible("Connection verified") }
                 rule.onNodeWithText("Continue to Connections").performClick()
                 waitFor("connected card") {
-                    runCatching { scrollTo("Connected ·") }
-                    visible("Connected ·") && visible("View transfers")
+                    runCatching { scrollTo("Connected") }
+                    visible("Connected") && visible("View transfers")
                 }
-                rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+                rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
                 waitFor("remote fixture row in canonical Transfers", 60_000) {
                     runCatching { scrollTo(originalName); true }.getOrDefault(false)
                 }
@@ -211,7 +215,7 @@ class InstalledRemotePublicMediaInstrumentedTest {
                     "Remote row must show the verified provider bitmap"
                 }
                 val painted = tile.onFirst().captureToImage().asAndroidBitmap()
-                val expected = Bitmap.createScaledBitmap(bitmap, painted.width, painted.height, true)
+                val expected = fitArtworkForPixelCheck(bitmap, painted.width, painted.height)
                 var total = 0L
                 for (y in 3..6) for (x in 3..6) {
                     val a = painted.getPixel(painted.width * x / 10, painted.height * y / 10)

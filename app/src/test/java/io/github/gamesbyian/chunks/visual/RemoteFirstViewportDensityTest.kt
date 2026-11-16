@@ -58,17 +58,17 @@ class RemoteFirstViewportDensityTest {
             }
         }
         val badge = rule.onNodeWithText("Wood · 32 transfers").getUnclippedBoundsInRoot()
-        val all = rule.onNodeWithText("All environments…").getUnclippedBoundsInRoot()
+        val all = rule.onNodeWithText("All clients…").getUnclippedBoundsInRoot()
         val add = rule.onNodeWithText("+ Add torrent").getUnclippedBoundsInRoot()
         val refresh = rule.onNodeWithText("Refresh").getUnclippedBoundsInRoot()
-        assertTrue("Environment identity and All environments belong on one row",
+        assertTrue("Client identity and All clients belong on one row",
             badge.top < all.bottom && all.top < badge.bottom)
         assertEquals("Add and Refresh belong on one row", add.top, refresh.top)
         assertTrue("Primary actions must follow the scope header", add.top >= all.bottom)
         assertTrue("No extra row above the transfer list on a 412dp local", refresh.bottom <= 150.dp)
         assertTrue("All controls remain inside 376dp usable content", all.right <= 376.dp
             && refresh.right <= 376.dp)
-        rule.onNodeWithText("All environments…").performClick()
+        rule.onNodeWithText("All clients…").performClick()
         rule.onNodeWithText("+ Add torrent").performClick()
         rule.onNodeWithText("Refresh").performClick()
         assertEquals(1, opens)

@@ -67,7 +67,9 @@ class RemoteSecondAddArtworkChoiceTest {
     private fun waitForText(text: String, timeout: Long = 30_000) = rule.waitUntil(timeout) { visible(text) }
 
     private fun connect() {
+        rule.openConnectionFormIfNeeded()
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         list().performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(server.endpoint)
         list().performScrollToNode(hasText("Connect to rTorrent"))

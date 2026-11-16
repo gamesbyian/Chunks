@@ -961,6 +961,7 @@ internal fun LocalEngineScreen(
     val restoreRequester = remember { BringIntoViewRequester() }
     val exportsRequester = remember { BringIntoViewRequester() }
     val namesRequester = remember { BringIntoViewRequester() }
+    val originalFilesRequester = remember { BringIntoViewRequester() }
     val optionsSearchHolder = optionsSearchState ?: rememberSaveable { mutableStateOf("") }
     var localOptionsSearch by optionsSearchHolder
     val categoryHolder = optionsCategoryState ?: rememberSaveable { mutableStateOf<OptionsCategory?>(null) }
@@ -1062,7 +1063,7 @@ internal fun LocalEngineScreen(
                     environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL,
                     modifier = Modifier.align(Alignment.CenterVertically))
                 if (onCombined != null) OutlinedButton(onClick = onCombined,
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments") }
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("All clients") }
             }
             // This screen owns Stop/Remove outcomes. A successful native
             // deletion removes its row, but must not remove the user's
@@ -1658,11 +1659,8 @@ internal fun LocalEngineScreen(
         }
         val shownHandling = originalHandling
         if (add?.originalDocument != null && destination != null && shownHandling != null)
-            OriginalTorrentHandlingChoice(
-                "Original .torrent file", selected = shownHandling,
-                enabled = !busy && localAddAttemptSession?.attemptedTicket == null,
-                deleteAvailable = originalDeletable,
-                onSelect = { originalHandling = it })
+            // Read-only here: the single policy is chosen in Options → Add & files (#1786).
+            OriginalTorrentHandlingSummary(shownHandling)
         val seedingPreview = remember(add?.preview?.infoHashV1) {
             add?.preview?.let { localSeedingPreview(context, it) }
         }
@@ -2659,7 +2657,7 @@ internal fun LocalEngineScreen(
         } // Transfers presentation
         if (pane == LocalPane.OPTIONS) {
         // App-wide settings live behind a real Options destination.
-        Text(optionsCategory?.title ?: "Options", style = MaterialTheme.typography.titleLarge,
+        if (optionsCategory != null) Text(optionsCategory?.title.orEmpty(), style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 12.dp)
                 .bringIntoViewRequester(optionsRequester)
@@ -2667,7 +2665,9 @@ internal fun LocalEngineScreen(
         if (optionsCategory != null) OutlinedButton(onClick = ::returnToOptionsIndex,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("All options") }
         ClearableTransferSearchField(value = localOptionsSearch, onValueChange = { localOptionsSearch = it },
-            label = "Search options")
+            // The Options root names itself once (MainActivity's section pane title);
+            // a second "Options" pane here made TalkBack/tests see two panes.
+            label = "Search options", modifier = Modifier.bringIntoViewRequester(optionsRequester))
         optionsLaunchError?.let {
             Text(it, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })
@@ -2742,6 +2742,7 @@ internal fun LocalEngineScreen(
                         LocalOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { androidx.compose.runtime.withFrameNanos { }; restoreRequester.bringIntoView() }
                         LocalOptionsShortcut.EXPORTS -> { showLocalTools = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; exportsRequester.bringIntoView() } }
                         LocalOptionsShortcut.COLLECTION_NAMES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; namesRequester.bringIntoView() }
+                        LocalOptionsShortcut.ORIGINAL_TORRENT_FILES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; originalFilesRequester.bringIntoView() }
                     }
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Column(Modifier.fillMaxWidth()) {
@@ -2985,7 +2986,11 @@ internal fun LocalEngineScreen(
                 withContext(Dispatchers.IO) { OriginalTorrentHandlingStore(context).default }
         }
         defaultHandling?.let { shown ->
-            OriginalTorrentHandlingChoice("Original .torrent file after Add (default)",
+            Text("Add & files", style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold, modifier = Modifier.bringIntoViewRequester(originalFilesRequester)
+                    .semantics { heading() }
+                    .testTag(ChunksSemantics.OPTIONS_ADD_AND_FILES))
+            OriginalTorrentHandlingChoice("Original .torrent file after a verified Add",
                 selected = shown, enabled = true,
                 onSelect = { choice ->
                     scope.launch {
@@ -2995,7 +3000,8 @@ internal fun LocalEngineScreen(
                     }
                 })
         }
-        Text("Applies when you open or share a .torrent file from another app. Each Add can choose differently.",
+        Text("Applies to every .torrent file you open or share from another app. Only the original " +
+            ".torrent document is affected, never downloaded files. Delete always asks again first.",
             style = MaterialTheme.typography.bodySmall)
         LocalZipInterruptedExtractions()
         }
@@ -3029,12 +3035,12 @@ internal fun LocalEngineScreen(
                             if (saved) {
                                 showEnvironmentColours = requested
                                 colourPreferenceNotice = null
-                            } else colourPreferenceNotice = "Could not save Show environment colours."
+                            } else colourPreferenceNotice = "Could not save Show client colours."
                             savingEnvironmentColours = false
                         }
                     }), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Show environment colours", modifier = Modifier.weight(1f))
+                Text("Show client colours", modifier = Modifier.weight(1f))
                 Switch(checked = showEnvironmentColours, onCheckedChange = null)
             }
             colourPreferenceNotice?.let {

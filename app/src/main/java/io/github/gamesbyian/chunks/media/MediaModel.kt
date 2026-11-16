@@ -27,6 +27,16 @@ enum class MediaConfidence { NONE, LOW, MEDIUM, HIGH }
 
 enum class ArtworkRole { SQUARE, POSTER, BANNER, THUMB }
 
+/** Category preferences guide selection; decoded images always retain their actual proportions. */
+val MediaKind.preferredArtworkRatio: Float get() = when (this) {
+    MediaKind.MOVIE, MediaKind.TV_SERIES, MediaKind.TV_SEASON, MediaKind.TV_EPISODE,
+    MediaKind.BOOK, MediaKind.COMIC -> 2f / 3f
+    MediaKind.MAGAZINE -> 3f / 4f
+    else -> 1f
+}
+val MediaKind.preferredArtworkRole: ArtworkRole get() =
+    if (preferredArtworkRatio < 1f) ArtworkRole.POSTER else ArtworkRole.SQUARE
+
 data class ArtworkCandidate(
     val provider: String,
     val url: String,
@@ -81,4 +91,11 @@ enum class MediaAssignmentState(val label: String) {
     CHOSEN_BY_USER("Chosen by you"),
     COULDNT_IDENTIFY("Couldn't identify"),
     CATEGORY_ART_BY_USER("Category art chosen by you")
+}
+
+/** Uniform fit, preserving every source edge even for unusual manual banners or narrow covers. */
+fun artworkBounds(width: Int, height: Int, maxWidth: Float, maxHeight: Float): Pair<Float, Float> {
+    require(width > 0 && height > 0 && maxWidth > 0 && maxHeight > 0)
+    val scale = minOf(maxWidth / width, maxHeight / height)
+    return width * scale to height * scale
 }

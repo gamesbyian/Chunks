@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks.visual
 
+import io.github.gamesbyian.chunks.openConnectionFormIfNeeded
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.hasTestTag
 import io.github.gamesbyian.chunks.ChunksSemantics
@@ -106,7 +107,9 @@ open class ChunksServerRenderTest {
         // Connect explicitly through the local device-first route, with no shortcut
         // into the authenticated server screen.
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         // The Connect list composes lazily; at large text the field starts below the fold.
+        rule.openConnectionFormIfNeeded()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address")
             .performTextInput("http://127.0.0.1:${listening.localPort}/RPC2")

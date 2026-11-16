@@ -95,8 +95,9 @@ class CombinedSharedDetailNavigationTest {
         // the compact floating Back-to-top control from merged #681.
         rule.onNodeWithContentDescription("Details for Instance two download on $connectedName")
             .performScrollTo().performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
-        rule.onNodeWithText("Environment: $connectedName").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
+        // Details names its client by the short compact origin (identity-first Details design).
+        rule.onNodeWithText(compactServerLabel(connectedScope).removePrefix("Server · ")).assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
         rule.onNodeWithText("Instance three download").assertDoesNotExist()
         rule.onNodeWithText("Exact infohash: $hash").assertDoesNotExist()
@@ -104,9 +105,9 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Exact infohash: $hash").performScrollTo().assertExists()
         rule.onNodeWithText("Download rate: 0 B/s").assertExists()
         rule.onNodeWithText("Upload rate: not reported").assertExists()
-        rule.onNodeWithText("Start and stop: Capability has not been checked recently for this exact environment.")
+        rule.onNodeWithText("Start and stop: Capability has not been checked recently for this exact client.")
             .performScrollTo().assertExists()
-        rule.onNodeWithText("Back to transfers").performScrollTo()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS)
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         // Open detail never changed filter, login, selection or underlying engine.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
@@ -123,7 +124,7 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithContentDescription(
             "Details for Instance three download on Server · $savedLabel")
             .performScrollTo().performClick()
-        rule.onNodeWithText("Environment: Server · $savedLabel").assertExists()
+        rule.onNodeWithText(savedLabel).assertExists()
         rule.onNodeWithText("Instance three download").assertExists()
         rule.onNodeWithText("Instance two download").assertDoesNotExist()
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
@@ -131,8 +132,12 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Download rate: not reported").assertExists()
         rule.onNodeWithText("Upload rate: 55 B/s").assertExists()
         // A saved profile is read-only here: no switch to signed-in server list.
-        rule.onNodeWithText("Open Server · $savedLabel transfers").assertDoesNotExist()
-        rule.onNodeWithText("Capabilities in this environment").performScrollTo().assertExists()
+        // Any owning-list action, whatever the (now short) client label: none for saved-only.
+        rule.onNode(androidx.compose.ui.test.SemanticsMatcher("Open <client> transfers") { node ->
+            node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+                .orEmpty().any { it.text.startsWith("Open ") && it.text.endsWith(" transfers") }
+        }).assertDoesNotExist()
+        rule.onNodeWithText("Capabilities in this client").performScrollTo().assertExists()
         assertEquals("One automatic read-only saved-list fetch, no replay", 1, requests.get())
         assertTrue("Details never mutate, probe or start the local device engine", commands.isEmpty())
         assertNull(LocalEngineHolder.current())
@@ -155,11 +160,11 @@ class CombinedSharedDetailNavigationTest {
         rule.onNodeWithText("Observation: The last transfer observation is out of date.", substring = true)
             .assertExists()
         rule.onNodeWithText("Instance two download").assertExists()
-        rule.onNodeWithText("Back to transfers").performScrollTo()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS)
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
-            hasText("Environment status", substring = true))
-        rule.onNodeWithText("Environment status", substring = true).performClick()
+            hasText("Client status", substring = true))
+        rule.onNodeWithText("Client status", substring = true).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText(origin + ": Out of date, showing last list · 1 transfers"))
         rule.onNodeWithText(origin + ": Out of date, showing last list · 1 transfers").assertExists()

@@ -1,5 +1,7 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.hasTestTag
 import android.content.ContentValues
 import androidx.compose.ui.test.onNodeWithTag
 import android.content.Context
@@ -313,7 +315,9 @@ class ChunksMainActivityAtlasTest {
         // A fresh installation now opens the useful local Transfers inventory.
         // Server connection is still one deliberate Back/Connect route away.
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         // The Connect list composes lazily; at large text the field starts below the fold.
+        rule.openConnectionFormIfNeeded()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(endpoint)
         // Close the still-focused Android keyboard first. Otherwise the IME can
@@ -362,7 +366,7 @@ class ChunksMainActivityAtlasTest {
             rule.waitUntil(60_000) {
                 rule.onAllNodesWithText("View transfers").fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
+            rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performScrollTo().performClick()
             // Wait for the populated rows themselves, not a summary line whose lazy
             // position depends on how much sits above the list.
             rule.waitUntil(30_000) {
@@ -388,7 +392,7 @@ class ChunksMainActivityAtlasTest {
         save("app-transfers-populated-real-compose")
         // Real combined navigation keeps the signed-in server identity, and
         // the four root destinations never imply an Add or a server mutation.
-        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_HEADING).assertExists()
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SCREEN).assertExists()
         // The complete server inventory (3 transfers) is reported in the live total.
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("3 transfers", substring = true))
         rule.onNodeWithText("3 transfers", substring = true).assertExists()
@@ -399,9 +403,9 @@ class ChunksMainActivityAtlasTest {
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(serverRow)
         rule.onNode(serverRow).performClick()
         rule.waitUntil(30_000) {
-            rule.onAllNodesWithText("Transfer details").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodesWithTag(ChunksSemantics.DETAILS_SCREEN).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Back to transfers").performScrollTo().performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("3 transfers", substring = true))
         rule.onNodeWithText("3 transfers", substring = true).assertExists()
 
@@ -596,9 +600,10 @@ class ChunksMainActivityAtlasTest {
         save("app-organize-populated-real-compose")
 
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         // Canonical Connections identifies the verified server ("Connected · …"); the legacy
         // "Server settings" panel is not part of that screen (#1514/#1515).
-        rule.waitUntil(15_000) { rule.onAllNodesWithText("Connected ·", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("Connected", substring = true).fetchSemanticsNodes().isNotEmpty() }
         save("app-server-populated-real-compose")
 
         // Transfers now leads through the read-only combined inventory;
@@ -608,7 +613,11 @@ class ChunksMainActivityAtlasTest {
             "Details for A deliberately very long test filename", substring = true)
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(returnRow)
         rule.onNode(returnRow).performClick()
-        rule.onNodeWithText("Open Server ·", substring = true).performScrollTo().performClick()
+        // Details' owning-list action names the short client origin (identity-first Details).
+        rule.onNode(androidx.compose.ui.test.SemanticsMatcher("Open <client> transfers") { node ->
+            node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+                .orEmpty().any { it.text.startsWith("Open ") && it.text.endsWith(" transfers") }
+        }).performScrollTo().performClick()
         // The owner link scopes the SAME canonical browser. Reopen that exact
         // row's full Details and its canonical file controls, without a legacy list.
         rule.onNodeWithText("Search names or hashes").assertExists()

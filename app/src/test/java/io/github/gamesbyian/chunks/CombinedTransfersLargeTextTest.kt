@@ -128,13 +128,13 @@ class CombinedTransfersLargeTextTest {
         clickFilters()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Change sort & grouping", substring = true))
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Group by environment"))
-        val grouping = rule.onNodeWithContentDescription("Group by environment")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Group by client"))
+        val grouping = rule.onNodeWithContentDescription("Group by client")
         val bounds = grouping.getUnclippedBoundsInRoot()
         assertTrue("Group toggle retains its minimum touch target", bounds.bottom - bounds.top >= 48.dp)
 
         // The old chooser must not remain below the transfer inventory.
-        rule.onNodeWithText("Environment colours…").assertDoesNotExist()
+        rule.onNodeWithText("Client colours…").assertDoesNotExist()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText("Device transfer controls"))
         val recovery = rule.onNodeWithText("Device transfer controls")

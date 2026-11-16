@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -78,7 +79,7 @@ class CombinedManyServersLargeTextTest {
         val detail = "Details for Public completed archive on " + serverEnvironmentLabel(activeScope)
         list.performScrollToNode(androidx.compose.ui.test.hasContentDescription(detail))
         rule.onNodeWithContentDescription(detail).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         rule.onNodeWithText("Exact infohash: $hash").assertDoesNotExist()
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
         rule.onNodeWithText("Exact infohash: $hash").performScrollTo().assertExists()

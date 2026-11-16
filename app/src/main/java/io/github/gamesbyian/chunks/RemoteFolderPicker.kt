@@ -30,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -386,22 +387,31 @@ internal fun RemoteFolderPicker(
                                 ) { Text(if (creating) "Creating…" else "Create folder") }
                             }
                         }
-                    } else if (visibleCreateCapability is RemoteFolderCreateCapability.Unavailable) {
-                        val unavailable = visibleCreateCapability
-                        val explanation = when (unavailable.reason) {
-                            RemoteFolderCreateCapability.Reason.NOT_INSTALLED ->
-                                "The server's File Manager folder-creation endpoint is unavailable."
-                            RemoteFolderCreateCapability.Reason.ACCESS_DENIED ->
-                                "The server denied access to File Manager's folder controls."
-                            RemoteFolderCreateCapability.Reason.ROOT_MISMATCH ->
-                                "File Manager cannot verify the chosen download tree beneath its permitted root."
-                            RemoteFolderCreateCapability.Reason.INCOMPLETE_PARENT ->
-                                "The server's directory services disagree here. New folder is disabled in this directory."
-                            RemoteFolderCreateCapability.Reason.CANNOT_VERIFY ->
-                                "The server's folder-creation capability could not be verified."
+                    } else if (currentPage != null && !manualMode) {
+                        // #1786: New folder stays discoverable. In an ineligible (or not yet
+                        // checked) folder it is a disabled control with its reason attached,
+                        // never a hidden feature; creation authority is unchanged.
+                        val reason = when (val unavailable = visibleCreateCapability) {
+                            is RemoteFolderCreateCapability.Unavailable ->
+                                remoteFolderCreateUnavailableText(unavailable.reason)
+                            else -> if (observedRoot == null)
+                                "New folder needs the server's verified download folder, which isn't known yet."
+                            else "Checking whether this folder allows a new folder…"
                         }
-                        Text(explanation + " Browsing and manual paths remain available.",
+                        TextButton(onClick = {}, enabled = false,
+                            modifier = Modifier.heightIn(min = 48.dp).testTag(ChunksSemantics.REMOTE_FOLDER_NEW_DISABLED)
+                                .semantics { contentDescription = "New folder, unavailable here. $reason" }
+                        ) { Text("New folder") }
+                        Text(reason + (if (visibleCreateCapability is RemoteFolderCreateCapability.Unavailable)
+                            " Browsing and manual paths remain available." else ""),
                             style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (currentPage != null && !manualMode) {
+                        // Rename is deliberately not offered: no typed, tenant-safe rename with
+                        // independent readback is verified, and live transfers may use the folder.
+                        Text("Renaming server folders isn't available in Chunks.",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.testTag(ChunksSemantics.REMOTE_FOLDER_RENAME_UNAVAILABLE))
                     }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -439,4 +449,18 @@ internal fun RemoteFolderPicker(
             }
         }
     }
+}
+
+/** Why New folder is disabled in the current directory; creation stays capability-gated. */
+internal fun remoteFolderCreateUnavailableText(reason: RemoteFolderCreateCapability.Reason): String = when (reason) {
+    RemoteFolderCreateCapability.Reason.NOT_INSTALLED ->
+        "The server's File Manager folder-creation endpoint is unavailable."
+    RemoteFolderCreateCapability.Reason.ACCESS_DENIED ->
+        "The server denied access to File Manager's folder controls."
+    RemoteFolderCreateCapability.Reason.ROOT_MISMATCH ->
+        "File Manager cannot verify the chosen download tree beneath its permitted root."
+    RemoteFolderCreateCapability.Reason.INCOMPLETE_PARENT ->
+        "The server's directory services disagree here. New folder is disabled in this directory; open a smaller subfolder to create one there."
+    RemoteFolderCreateCapability.Reason.CANNOT_VERIFY ->
+        "The server's folder-creation capability could not be verified."
 }

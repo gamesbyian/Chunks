@@ -61,7 +61,7 @@ class CombinedDetailIdentityInstrumentedTest {
         val hue = EnvironmentHue.ORANGE
         EnvironmentColourStore(rule.activity).choose(id, hue)
         val path = "/home/reader/downloads/a-very-long-unbroken-folder-name-with-numbered-instance-two/complete"
-        val row = RemoteTransfer("c".repeat(40), "A very long transfer title with a clear exact environment", 100, 50,
+        val row = RemoteTransfer("c".repeat(40), "A very long transfer title with a clear exact client", 100, 50,
             false, path, null, 0)
         rule.setContent {
             val density = LocalDensity.current
@@ -100,7 +100,7 @@ class CombinedDetailIdentityInstrumentedTest {
         title.performSemanticsAction(SemanticsActions.GetTextLayoutResult) { it(titleLayouts) }
         assertTrue(titleLayouts.isNotEmpty())
         assertFalse("Long title must remain fully readable in details", titleLayouts.single().hasVisualOverflow)
-        rule.onNodeWithText("Environment: ${serverEnvironmentLabel(scope)}").performScrollTo().assertExists()
+        rule.onNodeWithText(compactServerLabel(scope).removePrefix("Server · ")).performScrollTo().assertExists()
         // Palette preferences are read off-main; require the actual rendered result.
         fun colourPixels(): Int {
             val pixels = rule.onNodeWithTag("combined-detail-viewport").captureToImage().toPixelMap()
@@ -112,7 +112,7 @@ class CombinedDetailIdentityInstrumentedTest {
         }
         runCatching { rule.waitUntil(5_000) { colourPixels() >= 32 } }
         val matching = colourPixels()
-        assertTrue("The chosen environment colour must survive opening details", matching >= 32)
+        assertTrue("The chosen client colour must survive opening details", matching >= 32)
         save("combined-detail-identity-$width-200pct", rule.onNodeWithTag("combined-detail-viewport").captureToImage().asAndroidBitmap())
         val place = rule.onNodeWithText("Save folder reported by engine: $path").performScrollTo()
         place.assertExists()
@@ -123,7 +123,7 @@ class CombinedDetailIdentityInstrumentedTest {
         rule.onNodeWithText("Download rate: not reported").performScrollTo().assertExists()
         rule.onNodeWithText("Upload rate: 0 B/s").performScrollTo().assertExists()
         save("combined-detail-place-$width-200pct", rule.onNodeWithTag("combined-detail-viewport").captureToImage().asAndroidBitmap())
-        rule.onNodeWithText("Back to transfers").performScrollTo().assertHeightIsAtLeast(48.dp).performClick()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).assertHeightIsAtLeast(48.dp).performClick()
     }
 
     private fun save(name: String, image: Bitmap) {

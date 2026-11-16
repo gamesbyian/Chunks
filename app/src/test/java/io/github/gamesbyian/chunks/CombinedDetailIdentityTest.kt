@@ -43,7 +43,7 @@ class CombinedDetailIdentityTest {
         val id = requireNotNull(EnvironmentSnapshots.serverIdOfAliasScope(scope))
         val hue = EnvironmentHue.ORANGE
         EnvironmentColourStore(context).choose(id, hue)
-        val row = RemoteTransfer("c".repeat(40), "A transfer with its own environment identity", 100, 50,
+        val row = RemoteTransfer("c".repeat(40), "A transfer with its own client identity", 100, 50,
             false, "/downloads", 0, 0)
         rule.setContent {
             val density = LocalDensity.current
@@ -62,7 +62,7 @@ class CombinedDetailIdentityTest {
             }.isSuccess
         }
         rule.onNodeWithContentDescription(target).performClick()
-        rule.onNodeWithText("Environment: ${serverEnvironmentLabel(scope)}").performScrollTo().assertExists()
+        rule.onNodeWithText(compactServerLabel(scope).removePrefix("Server · ")).performScrollTo().assertExists()
         // Palette preferences are read off-main; require the actual rendered result.
         fun colourPixels(): Int {
             val pixels = rule.onRoot().captureToImage().toPixelMap()

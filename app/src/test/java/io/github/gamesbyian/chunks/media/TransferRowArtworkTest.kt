@@ -211,8 +211,9 @@ class TransferRowArtworkTest {
             .assertWidthIsEqualTo(40.dp)
         rule.onRoot().captureRoboImage("build/chunks-visual/media-row-local-320dp-200pct.png")
         rule.onNodeWithContentDescription("More details for $name on this device").performScrollTo().performClick()
-        rule.onNodeWithText("Artwork & media information").performScrollTo().assertExists()
-        rule.onNodeWithText("Change identification or artwork…").performScrollTo().performClick()
+        rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
+        rule.onNodeWithText("Choose artwork").performScrollTo().assertExists()
+        rule.onNodeWithText("Edit identification").performScrollTo().performClick()
         rule.onNodeWithText("Identify this transfer").performScrollTo().assertExists()
         rule.onNodeWithText("Reset to automatic").performScrollTo().assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/media-identify-local-320dp-200pct.png")
@@ -293,7 +294,7 @@ class TransferRowArtworkTest {
             }
         }
         rule.onNodeWithContentDescription("More details for $album on this device").performScrollTo().performClick()
-        rule.onNodeWithText("Change identification or artwork…").performScrollTo().performClick()
+        rule.onNodeWithText("Edit identification").performScrollTo().performClick()
         rule.onNodeWithText("Use cover.jpg from this transfer").performScrollTo().performClick()
         rule.waitUntil(5_000) {
             rule.onAllNodes(androidx.compose.ui.test.hasContentDescription("Your artwork", substring = true))

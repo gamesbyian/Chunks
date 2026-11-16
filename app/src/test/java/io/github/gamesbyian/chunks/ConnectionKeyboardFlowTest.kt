@@ -59,6 +59,7 @@ class ConnectionScreenImeTest {
             rule.onAllNodesWithContentDescription("Connections").fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         rule.waitForIdle()
         rule.onNode(hasSetTextAction() and hasText("Seedbox hostname, ruTorrent URL or RPC address"))
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.ImeAction, ImeAction.Next))

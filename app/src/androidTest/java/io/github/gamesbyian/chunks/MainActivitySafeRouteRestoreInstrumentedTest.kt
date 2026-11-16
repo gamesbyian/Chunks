@@ -43,12 +43,12 @@ class MainActivitySafeRouteRestoreInstrumentedTest {
         rule.onNodeWithContentDescription("Connections").performClick()
         rule.onNodeWithContentDescription("Connections").assertIsSelected()
         rule.onNodeWithText("+ Add").assertIsNotSelected()
-        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
+        rule.onNodeWithText("Connect to a remote client").assertExists()
         rule.activityRule.scenario.recreate()
         // Connections is a restorable non-mutating root, never a legacy local
         // list or an implicitly authenticated new server.
-        rule.onNodeWithText("Connect to another computer or server (optional)").assertExists()
-        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
+        rule.onNodeWithText("Connect to a remote client").assertExists()
+        rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertDoesNotExist()
         footerTransfers().performClick()
         footerTransfers().assertIsSelected()
         rule.onNodeWithText("+ Add").assertIsNotSelected()

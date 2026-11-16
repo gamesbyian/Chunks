@@ -41,7 +41,10 @@ class OptionsCategoriesNavigationTest {
                 rule.onNodeWithText("All options").performScrollTo().performClick()
             }
         }
-        rule.onNode(hasText("Options") and SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).performScrollTo()
+        // The redundant visible "Options" heading is gone (root-header design, 2026-11-15);
+        // the index top is its search field, and the root keeps its "Options" pane title.
+        rule.onNode(hasSetTextAction() and hasText("Search options")).performScrollTo()
+        rule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.PaneTitle, "Options")).assertExists()
         rule.activity.window.decorView.invalidate()
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/chunks-visual/options-filled-index.png")

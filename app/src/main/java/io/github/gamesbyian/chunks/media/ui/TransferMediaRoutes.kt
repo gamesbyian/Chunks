@@ -36,6 +36,7 @@ import kotlinx.coroutines.withContext
 @Composable
 fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, files: List<MediaFileHint> = emptyList(),
                                modifier: Modifier = Modifier,
+                               artworkOnly: Boolean = false,
                                /** Reads a completed *local* file from this transfer (bounded); null when unavailable (e.g. remote). */
                                readLocalFile: ((MediaFileHint) -> ByteArray?)? = null,
                                /** Opens a completed *local* file for bounded random-access tag reads; null when unavailable. */
@@ -63,7 +64,7 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
     var alternativesLoading by remember(key, state.match?.ref) { mutableStateOf(false) }
     var posters by remember(key, state.match?.ref) { mutableStateOf<List<io.github.gamesbyian.chunks.media.TransferMediaController.ArtworkAlternative>?>(null) }
     var postersLoading by remember(key, state.match?.ref) { mutableStateOf(false) }
-    MediaIdentifyPanel(state, settings,
+    MediaIdentifyPanel(state, settings, artworkOnly = artworkOnly,
         onEnableLookup = {
             scope.launch {
                 settings = withContext(Dispatchers.IO) {
@@ -111,11 +112,11 @@ fun TransferMediaIdentifyRoute(key: MediaTransferKey, originalName: String, file
 /** Detail header block wired to [ChunksMedia]; loads the poster role for the header on demand. */
 @Composable
 fun TransferMediaSummaryRoute(key: MediaTransferKey, originalName: String, files: List<MediaFileHint> = emptyList(),
-                              onChange: () -> Unit, modifier: Modifier = Modifier) {
+                              onChange: () -> Unit, modifier: Modifier = Modifier, showChangeAction: Boolean = true) {
     val context = LocalContext.current
     val controller = LocalTransferMediaController.current ?: remember(context) { ChunksMedia.get(context).controller }
     val state by io.github.gamesbyian.chunks.media.rememberTransferMedia(key, originalName, files, controller)
-    MediaMetadataSummary(state, onChange, modifier, onRequestPoster = { controller.requestPoster(key) })
+    MediaMetadataSummary(state, onChange, modifier, showChangeAction = showChangeAction, onRequestPoster = { controller.requestPoster(key) })
 }
 
 /** Informed, revocable consent text shown before the first online lookup. */

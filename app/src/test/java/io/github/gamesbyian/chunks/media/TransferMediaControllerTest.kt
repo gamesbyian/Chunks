@@ -70,7 +70,7 @@ class TransferMediaControllerTest {
         val s = flow.value
         assertEquals(MediaAssignmentState.AUTOMATIC, s.state)
         assertEquals("Babylon 5", s.match!!.title); assertEquals("Soul Mates", s.match!!.episodeTitle)
-        assertNotNull(s.artwork); assertEquals(384, s.artwork!!.width)
+        assertNotNull(s.artwork); assertTrue(s.artwork!!.height >= s.artwork!!.width)
         // Same hash on another server is an independent transfer: no assignment leaks across.
         assertEquals(MediaAssignmentState.NOT_LOOKED_UP, c.observe(server, name).value.state)
         // New process: assignment and artwork restored from disk without any network.
@@ -380,7 +380,7 @@ class TransferMediaControllerTest {
         val first = flow.value.match!!
         c.choose(local, first)
         val art = ArtworkDiskCache(File(dir, "art"))
-        val k = io.github.gamesbyian.chunks.media.artwork.ArtworkBytesPolicy.cacheKey(first.artwork.first().url, ArtworkRole.SQUARE, 384)
+        val k = io.github.gamesbyian.chunks.media.artwork.ArtworkBytesPolicy.cacheKey("natural|" + flow.value.artworkSource!!.url, first.kind.preferredArtworkRole, 720)
         assertTrue(art.isPinned(k))
         c.useCategoryArt(local, MediaKind.TV_SERIES)
         assertTrue(!ArtworkDiskCache(File(dir, "art")).isPinned(k))
@@ -405,7 +405,13 @@ class TransferMediaControllerTest {
         c.lookup(local)
         val before = http.requests.size
         c.requestPoster(local)
-        assertNull("A Details render must not bypass the global collection opt-out", flow.value.poster)
+        // Natural-ratio rows (2026-11-15 artwork design) display the same POSTER-role image
+        // Details uses, so Details may reuse that already-held bitmap; it may never collect
+        // a new one while automatic collection is off.
+        flow.value.poster?.let { poster ->
+            assertTrue("A Details render must not bypass the global collection opt-out",
+                poster === flow.value.artwork)
+        }
         assertEquals("No poster HTTP after collection is disabled", before, http.requests.size)
     }
 
@@ -650,7 +656,7 @@ class TransferMediaControllerTest {
             assertTrue(cleared)
             assertTrue(assignments.all().isEmpty())
             assertFalse("A late image response after Clear may not recreate cached derivatives",
-                artworkRepository.hasCachedSquare(match.artwork))
+                artworkRepository.hasCachedSquare(match.artwork, match.kind.preferredArtworkRole))
         }
 
     @Test fun savedLocalRulesApplyToAuthorizedUnrenderedTransferWithoutOnlineConsent() =
@@ -690,7 +696,7 @@ class TransferMediaControllerTest {
             assertEquals(MediaAssignmentState.CHOSEN_BY_USER, assignments.get(server)?.state)
             assertEquals("475", assignments.get(server)?.match?.ref?.externalId)
             assertTrue("Offline local rule matching never starts a provider request", wire.requests.isEmpty())
-            assertNull("Another environment with the same hash is independent", assignments.get(local))
+            assertNull("Another client with the same hash is independent", assignments.get(local))
         }
 
     @Test fun undatedVerifiedTvRecordCanAcquireOwnPosterButNeverBorrowDifferentRecord() =
@@ -836,7 +842,7 @@ class TransferMediaControllerTest {
             c.enrichInventory(listOf(server to name)) { permitted.get() }
             assertEquals("One authorized request is attempted", 1, wire.requests.size)
             assertEquals("The revoked session must not cache the received bytes",
-                false, art.hasCachedSquare(original.artwork))
+                false, art.hasCachedSquare(original.artwork, original.kind.preferredArtworkRole))
         }
 
     @Test fun offscreenArtlessMovieRetriesFailedPosterProviderAfterShortCooldownWithoutChangingIdentity() =
@@ -896,7 +902,7 @@ class TransferMediaControllerTest {
             assertTrue("Offscreen artwork should be cached for Details/list after restart",
                 ArtworkRepository(wire, ArtworkDiskCache(File(dir, "artless-retry")),
                     hostPolicyFor = { id -> providers.firstOrNull { it.info.id == id }?.info?.artworkHostPolicy })
-                    .hasCachedSquare(recovered.match!!.artwork))
+                    .hasCachedSquare(recovered.match!!.artwork, recovered.match!!.kind.preferredArtworkRole))
             assertTrue(wire.requests.none { it.contains("BluRay") || it.contains("1080p") ||
                 it.contains(server.value) })
         }
@@ -1535,14 +1541,14 @@ class TransferMediaControllerTest {
         assertTrue(disableOnce.not())
         assertEquals(1, wire.requests.size)
         assertFalse("An in-flight response must not repopulate art after provider revocation",
-            artworkRepo.hasCachedSquare(match.artwork))
+            artworkRepo.hasCachedSquare(match.artwork, match.kind.preferredArtworkRole))
         assertNull(visible.value.artwork)
         assertEquals(MediaAssignmentState.AUTOMATIC, saved.get(local)?.state)
 
         settings = settings.copy(disabledProviders = emptySet())
         controller.onProviderConfigurationChanged()
         assertTrue("Re-enabling the provider may fetch the still-verified original poster",
-            artworkRepo.hasCachedSquare(match.artwork))
+            artworkRepo.hasCachedSquare(match.artwork, match.kind.preferredArtworkRole))
         assertNotNull(visible.value.artwork)
         assertEquals(2, wire.requests.size)
 
@@ -1550,7 +1556,7 @@ class TransferMediaControllerTest {
         controller.onProviderConfigurationChanged()
         val offline = ArtworkRepository(FakeMediaHttp(), disk, hostPolicyFor = { null })
         assertTrue("Revoking the provider must not destroy already cached legitimate art",
-            offline.load(match.artwork, ArtworkRole.SQUARE, allowNetwork = false)
+            offline.load(match.artwork, match.kind.preferredArtworkRole, allowNetwork = false)
                 is io.github.gamesbyian.chunks.media.artwork.ArtworkLoadResult.Loaded)
     }
 

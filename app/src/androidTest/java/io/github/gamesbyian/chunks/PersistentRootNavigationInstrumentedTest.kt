@@ -79,7 +79,7 @@ class PersistentRootNavigationInstrumentedTest {
         // An existing remembered remote may legitimately make Transfers a
         // Combined inventory. Neither case chooses an Add target.
         transfersButton().performClick()
-        checkDestination("Transfers", arrayOf("Transfers on this device", "All environments"), bottom)
+        checkDestination("Transfers", arrayOf("Transfers on this device", "All clients"), bottom)
 
         addButton().performClick()
         checkDestination("Add", arrayOf("Add on this device", "Add"), bottom)
@@ -93,7 +93,7 @@ class PersistentRootNavigationInstrumentedTest {
         // The same footer must still work after detours, with no Back presses.
         transfersButton().performClick()
         checkDestination("Transfers after Connections",
-            arrayOf("Transfers on this device", "All environments"), bottom)
+            arrayOf("Transfers on this device", "All clients"), bottom)
 
         optionsButton().performClick()
         checkDestination("Options after Transfers", arrayOf("Options"), bottom)

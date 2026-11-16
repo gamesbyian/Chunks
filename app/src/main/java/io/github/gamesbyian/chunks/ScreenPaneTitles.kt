@@ -14,7 +14,7 @@ internal object ScreenPaneTitles {
             "LOCAL" -> "Transfers on this device"
             "LOCAL_ADD" -> "Add on this device"
             "OPTIONS" -> "Options"
-            "COMBINED" -> "All environments"
+            "COMBINED" -> "All clients"
             "TRANSFERS" -> if (connectedServerLabel == null) "Connect to a server"
                 else "Transfers on $connectedServerLabel"
             "ADD" -> if (connectedServerLabel == null) "Add torrent"

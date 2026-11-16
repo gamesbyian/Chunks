@@ -22,10 +22,16 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <!-- #1786: one Chunks task. With singleTop, Open With/Share from another app
+             created a second MainActivity inside the *source app's* task; its RAM-only
+             Add handoff vanished with that task and the launcher icon showed a different
+             instance with no draft. singleTask routes every VIEW/SEND to the one Chunks
+             instance (onNewIntent when it exists), so the review is what the person sees
+             and what Recents/launcher return to. Nothing is submitted automatically. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

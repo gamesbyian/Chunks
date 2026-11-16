@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -50,6 +51,8 @@ internal fun UnifiedTransferDetailPanel(
     detail: UnifiedTransferDetail,
     environmentLabel: String,
     onBack: () -> Unit,
+    /** Exact client identity (address/instance) for technical disclosure; the header stays short. */
+    exactEnvironmentLabel: String? = null,
     onOpenOwningList: (() -> Unit)? = null,
     /** Select this exact key for the existing confirmed lifecycle review; never dispatch on tap. */
     onReviewStartStop: (() -> Unit)? = null,
@@ -71,7 +74,8 @@ internal fun UnifiedTransferDetailPanel(
     /** Local-device-only operations for this exact job (e.g. foreign partial recovery). */
     localOperations: (@Composable () -> Unit)? = null,
     /** Display-name (Chunks alias) editor for an authorized owner; never renames payload. */
-    rename: (@Composable (UnifiedTransferObservation) -> Unit)? = null
+    rename: (@Composable (UnifiedTransferObservation) -> Unit)? = null,
+    collections: (@Composable (UnifiedTransferObservation) -> Unit)? = null
 ) {
     val hidden = detail.readState == TransferDetailReadState.LOCKED
     // Presentation state only. Never retain a mutation authority or stale command review.
@@ -83,38 +87,31 @@ internal fun UnifiedTransferDetailPanel(
         // dedicated Details is a distinct screen-reader window. Never put
         // a file name, passkey or remote account in this route announcement.
         modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp)
-            .semantics { paneTitle = "Transfer details" },
+            .testTag(ChunksSemantics.DETAILS_SCREEN).semantics { paneTitle = "Transfer details" },
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Back to transfers")
-        }
-        Text("Transfer details", style = MaterialTheme.typography.headlineSmall,
-            modifier = Modifier.semantics { heading() })
         if (!hidden) detail.observation?.let { transfer ->
-            Text(transfer.displayName, style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.semantics { heading() })
-            Text((if (detail.readState == TransferDetailReadState.CURRENT) "" else "Last known: ") +
-                transferAtAGlance(transfer), style = MaterialTheme.typography.titleSmall)
-        }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            EnvironmentDot(environmentHue)
-            // Running text, not a heading: the readable sans per ChunksTypography.
-            Text("Environment: " + environmentLabel, style = MaterialTheme.typography.titleSmall,
-                modifier = Modifier.weight(1f))
-        }
-        if (!hidden) detail.observation?.let { transfer ->
-            if (transfer.displayName != transfer.originalName)
-                Text("Original torrent name: " + transfer.originalName,
-                    style = MaterialTheme.typography.bodySmall)
-            rename?.invoke(transfer)
-        }
-        if (!hidden) detail.observation?.let { TransferDetailFacts(it) }
-        if (!hidden) detail.observation?.let { transfer ->
-            TransferMediaDetailSection(transfer)
+            TransferMediaDetailSection(transfer, identity = {
+                Text(transfer.displayName, style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.semantics { heading() })
+                if (transfer.displayName != transfer.originalName)
+                    Text("Original torrent name: " + transfer.originalName,
+                        style = MaterialTheme.typography.bodySmall)
+                Text((if (detail.readState == TransferDetailReadState.CURRENT) "" else "Last known: ") +
+                    transferAtAGlance(transfer), style = MaterialTheme.typography.titleSmall)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    EnvironmentDot(environmentHue)
+                    Text(environmentLabel, style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.weight(1f))
+                }
+                rename?.invoke(transfer)
+            })
+            collections?.invoke(transfer)
+            TransferDetailFacts(transfer)
             similar?.invoke(transfer)
         }
+        if (hidden) Text(environmentLabel, style = MaterialTheme.typography.titleSmall)
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
         // Ordinary actions two across (shared ResponsiveActionGroup); environment tools follow.
@@ -141,7 +138,7 @@ internal fun UnifiedTransferDetailPanel(
         if (!hidden) exactServerOperations?.invoke()
         if (!hidden) localOperations?.invoke()
         if (!hidden && onOpenOwningList == null && detail.observation != null) {
-            Text("This transfer is listed here for reference. Sign in to its own environment " +
+            Text("This transfer is listed here for reference. Sign in to its own client " +
                 "to change it.", style = MaterialTheme.typography.bodyMedium)
         }
         if (!hidden) {
@@ -149,14 +146,14 @@ internal fun UnifiedTransferDetailPanel(
                 if (detail.readState != TransferDetailReadState.CURRENT) {
                     Text(
                         "Last-known transfer facts only. Status, progress and rates may have changed. " +
-                            "Refresh the owning environment before reviewing an action.",
+                            "Refresh the owning client before reviewing an action.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             if (detail.observation == null) {
-                Text("No currently displayable details from this exact environment.",
+                Text("No currently displayable details from this exact client.",
                     style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -218,12 +215,17 @@ internal fun UnifiedTransferDetailPanel(
         if (!hidden && technicalDetailsOpen.value) {
             Text("Exact infohash: " + detail.key.infoHash,
                 style = MaterialTheme.typography.bodySmall)
+            // Two instances on one host share a short name only if unique; technical
+            // details still prove exactly which client this observation belongs to.
+            exactEnvironmentLabel?.takeIf { it != environmentLabel }?.let {
+                Text("Exact client: $it", style = MaterialTheme.typography.bodySmall)
+            }
             detail.observedAtEpochMillis?.let { whenObserved ->
                 Text("Last observed: " + DateFormat.getDateTimeInstance(
                     DateFormat.MEDIUM, DateFormat.SHORT, Locale.getDefault()
                 ).format(Date(whenObserved)), style = MaterialTheme.typography.bodySmall)
             }
-            Text("Capabilities in this environment", style = MaterialTheme.typography.titleMedium,
+            Text("Capabilities in this client", style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
             Text("Read-only evidence. An advertised or built-in capability does not prove a command succeeded.",
                 style = MaterialTheme.typography.bodySmall)

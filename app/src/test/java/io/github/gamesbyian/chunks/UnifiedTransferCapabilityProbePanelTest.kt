@@ -92,7 +92,7 @@ class UnifiedTransferCapabilityProbePanelTest {
         // The panel never creates capability successes. Owning adapter must
         // provide a new observed, exact-profile snapshot after its own probe.
         rule.onNodeWithText(
-            "Start and stop: Capability has not been checked recently for this exact environment.")
+            "Start and stop: Capability has not been checked recently for this exact client.")
             .performScrollTo().assertExists()
         assertEquals(1, userTaps)
     }
@@ -130,7 +130,7 @@ class UnifiedTransferCapabilityProbePanelTest {
         }
         rule.onNodeWithText("Check server capabilities").assertDoesNotExist()
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
-        rule.onNodeWithText("Capabilities in this environment").performScrollTo().assertExists()
+        rule.onNodeWithText("Capabilities in this client").performScrollTo().assertExists()
     }
 
     @Test fun lockedEnvironmentHidesProbeAndPrivateTransferFacts() {

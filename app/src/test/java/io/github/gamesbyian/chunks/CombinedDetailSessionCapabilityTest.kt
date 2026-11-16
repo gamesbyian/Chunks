@@ -88,7 +88,8 @@ class CombinedDetailSessionCapabilityTest {
             .performScrollTo().performClick()
         // Explicit disclosure is presentation-only: it must never probe a session.
         rule.onNodeWithText("Show technical details").performScrollTo().performClick()
-        val check = "Check capabilities for $label"
+        // Inside Details the client is named by its short compact origin (2026-11-15 design).
+        val check = "Check capabilities for " + compactServerLabel(aliasScope).removePrefix("Server · ")
         rule.onNodeWithContentDescription(check).performScrollTo().performClick()
         rule.waitUntil(5_000) { firstStarted.get() == 1 }
         rule.onNodeWithText("Checking capabilities…").assertExists()
@@ -105,7 +106,7 @@ class CombinedDetailSessionCapabilityTest {
         rule.waitUntil(5_000) { firstResponded.get() }
         rule.waitForIdle()
         rule.onNodeWithText(
-            "Start and stop: Capability has not been checked recently for this exact environment.")
+            "Start and stop: Capability has not been checked recently for this exact client.")
             .performScrollTo().assertExists()
         rule.onNodeWithText("Not advertised by rTorrent old-session.", substring = true)
             .assertDoesNotExist()

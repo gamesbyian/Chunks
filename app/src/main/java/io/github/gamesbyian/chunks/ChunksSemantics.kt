@@ -25,6 +25,8 @@ internal object ChunksSemantics {
     const val FOOTER_OPTIONS = "chunks.footer.options"
 
     const val CONNECTION_ADD = "chunks.connection.add"
+    /** The one verified session's "View transfers" roster action (its name says which client). */
+    const val CONNECTION_VIEW_TRANSFERS = "chunks.connection.view_transfers"
     /** Submit a reviewed connection; stable across keyboard and roster layout. */
     const val CONNECTION_CONNECT = "chunks.connection.connect"
     const val CONNECTION_NAME = "chunks.connection.name"
@@ -36,6 +38,11 @@ internal object ChunksSemantics {
     const val ADD_REMOTE_OPERATION_STATUS = "chunks.add.remote.operationStatus"
     const val ADD_FOREIGN_PARTIAL = "chunks.add.foreign_partial"
     const val ADD_ORIGINAL_HANDLING = "chunks.add.original_handling"
+    /** Read-only effective policy line on Add; the choice itself lives in Options. */
+    const val ADD_ORIGINAL_HANDLING_SUMMARY = "chunks.add.original_handling.summary"
+    const val OPTIONS_ADD_AND_FILES = "chunks.options.add_and_files"
+    const val REMOTE_FOLDER_NEW_DISABLED = "chunks.remote_folder.new.disabled"
+    const val REMOTE_FOLDER_RENAME_UNAVAILABLE = "chunks.remote_folder.rename.unavailable"
     const val ADD_FILE_CHOICE = "chunks.add.file_choice"
     const val ADD_ORIGINAL_DELETE_PROMPT = "chunks.add.original_delete.prompt"
     const val ADD_ORIGINAL_DELETE_CONFIRM = "chunks.add.original_delete.confirm"
@@ -72,8 +79,9 @@ internal object ChunksSemantics {
     /** Observable pending/settled state for the existing exact-server removal control. */
     const val REMOTE_REMOVAL_STATUS = "chunks.remote.removal.status"
 
-    /** The canonical Transfers list title. It also hosts the first-install Welcome. */
-    const val TRANSFERS_HEADING = "chunks.transfers.heading"
+    /** Canonical list surface; its screen name is semantic, without a redundant visible title. */
+    const val TRANSFERS_SCREEN = "chunks.transfers.screen"
+    const val DETAILS_SCREEN = "chunks.details.screen"
 
     // First-install Welcome.
     const val WELCOME_HEADING = "chunks.welcome.heading"

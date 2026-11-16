@@ -1,5 +1,11 @@
 # Chunks evidence and release gate ledger
 
+> **#1785 RECONCILIATION + #1786 OPEN WITH · 2026-11-16 (PR [#1790](https://github.com/gamesbyian/Chunks/pull/1790)):**
+> - #1785 merged cleanly with main `cf94c78`. Local merged-tree JVM: 2,585 tests, 19 failed (16 matching CI's 15 plus new; 3 workspace-only: JDK 21 Security Manager ×2, non-UTF-8 locale, one libtorrent timing case). After repairs: 2,590 tests, 3 failed (2 JDK-21-only, 1 `secondOpenWith…`).
+> - The "intermittent" `RepeatedAndroidIntakeTest.secondOpenWith…` was a **real defect**: a source shared while the previous remote Add was still settling was held but neither shown nor re-offered, so it vanished. Fixed. The deterministic `openWithDuringASettlingAddIsOfferedAfterItVerifies` fails without the fix and passes with it.
+> - Installed reds on #1785 (native Add ×4, two-server, delete-data, real magnet) all failed at the roster **View transfers** accessible name that #1785 changed. Stable tag `CONNECTION_VIEW_TRANSFERS` is added; this is JVM-compiled only until #1790 CI runs.
+> - `OpenWithActivityIntakeTest` (Robolectric, real MainActivity) covers cold VIEW `x-bittorrent` and `octet-stream` `.torrent` with no crash or finish, warm `newIntent` held for explicit choice, recreation and `singleTask`. Real provider grants, the ActivityTaskManager task and **Pixel are unverified**.
+
 > **MINSDK 29 CRASH FIX + ARTWORK-CHOICE READINESS · 2026-11-16:**
 > - #1779: `:app:lintDebug` NewApi errors showed `InputStream.readNBytes(int)` (API 33) in four remote reads under minSdk 29 without desugaring. These were the capability probe, the ruTorrent delete-data acceptance, `_getdir` and File Manager. On Android 10–12 they would throw `NoSuchMethodError`, which `catch (Exception)` does not catch. They are replaced by `rpc.readAtMost`, with a source guard test.
 >   - All exact-head gates are green, including the legacy and modern real-engine and remote-delete-data gates. No API 29–32 run of these paths exists.

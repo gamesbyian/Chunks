@@ -250,7 +250,7 @@ internal const val LOCAL_ENVIRONMENT_LABEL = "On this device"
  */
 @Composable
 internal fun SettingScopeNote(environmentLabel: String, modifier: Modifier = Modifier) {
-    Text("Applies to: $environmentLabel only. Other environments keep their own settings.",
+    Text("Applies to: $environmentLabel only. Other clients keep their own settings.",
         style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary, modifier = modifier)
 }
 

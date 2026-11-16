@@ -112,6 +112,8 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
         fun archived() = archiveDir.listFiles().orEmpty().filter { it.name.startsWith("$hash-") }
         assertTrue(archived().isEmpty())
         stage("ground-truth")
+        // #1786: Archive is the saved global Options policy, not a per-Add radio.
+        check(OriginalTorrentHandlingStore(context).setDefault(OriginalTorrentHandling.ARCHIVE))
         try {
             val scenario = ActivityScenario.launch(MainActivity::class.java)
             run {
@@ -119,7 +121,9 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                     rule.onAllNodes(hasContentDescription("Connections")).fetchSemanticsNodes().isNotEmpty()
                 }
                 rule.onNodeWithContentDescription("Connections").performClick()
-                waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
+                rule.openConnectionFormIfNeeded(allowConnected = false)
+                rule.openConnectionFormIfNeeded()
+            waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
                 scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
                 rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
                 scrollTo("Connect to rTorrent")
@@ -140,11 +144,12 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 waitFor("Add target choice for the shared document") { tagged(ChunksSemantics.ADD_TARGET_REMOTE) }
                 rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
                 waitFor("remote review of the shared .torrent") {
-                    tagged(originalHandlingTag(OriginalTorrentHandling.ARCHIVE))
+                    tagged(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY)
                 }
                 stage("remote-review")
-                bringTag(originalHandlingTag(OriginalTorrentHandling.ARCHIVE))
-                rule.onNodeWithTag(originalHandlingTag(OriginalTorrentHandling.ARCHIVE)).performClick()
+                bringTag(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY)
+                check(rule.onAllNodes(hasText(OriginalTorrentHandling.ARCHIVE.label, substring = true))
+                    .fetchSemanticsNodes().isNotEmpty()) { "effective Archive policy is not shown" }
                 bringTag(ChunksSemantics.ADD_START_PREFERENCE)
                 val start = rule.onNodeWithTag(ChunksSemantics.ADD_START_PREFERENCE)
                 if (start.fetchSemanticsNode().config

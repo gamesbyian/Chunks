@@ -47,6 +47,7 @@ internal fun TransfersInlineToolbar(
         )
         OutlinedIconButton(
             onClick = onFilters,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
             modifier = Modifier.size(48.dp)
                 .testTag(ChunksSemantics.TRANSFERS_FILTER_SORT)
                 .semantics {
@@ -58,6 +59,7 @@ internal fun TransfersInlineToolbar(
         ) { TransfersFilterSortGlyph(filtersActive || filtersExpanded) }
         OutlinedIconButton(
             onClick = onBatch,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
             modifier = Modifier.size(48.dp)
                 .testTag(ChunksSemantics.TRANSFERS_BATCH_TOOLS)
                 .semantics {

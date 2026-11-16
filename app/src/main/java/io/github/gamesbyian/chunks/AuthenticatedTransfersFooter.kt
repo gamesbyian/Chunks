@@ -103,8 +103,10 @@ internal fun footerDestinationForVisibleScreen(
 
 private fun Modifier.currentDestination(isCurrent: Boolean): Modifier =
     this.then(if (isCurrent) Modifier.border(2.dp, ChunksColors.Text,
-        RoundedCornerShape(16.dp)) else Modifier)
+        FooterButtonShape) else Modifier)
         .semantics { selected = isCurrent }
+
+internal val FooterButtonShape = RoundedCornerShape(16.dp)
 
 private val FourItemPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 1.dp, vertical = 6.dp)
 
@@ -154,7 +156,7 @@ private fun FooterTransfers(
     compact: Boolean = false,
     isCurrent: Boolean = false
 ) {
-    OutlinedButton(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
+    OutlinedButton(onClick = onClick, shape = FooterButtonShape, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
         .testTag(ChunksSemantics.FOOTER_TRANSFERS)
         .currentDestination(isCurrent)
         .then(if (environmentLabel == null) Modifier else Modifier.semantics {
@@ -177,7 +179,7 @@ private fun FooterAdd(
     isCurrent: Boolean = false
 ) {
     val spoken = description ?: environmentLabel?.let { "Add torrent on $it" }
-    Button(onClick = onClick, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
+    Button(onClick = onClick, shape = FooterButtonShape, contentPadding = contentPadding, modifier = modifier.heightIn(min = 48.dp)
         .testTag(ChunksSemantics.FOOTER_ADD)
         .currentDestination(isCurrent)
         .then(if (spoken == null) Modifier else Modifier.semantics {
@@ -197,7 +199,7 @@ private fun FooterConnections(onClick: () -> Unit, modifier: Modifier,
     contentPadding: androidx.compose.foundation.layout.PaddingValues = androidx.compose.material3.ButtonDefaults.ContentPadding,
     compact: Boolean = false,
     isCurrent: Boolean = false) {
-    OutlinedButton(onClick = onClick, contentPadding = contentPadding,
+    OutlinedButton(onClick = onClick, shape = FooterButtonShape, contentPadding = contentPadding,
         modifier = modifier.heightIn(min = 48.dp)
         .testTag(ChunksSemantics.FOOTER_CONNECTIONS)
         .currentDestination(isCurrent)
@@ -219,6 +221,7 @@ private fun FooterOptions(
     isCurrent: Boolean = false
 ) {
     OutlinedButton(
+        shape = FooterButtonShape,
         contentPadding = contentPadding,
         onClick = onClick,
         modifier = modifier.heightIn(min = 48.dp)

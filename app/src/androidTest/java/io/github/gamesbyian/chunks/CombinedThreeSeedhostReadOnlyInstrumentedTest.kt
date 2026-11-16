@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onNodeWithTag
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
@@ -98,6 +99,7 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
      * Exactly one Connect dispatch; never retried.
      */
     private fun connect(server: RemoteCredentials, name: String, label: String) {
+        rule.openConnectionFormIfNeeded()
         waitFor("form-$label-missing") { visibleConnectForm() }
         typeInto("Connection name (optional)", name)
         typeInto("Seedbox hostname, ruTorrent URL or RPC address", server.endpoint)
@@ -118,20 +120,21 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
         waitFor("connect-$label-name-missing", 10_000) { visible("$name is connected") }
         rule.onNodeWithText("Continue to Connections").performClick()
         waitFor("connections-$label-missing") {
-            runCatching { scrollTo("Connected ·") }
-            visible("Connected ·")
+            runCatching { scrollTo("Connected") }
+            visible("Connected")
         }
         stage("connected-$label")
     }
 
     /** Explicit Disconnect keeps the saved verified profile; then add the next. */
     private fun disconnectAndAddAnother(label: String) {
+        rule.openConnectedManageIfNeeded()
         scrollTo("Disconnect")
         rule.onNodeWithText("Disconnect").performClick()
         waitFor("disconnect-$label-failed") {
-            runCatching { scrollTo("Add connection"); true }.getOrDefault(false) && !visible("Connected ·")
+            runCatching { scrollTo("+ Add connection"); true }.getOrDefault(false) && !visible("Connected")
         }
-        rule.onNodeWithText("Add connection").performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
         stage("disconnected-$label")
     }
 
@@ -140,7 +143,7 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
         val preferences = CombinedViewPreferences(InstrumentationRegistry.getInstrumentation().targetContext)
         val all = io.github.gamesbyian.chunks.model.EnvironmentViewScope.All
         if (preferences.load().scope == all) return
-        val allChip = hasContentDescription("Show all environments")
+        val allChip = hasContentDescription("Show all clients")
         waitFor("all-chip-missing", 20_000) {
             runCatching {
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(
@@ -197,12 +200,13 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
         ActivityScenario.launch(MainActivity::class.java).use {
             waitFor("launch-failed") { visible("Connections") }
             rule.onNodeWithContentDescription("Connections").performClick()
+            rule.openConnectionFormIfNeeded(allowConnected = false)
             connect(primary, "Seed P", "primary")
             disconnectAndAddAnother("primary")
             connect(second, "Seed 2", "second")
             disconnectAndAddAnother("second")
             connect(third, "Seed 3", "third")
-            rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+            rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
             waitFor("combined-open-failed") { visible("Search names or hashes") }
             showAllEnvironments()
             // Saved instances are restored read-only without a tap. Union by

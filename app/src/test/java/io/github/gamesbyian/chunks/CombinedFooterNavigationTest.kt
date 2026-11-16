@@ -121,7 +121,7 @@ class CombinedFooterNavigationTest {
         reachLastTransfer()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         rule.waitForIdle()
-        rule.onNodeWithText("All environments").assertIsDisplayed()
+        rule.onNodeWithText("All clients").assertIsDisplayed()
     }
     @Test fun sharedConnectionsIsReachableFromCombinedWithoutTransferCommands() {
         show()

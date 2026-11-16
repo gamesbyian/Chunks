@@ -56,8 +56,8 @@ data class EnvironmentCapabilitySnapshot(
      */
     fun decide(operation: EnvironmentOperation, availability: EnvironmentAvailability): Decision {
         when (availability) {
-            EnvironmentAvailability.LOCKED -> return Decision(false, "Environment is locked")
-            EnvironmentAvailability.OFFLINE -> return Decision(false, "Environment is offline")
+            EnvironmentAvailability.LOCKED -> return Decision(false, "Client is locked")
+            EnvironmentAvailability.OFFLINE -> return Decision(false, "Client is offline")
             EnvironmentAvailability.STALE -> return Decision(false, "Transfer list is out of date; refresh first")
             EnvironmentAvailability.LIVE -> Unit
         }
@@ -88,7 +88,7 @@ object EnvironmentCapabilities {
         // A built-in capability is evidence about the bundled local engine, never
         // a shortcut for an arbitrary server profile with the same torrent hash.
         require(environment == EnvironmentSnapshots.LOCAL) {
-            "Local engine capabilities cannot be attached to a remote environment"
+            "Local engine capabilities cannot be attached to a remote client"
         }
         return EnvironmentCapabilitySnapshot(environment, "local engine", observedAtEpochMillis,
             EnvironmentOperation.entries.associateWith {

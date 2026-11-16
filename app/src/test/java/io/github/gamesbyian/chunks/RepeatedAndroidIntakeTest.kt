@@ -87,7 +87,9 @@ class RepeatedAndroidIntakeTest {
     }
 
     private fun connect() {
+        rule.openConnectionFormIfNeeded()
         rule.onNodeWithContentDescription("Connections").performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         list().performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextInput(server.endpoint)
         list().performScrollToNode(hasText("Connect to rTorrent"))
@@ -143,6 +145,38 @@ class RepeatedAndroidIntakeTest {
         assertEquals(setOf(first, second), server.jobs.keys)
     }
 
+    /**
+     * #1786: an Open With that lands while the previous remote Add is still settling is held
+     * (an unfinished attempt is never replaced) and must surface once that Add verifies,
+     * instead of vanishing behind the finished review. Exactly one load per explicit Add.
+     */
+    @Test fun openWithDuringASettlingAddIsOfferedAfterItVerifies() {
+        connect()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.waitForIdle()
+        val first = openWith("settling-first.mkv")
+        waitForText("settling-first.mkv")
+        submitEnabled()
+        rule.mainClock.autoAdvance = false
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        // Deliver the second handoff before the first attempt can settle.
+        val bytes = torrent("settling-second.mkv")
+        val uri = Uri.parse("content://chunks.test.documents/settling-second.mkv.torrent")
+        shadowOf(context.contentResolver).registerInputStream(uri, bytes.inputStream())
+        val accepted = requireNotNull(SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/x-bittorrent")))
+        rule.runOnUiThread { incoming.value = accepted }
+        rule.mainClock.autoAdvance = true
+        rule.waitUntil(30_000) { server.jobs.containsKey(first) }
+        waitForText("settling-second.mkv")
+        submitEnabled()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        val second = TorrentMetainfoReader.preview(bytes).infoHashV1.lowercase()
+        rule.waitUntil(30_000) { server.jobs.containsKey(second) }
+        assertEquals("Exactly one load per explicit Add", 2, server.loads().size)
+    }
+
     @Test fun anUnsubmittedDraftIsReplacedOnlyByExplicitChoiceAndTheAddStaysUsable() {
         connect()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
@@ -172,9 +206,15 @@ class RepeatedAndroidIntakeTest {
         // (a read-only observation) rather than racing it in a loaded full suite.
         rule.waitUntil(15_000) { runCatching { list().performScrollToNode(row) }.isSuccess }
         rule.onNode(row).performClick()
-        rule.onNodeWithText("Transfer details").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         val before = server.methods.size
-        rule.onNode(hasText("Open Server ·", substring = true)).performScrollTo().performClick()
+        // Details' owning-list action names the short client origin, not "Server · …".
+        val ownerList = androidx.compose.ui.test.SemanticsMatcher("Open <client> transfers") { node ->
+            node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+                .orEmpty().any { it.text.startsWith("Open ") && it.text.endsWith(" transfers") &&
+                    !it.text.contains("Server ·") }
+        }
+        rule.onNode(ownerList).performScrollTo().performClick()
         waitForText("Search names or hashes")
         rule.onNodeWithText("+ Add torrent").assertDoesNotExist()
         val owner = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(

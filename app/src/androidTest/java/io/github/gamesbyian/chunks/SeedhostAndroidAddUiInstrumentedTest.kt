@@ -185,7 +185,9 @@ class SeedhostAndroidAddUiInstrumentedTest {
             // A fresh installation now opens local Transfers. Use the visible
             // server setup route; never bypass the real authentication form.
             rule.onNodeWithText("Connections").assertExists().performClick()
+            rule.openConnectionFormIfNeeded(allowConnected = false)
             // The Connect list composes lazily; at large text the field starts below the fold.
+            rule.openConnectionFormIfNeeded()
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
             rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
             rule.onNodeWithText("Username, if required").performTextReplacement(user)

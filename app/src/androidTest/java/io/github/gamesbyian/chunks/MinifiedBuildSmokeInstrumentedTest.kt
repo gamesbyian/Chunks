@@ -56,7 +56,9 @@ class MinifiedBuildSmokeInstrumentedTest {
         // The persistent Connections tab enters the same real server setup.
         // This UI assertion must pass before the exact native peer-byte test.
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         // The Connect list composes lazily; at large text the field starts below the fold.
+        rule.openConnectionFormIfNeeded()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Seedbox hostname, ruTorrent URL or RPC address"))
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertExists()
 

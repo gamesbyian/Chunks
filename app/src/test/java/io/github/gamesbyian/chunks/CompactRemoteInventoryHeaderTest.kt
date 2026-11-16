@@ -42,7 +42,7 @@ class CompactRemoteInventoryHeaderTest {
             }
         }
         rule.onNodeWithText("Wood · 32 transfers").assertIsDisplayed()
-        rule.onNodeWithText("All environments…").performClick()
+        rule.onNodeWithText("All clients…").performClick()
         assertEquals(1, opens)
     }
 
@@ -63,11 +63,11 @@ class CompactRemoteInventoryHeaderTest {
             }
         }
         val badge = rule.onNodeWithText("Wood · 32 transfers").getUnclippedBoundsInRoot()
-        val all = rule.onNodeWithText("All environments…").getUnclippedBoundsInRoot()
-        assertTrue("Keep identity and All environments on a single row", badge.top < all.bottom && all.top < badge.bottom)
-        assertTrue("All environments must fit the content area", all.right <= 376.dp)
-        assertTrue("All environments remains a 48dp target", all.bottom - all.top >= 48.dp)
-        rule.onNodeWithText("All environments…").performClick()
+        val all = rule.onNodeWithText("All clients…").getUnclippedBoundsInRoot()
+        assertTrue("Keep identity and All clients on a single row", badge.top < all.bottom && all.top < badge.bottom)
+        assertTrue("All clients must fit the content area", all.right <= 376.dp)
+        assertTrue("All clients remains a 48dp target", all.bottom - all.top >= 48.dp)
+        rule.onNodeWithText("All clients…").performClick()
         assertEquals(1, opens)
     }
 
@@ -86,7 +86,7 @@ class CompactRemoteInventoryHeaderTest {
             }
         }
         val badge = rule.onNodeWithText("Wood · 32 transfers").getUnclippedBoundsInRoot()
-        val all = rule.onNodeWithText("All environments…").getUnclippedBoundsInRoot()
+        val all = rule.onNodeWithText("All clients…").getUnclippedBoundsInRoot()
         assertTrue("On a genuinely narrow local, stack rather than squeeze", all.top >= badge.bottom)
     }
 
@@ -110,10 +110,10 @@ class CompactRemoteInventoryHeaderTest {
         }
         val label = rule.onNodeWithText("Wood · 1 transfer · stopped view · last known, not yet read")
         label.assertIsDisplayed()
-        val action = rule.onNodeWithText("All environments…")
+        val action = rule.onNodeWithText("All clients…")
         val badgeRect = label.getUnclippedBoundsInRoot()
         val actionRect = action.getUnclippedBoundsInRoot()
-        assertTrue("Large-text navigation must stack beneath environment count",
+        assertTrue("Large-text navigation must stack beneath client count",
             actionRect.top >= badgeRect.bottom)
         action.performClick()
         assertEquals(1, opens)

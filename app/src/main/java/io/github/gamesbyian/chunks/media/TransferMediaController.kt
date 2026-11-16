@@ -417,8 +417,8 @@ class TransferMediaController(
                         if (s.showArtwork && s.downloadArtwork && !net.powerSaver &&
                             net.online && (!net.metered || s.artworkOnMeteredNetwork)) {
                             kotlinx.coroutines.withContext(artworkDispatcher) {
-                                if (permitted() && !artwork.hasCachedSquare(matched.artwork)) {
-                                    artwork.load(matched.artwork, ArtworkRole.SQUARE, true,
+                                if (permitted() && !artwork.hasCachedSquare(matched.artwork, matched.kind.preferredArtworkRole)) {
+                                    artwork.load(matched.artwork, matched.kind.preferredArtworkRole, true,
                                         service.providerInfos().map { it.id },
                                         requestAllowed = { permitted() && artworkNetworkAllowed(key) { true } })
                                 }
@@ -497,7 +497,7 @@ class TransferMediaController(
                             val net = network()
                             if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {
                                 kotlinx.coroutines.withContext(artworkDispatcher) {
-                                    if (permitted()) artwork.load(verifiedArt, ArtworkRole.SQUARE, true,
+                                    if (permitted()) artwork.load(verifiedArt, original.kind.preferredArtworkRole, true,
                                         service.providerInfos().map { it.id },
                                         requestAllowed = { permitted() && artworkNetworkAllowed(key) { true } })
                                 }
@@ -557,7 +557,7 @@ class TransferMediaController(
                     val net = network()
                     if (net.online && (!net.metered || preferences.artworkOnMeteredNetwork)) {
                         kotlinx.coroutines.withContext(artworkDispatcher) {
-                            if (permitted()) artwork.load(match.artwork, ArtworkRole.SQUARE, true,
+                            if (permitted()) artwork.load(match.artwork, match.kind.preferredArtworkRole, true,
                                 service.providerInfos().map { it.id },
                                 requestAllowed = { permitted() && artworkNetworkAllowed(key) { true } })
                         }
@@ -908,7 +908,10 @@ class TransferMediaController(
         if (prev.state != MediaAssignmentState.CHOSEN_BY_USER || prev.stateBeforeImage == MediaAssignmentState.AUTOMATIC) return
         val m = prev.match ?: return
         val shared = store.all().any { it.key != prev.key && it.state == MediaAssignmentState.CHOSEN_BY_USER && it.match?.ref == m.ref }
-        if (!shared) m.artwork.forEach { artwork.unpin(it, ArtworkRole.SQUARE) }
+        if (!shared) m.artwork.forEach {
+            artwork.unpin(it, ArtworkRole.SQUARE)
+            if (m.kind.preferredArtworkRole != ArtworkRole.SQUARE) artwork.unpin(it, m.kind.preferredArtworkRole)
+        }
     }
 
     /** Unpin a chosen detail poster unless another transfer's choice still uses the same image. */
@@ -946,7 +949,9 @@ class TransferMediaController(
             val permitted = { job?.isActive != false && mediaDataGeneration.get() == dataGeneration &&
                 providerConfigurationRevision.get() == providerRevision &&
                 artworkNetworkAllowed(key, explicitRequest = true) }
-            match.artwork.filter { it.season == null || it.season == match.season }.distinctBy { it.url }.take(limit.coerceIn(1, 24))
+            io.github.gamesbyian.chunks.media.artwork.ArtworkSelector.order(
+                match.artwork.filter { it.season == null || it.season == match.season },
+                match.kind.preferredArtworkRole).take(limit.coerceIn(1, 24))
                 .mapNotNull { c -> (artwork.loadOne(c, ArtworkRole.SQUARE, true, permitted) as? ArtworkLoadResult.Loaded)?.let { ArtworkAlternative(c, it.bitmap) } }
         }
     }
@@ -1004,6 +1009,7 @@ class TransferMediaController(
             store.put(a)
             f.update { it.copy(assignment = a, poster = null) }
             requestPoster(key)
+            loadArtwork(key, explicitRequest = true)
         }
     }
 
@@ -1096,7 +1102,8 @@ class TransferMediaController(
             val chosen = cur.assignment?.userPosterUrl?.let { u -> posters.firstOrNull { it.url == u } }
             val r = chosen?.let { artwork.loadOne(it, ArtworkRole.POSTER, true, permitted) }?.takeIf { it is ArtworkLoadResult.Loaded }
                 ?: artwork.load(posters, ArtworkRole.POSTER, true, service.providerInfos().map { it.id }, permitted)
-            if (r is ArtworkLoadResult.Loaded) f.update { now -> if (now.match?.ref == match.ref && now.userArtwork == null) now.copy(poster = r.bitmap) else now }
+            if (r is ArtworkLoadResult.Loaded) f.update { now -> if (now.match?.ref == match.ref && now.userArtwork == null &&
+                now.assignment?.userPosterUrl == cur.assignment?.userPosterUrl) now.copy(poster = r.bitmap) else now }
         }
     }
 
@@ -1133,13 +1140,16 @@ class TransferMediaController(
                 artworkNetworkAllowed(key, explicitRequest = manualChoice) }
             val providerOrder = service.providerInfos().map { it.id }
             // The user's own image always wins (explicit pin > provider art); otherwise deterministic order.
+            val role = (match?.kind ?: f.value.displayKind).preferredArtworkRole
+            val chosenPoster = a.userPosterUrl?.let { url -> match?.artwork?.firstOrNull { it.url == url } }
             val r = a.userArtwork?.let { artwork.loadOne(it, ArtworkRole.SQUARE, false) }?.takeIf { it is ArtworkLoadResult.Loaded }
-                ?: artwork.load(match?.artwork ?: emptyList(), ArtworkRole.SQUARE, true, providerOrder, permitted)
+                ?: chosenPoster?.let { artwork.loadOne(it, ArtworkRole.POSTER, true, permitted) }?.takeIf { it is ArtworkLoadResult.Loaded }
+                ?: artwork.load(match?.artwork ?: emptyList(), role, true, providerOrder, permitted)
             when (r) {
                 is ArtworkLoadResult.Loaded -> {
-                    if (pin && r.source.provider != LOCAL_PROVIDER) artwork.pin(r.source, ArtworkRole.SQUARE)
+                    if (pin && r.source.provider != LOCAL_PROVIDER) artwork.pin(r.source, (match?.kind ?: f.value.displayKind).preferredArtworkRole)
                     f.update { cur ->
-                        val still = cur.assignment?.let { now -> now.userArtwork == a.userArtwork && now.displayMatch?.ref == match?.ref } == true
+                        val still = cur.assignment?.let { now -> now.userArtwork == a.userArtwork && now.userPosterUrl == a.userPosterUrl && now.displayMatch?.ref == match?.ref } == true
                         if (still) cur.copy(artwork = r.bitmap, artworkSource = r.source,
                             automaticMessage = null) else cur
                     }

@@ -129,6 +129,7 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
         val byDescription = rule.onAllNodes(hasContentDescription("Connections"))
         if (byDescription.fetchSemanticsNodes().isNotEmpty()) byDescription.onFirst().performClick()
         else rule.onAllNodesWithText("Connections").onFirst().performClick()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         waitOrStage("form-missing", 30_000) {
             textVisible("Seedbox hostname, ruTorrent URL or RPC address") ||
                 runCatching { rule.onNode(hasScrollToIndexAction()).performScrollToNode(
@@ -155,11 +156,11 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
         rule.onNodeWithText("Continue to Connections").performClick()
         waitOrStage("connections-missing", 30_000) {
             runCatching {
-                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connected ·", substring = true))
+                rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Connected", substring = true))
                 true
             }.getOrDefault(false)
         }
-        rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
         waitOrStage("transfers-missing", 60_000) {
             rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
         }

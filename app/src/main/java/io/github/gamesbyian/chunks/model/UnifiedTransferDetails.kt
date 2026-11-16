@@ -5,13 +5,13 @@ package io.github.gamesbyian.chunks.model
  * no cached global "current server", and no implied permission to execute a mutation.
  */
 enum class TransferDetailReadState(val explanation: String) {
-    ENVIRONMENT_MISSING("This environment is no longer in the observed list."),
-    LOCKED("This environment is locked. Transfer details are hidden."),
-    OFFLINE("This environment is offline. Its transfer state cannot be verified."),
-    STALE("The last transfer observation is out of date. Refresh the owning environment."),
-    INCOMPLETE("The owning environment's inventory is incomplete or unconfirmed."),
+    ENVIRONMENT_MISSING("This client is no longer in the observed list."),
+    LOCKED("This client is locked. Transfer details are hidden."),
+    OFFLINE("This client is offline. Its transfer state cannot be verified."),
+    STALE("The last transfer observation is out of date. Refresh the owning client."),
+    INCOMPLETE("The owning client's inventory is incomplete or unconfirmed."),
     NOT_IN_CURRENT_LIST("This transfer was not found in the latest complete list. No removal is inferred."),
-    CURRENT("Transfer found in a complete, current observation of its owning environment.")
+    CURRENT("Transfer found in a complete, current observation of its owning client.")
 }
 
 data class TransferDetailOperation(
@@ -47,7 +47,7 @@ object UnifiedTransferDetails {
     ): UnifiedTransferDetail {
         require(nowEpochMillis >= 0L) { "Observation time cannot be negative" }
         require(sources.map { it.environment }.toSet().size == sources.size) {
-            "Cannot resolve duplicate environment inventories"
+            "Cannot resolve duplicate client inventories"
         }
 
         val source = sources.firstOrNull { it.environment == key.environment }
@@ -93,9 +93,9 @@ object UnifiedTransferDetails {
                 state != TransferDetailReadState.CURRENT ->
                     "Unavailable: " + state.explanation
                 !capabilityFresh ->
-                    "Capability has not been checked recently for this exact environment."
+                    "Capability has not been checked recently for this exact client."
                 wrongProvenance ->
-                    "Capability evidence belongs to the wrong engine type; check this environment again."
+                    "Capability evidence belongs to the wrong engine type; check this client again."
                 evidence == CapabilityEvidence.BUILT_IN ->
                     "Built into the local device engine. Any change still needs an observed result."
                 evidence == CapabilityEvidence.ADVERTISED ->
@@ -103,8 +103,8 @@ object UnifiedTransferDetails {
                 evidence == CapabilityEvidence.MISSING ->
                     "Not advertised by " + matching!!.source + "."
                 evidence == CapabilityEvidence.NOT_APPLICABLE ->
-                    "This operation does not apply to this environment."
-                else -> "Capability unknown. Check this environment before offering an action."
+                    "This operation does not apply to this client."
+                else -> "Capability unknown. Check this client before offering an action."
             }
             TransferDetailOperation(operation, evidence, ready, explanation)
         }

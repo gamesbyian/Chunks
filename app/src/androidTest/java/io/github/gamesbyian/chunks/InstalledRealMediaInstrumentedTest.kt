@@ -108,7 +108,7 @@ class InstalledRealMediaInstrumentedTest {
     private fun openRow(index: Int) {
         type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
         click("More details")
-        click("Change identification or artwork…")
+        click("Edit identification")
         rule.waitUntil(10_000) { visible("Identify this transfer") }
     }
     private fun closeRow() {
@@ -123,7 +123,7 @@ class InstalledRealMediaInstrumentedTest {
         val node = rule.onAllNodes(hasContentDescription("Artwork: ${s.match!!.title}", substring = true), useUnmergedTree = true)
         rule.waitUntil(20_000) { node.fetchSemanticsNodes().isNotEmpty() }
         val tile = node.onFirst().captureToImage().asAndroidBitmap()
-        val scaled = Bitmap.createScaledBitmap(bitmap, tile.width, tile.height, true)
+        val scaled = fitArtworkForPixelCheck(bitmap, tile.width, tile.height)
         var error = 0L
         for (y in 3..6) for (x in 3..6) {
             val actual = tile.getPixel(tile.width * x / 10, tile.height * y / 10)
@@ -234,7 +234,7 @@ class InstalledRealMediaInstrumentedTest {
                 closeRow()
                 verifyArtworkPixels(index)
                 // Navigate away/back without losing the assignment or the rendered image.
-                click("All environments…"); click("Back")
+                click("All clients…"); click("Back")
                 type(searchLabel, requireNotNull(prefs.getString("hash-$index", null)))
                 verifyArtworkPixels(index)
                 assertSanitized(requests)
