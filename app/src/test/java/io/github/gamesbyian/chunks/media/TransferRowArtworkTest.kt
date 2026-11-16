@@ -11,10 +11,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.assertHeightIsEqualTo
 import androidx.compose.ui.test.assertWidthIsEqualTo
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performScrollTo
@@ -463,14 +465,23 @@ class TransferRowArtworkTest {
         c.observe(MediaTransferKey.of(local), name); c.lookup(MediaTransferKey.of(local))
         rule.setContent {
             CompositionLocalProvider(LocalTransferMediaController provides c) {
-                ChunksTheme { Surface { TransferRowArtwork(local, name) } }
+                ChunksTheme { Surface {
+                    androidx.compose.foundation.layout.Column {
+                        TransferRowArtwork(local, name, modifier = Modifier.testTag("legacy-artwork"))
+                        TransferRowArtwork(local, name, modifier = Modifier.testTag("height-led-artwork"),
+                            height = 108.dp, maxWidth = 112.dp)
+                    }
+                } }
             }
         }
-        val node = rule.onNodeWithContentDescription("Artwork: Babylon 5 (automatic). $format")
-        node.assertWidthIsEqualTo(TransferRowArtworkSize)
+        val legacy = rule.onNodeWithTag("legacy-artwork", useUnmergedTree = true)
+        val heightLed = rule.onNodeWithTag("height-led-artwork", useUnmergedTree = true)
+        legacy.assertWidthIsEqualTo(TransferRowArtworkSize)
+        heightLed.assertHeightIsEqualTo(108.dp)
         settings = settings.copy(largeListArtwork = true); c.onSettingsChanged()
         rule.waitForIdle()
-        node.assertWidthIsEqualTo(io.github.gamesbyian.chunks.TransferRowArtworkLargeSize)
+        legacy.assertWidthIsEqualTo(io.github.gamesbyian.chunks.TransferRowArtworkLargeSize)
             .assertHeightIsEqualTo(io.github.gamesbyian.chunks.TransferRowArtworkLargeSize)
+        heightLed.assertHeightIsEqualTo(135.dp)
     }
 }
