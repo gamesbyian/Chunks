@@ -156,12 +156,35 @@ class MainActivity : ComponentActivity() {
         // Invalid, malformed and unrelated Intents confer no source authority.
         // In particular, they cannot erase a valid source still awaiting the
         // exact local/server chooser or a privacy gate.
-        val candidate = ExternalAddSource.fromIntent(intent) ?: return
+        val candidate = ExternalAddSource.fromIntent(intent)
+        logIntake(intent, candidate)
+        if (candidate == null) return
         incomingCreate = null
         val pending = PendingExternalAddSource(incomingMagnet, incomingTorrent)
             .withIncoming(candidate)
         incomingTorrent = pending.torrentDocument
         incomingMagnet = pending.text
+    }
+
+    /**
+     * #1786 diagnostics: `adb logcat -s ChunksIntake` separates a refused handoff from a
+     * crash or lost task. Action, declared MIME, URI scheme and the outcome only — never the
+     * URI, display name, magnet, tracker or file content.
+     */
+    private fun logIntake(intent: Intent?, candidate: ExternalAddSource?) {
+        val action = intent?.action ?: return
+        if (action != Intent.ACTION_VIEW && action != Intent.ACTION_SEND) return
+        val outcome = when (candidate) {
+            null -> "refused"
+            is ExternalAddSource.TorrentDocument -> "document"
+            is ExternalAddSource.Magnet -> "magnet"
+            is ExternalAddSource.TorrentLink -> "link"
+        }
+        runCatching {
+            android.util.Log.i("ChunksIntake", "action=" + action.substringAfterLast('.') +
+                " type=" + (intent.type ?: "none") + " scheme=" + (intent.data?.scheme ?: "none") +
+                " outcome=" + outcome + " task=" + taskId)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -699,6 +722,36 @@ internal fun ChunksApp(
         }
     }
 
+    /** An unsubmitted draft or a not-yet-releasable attempt holds a new shared source. */
+    fun addSourceOccupied(): Boolean {
+        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
+            ?.let { remoteAddSessions.forAccount(it) }
+        return magnet.isNotBlank() || localReviewedTorrent.value != null ||
+            serverHandoffTorrent != null ||
+            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
+            activeLocalAddAttempt.attemptedTicket != null ||
+            remoteDraft?.alreadyAttempted == true
+    }
+
+    /**
+     * #1786: an Open With that arrived while the previous Add was still settling was held
+     * (correctly: never replace an unfinished attempt) but nothing re-offered it once that
+     * Add verified, so the handoff silently vanished. Called when the Add screen observes its
+     * attempt reach a closable verified state: release exactly as a fresh share would and,
+     * only if nothing else occupies the draft, read the held document into the next review.
+     * Still no Add or Start; an unsubmitted draft keeps its explicit Use/Keep choice.
+     */
+    fun offerHeldSharedSourceAfterVerifiedAdd() {
+        val document = pendingSharedDocument ?: return
+        if (sharedTorrentReading || incomingDocumentRead != null) return
+        releaseVerifiedAttemptsForNewSource()
+        if (addSourceOccupied()) return
+        pendingSharedDocument = null
+        sharedTorrentError = null
+        sharedTorrentReading = true
+        incomingDocumentRead = document
+    }
+
     // Share/Open With only admits source data, never a local or remote Add.
     // An occupied draft is held until the user explicitly chooses replacement.
     LaunchedEffect(incomingTorrent) {
@@ -707,13 +760,7 @@ internal fun ChunksApp(
         sharedTorrentError = null
         pendingSharedMagnet = null
         pendingSharedDocument = null
-        val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
-            ?.let { remoteAddSessions.forAccount(it) }
-        if (magnet.isNotBlank() || localReviewedTorrent.value != null ||
-            serverHandoffTorrent != null ||
-            (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
-            activeLocalAddAttempt.attemptedTicket != null ||
-            remoteDraft?.alreadyAttempted == true) {
+        if (addSourceOccupied()) {
             pendingSharedDocument = document
         } else {
             sharedTorrentReading = true
@@ -2299,6 +2346,8 @@ internal fun ChunksApp(
                         addArtworkState = addArtworkChoices.onServer(aliasScope),
                         addDestinationPicker = addDestinationPicker,
                         externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
+                        externalSourceWaiting = pendingSharedDocument != null || pendingSharedMagnet != null,
+                        onVerifiedAttemptWithWaitingSource = ::offerHeldSharedSourceAfterVerifiedAdd,
                         addAliasState = addAliasDraft,
                         onVerifiedAlias = { hash, value ->
                             // The frozen coordinator confirms a new exact job,

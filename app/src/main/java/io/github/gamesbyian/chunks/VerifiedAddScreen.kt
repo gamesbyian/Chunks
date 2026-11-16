@@ -118,6 +118,10 @@ internal fun VerifiedAddScreen(
     /** Inline shared Add-to selector; never grants remote admission. */
     addDestinationPicker: (@Composable () -> Unit)? = null,
     externalSourceReading: Boolean = false,
+    /** A shared Android source is held behind this screen's attempt (#1786). */
+    externalSourceWaiting: Boolean = false,
+    /** The held source may now become the next review; the parent re-checks occupancy. */
+    onVerifiedAttemptWithWaitingSource: () -> Unit = {},
     /** Enables deterministic delayed-preference tests without touching external Add or RPC. */
     clipboardEnabledReader: suspend (android.content.Context) -> Boolean = { context ->
         withContext(Dispatchers.IO) { ClipboardMagnetPrefill.enabled(context) }
@@ -460,6 +464,13 @@ internal fun VerifiedAddScreen(
     val canAcknowledge = settledPhase?.let {
         canCloseRemoteAddReview(it, verifiedHash, uncertain)
     } == true
+
+    // #1786: a held Open With must not vanish behind a finishing attempt. Presentation-only
+    // trigger; the parent re-runs its own verified-release and occupancy checks.
+    LaunchedEffect(addedByThisAttempt && canAcknowledge, externalSourceWaiting) {
+        if (addedByThisAttempt && canAcknowledge && externalSourceWaiting)
+            onVerifiedAttemptWithWaitingSource()
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -1204,7 +1215,7 @@ internal fun VerifiedAddScreen(
         // Read-only recovery can prove the exact hash, Place and Start
         // without proving that Chunks originally registered the job. Never
         // present this as an ordinary newly verified Add.
-        if (alreadyAttempted && (initialTorrent != null ||
+        if (alreadyAttempted && (initialTorrent != null || externalSourceWaiting ||
                 (magnet.isNotBlank() && magnet != draft.attemptSource))) item {
             Text(when {
                 exactSessionConfirmed ->

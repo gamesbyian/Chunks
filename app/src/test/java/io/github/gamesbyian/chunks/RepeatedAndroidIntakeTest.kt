@@ -145,6 +145,38 @@ class RepeatedAndroidIntakeTest {
         assertEquals(setOf(first, second), server.jobs.keys)
     }
 
+    /**
+     * #1786: an Open With that lands while the previous remote Add is still settling is held
+     * (an unfinished attempt is never replaced) and must surface once that Add verifies,
+     * instead of vanishing behind the finished review. Exactly one load per explicit Add.
+     */
+    @Test fun openWithDuringASettlingAddIsOfferedAfterItVerifies() {
+        connect()
+        rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+        rule.onNodeWithTag(ChunksSemantics.ADD_TARGET_REMOTE).performScrollTo().performClick()
+        rule.waitForIdle()
+        val first = openWith("settling-first.mkv")
+        waitForText("settling-first.mkv")
+        submitEnabled()
+        rule.mainClock.autoAdvance = false
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        // Deliver the second handoff before the first attempt can settle.
+        val bytes = torrent("settling-second.mkv")
+        val uri = Uri.parse("content://chunks.test.documents/settling-second.mkv.torrent")
+        shadowOf(context.contentResolver).registerInputStream(uri, bytes.inputStream())
+        val accepted = requireNotNull(SharedTorrentDocument.fromIntent(
+            Intent(Intent.ACTION_VIEW).setDataAndType(uri, "application/x-bittorrent")))
+        rule.runOnUiThread { incoming.value = accepted }
+        rule.mainClock.autoAdvance = true
+        rule.waitUntil(30_000) { server.jobs.containsKey(first) }
+        waitForText("settling-second.mkv")
+        submitEnabled()
+        rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+        val second = TorrentMetainfoReader.preview(bytes).infoHashV1.lowercase()
+        rule.waitUntil(30_000) { server.jobs.containsKey(second) }
+        assertEquals("Exactly one load per explicit Add", 2, server.loads().size)
+    }
+
     @Test fun anUnsubmittedDraftIsReplacedOnlyByExplicitChoiceAndTheAddStaysUsable() {
         connect()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
