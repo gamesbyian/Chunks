@@ -740,9 +740,11 @@ class CombinedTwoRealServersInstrumentedTest {
             // include Local as well as server A, so match the truthful status
             // without presuming a fixed source count in this A/B fixture.
             // Independently verified A/B status rows remain authoritative.
-            scrollTo("excluded")
-            assertTrue("Combined must flag excluded, out-of-date sources",
-                visible("excluded"))
+            // The owner's client-terminology design counts *included* clients and flags
+            // stale/offline ones as "some clients incomplete" (no "N excluded" wording).
+            scrollTo("some clients incomplete")
+            assertTrue("Combined must flag out-of-date clients as incomplete",
+                visible("some clients incomplete"))
             stage("c2-offline-truthful")
         }
     }
