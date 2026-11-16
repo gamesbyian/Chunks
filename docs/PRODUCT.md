@@ -1,5 +1,8 @@
 # Chunks canonical product contract
 
+> **Owner client vocabulary and scope-summary decision · 2026-11-15:** User-facing Chunks labels use **client** rather than **environment**, retaining **Local** and custom remote short names such as **Wood**. The summary above transfer cards reports **N clients included** when counting clients in the selected scope; never reverse an actual excluded-count variable by changing text alone. Included can be disconnected and stale; live connection status is independent. Keep internal environment identity/routing persistent and safe. [Binding copy/count design](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md).
+
+
 > **Binding visual economy · owner-approved 2026-11-15:** Root Transfers and Options screens should not repeat their footer destination names as oversized visible headings under the chunks. wordmark; preserve contextual headings, accessibility names and the persistent footer. All four footer buttons keep the same more rectangular rounded silhouette as the selected highlight in selected and unselected states, including purple + Add. Transfers icon-only Filters/Sort and Batch controls use matching rounded squares, not circles. [Canonical geometry design](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md). Target behavior, not implemented evidence.
 
 
