@@ -99,13 +99,13 @@ class LocalStoragePanelInstrumentedTest {
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("in 1 file", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Chunks does not yet enforce a local torrent storage cap.", substring = true)
+        rule.onNodeWithText("These limits are warnings only. Chunks won't stop downloads or delete files.", substring = true)
             .assertExists()
         rule.onNodeWithText("Refresh local space").performScrollTo().performClick()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("in 2 files", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Partial survey only:", substring = true).assertExists()
+        rule.onNodeWithText("Some files couldn't be counted, so this total may be incomplete.", substring = true).assertExists()
     }
 
     @Test fun allocatedBlockEstimateIsSeparateFromLogicalCapAndNeverPromisesReclaim() {
