@@ -117,7 +117,7 @@ class RemoteAddNavigationLifetimeTest {
                 }.getOrDefault(false)
             }
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
-            assertTrue("The test must enter the actual non-idempotent RPC", entered.await(15, TimeUnit.SECONDS))
+            // Robolectric Compose runs its coroutine scheduler on the test-controlled UI loop.\n            // Blocking on a Java latch here prevents the launched Add from starting.\n            rule.waitUntil(15_000) { entered.count == 0L }
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Back to transfers"))
             rule.onNodeWithText("Back to transfers").assertIsEnabled().performClick()
             rule.waitForIdle()
