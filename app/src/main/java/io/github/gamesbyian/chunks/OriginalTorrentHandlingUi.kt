@@ -60,9 +60,9 @@ internal val OriginalTorrentHandling.label: String get() = when (this) {
 
 internal val OriginalTorrentHandling.explanation: String get() = when (this) {
     OriginalTorrentHandling.KEEP -> "Chunks only reads the file."
-    OriginalTorrentHandling.ARCHIVE -> "Keeps a private copy in Chunks after the Add is confirmed, then asks before " +
-        "removing the original where its app allows. Otherwise the original stays where it is."
-    OriginalTorrentHandling.DELETE -> "After the Add is confirmed, Chunks asks once more before deleting the .torrent file. Downloaded files are never touched."
+    OriginalTorrentHandling.ARCHIVE -> "After a confirmed Add, Chunks saves a private copy and asks before removing the original. " +
+        "If the source app won't allow it, the original stays put."
+    OriginalTorrentHandling.DELETE -> "After a confirmed Add, Chunks asks before deleting the original .torrent. Downloaded files are never deleted."
 }
 
 internal fun originalHandlingTag(handling: OriginalTorrentHandling) =
@@ -94,7 +94,7 @@ internal fun OriginalTorrentHandlingChoice(
                 Column(Modifier.padding(start = 12.dp)) {
                     Text(choice.label, fontWeight = FontWeight.Medium)
                     Text(if (choice == OriginalTorrentHandling.DELETE && !deleteAvailable)
-                        "Not available: the app that holds this file does not let Chunks delete it."
+                        "The app that provided this file doesn't allow deletion."
                         else choice.explanation, style = MaterialTheme.typography.bodySmall)
                 }
             }
@@ -129,9 +129,9 @@ internal fun originalDeletionMessage(outcome: OriginalDeletionOutcome, archived:
     OriginalDeletionOutcome.DELETED -> if (archived)
         "The original .torrent file was moved into Chunks: its archived copy stays and the original was removed."
         else "The original .torrent file was deleted. The transfer and its downloaded files are unchanged."
-    OriginalDeletionOutcome.CHANGED -> "The original .torrent file changed or could not be read since you reviewed it, so it was kept."
-    OriginalDeletionOutcome.REFUSED -> "Android or the app that holds the file did not allow Chunks to delete it. The original was kept."
-    OriginalDeletionOutcome.UNCONFIRMED -> "Chunks asked to delete the original, but it may still exist. Check it in your Files app; nothing was retried."
+    OriginalDeletionOutcome.CHANGED -> "The original .torrent changed or couldn't be read, so Chunks kept it."
+    OriginalDeletionOutcome.REFUSED -> "Android didn't allow Chunks to delete the original .torrent. It was kept."
+    OriginalDeletionOutcome.UNCONFIRMED -> "Chunks couldn't confirm deletion. Check your Files app; Chunks won't retry automatically."
 }
 
 internal object OriginalTorrentDocuments {
@@ -231,9 +231,9 @@ internal fun archiveOutcomeMessage(
     is SourceArchiveOutcome.ArchivedCopy -> "A private copy of the .torrent is archived in Chunks; the original was kept."
     SourceArchiveOutcome.OriginalKept, SourceArchiveOutcome.OriginalDeletionRequiresApproval -> null
     SourceArchiveOutcome.NeedsReconciliation ->
-        "The .torrent archive copy could not be confirmed as saved. The original was kept."
+        "Chunks couldn't confirm the archive copy was saved. The original was kept."
     SourceArchiveOutcome.ArchiveFull ->
-        "The Chunks .torrent archive is full, so no copy was made. The original was kept."
+        "The Chunks archive is full. No copy was made, and the original was kept."
     else -> "No archive copy of the .torrent was made. The original was kept."
 }
 
