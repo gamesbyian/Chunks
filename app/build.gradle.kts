@@ -59,6 +59,8 @@ android {
     signingConfigs {
         if (releaseSigningAvailable) create("release") {
             storeFile = file(releaseKeystore!!)
+            // Owner-update keystore is PKCS#12, produced on the trusted owner machine.
+            storeType = "pkcs12"
             storePassword = releaseStorePassword
             keyAlias = releaseKeyAlias
             keyPassword = releaseKeyPassword
