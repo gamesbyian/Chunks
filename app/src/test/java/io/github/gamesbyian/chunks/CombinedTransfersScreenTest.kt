@@ -613,8 +613,10 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithText("Search names or hashes").performTextInput("Big Archive")
         revealText("0 of 2 transfers")
         rule.onNodeWithText("0 of 2 transfers", substring = true).assertExists()
-        revealText("A new download may be hidden by your filters.")
-        rule.onNodeWithText("A new download may be hidden by your filters.", substring = true)
+        // Once both filter and search hide every row, the empty-view recovery
+        // replaces the non-empty filter explanation. Assert the visible contract.
+        revealText("No transfers to show in this view.")
+        rule.onNodeWithText("No transfers to show in this view.", substring = true)
             .assertExists()
         revealText("Show all transfers")
         rule.onNodeWithText("Show all transfers").performClick()
