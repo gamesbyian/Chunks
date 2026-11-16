@@ -1,5 +1,8 @@
 # Chunks canonical product contract
 
+> **Binding visual economy · owner-approved 2026-11-15:** Root Transfers and Options screens should not repeat their footer destination names as oversized visible headings under the chunks. wordmark; preserve contextual headings, accessibility names and the persistent footer. All four footer buttons keep the same more rectangular rounded silhouette as the selected highlight in selected and unselected states, including purple + Add. Transfers icon-only Filters/Sort and Batch controls use matching rounded squares, not circles. [Canonical geometry design](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md). Target behavior, not implemented evidence.
+
+
 > **OWNER ARTWORK/DETAILS PRESENTATION CORRECTION · 2026-11-15:** Transfer list art is category-shaped rather than square-only: movies and TV 2:3 posters; album, audiobook and software square; books/comics 2:3; magazines 3:4. Honor natural source ratios and user overrides, keep compact list height. The Details origin indicator is only the short custom profile name such as **Wood** with its optional colour dot; remove the verbose `Environment: Server · Wood · <RPC endpoint>` display, leaving endpoint diagnostics in Connections → Manage. This supersedes former square-film/TV artwork requirements. [Aspect-ratio design](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md) · [Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md).
 
 
