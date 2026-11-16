@@ -162,7 +162,7 @@ class UnifiedTransferDetailPanelTest {
         rule.onNodeWithText("Refresh Locked server").assertDoesNotExist()
         rule.onNodeWithText("Capabilities in this client").assertDoesNotExist()
         rule.onNodeWithText("Artwork & media information").assertDoesNotExist()
-        rule.onNodeWithText("Locked server").assertDoesNotExist()
+        rule.onNodeWithText("Locked server").assertExists()
         rule.onRoot().captureRoboImage("build/chunks-visual/details-locked-320x700.png")
     }
 

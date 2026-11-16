@@ -109,6 +109,7 @@ internal fun UnifiedTransferDetailPanel(
             TransferDetailFacts(transfer)
             similar?.invoke(transfer)
         }
+        if (hidden) Text(environmentLabel, style = MaterialTheme.typography.titleSmall)
         Text("Observation: " + detail.readState.explanation,
             style = MaterialTheme.typography.bodyMedium)
         // Ordinary actions two across (shared ResponsiveActionGroup); environment tools follow.

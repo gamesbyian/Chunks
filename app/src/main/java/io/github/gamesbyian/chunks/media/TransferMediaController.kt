@@ -1102,7 +1102,8 @@ class TransferMediaController(
             val chosen = cur.assignment?.userPosterUrl?.let { u -> posters.firstOrNull { it.url == u } }
             val r = chosen?.let { artwork.loadOne(it, ArtworkRole.POSTER, true, permitted) }?.takeIf { it is ArtworkLoadResult.Loaded }
                 ?: artwork.load(posters, ArtworkRole.POSTER, true, service.providerInfos().map { it.id }, permitted)
-            if (r is ArtworkLoadResult.Loaded) f.update { now -> if (now.match?.ref == match.ref && now.userArtwork == null) now.copy(poster = r.bitmap) else now }
+            if (r is ArtworkLoadResult.Loaded) f.update { now -> if (now.match?.ref == match.ref && now.userArtwork == null &&
+                now.assignment?.userPosterUrl == cur.assignment?.userPosterUrl) now.copy(poster = r.bitmap) else now }
         }
     }
 
@@ -1148,7 +1149,7 @@ class TransferMediaController(
                 is ArtworkLoadResult.Loaded -> {
                     if (pin && r.source.provider != LOCAL_PROVIDER) artwork.pin(r.source, (match?.kind ?: f.value.displayKind).preferredArtworkRole)
                     f.update { cur ->
-                        val still = cur.assignment?.let { now -> now.userArtwork == a.userArtwork && now.displayMatch?.ref == match?.ref } == true
+                        val still = cur.assignment?.let { now -> now.userArtwork == a.userArtwork && now.userPosterUrl == a.userPosterUrl && now.displayMatch?.ref == match?.ref } == true
                         if (still) cur.copy(artwork = r.bitmap, artworkSource = r.source,
                             automaticMessage = null) else cur
                     }

@@ -64,6 +64,7 @@ import io.github.gamesbyian.chunks.media.MediaPrivacySettings
 import io.github.gamesbyian.chunks.media.MediaProviderInfo
 import io.github.gamesbyian.chunks.media.ProviderAttempt
 import io.github.gamesbyian.chunks.media.TransferMediaUiState
+import io.github.gamesbyian.chunks.media.preferredArtworkRole
 import io.github.gamesbyian.chunks.media.artworkBounds
 import io.github.gamesbyian.chunks.media.MediaTransferKey
 import io.github.gamesbyian.chunks.media.providerOn
@@ -144,18 +145,23 @@ fun MediaMetadataSummary(state: TransferMediaUiState, onChange: () -> Unit, modi
     if (onRequestPoster != null) androidx.compose.runtime.LaunchedEffect(
             match?.ref, posterUrls, state.userArtwork, state.poster == null, showArtwork) {
         if (showArtwork && state.mayShowRealArt && posterUrls.isNotEmpty() &&
-            state.userArtwork == null && state.poster == null) onRequestPoster()
+            state.userArtwork == null && state.poster == null &&
+            (state.displayKind.preferredArtworkRole == io.github.gamesbyian.chunks.media.ArtworkRole.POSTER ||
+                state.assignment?.userPosterUrl != null)) onRequestPoster()
     }
     // Narrow screen with large text: art above the words, so the title is not squeezed beside it.
     androidx.compose.foundation.layout.BoxWithConstraints(modifier.fillMaxWidth()) {
     val stacked = maxWidth < 360.dp && androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.3f
     val content: @Composable () -> Unit = {
-        val artwork = (state.userArtwork?.let { state.artwork } ?: state.poster ?: state.artwork)
+        val usePoster = state.assignment?.userPosterUrl != null ||
+            state.displayKind.preferredArtworkRole == io.github.gamesbyian.chunks.media.ArtworkRole.POSTER
+        val artwork = (state.userArtwork?.let { state.artwork } ?: state.poster?.takeIf { usePoster } ?: state.artwork)
             ?.takeIf { showArtwork && state.mayShowRealArt }
         if (artwork != null) {
             val image = remember(artwork) { artwork.asImageBitmap() }
+            val bounds = artworkBounds(artwork.width, artwork.height, 96f, 144f)
             Image(image, contentDescription = null, contentScale = ContentScale.Fit,
-                modifier = Modifier.size(width = 96.dp, height = 144.dp).clearAndSetSemantics {})
+                modifier = Modifier.size(bounds.first.dp, bounds.second.dp).clearAndSetSemantics {})
         } else TransferMediaArtwork(state, 96.dp, showArtwork = showArtwork)
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (match != null) {

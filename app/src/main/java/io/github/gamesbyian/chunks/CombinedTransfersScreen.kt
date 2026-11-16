@@ -427,6 +427,7 @@ internal fun CombinedTransfersScreen(
     onScopeFocusConsumed: () -> Unit = {},
     /** Root Transfers returns from full Details without changing filters or identity. */
     returnToCatalogRevision: Long = 0L,
+    onDetailVisibilityChanged: (Boolean) -> Unit = {},
     /** Explicit All environments navigation is distinct from a saved profile link. */
     showAllEnvironmentsRevision: Long = 0L,
     onShowAllEnvironmentsConsumed: (Long) -> Unit = {},
@@ -529,6 +530,8 @@ internal fun CombinedTransfersScreen(
         if (returnToCatalogRevision > 0L) savedDetailTarget = null
     }
     val detailKey = restoreCombinedDetailTarget(savedDetailTarget)
+    LaunchedEffect(detailKey) { onDetailVisibilityChanged(detailKey != null) }
+    androidx.activity.compose.BackHandler(detailKey != null) { savedDetailTarget = null }
     val batchScope = rememberCoroutineScope()
     val listingsHolder = savedListingsState
         ?: remember { mutableStateOf<Map<EnvironmentId, SavedServerListing>>(emptyMap()) }
@@ -1234,6 +1237,7 @@ internal fun CombinedTransfersScreen(
                 batchScope.launch {
                     androidx.compose.runtime.withFrameNanos { }
                     listState.scrollToItem(combinedBatchItemIndex(
+                        headerVisible = showNavigationFooter,
                         addVisible = showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent,
                         filterOptionsVisible = showingViewOptions,
                         sortOptionsVisible = showingViewOptions && showingSortOptions))
@@ -1864,8 +1868,9 @@ internal fun CombinedTransfersScreen(
 internal fun combinedBatchItemIndex(
     addVisible: Boolean,
     filterOptionsVisible: Boolean,
-    sortOptionsVisible: Boolean
-): Int = 3 + (if (addVisible) 1 else 0) +
+    sortOptionsVisible: Boolean,
+    headerVisible: Boolean = true
+): Int = 2 + (if (headerVisible) 1 else 0) + (if (addVisible) 1 else 0) +
     (if (filterOptionsVisible) 3 else 0) +
     (if (sortOptionsVisible) 1 else 0)
 

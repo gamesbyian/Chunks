@@ -22,18 +22,23 @@ internal data class ConnectionRosterEntry(
     val name: String,
     val connected: Boolean,
     val profile: RememberedRemoteProfileRoster.Profile?,
-    val needsAttention: Boolean = false
+    val needsAttention: Boolean = false,
+    val disambiguation: String? = null
 )
 
 internal fun unifiedConnectionRoster(
     profiles: List<RememberedRemoteProfileRoster.Profile>,
     verifiedProfileId: String?,
     verifiedName: String?,
-    sessionVerified: Boolean = true
+    sessionVerified: Boolean = true,
+    attentionProfileId: String? = null
 ): List<ConnectionRosterEntry> {
-    val saved = profiles.distinctBy { it.id }.map {
+    val unique = profiles.distinctBy { it.id }
+    val saved = unique.mapIndexed { index, it ->
         ConnectionRosterEntry(it.id, it.label, verifiedName != null && sessionVerified && it.id == verifiedProfileId, it,
-            needsAttention = verifiedName != null && !sessionVerified && it.id == verifiedProfileId)
+            needsAttention = (verifiedName != null && !sessionVerified && it.id == verifiedProfileId) ||
+                it.id == attentionProfileId,
+            disambiguation = if (unique.count { other -> other.label == it.label } > 1) "Client ${index + 1}" else null)
     }
     val transient = if (verifiedName != null && saved.none { it.id == verifiedProfileId })
         listOf(ConnectionRosterEntry(verifiedProfileId ?: "transient-verified-session", verifiedName, sessionVerified, null, !sessionVerified))
@@ -49,15 +54,16 @@ internal fun ConnectionRosterCard(entry: ConnectionRosterEntry, loading: Boolean
         colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(entry.name, style = MaterialTheme.typography.titleMedium)
+            entry.disambiguation?.let { Text(it, style = MaterialTheme.typography.labelSmall) }
             Text(if (entry.connected) "Connected" + (if (entry.profile == null) " · login not remembered" else "")
                 else if (entry.needsAttention) "Needs attention · connection unverified"
                 else "Disconnected · saved profile", style = MaterialTheme.typography.bodySmall)
             ResponsiveActionGroup(maxColumns = 2) { cell ->
                 OutlinedButton(onClick = onPrimary, enabled = !loading, modifier = cell.semantics {
-                    contentDescription = (if (entry.connected) "View transfers on " else "Connect to ") + entry.name
+                    contentDescription = (if (entry.connected) "View transfers on " else "Connect to ") + entry.name + (entry.disambiguation?.let { ", $it" } ?: "")
                 }) { Text(if (entry.connected) "View transfers" else "Connect") }
                 OutlinedButton(onClick = onManage, modifier = cell.semantics {
-                    contentDescription = "Manage " + entry.name
+                    contentDescription = "Manage " + entry.name + (entry.disambiguation?.let { ", $it" } ?: "") + (entry.disambiguation?.let { ", $it" } ?: "")
                 }) { Text("Manage") }
             }
         }

@@ -17,12 +17,21 @@ class OwnerUxBatchContractTest {
         assertEquals(listOf("two", "one", "three"), roster.map { it.id })
         assertEquals(1, roster.count { it.connected })
         assertEquals(3, roster.size)
+        assertEquals(3, roster.map { it.disambiguation }.distinct().size)
     }
     @Test fun rememberedCredentialsAndLastVerifiedTimeNeverEstablishLiveSession() {
         val p = profile("one").copy(lastVerifiedAt = System.currentTimeMillis())
         assertFalse(unifiedConnectionRoster(listOf(p), null, null).single().connected)
         val stale = unifiedConnectionRoster(listOf(p), p.id, p.label, sessionVerified = false).single()
         assertFalse(stale.connected); assertTrue(stale.needsAttention)
+    }
+    @Test fun savedAddAuthenticationRequestRemainsAnExplicitNavigationPromise() {
+        val request = SavedAddProfileReconnect()
+        assertFalse(request.awaitingAuthentication)
+        request.requestAuthentication("exact-profile")
+        assertTrue(request.awaitingAuthentication)
+        assertFalse(request.consumeAuthenticated("another-profile"))
+        assertFalse(request.awaitingAuthentication)
     }
     @Test fun unsavedVerifiedSessionAppearsOnceWithoutClaimingRememberedCredentials() {
         val roster = unifiedConnectionRoster(listOf(profile("saved")), "unsaved", "Temporary")

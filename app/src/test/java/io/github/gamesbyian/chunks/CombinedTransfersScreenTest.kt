@@ -315,6 +315,7 @@ class CombinedTransfersScreenTest {
 
     @Test fun lifecycleReviewScrollIndexTracksEachOptionalDisclosure() {
         assertEquals(3, combinedBatchItemIndex(false, false, false))
+        assertEquals(2, combinedBatchItemIndex(false, false, false, headerVisible = false))
         assertEquals(4, combinedBatchItemIndex(true, false, false))
         assertEquals(6, combinedBatchItemIndex(false, true, false))
         assertEquals(7, combinedBatchItemIndex(false, true, true))

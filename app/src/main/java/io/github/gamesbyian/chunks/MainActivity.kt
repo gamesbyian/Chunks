@@ -446,6 +446,7 @@ internal fun ChunksApp(
     // No raw source, account identity or private tracker enters SavedState.
     val addArtworkChoices = retainedAddOwner?.artworkChoices ?: remember { AddArtworkDraftChoices() }
     val combinedListState = rememberLazyListState()
+    var combinedDetailsVisible by remember { mutableStateOf(false) }
     // Combined search text, like the local device's: navigation state, not a preference.
     val combinedSearch = rememberSaveable { mutableStateOf("") }
     // Last read-only listings of other saved profiles survive navigation between
@@ -1121,6 +1122,7 @@ internal fun ChunksApp(
                 scopeFocusRequest = savedProfileCatalogFocus,
                 onScopeFocusConsumed = { savedProfileCatalogFocus = null },
                 returnToCatalogRevision = returnToCatalogRevision,
+                onDetailVisibilityChanged = { combinedDetailsVisible = it },
                 showAllEnvironmentsRevision =
                     showAllEnvironmentsRevision.takeIf { it > consumedShowAllEnvironmentsRevision } ?: 0L,
                 onShowAllEnvironmentsConsumed = { consumed ->
@@ -1394,6 +1396,7 @@ internal fun ChunksApp(
             }
         } else if (server == null || section == Section.SERVER) {
             ConnectionScreen(
+                loginRequested = savedAddReconnect.awaitingAuthentication,
                 connectedSessionName = server?.let {
                     savedProfiles.firstOrNull { profile ->
                         profile.id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots
@@ -2364,13 +2367,15 @@ internal fun ChunksApp(
                 // One canonical catalog in local-only, remote-only and mixed
                 // modes. Its chips change view scopes only; this route grants
                 // no engine, server or per-job mutation authority.
+                val retappingList = section == Section.COMBINED && !combinedDetailsVisible
                 section = Section.COMBINED
                 combinedFromConnections = false
                 returnToCatalogRevision++
                 // Re-tapping Transfers is useful even when already on this
                 // list: return to its first row without resetting search,
                 // filter, exact environment selection or any Add draft.
-                // Footer return retains the previous catalog position, including from Details.
+                // Only a re-tap of the already-visible list requests its top.
+                if (retappingList) scope.launch { combinedListState.scrollToItem(0) }
                 // Returning to Transfers re-reads the current server (read-only, fenced by the
                 // mutation gate), as ruTorrent/Transdroid lists do; otherwise a magnet stays
                 // listed under its pre-metadata name until some unrelated write settles.
@@ -2449,6 +2454,7 @@ internal fun ConnectionScreen(
     onCreateTorrent: () -> Unit = {},
     onEndpoint: (String) -> Unit, onUsername: (String) -> Unit,
     onPassword: (String) -> Unit, onConnect: () -> Unit,
+    loginRequested: Boolean = false,
     connectedSessionName: String? = null,
     connectedProfileId: String? = null,
     connectedSessionVerified: Boolean = true,
@@ -2503,7 +2509,8 @@ internal fun ConnectionScreen(
     var renameNotice by remember { mutableStateOf<String?>(null) }
     val renameScope = rememberCoroutineScope()
     val connectionList = rememberLazyListState()
-    var showNewConnectionForm by rememberSaveable { mutableStateOf(false) }
+    var showNewConnectionForm by rememberSaveable { mutableStateOf(loginRequested) }
+    LaunchedEffect(loginRequested) { if (loginRequested) showNewConnectionForm = true }
     var managedProfileId by rememberSaveable { mutableStateOf<String?>(null) }
     val activeCardId = connectedProfileId ?: "transient-verified-session"
     val managingConnected = managedProfileId == activeCardId && connectedSessionName != null
@@ -2569,7 +2576,9 @@ internal fun ConnectionScreen(
                 }
                 }
             }
-            items(unifiedConnectionRoster(savedProfiles, connectedProfileId, connectedSessionName, connectedSessionVerified), key = { it.id }) { entry ->
+            items(unifiedConnectionRoster(savedProfiles, connectedProfileId, connectedSessionName, connectedSessionVerified,
+                attentionProfileId = savedProfiles.firstOrNull { error != null &&
+                    it.credentials.endpoint == endpoint && it.credentials.username == username }?.id), key = { it.id }) { entry ->
                 ConnectionRosterCard(entry, loading = loading,
                     onPrimary = {
                         if (entry.connected) onViewConnectedTransfers()

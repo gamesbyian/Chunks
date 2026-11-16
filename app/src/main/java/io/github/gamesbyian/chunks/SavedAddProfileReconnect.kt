@@ -13,6 +13,9 @@ package io.github.gamesbyian.chunks
 internal class SavedAddProfileReconnect {
     private var requestedAccountScope: String? = null
 
+    /** Navigation fact only; never a credential or mutation lease. */
+    val awaitingAuthentication: Boolean get() = requestedAccountScope != null
+
     fun requestAuthentication(exactAccountScope: String) {
         require(exactAccountScope.isNotBlank()) { "Saved Add target must have an exact account scope" }
         requestedAccountScope = exactAccountScope

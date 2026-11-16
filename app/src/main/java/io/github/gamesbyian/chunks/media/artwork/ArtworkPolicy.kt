@@ -67,7 +67,7 @@ object ArtworkBytesPolicy {
 object ArtworkSelector {
     private val fallbacks = mapOf(
         ArtworkRole.SQUARE to listOf(ArtworkRole.SQUARE, ArtworkRole.POSTER, ArtworkRole.THUMB, ArtworkRole.BANNER),
-        ArtworkRole.POSTER to listOf(ArtworkRole.POSTER, ArtworkRole.SQUARE, ArtworkRole.THUMB),
+        ArtworkRole.POSTER to listOf(ArtworkRole.POSTER, ArtworkRole.SQUARE, ArtworkRole.THUMB, ArtworkRole.BANNER),
         ArtworkRole.BANNER to listOf(ArtworkRole.BANNER, ArtworkRole.POSTER, ArtworkRole.SQUARE),
         ArtworkRole.THUMB to listOf(ArtworkRole.THUMB, ArtworkRole.SQUARE, ArtworkRole.POSTER))
 
