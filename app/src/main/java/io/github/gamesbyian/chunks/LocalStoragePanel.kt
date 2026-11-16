@@ -134,7 +134,7 @@ internal fun LocalStoragePanel(
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Local device storage", fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge)
-            Text("Android's internal volume, across all apps. This is separate from your rTorrent server.")
+            Text("Storage on this device, including other apps. Your remote server has separate storage.")
             val total = snapshot.totalBytes
             val free = snapshot.availableBytes
             if (total != null && free != null) {
@@ -149,32 +149,32 @@ internal fun LocalStoragePanel(
                         StorageLegend(ChunksColors.Blue, "Occupied", Units.bytes(total - free))
                         StorageLegend(ChunksColors.Green, "Free", Units.bytes(free))
                     }
-                    Text("Occupied or reserved on this volume, including other apps. Not Chunks torrent usage.",
+                    Text("Space used or reserved by this device, including other apps. This isn't just Chunks downloads.",
                         style = MaterialTheme.typography.bodySmall)
                 }
             } else {
-                Text("Local volume capacity unavailable. No space estimate is shown.")
+                Text("Couldn't check this device's storage capacity.")
             }
             when (snapshot.status) {
                 DeviceSpaceStatus.LOW_WARNING_ACTIVE ->
-                    Text("Android reports low local device storage. Avoid adding large local downloads.",
+                    Text("This device is running low on space. Free some space before adding large downloads.",
                         color = MaterialTheme.colorScheme.error)
                 DeviceSpaceStatus.NO_WARNING_DETECTED ->
-                    Text("No active Android low-storage alert detected. The numeric threshold is not exposed to apps.")
+                    Text("Android isn't reporting low storage right now.")
                 DeviceSpaceStatus.UNKNOWN ->
-                    Text("Android low-storage alert status unavailable.")
+                    Text("Couldn't check Android's low-storage warning.")
             }
             Text("Chunks' download folder on this device",
                 fontWeight = FontWeight.SemiBold)
             val usage = folderUsage
             when {
                 usage == null -> Text("Measuring Chunks' local files…")
-                usage.logicalBytes == null -> Text("Chunks' downloads folder is unavailable; its size is unknown.")
+                usage.logicalBytes == null -> Text("Couldn't check the size of the Chunks download folder.")
                 else -> {
                     Text(Units.bytes(usage.logicalBytes) + " in " + usage.regularFiles +
                         (if (usage.regularFiles == 1) " file" else " files"))
                     if (!usage.complete) {
-                        Text("Partial survey only: some files or folders could not be counted.",
+                        Text("Some files couldn't be counted, so this total may be incomplete.",
                             color = MaterialTheme.colorScheme.error)
                     }
                 }
@@ -266,13 +266,13 @@ internal fun LocalStoragePanel(
                         Text("Warning: download-folder logical sizes reached 95% of the advisory limit.",
                             color = MaterialTheme.colorScheme.error)
                     StorageWarning.OVER_CAP ->
-                        Text("The download folder is at or above your advisory limit. Chunks has not paused or deleted anything.",
+                        Text("Your download folder has reached its warning limit. Chunks hasn't stopped or deleted anything.",
                             color = MaterialTheme.colorScheme.error)
                     StorageWarning.UNKNOWN ->
                         Text("Limit status unknown: a full download-folder scan is required. No precise usage percentage is available.")
                 }
                 if (newNotice != null) {
-                    Text("New warning threshold observed on this refresh.",
+                    Text("Your download folder has reached a new warning level.",
                         style = MaterialTheme.typography.bodySmall)
                 }
                 val remaining = assessment.remainingWithinCapBytes
@@ -282,7 +282,7 @@ internal fun LocalStoragePanel(
             }
             if (capMessage != null)
                 Text(requireNotNull(capMessage), style = MaterialTheme.typography.bodySmall)
-            Text("Chunks does not yet enforce a local torrent storage cap. Remote storage capacity is unknown without a verified server capability.",
+            Text("These limits are warnings only. Chunks won't stop downloads or delete files. Remote storage is shown only when the server reports it.",
                 style = MaterialTheme.typography.bodySmall)
             OutlinedButton(onClick = {
                 snapshot = reader(context)
