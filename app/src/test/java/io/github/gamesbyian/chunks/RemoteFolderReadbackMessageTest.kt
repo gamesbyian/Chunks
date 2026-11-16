@@ -13,7 +13,7 @@ class RemoteFolderReadbackMessageTest {
 
     @Test fun verifiedExistenceDoesNotClaimThePreviousWriteCreatedIt() {
         val text = remoteFolderReadbackMessage(RemoteFolderReadback.VERIFIED_DIRECTORY)
-        assertTrue(text.contains("present and verified"))
+        assertTrue(text.contains("found and confirmed"))
         assertTrue(!text.contains("created"))
     }
 
@@ -24,7 +24,7 @@ class RemoteFolderReadbackMessageTest {
             RemoteFolderReadback.CANNOT_VERIFY
         ).forEach { outcome ->
             val text = remoteFolderReadbackMessage(outcome)
-            assertTrue(text, text.contains("not retry") || text.contains("No creation will be repeated"))
+            assertTrue(text, text.contains("won't") && text.contains("again"))
         }
     }
 }
