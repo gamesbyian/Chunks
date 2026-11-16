@@ -88,7 +88,7 @@ fun TransferMediaArtwork(state: TransferMediaUiState, size: Dp, modifier: Modifi
             Image(image, contentDescription = null, contentScale = ContentScale.Fit,
                 modifier = Modifier.size(fitted.first.dp, fitted.second.dp).clip(shape).border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape))
         } else {
-            MediaCategoryTile(state.displayKind, size)
+            MediaCategoryTile(state.displayKind, size, width = width, height = height)
         }
     }
 }
