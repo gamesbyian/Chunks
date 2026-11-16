@@ -1,5 +1,9 @@
 # Chunks evidence and release gate ledger
 
+> **SUMMARY TRUTHFULNESS + INTAKE TEST DIAGNOSIS · 2026-11-16:**
+> - #1777 (`Never show live zero rates…`): with every selected source excluded, the Transfers summary read "Live ↓ 0 B/s · ↑ 0 B/s" over last-known rows. It now reads "No live rates". All exact-head gates are green, including native Add, two-server Combined and R8. Its foundation run [43779794967](https://github.com/gamesbyian/Chunks/actions/runs/43779794967) **attempt 1 failed** in the unrelated `RepeatedAndroidIntakeTest.secondOpenWithAfterAVerifiedAddGetsAUsableAddForTheNewTorrent` (line 115, waiting 30 s for the second source name). Attempt 2 passed. The failure was not reproduced locally in 6 runs under CPU load.
+> - The likely test-side cause is that `waitForText` saw only composed nodes while the Add list sat at its outcome end. The wait now scrolls toward the text (read-only) and names the visible texts on timeout. A real "second Open With lost" regression would still fail it.
+
 > **FIRST FULL INSTALLED ADD → PIECES → STOP/START → REMOVE ON THE REAL PRIMARY SEEDHOST: PASSED · 2026-11-15:**
 > - [43769370130](https://github.com/gamesbyian/Chunks/actions/runs/43769370130) ran `installed-rtorrent-magnets.yml` on `main` `78827f3` with `environment=live discovery=public source=magnet`. It used the actual MainActivity Connect → Universal Add (public magnet, original trackers) → Transfers → Details → Stop → Start → Remove (keep data) path, with real public swarms.
 > - **Debian 13 ppc64el netinst** (new `magnet5`): 653,798,469 B received and **651,841,536 / 651,841,536 B piece-verified**, then Stop/Start/Remove with exact cleanup.
