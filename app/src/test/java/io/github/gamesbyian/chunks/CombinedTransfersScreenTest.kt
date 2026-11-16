@@ -121,8 +121,8 @@ class CombinedTransfersScreenTest {
             progress.left >= artwork.right)
         assertTrue("Both artwork and progress must have measured width",
             progress.width > 0f && artwork.width > 0f)
-        assertTrue("Artwork should be taller than the old 40dp thumbnail",
-            artwork.height > 40f * rule.density.density)
+        assertTrue("Artwork should be taller than the old thumbnail (40dp versus a 12dp bar)",
+            artwork.height > progress.height * 6f)
     }
 
     @Test fun defaultCombinedTransfersDefersSearchAndSortUntilRequested() {
