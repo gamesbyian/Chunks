@@ -471,7 +471,7 @@ internal fun CombinedTransfersScreen(
         (loadedPreferences ?: CombinedViewPreferences(context)).save(next.copy(search = ""))
     }
 
-    // Only an explicit "All environments" action may clear the narrower
+    // Only an explicit "All clients" action may clear the narrower
     // previously selected saved-profile scope; Details return preserves it.
     LaunchedEffect(showAllEnvironmentsRevision) {
         val requested = showAllEnvironmentsRevision
@@ -1428,7 +1428,7 @@ internal fun CombinedTransfersScreen(
                     selected = query.scope == EnvironmentViewScope.All,
                     onClick = { update(query.copy(scope = EnvironmentViewScope.All)) },
                     label = { Text("All") }, modifier = Modifier.heightIn(min = 48.dp)
-                        .semantics { contentDescription = "Show all environments" })
+                        .semantics { contentDescription = "Show all clients" })
                 labels.forEach { (id, label) ->
                     val visible = environmentVisible(query.scope, id)
                     // A locked/unobserved inventory must say ?, never invent 0.
@@ -1455,7 +1455,7 @@ internal fun CombinedTransfersScreen(
                 }
             }
             if (query.scope == EnvironmentViewScope.Only(emptySet())) Text(
-                "No environments are selected. Tap one above to show its transfers.",
+                "No clients are selected. Tap one above to show its transfers.",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp))
         }
@@ -1489,11 +1489,11 @@ internal fun CombinedTransfersScreen(
             (query.scope != EnvironmentViewScope.All ||
                 query.filter != UnifiedTransferFilter.ALL)) item {
             val scopeName = when (val scope = query.scope) {
-                EnvironmentViewScope.All -> "All environments"
+                EnvironmentViewScope.All -> "All clients"
                 is EnvironmentViewScope.Only ->
-                    if (scope.ids.isEmpty()) "No environments"
-                    else if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One environment"
-                    else "${scope.ids.size} environments"
+                    if (scope.ids.isEmpty()) "No clients"
+                    else if (scope.ids.size == 1) labels[scope.ids.first()] ?: "One client"
+                    else "${scope.ids.size} clients"
             }
             val filterName = when (query.filter) {
                 UnifiedTransferFilter.ALL -> "All transfers"
@@ -1547,7 +1547,7 @@ internal fun CombinedTransfersScreen(
                 val name = CombinedSortChoices.firstOrNull { it.first == query.sortKey }?.second ?: "Name"
                 Text((if (showingSortOptions) "Hide" else "Change") + " sort & grouping · " +
                     name + " · " + TransferSortOrdering.label(query.sortKey.orderingKind(), query.direction) +
-                    (if (query.groupByEnvironment) " · By environment" else " · Together"))
+                    (if (query.groupByEnvironment) " · By client" else " · Together"))
             }
         }
         if (showingViewOptions && showingSortOptions) item {
@@ -1572,14 +1572,14 @@ internal fun CombinedTransfersScreen(
             // Stacked so the label can wrap at 320dp and 200% text without pushing the switch off-screen.
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Group by environment", style = MaterialTheme.typography.bodyMedium,
+                Text("Group by client", style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f))
                 Switch(checked = query.groupByEnvironment,
                     onCheckedChange = { update(query.copy(groupByEnvironment = it)) },
                     // The Switch itself, not only its enclosing Row, must have
                     // an accessible 48dp semantics/touch surface at large text.
                     modifier = Modifier.heightIn(min = 48.dp)
-                        .semantics { contentDescription = "Group by environment" })
+                        .semantics { contentDescription = "Group by client" })
             }
         }
         // Batch controls appear immediately upon request, ahead of rows only
@@ -1678,7 +1678,7 @@ internal fun CombinedTransfersScreen(
             item(key = "recover-empty-combined-view") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("No transfers are visible with these view choices. " +
-                        "Locked or offline environments may still need attention.",
+                        "Locked or offline clients may still need attention.",
                         style = MaterialTheme.typography.bodySmall)
                     if (query.filter != UnifiedTransferFilter.ALL ||
                         query.scope != EnvironmentViewScope.All) {
@@ -1746,14 +1746,14 @@ internal fun CombinedTransfersScreen(
                     OutlinedButton(
                         onClick = { showingSourceStatus = !showingSourceStatus },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    ) { Text(if (showingSourceStatus) "Hide environment status"
-                        else "Environment status · ${result.sources.size} sources") }
+                    ) { Text(if (showingSourceStatus) "Hide client status"
+                        else "Client status · ${result.sources.size} sources") }
                 }
                 // The first-fold count is recycled when the user scrolls down
                 // to investigate a failed server. Keep ONE freshness warning
                 // beside the exact-source rows without moving diagnostics up.
                 if (showingSourceStatus && result.hasIncompleteOrStaleSource) {
-                    Text("Some environments are missing or out of date. Last-known rows are not current; " +
+                    Text("Some clients are missing or out of date. Last-known rows are not current; " +
                         "exact per-source status follows.",
                         style = MaterialTheme.typography.bodySmall, color = ChunksColors.Yellow)
                 }
@@ -1800,8 +1800,8 @@ internal fun CombinedTransfersScreen(
                     Text("Refresh other saved servers")
                 }
                 if (result.missingSelectedEnvironments.isNotEmpty()) Text(
-                    (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected environment is" else "$n selected environments are" }) + " no longer set up. " +
-                        "Choose All or reselect environments.", style = MaterialTheme.typography.bodySmall,
+                    (result.missingSelectedEnvironments.size.let { n -> if (n == 1) "1 selected client is" else "$n selected clients are" }) + " no longer set up. " +
+                        "Choose All or reselect clients.", style = MaterialTheme.typography.bodySmall,
                     color = ChunksColors.Yellow)
             }
         }
@@ -2331,7 +2331,7 @@ internal fun combinedBatchPreview(start: Boolean, selected: Set<UnifiedTransferK
         .sortedBy { labels[it.first] ?: it.first.value }
         .joinToString("; ") { (id, n) -> (labels[id] ?: id.value) + ": " + n }
     return (if (start) "Start" else "Stop") + " ${selected.size} selected, one at a time, each only in its own " +
-        "environment: $perEnvironment. Transfers already in that state are skipped. The first uncertain " +
+        "client: $perEnvironment. Transfers already in that state are skipped. The first uncertain " +
         "result stops the batch and nothing is retried."
 }
 
@@ -2393,7 +2393,7 @@ internal fun combinedTotalsText(t: io.github.gamesbyian.chunks.model.UnifiedTran
                     else Units.bytes(t.uploadBytesPerSecond) + "/s") +
         " across ${t.liveRows} transfers" +
         (if (t.rowsWithUnknownRate > 0) " · ${t.rowsWithUnknownRate} with rates not reported" else "") +
-        (if (t.excludedEnvironments > 0) " · " + (if (t.excludedEnvironments == 1) "1 environment" else "${t.excludedEnvironments} environments") + " excluded (not fully observed)" else "")
+        (if (t.excludedEnvironments > 0) " · " + (if (t.excludedEnvironments == 1) "1 client" else "${t.excludedEnvironments} clients") + " excluded (not fully observed)" else "")
 
 
 /** Progress colour shared with the local device and rTorrent cards; colour is never the only signal. */

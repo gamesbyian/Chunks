@@ -30,7 +30,7 @@ internal suspend fun describeCombinedBatchSafely(
 } catch (_: Exception) {
     listOf(
         "Batch outcome unknown. One or more changes may already have applied. " +
-            "Refresh each owning environment and inspect its current transfer state " +
+            "Refresh each owning client and inspect its current transfer state " +
             "before considering another action. Nothing was retried automatically."
     )
 }
@@ -39,12 +39,12 @@ internal suspend fun describeCombinedBatchSafely(
 @Composable
 internal fun CombinedBatchFeedback(running: Boolean, outcomes: List<String>) {
     if (running) {
-        Text("Working… each environment's list will refresh afterwards.",
+        Text("Working… each client's list will refresh afterwards.",
             modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             style = MaterialTheme.typography.bodySmall)
     } else if (outcomes.isNotEmpty()) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Batch result available. Review outcomes for each environment.",
+            Text("Batch result available. Review outcomes for each client.",
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
                 style = MaterialTheme.typography.bodySmall)
             outcomes.forEach { outcome ->

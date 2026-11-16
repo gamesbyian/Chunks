@@ -131,7 +131,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                 }
             }
             else -> {
-                if (snapshot.rules.isEmpty()) Text("No rules yet. Open defaults below to review each environment's policy.",
+                if (snapshot.rules.isEmpty()) Text("No rules yet. Open defaults below to review each client's policy.",
                     style = MaterialTheme.typography.bodyMedium)
                 if (snapshot.rules.isNotEmpty()) {
                     ClearableTransferSearchField(
@@ -199,7 +199,7 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                     val overrides = environments.count { snapshot.defaults.containsKey(it.id) }
                     Text(
                         (if (defaultsOpen) "Hide" else "Review") + " defaults · " +
-                            environments.size + (if (environments.size == 1) " environment · " else " environments · ") + overrides + " saved"
+                            environments.size + (if (environments.size == 1) " client · " else " clients · ") + overrides + " saved"
                     )
                 }
                 if (defaultsOpen) {
@@ -207,15 +207,15 @@ internal fun SeedingRulesScreen(environments: List<SeedingEnvironment>, onBack: 
                     if (environments.size > 1 || defaultEnvironmentSearch.isNotBlank()) ClearableTransferSearchField(
                         value = defaultEnvironmentSearch,
                         onValueChange = { defaultEnvironmentSearch = it },
-                        label = "Find environment defaults"
+                        label = "Find client defaults"
                     )
                     val visibleDefaults = matchingSeedingEnvironments(
                         environments, defaultEnvironmentSearch)
                     if (defaultEnvironmentSearch.isNotBlank()) {
-                        Text("Showing ${visibleDefaults.size} of ${environments.size} environment defaults",
+                        Text("Showing ${visibleDefaults.size} of ${environments.size} client defaults",
                             style = MaterialTheme.typography.bodySmall)
                         if (visibleDefaults.isEmpty())
-                            Text("No environment defaults match this search. Saved defaults are unchanged.",
+                            Text("No client defaults match this search. Saved defaults are unchanged.",
                                 style = MaterialTheme.typography.bodySmall)
                     }
                     visibleDefaults.forEach { env ->
@@ -294,7 +294,7 @@ internal fun matchingSeedingRules(
 
 internal fun appliesTo(rule: SeedingRule, labels: Map<String, String>): String {
     val named = rule.environments.map { labels[it] ?: "a server not saved on this device" }.sorted()
-    return "Applies to: " + (if (named.isEmpty()) "no environment" else named.joinToString(", ")) +
+    return "Applies to: " + (if (named.isEmpty()) "no client" else named.joinToString(", ")) +
         if (rule.includeFutureEnvironments) ", and servers added later" else ""
 }
 
@@ -345,7 +345,7 @@ private fun SeedingRuleEditor(
     val current = policy
     val ready = current != null && domainError == null && domains.isNotEmpty() && selected.isNotEmpty() && name.isNotBlank()
     if (domains.isEmpty()) Text("Add at least one tracker domain.", style = MaterialTheme.typography.bodySmall)
-    if (selected.isEmpty()) Text("Choose at least one environment.", style = MaterialTheme.typography.bodySmall)
+    if (selected.isEmpty()) Text("Choose at least one client.", style = MaterialTheme.typography.bodySmall)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ActionTile("Save rule", ChunksColors.Green, {
             if (current != null) onSave(initial.copy(name = name.trim(), nameIsCustom = nameIsCustom, trackerDomains = domains,

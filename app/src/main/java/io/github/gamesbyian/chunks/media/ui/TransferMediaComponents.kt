@@ -64,6 +64,7 @@ import io.github.gamesbyian.chunks.media.MediaPrivacySettings
 import io.github.gamesbyian.chunks.media.MediaProviderInfo
 import io.github.gamesbyian.chunks.media.ProviderAttempt
 import io.github.gamesbyian.chunks.media.TransferMediaUiState
+import io.github.gamesbyian.chunks.media.artworkBounds
 import io.github.gamesbyian.chunks.media.MediaTransferKey
 import io.github.gamesbyian.chunks.media.providerOn
 
@@ -81,8 +82,9 @@ fun TransferMediaArtwork(state: TransferMediaUiState, size: Dp, modifier: Modifi
     Box(modifier.size(size).then(semantics), contentAlignment = Alignment.Center) {
         if (bitmap != null) {
             val image = remember(bitmap) { bitmap.asImageBitmap() }
+            val fitted = artworkBounds(bitmap.width, bitmap.height, size.value, size.value)
             Image(image, contentDescription = null, contentScale = ContentScale.Fit,
-                modifier = Modifier.size(size).clip(shape).border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape))
+                modifier = Modifier.size(fitted.first.dp, fitted.second.dp).clip(shape).border(1.dp, ChunksColors.Outline.copy(alpha = 0.6f), shape))
         } else {
             MediaCategoryTile(state.displayKind, size)
         }
@@ -569,7 +571,7 @@ fun MediaPrivacySettingsPanel(
             settings.largeListArtwork) { onChange(settings.copy(largeListArtwork = it)) }
         SettingSwitch("Similar transfers in details", "Related transfers by confirmed identity; never from names alone.",
             settings.showSimilarTransfers) { onChange(settings.copy(showSimilarTransfers = it)) }
-        SettingSwitch("Similar transfers: this environment only", "Off searches every environment you have set up.",
+        SettingSwitch("Similar transfers: this client only", "Off searches every client you have set up.",
             settings.similarSameEnvironmentOnly, enabled = settings.showSimilarTransfers) {
             onChange(settings.copy(similarSameEnvironmentOnly = it)) }
         Text("Adult content is never looked up and always uses neutral art.", style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)

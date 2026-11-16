@@ -1063,7 +1063,7 @@ internal fun LocalEngineScreen(
                     environment = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL,
                     modifier = Modifier.align(Alignment.CenterVertically))
                 if (onCombined != null) OutlinedButton(onClick = onCombined,
-                    modifier = Modifier.heightIn(min = 48.dp)) { Text("All environments") }
+                    modifier = Modifier.heightIn(min = 48.dp)) { Text("All clients") }
             }
             // This screen owns Stop/Remove outcomes. A successful native
             // deletion removes its row, but must not remove the user's
@@ -3031,12 +3031,12 @@ internal fun LocalEngineScreen(
                             if (saved) {
                                 showEnvironmentColours = requested
                                 colourPreferenceNotice = null
-                            } else colourPreferenceNotice = "Could not save Show environment colours."
+                            } else colourPreferenceNotice = "Could not save Show client colours."
                             savingEnvironmentColours = false
                         }
                     }), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Show environment colours", modifier = Modifier.weight(1f))
+                Text("Show client colours", modifier = Modifier.weight(1f))
                 Switch(checked = showEnvironmentColours, onCheckedChange = null)
             }
             colourPreferenceNotice?.let {

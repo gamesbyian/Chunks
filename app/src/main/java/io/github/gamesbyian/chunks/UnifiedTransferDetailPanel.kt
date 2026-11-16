@@ -134,7 +134,7 @@ internal fun UnifiedTransferDetailPanel(
         if (!hidden) exactServerOperations?.invoke()
         if (!hidden) localOperations?.invoke()
         if (!hidden && onOpenOwningList == null && detail.observation != null) {
-            Text("This transfer is listed here for reference. Sign in to its own environment " +
+            Text("This transfer is listed here for reference. Sign in to its own client " +
                 "to change it.", style = MaterialTheme.typography.bodyMedium)
         }
         if (!hidden) {
@@ -142,14 +142,14 @@ internal fun UnifiedTransferDetailPanel(
                 if (detail.readState != TransferDetailReadState.CURRENT) {
                     Text(
                         "Last-known transfer facts only. Status, progress and rates may have changed. " +
-                            "Refresh the owning environment before reviewing an action.",
+                            "Refresh the owning client before reviewing an action.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             if (detail.observation == null) {
-                Text("No currently displayable details from this exact environment.",
+                Text("No currently displayable details from this exact client.",
                     style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -216,7 +216,7 @@ internal fun UnifiedTransferDetailPanel(
                     DateFormat.MEDIUM, DateFormat.SHORT, Locale.getDefault()
                 ).format(Date(whenObserved)), style = MaterialTheme.typography.bodySmall)
             }
-            Text("Capabilities in this environment", style = MaterialTheme.typography.titleMedium,
+            Text("Capabilities in this client", style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.semantics { heading() })
             Text("Read-only evidence. An advertised or built-in capability does not prove a command succeeded.",
                 style = MaterialTheme.typography.bodySmall)

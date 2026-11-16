@@ -34,7 +34,7 @@ internal fun MediaSettingsScreen(onBack: () -> Unit) {
     ) {
         Text("Artwork & media info", style = MaterialTheme.typography.headlineSmall,
             modifier = Modifier.semantics { heading() })
-        Text("For every environment's lists and details. Artwork and matches are labels only: " +
+        Text("For every client's lists and details. Artwork and matches are labels only: " +
             "no download, file or server is ever changed.",
             style = MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

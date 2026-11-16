@@ -243,7 +243,7 @@ internal fun shouldConsumeReviewedSourceOnExit(
 ): Boolean = isCurrentDocument && !lifecycleCancelled
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), COMBINED("All environments"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 /** "12 shown", or "3 of 12 shown" when a search or filter narrows the list (as on the local device). */
@@ -1402,6 +1402,7 @@ internal fun ChunksApp(
                 },
                 connectedProfileId = server?.let { io.github.gamesbyian.chunks.model.EnvironmentSnapshots
                     .serverIdOfAliasScope(aliasScope)?.value },
+                connectedSessionVerified = !stale && error == null,
                 connectedVersion = version,
                 remoteForDefaultFolder = server,
                 savedDefaultFolder = remember(aliasScope, recentPlaceRevision) {
@@ -2449,6 +2450,7 @@ internal fun ConnectionScreen(
     onPassword: (String) -> Unit, onConnect: () -> Unit,
     connectedSessionName: String? = null,
     connectedProfileId: String? = null,
+    connectedSessionVerified: Boolean = true,
     connectedVersion: String = "",
     remoteForDefaultFolder: RTorrentRemote? = null,
     savedDefaultFolder: String? = null,
@@ -2515,10 +2517,10 @@ internal fun ConnectionScreen(
         showNewConnectionForm = false
         pendingForget = null
     }
-    LaunchedEffect(connectedSessionName, showNewConnectionForm, managedProfileId) {
+    LaunchedEffect(connectedSessionName) {
         if (connectedSessionName != null) showNewConnectionForm = false
-        connectionList.scrollToItem(0)
     }
+    LaunchedEffect(showNewConnectionForm, managedProfileId) { connectionList.scrollToItem(0) }
     // Reuse the exact existing verified Connect operation. No saved password or
     // endpoint is broadcast to an unverified profile, and no torrent mutation
     // occurs merely because the app opened. Consume before invoking the action
@@ -2563,7 +2565,7 @@ internal fun ConnectionScreen(
                     Text("+ Add connection")
                 }
             }
-            items(unifiedConnectionRoster(savedProfiles, connectedProfileId, connectedSessionName), key = { it.id }) { entry ->
+            items(unifiedConnectionRoster(savedProfiles, connectedProfileId, connectedSessionName, connectedSessionVerified), key = { it.id }) { entry ->
                 ConnectionRosterCard(entry, loading = loading,
                     onPrimary = {
                         if (entry.connected) onViewConnectedTransfers()
@@ -2582,9 +2584,10 @@ internal fun ConnectionScreen(
             Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
                 Column(Modifier.fillMaxWidth().padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Connected · " + connectedSessionName,
+                    Text((if (connectedSessionVerified) "Connected · " else "Connection unverified · ") + connectedSessionName,
                         style = MaterialTheme.typography.titleMedium)
-                    Text("This verified session is available in Transfers. Browsing does not change its torrents.",
+                    Text(if (connectedSessionVerified) "This verified session is available in Transfers."
+                        else "Last connection is unverified. Inventory may be out of date.",
                         style = MaterialTheme.typography.bodySmall)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = onViewConnectedTransfers,

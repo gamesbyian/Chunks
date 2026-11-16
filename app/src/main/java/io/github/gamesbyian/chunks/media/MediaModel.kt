@@ -92,3 +92,10 @@ enum class MediaAssignmentState(val label: String) {
     COULDNT_IDENTIFY("Couldn't identify"),
     CATEGORY_ART_BY_USER("Category art chosen by you")
 }
+
+/** Uniform fit, preserving every source edge even for unusual manual banners or narrow covers. */
+fun artworkBounds(width: Int, height: Int, maxWidth: Float, maxHeight: Float): Pair<Float, Float> {
+    require(width > 0 && height > 0 && maxWidth > 0 && maxHeight > 0)
+    val scale = minOf(maxWidth / width, maxHeight / height)
+    return width * scale to height * scale
+}

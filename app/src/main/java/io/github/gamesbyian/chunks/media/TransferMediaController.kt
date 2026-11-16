@@ -1006,6 +1006,7 @@ class TransferMediaController(
             store.put(a)
             f.update { it.copy(assignment = a, poster = null) }
             requestPoster(key)
+            loadArtwork(key, explicitRequest = true)
         }
     }
 
@@ -1135,8 +1136,11 @@ class TransferMediaController(
                 artworkNetworkAllowed(key, explicitRequest = manualChoice) }
             val providerOrder = service.providerInfos().map { it.id }
             // The user's own image always wins (explicit pin > provider art); otherwise deterministic order.
+            val role = (match?.kind ?: f.value.displayKind).preferredArtworkRole
+            val chosenPoster = a.userPosterUrl?.let { url -> match?.artwork?.firstOrNull { it.url == url } }
             val r = a.userArtwork?.let { artwork.loadOne(it, ArtworkRole.SQUARE, false) }?.takeIf { it is ArtworkLoadResult.Loaded }
-                ?: artwork.load(match?.artwork ?: emptyList(), (match?.kind ?: f.value.displayKind).preferredArtworkRole, true, providerOrder, permitted)
+                ?: chosenPoster?.let { artwork.loadOne(it, ArtworkRole.POSTER, true, permitted) }?.takeIf { it is ArtworkLoadResult.Loaded }
+                ?: artwork.load(match?.artwork ?: emptyList(), role, true, providerOrder, permitted)
             when (r) {
                 is ArtworkLoadResult.Loaded -> {
                     if (pin && r.source.provider != LOCAL_PROVIDER) artwork.pin(r.source, (match?.kind ?: f.value.displayKind).preferredArtworkRole)

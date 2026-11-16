@@ -19,7 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
- * Keeps the Back action visible even when the "All environments" title
+ * Keeps the Back action visible even when the "All clients" title
  * occupies multiple lines at 200% system text. Presentation only.
  */
 @Composable
@@ -28,7 +28,7 @@ internal fun CombinedTransfersHeader(onBack: () -> Unit) {
     BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 12.dp)) {
         if (maxWidth < 380.dp || fontScale >= 1.5f) {
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("All environments", style = MaterialTheme.typography.headlineSmall,
+                Text("All clients", style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.semantics { heading() })
                 OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Text("Back")
@@ -37,7 +37,7 @@ internal fun CombinedTransfersHeader(onBack: () -> Unit) {
         } else {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("All environments", style = MaterialTheme.typography.headlineSmall,
+                Text("All clients", style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.semantics { heading() })
                 OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
                     Text("Back")

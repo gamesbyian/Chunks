@@ -13,8 +13,8 @@ internal enum class OptionsShortcut(val title: String, val where: String, privat
         "seeding seed ratio share sharing time rule rules stop upload goal"),
     LOCAL_SETTINGS("Device settings", "Speed limits and DHT are in Options; per-transfer download location is in Add · opens Options on this device",
         "speed limit limits bandwidth throttle rate dht peer peers discovery download location place local device storage"),
-    ENVIRONMENT_COLOURS("Environment colours", "Global display toggle and Local colour in Appearance; each server colour in Connections",
-        "colour colours color colors palette environment environments identity combined all"),
+    ENVIRONMENT_COLOURS("Client colours", "Global display toggle and Local colour in Appearance; each server colour in Connections",
+        "colour colours color colors palette client clients environment environments identity combined all"),
     MEDIA("Artwork & media info", "Online lookup consent, providers, artwork downloads and cache · opens Artwork & info",
         "artwork art poster cover image picture media metadata info identify identification match provider providers tmdb key tvmaze musicbrainz lookup online cache consent"),
     NAMES("Names", "Display names (aliases) for transfers · opens Names",
@@ -48,7 +48,7 @@ internal fun optionsWordsMatch(title: String, words: String, rawQuery: String): 
  * an engine command or picks a Place.
  */
 internal enum class LocalOptionsShortcut(val title: String, val where: String, private val words: String) {
-    CONNECTIONS("Clients & environments", "Manage device and server connections · opens Connections",
+    CONNECTIONS("Clients & connections", "Manage device and server connections · opens Connections",
         "clients client connections connection server remote local account accounts login endpoint profile profiles password authentication"),
     SERVER_PLACES("Server folders & destinations", "Folders on the authenticated server · opens Server places",
         "remote server place places folder folders directory directories destination path save"),

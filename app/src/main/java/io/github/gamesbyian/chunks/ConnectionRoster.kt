@@ -21,19 +21,22 @@ internal data class ConnectionRosterEntry(
     val id: String,
     val name: String,
     val connected: Boolean,
-    val profile: RememberedRemoteProfileRoster.Profile?
+    val profile: RememberedRemoteProfileRoster.Profile?,
+    val needsAttention: Boolean = false
 )
 
 internal fun unifiedConnectionRoster(
     profiles: List<RememberedRemoteProfileRoster.Profile>,
     verifiedProfileId: String?,
-    verifiedName: String?
+    verifiedName: String?,
+    sessionVerified: Boolean = true
 ): List<ConnectionRosterEntry> {
     val saved = profiles.distinctBy { it.id }.map {
-        ConnectionRosterEntry(it.id, it.label, verifiedName != null && it.id == verifiedProfileId, it)
+        ConnectionRosterEntry(it.id, it.label, verifiedName != null && sessionVerified && it.id == verifiedProfileId, it,
+            needsAttention = verifiedName != null && !sessionVerified && it.id == verifiedProfileId)
     }
-    val transient = if (verifiedName != null && saved.none { it.connected })
-        listOf(ConnectionRosterEntry(verifiedProfileId ?: "transient-verified-session", verifiedName, true, null))
+    val transient = if (verifiedName != null && saved.none { it.id == verifiedProfileId })
+        listOf(ConnectionRosterEntry(verifiedProfileId ?: "transient-verified-session", verifiedName, sessionVerified, null, !sessionVerified))
         else emptyList()
     // Stable partition, preserving persisted order within each group; never sort by aliases/URLs.
     return (transient + saved).sortedByDescending { it.connected }
@@ -47,6 +50,7 @@ internal fun ConnectionRosterCard(entry: ConnectionRosterEntry, loading: Boolean
         Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(entry.name, style = MaterialTheme.typography.titleMedium)
             Text(if (entry.connected) "Connected" + (if (entry.profile == null) " · login not remembered" else "")
+                else if (entry.needsAttention) "Needs attention · connection unverified"
                 else "Disconnected · saved profile", style = MaterialTheme.typography.bodySmall)
             ResponsiveActionGroup(maxColumns = 2) { cell ->
                 OutlinedButton(onClick = onPrimary, enabled = !loading, modifier = cell.semantics {
