@@ -114,4 +114,14 @@ status=$?
 set -e
 grep -E '^INSTRUMENTATION_STATUS: test=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES' "$log" || true
 fail_if_skipped_or_failed "$status" 'OK (11 tests)' "Android 10 resume migration, EXTRA synchronous retention and real native Remove"
+# 7. Remote server reads must run on the API 29 runtime itself (#1779):
+#    InputStream.readNBytes is API 33-only and threw NoSuchMethodError here.
+set +e
+adb shell am instrument -w -r \
+ -e class io.github.gamesbyian.chunks.rpc.RemoteBoundedReadsInstrumentedTest \
+ io.github.gamesbyian.chunks.test/androidx.test.runner.AndroidJUnitRunner >"$log" 2>&1
+status=$?
+set -e
+grep -E '^INSTRUMENTATION_STATUS: test=|^INSTRUMENTATION_STATUS_CODE:|^OK |^FAILURES' "$log" || true
+fail_if_skipped_or_failed "$status" 'OK (2 tests)' "Android 10 remote bounded reads"
 echo "CHUNKS_ANDROID10_DOWNLOADS: API 29 user tapped Allow storage access then Android's own Allow, and new Adds switched to Downloads/Chunks Downloads; legacy storage + grant let the native engine write, resume and seed there; the foreground service ran, showed its notification and Stop all paused transfers"
