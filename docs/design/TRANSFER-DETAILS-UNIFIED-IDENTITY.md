@@ -1,5 +1,8 @@
 # Transfer Details: unified identity-first screen (owner-approved, 2026-11-15)
 
+**Clarification (owner, 2026-11-15):** The visible Details environment indicator displays **only the chosen short connection name**, e.g. colour dot + **Wood**, or **Local**. Never repeat `Environment: Server · Wood · <hostname/RPC path>` or any `Server · Wood` qualifier in the consolidated identity or other duplicate Details origin banner. Keep exact stable ID and full endpoint available via Connections → named profile → Manage/diagnostics; the short label is presentation only and must not be used as a network or authority key. Media artwork follows [category-specific natural aspect ratios](TRANSFER-ARTWORK-ASPECT-RATIOS.md), rather than mandating portrait for every media type.
+
+
 **Status:** binding target design, not a claim of implementation or physical APK acceptance. This document governs the single full Transfer Details route for Local and every named remote profile. It complements [compact Transfers](TRANSFERS-COMPACT-LIST-FIRST.md), [UX](../UX.md), [PRODUCT](../PRODUCT.md), [TRANSFER-ARTWORK](../TRANSFER-ARTWORK.md), [media integration](../MEDIA-ARTWORK-IMPLEMENTATION.md) and [work queue](../WORK-QUEUE.md). Supersede earlier drawings or screenshot expectations that show a redundant Back to transfers button, a Transfer details heading, or a separate lower Artwork & media information card.
 
 ## Primary screen hierarchy
