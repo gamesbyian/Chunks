@@ -1,5 +1,8 @@
 # Options visual design: solid-colour category index
 
+> **Owner-facing terminology · 2026-11-15:** Option-card summaries and subsettings use **client** where the term means a local or remote torrent client. Keep the Connections heading and custom names; preserve existing settings behavior and configuration keys. [Client vocabulary design](CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md).
+
+
 > **Owner root-header/shape correction · 2026-11-15:** Follow [compact root header and button geometry](ROOT-HEADERS-AND-CONTROL-GEOMETRY.md). On the root Options screen, place Search options directly below chunks., with **no separate oversized Options title**. Keep the eight solid-colour category cards and contextual headings. Footer tabs use equal rounded-rectangle geometry for selected and unselected states; selection changes emphasis, not shape.
 
 
