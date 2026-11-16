@@ -1,5 +1,8 @@
 # Chunks canonical product contract
 
+> **BINDING TRANSFER DETAILS IDENTITY · 2026-11-15:** The single full Details screen begins under the Chunks wordmark with a unified transfer-and-media identity: identified title/year/provenance and portrait poster (if present), original torrent/release name, truthful observed state, short Local/remote name, and independent **Change list name / Edit identification / Choose artwork** actions. Remove redundant **Transfer details** heading, **Back to transfers** button and lower duplicate **Artwork & media information** section. Persistent Transfers footer returns to the prior list context. Preserve manual artwork overrides, provider consent and unknown/non-media fallbacks. See [binding Details design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md). This is approved target, not accepted implementation.
+
+
 **Binding terminology:** The built-in torrent environment is **Local Device** (UI), **Local** (Kotlin) and the exact environment ID `local`. Remote environments are independently named profiles. Phone/handset/tablet refers only to physical hardware, not a transfer or command scope. Fresh development APKs are installed after uninstalling the previous build; legacy app preferences are not migrated.
 
 **Naming requirement:** Public/full title **Chunks Torrent Client & Remote**; installed Android label **Chunks**; in-app visual wordmark **chunks.**. Preserve explicit preview labels for side-by-side builds and do not change the app ID or system notification attribution. See [branding and app identity contract](BRANDING-AND-APP-IDENTITY.md).
