@@ -44,7 +44,8 @@ internal object UniversalAddDisplayProjector {
                 UniversalAddDisplayStage.SESSION_CONFIRMED
             phase == UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
                 UniversalAddDisplayStage.START_UNVERIFIED
-            knownNoWrite -> UniversalAddDisplayStage.NO_NEW_ADD
+            knownNoWrite && phase == UniversalAddCoordinator.Phase.REVIEWED ->
+                UniversalAddDisplayStage.NO_NEW_ADD
             registrationFromThisSubmission &&
                 phase in setOf(
                     UniversalAddCoordinator.Phase.WRITE_ATTEMPTED,
