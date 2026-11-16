@@ -2093,6 +2093,7 @@ private fun CombinedTransferRow(
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TransferRowArtwork(row.key, row.originalName,
+                        modifier = Modifier.testTag("combined-card-artwork"),
                         hidden = source?.availability == EnvironmentAvailability.LOCKED,
                         height = if (expanded) 132.dp else 108.dp,
                         maxWidth = artMaxWidth)
@@ -2133,7 +2134,7 @@ private fun CombinedTransferRow(
             row.progressPpm?.let { ppm ->
                 ChunkedProgressBar(
                     progress = ppm / 1_000_000f,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("combined-card-progress"),
                     historyKey = ProgressChunkStore.identity(
                         row.key.environment.value, row.key.infoHash),
                     observeFresh = source?.canClaimCompleteLiveInventory == true,
