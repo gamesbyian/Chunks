@@ -87,6 +87,7 @@ import io.github.gamesbyian.chunks.engine.LocalTransferState
 import io.github.gamesbyian.chunks.engine.LocalTransferFile
 import io.github.gamesbyian.chunks.engine.LocalTransferStatus
 import io.github.gamesbyian.chunks.model.Units
+import io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector
 import io.github.gamesbyian.chunks.model.LocalInventoryFrame
 import io.github.gamesbyian.chunks.snapshots.LocalInventorySnapshotPanel
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
@@ -1075,15 +1076,19 @@ internal fun LocalEngineScreen(
             fontWeight = FontWeight.Bold, modifier = Modifier.semantics { heading() })
         localAddAttemptSession?.attemptedTicket?.let {
             val phase = localAddAttemptSession.coordinator.phase
-            Text("Previous local Add: " + when (phase) {
-                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ->
-                    "new transfer verified from this Add."
-                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ->
-                    "transfer exists, but Add origin is uncertain."
-                io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED ->
-                    "transfer exists at the reviewed Place; requested Start remains unverified."
-                else -> "waiting for exact local transfer verification; no automatic retry."
-            }, style = MaterialTheme.typography.bodyMedium)
+            // The same client-neutral receipt vocabulary is used by rTorrent.
+            // A local registration token is positive new-Add evidence; a matching
+            // hash seen after an uncertain write is not.
+            val display = UniversalAddDisplayProjector.from(
+                phase = phase,
+                clientLabel = "Local",
+                submitting = busy,
+                registrationFromThisSubmission = localAddAttemptSession.registrationFromThisSubmission
+            )
+            if (display != null) Text(
+                display.title + ". " + display.explanation,
+                style = MaterialTheme.typography.bodyMedium
+            )
             if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ||
                 phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ||
                 phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED) {
