@@ -160,7 +160,7 @@ class SeedhostExistingTransferStopStartInstrumentedTest {
                 true
             }.getOrDefault(false)
         }
-        rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
         waitOrStage("transfers-missing", 60_000) {
             rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
         }

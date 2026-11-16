@@ -18,6 +18,18 @@ Completed before the first implementation test campaign. Authority: [batch hando
 
 Remaining Back controls in Add results, alias review and snapshot screens are separate surviving navigation contracts. Square provider fixtures, explicit SQUARE role alternatives and square music/software artwork remain valid; they do not mandate square movie presentation. Native screenshot capture is evidence, not owner visual approval.
 
+## Claude reconciliation audit (2026-11-16)
+
+#1785 head `c3a439e` merged with main `cf94c78` (clean; settings registry, #1787 docs and takeover handoff preserved) on `ccr-80bc6676-160j9f`. Local JVM campaign on the merged tree: 2,585 tests, 19 failed; 3 were workspace-only (JDK 21 Security Manager, non-UTF-8 `sun.jnu.encoding`, one libtorrent timing case) and absent from CI's 15. Each remaining failure was classified before any edit:
+
+| Disposition | Failure → resolution |
+| --- | --- |
+| **Regression, fixed in source** | Duplicate `Options` pane title (search field re-declared the root's pane title) broke `ScreenPaneTitleTest`, `CombinedSearchContinuityTest`, three `LocalToolReturnTest` cases: removed the duplicate. Offline tools (ZIP/snapshot inspect, Create) were reachable only after starting **+ Add connection**: restored on the roster. Roster Manage action repeated its disambiguation twice in its spoken name: fixed. |
+| **Regression, fixed in source + stable tag** | Roster **View transfers** lost the `View transfers on current verified server` name (now names the client). Ten installed tests (native Add atlas/media, two-server, delete-data, magnet, Seedhost read-only) located it by that copy: new `ChunksSemantics.CONNECTION_VIEW_TRANSFERS` on the verified session's action; tests use the tag. |
+| REWRITE (design-obsolete observer) | Details' client is the short compact origin (identity-first Details): `CombinedDetailSessionCapabilityTest`, `CombinedSharedDetailNavigationTest`, `CombinedTransfersScreenTest`, `RepeatedAndroidIntakeTest` derive it with `compactServerLabel`. Removed visible Options/Transfers headings: assert pane title / `TRANSFERS_SCREEN`. Zero-profile purple intro asserted before the form opens. 200% font test uses `TRANSFERS_FILTER_SORT` (the toolbar has had no "Filters" text). |
+| REWRITE (natural artwork) | Row art for movie/TV is now POSTER role: revoke-preserves-cache reads the preferred role; Details may reuse the already-held row bitmap (identity check) while collection is off, and the **no new HTTP** assertion is unchanged. |
+| KEEP | All exact profile/hash, no-mutation, consent, credential, stale-session (probe from an old session still cannot populate a new one) assertions unchanged. |
+
 ## Campaign status
 
 Not run at this checkpoint. Planned consolidated local static/docs/JVM/Compose/build/lint/instrumentation compilation, followed by assembled CI native/R8/API29/two-server/delete-data gates and representative render inspection. Physical Pixel, human TalkBack and protected candidate-host evidence must be reported separately. The managed Linux workspace has Gradle 9.3.1 and Android API 37 SDK; no hardware KVM device is available.

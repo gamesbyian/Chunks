@@ -49,8 +49,10 @@ class ConnectAdvancedPathTest {
 
     @Test fun remoteConnectionsIsOptionalAndDeviceTransfersStayAccessible() {
         rule.onNodeWithContentDescription("Connections").assertExists().performClick()
-        rule.openConnectionFormIfNeeded(allowConnected = false)
+        // Zero profiles: the compact purple intro card owns the embedded + Add connection
+        // (unified roster design); it is the entry, shown before the form opens.
         rule.onNodeWithText("Connect to a remote client").assertExists()
+        rule.openConnectionFormIfNeeded(allowConnected = false)
         // Local management belongs in Transfers, not the remote-only intro.
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         // The connection form is lazy and must still be scroll-reachable.

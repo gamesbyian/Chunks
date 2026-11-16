@@ -48,12 +48,6 @@ class OpenWithActivityIntakeTest {
         .setDataAndType(uri, type)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 
-    /** What Android does for a singleTask/singleTop re-launch (protected on Activity). */
-    private fun deliverNewIntent(activity: MainActivity, intent: Intent) {
-        android.app.Activity::class.java.getDeclaredMethod("onNewIntent", Intent::class.java)
-            .apply { isAccessible = true }.invoke(activity, intent)
-    }
-
     private fun waitForText(text: String) = rule.waitUntil(30_000) {
         rule.onAllNodes(hasText(text, substring = true)).fetchSemanticsNodes().isNotEmpty()
     }
@@ -73,16 +67,28 @@ class OpenWithActivityIntakeTest {
         }
     }
 
-    @Test fun genericBinaryNamedTorrentAndWarmSecondOpenWithReachTheSameReview() {
-        ActivityScenario.launch<MainActivity>(view(document("warm-a.torrent", "warm-first.mkv"),
+    @Test fun genericBinaryNamedTorrentReachesTheReview() {
+        ActivityScenario.launch<MainActivity>(view(document("octet.torrent", "octet-open-with.mkv"),
             "application/octet-stream")).use { scenario ->
+            waitForText("octet-open-with.mkv")
+            scenario.onActivity { assertFalse(it.isFinishing) }
+        }
+    }
+
+    @Test fun warmSecondOpenWithIsHeldForAnExplicitChoice() {
+        // Robolectric's controller delivers onNewIntent through the real pause → newIntent →
+        // resume lifecycle, as Android does for the one existing singleTask instance.
+        val controller = org.robolectric.Robolectric.buildActivity(MainActivity::class.java,
+            view(document("warm-a.torrent", "warm-first.mkv"), "application/x-bittorrent")).setup()
+        try {
             waitForText("warm-first.mkv")
             // A second Open With while the unsubmitted first draft is open is held for an
             // explicit choice, never silently swapped or submitted.
-            val second = view(document("warm-b.torrent", "warm-second.mkv"), "application/x-bittorrent")
-            scenario.onActivity { deliverNewIntent(it, second) }
+            controller.newIntent(view(document("warm-b.torrent", "warm-second.mkv"), "application/x-bittorrent"))
             waitForText("Use new source")
-            scenario.onActivity { assertFalse(it.isFinishing) }
+            assertFalse(controller.get().isFinishing)
+        } finally {
+            controller.pause().stop().destroy()
         }
     }
 

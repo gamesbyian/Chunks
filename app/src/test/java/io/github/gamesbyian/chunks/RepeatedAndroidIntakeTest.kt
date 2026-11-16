@@ -176,7 +176,13 @@ class RepeatedAndroidIntakeTest {
         rule.onNode(row).performClick()
         rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         val before = server.methods.size
-        rule.onNode(hasText("Open Server ·", substring = true)).performScrollTo().performClick()
+        // Details' owning-list action names the short client origin, not "Server · …".
+        val ownerList = androidx.compose.ui.test.SemanticsMatcher("Open <client> transfers") { node ->
+            node.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.Text) { null }
+                .orEmpty().any { it.text.startsWith("Open ") && it.text.endsWith(" transfers") &&
+                    !it.text.contains("Server ·") }
+        }
+        rule.onNode(ownerList).performScrollTo().performClick()
         waitForText("Search names or hashes")
         rule.onNodeWithText("+ Add torrent").assertDoesNotExist()
         val owner = io.github.gamesbyian.chunks.model.EnvironmentSnapshots.serverIdOfAliasScope(

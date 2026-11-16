@@ -206,7 +206,7 @@ class CombinedThreeSeedhostReadOnlyInstrumentedTest {
             connect(second, "Seed 2", "second")
             disconnectAndAddAnother("second")
             connect(third, "Seed 3", "third")
-            rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+            rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
             waitFor("combined-open-failed") { visible("Search names or hashes") }
             showAllEnvironments()
             // Saved instances are restored read-only without a tap. Union by

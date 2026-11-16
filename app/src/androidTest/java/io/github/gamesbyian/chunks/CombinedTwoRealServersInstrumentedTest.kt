@@ -272,7 +272,7 @@ class CombinedTwoRealServersInstrumentedTest {
             runCatching { scrollTo("Connected") }
             visible("Connected") && visible("View transfers")
         }
-        rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
         enterConnectedCanonicalTransfers(url, user)
         scrollTo("2 transfers")
         assertTrue("The exact scoped server must show its two real jobs", visible("2 transfers"))

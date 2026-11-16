@@ -2906,7 +2906,9 @@ internal fun ConnectionScreen(
                 style = MaterialTheme.typography.bodySmall, color = ChunksColors.TextSecondary)
         }
         } // Explicit Add/Edit connection form.
-        if (!rosterVisible) item {
+        // Offline tools need no connection: keep them reachable from the roster itself
+        // (zero profiles included), not only after starting "+ Add connection".
+        item {
             OutlinedButton(
                 onClick = { extraToolsOpen = !extraToolsOpen },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)

@@ -59,11 +59,13 @@ internal fun ConnectionRosterCard(entry: ConnectionRosterEntry, loading: Boolean
                 else if (entry.needsAttention) "Needs attention · connection unverified"
                 else "Disconnected · saved profile", style = MaterialTheme.typography.bodySmall)
             ResponsiveActionGroup(maxColumns = 2) { cell ->
-                OutlinedButton(onClick = onPrimary, enabled = !loading, modifier = cell.semantics {
+                OutlinedButton(onClick = onPrimary, enabled = !loading, modifier = cell
+                    .then(if (entry.connected) Modifier.testTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS) else Modifier)
+                    .semantics {
                     contentDescription = (if (entry.connected) "View transfers on " else "Connect to ") + entry.name + (entry.disambiguation?.let { ", $it" } ?: "")
                 }) { Text(if (entry.connected) "View transfers" else "Connect") }
                 OutlinedButton(onClick = onManage, modifier = cell.semantics {
-                    contentDescription = "Manage " + entry.name + (entry.disambiguation?.let { ", $it" } ?: "") + (entry.disambiguation?.let { ", $it" } ?: "")
+                    contentDescription = "Manage " + entry.name + (entry.disambiguation?.let { ", $it" } ?: "")
                 }) { Text("Manage") }
             }
         }

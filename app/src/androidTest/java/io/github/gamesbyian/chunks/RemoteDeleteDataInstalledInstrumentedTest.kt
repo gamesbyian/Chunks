@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.os.Bundle
+import androidx.compose.ui.test.onNodeWithTag
 import android.util.Base64
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -117,7 +118,7 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             waitFor("connected server in Connections", 60_000) {
                 visible("View transfers")
             }
-            rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
+            rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performScrollTo().performClick()
             waitFor("canonical server-scoped Transfers", 60_000) {
                 visible("Search names or hashes")
             }

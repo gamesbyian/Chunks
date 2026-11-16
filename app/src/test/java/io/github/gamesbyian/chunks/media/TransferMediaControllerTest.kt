@@ -405,7 +405,13 @@ class TransferMediaControllerTest {
         c.lookup(local)
         val before = http.requests.size
         c.requestPoster(local)
-        assertNull("A Details render must not bypass the global collection opt-out", flow.value.poster)
+        // Natural-ratio rows (2026-11-15 artwork design) display the same POSTER-role image
+        // Details uses, so Details may reuse that already-held bitmap; it may never collect
+        // a new one while automatic collection is off.
+        flow.value.poster?.let { poster ->
+            assertTrue("A Details render must not bypass the global collection opt-out",
+                poster === flow.value.artwork)
+        }
         assertEquals("No poster HTTP after collection is disabled", before, http.requests.size)
     }
 
@@ -1550,7 +1556,7 @@ class TransferMediaControllerTest {
         controller.onProviderConfigurationChanged()
         val offline = ArtworkRepository(FakeMediaHttp(), disk, hostPolicyFor = { null })
         assertTrue("Revoking the provider must not destroy already cached legitimate art",
-            offline.load(match.artwork, ArtworkRole.SQUARE, allowNetwork = false)
+            offline.load(match.artwork, match.kind.preferredArtworkRole, allowNetwork = false)
                 is io.github.gamesbyian.chunks.media.artwork.ArtworkLoadResult.Loaded)
     }
 

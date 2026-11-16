@@ -59,7 +59,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
@@ -2666,8 +2665,9 @@ internal fun LocalEngineScreen(
         if (optionsCategory != null) OutlinedButton(onClick = ::returnToOptionsIndex,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("All options") }
         ClearableTransferSearchField(value = localOptionsSearch, onValueChange = { localOptionsSearch = it },
-            label = "Search options", modifier = Modifier.bringIntoViewRequester(optionsRequester)
-                .semantics { paneTitle = "Options" })
+            // The Options root names itself once (MainActivity's section pane title);
+            // a second "Options" pane here made TalkBack/tests see two panes.
+            label = "Search options", modifier = Modifier.bringIntoViewRequester(optionsRequester))
         optionsLaunchError?.let {
             Text(it, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })

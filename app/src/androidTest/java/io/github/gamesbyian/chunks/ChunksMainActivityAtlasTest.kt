@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.hasTestTag
 import android.content.ContentValues
 import androidx.compose.ui.test.onNodeWithTag
 import android.content.Context
@@ -365,7 +366,7 @@ class ChunksMainActivityAtlasTest {
             rule.waitUntil(60_000) {
                 rule.onAllNodesWithText("View transfers").fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithContentDescription("View transfers on current verified server").performScrollTo().performClick()
+            rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performScrollTo().performClick()
             // Wait for the populated rows themselves, not a summary line whose lazy
             // position depends on how much sits above the list.
             rule.waitUntil(30_000) {

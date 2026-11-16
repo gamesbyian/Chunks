@@ -224,7 +224,7 @@ class SeedhostAndroidReadOnlyInstrumentedTest {
             }.getOrDefault(false)
         }
         checkpoint("connections")
-        rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+        rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
         rule.waitUntil(60_000) {
             rule.onAllNodesWithText("Search names or hashes").fetchSemanticsNodes().isNotEmpty()
         }

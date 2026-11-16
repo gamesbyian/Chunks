@@ -166,7 +166,9 @@ class CombinedTransfersScreenTest {
         // presentation, even when local engine inventory is genuinely empty.
         rule.onNodeWithTag(ChunksSemantics.WELCOME_HEADING).assertDoesNotExist()
         rule.onNodeWithText("Search names or hashes").assertExists()
-        rule.onNodeWithText("Transfers").assertExists()
+        // The redundant visible "Transfers" heading is removed (root-header design); the
+        // canonical Transfers browser is identified by its stable tag and pane title.
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SCREEN).assertExists()
         assertTrue("vault-only browse must not issue rTorrent writes", commands.isEmpty())
     }
 
@@ -269,7 +271,8 @@ class CombinedTransfersScreenTest {
         rule.onNodeWithContentDescription(action).performClick()
         rule.onNodeWithTag(ChunksSemantics.DETAILS_SCREEN).assertExists()
         rule.onNodeWithText("Size: 900 B", substring = true).assertExists()
-        rule.onNodeWithText("Open " + label + " transfers").assertExists()
+        rule.onNodeWithText("Open " + compactServerLabel(aliasScope).removePrefix("Server · ") +
+            " transfers").assertExists()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
         revealDescription(action)
         rule.onNodeWithContentDescription(action).assertExists()

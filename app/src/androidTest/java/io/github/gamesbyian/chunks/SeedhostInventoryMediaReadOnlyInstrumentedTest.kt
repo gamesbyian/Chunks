@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Intent
+import androidx.compose.ui.test.onNodeWithTag
 import android.os.Bundle
 import android.util.Base64
 import androidx.compose.ui.semantics.SemanticsActions
@@ -180,7 +181,7 @@ class SeedhostInventoryMediaReadOnlyInstrumentedTest {
                         true
                     }.getOrDefault(false)
                 }
-                rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+                rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
                 waitOrStage("transfers-missing", 60_000) { textVisible("Search names or hashes") }
                 stage("connected")
 

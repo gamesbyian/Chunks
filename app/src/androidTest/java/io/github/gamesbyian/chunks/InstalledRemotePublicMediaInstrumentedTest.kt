@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Intent
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
 import android.graphics.Bitmap
 import android.util.Base64
 import androidx.compose.ui.graphics.asAndroidBitmap
@@ -163,7 +165,7 @@ class InstalledRemotePublicMediaInstrumentedTest {
                     runCatching { scrollTo("Connected") }
                     visible("Connected") && visible("View transfers")
                 }
-                rule.onNodeWithContentDescription("View transfers on current verified server").performClick()
+                rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performClick()
                 waitFor("remote fixture row in canonical Transfers", 60_000) {
                     runCatching { scrollTo(originalName); true }.getOrDefault(false)
                 }

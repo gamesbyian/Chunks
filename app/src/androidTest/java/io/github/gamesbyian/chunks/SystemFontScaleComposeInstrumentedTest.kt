@@ -1,6 +1,7 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Context
+import androidx.compose.ui.test.hasTestTag
 import android.content.ContentValues
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.ui.semantics.SemanticsActions
@@ -311,8 +312,10 @@ class SystemFontScaleComposeInstrumentedTest {
         // Controls and actual remote rows must remain reachable through the
         // canonical scrolling Transfers catalog at real 200% system font size.
         val combinedList = rule.onNode(hasScrollToIndexAction())
-        combinedList.performScrollToNode(hasText("Filters"))
-        rule.onNodeWithText("Filters").performClick()
+        // The compact toolbar's Filters & sort control is an icon button named by
+        // ChunksSemantics, not a "Filters" text label (compact list-first toolbar).
+        combinedList.performScrollToNode(hasTestTag(ChunksSemantics.TRANSFERS_FILTER_SORT))
+        rule.onNodeWithTag(ChunksSemantics.TRANSFERS_FILTER_SORT).performClick()
         combinedList.performScrollToNode(hasText("Change sort & grouping", substring = true))
         rule.onNodeWithText("Change sort & grouping", substring = true).performClick()
         combinedList.performScrollToNode(hasText("Group by client"))
