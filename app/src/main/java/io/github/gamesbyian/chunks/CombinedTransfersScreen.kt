@@ -10,7 +10,6 @@ import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -48,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -2085,13 +2085,19 @@ private fun CombinedTransferRow(
                 if (onToggleExpanded != null) stateDescription = if (expanded) "Expanded" else "Collapsed"
             },
             verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            BoxWithConstraints(Modifier.fillMaxWidth()) {
-                // Keep a usable text column at 320dp while letting native poster,
-                // square and landscape widths determine where that column begins.
-                val artMaxWidth = minOf(maxWidth * 0.32f, 112.dp,
-                    (maxWidth - 164.dp).coerceAtLeast(48.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Intrinsic-height rows cannot query a BoxWithConstraints/SubcomposeLayout.
+            // Observe only the available horizontal size, leaving the source-colour rail
+            // and right-column intrinsic height free of unsupported measurements.
+            val density = LocalDensity.current
+            var measuredWidth by remember { mutableStateOf(0.dp) }
+            val artMaxWidth = if (measuredWidth > 0.dp)
+                minOf(measuredWidth * 0.32f, 112.dp,
+                    (measuredWidth - 164.dp).coerceAtLeast(48.dp))
+            else 96.dp
+            Row(Modifier.fillMaxWidth().onSizeChanged {
+                    measuredWidth = with(density) { it.width.toDp() }
+                }, verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TransferRowArtwork(row.key, row.originalName,
                         modifier = Modifier.testTag("combined-card-artwork"),
                         hidden = source?.availability == EnvironmentAvailability.LOCKED,
@@ -2152,7 +2158,6 @@ private fun CombinedTransferRow(
             if (expanded) quickControls?.invoke()
                     }
                 }
-            }
         }
     }
 }
