@@ -574,7 +574,7 @@ fun MediaPrivacySettingsPanel(
         SettingSwitch("Download artwork", "Metadata can be used without downloading images.", settings.downloadArtwork) { onChange(settings.copy(downloadArtwork = it)) }
         SettingSwitch("Artwork on mobile data", "Download images on metered networks.", settings.artworkOnMeteredNetwork,
             enabled = settings.downloadArtwork) { onChange(settings.copy(artworkOnMeteredNetwork = it)) }
-        SettingSwitch("Larger artwork in lists", "64dp images in transfer lists instead of compact 40dp rows.",
+        SettingSwitch("Larger artwork in lists", "Increase cover height where space allows. Narrow cards still protect room for text.",
             settings.largeListArtwork) { onChange(settings.copy(largeListArtwork = it)) }
         SettingSwitch("Similar transfers in details", "Related transfers by confirmed identity; never from names alone.",
             settings.showSimilarTransfers) { onChange(settings.copy(showSimilarTransfers = it)) }
