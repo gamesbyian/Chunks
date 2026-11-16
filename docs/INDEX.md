@@ -1,3 +1,5 @@
+> **Settings architecture (2026-11-15):** [Declarative settings registry and page composition](SETTINGS-REGISTRY.md) defines stable reusable setting IDs, canonical owning stores, typed bindings and page assembly. An initial metadata-only foundation exists; generic renderer and migration remain future implementation, not accepted UI behavior.
+
 > **Current UI naming rule (2026-11-15):** [User-facing client terminology and included source count](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md) replaces *environment* on UI surfaces and mandates a correctly computed **N clients included** summary (not misleading *sources excluded*), preserving internal stable environment IDs.
 
 > **Root visual geometry (2026-11-15):** [Compact root headings and control geometry](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md) removes duplicate Transfers/Options screen titles, unifies footer selected/unselected rounded-rectangle shapes and specifies rounded-square Filters/Sort and Batch buttons. Approved design awaiting code and Pixel visual acceptance.
