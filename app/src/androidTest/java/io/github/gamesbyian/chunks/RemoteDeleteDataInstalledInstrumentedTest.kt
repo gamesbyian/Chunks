@@ -151,7 +151,7 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             // The result card can leave with the removed row on refresh, so
             // accept the queued message OR independent exact-session absence.
             waitFor("queued delete-data outcome", 60_000) {
-                visible("physical data deletion is NOT yet verified") ||
+                visible("hasn't confirmed the files are gone") ||
                     runBlocking { remote.lookupName(hash) } == null
             }
             assertTrue("The app must never claim remote files are already gone",

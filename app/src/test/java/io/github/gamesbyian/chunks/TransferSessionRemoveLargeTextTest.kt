@@ -154,7 +154,7 @@ class TransferSessionRemoveLargeTextTest {
         assertEquals(1, mutationGates)
         assertEquals(1, dataCalls)
         assertEquals(0, keepCalls)
-        rule.onNodeWithText("physical data deletion is NOT yet verified", substring = true).assertExists()
+        rule.onNodeWithText("hasn't confirmed the files are gone", substring = true).assertExists()
         // The result card's read-only re-check measured 1.8:1 (lavender on a light card) before AccentCardOutlinedButton.
         val recheck = rule.onNodeWithText("Check current session (read-only)", useUnmergedTree = true)
             .performScrollTo().renderedContrast()

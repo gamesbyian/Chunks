@@ -11,15 +11,15 @@ class SessionEraseFeedbackTest {
 
     @Test fun verifiedAbsentIsSessionSpecificAndDoesNotClaimPayloadInspection() {
         val text = sessionEraseFeedback(SessionEraseOutcome.VerifiedRemoved(hash))
-        assertTrue(text.contains("absent from rTorrent's session"))
-        assertTrue(text.contains("Physical files were not inspected"))
+        assertTrue(text.contains("gone from the server list"))
+        assertTrue(text.contains("downloaded files weren't checked"))
         assertFalse(text.contains("main server view"))
     }
 
     @Test fun alreadyAbsentDidNotSendAnotherErase() {
         val text = sessionEraseFeedback(SessionEraseOutcome.AlreadyAbsent(hash))
-        assertTrue(text.contains("session"))
-        assertTrue(text.contains("No erase command was sent"))
+        assertTrue(text.contains("already absent from the server"))
+        assertTrue(text.contains("No removal request was sent"))
         assertFalse(text.contains("main view"))
     }
 
@@ -32,8 +32,8 @@ class SessionEraseFeedbackTest {
 
     @Test fun uncertainNeverClaimsSuccessOrPromisesSafeRetry() {
         val text = sessionEraseFeedback(SessionEraseOutcome.Uncertain(hash))
-        assertTrue(text.contains("uncertain"))
-        assertTrue(text.contains("never blindly repeat"))
+        assertTrue(text.contains("couldn't confirm removal"))
+        assertTrue(text.contains("Refresh its status before trying again"))
         assertFalse(text.contains("Verified"))
     }
 }

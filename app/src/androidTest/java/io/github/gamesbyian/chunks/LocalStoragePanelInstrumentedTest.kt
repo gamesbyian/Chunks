@@ -68,14 +68,14 @@ class LocalStoragePanelInstrumentedTest {
         }
         rule.onNodeWithText("Local device storage").assertExists()
         rule.onNodeWithText("1.0 GiB free of 10.0 GiB").assertExists()
-        rule.onNodeWithText("Android reports low local device storage. Avoid adding large local downloads.")
+        rule.onNodeWithText("This device is running low on space. Free some space before adding large downloads.")
             .assertExists()
-        rule.onNodeWithText("Occupied or reserved on this volume, including other apps. Not Chunks torrent usage.")
+        rule.onNodeWithText("Space used or reserved by this device, including other apps. This isn't just Chunks downloads.")
             .assertExists()
         capture("local-storage-low-native-compose")
         rule.onNodeWithText("Refresh local space").performScrollTo().performClick()
         rule.onNodeWithText("5.0 GiB free of 10.0 GiB").performScrollTo().assertExists()
-        rule.onNodeWithText("No active Android low-storage alert detected. The numeric threshold is not exposed to apps.").assertExists()
+        rule.onNodeWithText("Android isn't reporting low storage right now.").assertExists()
         capture("local-storage-normal-native-compose")
     }
 
@@ -99,13 +99,13 @@ class LocalStoragePanelInstrumentedTest {
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("in 1 file", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Chunks does not yet enforce a local torrent storage cap.", substring = true)
+        rule.onNodeWithText("These limits are warnings only. Chunks won't stop downloads or delete files.", substring = true)
             .assertExists()
         rule.onNodeWithText("Refresh local space").performScrollTo().performClick()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("in 2 files", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Partial survey only:", substring = true).assertExists()
+        rule.onNodeWithText("Some files couldn't be counted, so this total may be incomplete.", substring = true).assertExists()
     }
 
     @Test fun allocatedBlockEstimateIsSeparateFromLogicalCapAndNeverPromisesReclaim() {

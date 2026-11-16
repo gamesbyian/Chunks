@@ -41,15 +41,15 @@ class SeedingRulesScreenTest {
             } }
         }
         rule.onNodeWithText(
-            "Local device rules affect new transfers only. Server rules are saved for later and are not applied yet."
+            "Rules on this device apply only to new transfers. Server rules are saved but aren't active yet."
         ).assertExists()
-        rule.onNodeWithText("On this device, rules apply to transfers added from now on", substring = true)
+        rule.onNodeWithText("New transfers on this device get any matching upload limit", substring = true)
             .assertDoesNotExist()
         rule.onNodeWithText("What these rules do today").performClick()
-        rule.onNodeWithText("On this device, rules apply to transfers added from now on", substring = true)
+        rule.onNodeWithText("New transfers on this device get any matching upload limit", substring = true)
             .assertExists()
         rule.onNodeWithText("Hide rule explanation").performClick()
-        rule.onNodeWithText("On this device, rules apply to transfers added from now on", substring = true)
+        rule.onNodeWithText("New transfers on this device get any matching upload limit", substring = true)
             .assertDoesNotExist()
         rule.onNodeWithText("New rule").assertExists()
     }
@@ -150,7 +150,7 @@ class SeedingRulesScreenTest {
         field("Find client defaults").performScrollTo().performTextReplacement("no-such-environment")
         rule.runOnIdle { available.value = listOf(SeedingEnvironment.local()) }
         field("Find client defaults").performScrollTo().performTextReplacement("")
-        rule.onNodeWithText("Affects future local transfers", substring = true).assertExists()
+        rule.onNodeWithText("Applies to new transfers on this device", substring = true).assertExists()
     }
 
     @Test fun ambiguousUnitsBlockSavingAndDeleteNeedsConfirmation() {

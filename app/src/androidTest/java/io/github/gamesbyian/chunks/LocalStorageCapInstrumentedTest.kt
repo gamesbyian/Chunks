@@ -62,7 +62,7 @@ class LocalStorageCapInstrumentedTest {
                 rule.onAllNodesWithText("Warning: download-folder logical sizes reached 85%",
                     substring = true).fetchSemanticsNodes().isNotEmpty()
             }
-            rule.onNodeWithText("Chunks does not yet enforce a local torrent storage cap.", substring = true)
+            rule.onNodeWithText("These limits are warnings only. Chunks won't stop downloads or delete files.", substring = true)
                 .assertExists()
             assertEquals(gib, LocalCapPreferenceStore(context).get(root))
             rule.onNodeWithText("Clear advisory limit").performScrollTo().performClick()
