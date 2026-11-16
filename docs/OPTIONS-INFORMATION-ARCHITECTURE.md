@@ -48,7 +48,7 @@ The owner-approved original .torrent **source-file** Keep/Archive/Delete policy 
 | Entry point | Owns | Does not own |
 | --- | --- | --- |
 | Options | Global defaults, environment administration, rule definitions, notification/media/widget policies | Individual torrent commands and arbitrary payload mutations |
-| Add | Per-transfer source, destination, start preference, classification exclusion, source handling and routing overrides | Duplicate global preferences or mandatory review |
+| Add | Per-transfer source, destination, start preference, classification exclusion and routing overrides (but not the now-global original .torrent source-file policy) | Duplicate global preferences or mandatory review |
 | Transfer Details | Per-transfer media correction, presentation, priority/rules overrides, share, move, remove | A separate global settings model |
 | Environments | Contextual connection actions and status, deep-linked to Options administration | A parallel credential/settings database |
 
