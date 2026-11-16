@@ -80,6 +80,8 @@ internal enum class LocalOptionsShortcut(val title: String, val where: String, p
         "zip archive archives extract unzip unpack compressed"),
     EXPORTS("Snapshots and exports", "Inventory snapshot, health export and magnet links · in Advanced tools",
         "snapshot export backup inventory health report magnet magnets links copy list"),
+    ORIGINAL_TORRENT_FILES("Original .torrent files", "Keep, archive or delete opened .torrent files after Add · in Downloads & storage",
+        "original source torrent file files document keep archive delete opened shared open with after add"),
     COLLECTION_NAMES("Collection names", "Rename or remove collection names · in Options",
         "collection collections group groups name names rename label");
 

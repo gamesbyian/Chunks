@@ -36,6 +36,9 @@ internal object ChunksSemantics {
     const val ADD_REMOTE_OPERATION_STATUS = "chunks.add.remote.operationStatus"
     const val ADD_FOREIGN_PARTIAL = "chunks.add.foreign_partial"
     const val ADD_ORIGINAL_HANDLING = "chunks.add.original_handling"
+    /** Read-only effective policy line on Add; the choice itself lives in Options. */
+    const val ADD_ORIGINAL_HANDLING_SUMMARY = "chunks.add.original_handling.summary"
+    const val OPTIONS_ADD_AND_FILES = "chunks.options.add_and_files"
     const val ADD_FILE_CHOICE = "chunks.add.file_choice"
     const val ADD_ORIGINAL_DELETE_PROMPT = "chunks.add.original_delete.prompt"
     const val ADD_ORIGINAL_DELETE_CONFIRM = "chunks.add.original_delete.confirm"

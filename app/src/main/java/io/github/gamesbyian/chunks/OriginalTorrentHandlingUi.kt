@@ -102,6 +102,17 @@ internal fun OriginalTorrentHandlingChoice(
     }
 }
 
+/**
+ * One compact, non-interactive line on Add naming the effective saved policy (#1786).
+ * No radios or explanations here: Options → Downloads & storage → Add & files owns it.
+ */
+@Composable
+internal fun OriginalTorrentHandlingSummary(effective: OriginalTorrentHandling) {
+    Text("Original .torrent file: " + effective.label + " · change in Options",
+        style = MaterialTheme.typography.bodySmall,
+        modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.ADD_ORIGINAL_HANDLING_SUMMARY))
+}
+
 /** Process-memory only: a lost request after process death simply keeps the original. */
 internal class OriginalDeletionRequest(
     val document: Uri,

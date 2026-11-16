@@ -962,6 +962,7 @@ internal fun LocalEngineScreen(
     val restoreRequester = remember { BringIntoViewRequester() }
     val exportsRequester = remember { BringIntoViewRequester() }
     val namesRequester = remember { BringIntoViewRequester() }
+    val originalFilesRequester = remember { BringIntoViewRequester() }
     val optionsSearchHolder = optionsSearchState ?: rememberSaveable { mutableStateOf("") }
     var localOptionsSearch by optionsSearchHolder
     val categoryHolder = optionsCategoryState ?: rememberSaveable { mutableStateOf<OptionsCategory?>(null) }
@@ -1659,11 +1660,8 @@ internal fun LocalEngineScreen(
         }
         val shownHandling = originalHandling
         if (add?.originalDocument != null && destination != null && shownHandling != null)
-            OriginalTorrentHandlingChoice(
-                "Original .torrent file", selected = shownHandling,
-                enabled = !busy && localAddAttemptSession?.attemptedTicket == null,
-                deleteAvailable = originalDeletable,
-                onSelect = { originalHandling = it })
+            // Read-only here: the single policy is chosen in Options → Add & files (#1786).
+            OriginalTorrentHandlingSummary(shownHandling)
         val seedingPreview = remember(add?.preview?.infoHashV1) {
             add?.preview?.let { localSeedingPreview(context, it) }
         }
@@ -2744,6 +2742,7 @@ internal fun LocalEngineScreen(
                         LocalOptionsShortcut.SNAPSHOT_RESTORE -> scope.launch { androidx.compose.runtime.withFrameNanos { }; restoreRequester.bringIntoView() }
                         LocalOptionsShortcut.EXPORTS -> { showLocalTools = true; scope.launch { androidx.compose.runtime.withFrameNanos { }; exportsRequester.bringIntoView() } }
                         LocalOptionsShortcut.COLLECTION_NAMES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; namesRequester.bringIntoView() }
+                        LocalOptionsShortcut.ORIGINAL_TORRENT_FILES -> scope.launch { androidx.compose.runtime.withFrameNanos { }; originalFilesRequester.bringIntoView() }
                     }
                 }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Column(Modifier.fillMaxWidth()) {
@@ -2987,7 +2986,11 @@ internal fun LocalEngineScreen(
                 withContext(Dispatchers.IO) { OriginalTorrentHandlingStore(context).default }
         }
         defaultHandling?.let { shown ->
-            OriginalTorrentHandlingChoice("Original .torrent file after Add (default)",
+            Text("Add & files", style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold, modifier = Modifier.bringIntoViewRequester(originalFilesRequester)
+                    .semantics { heading() }
+                    .testTag(ChunksSemantics.OPTIONS_ADD_AND_FILES))
+            OriginalTorrentHandlingChoice("Original .torrent file after a verified Add",
                 selected = shown, enabled = true,
                 onSelect = { choice ->
                     scope.launch {
@@ -2997,7 +3000,8 @@ internal fun LocalEngineScreen(
                     }
                 })
         }
-        Text("Applies when you open or share a .torrent file from another app. Each Add can choose differently.",
+        Text("Applies to every .torrent file you open or share from another app. Only the original " +
+            ".torrent document is affected, never downloaded files. Delete always asks again first.",
             style = MaterialTheme.typography.bodySmall)
         LocalZipInterruptedExtractions()
         }

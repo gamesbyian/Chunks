@@ -622,12 +622,9 @@ internal fun VerifiedAddScreen(
         // Below the target row, as on Local: this choice appears only after an IO
         // read, and must never shift the Add-to controls under a pending tap.
         val shownHandling = originalHandling
+        // The policy itself lives only in Options → Downloads & storage → Add & files (#1786).
         if (!alreadyAttempted && originalDocument != null && shownHandling != null) item {
-            OriginalTorrentHandlingChoice(
-                "Original .torrent file", selected = shownHandling,
-                enabled = !submitting && !choosing,
-                deleteAvailable = originalDeletable,
-                onSelect = { originalHandling = it })
+            OriginalTorrentHandlingSummary(shownHandling)
         }
         // The same position owns the target and subsequent operation status.
         // A result replaces the intro rather than creating a second status card.
