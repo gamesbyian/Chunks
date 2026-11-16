@@ -32,6 +32,10 @@ internal fun heightLedArtworkBounds(height: Dp, maxWidth: Dp, ratio: Float): Pai
     return width.dp to (width / validRatio).dp
 }
 
+/** "Larger artwork" increases the requested height, subject to each card's width/text cap. */
+internal fun requestedListArtworkHeight(normalHeight: Dp, large: Boolean): Dp =
+    if (large) normalHeight * 1.25f else normalHeight
+
 /**
  * Read-only artwork for a transfer list row (local, rTorrent and Combined).
  *
@@ -65,8 +69,9 @@ internal fun TransferRowArtwork(
     val bitmap = state.artwork?.takeIf { state.mayShowRealArt }
     val ratio = bitmap?.let { it.width.toFloat() / it.height.toFloat() }
         ?: state.displayKind.preferredArtworkRatio
-    val bounds = height?.let { heightLedArtworkBounds(it, maxWidth, ratio) }
-        ?: (baseSize to baseSize)
+    val bounds = height?.let {
+        heightLedArtworkBounds(requestedListArtworkHeight(it, large), maxWidth, ratio)
+    } ?: (baseSize to baseSize)
     TransferMediaArtwork(state, baseSize, modifier = modifier, description = description,
         width = bounds.first, height = bounds.second)
 }
