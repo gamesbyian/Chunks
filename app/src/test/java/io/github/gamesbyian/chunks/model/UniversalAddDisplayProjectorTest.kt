@@ -7,8 +7,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class UniversalAddDisplayProjectorTest {
-    private val phase = UniversalAddCoordinator.Phase
-
     @Test fun noAttemptHasNoReceipt() {
         assertNull(UniversalAddDisplayProjector.from(
             UniversalAddCoordinator.Phase.EMPTY, "Local"))
@@ -74,7 +72,7 @@ class UniversalAddDisplayProjectorTest {
         assertFalse(refused.verifiedJobObserved)
         val stillAttempted = requireNotNull(UniversalAddDisplayProjector.from(
             UniversalAddCoordinator.Phase.READBACK_REQUIRED, "Wood", knownNoWrite = true))
-        assertEquals(UniversalAddDisplayStage.NO_NEW_ADD, stillAttempted.stage)
+        assertEquals(UniversalAddDisplayStage.UNCONFIRMED, stillAttempted.stage)
     }
 
     @Test fun submittingPrecedesPreliminaryObservedRegistration() {
