@@ -1,5 +1,8 @@
 # Chunks Options: canonical information architecture and UX contract
 
+> **Client vocabulary · owner 2026-11-15:** Label relevant user-visible settings **client** (e.g. *Show client colours*) rather than *environment*. Retain existing setting identity/persistence and actual connection semantics. Refer to [client terminology contract](design/CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md); avoid globally renaming technical keys.
+
+
 > **Binding Options root header · 2026-11-15:** Follow [root-header and control geometry specification](design/ROOT-HEADERS-AND-CONTROL-GEOMETRY.md). Remove the redundant displayed **Options** heading beneath chunks. on the root index, leaving Search options followed by the existing solid-colour category cards. Do not remove category/nested-screen headings or screen-reader naming. Footer tabs use identical rounded-rectangle selected/unselected bounds.
 
 
