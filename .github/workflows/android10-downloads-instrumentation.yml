@@ -7,6 +7,10 @@ on:
     paths:
       - "app/src/main/AndroidManifest.xml"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalDownloadPlace*.kt"
+      # API 33-only stream reads crashed remote features on API 29-32 (#1779).
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/BoundedRead.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RuTorrentDirectoryListing.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/rpc/RemoteBoundedReadsInstrumentedTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/LocalPlaceWriteProbe.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalPublicDownloadsPlaceInstrumentedTest.kt"
       - "app/src/androidTest/java/io/github/gamesbyian/chunks/LocalDownloadPlacePickerInstrumentedTest.kt"
