@@ -59,6 +59,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.liveRegion
@@ -2659,7 +2660,7 @@ internal fun LocalEngineScreen(
         } // Transfers presentation
         if (pane == LocalPane.OPTIONS) {
         // App-wide settings live behind a real Options destination.
-        Text(optionsCategory?.title ?: "Options", style = MaterialTheme.typography.titleLarge,
+        if (optionsCategory != null) Text(optionsCategory.title, style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(top = 12.dp)
                 .bringIntoViewRequester(optionsRequester)
@@ -2667,7 +2668,8 @@ internal fun LocalEngineScreen(
         if (optionsCategory != null) OutlinedButton(onClick = ::returnToOptionsIndex,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("All options") }
         ClearableTransferSearchField(value = localOptionsSearch, onValueChange = { localOptionsSearch = it },
-            label = "Search options")
+            label = "Search options", modifier = Modifier.bringIntoViewRequester(optionsRequester)
+                .semantics { paneTitle = "Options" })
         optionsLaunchError?.let {
             Text(it, color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.semantics { liveRegion = androidx.compose.ui.semantics.LiveRegionMode.Polite })

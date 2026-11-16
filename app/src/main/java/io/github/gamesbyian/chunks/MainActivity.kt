@@ -2367,7 +2367,7 @@ internal fun ChunksApp(
                 // Re-tapping Transfers is useful even when already on this
                 // list: return to its first row without resetting search,
                 // filter, exact environment selection or any Add draft.
-                scope.launch { combinedListState.scrollToItem(0) }
+                // Footer return retains the previous catalog position, including from Details.
                 // Returning to Transfers re-reads the current server (read-only, fenced by the
                 // mutation gate), as ruTorrent/Transdroid lists do; otherwise a magnet stays
                 // listed under its pre-metadata name until some unrelated write settles.

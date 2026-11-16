@@ -47,6 +47,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -1156,7 +1157,7 @@ internal fun CombinedTransfersScreen(
                 // Collection membership in the same authorized display-name scope.
                 DetailsCollections(renameScope, transfer.key.infoHash, transfer.displayName)
             }),
-            environmentLabel = labels[focusedKey.environment] ?: "Unconfigured environment",
+            environmentLabel = rowLabels[focusedKey.environment] ?: "Unconfigured client",
             environmentHue = hueFor(focusedKey.environment),
             onBack = { savedDetailTarget = null },
             // A Remove's outcome is retained after its job leaves the list (incomplete or
@@ -1372,18 +1373,15 @@ internal fun CombinedTransfersScreen(
     }
     Column(Modifier.fillMaxSize()) {
     Box(Modifier.weight(1f)) {
-        LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)
+        LazyColumn(Modifier.fillMaxSize().semantics { paneTitle = "Transfers" }.padding(horizontal = 16.dp)
                 .onSizeChanged { viewportHeightPx = it.height },
             state = listState, contentPadding = PaddingValues(bottom = 88.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
         // The global wordmark and footer already supply location and navigation.
         if (showNavigationFooter) item {
             CombinedTransfersHeader(onBack)
-        } else if (!firstRunVisible) item {
-            // Keep one compact, spoken view identity without a duplicate Back.
-            Text("Transfers", style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.testTag(ChunksSemantics.TRANSFERS_HEADING).semantics { heading() })
         }
+
         if (firstRunVisible) {
             item(key = "canonical-fresh-welcome") {
                 NoTransfersWelcome(
@@ -1641,7 +1639,8 @@ internal fun CombinedTransfersScreen(
                 shown = result.transfers.size,
                 inSelectedEnvironments = result.sources.sumOf { it.transfers.size },
                 totals = io.github.gamesbyian.chunks.model.UnifiedTransferTotals.of(result),
-                incompleteOrStale = result.hasIncompleteOrStaleSource
+                incompleteOrStale = result.hasIncompleteOrStaleSource,
+                includedClients = includedClientCount(result)
             ), style = MaterialTheme.typography.bodySmall)
         }
         // A local-only cold launch can have no running native engine, even
@@ -2352,11 +2351,15 @@ internal fun combinedShowingText(shown: Int, inSelectedEnvironments: Int): Strin
 /** One scan-friendly summary above the first card. Only verified LIVE rates contribute.
  * Unknown rates and excluded sources remain visibly qualified, never rendered as live zeros.
  */
+internal fun includedClientCount(result: io.github.gamesbyian.chunks.model.UnifiedTransferQueryResult): Int =
+    (result.sources.map { it.environment }.toSet() + result.missingEnvironments).size
+
 internal fun combinedCompactSummaryText(
     shown: Int,
     inSelectedEnvironments: Int,
     totals: io.github.gamesbyian.chunks.model.UnifiedTransferTotals,
-    incompleteOrStale: Boolean
+    incompleteOrStale: Boolean,
+    includedClients: Int
 ): String {
     val noun = if (inSelectedEnvironments == 1) "transfer" else "transfers"
     val count = if (shown >= inSelectedEnvironments) "$shown $noun"
@@ -2368,10 +2371,8 @@ internal fun combinedCompactSummaryText(
     val warnings = buildList {
         if (totals.rowsWithUnknownRate > 0)
             add("${totals.rowsWithUnknownRate} rates unknown")
-        if (totals.excludedEnvironments > 0)
-            add(if (totals.excludedEnvironments == 1) "1 source excluded"
-                else "${totals.excludedEnvironments} sources excluded")
-        else if (incompleteOrStale) add("some sources incomplete")
+        add(if (includedClients == 1) "1 client included" else "$includedClients clients included")
+        if (incompleteOrStale) add("some clients incomplete")
     }
     // With every selected source excluded (out of date, offline, locked or
     // incomplete) there is no live rate to report: "Live ↓ 0 B/s" would present
