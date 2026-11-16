@@ -14,6 +14,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -3313,9 +3314,17 @@ internal fun LocalTransferCard(
     val percent = transfer.progressPpm / 10_000
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransferRowArtwork(rememberLocalTransferKey(transfer.infoHash), transfer.name)
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val artMaxWidth = minOf(maxWidth * 0.32f, 112.dp,
+                    (maxWidth - 164.dp).coerceAtLeast(48.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TransferRowArtwork(rememberLocalTransferKey(transfer.infoHash), transfer.name,
+                        modifier = Modifier.testTag("local-card-artwork"),
+                        height = if (diagnosticsOpen) 132.dp else 112.dp,
+                        maxWidth = artMaxWidth)
+                    Column(Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(alias ?: transfer.name, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     // Keep local cards as scannable as the already bounded remote
@@ -3323,10 +3332,9 @@ internal fun LocalTransferCard(
                     // TalkBack always gets the entire exact visible display name.
                     maxLines = if (diagnosticsOpen) Int.MAX_VALUE else 2,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f).semantics {
+                    modifier = Modifier.fillMaxWidth().semantics {
                         contentDescription = alias ?: transfer.name
                     })
-            }
             if (diagnosticsOpen) {
                 if (alias != null) {
                     Text("Original torrent: " + transfer.name,
@@ -3339,8 +3347,9 @@ internal fun LocalTransferCard(
                     )
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalAlignment = Alignment.CenterVertically) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically) {
                 StatusPill(stateLabel(transfer), stateTone(transfer))
                 Text("$percent% · " + transfer.peers + " peers", fontWeight = FontWeight.Bold)
             }
@@ -3374,7 +3383,8 @@ internal fun LocalTransferCard(
                 tone = stateTone(transfer),
                 historyKey = ProgressChunkStore.identity("local", transfer.infoHash),
                 observeFresh = !busy,
-                modifier = Modifier.fillMaxWidth().semantics { stateDescription = "$percent percent complete" }
+                modifier = Modifier.fillMaxWidth().testTag("local-card-progress")
+                    .semantics { stateDescription = "$percent percent complete" }
             ) else Text("Progress unknown until torrent metadata arrives",
                 style = MaterialTheme.typography.bodySmall)
             // totalWantedDone is hash-verified completed payload; allTimeDownload
@@ -3405,6 +3415,9 @@ internal fun LocalTransferCard(
                     onClick = { diagnosticsOpen = !diagnosticsOpen },
                     modifier = diagnosticsModifier.fillMaxWidth()
                 ) { Text(diagnosticsLabel) }
+            }
+                    } // Compact information remains entirely to the right of artwork.
+                }
             }
             if (diagnosticsOpen) {
             // Presentation only, keyed by the exact local job; never reads or changes payload files.
