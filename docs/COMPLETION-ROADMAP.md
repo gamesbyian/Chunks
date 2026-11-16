@@ -11,6 +11,8 @@
 
 > **Approved Transfer Details presentation dependency (2026-11-15):** In R1/R2 UI integration, follow [unified Details identity-first design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md): retire duplicate heading/back navigation, combine torrent and media identity plus poster at top, keep distinct Change list name / Edit identification / Choose artwork actions, remove duplicate lower artwork panel, and retain footer list return position. Treat installed layout/handler/override acceptance separately from a documentation change.
 
+> **Connections presentation acceptance (owner-approved 2026-11-15):** R1 must deliver [unified remote-profile Connections roster](design/CONNECTIONS-UNIFIED-ROSTER.md), with one card per saved profile and connected-first truthful status, contextual View transfers/Connect/Manage, secondary settings in Manage, compact Add for nonempty roster and small embedded-button onboarding only for zero profiles. Avoid duplicate Connected/Saved servers sections, raw URL-heavy landing page and persistent oversized purple explanation. Verify exact-profile privacy/credentials and installed handset UI before acceptance.
+
 
 > **Remote deletion capability integration (2026-11-14):** [Capability discovery and deletion](REMOTE-CAPABILITY-DISCOVERY-AND-DELETION.md) and the [source-bound Seedhost/installed acceptance](evidence/remote-1679/README.md) are merged. Preserve exact-profile evidence, explicit consent, complete shared-file coverage and independent file-versus-session outcomes; standalone/restricted hosts retain session-only Remove. R4 still owns physical Pixel/human TalkBack/OEM acceptance. Do not redispatch the resolved original hosted endpoint diagnosis or add arbitrary execute/hook installation.
 

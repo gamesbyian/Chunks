@@ -1,5 +1,8 @@
 # Remote integration, automation and settings portability
 
+> **Connections settings placement · 2026-11-15:** The [unified Connections roster](design/CONNECTIONS-UNIFIED-ROSTER.md) shows only compact per-profile status and contextual actions. Per-profile **Manage** is the owner of detailed endpoint, default remote folder, colour, remembered login, Disconnect/Forget, supported server tools and their existing security/authorization boundaries. Do not duplicate saved and live cards or place advanced remote administration on the Connections landing screen.
+
+
 > **Authority:** detailed feature contract for remote connection extensions, optional outbound automation, a **secondary and deliberately limited** seedbox tools screen, and portability of Chunks preferences. User-facing guarantees are governed by [PRODUCT](PRODUCT.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [SMART-REMOTE-CONNECTION](SMART-REMOTE-CONNECTION.md) and [SECURITY](SECURITY.md). These requirements do **not** give Chunks general-purpose privileged server administration. **Status:** specification and testing goals, not evidence of shipped behavior. Inventory Fxx.yy IDs originate in [research PR #537](https://github.com/gamesbyian/Chunks/pull/537).
 
 ## Scope, exclusions and identities

@@ -6,6 +6,8 @@
 
 > **Approved Transfer Details design (2026-11-15):** [Unified identity-first Details](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md) is the current presentation contract: merge torrent and media identity at top, preserve separate name/identification/artwork actions and fixed-footer navigation, eliminate duplicate headings/back/artwork panel. Implementation and Pixel acceptance remain separate.
 
+> **Approved Connections design (2026-11-15):** [Unified saved-profile roster](design/CONNECTIONS-UNIFIED-ROSTER.md) replaces duplicate active/saved sections with connected-first, one-card-per-profile status and contextual actions, compact zero-state onboarding and per-profile Manage. Implementation/installed acceptance pending.
+
 **Owner-approved Add/environment polish (2026-11-13):** [Add destination and outcome UX](design/ADD-DESTINATION-AND-OUTCOME.md) binds compact Local/named-connection Add chips, short-name-only status, one in-place operation outcome, matched transfer stripe/label/dot colours and contextual rather than permanent remote folder explanations. Integrate with existing R1 UX work; implementation and installed acceptance remain pending.
 # Chunks documentation index
 
