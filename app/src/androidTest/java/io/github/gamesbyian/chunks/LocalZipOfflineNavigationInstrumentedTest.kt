@@ -27,6 +27,9 @@ class LocalZipOfflineNavigationInstrumentedTest {
         rule.onNodeWithText("Your downloads").assertDoesNotExist()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("+ Add connection").performClick()
+        // Opening the form returns its list to the top; the offline tools stay reachable
+        // at its end (and on the roster) — scroll to the lazily composed item again.
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("More offline tools"))
         rule.onNodeWithText("More offline tools").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Inspect a local ZIP without connecting"))
         rule.onNodeWithText("Inspect a local ZIP without connecting").performClick()

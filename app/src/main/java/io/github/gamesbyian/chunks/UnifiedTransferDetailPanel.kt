@@ -51,6 +51,8 @@ internal fun UnifiedTransferDetailPanel(
     detail: UnifiedTransferDetail,
     environmentLabel: String,
     onBack: () -> Unit,
+    /** Exact client identity (address/instance) for technical disclosure; the header stays short. */
+    exactEnvironmentLabel: String? = null,
     onOpenOwningList: (() -> Unit)? = null,
     /** Select this exact key for the existing confirmed lifecycle review; never dispatch on tap. */
     onReviewStartStop: (() -> Unit)? = null,
@@ -213,6 +215,11 @@ internal fun UnifiedTransferDetailPanel(
         if (!hidden && technicalDetailsOpen.value) {
             Text("Exact infohash: " + detail.key.infoHash,
                 style = MaterialTheme.typography.bodySmall)
+            // Two instances on one host share a short name only if unique; technical
+            // details still prove exactly which client this observation belongs to.
+            exactEnvironmentLabel?.takeIf { it != environmentLabel }?.let {
+                Text("Exact client: $it", style = MaterialTheme.typography.bodySmall)
+            }
             detail.observedAtEpochMillis?.let { whenObserved ->
                 Text("Last observed: " + DateFormat.getDateTimeInstance(
                     DateFormat.MEDIUM, DateFormat.SHORT, Locale.getDefault()

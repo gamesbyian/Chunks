@@ -1,5 +1,6 @@
 package io.github.gamesbyian.chunks
 
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
 import android.os.Bundle
 import android.util.Base64
@@ -444,10 +445,14 @@ class CombinedTwoRealServersInstrumentedTest {
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(row)
                 rule.onNode(row).performClick()
                 waitFor("exact-client Details for $port") {
-                    visible("Edit identification") && visible("Edit identification") && visible(":$port")
+                    rule.onAllNodesWithTag(ChunksSemantics.DETAILS_SCREEN).fetchSemanticsNodes().isNotEmpty() &&
+                        visible("Edit identification")
                 }
                 assertTrue("Details lost the selected transfer name on $port", visible(shared))
                 rule.onNodeWithText("Show technical details").performScrollTo().performClick()
+                // The header names the client briefly (identity-first Details); the exact
+                // instance — here, which port — is proven in technical details.
+                waitFor("exact client identity for $port in technical details") { visible(":$port") }
                 assertTrue("Details borrowed another transfer hash on $port",
                     visible("Exact infohash: $sharedHash"))
                 assertTrue("Details borrowed another server's reported Place on $port",

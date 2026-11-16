@@ -1167,6 +1167,7 @@ internal fun CombinedTransfersScreen(
                 else savedProfiles.firstOrNull { it.id == focusedKey.environment.value }?.shortLabel
                     ?: rowLabels[focusedKey.environment]?.removePrefix("Server · ") ?: "Remote client",
             environmentHue = hueFor(focusedKey.environment),
+            exactEnvironmentLabel = labels[focusedKey.environment]?.removePrefix("Server · "),
             onBack = { savedDetailTarget = null },
             // A Remove's outcome is retained after its job leaves the list (incomplete or
             // uncertain deletions must stay visible), so Details keeps showing it.
