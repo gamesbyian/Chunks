@@ -1,5 +1,8 @@
 # Transfer Details: unified identity-first screen (owner-approved, 2026-11-15)
 
+> **Terminology clarification · 2026-11-15:** Show short client name **Wood** or **Local** and its optional colour marker, never *Environment* or *Server · Wood · endpoint* in primary Details. See [client terminology contract](CLIENT-TERMINOLOGY-AND-INCLUDED-SCOPE.md); keep internal exact environment IDs and connection security controls.
+
+
 **Clarification (owner, 2026-11-15):** The visible Details environment indicator displays **only the chosen short connection name**, e.g. colour dot + **Wood**, or **Local**. Never repeat `Environment: Server · Wood · <hostname/RPC path>` or any `Server · Wood` qualifier in the consolidated identity or other duplicate Details origin banner. Keep exact stable ID and full endpoint available via Connections → named profile → Manage/diagnostics; the short label is presentation only and must not be used as a network or authority key. Media artwork follows [category-specific natural aspect ratios](TRANSFER-ARTWORK-ASPECT-RATIOS.md), rather than mandating portrait for every media type.
 
 
