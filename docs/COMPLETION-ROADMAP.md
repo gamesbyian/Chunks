@@ -1,5 +1,8 @@
 # Chunks: dependency-ordered completion and validation
 
+> **Artwork ratio and Details source-label correction · 2026-11-15:** R1/R2 UI integration must use [category-appropriate Transfer art](design/TRANSFER-ARTWORK-ASPECT-RATIOS.md) (2:3 video/books/comics, 1:1 album/audiobook/software, 3:4 magazine, natural images preserved; bounded row height). In full Details show only the connection short name (Wood/Local) and colour marker, removing endpoint/server qualifiers. Verify overrides, provider fallback, portrait image rendering, exact connection identity and installed Pixel screenshots; docs change alone does not meet acceptance.
+
+
 > **Approved Transfer Details presentation dependency (2026-11-15):** In R1/R2 UI integration, follow [unified Details identity-first design](design/TRANSFER-DETAILS-UNIFIED-IDENTITY.md): retire duplicate heading/back navigation, combine torrent and media identity plus poster at top, keep distinct Change list name / Edit identification / Choose artwork actions, remove duplicate lower artwork panel, and retain footer list return position. Treat installed layout/handler/override acceptance separately from a documentation change.
 
 
