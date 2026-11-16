@@ -105,7 +105,7 @@ jobs:
             --aapt "$ANDROID_HOME/build-tools/36.0.0/aapt" \
             --apk "$out/app-release.apk" \
             --version-name "$CHUNKS_VERSION_NAME" --version-code "$CHUNKS_VERSION_CODE"
-          apk="$out/chunks-release-$CHUNKS_VERSION_NAME.apk"
+          apk="$out/chunks.apk"
           cp "$out/app-release.apk" "$apk"
           {
             echo "Chunks signed release $CHUNKS_VERSION_NAME (versionCode $CHUNKS_VERSION_CODE)"
@@ -121,7 +121,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="android-update-v$CHUNKS_VERSION_CODE"
-          apk="app/build/outputs/apk/release/chunks-release-$CHUNKS_VERSION_NAME.apk"
+          apk="app/build/outputs/apk/release/chunks.apk"
           receipt="app/build/outputs/apk/release/CHUNKS-RELEASE-SHA256.txt"
           if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "::error::Signed APK release tag already exists; refusing to overwrite update bytes."
@@ -135,7 +135,7 @@ jobs:
         with:
           name: chunks-release-${{ github.run_number }}
           path: |
-            app/build/outputs/apk/release/chunks-release-*.apk
+            app/build/outputs/apk/release/chunks.apk
             app/build/outputs/apk/release/CHUNKS-RELEASE-SHA256.txt
           if-no-files-found: error
           retention-days: 30
