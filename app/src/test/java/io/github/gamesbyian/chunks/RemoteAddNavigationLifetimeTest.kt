@@ -38,20 +38,20 @@ class RemoteAddNavigationLifetimeTest {
         val release = CountDownLatch(1)
         val methods = CopyOnWriteArrayList<String>()
         val server = com.sun.net.httpserver.HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
-        @Volatile var registered = false
+        val registered = java.util.concurrent.atomic.AtomicBoolean(false)
         server.createContext("/RPC2") { exchange ->
             val body = exchange.requestBody.bufferedReader().use { it.readText() }
             val method = Regex("<methodName>([^<]+)</methodName>").find(body)?.groupValues?.get(1)
                 ?: error("No XML-RPC method")
             methods += method
             if (method == "load.start") {
-                registered = true
+                registered.set(true)
                 entered.countDown()
                 release.await(20, TimeUnit.SECONDS)
             }
             val result = when (method) {
                 "d.multicall2" -> "<params><param><value><array><data></data></array></value></param></params>"
-                "d.name" -> if (registered) "<params><param><value><string>Original</string></value></param></params>"
+                "d.name" -> if (registered.get()) "<params><param><value><string>Original</string></value></param></params>"
                     else "<fault><value><struct><member><name>faultCode</name><value><int>-501</int></value></member>" +
                         "<member><name>faultString</name><value><string>Could not find info-hash.</string></value></member></struct></value></fault>"
                 "directory.default", "d.directory" ->
