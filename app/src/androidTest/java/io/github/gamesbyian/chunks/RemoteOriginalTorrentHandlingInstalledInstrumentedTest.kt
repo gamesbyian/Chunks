@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Intent
+import android.content.Context
+import android.view.inputmethod.InputMethodManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
@@ -15,12 +17,13 @@ import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
@@ -115,7 +118,15 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
         // #1786: Archive is the saved global Options policy, not a per-Add radio.
         check(OriginalTorrentHandlingStore(context).setDefault(OriginalTorrentHandling.ARCHIVE))
         try {
-            val scenario = ActivityScenario.launch(MainActivity::class.java)
+            // Launch through the actual instrumentation ActivityTaskManager route.
+            // ActivityScenario tracks a test-owned task and can retain a stale
+            // PAUSED state after singleTask reentry, even though the fixture
+            // has completed the actual Add and file-integrity journey.
+            val activity = instrumentation.startActivitySync(
+                Intent(context, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+            ) as MainActivity
             run {
                 waitFor("persistent Connections destination") {
                     rule.onAllNodes(hasContentDescription("Connections")).fetchSemanticsNodes().isNotEmpty()
@@ -126,15 +137,40 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
                 scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
                 rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
-                scrollTo("Connect to rTorrent")
-                rule.onNodeWithText("Connect to rTorrent").performClick()
+                // Close the IME and clear input focus before trying to reach
+                // the lazily placed Connect action. A late keyboard viewport
+                // correction otherwise recycles the item between enabled
+                // observation and the only permitted Connect click.
+                instrumentation.runOnMainSync {
+                    val keyboard = activity.getSystemService(Context.INPUT_METHOD_SERVICE)
+                        as InputMethodManager
+                    keyboard.hideSoftInputFromWindow(
+                        activity.window.decorView.windowToken, 0)
+                    activity.currentFocus?.clearFocus()
+                }
+                rule.waitForIdle()
+                // Async address validation and keyboard dismissal may replace
+                // this LazyColumn item after a text-based scroll. Require the
+                // exact stable action to be composed and enabled before the
+                // one permitted connection attempt, without retrying Connect.
+                val connect = hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
+                waitFor("ready Connect action", 30_000) {
+                    runCatching {
+                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(connect)
+                        rule.onNode(connect, useUnmergedTree = true).assertIsEnabled()
+                        true
+                    }.getOrDefault(false)
+                }
+                rule.onNode(connect, useUnmergedTree = true)
+                    .assertIsEnabled().performSemanticsAction(
+                        androidx.compose.ui.semantics.SemanticsActions.OnClick)
                 waitFor("verified connection acknowledgment", 90_000) { visible("Continue to Connections") }
                 rule.onNodeWithText("Continue to Connections").performClick()
                 waitFor("connected server in Connections") { visible("View transfers") }
                 stage("connected")
 
-                scenario.onActivity {
-                    it.startActivity(Intent(it, MainActivity::class.java).apply {
+                instrumentation.runOnMainSync {
+                    activity.startActivity(Intent(activity, MainActivity::class.java).apply {
                         action = Intent.ACTION_SEND
                         type = "application/x-bittorrent"
                         putExtra(Intent.EXTRA_STREAM, document)
@@ -182,18 +218,10 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 }
                 stage("original-removed")
             }
-            // Teardown is test infrastructure, not the journey under test. Four runs
-            // passed every stage above, then ActivityScenario.close() found its
-            // MainActivity PAUSED under some other activity. Record what is on top,
-            // attempt the close, and report its outcome as a separate stage.
-            val top = runCatching {
-                instrumentation.uiAutomation.executeShellCommand("dumpsys activity activities").use { fd ->
-                    android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().readLines()
-                }.filter { it.contains("topResumedActivity") || it.contains("ResumedActivity:") }
-                    .joinToString(" | ") { it.trim() }.take(400)
-            }.getOrDefault("unavailable")
-            stage("teardown-top=" + top)
-            stage("teardown-close=" + runCatching { scenario.close() }.fold({ "destroyed" }, { it.javaClass.simpleName }))
+            // Prove the protected operation and file postconditions before
+            // any teardown. The instrumented Activity was launched without an
+            // ActivityScenario task lease, so finishing it cannot turn a
+            // successful source/file journey into an unrelated Scenario timeout.
             assertTrue("The confirmed original is gone", !stillReadable(document))
             assertTrue("Unrelated documents are untouched", stillReadable(sibling))
             assertEquals("The archived copy stays", 1, archived().size)
@@ -201,6 +229,11 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
             assertEquals("Only the one new exact session was added",
                 before.map { it.hash.lowercase() }.toSet() + hash.lowercase(),
                 after.map { it.hash.lowercase() }.toSet())
+            // Best-effort UI fixture cleanup, separate from the server and
+            // document assertions. The workflow runs this test in an isolated
+            // instrumented app; Android owns eventual task destruction.
+            instrumentation.runOnMainSync { activity.finish() }
+            stage("fixture-finish-requested")
         } finally {
             // Session-only cleanup of exactly this disposable fixture job.
             runBlocking {
