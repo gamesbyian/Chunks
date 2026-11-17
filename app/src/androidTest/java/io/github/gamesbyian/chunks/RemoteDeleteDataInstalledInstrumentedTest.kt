@@ -119,12 +119,21 @@ class RemoteDeleteDataInstalledInstrumentedTest {
                 visible("View transfers")
             }
             rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performScrollTo().performClick()
+            // The canonical Transfers search is below the inventory header
+            // in a LazyColumn. A not-yet-composed offscreen item is not a
+            // missing screen: scroll to the lazy item BEFORE asserting it
+            // is present. Do not change the production search layout or
+            // weaken the authenticated server-scoped route requirement.
+            val searchLabel = "Search names, aliases, folders or hashes"
             waitFor("canonical server-scoped Transfers", 60_000) {
-                visible("Search names, aliases, folders or hashes")
+                runCatching {
+                    scrollTo(searchLabel)
+                    visible(searchLabel)
+                }.getOrDefault(false)
             }
             stage("connected")
             rule.onNode(hasScrollToIndexAction())
-                .performScrollToNode(hasText("Search names, aliases, folders or hashes"))
+                .performScrollToNode(hasText(searchLabel))
             rule.onNodeWithText("Search names, aliases, folders or hashes").performTextReplacement(hash)
             val selected = before.single { it.hash.equals(hash, ignoreCase = true) }
             val exactRow = hasContentDescription("Details for ${selected.name} on", substring = true)
