@@ -76,12 +76,10 @@ internal object SnapshotLocalBatchRecoveryV1 {
         // This receipt is about the original approved canonical Place.
         // Never allow a caller to provide the old fingerprint alongside a
         // different folder and accidentally promote a mismatched Add journal.
-        val independentPlace = try {
-            LocalSnapshotRestoreFingerprint.of(
-                "chunks-place-v1:" + chosenPlace.canonicalPath)
-        } catch (_: Exception) {
-            return blocked(Blocker.DESTINATION_UNAVAILABLE)
-        }
+        val canonicalPlace = try { chosenPlace.canonicalPath }
+            catch (_: Exception) { return blocked(Blocker.DESTINATION_UNAVAILABLE) }
+        val independentPlace = LocalSnapshotRestoreFingerprint.of(
+            "chunks-place-v1:" + canonicalPlace)
         if (independentPlace != verifiedPlaceFingerprint)
             return blocked(Blocker.INVALID_REVIEW)
 
@@ -128,14 +126,35 @@ internal object SnapshotLocalBatchRecoveryV1 {
                 ) -> State.NO_SUBMISSION_IN_THIS_JOURNAL
                 entry.placeFingerprint != verifiedPlaceFingerprint ->
                     State.DIFFERENT_REVIEWED_PLACE
-                else -> when (SnapshotRestoreOnceV1.reconcilePending(
-                    journal, hash, chosenPlace, verifiedPlaceFingerprint, target
-                )) {
-                    SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED ->
-                        State.VERIFIED_STOPPED
-                    SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED ->
-                        State.JOURNAL_UNAVAILABLE
-                    else -> State.UNRESOLVED
+                else -> {
+                    // One complete inventory was established above. Inspect
+                    // the exact native stopped Place independently for this
+                    // hash, without re-enumerating 512 whole-engine lists.
+                    // Final inventory is checked again before any aggregate
+                    // result is accepted. No hash-only proof is sufficient.
+                    val actualPlace = if (hash in current) {
+                        try { target.observedStoppedPlace(hash)?.canonicalPath }
+                        catch (_: Exception) { null }
+                    } else null
+                    if (actualPlace != canonicalPlace) {
+                        State.UNRESOLVED
+                    } else {
+                        if (entry.phase != SnapshotRestoreJournalV1.Phase.VERIFIED) {
+                            try {
+                                journal.reconcileWithCompleteTarget(
+                                    current.toList(),
+                                    targetInventoryComplete = true,
+                                    stoppedAtReviewedPlaceHashes = listOf(hash))
+                            } catch (_: Exception) {
+                                // A failed journal CAS leaves uncertainty in
+                                // place, rather than manufacturing a receipt.
+                            }
+                        }
+                        if (journal.entries().singleOrNull()?.phase ==
+                            SnapshotRestoreJournalV1.Phase.VERIFIED)
+                            State.VERIFIED_STOPPED
+                        else State.UNRESOLVED
+                    }
                 }
             }
             statuses += Item(hash, state)
