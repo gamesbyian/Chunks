@@ -791,15 +791,23 @@ internal fun LocalEngineScreen(
         inventoryReadyAtClick: Boolean
     ): io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Ticket? {
         val session = localAddAttemptSession ?: return null
-        val decision = LocalUniversalAddAdapter.review(session.coordinator, source,
-            inventoryConfirmed = inventoryReadyAtClick, inventoryStale = !inventoryReadyAtClick)
-        if (!decision.accepted || !session.coordinator.authorizeByUser()) {
-            noteProblem("This local Add cannot be authorized: " + decision.reason + ". Nothing was sent.")
-            return null
-        }
-        val ticket = session.coordinator.beginSubmission(System.currentTimeMillis())
+        // performLocalMutation already acquired the process-wide native gate.
+        // The same pure admission decision now authorizes both client types;
+        // only the adapter-specific capability/freshness evidence differs.
+        val decision = io.github.gamesbyian.chunks.model.UniversalAddAdmission.authorize(
+            coordinator = session.coordinator,
+            intent = source,
+            capabilities = io.github.gamesbyian.chunks.model.EnvironmentCapabilities.local(),
+            availability = if (inventoryReadyAtClick)
+                io.github.gamesbyian.chunks.model.EnvironmentAvailability.LIVE
+                else io.github.gamesbyian.chunks.model.EnvironmentAvailability.STALE,
+            acquireMutationGate = { true },
+            submittedAtEpochMillis = System.currentTimeMillis()
+        )
+        val ticket = decision.ticket
         if (ticket == null) {
-            noteProblem("An earlier local Add is still being checked. No second Add was sent.")
+            noteProblem("This local Add cannot be authorized: " +
+                decision.explanation + " Nothing was sent.")
             return null
         }
         session.bindPlace(ticket, selectedPlace)
