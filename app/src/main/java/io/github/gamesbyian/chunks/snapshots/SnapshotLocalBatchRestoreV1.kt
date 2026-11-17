@@ -44,12 +44,14 @@ internal object SnapshotLocalBatchRestoreV1 {
         frozenHashes: List<String>,
         userApproved: Boolean,
         store: SnapshotRestoreJournalV1.Store,
-        target: SnapshotRestoreOnceV1.LocalTarget
+        target: SnapshotRestoreOnceV1.LocalTarget,
+        /** Cancels further Adds after Activity/job cancellation; never retries. */
+        mayContinue: () -> Boolean = { true }
     ): Result {
         val total = reviewed.size
         fun fail(reason: SnapshotRestoreOnceV1.Outcome, hash: String? = null) =
             Result(total, 0, hash, reason)
-        if (!userApproved || total !in 1..MAX_ITEMS ||
+        if (!userApproved || !mayContinue() || total !in 1..MAX_ITEMS ||
             reviewed.sumOf { it.bytes.size.toLong() } > MAX_TOTAL_METAINFO_BYTES ||
             !chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
             java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
@@ -117,6 +119,12 @@ internal object SnapshotLocalBatchRestoreV1 {
         val expected = normalized.toMutableSet()
         var verifiedCount = 0
         for ((original, journal) in journals) {
+            if (!mayContinue()) {
+                // Do not begin the next journal transition or native Add after
+                // the owning foreground review has been cancelled.
+                return Result(total, verifiedCount, original.infoHashV1,
+                    SnapshotRestoreOnceV1.Outcome.REFUSED)
+            }
             val outcome = try {
                 SnapshotRestoreOnceV1.execute(
                     journal, original, chosenPlace, verifiedPlaceFingerprint,
