@@ -21,8 +21,16 @@ class PreferencesAssignmentStore(context: Context) : SeedingController.Assignmen
     override fun epoch(): Long? = prefs.getLong("epoch", -1L).takeIf { it >= 0 }
     override fun setEpoch(ms: Long) = try { prefs.edit().putLong("epoch", ms).commit() } catch (_: RuntimeException) { false }
 
-    override fun get(infoHash: String): SeedingController.Assignment? = try {
-        prefs.getString("a:" + infoHash.lowercase(), null)?.let { raw ->
+    override fun get(infoHash: String): SeedingController.Assignment? {
+        val key = "a:" + infoHash.lowercase(java.util.Locale.ROOT)
+        // An occupied but unreadable record may contain a previously
+        // committed Pause attempt. Treating it as "no assignment" would
+        // permit a new policy snapshot and repeat an uncertain engine write.
+        // Fail closed for this transfer; preserve the original corrupt bytes.
+        val raw = try { prefs.getString(key, null) }
+            catch (_: RuntimeException) { return unreadableAssignment() }
+            ?: return if (prefs.contains(key)) unreadableAssignment() else null
+        return try {
             val o = JSONObject(raw)
             SeedingController.Assignment(
                 policy = if (o.isNull("policy")) null else SeedingRuleStore.policy(o.getJSONObject("policy")),
@@ -30,9 +38,15 @@ class PreferencesAssignmentStore(context: Context) : SeedingController.Assignmen
                 ruleId = if (o.isNull("ruleId")) null else o.getString("ruleId"),
                 reasons = o.optJSONArray("reasons")?.let { a -> (0 until a.length()).map { a.getString(it) } }.orEmpty(),
                 stoppedByRule = if (o.isNull("stopped")) null else o.getString("stopped"),
-                note = if (o.isNull("note")) null else o.getString("note"))
-        }
-    } catch (_: Exception) { null }
+                note = if (o.isNull("note")) null else o.getString("note"),
+                stopAttemptedReason = if (o.isNull("stopAttempt")) null else o.getString("stopAttempt"))
+        } catch (_: Exception) { unreadableAssignment() }
+    }
+
+    private fun unreadableAssignment() = SeedingController.Assignment(
+        policy = null, source = null, ruleId = null,
+        note = "Saved seeding assignment could not be read; this transfer was left unchanged."
+    )
 
     override fun put(infoHash: String, assignment: SeedingController.Assignment) = try {
         val o = JSONObject()
@@ -42,6 +56,7 @@ class PreferencesAssignmentStore(context: Context) : SeedingController.Assignmen
             .put("reasons", JSONArray(assignment.reasons))
             .put("stopped", assignment.stoppedByRule ?: JSONObject.NULL)
             .put("note", assignment.note ?: JSONObject.NULL)
+            .put("stopAttempt", assignment.stopAttemptedReason ?: JSONObject.NULL)
         prefs.edit().putString("a:" + infoHash.lowercase(), o.toString()).commit()
     } catch (_: RuntimeException) { false }
 }

@@ -13,6 +13,7 @@ class SeedingControllerTest {
         val limits = HashMap<String, Int>()
         val paused = HashSet<String>()
         var pauseConfirms = true
+        val throwOnPause = HashSet<String>()
         val throwOnCap = HashSet<String>()
         val log = ArrayList<String>()
         override fun transfers() = facts.values.toList()
@@ -24,15 +25,25 @@ class SeedingControllerTest {
             limits[infoHash] = (bytesPerSecond ?: 0).toInt()
             return true
         }
-        override fun pause(infoHash: String): Boolean { log += "pause $infoHash"; if (pauseConfirms) paused += infoHash; return pauseConfirms }
+        override fun pause(infoHash: String): Boolean {
+            log += "pause $infoHash"
+            if (infoHash in throwOnPause) throw IllegalStateException("lost readback")
+            if (pauseConfirms) paused += infoHash
+            return pauseConfirms
+        }
     }
     private class MemStore : SeedingController.AssignmentStore {
         var epochMs: Long? = null
+        var refuseStopAttemptCommit = false
         val map = HashMap<String, Assignment>()
         override fun epoch() = epochMs
         override fun setEpoch(ms: Long): Boolean { epochMs = ms; return true }
         override fun get(infoHash: String) = map[infoHash]
-        override fun put(infoHash: String, assignment: Assignment): Boolean { map[infoHash] = assignment; return true }
+        override fun put(infoHash: String, assignment: Assignment): Boolean {
+            if (refuseStopAttemptCommit && assignment.stopAttemptedReason != null) return false
+            map[infoHash] = assignment
+            return true
+        }
     }
 
     private val capped = SeedingPolicy(ratioGoal = BigDecimal("1.00"), uploadLimit = RateLimit.parse("24 KiB/s").getOrThrow())
@@ -124,6 +135,60 @@ class SeedingControllerTest {
         assertNull(store.map.getValue("t").stoppedByRule)
         assertTrue(store.map.getValue("t").note!!.contains("did not confirm"))
     }
+    @Test fun unconfirmedStopIsJournaledAndNeverReissuedAfterControllerRecreation() {
+        val engine = FakeEngine().apply { pauseConfirms = false }
+        val store = MemStore().apply { epochMs = 0 }
+        engine.facts["uncertain"] = Facts("uncertain", 10, emptyList(), false)
+        engine.observed["uncertain"] = SeedingObservation(3_000, 1_000, 60, true)
+        store.map["uncertain"] = Assignment(capped, SeedingResolution.Source.DEFAULT, null)
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 100)
+        val first = store.map.getValue("uncertain")
+        assertNotNull(first.stopAttemptedReason)
+        assertNull(first.stoppedByRule)
+        assertTrue(first.note.orEmpty().contains("will not retry"))
+        assertEquals(1, engine.log.count { it == "pause uncertain" })
+        // A new controller represents a restarted Android service.
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 200)
+        assertEquals(1, engine.log.count { it == "pause uncertain" })
+    }
+
+    @Test fun stopJournalFailureBlocksEngineMutationAndCanTryOnLaterPoll() {
+        val engine = FakeEngine()
+        val store = MemStore().apply {
+            epochMs = 0
+            refuseStopAttemptCommit = true
+        }
+        engine.facts["blocked"] = Facts("blocked", 10, emptyList(), false)
+        engine.observed["blocked"] = SeedingObservation(3_000, 1_000, 60, true)
+        store.map["blocked"] = Assignment(capped, SeedingResolution.Source.DEFAULT, null)
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 100)
+        assertTrue(engine.log.none { it == "pause blocked" })
+        assertNull(store.map.getValue("blocked").stopAttemptedReason)
+        store.refuseStopAttemptCommit = false
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 200)
+        assertEquals(1, engine.log.count { it == "pause blocked" })
+        assertNotNull(store.map.getValue("blocked").stoppedByRule)
+    }
+
+    @Test fun exceptionDuringPauseIsUncertainAndDoesNotRepeatOrStopNextTransfer() {
+        val engine = FakeEngine().apply { throwOnPause.add("broken") }
+        val store = MemStore().apply { epochMs = 0 }
+        for (hash in listOf("broken", "healthy")) {
+            engine.facts[hash] = Facts(hash, 10, emptyList(), false)
+            engine.observed[hash] = SeedingObservation(3_000, 1_000, 60, true)
+            store.map[hash] = Assignment(capped, SeedingResolution.Source.DEFAULT, null)
+        }
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 100)
+        assertEquals(1, engine.log.count { it == "pause broken" })
+        assertEquals(1, engine.log.count { it == "pause healthy" })
+        assertNull(store.map.getValue("broken").stoppedByRule)
+        assertNotNull(store.map.getValue("broken").stopAttemptedReason)
+        assertNotNull(store.map.getValue("healthy").stoppedByRule)
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 200)
+        assertEquals(1, engine.log.count { it == "pause broken" })
+        assertEquals(1, engine.log.count { it == "pause healthy" })
+    }
+
     @Test fun uncappedRuleLeavesIndependentlyConfiguredTransferLimitUnchanged() {
         val engine = FakeEngine()
         val store = MemStore().apply { epochMs = 0 }
