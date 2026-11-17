@@ -23,6 +23,8 @@ Reusable Compose controls handle switches, choices, sliders, folder selection an
 - Preserve Compose state/focus, TalkBack labels, 44–48 dp controls, search, root footer, and the eight category cards. Do not expose a future setting just to fill a page.
 - Do not equate an Options category or navigation shortcut with an implemented setting. UI capability and persistence must both exist.
 
+For significant settings work, the portable [Settings Systems Engineering Skill](../skills/settings-systems-engineering/SKILL.md) supplies an executable inventory, scoping, UI, migration and evidence procedure. This document and Chunks' owner-approved Options specification remain authoritative over the generic Skill, which must never create a separate queue or settings store.
+
 ## Implementation decision and migration guards
 
 Before extending the metadata foundation, make a bounded inventory of affected controls: stable semantic ID, owner store/key and all readers/writers, global/client/transfer scope, fresh-install versus existing-install default, explicit opt-out, effective-value provenance, override/reset behavior, canonical search location and runtime consumer. Classify each candidate as **preference, temporary view state, per-task override, consequential action, OS capability/status or composite editor**. Only persistent preferences and explicitly approved overrides belong in the typed settings value system. Do not add a toggle for a speculative ability or move a frequent contextual command into Options.

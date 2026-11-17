@@ -39,6 +39,7 @@ On consequential integration or accepted product-contract changes, check whether
 | Requirements, priorities, architecture bloat, branches and gates | [Engineering decisions](references/engineering-decisions.md) |
 | SAF, app-private files, Room, remote auth, identity, retry or interruption | [Operation integrity](references/operation-integrity.md) |
 | Concrete Android implementation patterns for pickers, lifecycle, UI, storage and releases | [Platform playbooks](references/platform-playbooks.md) |
+| Nontrivial Options/settings schema, scope resolution, shared controls, persistence or settings migrations | [Settings Systems Engineering](../settings-systems-engineering/SKILL.md), only for a real settings architecture decision or multi-control change |
 | User-facing component placement, interaction/state grammar and visual conformity | [Experience Conformity](../product-specification-engineering/references/experience-conformity.md) when the change affects an actual user experience |
 | Deriving actual test fixtures, positive/negative observations and evidence tiers from product requirements | [Acceptance oracle construction](references/acceptance-oracle-construction.md) |
 | Accepted redesign, changed product contract, stale screenshot/text/selector or possibly obsolete CI assertion | [Change-aware test contracts](../references/change-aware-test-contracts.md) |
