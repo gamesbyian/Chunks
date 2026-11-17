@@ -76,7 +76,7 @@ internal object UniversalAddDisplayProjector {
             UniversalAddDisplayStage.VERIFIED ->
                 "This submission's exact transfer, destination and requested Start state are verified. Peer activity and payload bytes are separate."
             UniversalAddDisplayStage.SESSION_CONFIRMED ->
-                "The exact transfer and requested state exist, but which client registered it is unknown. No Add was resent."
+                "This exact transfer and requested state are present. Chunks can't tell whether this Add created it. No repeat Add was sent."
             UniversalAddDisplayStage.START_UNVERIFIED ->
                 "The exact transfer and location exist, but requested Start remains unverified. No Add or Start was resent."
             UniversalAddDisplayStage.UNCONFIRMED ->

@@ -55,6 +55,9 @@ class UniversalAddDisplayProjectorTest {
         assertEquals(UniversalAddDisplayStage.SESSION_CONFIRMED, confirmed.stage)
         assertFalse(confirmed.title.startsWith("Added"))
         assertTrue(confirmed.verifiedJobObserved)
+        assertTrue("The exact client is known; only registration provenance is uncertain",
+            confirmed.explanation.contains("Chunks can't tell whether this Add created it"))
+        assertFalse(confirmed.explanation.contains("which client"))
     }
 
     @Test fun unverifiedStartDoesNotClaimSuccessOrAllowRetry() {
