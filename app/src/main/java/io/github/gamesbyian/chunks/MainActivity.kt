@@ -2285,14 +2285,17 @@ internal fun ChunksApp(
                 }
                 Section.SNAPSHOT -> {
                 val snapshotAccount = server
+                // Give the nested callback an explicit suspend function type:
+                // let{} alone infers an ordinary Function1, not SuspendFunction1.
+                val originalReader: suspend (String) -> ByteArray? = { hash ->
+                    snapshotAccount?.originalMetainfoForSnapshot(hash)
+                }
                 SnapshotInventoryExportScreen(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
                     stale = stale, loading = loading,
                     onBack = { section = Section.TRANSFERS },
-                    readOriginalMetainfo = snapshotAccount?.let { original ->
-                        { hash: String -> original.originalMetainfoForSnapshot(hash) }
-                    },
+                    readOriginalMetainfo = if (snapshotAccount == null) null else originalReader,
                     accountStillCurrent = { server === snapshotAccount },
                     restorePanel = {
                         // Only the complete "main" view is a whole-server
