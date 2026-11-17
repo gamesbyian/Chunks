@@ -566,7 +566,11 @@ internal class MainActivityRealMagnetJourney(
                 assertTrue("A pending native Place must remain explicitly unverified",
                     visible("Start after Add was not verified.") ||
                         visible("its payload folder and final Add result are not yet verified.") ||
-                        visible("requested Start remains unverified."))
+                        visible("requested Start remains unverified.") ||
+                        // Metadata can finish arriving before this assertion. The
+                        // UI then asks for independent Place/Start confirmation,
+                        // which still means those outcomes are not verified.
+                        visible("confirm the actual payload folder and requested Start."))
                 val metadata = readOnly { remote.call("d.is_meta", listOf(hash)) }
                 if (!publicDiscovery) assertEquals(1L, metadata)
                 else assertTrue("Public metadata may resolve during the initial status read", metadata in setOf(0L, 1L))
