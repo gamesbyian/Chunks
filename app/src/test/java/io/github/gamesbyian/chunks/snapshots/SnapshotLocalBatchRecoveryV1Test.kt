@@ -10,7 +10,8 @@ class SnapshotLocalBatchRecoveryV1Test {
     @get:Rule val temp = TemporaryFolder()
     private val source = "a".repeat(64)
     private val targetId = "b".repeat(64)
-    private val placeId = "c".repeat(64)
+    private fun placeFingerprint(folder: File) = LocalSnapshotRestoreFingerprint.of(
+        "chunks-place-v1:" + folder.canonicalPath)
     private val one = "1".repeat(40)
     private val two = "2".repeat(40)
     private val three = "3".repeat(40)
@@ -50,7 +51,7 @@ class SnapshotLocalBatchRecoveryV1Test {
     private fun recovery(
         hashes: List<String>, folder: File, store: Store, target: FakeTarget,
         frozen: List<String> = target.jobs.keys.toList(),
-        fingerprint: String = placeId,
+        fingerprint: String = placeFingerprint(folder),
         mayContinue: () -> Boolean = { true }
     ) = SnapshotLocalBatchRecoveryV1.inspect(
         hashes = hashes, archiveFingerprint = source, targetFingerprint = targetId,
@@ -63,8 +64,8 @@ class SnapshotLocalBatchRecoveryV1Test {
         val store = Store()
         val target = FakeTarget()
         val pending = journal(store, one)
-        pending.prepare(one, placeId)
-        pending.beforeAdd(one, placeId)
+        pending.prepare(one, placeFingerprint(folder))
+        pending.beforeAdd(one, placeFingerprint(folder))
         pending.acknowledged(one)
         target.jobs[one] = folder
 
@@ -85,13 +86,13 @@ class SnapshotLocalBatchRecoveryV1Test {
         val store = Store()
         val target = FakeTarget()
         val verified = journal(store, one)
-        verified.prepare(one, placeId)
-        verified.beforeAdd(one, placeId)
+        verified.prepare(one, placeFingerprint(folder))
+        verified.beforeAdd(one, placeFingerprint(folder))
         verified.acknowledged(one)
         target.jobs[one] = folder
 
         val reviewedOnly = journal(store, two)
-        reviewedOnly.prepare(two, placeId)
+        reviewedOnly.prepare(two, placeFingerprint(folder))
         // No journal for three. The result must not imply no earlier Add.
 
         val report = recovery(listOf(three, one, two), folder, store, target)
@@ -113,8 +114,8 @@ class SnapshotLocalBatchRecoveryV1Test {
         val store = Store()
         val target = FakeTarget()
         val pending = journal(store, one)
-        pending.prepare(one, placeId)
-        pending.beforeAdd(one, placeId)
+        pending.prepare(one, placeFingerprint(folder))
+        pending.beforeAdd(one, placeFingerprint(folder))
         val report = recovery(listOf(one), folder, store, target)
         assertEquals(SnapshotLocalBatchRecoveryV1.State.UNRESOLVED,
             report.items.single().state)
@@ -129,8 +130,8 @@ class SnapshotLocalBatchRecoveryV1Test {
         val store = Store()
         val target = FakeTarget()
         val pending = journal(store, one)
-        pending.prepare(one, placeId)
-        pending.beforeAdd(one, placeId)
+        pending.prepare(one, placeFingerprint(folder))
+        pending.beforeAdd(one, placeFingerprint(folder))
         target.jobs[one] = other
         assertEquals(SnapshotLocalBatchRecoveryV1.State.UNRESOLVED,
             recovery(listOf(one), folder, store, target).items.single().state)
@@ -141,18 +142,30 @@ class SnapshotLocalBatchRecoveryV1Test {
     }
 
     @Test fun differentReviewedPlaceBlocksPromotionOfPendingJournal() {
+        val original = temp.newFolder("original")
         val folder = temp.newFolder("different")
         val store = Store()
         val target = FakeTarget()
         val pending = journal(store, one)
-        pending.prepare(one, placeId)
-        pending.beforeAdd(one, placeId)
-        target.jobs[one] = folder
-        val report = recovery(listOf(one), folder, store, target, fingerprint = "d".repeat(64))
+        pending.prepare(one, placeFingerprint(original))
+        pending.beforeAdd(one, placeFingerprint(original))
+        target.jobs[one] = original
+        val report = recovery(listOf(one), folder, store, target)
         assertEquals(SnapshotLocalBatchRecoveryV1.State.DIFFERENT_REVIEWED_PLACE,
             report.items.single().state)
         assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
             journal(store, one).entries().single().phase)
+    }
+
+    @Test fun forgedPlaceFingerprintCannotBePairedWithDifferentFolder() {
+        val folder = temp.newFolder("forged")
+        val store = Store()
+        val target = FakeTarget()
+        assertEquals(SnapshotLocalBatchRecoveryV1.Blocker.INVALID_REVIEW,
+            recovery(listOf(one), folder, store, target,
+                fingerprint = "d".repeat(64)).blocker)
+        assertEquals(0, target.inventoryReads)
+        assertEquals(0, target.submissions)
     }
 
     @Test fun staleInventoryOrChangedTargetDuringInspectionBlocksWholeSummary() {
