@@ -38,19 +38,35 @@ import androidx.compose.ui.platform.testTag
 internal fun MediaPrivacySettings.offersArtworkChoiceDuringAdd(): Boolean =
     showArtwork && downloadArtwork
 
-/** One shared per-Add choice. Expanding or changing it never starts a lookup. */
+/**
+ * This availability read belongs in the STABLE Add screen composition, not
+ * inside a disposable LazyColumn item. Otherwise scrolling the item offscreen
+ * reinitializes offered=false and briefly removes the child's test/accessibility
+ * semantics before another disk read, losing a second Add's opt-out (#1838).
+ * It reads only local settings; no online artwork fetch is triggered.
+ */
 @Composable
-internal fun AddArtworkChoice(automatic: Boolean, enabled: Boolean, onAutomatic: (Boolean) -> Unit) {
+internal fun rememberAddArtworkChoiceOffered(): Boolean {
     val context = LocalContext.current
     val media = remember(context) { ChunksMedia.get(context) }
-    // The optional control must not briefly appear from guessed defaults while
-    // disk preferences are loading. This reads only local settings, never a provider.
     var offered by remember(media) { mutableStateOf(false) }
     LaunchedEffect(media) {
         offered = withContext(Dispatchers.IO) {
             media.loadSettings().offersArtworkChoiceDuringAdd()
         }
     }
+    return offered
+}
+
+/** One shared per-Add choice. Expanding or changing it never starts a lookup. */
+@Composable
+internal fun AddArtworkChoice(
+    automatic: Boolean,
+    enabled: Boolean,
+    offeredByParent: Boolean? = null,
+    onAutomatic: (Boolean) -> Unit
+) {
+    val offered = offeredByParent ?: rememberAddArtworkChoiceOffered()
     if (!offered) return
 
     var expanded by rememberSaveable { mutableStateOf(false) }
