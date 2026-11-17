@@ -75,6 +75,17 @@ class OpenWithActivityIntakeTest {
         }
     }
 
+    @Test fun opaqueGenericBinaryOpenWithReachesAddReview() {
+        // Providers often use IDs with no extension, even when Android shows
+        // a .torrent filename. Admission must not depend on URI path spelling.
+        val opaque = document("document/917243", "opaque-open-with.mkv")
+        assertFalse(opaque.lastPathSegment.orEmpty().endsWith(".torrent"))
+        ActivityScenario.launch<MainActivity>(view(opaque, "application/octet-stream")).use { scenario ->
+            waitForText("opaque-open-with.mkv")
+            scenario.onActivity { assertFalse("Opaque Open With must stay in Chunks", it.isFinishing) }
+        }
+    }
+
     @Test fun warmSecondOpenWithIsHeldForAnExplicitChoice() {
         // Robolectric's controller delivers onNewIntent through the real pause → newIntent →
         // resume lifecycle, as Android does for the one existing singleTask instance.
