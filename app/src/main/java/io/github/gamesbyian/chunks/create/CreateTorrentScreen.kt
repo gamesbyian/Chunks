@@ -70,14 +70,21 @@ internal fun CreateTorrentScreen(
     /** A file shared to the "Create torrent" target; listed once, then consumed. */
     shared: SharedCreateDocument.Request? = null,
     onSharedConsumed: () -> Unit = {},
+    /** Source itself lives in an Activity-retained RAM owner when supplied. */
+    retainedSourceState: androidx.compose.runtime.MutableState<CreateTorrentSource?>? = null,
     /** Read-only preview; actual copying independently validates the Place again. */
     seedCopyReview: (Context, TorrentMetainfoBuilder.Result, TorrentMetainfoBuilder.Request?) -> SeedReview =
         ::reviewSeedCopy
 ) {
     val context = LocalContext.current
+    // Retained entries may outlive an Activity after rotation. File-open
+    // closures must capture the application ContentResolver, not that Activity.
+    val sourceContext = context.applicationContext
     val scope = rememberCoroutineScope()
-    var source by remember { mutableStateOf(initialSource) }
+    val sourceHolder = retainedSourceState ?: remember { mutableStateOf(initialSource) }
+    var source by sourceHolder
     var scanning by remember { mutableStateOf(false) }
+    var scanRevision by remember { mutableStateOf(0) }
     var trackers by remember { mutableStateOf("") }
     var private by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf<Long?>(null) }
@@ -89,28 +96,53 @@ internal fun CreateTorrentScreen(
     var message by remember { mutableStateOf<String?>(null) }
     val cancel = remember { AtomicBoolean(false) }
 
-    fun scan(block: () -> CreateTorrentSource) {
+    fun scan(block: () -> CreateTorrentSource, onHandled: () -> Unit = {}) {
+        val currentRevision = ++scanRevision
         source = null; result = null; message = null; scanning = true; cancel.set(false)
         scope.launch {
-            try { source = withContext(Dispatchers.IO) { block() } }
-            catch (_: TorrentMetainfoBuilder.Cancelled) { message = "Cancelled." }
-            catch (e: Exception) { message = e.message ?: "These files could not be read." }
-            finally { scanning = false }
+            // A configuration change cancels this read-only scan. Keep the
+            // shared request queued, so the new Activity can read it again.
+            // A later explicit source outranks any older scan completion.
+            var settled = false
+            try {
+                val reviewed = withContext(Dispatchers.IO) { block() }
+                if (scanRevision == currentRevision) source = reviewed
+                settled = true
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (_: TorrentMetainfoBuilder.Cancelled) {
+                if (scanRevision == currentRevision) message = "Cancelled."
+                settled = true
+            } catch (e: Exception) {
+                if (scanRevision == currentRevision)
+                    message = e.message ?: "These files could not be read."
+                settled = true
+            } finally {
+                if (scanRevision == currentRevision) scanning = false
+                // Only a completed read/refusal consumes this one-shot source.
+                // Lifecycle cancellation may not erase the only retained URI.
+                if (settled) onHandled()
+            }
         }
     }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) scan { CreateTorrentSource.fromDocument(context, uri) }
+        if (uri != null) scan { CreateTorrentSource.fromDocument(sourceContext, uri) }
     }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) scan { CreateTorrentSource.fromTree(context, uri) { cancel.get() } }
+        if (uri != null) scan { CreateTorrentSource.fromTree(sourceContext, uri) { cancel.get() } }
     }
     LaunchedEffect(shared) {
         when (shared) {
-            is SharedCreateDocument.Request.File -> scan { CreateTorrentSource.fromDocument(context, shared.uri) }
-            is SharedCreateDocument.Request.Unusable -> { source = null; result = null; message = shared.reason }
+            is SharedCreateDocument.Request.File -> scan(
+                block = { CreateTorrentSource.fromDocument(sourceContext, shared.uri) },
+                onHandled = onSharedConsumed
+            )
+            is SharedCreateDocument.Request.Unusable -> {
+                source = null; result = null; message = shared.reason
+                onSharedConsumed()
+            }
             null -> return@LaunchedEffect
         }
-        onSharedConsumed()
     }
     val busy = scanning || progress != null
 
