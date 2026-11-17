@@ -73,6 +73,17 @@ internal object SnapshotLocalBatchRecoveryV1 {
         if (!chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
             java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
             return blocked(Blocker.DESTINATION_UNAVAILABLE)
+        // This receipt is about the original approved canonical Place.
+        // Never allow a caller to provide the old fingerprint alongside a
+        // different folder and accidentally promote a mismatched Add journal.
+        val independentPlace = try {
+            LocalSnapshotRestoreFingerprint.of(
+                "chunks-place-v1:" + chosenPlace.canonicalPath)
+        } catch (_: Exception) {
+            return blocked(Blocker.DESTINATION_UNAVAILABLE)
+        }
+        if (independentPlace != verifiedPlaceFingerprint)
+            return blocked(Blocker.INVALID_REVIEW)
 
         fun canonicalInventory(values: List<String>?): Set<String>? {
             if (values == null || values.size > 20_000) return null
