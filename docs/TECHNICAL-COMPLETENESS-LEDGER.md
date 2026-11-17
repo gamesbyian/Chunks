@@ -4,6 +4,7 @@
 
 | Capability / Android core | Known status on 2026-11-17 | Highest-value remaining technical work | Evidence / contract |
 | --- | --- | --- | --- |
+| New remote backends (owner-promoted 2026-11-17) | Transmission isolated read-only candidate under review; no UI/profile integration or live evidence. qBittorrent and Deluge absent | First exact-host Transmission session/version/complete inventory proof; connect typed profile to shared list; then implement protected confirmed Add/Start/Stop/Remove for all three before enabling automatic Smart Routing | #660; REMOTE-BACKEND-ADAPTERS; PR pending |
 | Authenticated rTorrent inventories / saved profiles | Implemented; real multi-profile journey passed | Preserve exact-profile identity, failure/reconnect and owner-device acceptance | WORK-QUEUE R1, #1756/#1757 |
 | Remote Add, Place, Start/Stop, session Remove and Remove + data | Implemented, substantial real-primary-Seedhost proof; other server capabilities may vary | Exact-account uncertainty and variant safeguards; avoid redispatching solved blank-folder/paused-add symptoms | WORK-QUEUE R1; #1679; remote deletion contract |
 | Local Add, real pieces and resume | Implemented with real-libtorrent and installed test tiers | Stopped magnet check, foreign partial files, interrupted restore and real-device validation | WORK-QUEUE R3; #5 |
@@ -38,7 +39,7 @@
 
 ## Explicit post-core / separate expansion scope
 
-Other remote engines (#660), Android TV (#663), individual home-screen widgets (#689), optional companion service (#3), additional cross-media catalogs (#403), independent font variants (#347), and compatibility research (#151) remain approved or investigated expansions. Do not erase them; do not silently include them in the core Android completion denominator. Owner may promote any one of them.
+Other remote engines are now owner-promoted as a **parallel protocol-first workstream** (#660), before automatic Smart Routing. Android TV (#663), individual home-screen widgets (#689), optional companion service (#3), additional cross-media catalogs (#403), independent font variants (#347), and compatibility research (#151) remain approved or investigated expansions. Keep remote engine work tracked as a separately measured, owner-promoted expansion and avoid inflating core-Android completion claims; other expansions retain their existing priority.
 
 ## Update discipline
 
