@@ -145,7 +145,7 @@ internal class MainActivityRealMagnetJourney(
         rule.waitForIdle()
     }
     private fun report(key: String, value: String) {
-        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[02345]?|negative)|traffic_magnet[02345]?_(initial|resumed)|diagnostic_magnet[02345]?|negative|negative_stage|app_stage)")))
+        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[02345]?|negative)|traffic_magnet[02345]?_(initial|resumed)|diagnostic_magnet[02345]?|negative|negative_stage|app_stage|receipt_state)")))
         require(value.length <= 160 && value.matches(Regex("[a-z0-9,=-]+")))
         InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply { putString(key, value) })
     }
@@ -566,7 +566,8 @@ internal class MainActivityRealMagnetJourney(
                 "Added, checking", "Present, origin unverified", "Adding", "Not added"
             ).firstOrNull(::receiptHasState) ?: "absent"
             report("chunks_real_add_receipt_state", safeReceiptState.lowercase()
-                .replace(Regex("[^a-z]+"), "-").trim('-'))
+                // The diagnostic reporter accepts only alphanumeric safe codes.
+                .replace(Regex("[^a-z0-9]"), ""))
             val awaitingNativeMetadata = !receiptHasState("Verified")
             if (awaitingNativeMetadata) {
                 // The old absolute-folder fixture could certify the reviewed parent
