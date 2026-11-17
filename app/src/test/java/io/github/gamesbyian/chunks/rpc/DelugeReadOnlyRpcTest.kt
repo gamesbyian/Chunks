@@ -90,6 +90,13 @@ class DelugeReadOnlyRpcTest {
         catch (expected: IOException) { assertEquals(3, offline.calls.size) }
     }
 
+    @Test fun unrelatedDaemonMethodsNeverImplyInventoryReadAuthorization() = runBlocking {
+        val missingMethod = Scripted(login(), hosts(), status(),
+            result(4, """["core.pause_torrent","core.get_session_status"]"""))
+        try { client(missingMethod).inspect(); fail("Non-inventory daemon methods accepted") }
+        catch (expected: IOException) { assertEquals(4, missingMethod.calls.size) }
+    }
+
     @Test fun failureToConnectOrUnexpectedDaemonStatusNeverReadsInventory() = runBlocking {
         val session = Scripted(login(), hosts(), status(), connected(), result(5, "false"))
         try { client(session).inspect(); fail("Disconnected daemon accepted") }
