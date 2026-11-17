@@ -1,5 +1,17 @@
 package io.github.gamesbyian.chunks.engine
 
+/**
+ * Read each local native handle independently. A failed JNI getter gives no
+ * policy authority for that handle, but cannot hide other known transfers.
+ * A null reader result represents a vanished/unready handle, not an empty
+ * torrent inventory. Never log raw tracker URLs or private torrent data.
+ */
+internal fun <T, R : Any> seedingFactsBestEffort(
+    entries: List<T>, read: (T) -> R?
+): List<R> = entries.mapNotNull { entry ->
+    try { read(entry) } catch (_: Exception) { null }
+}
+
 import java.io.File
 import android.os.Build
 import android.system.Os
@@ -1692,15 +1704,23 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      */
     internal fun seedingFacts(): List<io.github.gamesbyian.chunks.seeding.SeedingController.Facts> = try {
         synchronized(this) {
-            handles.entries.toList().mapNotNull { (key, handle) ->
-                if (!handle.isValid) return@mapNotNull null
-                val status = handle.status()
-                val info = handle.torrentFile()?.takeIf { it.isValid && status.hasMetadata() }
-                io.github.gamesbyian.chunks.seeding.SeedingController.Facts(key, status.addedTime() * 1000L,
-                    info?.let { handle.trackers().map { t -> t.url() } }, info?.isPrivate)
+            // First take a stable map snapshot, then isolate individual JNI
+            // read faults. One invalid handle must not turn a healthy local
+            // inventory into an apparently empty policy-observation pass.
+            seedingFactsBestEffort(handles.entries.toList()) { (key, handle) ->
+                if (!handle.isValid) null else {
+                    val status = handle.status()
+                    val info = handle.torrentFile()?.takeIf { it.isValid && status.hasMetadata() }
+                    io.github.gamesbyian.chunks.seeding.SeedingController.Facts(
+                        key, status.addedTime() * 1000L,
+                        info?.let { handle.trackers().map { t -> t.url() } }, info?.isPrivate)
+                }
             }
         }
-    } catch (_: Exception) { emptyList() }
+    } catch (_: Exception) {
+        // A failed snapshot cannot substantiate any transfer observation.
+        emptyList()
+    }
 
     /** Counters for Smart Seeding decisions, read from one status snapshot. */
     internal fun seedingObservation(infoHash: String): io.github.gamesbyian.chunks.seeding.SeedingObservation? = try {
