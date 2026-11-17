@@ -87,6 +87,10 @@ This protection is **Local-only until a separately accepted rTorrent adapter exi
 `RTorrentRemote.readSeedingEvidence(hash)` acquires the exact v1 hash before
 and after reading the server's cumulative uploaded/downloaded byte counters,
 completed/active flags, optional completion timestamp and named throttle.
+The returned evidence is also bound to the exact authenticated endpoint
+and principal. Identical infohashes on two remote accounts are distinct
+observations; never merge or apply their counters across scopes. The
+private scope remains redacted from automatic object rendering.
 Unsupported optional getters remain unknown; authentication, transport, and
 operational faults abort instead of silently substituting zero. No server
 mutation, background polling, assigned rule, or automatic Stop occurs as a
