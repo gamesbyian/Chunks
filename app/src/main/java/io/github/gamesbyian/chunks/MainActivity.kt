@@ -173,8 +173,9 @@ class MainActivity : ComponentActivity() {
 
     /**
      * #1786 diagnostics: `adb logcat -s ChunksIntake` separates a refused handoff from a
-     * crash or lost task. Action, declared MIME, URI scheme and the outcome only — never the
-     * URI, display name, magnet, tracker or file content.
+     * crash or lost task. Fixed action/MIME/scheme categories and outcome only,
+     * never untrusted raw MIME or URI scheme, full URI, display name, magnet,
+     * tracker or file content.
      */
     private fun logIntake(intent: Intent?, candidate: ExternalAddSource?) {
         val action = intent?.action ?: return
@@ -187,7 +188,8 @@ class MainActivity : ComponentActivity() {
         }
         runCatching {
             android.util.Log.i("ChunksIntake", "action=" + action.substringAfterLast('.') +
-                " type=" + (intent.type ?: "none") + " scheme=" + (intent.data?.scheme ?: "none") +
+                " type=" + IntakeDiagnosticLabels.mime(intent.type) +
+                " scheme=" + IntakeDiagnosticLabels.scheme(intent.data?.scheme) +
                 " outcome=" + outcome + " task=" + taskId)
         }
     }

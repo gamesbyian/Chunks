@@ -243,6 +243,11 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
     // prove post-Start/Stop or process-restart ownership.
     private data class CheckedFirstStart(val saveDirectory: File, val paths: List<String>)
     private val checkedFirstStarts = ConcurrentHashMap<String, CheckedFirstStart>()
+    // One implicit stopped-payload check per native Add. The async check may
+    // finish before the next UI/worker observation, so native PAUSED/CHECKING
+    // flags alone cannot distinguish a new request from a duplicate.
+    // Explicit recheckStopped remains a separate user-authorized operation.
+    private val stoppedVerificationRequests = ConcurrentHashMap.newKeySet<String>()
     private val checkedStartProblems = ConcurrentHashMap<String, String>()
     // Native remove is asynchronous: hold identity until session.stop joins I/O.
     private val retiredThisSession = ConcurrentHashMap.newKeySet<String>()
@@ -618,12 +623,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
                 val key = normal(infoHash)
                 val handle = handles[key]?.takeIf { started && it.isValid } ?: return false
                 val pending = checkedFirstStarts[key] ?: return false
+                if (stoppedVerificationRequests.contains(key)) return false
                 val state = handle.status(TorrentHandle.QUERY_NAME)
                 if (!state.flags().and_(org.libtorrent4j.TorrentFlags.PAUSED).non_zero() ||
                     !state.hasMetadata() || awaitingMetadata.contains(key)) return false
                 val (survey, problem) = firstStartSurvey(pending, handle)
                 if (problem != null || survey !is LocalPayloadCollisionSurvey.Result.ExistingPaths)
                     return false
+                // Claim the one-shot request BEFORE any native mutation. Even
+                // a partial JNI failure might already have queued a check;
+                // never re-arm it through an implicit duplicate call.
+                if (!stoppedVerificationRequests.add(key)) return false
                 val pendingCheck = state.state() == TorrentStatus.State.CHECKING_FILES ||
                     state.state() == TorrentStatus.State.CHECKING_RESUME_DATA
                 try {
@@ -2026,6 +2036,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         startWhenMetadataArrives.remove(key)
         stopAfterMagnetCheck.remove(key)
         magnetCollisionProblems.remove(key)
+        stoppedVerificationRequests.remove(key)
         checkedFirstStarts.remove(key)
         restoredNativeJobs.remove(key)
         checkedStartProblems.remove(key)
@@ -2210,6 +2221,7 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
         startWhenMetadataArrives.clear()
         stopAfterMagnetCheck.clear()
         magnetCollisionProblems.clear()
+        stoppedVerificationRequests.clear()
         checkedFirstStarts.clear()
         restoredNativeJobs.clear()
         checkedStartProblems.clear()
