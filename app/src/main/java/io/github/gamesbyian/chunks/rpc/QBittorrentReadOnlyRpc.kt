@@ -127,7 +127,7 @@ internal class QBittorrentReadOnlyRpc(
         if (sessionCookies.size != 1 || !SID.matches(sessionCookies.single().second)) {
             throw IOException("qBittorrent session cookie missing or invalid")
         }
-        return sessionCookies.single().let { (name, value) -> "$" + "{name}=$" + "{value}" }
+        return sessionCookies.single().let { (name, value) -> name + "=" + value }
     }
 
     private suspend fun read(method: String, sessionCookie: String): String {
