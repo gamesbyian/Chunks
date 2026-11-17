@@ -38,7 +38,7 @@ class LocalSnapshotBatchRecoveryReviewTest {
             }
         }
         rule.onNodeWithText("Check 2 previous restores (read-only)").assertIsNotEnabled()
-        rule.onNodeWithText("Previously reviewed local destination: /previously-reviewed-local")
+        rule.onNodeWithText("Folder to check (must match the previous review): /previously-reviewed-local")
             .assertExists()
         rule.onNodeWithText("Check previous stopped snapshot restores").assertExists()
         rule.runOnIdle { ready.value = true }
