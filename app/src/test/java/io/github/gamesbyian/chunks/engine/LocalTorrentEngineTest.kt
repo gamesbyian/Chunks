@@ -934,6 +934,13 @@ class LocalTorrentEngineTest {
         assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))
         requireFlushed(local, leech)
         assertEquals(LocalCommandOutcome.VERIFIED, local.pause(leech).outcome)
+        // Keep the already-connected, very fast loopback seeder stopped until
+        // the damaged download has completed its forced recheck. Otherwise the
+        // missing ~900 KiB can arrive before the 100 ms status poll observes
+        // DOWNLOADING, making a successful repair indistinguishable from a
+        // timeout. This also proves the check itself cannot fabricate pieces.
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.pause(seed.infoHash).outcome)
+        assertTrue(requireNotNull(seeder.status(seed.infoHash)).stopped)
 
         val episode = File(destination, "Chunks public fixture/episode.bin")
         java.io.RandomAccessFile(episode, "rw").use { it.setLength(episode.length() / 3) }
@@ -941,11 +948,28 @@ class LocalTorrentEngineTest {
 
         assertEquals(LocalCommandOutcome.VERIFIED, local.resume(leech).outcome)
         assertTrue("Start must re-hash the shortened payload first", leech in local.startPayloadRechecks)
-        // The asynchronous check ends in an honest partial download, never a seed.
-        waitFor { local.status(leech)?.state == LocalTransferState.DOWNLOADING }
+        // The asynchronous check must report missing pieces while no peer can
+        // supply them. Any unexpected SEEDING/CHECKING timeout is a genuine
+        // engine-recheck failure, not a race with instant loopback completion.
+        try {
+            waitFor { local.status(leech)?.state == LocalTransferState.DOWNLOADING }
+        } catch (timeout: AssertionError) {
+            val observed = local.status(leech)
+            throw AssertionError(
+                "Damaged payload did not settle as partial with seeder stopped: " +
+                    "state=${observed?.state}, stopped=${observed?.stopped}, " +
+                    "progressPpm=${observed?.progressPpm}, " +
+                    "recheckRecorded=${leech in local.startPayloadRechecks}",
+                timeout
+            )
+        }
         val rechecked = requireNotNull(local.status(leech))
         assertTrue("Only bytes still on disk count: $rechecked",
             rechecked.doneBytes <= episode.length() + fixture.files.getValue("extras/notes.txt").size)
+        // Only now supply the missing pieces. Retain the original independent
+        // exact-byte flush/readback and bounded downloaded-byte assertions.
+        assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
+        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
         assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))
         requireFlushed(local, leech)
         for ((name, bytes) in fixture.files)
