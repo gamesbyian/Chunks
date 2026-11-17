@@ -110,6 +110,9 @@ import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreReview
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchStoppedRestoreDraft
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchStoppedRestoreReview
 import io.github.gamesbyian.chunks.snapshots.SnapshotLocalBatchRestoreV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotLocalBatchRecoveryV1
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchRecoveryDraft
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchRecoveryReview
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestoreFingerprint
 import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
 import io.github.gamesbyian.chunks.snapshots.SnapshotVerifiedTorrentDocumentV1
@@ -482,6 +485,9 @@ internal fun LocalEngineScreen(
     var pending by localReviewHolder
     var snapshotRestoreDraft by remember { mutableStateOf<LocalSnapshotStoppedRestoreDraft?>(null) }
     var snapshotBatchDraft by remember { mutableStateOf<LocalSnapshotBatchStoppedRestoreDraft?>(null) }
+    var snapshotBatchRecoveryDraft by remember {
+        mutableStateOf<LocalSnapshotBatchRecoveryDraft?>(null)
+    }
     var snapshotPreparationRevision by remember { mutableIntStateOf(0) }
     var repairSelectionHash by remember { mutableStateOf<String?>(null) }
     var repairSelectionBusy by remember { mutableStateOf(false) }
@@ -3017,6 +3023,7 @@ internal fun LocalEngineScreen(
                     pending = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
                     snapshotRestoreDraft = null
                     snapshotBatchDraft = null
+                    snapshotBatchRecoveryDraft = null
                     addStorage = null
                     message = "Original snapshot .torrent is ready for manual local Add review. " +
                         "Check the destination and Start choice before confirming; no Add occurred."
@@ -3059,6 +3066,7 @@ internal fun LocalEngineScreen(
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
                             snapshotRestoreDraft = null
+                            snapshotBatchRecoveryDraft = null
                             snapshotBatchDraft = draft
                             pending = null
                             message = "Review the shared destination and confirm each stopped " +
@@ -3105,6 +3113,7 @@ internal fun LocalEngineScreen(
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
                             snapshotBatchDraft = null
+                            snapshotBatchRecoveryDraft = null
                             snapshotRestoreDraft = draft
                             pending = null
                             message = "Review the new local destination and explicitly confirm " +
@@ -3153,6 +3162,7 @@ internal fun LocalEngineScreen(
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
                             snapshotBatchDraft = null
+                            snapshotBatchRecoveryDraft = null
                             snapshotRestoreDraft = draft
                             pending = null
                             message = "Choose the original local destination to check the " +
