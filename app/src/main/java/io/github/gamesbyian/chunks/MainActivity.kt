@@ -1384,13 +1384,19 @@ internal fun ChunksApp(
         } else if (presentationSection == Section.MEDIA) {
             MediaSettingsScreen(onBack = { leaveTool() })
         } else if (presentationSection == Section.CREATE && server == null) {
+            val shownCreateRequest = createRequest
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(
                 onBack = {
                     createRequest = null
                     retainedAddOwner?.createSource?.value = null
                     leaveTool()
                 },
-                shared = createRequest, onSharedConsumed = { createRequest = null },
+                shared = shownCreateRequest,
+                // An older source scan may settle after a newer Share. Its
+                // acknowledgement must never consume that newer request.
+                onSharedConsumed = {
+                    if (createRequest == shownCreateRequest) createRequest = null
+                },
                 retainedSourceState = retainedAddOwner?.createSource
             )
         } else if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS) && server == null) {
