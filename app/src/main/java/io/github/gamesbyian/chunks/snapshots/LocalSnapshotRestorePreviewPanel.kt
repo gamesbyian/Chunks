@@ -57,6 +57,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
     /** One explicit batch review for all currently missing complete metainfo. */
     onReviewBatchRestore: ((SnapshotManifestV1.Verified, List<SnapshotRestorePreviewV1.Entry>,
         List<String>, Long) -> Unit)? = null,
+    /** Read-only batch recovery also checks already-present metainfo identities. */
+    onReviewBatchRecovery: ((SnapshotManifestV1.Verified, List<SnapshotRestorePreviewV1.Entry>,
+        List<String>, Long) -> Unit)? = null,
     /** Existing hash only: check an earlier journal, never submit. */
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null
@@ -70,6 +73,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
     onPrepareAdd = onPrepareAdd,
     onReviewOneRestore = onReviewOneRestore,
     onReviewBatchRestore = onReviewBatchRestore,
+    onReviewBatchRecovery = onReviewBatchRecovery,
     onReviewPreviousRestore = onReviewPreviousRestore
 )
 
@@ -111,6 +115,8 @@ internal fun SnapshotRestorePreviewPanel(
     onReviewOneRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null,
     onReviewBatchRestore: ((SnapshotManifestV1.Verified, List<SnapshotRestorePreviewV1.Entry>,
+        List<String>, Long) -> Unit)? = null,
+    onReviewBatchRecovery: ((SnapshotManifestV1.Verified, List<SnapshotRestorePreviewV1.Entry>,
         List<String>, Long) -> Unit)? = null,
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null
@@ -310,6 +316,46 @@ internal fun SnapshotRestorePreviewPanel(
                             enabled = targetReady && !reading,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                         ) { Text("Review ${batchReady.size} missing stopped restores") }
+                    }
+                    // Read-only recovery must include exact metainfo identities
+                    // already present in the target: a previous batch may have
+                    // verified some items before dying. This never selects them
+                    // for another Add or creates a missing restore journal.
+                    val previousCandidates = preview.entries.filter { item ->
+                        item.decision in setOf(
+                            SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT,
+                            SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW
+                        ) && verifiedSource?.manifest?.items?.any { original ->
+                            original.infoHashV1 == item.infoHashV1 &&
+                                original.recovery == SnapshotManifestV1.Recovery.METAINFO
+                        } == true
+                    }
+                    if (onReviewBatchRecovery != null && previousCandidates.size >= 2) {
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    check(latestReady && latestHashes == comparedHashes &&
+                                        latestGeneration == comparedGeneration) {
+                                        "Current local inventory changed"
+                                    }
+                                    onReviewBatchRecovery(
+                                        requireNotNull(verifiedSource),
+                                        previousCandidates.toList(),
+                                        requireNotNull(comparedHashes).toList(),
+                                        comparedGeneration)
+                                    manualNotice = "Previous group check is awaiting an explicit " +
+                                        "read-only review of the original Local destination. " +
+                                        "No transfer was changed."
+                                    error = null
+                                } catch (_: Exception) {
+                                    manualNotice = null
+                                    error = "The previous batch check could not be prepared. " +
+                                        "Refresh the Local inventory and compare again."
+                                }
+                            },
+                            enabled = targetReady && !reading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                        ) { Text("Check ${previousCandidates.size} previous restores (read-only)") }
                     }
                     io.github.gamesbyian.chunks.ClearableTransferSearchField(
                         value = search,

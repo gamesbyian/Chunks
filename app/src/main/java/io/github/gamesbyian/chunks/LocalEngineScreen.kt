@@ -110,6 +110,9 @@ import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreReview
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchStoppedRestoreDraft
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchStoppedRestoreReview
 import io.github.gamesbyian.chunks.snapshots.SnapshotLocalBatchRestoreV1
+import io.github.gamesbyian.chunks.snapshots.SnapshotLocalBatchRecoveryV1
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchRecoveryDraft
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchRecoveryReview
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestoreFingerprint
 import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
 import io.github.gamesbyian.chunks.snapshots.SnapshotVerifiedTorrentDocumentV1
@@ -482,6 +485,9 @@ internal fun LocalEngineScreen(
     var pending by localReviewHolder
     var snapshotRestoreDraft by remember { mutableStateOf<LocalSnapshotStoppedRestoreDraft?>(null) }
     var snapshotBatchDraft by remember { mutableStateOf<LocalSnapshotBatchStoppedRestoreDraft?>(null) }
+    var snapshotBatchRecoveryDraft by remember {
+        mutableStateOf<LocalSnapshotBatchRecoveryDraft?>(null)
+    }
     var snapshotPreparationRevision by remember { mutableIntStateOf(0) }
     var repairSelectionHash by remember { mutableStateOf<String?>(null) }
     var repairSelectionBusy by remember { mutableStateOf(false) }
@@ -2142,6 +2148,113 @@ internal fun LocalEngineScreen(
             )
         }
 
+        snapshotBatchRecoveryDraft?.let { draft ->
+            val eligible = hasConfirmedLocalInventory && !inventoryStale && !busy &&
+                !sourceReading && pending == null && place != null &&
+                draft.frozenHashes == transfers.map { it.infoHash } &&
+                LocalScreenReader.revision.snapshot() == draft.frozenGeneration
+            LocalSnapshotBatchRecoveryReview(
+                draft = draft,
+                selectedPlace = place?.title ?: "No previously reviewed local destination",
+                eligible = eligible,
+                onCancel = {
+                    if (snapshotBatchRecoveryDraft === draft)
+                        snapshotBatchRecoveryDraft = null
+                },
+                onConfirm = {
+                    val selected = place
+                    if (!eligible || selected == null ||
+                        sourceReadJob != null || snapshotBatchRecoveryDraft !== draft) {
+                        noteProblem("The Local inventory or selected destination changed. " +
+                            "Refresh the snapshot comparison before checking again.")
+                    } else {
+                        snapshotBatchRecoveryDraft = null
+                        scope.launch {
+                            val read = beginSourceRead()
+                            try {
+                                val report = withContext(Dispatchers.IO) {
+                                    val folder = selected.root.takeIf {
+                                        it.isDirectory &&
+                                            !java.nio.file.Files.isSymbolicLink(it.toPath())
+                                    }
+                                    if (folder == null) {
+                                        SnapshotLocalBatchRecoveryV1.Report(
+                                            emptyList(),
+                                            SnapshotLocalBatchRecoveryV1.Blocker.DESTINATION_UNAVAILABLE)
+                                    } else {
+                                        try {
+                                            val targetIdentity = LocalSnapshotRestoreFingerprint.of(
+                                                "chunks-local-v1:" + context.filesDir.canonicalPath)
+                                            val placeIdentity = LocalSnapshotRestoreFingerprint.of(
+                                                "chunks-place-v1:" + folder.canonicalPath)
+                                            SnapshotLocalBatchRecoveryV1.inspect(
+                                                hashes = draft.hashes,
+                                                archiveFingerprint = draft.archiveFingerprint,
+                                                targetFingerprint = targetIdentity,
+                                                chosenPlace = folder,
+                                                verifiedPlaceFingerprint = placeIdentity,
+                                                frozenTargetHashes = draft.frozenHashes,
+                                                store = AndroidSnapshotRestoreJournalStore(context),
+                                                target = SnapshotRestoreOnceV1.localEngine(
+                                                    LocalEngineHolder.get(context)),
+                                                mayContinue = { read.isActive }
+                                            )
+                                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            SnapshotLocalBatchRecoveryV1.Report(
+                                                emptyList(),
+                                                SnapshotLocalBatchRecoveryV1.Blocker.INVALID_REVIEW)
+                                        }
+                                    }
+                                }
+                                if (sourceReadJob !== read) return@launch
+                                message = if (!report.completed) {
+                                    val explanation = when (report.blocker) {
+                                        SnapshotLocalBatchRecoveryV1.Blocker.DESTINATION_UNAVAILABLE ->
+                                            "the original local folder is unavailable"
+                                        SnapshotLocalBatchRecoveryV1.Blocker.TARGET_CHANGED ->
+                                            "the Local inventory changed during the check"
+                                        SnapshotLocalBatchRecoveryV1.Blocker.CANCELLED ->
+                                            "the check was interrupted"
+                                        else -> "the saved archive or review identity did not match"
+                                    }
+                                    "Previous restores could not be confirmed because " +
+                                        explanation + ". Nothing was added or retried. " +
+                                        "Refresh the snapshot comparison and check again."
+                                } else {
+                                    val unresolvedHash = report.items.firstOrNull {
+                                        it.state in setOf(
+                                            SnapshotLocalBatchRecoveryV1.State.UNRESOLVED,
+                                            SnapshotLocalBatchRecoveryV1.State.JOURNAL_UNAVAILABLE,
+                                            SnapshotLocalBatchRecoveryV1.State.DIFFERENT_REVIEWED_PLACE)
+                                    }?.infoHashV1?.take(12)
+                                    "Previous stopped restore check: " +
+                                        "${report.verifiedCount} confirmed at this folder; " +
+                                        "${report.unresolvedCount} unresolved or unavailable journals; " +
+                                        "${report.reviewOnlyCount} review-only records." +
+                                        (unresolvedHash?.let {
+                                            " First unresolved infohash: " + it + "."
+                                        } ?: "") +
+                                        " No torrent Add, Start or Stop was sent. " +
+                                        "Unresolved attempts require separate review; " +
+                                        "none was retried."
+                                }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) {
+                                if (sourceReadJob === read)
+                                    noteProblem("The previous batch check could not complete. " +
+                                        "Nothing was added or retried.")
+                            } finally {
+                                if (sourceReadJob === read) sourceReadJob = null
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
         } // Add presentation
         if (pane == LocalPane.TRANSFERS) {
         moveServer?.let { server ->
@@ -3017,6 +3130,7 @@ internal fun LocalEngineScreen(
                     pending = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
                     snapshotRestoreDraft = null
                     snapshotBatchDraft = null
+                    snapshotBatchRecoveryDraft = null
                     addStorage = null
                     message = "Original snapshot .torrent is ready for manual local Add review. " +
                         "Check the destination and Start choice before confirming; no Add occurred."
@@ -3025,6 +3139,62 @@ internal fun LocalEngineScreen(
                 } catch (_: Exception) {
                     noteProblem("Snapshot definition could not populate Add review." +
                         if (pending != null) " Your previous .torrent remains selected." else "")
+                }
+            },
+            onReviewBatchRecovery = { verified, entries, frozen, generation ->
+                check(!busy && sourceReadJob == null) {
+                    "Another source review is in progress"
+                }
+                initialTorrentUri?.let(onTorrentConsumed)
+                val request = ++snapshotPreparationRevision
+                scope.launch {
+                    val read = beginSourceRead()
+                    try {
+                        androidx.compose.runtime.snapshotFlow { busy }.first { !it }
+                        val draft = withContext(Dispatchers.IO) {
+                            require(entries.size in 2..512)
+                            val originalHashes = entries.map { it.infoHashV1 }.sorted()
+                            require(originalHashes.size == originalHashes.toSet().size)
+                            require(originalHashes.all { hash ->
+                                verified.manifest.items.any {
+                                    it.infoHashV1 == hash &&
+                                        it.recovery == SnapshotManifestV1.Recovery.METAINFO
+                                }
+                            })
+                            val exactArchive = SnapshotManifestV1.encode(
+                                verified.manifest, verified.metainfoByHash)
+                            LocalSnapshotBatchRecoveryDraft(
+                                originalHashes,
+                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                frozen.toList(), generation)
+                        }
+                        if (sourceReadJob !== read) return@launch
+                        if (request == snapshotPreparationRevision &&
+                            LocalScreenReader.revision.snapshot() == generation &&
+                            !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotRestoreDraft = null
+                            snapshotBatchDraft = null
+                            snapshotBatchRecoveryDraft = draft
+                            pending = null
+                            message = "Choose the original Local folder to check prior " +
+                                "stopped restores. Existing journals are read; " +
+                                "no transfer will be added."
+                            val showReview = onShowLocalSnapshotReview ?: onOpenAdd
+                            if (showReview != null) showReview.invoke()
+                            else scrollState.animateScrollTo(0)
+                        } else {
+                            noteProblem("The Local inventory changed before the previous " +
+                                "group check. Reopen the snapshot.")
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        if (sourceReadJob === read)
+                            noteProblem("Cannot prepare the previous batch check. " +
+                                "Refresh the verified snapshot comparison.")
+                    } finally {
+                        if (sourceReadJob === read) sourceReadJob = null
+                    }
                 }
             },
             onReviewBatchRestore = { verified, entries, frozen, generation ->
@@ -3059,6 +3229,7 @@ internal fun LocalEngineScreen(
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
                             snapshotRestoreDraft = null
+                            snapshotBatchRecoveryDraft = null
                             snapshotBatchDraft = draft
                             pending = null
                             message = "Review the shared destination and confirm each stopped " +
@@ -3105,6 +3276,7 @@ internal fun LocalEngineScreen(
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
                             snapshotBatchDraft = null
+                            snapshotBatchRecoveryDraft = null
                             snapshotRestoreDraft = draft
                             pending = null
                             message = "Review the new local destination and explicitly confirm " +
@@ -3153,6 +3325,7 @@ internal fun LocalEngineScreen(
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
                             snapshotBatchDraft = null
+                            snapshotBatchRecoveryDraft = null
                             snapshotRestoreDraft = draft
                             pending = null
                             message = "Choose the original local destination to check the " +
