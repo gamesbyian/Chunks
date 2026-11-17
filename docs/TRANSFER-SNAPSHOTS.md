@@ -8,6 +8,12 @@ Chunks now supports more than the original inventory-only 2026 prototype, but th
 
 The following gaps are **not complete**: general multi-item/bulk resume, authenticated remote metainfo recovery and remote restore, moving downloaded payloads, migration of historical state or path mappings, verified physical Android document-provider/process-kill recovery, and the full settings/priority round trip. True private-tracker definitions may contain credentials in announce URLs and must be handled as sensitive archive content.
 
+### Bounded multi-item stopped Local restore backend (candidate, PR #1833)
+
+A new **internal backend-only** batch executor composes the existing independently verified one-item stopped Local restore transaction for up to 32 selected complete v1 originals. Before the first mutation it checks the entire reviewed roster, unique identities and each current Local Place; it requires explicit approval of the batch. Every item gets its own archive/item/target-scoped durable journal. A successful, exact stopped-state plus canonical Place readback advances the expected inventory for the next item. Any unknown Add result, missing stopped-place proof, uncommitted journal or unexpected inventory change **halts all remaining items**, with never a blind retry. Preexisting identities are reported as present, **not** confirmed restored.
+
+This candidate is gated by source-exact JVM fault tests and a real native two-item libtorrent stopped-restore test. There is **no end-user bulk restore screen, reviewed multi-item destination mapping or post-crash batch resume UI** in this slice, and it must not be described as completed bulk restore. The 32-item bound is deliberate to cap per-review memory and mutation risk.
+
 ### 2026-10-27 historical milestones
 
 The older checkpoint paragraphs below preserve dated evidence from the early library-only/inventory-only era. Statements such as "no mutation adapter" or "not yet connected to UI" describe **that date**, not current repository capability. Do not overwrite later observed source and source-exact CI with these historical descriptions.
