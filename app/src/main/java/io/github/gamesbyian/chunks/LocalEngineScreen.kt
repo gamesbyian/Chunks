@@ -2081,6 +2081,8 @@ internal fun LocalEngineScreen(
                                         "chunks-local-v1:" + context.filesDir.canonicalPath)
                                     val placeIdentity = LocalSnapshotRestoreFingerprint.of(
                                         "chunks-place-v1:" + folder.canonicalPath)
+                                    val restoreJob = kotlinx.coroutines.currentCoroutineContext()[
+                                        kotlinx.coroutines.Job]
                                     SnapshotLocalBatchRestoreV1.execute(
                                         reviewed = draft.originals,
                                         archiveFingerprint = draft.archiveFingerprint,
@@ -2091,7 +2093,8 @@ internal fun LocalEngineScreen(
                                         userApproved = true,
                                         store = AndroidSnapshotRestoreJournalStore(context),
                                         target = SnapshotRestoreOnceV1.localEngine(
-                                            LocalEngineHolder.get(context))
+                                            LocalEngineHolder.get(context)),
+                                        mayContinue = { restoreJob?.isActive != false }
                                     )
                                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                                     throw cancel
