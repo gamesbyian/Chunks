@@ -26,6 +26,22 @@ internal object NavigationRestorePolicy {
     ): Boolean = section == "COMBINED" && savedCredentialPresent &&
         rememberingEnabled && !alreadyAttempted && !authenticated
 
+    /**
+     * A CREATE route is intentionally NOT saved in NavigationRestorePolicy:
+     * after process death there is no retained Android grant/source to review.
+     * On Activity recreation, however, an existing Activity-owned ViewModel
+     * can still hold the unconsumed Share request or the already scanned
+     * Create source. Resume that *read-only* review once on a restored
+     * Transfers shell. Never replay the Intent or infer Create/Seed consent.
+     */
+    fun resumeRetainedCreateReview(
+        restoredSection: String,
+        incomingCreateAlreadyDispatched: Boolean,
+        retainedRequest: Boolean,
+        retainedSource: Boolean
+    ): Boolean = restoredSection == "COMBINED" &&
+        !incomingCreateAlreadyDispatched && (retainedRequest || retainedSource)
+
     fun restorableSection(name: String?): String = when (name) {
         "SERVER", "COMBINED", "MEDIA", "OPTIONS", "ADD_CHOOSE" -> name
         "LOCAL_ADD" -> "ADD_CHOOSE"
