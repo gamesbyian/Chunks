@@ -43,7 +43,7 @@ internal class TransmissionReadOnlyRpc(
     }
 
     internal fun interface Wire {
-        fun exchange(request: Request): Response
+        suspend fun exchange(request: Request): Response
     }
 
     internal enum class Dialect { LEGACY, JSON_RPC_2 }
@@ -133,7 +133,7 @@ internal class TransmissionReadOnlyRpc(
      * requests here are accessors; this retry policy must not be reused for
      * Add/Remove, where an unknown write outcome must be reconciled read-only.
      */
-    private fun read(
+    private suspend fun read(
         legacy: String, modern: String, params: JSONObject, dialect: Dialect, id: Int
     ): JSONObject {
         val request = if (dialect == Dialect.LEGACY) JSONObject()
@@ -183,7 +183,7 @@ internal class TransmissionReadOnlyRpc(
                         root.opt("arguments") as? JSONObject
                     } else {
                         if (root.opt("jsonrpc") != "2.0" || root.opt("id") !is Number ||
-                            (root.opt("id") as Number).toInt() != id ||
+                            root.opt("id").toString() != id.toString() ||
                             root.has("error") && !root.isNull("error")) {
                             throw IOException("Transmission JSON-RPC result failed validation")
                         }
@@ -258,7 +258,7 @@ internal class TransmissionReadOnlyRpc(
 
     /** Keep response parsing and credentials isolated from redirect-capable stacks. */
     private object HttpWire : Wire {
-        override fun exchange(request: Request): Response {
+        override suspend fun exchange(request: Request): Response {
             val connection = request.endpoint.toURL().openConnection() as HttpURLConnection
             connection.connectTimeout = 8_000
             connection.readTimeout = 15_000
