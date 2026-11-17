@@ -235,6 +235,9 @@ internal fun VerifiedAddScreen(
     var startAfterAdd by startHolder
     val artworkHolder = addArtworkState ?: rememberSaveable { mutableStateOf(true) }
     var automaticArtwork by artworkHolder
+    // This state must outlive LazyColumn eviction on a second Add. The
+    // checkbox's actual visibility is still gated by loaded global settings.
+    val artworkOffered = rememberAddArtworkChoiceOffered()
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
     // Publish the exact client's confirmed new job while Add is visible OR
     // after navigating away. Only the coordinator's VERIFIED provenance can
@@ -958,8 +961,18 @@ internal fun VerifiedAddScreen(
                 }
             }
         }
-        if (!alreadyAttempted) item {
-            AddArtworkChoice(automaticArtwork, enabled = !submitting && !choosing) {
+        // This conditional item disappears after an attempted Add and returns
+        // after explicit acknowledgement. The result/Place/help rows above it
+        // also appear and disappear. A positional LazyColumn key can therefore
+        // restore another row's remembered disclosure state on the second Add.
+        // Keep the actual choice and its saveable expansion under one stable
+        // identity, independent of surrounding dynamic rows (#1838).
+        if (!alreadyAttempted) item(
+            key = "remote-add-artwork-choice",
+            contentType = "add-artwork-choice"
+        ) {
+            AddArtworkChoice(automaticArtwork, enabled = !submitting && !choosing,
+                offeredByParent = artworkOffered) {
                 automaticArtwork = it
                 awaitingConfirmation = false
             }
