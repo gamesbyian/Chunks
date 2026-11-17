@@ -52,7 +52,7 @@ class SmartRoutingPreviewTest {
             listOf(server)).outcome)
     }
 
-    @Test fun higherPriorityRuleWinsAndSamePriorityUsesStableId() {
+    @Test fun higherPriorityRuleWinsAndTiesHonorSavedUserOrder() {
         val evidence = Evidence("show", listOf("Show.S01E01.mkv"))
         val rules = listOf(
             rule("z", 10, Kind.TV, local.environmentId),
@@ -60,10 +60,16 @@ class SmartRoutingPreviewTest {
             rule("a", 20, Kind.TV, local.environmentId))
         val result = SmartRoutingPreview.decide(evidence, rules, listOf(local, server))
         assertEquals(Outcome.PROPOSED, result.outcome)
-        assertEquals("a", result.ruleId)
-        assertEquals(local.environmentId, result.proposedEnvironmentId)
+        assertEquals("b", result.ruleId)
+        assertEquals(server.environmentId, result.proposedEnvironmentId)
         assertTrue(result.reason.contains("review-required"))
-        assertEquals(result, SmartRoutingPreview.decide(evidence, rules.reversed(),
+        // Reordering saved rules intentionally changes an equal-priority winner.
+        val reordered = SmartRoutingPreview.decide(evidence, rules.reversed(),
+            listOf(server, local))
+        assertEquals("a", reordered.ruleId)
+        assertEquals(local.environmentId, reordered.proposedEnvironmentId)
+        // Reordering only destination inventory does not change a rule.
+        assertEquals(result, SmartRoutingPreview.decide(evidence, rules,
             listOf(server, local)))
     }
 
