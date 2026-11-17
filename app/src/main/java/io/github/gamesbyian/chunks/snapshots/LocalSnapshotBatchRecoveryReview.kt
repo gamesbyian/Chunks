@@ -36,7 +36,7 @@ internal fun LocalSnapshotBatchRecoveryReview(
             Text("Check previous stopped snapshot restores",
                 style = MaterialTheme.typography.titleMedium)
             Text("Definitions to check: ${draft.hashes.size}")
-            Text("Previously reviewed local destination: $selectedPlace")
+            Text("Folder to check (must match the previous review): $selectedPlace")
             Text("Select the SAME folder originally approved for these restores. " +
                 "Chunks will reopen only existing journals, then check the current " +
                 "complete Local transfer inventory, stopped state and exact folder. " +
