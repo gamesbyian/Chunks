@@ -37,7 +37,7 @@ class UniversalAddReceiptCardTest {
         }
         rule.onNodeWithText("Added to Local").assertExists()
         rule.onNode(hasStateDescription("Verified")).assertExists()
-        rule.onNodeWithText("This submission's exact transfer, destination and requested Start state are verified. Peer activity and payload bytes are separate.").assertExists()
+        rule.onNodeWithText("The transfer is in the chosen folder, with your Start setting confirmed. Downloading depends on available peers.").assertExists()
         rule.onNodeWithText("Read-only details").assertExists()
         rule.runOnIdle { client.value = "Wood" }
         rule.onNodeWithText("Added to Wood").assertExists()
@@ -60,7 +60,7 @@ class UniversalAddReceiptCardTest {
         rule.onNode(hasStateDescription("Add unverified")).assertExists()
         rule.onNodeWithText("Added to Wood").assertDoesNotExist()
         rule.onNodeWithText(
-            "The Add may have happened. Check this exact client's transfer state; never retry an uncertain write automatically."
+            "Chunks couldn't tell whether the transfer was added. Check this client's transfers before trying again. Chunks won't retry automatically."
         ).assertExists()
     }
 }
