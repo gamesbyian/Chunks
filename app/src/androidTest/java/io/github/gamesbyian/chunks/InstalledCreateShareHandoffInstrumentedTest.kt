@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
