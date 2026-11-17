@@ -318,12 +318,13 @@ internal fun SnapshotRestorePreviewPanel(
                         }
                         Text(entry.originalName + " · " + category,
                             style = MaterialTheme.typography.bodySmall)
-                        // Once a previous stopped Add appears in the current
-                        // inventory, it is ALREADY_PRESENT and must NOT be
-                        // offered for another automatic Add. The safe route is
-                        // a separately confirmed, read-only journal check.
-                        if (entry.decision == SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT &&
-                            onReviewPreviousRestore != null &&
+                        // Both present and missing snapshot identities may have
+                        // an interrupted journal. Checking its status never
+                        // authorizes another Add, even if inventory is absent.
+                        if (entry.decision in setOf(
+                                SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT,
+                                SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW
+                            ) && onReviewPreviousRestore != null &&
                             verifiedSource?.manifest?.items?.singleOrNull {
                                 it.infoHashV1 == entry.infoHashV1
                             }?.recovery == SnapshotManifestV1.Recovery.METAINFO) {
