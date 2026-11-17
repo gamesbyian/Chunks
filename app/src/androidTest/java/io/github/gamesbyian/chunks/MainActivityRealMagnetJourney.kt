@@ -547,19 +547,13 @@ internal class MainActivityRealMagnetJourney(
                 runCatching { scrollOutcome() }.isSuccess &&
                     hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)
             }
-            // The outcome is published before optional diagnostic reads finish.
-            // Await the existing settlement-gated Back action before testing a
-            // settled result across navigation. Leaving during the optional
-            // diagnosis cancels that read but preserves a recorded engine result;
-            // the separate dispose/remount regression covers that boundary.
-            rule.waitUntil(60_000) {
-                runCatching {
-                    scroll("Back to transfers")
-                    rule.onNodeWithText("Back to transfers").assertIsEnabled()
-                    true
-                }.getOrDefault(false)
-            }
-            scrollOutcome()
+            // The app-root attempt scope deliberately leaves Back enabled
+            // during an in-flight Add: navigating away must not cancel or
+            // repeat that command. Back's enabled state is therefore NOT
+            // evidence that RPC/readback has settled. Await a truthful receipt
+            // instead, without sending a second Add, Start or status mutation.
+            // A failed/refused result remains a terminal state for diagnosis,
+            // but cannot qualify as a successful controlled-peer journey.
             // One accessibility result state, shared with Local. Avoid
             // inferring an unverified Add merely because older explanatory
             // text isn't currently composed or its wording changed.
@@ -579,10 +573,20 @@ internal class MainActivityRealMagnetJourney(
                         rule.onAllNodes(hasStateDescription(state), useUnmergedTree = true)
                             .fetchSemanticsNodes().isNotEmpty()
                     )
-            val safeReceiptState = listOf(
+            val settledReceiptStates = listOf(
                 "Verified", "Add unverified", "Start unverified",
-                "Added, checking", "Present, origin unverified", "Adding", "Not added"
-            ).firstOrNull(::receiptHasState) ?: "absent"
+                "Added, checking", "Present, origin unverified", "Not added"
+            )
+            rule.waitUntil(60_000) {
+                runCatching {
+                    scrollOutcome()
+                    settledReceiptStates.any(::receiptHasState)
+                }.getOrDefault(false)
+            }
+            // Never normalize a still-submitting state into success. The
+            // stage vocabulary is exact, and "Not added" fails the positive
+            // controlled-peer check below rather than disguising a refusal.
+            val safeReceiptState = settledReceiptStates.firstOrNull(::receiptHasState) ?: "absent"
             report("chunks_real_add_receipt_state", safeReceiptState.lowercase()
                 // The diagnostic reporter accepts only alphanumeric safe codes.
                 .replace(Regex("[^a-z0-9]"), ""))
