@@ -57,12 +57,14 @@ class SnapshotLocalBatchRestoreV1Test {
     private fun execute(
         originals: List<SnapshotVerifiedTorrentDocumentV1.Prepared>,
         folder: File, store: Store, target: FakeTarget,
-        approved: Boolean = true, initial: List<String> = emptyList()
+        approved: Boolean = true, initial: List<String> = emptyList(),
+        mayContinue: () -> Boolean = { true }
     ) = SnapshotLocalBatchRestoreV1.execute(
         reviewed = originals, archiveFingerprint = archive,
         targetFingerprint = targetId, chosenPlace = folder,
         verifiedPlaceFingerprint = placeId, frozenHashes = initial,
-        userApproved = approved, store = store, target = target)
+        userApproved = approved, store = store, target = target,
+        mayContinue = mayContinue)
 
     @Test fun twoVerifiedDefinitionsRestoreStoppedInDeterministicOrderWithoutStart() {
         val folder = temp.newFolder("two")
@@ -128,6 +130,18 @@ class SnapshotLocalBatchRestoreV1Test {
         assertEquals(1, result.remaining)
         assertEquals(1, target.calls)
         assertEquals(2, target.entries.size)
+    }
+
+    @Test fun cancelledReviewDoesNotBeginASecondNativeAdd() {
+        val folder = temp.newFolder("cancelled")
+        val store = Store()
+        val target = FakeTarget(folder)
+        val result = execute(listOf(original("one"), original("two")),
+            folder, store, target, mayContinue = { target.calls == 0 })
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED, result.stop)
+        assertEquals(1, result.verified)
+        assertEquals(1, target.calls)
+        assertEquals(1, result.remaining)
     }
 
     @Test fun oldPendingJournalOnLaterItemBlocksWholeBatchBeforeAnyAdd() {
