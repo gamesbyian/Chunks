@@ -25,6 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
+      - name: Refuse combining private inventory export with redacted capability sampling
+        if: ${{ inputs.inspect_inventory && inputs.inspect_seeding_capabilities }}
+        run: |
+          echo 'Choose exactly one optional Seedhost inspection mode. No request made.'
+          exit 1
       - name: Safely test HTTP-RPC version only
         env:
           RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
