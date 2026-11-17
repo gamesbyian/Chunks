@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks
 
 import android.content.Intent
+import android.content.Context
+import android.view.inputmethod.InputMethodManager
 import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
@@ -128,6 +130,18 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
                 scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
                 rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
+                // Close the IME and clear input focus before trying to reach
+                // the lazily placed Connect action. A late keyboard viewport
+                // correction otherwise recycles the item between enabled
+                // observation and the only permitted Connect click.
+                scenario.onActivity { activity ->
+                    val keyboard = activity.getSystemService(Context.INPUT_METHOD_SERVICE)
+                        as InputMethodManager
+                    keyboard.hideSoftInputFromWindow(
+                        activity.window.decorView.windowToken, 0)
+                    activity.currentFocus?.clearFocus()
+                }
+                rule.waitForIdle()
                 // Async address validation and keyboard dismissal may replace
                 // this LazyColumn item after a text-based scroll. Require the
                 // exact stable action to be composed and enabled before the
