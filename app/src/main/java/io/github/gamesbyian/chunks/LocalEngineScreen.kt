@@ -1086,9 +1086,12 @@ internal fun LocalEngineScreen(
                 submitting = busy,
                 registrationFromThisSubmission = localAddAttemptSession.registrationFromThisSubmission
             )
-            if (display != null) Text(
-                display.title + ". " + display.explanation,
-                style = MaterialTheme.typography.bodyMedium
+            if (display != null) UniversalAddReceiptCard(
+                receipt = display,
+                needsAttention = display.stage in setOf(
+                    io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.UNCONFIRMED,
+                    io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.START_UNVERIFIED
+                )
             )
             if (phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.VERIFIED ||
                 phase == io.github.gamesbyian.chunks.model.UniversalAddCoordinator.Phase.SESSION_CONFIRMED ||
