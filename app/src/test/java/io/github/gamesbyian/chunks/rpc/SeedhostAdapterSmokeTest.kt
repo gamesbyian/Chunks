@@ -87,8 +87,13 @@ class SeedhostAdapterSmokeTest {
         val password = System.getenv("CHUNKS_LIVE_RTORRENT_PASS").orEmpty()
         require(username.isNotBlank() && password.isNotEmpty()) { "Missing trusted credentials" }
         val remote = RTorrentRemote(RemoteCredentials(rawUrl, username, password))
-        val subject = remote.listTransfers("main")
-            .firstOrNull { it.hash.matches(Regex("[0-9a-fA-F]{40}")) }
+        val subject = try {
+            remote.listTransfers("main")
+                .firstOrNull { it.hash.matches(Regex("[0-9a-fA-F]{40}")) }
+        } catch (_: Exception) {
+            // Fail without a raw HTTP/RPC exception message or private row.
+            throw AssertionError("CHUNKS_SEEDING_READONLY: inventory-read-failed")
+        }
         assumeTrue("A v1 torrent is required for live seeding getter acceptance", subject != null)
         val exact = requireNotNull(subject).hash
         val observed = try {
