@@ -1,0 +1,109 @@
+package io.github.gamesbyian.chunks.snapshots
+
+import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
+import java.io.File
+import java.util.Locale
+
+/**
+ * One explicitly approved, bounded group of stopped Local restores.
+ *
+ * Reuses the *same item-scoped durable journal* as the existing one-at-a-time
+ * restore, so a later individual review or a differently sized batch cannot
+ * accidentally give an uncertain prior Add a fresh journal. Every original is
+ * copied and independently verified BEFORE the first native command. Each
+ * successful Add is verified stopped at the reviewed Place before proceeding.
+ *
+ * This coordinator never starts transfers, copies payloads, retries writes or
+ * uses historical source paths. Failure stops the remainder of the group.
+ */
+internal object SnapshotLocalBatchRestoreV1 {
+    private const val MAX_ITEMS = 512
+    private val v1 = Regex("[0-9a-f]{40}")
+    private val targetIdentity = Regex("[0-9a-f]{40}([0-9a-f]{24})?")
+
+    data class Result(
+        val total: Int,
+        val verified: Int,
+        val stoppedAtInfoHash: String?,
+        /** Null only when EVERY requested stopped restore was verified. */
+        val stop: SnapshotRestoreOnceV1.Outcome?
+    ) {
+        val complete: Boolean get() = stop == null && total > 0 && verified == total
+        val remaining: Int get() = total - verified
+    }
+
+    fun execute(
+        reviewed: List<SnapshotVerifiedTorrentDocumentV1.Prepared>,
+        archiveFingerprint: String,
+        targetFingerprint: String,
+        chosenPlace: File,
+        verifiedPlaceFingerprint: String,
+        frozenHashes: List<String>,
+        userApproved: Boolean,
+        store: SnapshotRestoreJournalV1.Store,
+        target: SnapshotRestoreOnceV1.LocalTarget
+    ): Result {
+        val total = reviewed.size
+        fun fail(reason: SnapshotRestoreOnceV1.Outcome, hash: String? = null) =
+            Result(total, 0, hash, reason)
+        if (!userApproved || total !in 1..MAX_ITEMS ||
+            !chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
+            java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
+            return fail(SnapshotRestoreOnceV1.Outcome.REFUSED)
+
+        // A corrupt *later* definition must not permit an earlier item to be
+        // added. Copy ALL mutable review buffers before parsing any of them.
+        val prepared = try {
+            reviewed.map { candidate ->
+                require(v1.matches(candidate.infoHashV1))
+                val frozen = candidate.bytes.copyOf()
+                val parsed = TorrentMetainfoReader.preview(frozen)
+                require(parsed.infoHashV1 == candidate.infoHashV1 &&
+                    parsed.name == candidate.originalName)
+                candidate.copy(bytes = frozen)
+            }.also { items ->
+                require(items.map { it.infoHashV1 }.toSet().size == items.size)
+            }.sortedBy { it.infoHashV1 }
+        } catch (_: Exception) {
+            return fail(SnapshotRestoreOnceV1.Outcome.REFUSED)
+        }
+        val normalized = frozenHashes.map { it.lowercase(Locale.ROOT) }
+        if (normalized.size > 20_000 ||
+            normalized.any { !targetIdentity.matches(it) } ||
+            normalized.size != normalized.toSet().size ||
+            prepared.any { it.infoHashV1 in normalized })
+            return fail(SnapshotRestoreOnceV1.Outcome.STALE_TARGET)
+        val actual = try { target.completeHashes() }
+            catch (_: Exception) { null }
+        val checked = actual?.map { it.lowercase(Locale.ROOT) }
+        if (checked == null || checked.size > 20_000 ||
+            checked.any { !targetIdentity.matches(it) } ||
+            checked.size != checked.toSet().size ||
+            checked.toSet() != normalized.toSet())
+            return fail(SnapshotRestoreOnceV1.Outcome.STALE_TARGET)
+
+        // SnapshotRestoreOnceV1 will re-check fresh inventory for each item
+        // independently, and atomically journal IN_FLIGHT before Add.
+        val expected = normalized.toMutableSet()
+        var verifiedCount = 0
+        for (original in prepared) {
+            val outcome = try {
+                val itemArchive = SnapshotRestoreOnceV1.itemArchiveFingerprint(
+                    archiveFingerprint, original.infoHashV1)
+                val journal = SnapshotRestoreJournalV1.open(
+                    store, itemArchive, targetFingerprint, listOf(original.infoHashV1))
+                SnapshotRestoreOnceV1.execute(
+                    journal, original, chosenPlace, verifiedPlaceFingerprint,
+                    expected.toList(), userApproved = true, target = target
+                )
+            } catch (_: Exception) {
+                SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED
+            }
+            if (outcome != SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED)
+                return Result(total, verifiedCount, original.infoHashV1, outcome)
+            verifiedCount++
+            expected += original.infoHashV1
+        }
+        return Result(total, verifiedCount, null, null)
+    }
+}
