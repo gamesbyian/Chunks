@@ -41,8 +41,10 @@ Basic/Digest read challenge. Every response is independently bounded to 2 MiB
 and checked by the existing strict v1 metainfo reader. The resulting archive
 is validated using the unchanged v1 schema/ZIP/SHA-256 pipeline. The owner
 explicitly opts into potentially sensitive private-tracker announce URLs
-before any Source reads. The connected account, loaded view and inventory
-generation are fenced throughout collection and before sharing. A failed
+before any Source reads. The connected account, loaded view, and frozen exact hash/name/Place
+inventory are fenced throughout collection and before sharing. A routine
+remote refresh that changes only speeds or counters must not abort a long
+Source collection; a changed identity, name or Place must. A failed
 Source read **does not retry a write** and does not erase other recoverable
 entries. Never imply a share chooser saved the file.
 
