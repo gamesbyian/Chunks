@@ -550,13 +550,14 @@ internal class MainActivityRealMagnetJourney(
                 }.getOrDefault(false)
             }
             scrollOutcome()
-            // The shared Local/rTorrent receipt can authoritatively verify the
-            // reviewed Place and requested Start even when the old rTorrent-only
-            // outcome sentence is absent. Do not misclassify that verified
-            // presentation as "native Place still waiting for metadata".
-            val awaitingNativeMetadata =
-                !visible("Verified: added and started on rTorrent.") &&
-                !visible("requested Start state are verified.")
+            // One accessibility result state, shared with Local. Avoid
+            // inferring an unverified Add merely because older explanatory
+            // text isn't currently composed or its wording changed.
+            fun receiptHasState(state: String) = rule.onAllNodes(
+                hasTestTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS) and
+                    hasStateDescription(state)
+            ).fetchSemanticsNodes().isNotEmpty()
+            val awaitingNativeMetadata = !receiptHasState("Verified")
             if (awaitingNativeMetadata) {
                 // The old absolute-folder fixture could certify the reviewed parent
                 // before BEP9. An unknown native default cannot certify a metadata
@@ -565,18 +566,16 @@ internal class MainActivityRealMagnetJourney(
                 // the app's read-only Place/Start confirmation. Never resend Add.
                 assertTrue("Only the disposable unknown native Place may await metadata",
                     disposable && default == null)
-                // Both the original remote-specific diagnostic and the shared
-                // Local/remote receipt promise the same safety boundary: native
-                // Place/Start are unverified until read-only server evidence
-                // catches up. Do not require one obsolete copy variant.
-                assertTrue("A pending native Place must remain explicitly unverified",
-                    visible("Start after Add was not verified.") ||
-                        visible("its payload folder and final Add result are not yet verified.") ||
-                        visible("requested Start remains unverified.") ||
-                        // Metadata can finish arriving before this assertion. The
-                        // UI then asks for independent Place/Start confirmation,
-                        // which still means those outcomes are not verified.
-                        visible("confirm the actual payload folder and requested Start."))
+                // A pending or uncertain result has a stable accessible
+                // state even when a provider's explanatory text changes.
+                // A falsely claimed Verified stage is forbidden here.
+                assertTrue(
+                    "Pending native Place must be communicated as unverified",
+                    listOf(
+                        "Add unverified", "Start unverified",
+                        "Added, checking", "Present, origin unverified"
+                    ).any(::receiptHasState)
+                )
                 val metadata = readOnly { remote.call("d.is_meta", listOf(hash)) }
                 if (!publicDiscovery) assertEquals(1L, metadata)
                 else assertTrue("Public metadata may resolve during the initial status read", metadata in setOf(0L, 1L))
