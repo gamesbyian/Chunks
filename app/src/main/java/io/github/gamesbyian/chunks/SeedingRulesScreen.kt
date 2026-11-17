@@ -37,6 +37,7 @@ import io.github.gamesbyian.chunks.seeding.RateLimit
 import io.github.gamesbyian.chunks.seeding.SeedingPolicy
 import io.github.gamesbyian.chunks.seeding.SeedingRule
 import io.github.gamesbyian.chunks.seeding.SeedingRuleStore
+import io.github.gamesbyian.chunks.seeding.SeedingDurationInput
 import java.math.BigDecimal
 
 /** One environment a seeding rule can apply to: the local device, or one saved server profile. */
@@ -376,13 +377,17 @@ private fun SeedingPolicyEditor(
     val ratioValue = ratio.trim().takeIf { it.isNotEmpty() }?.toBigDecimalOrNull()
     val ratioError = if (ratio.isNotBlank() && (ratioValue == null || ratioValue.signum() <= 0)) "Enter a ratio above zero, such as 1.00" else null
     val days = maxDays.trim().takeIf { it.isNotEmpty() }?.toLongOrNull()
-    val daysError = if (maxDays.isNotBlank() && (days == null || days <= 0)) "Enter whole days above zero" else null
+    val maxSeconds = SeedingDurationInput.maxDaysInSeconds(days)
+    val daysError = if (maxDays.isNotBlank() && maxSeconds == null)
+        "Enter whole days above zero within the supported range" else null
     val hours = minHours.trim().takeIf { it.isNotEmpty() }?.toLongOrNull()
-    val hoursError = if (minHours.isNotBlank() && (hours == null || hours < 0)) "Enter whole hours" else null
+    val minSeconds = SeedingDurationInput.minimumHoursInSeconds(hours)
+    val hoursError = if (minHours.isNotBlank() && minSeconds == null)
+        "Enter whole hours within the supported range" else null
     val parsedUpload = upload.trim().takeIf { it.isNotEmpty() }?.let { RateLimit.parse(it) }
     val uploadError = parsedUpload?.exceptionOrNull()?.message
     val policy = if (listOf(ratioError, daysError, hoursError, uploadError).all { it == null }) SeedingPolicy(
-        ratioGoal = ratioValue, minSeedSeconds = hours?.times(3_600), maxSeedSeconds = days?.times(86_400),
+        ratioGoal = ratioValue, minSeedSeconds = minSeconds, maxSeedSeconds = maxSeconds,
         uploadLimit = parsedUpload?.getOrNull(), combine = combine) else null
     onChange(policy)
 

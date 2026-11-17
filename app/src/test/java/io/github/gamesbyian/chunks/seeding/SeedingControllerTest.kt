@@ -13,12 +13,16 @@ class SeedingControllerTest {
         val limits = HashMap<String, Int>()
         val paused = HashSet<String>()
         var pauseConfirms = true
+        val throwOnCap = HashSet<String>()
         val log = ArrayList<String>()
         override fun transfers() = facts.values.toList()
         override fun observe(infoHash: String) = observed[infoHash]
         override fun uploadLimit(infoHash: String) = limits[infoHash] ?: 0
         override fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean {
-            log += "cap $infoHash=${bytesPerSecond ?: 0}"; limits[infoHash] = (bytesPerSecond ?: 0).toInt(); return true
+            if (infoHash in throwOnCap) throw IllegalArgumentException("engine cannot apply this cap")
+            log += "cap $infoHash=${bytesPerSecond ?: 0}"
+            limits[infoHash] = (bytesPerSecond ?: 0).toInt()
+            return true
         }
         override fun pause(infoHash: String): Boolean { log += "pause $infoHash"; if (pauseConfirms) paused += infoHash; return pauseConfirms }
     }
@@ -120,4 +124,42 @@ class SeedingControllerTest {
         assertNull(store.map.getValue("t").stoppedByRule)
         assertTrue(store.map.getValue("t").note!!.contains("did not confirm"))
     }
+    @Test fun uncappedRuleLeavesIndependentlyConfiguredTransferLimitUnchanged() {
+        val engine = FakeEngine()
+        val store = MemStore().apply { epochMs = 0 }
+        engine.facts["manual"] = Facts("manual", 10, emptyList(), false)
+        engine.limits["manual"] = 64 * 1024
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), nowMs = 100)
+        assertEquals(SeedingResolution.Source.DEFAULT, store.map["manual"]?.source)
+        assertEquals(64 * 1024, engine.limits["manual"])
+        assertTrue("absence of a policy cap must not clear a manual limit", engine.log.isEmpty())
+    }
+
+    @Test fun overlargeSavedCapIsNeverNarrowedOrSentToNativeEngine() {
+        val engine = FakeEngine()
+        val store = MemStore().apply { epochMs = 0 }
+        engine.facts["large"] = Facts("large", 10, emptyList(), false)
+        engine.facts["normal"] = Facts("normal", 10, emptyList(), false)
+        store.map["large"] = Assignment(
+            SeedingPolicy(uploadLimit = RateLimit(Int.MAX_VALUE.toLong() + 1, RateLimit.Unit.BYTES)),
+            SeedingResolution.Source.DEFAULT, null)
+        store.map["normal"] = Assignment(capped, SeedingResolution.Source.DEFAULT, null)
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), nowMs = 100)
+        assertEquals(listOf("cap normal=24576"), engine.log)
+        assertTrue(store.map["large"]?.note.orEmpty().contains("outside"))
+        assertEquals(0, engine.uploadLimit("large"))
+    }
+
+    @Test fun failingEngineCapSetterDoesNotAbortEnforcementOfOtherTransfers() {
+        val engine = FakeEngine().apply { throwOnCap.add("failed") }
+        val store = MemStore().apply { epochMs = 0 }
+        engine.facts["failed"] = Facts("failed", 10, emptyList(), false)
+        engine.facts["working"] = Facts("working", 10, emptyList(), false)
+        store.map["failed"] = Assignment(capped, SeedingResolution.Source.DEFAULT, null)
+        store.map["working"] = Assignment(capped, SeedingResolution.Source.DEFAULT, null)
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), nowMs = 100)
+        assertTrue(store.map["failed"]?.note.orEmpty().contains("did not confirm"))
+        assertEquals(listOf("cap working=24576"), engine.log)
+    }
+
 }

@@ -38,15 +38,28 @@ object SeedingEnforcement {
             return Decision.CannotJudge("The engine reported invalid counters.")
         if (policy.minSeedSeconds != null && o.seedingSeconds < policy.minSeedSeconds) return Decision.KeepSeeding
 
-        val ratioNow = ratio(o)
-        val ratioMet: Boolean? = policy.ratioGoal?.let { goal -> ratioNow?.let { it >= goal } }
+        // Comparing a ratio rounded down to four decimals can miss a
+        // legitimately reached goal (for example 1,000,001 / 1,000,000
+        // exactly reaches 1.000001). Compare exact integer counters against
+        // the decimal goal; round only the explanation shown to the owner.
+        val displayScale = maxOf(4, policy.ratioGoal?.scale() ?: 4)
+        val ratioNow = if (o.downloadedBytes > 0)
+            BigDecimal(o.uploadedBytes).divide(BigDecimal(o.downloadedBytes),
+                displayScale, RoundingMode.DOWN) else null
+        val ratioMet: Boolean? = policy.ratioGoal?.let { goal ->
+            if (o.downloadedBytes > 0)
+                BigDecimal(o.uploadedBytes) >= goal.multiply(BigDecimal(o.downloadedBytes))
+            else null
+        }
         val timeMet: Boolean? = policy.maxSeedSeconds?.let { o.seedingSeconds >= it }
-        val goalText = policy.ratioGoal?.setScale(2, RoundingMode.HALF_UP)?.toPlainString()
+        val goalText = policy.ratioGoal?.let {
+            it.setScale(maxOf(2, it.scale()), RoundingMode.HALF_UP).toPlainString()
+        }
         val conditions = listOfNotNull(
             policy.ratioGoal?.let { "ratio" to ratioMet },
             policy.maxSeedSeconds?.let { "time" to timeMet })
         val reasonFor = { met: List<String> -> met.joinToString(" and ") { if (it == "ratio")
-            "ratio ${ratioNow!!.setScale(2, RoundingMode.DOWN).toPlainString()} reached the goal of $goalText"
+            "ratio ${ratioNow!!.setScale(maxOf(2, policy.ratioGoal?.scale() ?: 2), RoundingMode.DOWN).toPlainString()} reached the goal of $goalText"
             else "seeded for the maximum time" } }
 
         return when (policy.combine) {

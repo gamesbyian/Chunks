@@ -139,4 +139,24 @@ class SeedingRulesTest {
             "Stopping never removes the transfer or deletes files.",
             SeedingPolicy(ratioGoal = BigDecimal("1"), maxSeedSeconds = 7 * 86_400).describe())
     }
+    @Test fun rateLimitParserRejectsIntegerOverflowInsteadOfWrappingToTinyCap() {
+        assertTrue(RateLimit.parse("9223372036854775808 B/s").isFailure)
+        // A previous BigInteger.toLong() narrowed modulo 2^64.
+        assertTrue(RateLimit.parse("18446744073709551640 B/s").isFailure)
+        assertEquals(Long.MAX_VALUE, RateLimit.parse("9223372036854775807 B/s")
+            .getOrThrow().bytesPerSecond)
+    }
+
+    @Test fun durationInputsRejectOverflowWithoutConstructingInvalidPolicy() {
+        assertNull(SeedingDurationInput.maxDaysInSeconds(Long.MAX_VALUE))
+        assertNull(SeedingDurationInput.minimumHoursInSeconds(Long.MAX_VALUE))
+        assertNull(SeedingDurationInput.maxDaysInSeconds(0))
+        assertNull(SeedingDurationInput.minimumHoursInSeconds(-1))
+        assertEquals(86_400L, SeedingDurationInput.maxDaysInSeconds(1))
+        assertEquals(0L, SeedingDurationInput.minimumHoursInSeconds(0))
+        val maxDays = Long.MAX_VALUE / 86_400L
+        assertEquals(maxDays * 86_400L, SeedingDurationInput.maxDaysInSeconds(maxDays))
+        assertNull(SeedingDurationInput.maxDaysInSeconds(maxDays + 1))
+    }
+
 }

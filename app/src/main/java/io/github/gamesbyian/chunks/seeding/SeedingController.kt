@@ -73,9 +73,22 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
     }
 
     private fun enforce(hash: String, policy: SeedingPolicy, assignment: Assignment) {
-        val wanted = policy.uploadLimit?.bytesPerSecond?.toInt() ?: 0
-        if (engine.uploadLimit(hash) != wanted && !engine.setUploadLimit(hash, policy.uploadLimit?.bytesPerSecond)) {
-            store.put(hash, assignment.copy(note = "The local engine did not confirm the upload limit."))
+        // No cap in a policy means "do not manage this setting", not an
+        // instruction to erase an independently configured per-job cap.
+        // libtorrent exposes an Int upload limit. Never narrow a saved Long
+        // before checking it: overflow used to produce negative readbacks
+        // and could throw from the foreground service's periodic tick.
+        policy.uploadLimit?.bytesPerSecond?.let { bytes ->
+            if (bytes !in 1L..Int.MAX_VALUE.toLong()) {
+                store.put(hash, assignment.copy(
+                    note = "This upload limit is outside the client's supported range; it was not applied."))
+            } else if (engine.uploadLimit(hash) != bytes.toInt()) {
+                // A failed or unsupported engine setter must not abort
+                // enforcement for this or the remaining transfers.
+                val confirmed = runCatching { engine.setUploadLimit(hash, bytes) }.getOrDefault(false)
+                if (!confirmed) store.put(hash, assignment.copy(
+                    note = "The client did not confirm the upload limit."))
+            }
         }
         if (assignment.stoppedByRule != null) return
         val observation = engine.observe(hash) ?: return
