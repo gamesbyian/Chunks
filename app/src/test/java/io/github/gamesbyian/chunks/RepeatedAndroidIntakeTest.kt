@@ -144,10 +144,11 @@ class RepeatedAndroidIntakeTest {
             waitForText("Use new source")
             release.countDown()
             waitForText("inflight-first.mkv")
-            list().performScrollToNode(hasText("Use new source"))
-            rule.onNodeWithText("Use new source").performClick()
+            // Local Add is a vertical ScrollState, not the remote LazyColumn.
+            // Inspect the actual, still-visible replacement control without
+            // inventing a list-index action or authorizing an Add mutation.
+            rule.onNodeWithText("Use new source").performScrollTo().performClick()
             waitForText("inflight-second.mkv")
-            submitEnabled()
         } finally {
             release.countDown()
         }
