@@ -165,6 +165,16 @@ class MainActivity : ComponentActivity() {
         logIntake(intent, candidate)
         if (candidate == null) return
         incomingCreate = null
+        // An Android second Open With can arrive while the Add composition is
+        // briefly absent (task/background/privacy transition). Its new source
+        // must still be queued synchronously against a retained reviewed draft;
+        // waiting for LaunchedEffect to run first could lose the replacement
+        // choice during that gap. The UI will still offer Use/Keep explicitly.
+        // This has no Add/Start authority and never reads the document.
+        if (candidate is ExternalAddSource.TorrentDocument &&
+            localAddAttemptOwner.reviewedTorrent.value != null) {
+            localAddAttemptOwner.pendingSharedDocument.value = candidate.uri
+        }
         val pending = PendingExternalAddSource(incomingMagnet, incomingTorrent)
             .withIncoming(candidate)
         incomingTorrent = pending.torrentDocument
