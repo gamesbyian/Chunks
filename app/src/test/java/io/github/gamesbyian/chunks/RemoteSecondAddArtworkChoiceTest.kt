@@ -135,6 +135,15 @@ class RemoteSecondAddArtworkChoiceTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_ARTWORK_CHOICE).performSemanticsAction(SemanticsActions.OnClick)
         rule.waitForIdle()
         assertEquals("One tap opts this source out", ToggleableState.Off, artworkChoice())
+        // The dynamic LazyColumn also contains a result/acknowledgement row,
+        // optional tracker warning, folder explanation and source-mode rows.
+        // Scroll far enough to evict the selected artwork item, then bring
+        // it back. It must keep its own expansion and checked state rather
+        // than inheriting a retired first-Add item's saveable slot (#1838).
+        list().performScrollToNode(hasText("Magnet or torrent link"))
+        rule.waitForIdle()
+        assertEquals("Scrolling away cannot detach the second draft's choice",
+            ToggleableState.Off, artworkChoice())
         // A finished first Add's late verification effects must not re-check it.
         rule.mainClock.advanceTimeBy(10_000)
         rule.waitForIdle()
