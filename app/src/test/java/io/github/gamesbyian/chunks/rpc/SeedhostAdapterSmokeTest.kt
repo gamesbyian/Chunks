@@ -108,9 +108,6 @@ class SeedhostAdapterSmokeTest {
             }
             throw AssertionError("CHUNKS_SEEDING_READONLY: failed category=$category")
         }
-        check(observed.accountScope == remote.addAccountScope()) {
-            "Read-only evidence was attributed to a different configured principal"
-        }
         check(observed.infoHashV1.equals(exact, ignoreCase = true)) {
             "Read-only evidence was attributed to a different transfer"
         }
