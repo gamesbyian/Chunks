@@ -44,6 +44,12 @@ Client labels are **Local** and saved connection names (Wood, etc). Avoid protoc
 - Source-file Keep/Archive/Delete follows the global policy and is applied only after verified *new* registration; do not silently delete after an ambiguous result.
 - Keep all private source bytes, magnet tracker tokens, endpoint secrets and credentials out of logs, saved state, status text and documents.
 
+## Integration finish line and execution ownership
+
+**Stop treating parity as an unbounded series of presentation fixes.** The final acceptance target is one app-owned exact-client ticket/controller and one capability-driven Add route. The Local and rTorrent engine adapters retain their distinct native/RPC proofs, but they must not own duplicate forms, submission/navigation policy or independently mutable shared draft state. A UI-equivalence claim requires the same installed review/submit/observe/continue journey against each client. Do not close parity after shared headings, matching cards or this retained-scope correction alone.
+
+**Retained-scope integration candidate (2026-11-17, unqualified until PR-head CI):** both production Add routes now select one `LocalAddAttemptOwner.viewModelScope` through `UniversalAddExecutionScope`; the Local magnet and `.torrent` native mutation coroutines are routed through that lifetime just as remote RPC submissions are. All other Local mutations stay screen-scoped. A locally authorized Add now continues across Add-route disposal, but read-only native inventory observation still depends on the local screen's poller and the complete cross-engine controller/form migration remains. It is unsafe to infer process-death recovery, an installed local navigation proof, or a fully unified journey from this scope selection. New tests cover owner lifetime only.
+
 ## Implementation ownership: converge incrementally
 
 **Current baseline at adoption:** `UniversalAddCoordinator` in `model/UniversalAddCoordinator.kt` already owns source/target/Place intent, review, one-shot submission ticket, readback fence, exact-session reconciliation and acknowledgment states. `LocalUniversalAddAdapter` and `RemoteUniversalAddAdapter` bridge real different engines correctly. However, `LocalEngineScreen` and `VerifiedAddScreen` still independently own large Add orchestration, outcome presentation and navigation paths. This separation is the owner-observed UX discrepancy.
