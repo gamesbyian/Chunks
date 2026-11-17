@@ -97,7 +97,7 @@ class RemoteSeedingReadOnlyMatrixTest(unittest.TestCase):
         self.assertIn("no eligible", report.public_line())
 
     def test_malformed_or_duplicate_observed_identity_is_refused_before_getters(self):
-        for rows in ([[["a" * 64]], [[self.HASH], [self.HASH.upper()]],
+        for rows in ([["a" * 64]], [[self.HASH], [self.HASH.upper()]],
                      [[self.HASH, "another"]], [["../bad"]], ["bad"], [42]):
             calls = []
             with self.subTest(rows=str(rows)[:30]), self.assertRaises(ProbeRefused):
