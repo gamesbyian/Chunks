@@ -7,7 +7,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.util.Base64
-import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -25,7 +24,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextReplacement
-import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
@@ -120,7 +118,15 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
         // #1786: Archive is the saved global Options policy, not a per-Add radio.
         check(OriginalTorrentHandlingStore(context).setDefault(OriginalTorrentHandling.ARCHIVE))
         try {
-            val scenario = ActivityScenario.launch(MainActivity::class.java)
+            // Launch through the actual instrumentation ActivityTaskManager route.
+            // ActivityScenario tracks a test-owned task and can retain a stale
+            // PAUSED state after singleTask reentry, even though the fixture
+            // has completed the actual Add and file-integrity journey.
+            val activity = instrumentation.startActivitySync(
+                Intent(context, MainActivity::class.java).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                }
+            ) as MainActivity
             run {
                 waitFor("persistent Connections destination") {
                     rule.onAllNodes(hasContentDescription("Connections")).fetchSemanticsNodes().isNotEmpty()
@@ -135,7 +141,7 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 // the lazily placed Connect action. A late keyboard viewport
                 // correction otherwise recycles the item between enabled
                 // observation and the only permitted Connect click.
-                scenario.onActivity { activity ->
+                instrumentation.runOnMainSync {
                     val keyboard = activity.getSystemService(Context.INPUT_METHOD_SERVICE)
                         as InputMethodManager
                     keyboard.hideSoftInputFromWindow(
@@ -163,8 +169,8 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 waitFor("connected server in Connections") { visible("View transfers") }
                 stage("connected")
 
-                scenario.onActivity {
-                    it.startActivity(Intent(it, MainActivity::class.java).apply {
+                instrumentation.runOnMainSync {
+                    activity.startActivity(Intent(activity, MainActivity::class.java).apply {
                         action = Intent.ACTION_SEND
                         type = "application/x-bittorrent"
                         putExtra(Intent.EXTRA_STREAM, document)
@@ -212,18 +218,10 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 }
                 stage("original-removed")
             }
-            // The final content/engine assertions below do not depend on
-            // further UI. Close the fixture Activity itself on its UI thread.
-            // ActivityScenario.close() has previously ended the attached
-            // instrumentation process on singleTask task reentry even after
-            // the remote mutation/file assertions passed. Do not use that
-            // redundant harness task-close operation; prove DESTROYED instead.
-            stage("fixture-finish-requested")
-            scenario.onActivity { activity -> activity.finish() }
-            waitFor("fixture destroyed after verified journey", 20_000) {
-                scenario.state == Lifecycle.State.DESTROYED
-            }
-            stage("fixture-destroyed")
+            // Prove the protected operation and file postconditions before
+            // any teardown. The instrumented Activity was launched without an
+            // ActivityScenario task lease, so finishing it cannot turn a
+            // successful source/file journey into an unrelated Scenario timeout.
             assertTrue("The confirmed original is gone", !stillReadable(document))
             assertTrue("Unrelated documents are untouched", stillReadable(sibling))
             assertEquals("The archived copy stays", 1, archived().size)
@@ -231,6 +229,11 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
             assertEquals("Only the one new exact session was added",
                 before.map { it.hash.lowercase() }.toSet() + hash.lowercase(),
                 after.map { it.hash.lowercase() }.toSet())
+            // Best-effort UI fixture cleanup, separate from the server and
+            // document assertions. The workflow runs this test in an isolated
+            // instrumented app; Android owns eventual task destruction.
+            instrumentation.runOnMainSync { activity.finish() }
+            stage("fixture-finish-requested")
         } finally {
             // Session-only cleanup of exactly this disposable fixture job.
             runBlocking {
