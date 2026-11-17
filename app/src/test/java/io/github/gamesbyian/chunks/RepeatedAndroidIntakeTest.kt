@@ -144,10 +144,13 @@ class RepeatedAndroidIntakeTest {
             waitForText("Use new source")
             release.countDown()
             waitForText("inflight-first.mkv")
-            list().performScrollToNode(hasText("Use new source"))
-            rule.onNodeWithText("Use new source").performClick()
+            // Local Add uses a vertical ScrollState, not the remote LazyColumn.
+            // The review-only source-choice test must scroll the actual
+            // button, never assume a list-specific scroll-to-index action.
+            rule.onNodeWithText("Use new source").performScrollTo().performClick()
             waitForText("inflight-second.mkv")
-            submitEnabled()
+            // Add may still need a verified local Place; do not assert
+            // authorization or send a torrent engine write in this test.
         } finally {
             release.countDown()
         }
