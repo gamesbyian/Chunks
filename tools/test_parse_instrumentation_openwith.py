@@ -43,6 +43,12 @@ class OpenWithFailureFingerprintTest(unittest.TestCase):
                 "java.lang.AssertionError: openwith staged failure: "
                 "stage=initial-review kind=state"))),
         )
+        self.assertEqual(
+            "stage=cleanup kind=assertion",
+            safe_openwith_failure(self.status(stack=(
+                "java.lang.AssertionError: openwith staged failure: "
+                "stage=cleanup kind=assertion"))),
+        )
         self.assertIsNone(safe_openwith_failure(self.status(stack=(
             "java.lang.AssertionError: openwith staged failure: "
             "stage=private-uri kind=state"))))
