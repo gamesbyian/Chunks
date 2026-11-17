@@ -35,6 +35,7 @@ Client labels are **Local** and saved connection names (Wood, etc). Avoid protoc
 
 ### Surface requirements
 
+- **Evidence-first receipt precedence**: verified, exact-session-confirmed, Start-unverified and proven no-write states take priority over a stale Compose busy/submitting flag. A general client busy flag with no authorized ticket cannot display "Adding." This only changes presentation; it never grants permission for a retry.
 - **One status location**, no duplicated remote "Adding" and "operation outcome" cards. Headline and supporting text should be supplied by shared, engine-neutral status projection. Engine-specific diagnostics are subordinate expandable details.
 - **No blocking success ceremony**: a routine remote Add shouldn't force the user to wait on the Add screen for repeated RPC polls while Local immediately navigates. Observations can continue in a safe lifecycle owner. An incomplete attempt never masquerades as a finished transfer.
 - The current stable footer remains **Transfers | Add | Connections | Options**. Client selection must not modify the Transfers visibility filter. The Add screen should not remain selected after returning to Transfers.

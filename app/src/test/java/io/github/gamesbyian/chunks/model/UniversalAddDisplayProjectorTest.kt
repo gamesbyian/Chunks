@@ -85,6 +85,38 @@ class UniversalAddDisplayProjectorTest {
         assertEquals(UniversalAddDisplayStage.SUBMITTING, stage?.stage)
     }
 
+    @Test fun terminalProofCannotRegressToAddingWhenAnotherClientOperationIsBusy() {
+        for (phase in listOf(
+            UniversalAddCoordinator.Phase.VERIFIED to UniversalAddDisplayStage.VERIFIED,
+            UniversalAddCoordinator.Phase.SESSION_CONFIRMED to UniversalAddDisplayStage.SESSION_CONFIRMED,
+            UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED to UniversalAddDisplayStage.START_UNVERIFIED
+        )) {
+            val display = requireNotNull(UniversalAddDisplayProjector.from(
+                phase.first, "Local", submitting = true,
+                registrationFromThisSubmission = true))
+            assertEquals(phase.second, display.stage)
+            assertFalse(display.title.startsWith("Adding"))
+        }
+    }
+
+    @Test fun unrelatedBusyStateDoesNotInventAnAddTicketOrHideNoWriteRefusal() {
+        for (phase in listOf(
+            UniversalAddCoordinator.Phase.EMPTY,
+            UniversalAddCoordinator.Phase.REVIEWED,
+            UniversalAddCoordinator.Phase.AUTHORIZED
+        )) {
+            assertNull(UniversalAddDisplayProjector.from(
+                phase, "Wood", submitting = true))
+        }
+        val refused = requireNotNull(UniversalAddDisplayProjector.from(
+            UniversalAddCoordinator.Phase.REVIEWED, "Wood",
+            submitting = true, knownNoWrite = true))
+        assertEquals(UniversalAddDisplayStage.NO_NEW_ADD, refused.stage)
+        val legitimatePending = requireNotNull(UniversalAddDisplayProjector.from(
+            UniversalAddCoordinator.Phase.WRITE_ATTEMPTED, "Wood", submitting = true))
+        assertEquals(UniversalAddDisplayStage.SUBMITTING, legitimatePending.stage)
+    }
+
     @Test fun labelsHaveExactScopeFallback() {
         assertEquals("Adding to this client",
             UniversalAddDisplayProjector.from(
