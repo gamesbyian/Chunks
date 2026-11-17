@@ -1,17 +1,5 @@
 package io.github.gamesbyian.chunks.engine
 
-/**
- * Read each local native handle independently. A failed JNI getter gives no
- * policy authority for that handle, but cannot hide other known transfers.
- * A null reader result represents a vanished/unready handle, not an empty
- * torrent inventory. Never log raw tracker URLs or private torrent data.
- */
-internal fun <T, R : Any> seedingFactsBestEffort(
-    entries: List<T>, read: (T) -> R?
-): List<R> = entries.mapNotNull { entry ->
-    try { read(entry) } catch (_: Exception) { null }
-}
-
 import java.io.File
 import android.os.Build
 import android.system.Os
@@ -53,6 +41,18 @@ import org.libtorrent4j.swig.ip_filter
 import org.libtorrent4j.swig.settings_pack
 import org.libtorrent4j.swig.torrent_flags_t
 import org.libtorrent4j.swig.session_handle
+
+/**
+ * Read each local native handle independently. A failed JNI getter gives no
+ * policy authority for that handle, but cannot hide other known transfers.
+ * A null reader result represents a vanished/unready handle, not an empty
+ * torrent inventory. Never log raw tracker URLs or private torrent data.
+ */
+internal fun <T, R : Any> seedingFactsBestEffort(
+    entries: List<T>, read: (T) -> R?
+): List<R> = entries.mapNotNull { entry ->
+    try { read(entry) } catch (_: Exception) { null }
+}
 
 /**
  * In-process local BitTorrent engine on Arvid Norberg's libtorrent (via libtorrent4j).
