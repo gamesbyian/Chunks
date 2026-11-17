@@ -45,6 +45,7 @@ internal class SmartRoutingPolicyStore(context: Context) {
         private const val KEY = "routing-policy-v1"
         private const val SCHEMA = 1
         private const val MAX_RULES = 500
+        private const val MAX_STORED_CHARS = 250_000
         private val opaqueServerId = Regex("[0-9a-f]{64}")
         private val safeRuleId = Regex("[A-Za-z0-9][A-Za-z0-9._-]{0,119}")
         /** Serializes revisions even when callers create separate store instances. */
@@ -61,14 +62,27 @@ internal class SmartRoutingPolicyStore(context: Context) {
                 }
     }
 
+    private fun JSONObject.strictInteger(name: String): Int {
+        val value = get(name)
+        require(value is Number && value.toString() == value.toInt().toString())
+        return value.toInt()
+    }
+
+    private fun JSONObject.strictString(name: String): String {
+        val value = get(name)
+        require(value is String)
+        return value
+    }
+
     /** A malformed saved policy is not an invitation to invent defaults. */
     fun read(): Read {
         val raw = try { prefs.getString(KEY, null) }
             catch (_: RuntimeException) { return Read.Unavailable }
             ?: return Read.Ready(0L, Policy())
+        if (raw.length > MAX_STORED_CHARS) return Read.Unavailable
         return try {
             val objectValue = JSONObject(raw)
-            if (objectValue.getInt("schema") != SCHEMA) return Read.Unavailable
+            if (objectValue.strictInteger("schema") != SCHEMA) return Read.Unavailable
             val revisionValue = objectValue.get("revision")
             if (revisionValue !is Number) return Read.Unavailable
             val revision = revisionValue.toLong()
@@ -76,18 +90,18 @@ internal class SmartRoutingPolicyStore(context: Context) {
                 return Read.Unavailable
             val enabledValue = objectValue.get("enabled")
             if (enabledValue !is Boolean) return Read.Unavailable
-            val fallback = Fallback.valueOf(objectValue.getString("fallback"))
+            val fallback = Fallback.valueOf(objectValue.strictString("fallback"))
             val jsonRules = objectValue.getJSONArray("rules")
             if (jsonRules.length() > MAX_RULES) return Read.Unavailable
             val rules = ArrayList<SmartRoutingPreview.Rule>(jsonRules.length())
             for (i in 0 until jsonRules.length()) {
                 val entry = jsonRules.getJSONObject(i)
                 rules.add(SmartRoutingPreview.Rule(
-                    id = entry.getString("id"),
-                    priority = entry.getInt("priority"),
-                    kind = SmartRoutingPreview.Kind.valueOf(entry.getString("kind")),
-                    minimumConfidence = entry.getInt("minimumConfidence"),
-                    targetEnvironmentId = entry.getString("targetEnvironmentId")
+                    id = entry.strictString("id"),
+                    priority = entry.strictInteger("priority"),
+                    kind = SmartRoutingPreview.Kind.valueOf(entry.strictString("kind")),
+                    minimumConfidence = entry.strictInteger("minimumConfidence"),
+                    targetEnvironmentId = entry.strictString("targetEnvironmentId")
                 ))
             }
             val policy = Policy(enabledValue, fallback, rules)
