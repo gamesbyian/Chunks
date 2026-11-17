@@ -279,9 +279,14 @@ internal object RuTorrentFileManager {
                 if (entries.length() > 1024) null
                 else buildSet {
                     for (index in 0 until entries.length()) {
-                        val name = entries.getJSONObject(index).getString("name")
-                        if (name.length !in 1..255 || name.any { it.code < 32 }) throw IOException()
-                        add(name)
+                        // JSON getters may coerce scalars and a Set silently
+                        // discards duplicate rows. Neither is acceptable as
+                        // authoritative filesystem inventory evidence.
+                        val name = entries.getJSONObject(index).opt("name") as? String
+                            ?: throw IOException("File Manager name is not a string")
+                        if (name.length !in 1..255 ||
+                            name.any { it.code < 32 || it.code == 127 } ||
+                            !add(name)) throw IOException("Ambiguous File Manager listing")
                     }
                 }
             }
