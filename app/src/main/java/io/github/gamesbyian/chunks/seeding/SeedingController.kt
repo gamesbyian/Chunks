@@ -8,8 +8,9 @@ package io.github.gamesbyian.chunks.seeding
  *   controller was first enabled; transfers that existed before stay untouched
  *   for good, and later rule edits never change an existing snapshot.
  * - The upload cap is applied only with exact readback.
- * - "Stop" pauses the transfer once, after a verified pause; if the user
- *   resumes it, the rule never stops it again. Nothing is ever removed or deleted.
+ * - "Stop" has a durable write-ahead attempt marker: an uncertain pause
+ *   is never automatically replayed. A confirmed pause remains a one-time
+ *   action even if the user resumes. Nothing is removed or deleted.
  */
 class SeedingController(private val engine: EnginePort, private val store: AssignmentStore) {
     data class Facts(
@@ -37,7 +38,11 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         val ruleId: String?,
         val reasons: List<String> = emptyList(),
         val stoppedByRule: String? = null,
-        val note: String? = null
+        val note: String? = null,
+        /** Persisted BEFORE any automatic Pause call. Non-null means the
+         * engine may have acted, even if readback or this process failed.
+         * A later tick must not blindly send that command a second time. */
+        val stopAttemptedReason: String? = null
     )
 
     interface AssignmentStore {
@@ -90,12 +95,29 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                     note = "The client did not confirm the upload limit."))
             }
         }
-        if (assignment.stoppedByRule != null) return
+        // A verified stop or an uncertain earlier attempt is terminal for
+        // automatic enforcement. Observing an unpaused torrent later is not
+        // authority to replay Pause: the owner may have resumed it.
+        if (assignment.stoppedByRule != null || assignment.stopAttemptedReason != null) return
         val observation = engine.observe(hash) ?: return
         val decision = SeedingEnforcement.decide(policy, observation)
         if (decision is SeedingEnforcement.Decision.Stop) {
-            if (engine.pause(hash)) store.put(hash, assignment.copy(stoppedByRule = decision.reason, note = null))
-            else store.put(hash, assignment.copy(note = "Seeding should stop (${decision.reason}) but the engine did not confirm the pause."))
+            // Commit the attempt BEFORE calling the engine. A failed commit is
+            // a known no-write outcome. If the process dies after this commit,
+            // the durable marker prevents repeating an uncertain Pause.
+            val attempted = assignment.copy(
+                stopAttemptedReason = decision.reason,
+                note = "Automatic stop is pending confirmation; it will not be retried automatically."
+            )
+            if (!store.put(hash, attempted)) return
+            val confirmed = runCatching { engine.pause(hash) }.getOrDefault(false)
+            if (confirmed) {
+                store.put(hash, attempted.copy(stoppedByRule = decision.reason, note = null))
+            } else {
+                store.put(hash, attempted.copy(
+                    note = "The engine did not confirm the pause. It may have happened; Chunks will not retry automatically."
+                ))
+            }
         }
     }
 }
