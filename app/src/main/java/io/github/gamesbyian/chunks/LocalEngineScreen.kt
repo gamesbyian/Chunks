@@ -363,6 +363,10 @@ internal fun LocalEngineScreen(
     pendingAddState: androidx.compose.runtime.MutableState<PendingLocalAdd?>? = null,
     /** App-owned process-only attempt/reconciliation authority, injected by Agent 5. */
     localAddAttemptSession: LocalAddAttemptSession? = null,
+    /** ViewModel-owned Local Add lifetime, shared with remote Add. Only authorized
+     * Add writes use it; screen-only list and other mutations stay screen-scoped.
+     * Process death cancels it and never authorizes automatic replay. */
+    addAttemptScope: kotlinx.coroutines.CoroutineScope? = null,
     /** Read-only HTTPS metadata intake, injectable for source-replacement regression tests. */
     fetchTorrentDocument: (TorrentLinkCheck.Fetchable) -> TorrentLinkResult = { TorrentLinkFetcher().fetch(it) }
 ) {
@@ -571,7 +575,10 @@ internal fun LocalEngineScreen(
 
     // The admission/observation gate is process-wide: navigating away and back
     // must not revive controls before a post-command native read succeeds.
-    fun performLocalMutation(operation: suspend () -> Unit) {
+    fun performLocalMutation(
+        retainAddAfterNavigation: Boolean = false,
+        operation: suspend () -> Unit
+    ) {
         if (busy || inventoryFrame.stale || !LocalScreenReader.revision.beginMutation()) {
             message = "A prior native action needs a fresh confirmed transfer list before another change."
             return
@@ -581,7 +588,11 @@ internal fun LocalEngineScreen(
         observedDeltas = emptyMap()
         inventoryFrame = inventoryFrame.copy(stale = true)
         busy = true
-        scope.launch {
+        // An accepted Add must not be cancelled just because its Compose route
+        // is removed. Other mutations keep their existing screen lifetime.
+        val executionScope = if (retainAddAfterNavigation)
+            UniversalAddExecutionScope.select(addAttemptScope, scope) else scope
+        executionScope.launch {
             try { operation() } finally {
                 LocalScreenReader.revision.settledMutation()
                 inventoryFrame = inventoryFrame.copy(stale = true)
@@ -1333,7 +1344,7 @@ internal fun LocalEngineScreen(
                 val allowArtwork = automaticArtwork
                 val orderLater = magnetFinishInOrder
                 val inventoryReadyAtClick = addInventoryReady
-                performLocalMutation localMagnet@{
+                performLocalMutation(retainAddAfterNavigation = true) localMagnet@{
                     val selected = selectedPlace ?: run {
                         noteProblem("Choose a verified local download location before Add. Nothing was sent.")
                         return@localMagnet
@@ -1741,7 +1752,7 @@ internal fun LocalEngineScreen(
                 val frozenDeletable = frozenOriginal != null && originalDeletable
                 originalNote = null
                 var submittedBytes: ByteArray? = null
-                performLocalMutation localDocument@{
+                performLocalMutation(retainAddAfterNavigation = true) localDocument@{
                     val selected = selectedPlace ?: run {
                         noteProblem("Choose a verified local download location before Add. Nothing was sent.")
                         return@localDocument
