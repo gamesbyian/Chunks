@@ -5,8 +5,13 @@ import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** Version and identity receipts, not a simulated end-to-end Chunks connection. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class TransmissionReadOnlyRpcTest {
     private val endpoint = "https://seedbox.example/account-one/transmission/rpc"
     private val hashA = "a".repeat(40)
