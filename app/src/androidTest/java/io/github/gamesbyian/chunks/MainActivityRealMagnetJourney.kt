@@ -553,10 +553,20 @@ internal class MainActivityRealMagnetJourney(
             // One accessibility result state, shared with Local. Avoid
             // inferring an unverified Add merely because older explanatory
             // text isn't currently composed or its wording changed.
-            fun receiptHasState(state: String) = rule.onAllNodes(
-                hasTestTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS) and
-                    hasStateDescription(state)
-            ).fetchSemanticsNodes().isNotEmpty()
+            // Compose may put testTag and stateDescription on adjacent
+            // semantics wrappers of the same card. The status tag must be
+            // present, but a state is queried separately by its unique fixed
+            // vocabulary; no torrent title, server name or endpoint is read.
+            fun receiptHasState(state: String) =
+                hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS) &&
+                    rule.onAllNodes(hasStateDescription(state))
+                        .fetchSemanticsNodes().isNotEmpty()
+            val safeReceiptState = listOf(
+                "Verified", "Add unverified", "Start unverified",
+                "Added, checking", "Present, origin unverified", "Adding", "Not added"
+            ).firstOrNull(::receiptHasState) ?: "absent"
+            report("chunks_real_add_receipt_state", safeReceiptState.lowercase()
+                .replace(Regex("[^a-z]+"), "-").trim('-'))
             val awaitingNativeMetadata = !receiptHasState("Verified")
             if (awaitingNativeMetadata) {
                 // The old absolute-folder fixture could certify the reviewed parent
