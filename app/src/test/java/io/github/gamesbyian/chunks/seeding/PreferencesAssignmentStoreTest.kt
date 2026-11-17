@@ -33,6 +33,29 @@ class PreferencesAssignmentStoreTest {
         assertNull(PreferencesAssignmentStore(context).epoch())
     }
 
+    @Test fun corruptEpochPreventsControllerFromEvenInspectingTransfers() {
+        assertTrue(prefs.edit().putInt("epoch", 7).commit())
+        var inspected = false
+        val engine = object : SeedingController.EnginePort {
+            override fun transfers(): List<SeedingController.Facts> {
+                inspected = true
+                return listOf(SeedingController.Facts("a".repeat(40), 10L, emptyList(), false))
+            }
+            override fun observe(infoHash: String): SeedingObservation? =
+                error("No policy observation while activation is corrupted")
+            override fun uploadLimit(infoHash: String): Int? =
+                error("No cap inspection while activation is corrupted")
+            override fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean =
+                error("No cap write while activation is corrupted")
+            override fun pause(infoHash: String): Boolean =
+                error("No Pause while activation is corrupted")
+        }
+        SeedingController(engine, PreferencesAssignmentStore(context))
+            .tick("local", emptyList(), SeedingPolicy(), 20_000L)
+        assertFalse("An invalid epoch revokes all controller work", inspected)
+        assertEquals(7, prefs.getInt("epoch", -1))
+    }
+
     @Test fun absentEpochIsSavedOnceButCannotBeSilentlyRebased() {
         val store = PreferencesAssignmentStore(context)
         assertNull(store.epoch())
