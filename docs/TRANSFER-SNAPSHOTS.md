@@ -8,6 +8,36 @@ Chunks now supports more than the original inventory-only 2026 prototype, but th
 
 The following gaps are **not complete**: general multi-item/bulk resume, authenticated remote metainfo recovery and remote restore, moving downloaded payloads, migration of historical state or path mappings, verified physical Android document-provider/process-kill recovery, and the full settings/priority round trip. True private-tracker definitions may contain credentials in announce URLs and must be handled as sensitive archive content.
 
+### Proposed 2026-11-17 Local stopped batch-restore slice
+
+The Local snapshot comparison now offers a separate **review all missing complete
+originals** action when at least two verified v1 `.torrent` definitions are
+absent from a current, complete Local inventory. The user must review one newly
+selected writable Local Place and explicitly confirm up to 512 individual
+**stopped** Adds. No transfer is started, no payload is moved, and no old path
+is reused. The batch consumes a bounded maximum of 24 MiB of raw original
+metainfo, with every mutable source buffer frozen and all identities/names
+revalidated **before the first Add**.
+
+Each attempted item uses the **existing per-item, source-and-target-scoped
+durable restore journal**, shared with the one-at-a-time review. This makes a
+different batch size or process relaunch incapable of resetting an earlier
+IN_FLIGHT/ACK_UNVERIFIED entry into a new first attempt. After each Add,
+Chunks independently verifies the exact infohash is present and **stopped at
+the reviewed canonical Place**; only then may the next native Add begin. A
+stale complete inventory, failed journal, uncertain acknowledgement or
+unverified Place halts the remainder immediately. A new explicit comparison
+is required; no automatic retry or next-item continuation follows ambiguity.
+A grouped result reports verified-stopped count separately from the
+uncertain/not-attempted remainder.
+
+This is an explicit Local definition-restore capability, **not** general
+portable queue migration. In-progress batches are not resumed automatically
+after process death, there is no remote stopped bulk-import adapter or
+historical file-priority restore, and no physical Pixel kill/provider acceptance
+is claimed until exercised on actual hardware. An unsupported or missing
+metainfo entry remains outside the batch, not guessed from an infohash.
+
 ### 2026-10-27 historical milestones
 
 The older checkpoint paragraphs below preserve dated evidence from the early library-only/inventory-only era. Statements such as "no mutation adapter" or "not yet connected to UI" describe **that date**, not current repository capability. Do not overwrite later observed source and source-exact CI with these historical descriptions.
