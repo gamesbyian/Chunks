@@ -57,6 +57,8 @@ internal fun SnapshotInventoryExportScreen(
     onBack: () -> Unit,
     /** Optional exact-account, read-only Source-plugin lookup. */
     readOriginalMetainfo: (suspend (String) -> ByteArray?)? = null,
+    /** Opt-in to sensitive source data must be re-affirmed after a connection change. */
+    sourceSessionIdentity: Any? = null,
     /** Invalidates an in-flight export if its connected remote account changes. */
     accountStillCurrent: () -> Boolean = { true },
     /** Optional read-only comparison/restore-review panel for this server. */
@@ -65,7 +67,7 @@ internal fun SnapshotInventoryExportScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var includeHistoricalDirectories by remember { mutableStateOf(false) }
-    var includeOriginalDefinitions by remember { mutableStateOf(false) }
+    var includeOriginalDefinitions by remember(sourceSessionIdentity) { mutableStateOf(false) }
     var recoveredProgress by remember { mutableIntStateOf(0) }
     var recoveredTotal by remember { mutableIntStateOf(0) }
     // Snapshot revision advances on every ordinary remote poll, including
@@ -232,7 +234,9 @@ internal fun SnapshotInventoryExportScreen(
                                     recoveredTotal = total
                                 })
                             else null
-                        val bytes = enriched?.archive ?: capture.toArchive()
+                        val bytes = enriched?.archive ?: withContext(Dispatchers.Default) {
+                            capture.toArchive()
+                        }
                         check(stillCurrent()) { "The connected server inventory changed." }
                         val uri = withContext(Dispatchers.IO) {
                             OwnedDiagnosticExportProvider.publish(context,
