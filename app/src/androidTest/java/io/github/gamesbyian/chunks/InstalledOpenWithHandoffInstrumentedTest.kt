@@ -68,6 +68,13 @@ class InstalledOpenWithHandoffInstrumentedTest {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
+    // ActivityScenario expects a newly created Activity. Isolate the first
+    // fixture from whichever instrumented test left a singleTask Chunks
+    // Activity alive. ONLY the initial fixture launch clears that task; the
+    // second external Open With intentionally keeps and reuses it.
+    private fun freshFixtureLaunch(uri: Uri): Intent =
+        openWith(uri).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
+
     private fun waitForReview(name: String) {
         compose.waitUntil(60_000) {
             compose.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty()
@@ -79,7 +86,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val newName = "installed-second-source.mkv"
         val original = document(originalName)
         val second = document(newName)
-        ActivityScenario.launch<MainActivity>(openWith(original)).use { scenario ->
+        ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
             waitForReview(originalName)
             // A genuine ActivityTaskManager startActivity into the existing
             // singleTask Activity. Never clear the task or invoke the internal
@@ -101,7 +108,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val name = "installed-open-with-fixture.mkv"
         val uri = document(name)
         assertTrue(uri.scheme == "content")
-        ActivityScenario.launch<MainActivity>(openWith(uri)).use { scenario ->
+        ActivityScenario.launch<MainActivity>(freshFixtureLaunch(uri)).use { scenario ->
             waitForReview(name)
             scenario.onActivity {
                 assertFalse("Open With must not close Chunks after accepting the document", it.isFinishing)
