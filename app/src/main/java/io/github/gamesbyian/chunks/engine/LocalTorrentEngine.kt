@@ -43,6 +43,18 @@ import org.libtorrent4j.swig.torrent_flags_t
 import org.libtorrent4j.swig.session_handle
 
 /**
+ * Read each local native handle independently. A failed JNI getter gives no
+ * policy authority for that handle, but cannot hide other known transfers.
+ * A null reader result represents a vanished/unready handle, not an empty
+ * torrent inventory. Never log raw tracker URLs or private torrent data.
+ */
+internal fun <T, R : Any> seedingFactsBestEffort(
+    entries: List<T>, read: (T) -> R?
+): List<R> = entries.mapNotNull { entry ->
+    try { read(entry) } catch (_: Exception) { null }
+}
+
+/**
  * In-process local BitTorrent engine on Arvid Norberg's libtorrent (via libtorrent4j).
  * This is NOT the rakshasa libTorrent used by rTorrent; nothing here speaks RPC.
  *
@@ -1691,16 +1703,30 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * memory for matching only; callers must never store or log them.
      */
     internal fun seedingFacts(): List<io.github.gamesbyian.chunks.seeding.SeedingController.Facts> = try {
+        // This is a synchronizedMap: its ITERATOR requires the map's own
+        // monitor, not the enclosing engine's monitor. Copy immutable pairs
+        // before native reads so asynchronous Add/Remove cannot invalidate
+        // a live Map.Entry or silently discard all healthy seeding facts.
+        val snapshot = synchronized(handles) {
+            handles.entries.map { entry -> entry.key to entry.value }
+        }
         synchronized(this) {
-            handles.entries.toList().mapNotNull { (key, handle) ->
-                if (!handle.isValid) return@mapNotNull null
-                val status = handle.status()
-                val info = handle.torrentFile()?.takeIf { it.isValid && status.hasMetadata() }
-                io.github.gamesbyian.chunks.seeding.SeedingController.Facts(key, status.addedTime() * 1000L,
-                    info?.let { handle.trackers().map { t -> t.url() } }, info?.isPrivate)
+            // Keep JNI access under the same engine lock as before. The map
+            // monitor has already been released, avoiding nested lock order.
+            seedingFactsBestEffort(snapshot) { (key, handle) ->
+                if (!handle.isValid) null else {
+                    val status = handle.status()
+                    val info = handle.torrentFile()?.takeIf { it.isValid && status.hasMetadata() }
+                    io.github.gamesbyian.chunks.seeding.SeedingController.Facts(
+                        key, status.addedTime() * 1000L,
+                        info?.let { handle.trackers().map { t -> t.url() } }, info?.isPrivate)
+                }
             }
         }
-    } catch (_: Exception) { emptyList() }
+    } catch (_: Exception) {
+        // A failed snapshot cannot substantiate any transfer observation.
+        emptyList()
+    }
 
     /** Counters for Smart Seeding decisions, read from one status snapshot. */
     internal fun seedingObservation(infoHash: String): io.github.gamesbyian.chunks.seeding.SeedingObservation? = try {

@@ -87,19 +87,44 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
             if (bytes !in 1L..Int.MAX_VALUE.toLong()) {
                 store.put(hash, assignment.copy(
                     note = "This upload limit is outside the client's supported range; it was not applied."))
-            } else if (engine.uploadLimit(hash) != bytes.toInt()) {
-                // A failed or unsupported engine setter must not abort
-                // enforcement for this or the remaining transfers.
-                val confirmed = runCatching { engine.setUploadLimit(hash, bytes) }.getOrDefault(false)
-                if (!confirmed) store.put(hash, assignment.copy(
-                    note = "The client did not confirm the upload limit."))
+            } else {
+                // A native read may fail for one disappearing/invalid handle.
+                // Failure grants no authority to write a cap and must not
+                // prevent other transfers from being evaluated this tick.
+                // LocalTorrentEngine already maps some libtorrent read
+                // exceptions to null; a thrown error and a null response are
+                // equally unknown, never permission to send a cap setter.
+                val currentLimit = runCatching { engine.uploadLimit(hash) }.getOrNull()
+                val readFailureNote =
+                    "The client could not check this transfer's upload limit; it was left unchanged."
+                if (currentLimit == null) {
+                    // Existing notes can record a lost-ACK Pause or
+                    // unconfirmed cap write. A read fault must never erase
+                    // that more important safety warning.
+                    if (assignment.note == null) store.put(hash,
+                        assignment.copy(note = readFailureNote))
+                } else {
+                    if (currentLimit != bytes.toInt()) {
+                        // The setter itself requires verified engine readback.
+                        val confirmed = runCatching {
+                            engine.setUploadLimit(hash, bytes)
+                        }.getOrDefault(false)
+                        if (!confirmed) store.put(hash, assignment.copy(
+                            note = "The client did not confirm the upload limit."))
+                        else if (assignment.note == readFailureNote) store.put(hash,
+                            assignment.copy(note = null))
+                    } else if (assignment.note == readFailureNote) store.put(hash,
+                        assignment.copy(note = null))
+                }
             }
         }
         // A verified stop or an uncertain earlier attempt is terminal for
         // automatic enforcement. Observing an unpaused torrent later is not
         // authority to replay Pause: the owner may have resumed it.
         if (assignment.stoppedByRule != null || assignment.stopAttemptedReason != null) return
-        val observation = engine.observe(hash) ?: return
+        // An inaccessible per-torrent native counter must never abort the
+        // service-wide poll or authorize an unverified automatic Pause.
+        val observation = runCatching { engine.observe(hash) }.getOrNull() ?: return
         val decision = SeedingEnforcement.decide(policy, observation)
         if (decision is SeedingEnforcement.Decision.Stop) {
             // Commit the attempt BEFORE calling the engine. A failed commit is
