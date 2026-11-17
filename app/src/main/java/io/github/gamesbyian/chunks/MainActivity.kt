@@ -2296,6 +2296,7 @@ internal fun ChunksApp(
                     stale = stale, loading = loading,
                     onBack = { section = Section.TRANSFERS },
                     readOriginalMetainfo = if (snapshotAccount == null) null else originalReader,
+                    sourceSessionIdentity = snapshotAccount,
                     accountStillCurrent = { server === snapshotAccount },
                     restorePanel = {
                         // Only the complete "main" view is a whole-server
