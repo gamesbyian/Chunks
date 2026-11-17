@@ -30,6 +30,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.assertIsOff
@@ -223,7 +224,12 @@ class VerifiedAddScreenAtlasTest {
             }
 
             rule.onNode(hasScrollAction()).performScrollToNode(hasText("Add transfer"))
-            rule.onNodeWithText("Add transfer").performClick()
+            // LazyColumn composition does not guarantee its child button is
+            // inside the touch viewport. Scroll the actual single Add control
+            // and verify it is enabled before the one permitted mutation tap.
+            // Do not retry the click even if the RPC reply is lost.
+            rule.onNodeWithText("Add transfer")
+                .performScrollTo().assertIsEnabled().performClick()
             rule.waitUntil(timeoutMillis = 15_000) { settled == 1 }
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(
                 hasText("Check server state (read only)"))
