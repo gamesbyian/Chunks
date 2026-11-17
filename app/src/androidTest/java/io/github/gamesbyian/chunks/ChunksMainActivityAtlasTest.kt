@@ -350,10 +350,18 @@ class ChunksMainActivityAtlasTest {
         rule.waitUntil(30_000) {
             runCatching {
                 rule.onNode(hasScrollToIndexAction()).performScrollToNode(connectControl)
-                rule.onAllNodes(connectControl, useUnmergedTree = true)
+                // The node may be composed before the asynchronous address
+                // validation and IME re-layout enable it. Wait for both
+                // uniqueness AND enabled state, without sending a Connect.
+                val single = rule.onAllNodes(connectControl, useUnmergedTree = true)
                     .fetchSemanticsNodes().size == 1
+                if (single) {
+                    rule.onNode(connectControl, useUnmergedTree = true).assertIsEnabled()
+                }
+                single
             }.getOrDefault(false)
         }
+        // The actual RPC Connect is still clicked exactly once.
         rule.onNode(connectControl, useUnmergedTree = true)
             .assertIsEnabled().performSemanticsAction(SemanticsActions.OnClick)
         try {
