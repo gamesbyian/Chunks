@@ -121,10 +121,10 @@ class SeedhostAdapterSmokeTest {
         // NOT cumulative active seeding time; a throttle name is NOT proof
         // of an independent per-job rate cap.
         println("CHUNKS_KOTLIN_SEEDHOST_SEEDING_READONLY: " +
-            "scope=true bytes=true complete=\${observed.complete != null} " +
-            "active=\${observed.active != null} " +
-            "finished_timestamp=\${observed.finishedAtEpochSeconds != null} " +
-            "assigned_throttle=\${observed.throttleName != null} " +
+            "scope=true bytes=true complete=${observed.complete != null} " +
+            "active=${observed.active != null} " +
+            "finished_timestamp=${observed.finishedAtEpochSeconds != null} " +
+            "assigned_throttle=${observed.throttleName != null} " +
             "mutation=false")
     }
 
