@@ -1473,6 +1473,7 @@ internal fun ChunksApp(
                     showFirstRunWelcome = savedProfiles.isEmpty() && server == null,
                     onConnections = { section = Section.SERVER },
                     onOpenAdd = { selectLocalAddTarget() },
+                    onShowLocalSnapshotReview = { section = Section.LOCAL_ADD },
                     onOpenOptions = { section = Section.OPTIONS },
                     remoteEnvironmentLabel = aliasScope.takeIf {
                         server != null && RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
@@ -1987,6 +1988,7 @@ internal fun ChunksApp(
                     },
                         onConnections = { section = Section.SERVER },
                         onOpenAdd = { selectLocalAddTarget() },
+                    onShowLocalSnapshotReview = { section = Section.LOCAL_ADD },
                         onOpenOptions = { section = Section.OPTIONS },
                         remoteEnvironmentLabel = aliasScope.takeIf {
                             RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(it) != null
