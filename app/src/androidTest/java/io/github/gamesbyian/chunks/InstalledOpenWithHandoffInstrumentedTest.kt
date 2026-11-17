@@ -180,6 +180,14 @@ class InstalledOpenWithHandoffInstrumentedTest {
             scenario.onActivity {
                 assertFalse("Queued source must not finish the current task", it.isFinishing)
             }
+            // All external-intent and no-finish assertions have passed.
+            // Deliberately finish the now-unneeded fixture Activity on its
+            // owning UI thread before ActivityScenario's automatic close.
+            // Otherwise singleTask task-reentry can leave Scenario teardown
+            // trying to manage an Activity whose task has been reparented.
+            // This is test-only cleanup; production never calls finish here.
+            stage = "explicit-finish"
+            scenario.onActivity { activity -> activity.finish() }
             stage = "cleanup"
         }
         } catch (failure: Throwable) {
@@ -247,6 +255,14 @@ class InstalledOpenWithHandoffInstrumentedTest {
             scenario.onActivity {
                 assertFalse("Second Open With must not finish the Chunks task", it.isFinishing)
             }
+            // All external-intent and no-finish assertions have passed.
+            // Deliberately finish the now-unneeded fixture Activity on its
+            // owning UI thread before ActivityScenario's automatic close.
+            // Otherwise singleTask task-reentry can leave Scenario teardown
+            // trying to manage an Activity whose task has been reparented.
+            // This is test-only cleanup; production never calls finish here.
+            stage = "explicit-finish"
+            scenario.onActivity { activity -> activity.finish() }
             stage = "cleanup"
         }
         } catch (failure: Throwable) {
