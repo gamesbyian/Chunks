@@ -559,9 +559,14 @@ internal class MainActivityRealMagnetJourney(
                 // the app's read-only Place/Start confirmation. Never resend Add.
                 assertTrue("Only the disposable unknown native Place may await metadata",
                     disposable && default == null)
+                // Both the original remote-specific diagnostic and the shared
+                // Local/remote receipt promise the same safety boundary: native
+                // Place/Start are unverified until read-only server evidence
+                // catches up. Do not require one obsolete copy variant.
                 assertTrue("A pending native Place must remain explicitly unverified",
                     visible("Start after Add was not verified.") ||
-                        visible("its payload folder and final Add result are not yet verified."))
+                        visible("its payload folder and final Add result are not yet verified.") ||
+                        visible("requested Start remains unverified."))
                 val metadata = readOnly { remote.call("d.is_meta", listOf(hash)) }
                 if (!publicDiscovery) assertEquals(1L, metadata)
                 else assertTrue("Public metadata may resolve during the initial status read", metadata in setOf(0L, 1L))
