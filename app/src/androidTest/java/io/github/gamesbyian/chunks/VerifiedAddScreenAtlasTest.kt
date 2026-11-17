@@ -34,6 +34,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.captureToImage
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.rpc.RTorrentRemote
