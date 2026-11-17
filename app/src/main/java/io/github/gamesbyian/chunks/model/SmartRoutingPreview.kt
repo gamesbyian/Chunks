@@ -62,7 +62,7 @@ internal object SmartRoutingPreview {
 
     data class Rule(
         val id: String,
-        /** Highest number first; stable ID breaks ties. */
+        /** Highest number first; saved list order breaks ties. */
         val priority: Int,
         val kind: Kind,
         val minimumConfidence: Int,
@@ -168,9 +168,13 @@ internal object SmartRoutingPreview {
         }
         if (category.ambiguous || category.kind == null)
             return Decision(Outcome.ASK, category, reason = "classification-ambiguous-or-unknown")
-        val chosen = rules.asSequence().filter {
-            it.kind == category.kind && category.confidence >= it.minimumConfidence
-        }.sortedWith(compareByDescending<Rule> { it.priority }.thenBy { it.id }).firstOrNull()
+        // Rule order is a person's explicit preference when priorities tie.
+        // Never silently substitute alphabetical IDs for a saved reorder.
+        val chosen = rules.withIndex().asSequence().filter {
+            it.value.kind == category.kind &&
+                category.confidence >= it.value.minimumConfidence
+        }.sortedWith(compareByDescending<IndexedValue<Rule>> { it.value.priority }
+            .thenBy { it.index }).firstOrNull()?.value
             ?: return Decision(Outcome.ASK, category, reason = "no-confident-rule")
         val exact = targets[chosen.targetEnvironmentId]?.singleOrNull()
         if (exact?.usable != true)
