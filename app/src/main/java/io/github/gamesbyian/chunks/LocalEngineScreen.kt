@@ -300,6 +300,9 @@ internal fun LocalEngineScreen(
     onRemoteSnapshot: (() -> Unit)? = null,
     /** Opens the existing device Add review, without submitting or choosing Place. */
     onOpenAdd: (() -> Unit)? = null,
+    /** Snapshot recovery only: open local review without rebinding a remote
+     * .torrent choice or replacing the frozen snapshot restore draft. */
+    onShowLocalSnapshotReview: (() -> Unit)? = null,
     /** Opens the app-wide Options destination without changing an Add draft. */
     onOpenOptions: (() -> Unit)? = null,
     initialMagnet: String? = null,
@@ -2957,7 +2960,8 @@ internal fun LocalEngineScreen(
                             // Restore review lives on the Add pane while the
                             // snapshot comparison lives in Options. Bring the
                             // review into view instead of leaving it invisible.
-                            if (onOpenAdd != null) onOpenAdd.invoke()
+                            val showReview = onShowLocalSnapshotReview ?: onOpenAdd
+                            if (showReview != null) showReview.invoke()
                             else scrollState.animateScrollTo(0)
                         } else {
                             noteProblem("The comparison changed before restore review. Reopen the snapshot.")
@@ -3003,7 +3007,8 @@ internal fun LocalEngineScreen(
                             // Restore review lives on the Add pane while the
                             // snapshot comparison lives in Options. Bring the
                             // review into view instead of leaving it invisible.
-                            if (onOpenAdd != null) onOpenAdd.invoke()
+                            val showReview = onShowLocalSnapshotReview ?: onOpenAdd
+                            if (showReview != null) showReview.invoke()
                             else scrollState.animateScrollTo(0)
                         } else {
                             noteProblem("The comparison changed before restore review. Reopen the snapshot.")
