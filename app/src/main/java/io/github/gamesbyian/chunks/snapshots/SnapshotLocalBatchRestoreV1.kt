@@ -86,16 +86,38 @@ internal object SnapshotLocalBatchRestoreV1 {
             checked.toSet() != normalized.toSet())
             return fail(SnapshotRestoreOnceV1.Outcome.STALE_TARGET)
 
-        // SnapshotRestoreOnceV1 will re-check fresh inventory for each item
-        // independently, and atomically journal IN_FLIGHT before Add.
-        val expected = normalized.toMutableSet()
-        var verifiedCount = 0
+        // Review EVERY per-item journal before the first native write. A
+        // pending old individual restore in item N must not cause items 1..N-1
+        // to be added before we discover it. Opening absent journals creates
+        // only REVIEW records, never an Add or permission to replay one.
+        val journals = ArrayList<Pair<SnapshotVerifiedTorrentDocumentV1.Prepared,
+            SnapshotRestoreJournalV1>>(prepared.size)
         for (original in prepared) {
-            val outcome = try {
+            val journal = try {
                 val itemArchive = SnapshotRestoreOnceV1.itemArchiveFingerprint(
                     archiveFingerprint, original.infoHashV1)
-                val journal = SnapshotRestoreJournalV1.open(
+                SnapshotRestoreJournalV1.open(
                     store, itemArchive, targetFingerprint, listOf(original.infoHashV1))
+            } catch (_: Exception) {
+                return fail(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED,
+                    original.infoHashV1)
+            }
+            val entry = journal.entries().singleOrNull()
+            if (entry?.phase != SnapshotRestoreJournalV1.Phase.REVIEW &&
+                !(entry?.phase == SnapshotRestoreJournalV1.Phase.READY &&
+                    entry.placeFingerprint == verifiedPlaceFingerprint)) {
+                return fail(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED,
+                    original.infoHashV1)
+            }
+            journals += original to journal
+        }
+
+        // SnapshotRestoreOnceV1 rechecks fresh inventory for every item and
+        // durably records IN_FLIGHT before each native Add.
+        val expected = normalized.toMutableSet()
+        var verifiedCount = 0
+        for ((original, journal) in journals) {
+            val outcome = try {
                 SnapshotRestoreOnceV1.execute(
                     journal, original, chosenPlace, verifiedPlaceFingerprint,
                     expected.toList(), userApproved = true, target = target
