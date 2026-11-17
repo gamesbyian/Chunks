@@ -140,7 +140,11 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val originalName = "task-reentry-original.mkv"
         val original = document(originalName)
         stage = "launch"
-        ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
+        // ActivityScenario.close() attempts to reclaim the original test task
+        // after Android has reentered the singleTask target. That harness
+        // teardown can throw even after every handoff assertion passes.
+        // Finish this fixture explicitly and assert DESTROYED instead.
+        ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).let { scenario ->
             stage = "initial-review"
             waitForReview(originalName, scenario, original)
             stage = "owner"
@@ -189,6 +193,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
             stage = "explicit-finish"
             scenario.onActivity { activity -> activity.finish() }
             stage = "cleanup"
+            compose.waitUntil(20_000) { scenario.state == Lifecycle.State.DESTROYED }
         }
         } catch (failure: Throwable) {
             // Preserve the existing explicitly whitelisted timeout fingerprint.
@@ -205,7 +210,11 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val newName = "installed-second-source.mkv"
         val original = document(originalName)
         stage = "launch"
-        ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
+        // ActivityScenario.close() attempts to reclaim the original test task
+        // after Android has reentered the singleTask target. That harness
+        // teardown can throw even after every handoff assertion passes.
+        // Finish this fixture explicitly and assert DESTROYED instead.
+        ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).let { scenario ->
             stage = "initial-review"
             waitForReview(originalName, scenario, original)
             stage = "owner"
@@ -264,6 +273,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
             stage = "explicit-finish"
             scenario.onActivity { activity -> activity.finish() }
             stage = "cleanup"
+            compose.waitUntil(20_000) { scenario.state == Lifecycle.State.DESTROYED }
         }
         } catch (failure: Throwable) {
             // Preserve the existing explicitly whitelisted timeout fingerprint.
