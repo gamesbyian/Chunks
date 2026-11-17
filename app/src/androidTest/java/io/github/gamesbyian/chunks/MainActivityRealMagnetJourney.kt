@@ -418,15 +418,25 @@ internal class MainActivityRealMagnetJourney(
                 // waitUntil polling: repeated clicks could collapse it during a
                 // slow LazyColumn recomposition, hiding the exact opt-out.
                 val heading = rule.onNode(disclosureAction)
-                val expanded = runCatching {
+                val artworkToggle = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+                val expandedByDescription = runCatching {
                     heading.fetchSemanticsNode().config[
                         androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
                 }.getOrNull() == "Expanded"
-                // Semantic action, not a touch: a touch can miss while the lazy Add
-                // form re-lays out, leaving the disclosure collapsed and the choice
-                // absent (installed run 43783877250 timed out waiting for it).
-                if (!expanded) heading.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-                val artworkToggle = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+                // After the first disposable Add, rememberSaveable may retain
+                // this disclosure as open. The Material3 Text/click wrapper
+                // sometimes lacks the parent's StateDescription even while
+                // its already-expanded child checkbox is present. Never click
+                // to "expand" when the actual tagged choice already exists:
+                // that would collapse the disclosure on the second Add.
+                val expandedByChild = rule.onAllNodes(
+                    artworkToggle, useUnmergedTree = true
+                ).fetchSemanticsNodes().isNotEmpty()
+                // Semantic action, not a touch: a touch can miss while the lazy
+                // form moves. Invoke it at most once, only if neither the
+                // announced state nor the actual child reports expansion.
+                if (!expandedByDescription && !expandedByChild)
+                    heading.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
                 var choice: androidx.compose.ui.state.ToggleableState? = null
                 var lastChoiceFailure = "none"
                 fun readReadyChoice(): Boolean = runCatching {
