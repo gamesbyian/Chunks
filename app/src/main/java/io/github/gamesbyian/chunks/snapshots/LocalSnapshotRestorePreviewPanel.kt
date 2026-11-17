@@ -54,6 +54,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
     /** Queues a separate explicit Place + stopped-restore confirmation. */
     onReviewOneRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null,
+    /** One explicit batch review for all currently missing complete metainfo. */
+    onReviewBatchRestore: ((SnapshotManifestV1.Verified, List<SnapshotRestorePreviewV1.Entry>,
+        List<String>, Long) -> Unit)? = null,
     /** Existing hash only: check an earlier journal, never submit. */
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null
@@ -66,6 +69,7 @@ internal fun LocalSnapshotRestorePreviewPanel(
     mutationGeneration = mutationGeneration,
     onPrepareAdd = onPrepareAdd,
     onReviewOneRestore = onReviewOneRestore,
+    onReviewBatchRestore = onReviewBatchRestore,
     onReviewPreviousRestore = onReviewPreviousRestore
 )
 
@@ -105,6 +109,8 @@ internal fun SnapshotRestorePreviewPanel(
     /** Only primes an Add review with a magnet-only record. Never adds. */
     onPrepareMagnet: ((String) -> Unit)? = null,
     onReviewOneRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
+        List<String>, Long) -> Unit)? = null,
+    onReviewBatchRestore: ((SnapshotManifestV1.Verified, List<SnapshotRestorePreviewV1.Entry>,
         List<String>, Long) -> Unit)? = null,
     onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null
@@ -269,6 +275,42 @@ internal fun SnapshotRestorePreviewPanel(
                     Text("No destination was selected. No torrent was added, started, " +
                         "stopped, deleted, downloaded or otherwise changed.",
                         color = MaterialTheme.colorScheme.primary)
+                    val batchReady = preview.entries.filter {
+                        it.decision == SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW
+                    }
+                    if (onReviewBatchRestore != null && batchReady.size >= 2) {
+                        OutlinedButton(
+                            onClick = {
+                                try {
+                                    check(latestReady && latestHashes == comparedHashes &&
+                                        latestGeneration == comparedGeneration) {
+                                        "Current local inventory changed"
+                                    }
+                                    val verified = requireNotNull(verifiedSource) {
+                                        "Verified snapshot has expired"
+                                    }
+                                    check(batchReady.all { item ->
+                                        verified.manifest.items.any { source ->
+                                            source.infoHashV1 == item.infoHashV1 &&
+                                                source.recovery == SnapshotManifestV1.Recovery.METAINFO
+                                        }
+                                    })
+                                    onReviewBatchRestore(
+                                        verified, batchReady.toList(),
+                                        requireNotNull(comparedHashes).toList(), comparedGeneration)
+                                    manualNotice = "Batch is awaiting a separate Local Place " +
+                                        "and explicit stopped-restore confirmation. Nothing was added."
+                                    error = null
+                                } catch (_: Exception) {
+                                    manualNotice = null
+                                    error = "Batch review could not be prepared. Refresh the " +
+                                        "local inventory and compare the snapshot again."
+                                }
+                            },
+                            enabled = targetReady && !reading,
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                        ) { Text("Review ${batchReady.size} missing stopped restores") }
+                    }
                     io.github.gamesbyian.chunks.ClearableTransferSearchField(
                         value = search,
                         onValueChange = { search = it; pageIndex = 0 },
