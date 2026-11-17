@@ -40,7 +40,8 @@ internal fun ClearableTransferSearchField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    semanticTag: String? = null
 ) {
     val fieldFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -86,7 +87,8 @@ internal fun ClearableTransferSearchField(
                         }
                     }
                 } else null,
-                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.TRANSFERS_SEARCH)
+                modifier = Modifier.fillMaxWidth()
+                    .then(semanticTag?.let { Modifier.testTag(it) } ?: Modifier)
                     .focusRequester(fieldFocus)
             )
         }

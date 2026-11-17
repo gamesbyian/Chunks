@@ -43,7 +43,8 @@ internal fun TransfersInlineToolbar(
             value = search,
             onValueChange = onSearchChange,
             label = "Search names or hashes",
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            semanticTag = ChunksSemantics.TRANSFERS_SEARCH
         )
         OutlinedIconButton(
             onClick = onFilters,
