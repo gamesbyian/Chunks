@@ -53,6 +53,9 @@ internal fun LocalSnapshotRestorePreviewPanel(
     onPrepareAdd: ((ByteArray) -> Unit)? = null,
     /** Queues a separate explicit Place + stopped-restore confirmation. */
     onReviewOneRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
+        List<String>, Long) -> Unit)? = null,
+    /** Existing hash only: check an earlier journal, never submit. */
+    onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null
 ) = SnapshotRestorePreviewPanel(
     targetHashes = transfers.map { it.infoHash },
@@ -62,7 +65,8 @@ internal fun LocalSnapshotRestorePreviewPanel(
     busyEngine = busyEngine,
     mutationGeneration = mutationGeneration,
     onPrepareAdd = onPrepareAdd,
-    onReviewOneRestore = onReviewOneRestore
+    onReviewOneRestore = onReviewOneRestore,
+    onReviewPreviousRestore = onReviewPreviousRestore
 )
 
 /** Wording for the engine a snapshot is compared against. */
@@ -101,6 +105,8 @@ internal fun SnapshotRestorePreviewPanel(
     /** Only primes an Add review with a magnet-only record. Never adds. */
     onPrepareMagnet: ((String) -> Unit)? = null,
     onReviewOneRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
+        List<String>, Long) -> Unit)? = null,
+    onReviewPreviousRestore: ((SnapshotManifestV1.Verified, SnapshotRestorePreviewV1.Entry,
         List<String>, Long) -> Unit)? = null
 ) {
     val context = LocalContext.current
@@ -213,7 +219,7 @@ internal fun SnapshotRestorePreviewPanel(
                     else "Compare saved snapshot with ${target.noun}")
             }
             if (expanded) {
-                Text(if (onReviewOneRestore != null)
+                Text(if (onReviewOneRestore != null || onReviewPreviousRestore != null)
                     "Compare snapshot and review stopped restore"
                     else "Snapshot restore comparison (read-only)",
                     style = MaterialTheme.typography.titleMedium)
@@ -312,6 +318,44 @@ internal fun SnapshotRestorePreviewPanel(
                         }
                         Text(entry.originalName + " · " + category,
                             style = MaterialTheme.typography.bodySmall)
+                        // Both present and missing snapshot identities may have
+                        // an interrupted journal. Checking its status never
+                        // authorizes another Add, even if inventory is absent.
+                        if (entry.decision in setOf(
+                                SnapshotRestorePreviewV1.Decision.ALREADY_PRESENT,
+                                SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW
+                            ) && onReviewPreviousRestore != null &&
+                            verifiedSource?.manifest?.items?.singleOrNull {
+                                it.infoHashV1 == entry.infoHashV1
+                            }?.recovery == SnapshotManifestV1.Recovery.METAINFO) {
+                            OutlinedButton(
+                                onClick = {
+                                    try {
+                                        check(latestReady &&
+                                            latestHashes == comparedHashes &&
+                                            latestGeneration == comparedGeneration) {
+                                            "Current local inventory changed"
+                                        }
+                                        val source = requireNotNull(verifiedSource)
+                                        SnapshotVerifiedTorrentDocumentV1.prepare(
+                                            source, entry.infoHashV1)
+                                        onReviewPreviousRestore(
+                                            source, entry,
+                                            requireNotNull(comparedHashes).toList(),
+                                            comparedGeneration)
+                                        manualNotice = "Previous restore check is ready for " +
+                                            "a separate read-only destination review. No Add occurred."
+                                        error = null
+                                    } catch (_: Exception) {
+                                        manualNotice = null
+                                        error = "The previous restore check could not be prepared. " +
+                                            "Refresh this snapshot comparison."
+                                    }
+                                },
+                                enabled = targetReady && !reading,
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            ) { Text("Check previous stopped restore") }
+                        }
                         if (entry.decision == SnapshotRestorePreviewV1.Decision.METADATA_NEEDS_REVIEW &&
                             onPrepareAdd != null) {
                             OutlinedButton(

@@ -65,6 +65,53 @@ internal object SnapshotRestoreOnceV1 {
     }
 
     /**
+     * Read-only recovery after a lost Add acknowledgement, Activity loss or
+     * process restart. The user reselects the current local Place and the
+     * verified archive identity; no source bytes and no historical path are
+     * needed. A pending journal never authorizes an automatic second Add.
+     *
+     * Merely observing the exact hash is insufficient: the current engine
+     * must independently report this job STOPPED at the original reviewed
+     * canonical Place before the journal may mark it VERIFIED.
+     */
+    fun reconcilePending(
+        journal: SnapshotRestoreJournalV1,
+        infoHashV1: String,
+        chosenPlace: File,
+        verifiedPlaceFingerprint: String,
+        target: LocalTarget
+    ): Outcome {
+        val entry = journal.entries().singleOrNull { it.infoHashV1 == infoHashV1 }
+            ?: return Outcome.JOURNAL_BLOCKED
+        if (entry.phase !in setOf(
+                SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
+                SnapshotRestoreJournalV1.Phase.ACK_UNVERIFIED,
+                SnapshotRestoreJournalV1.Phase.VERIFIED
+            ) || entry.placeFingerprint != verifiedPlaceFingerprint)
+            return Outcome.JOURNAL_BLOCKED
+        if (!chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
+            java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
+            return Outcome.REFUSED
+
+        val observed = canonicalInventory(try { target.completeHashes() }
+            catch (_: Exception) { null } ?: return Outcome.UNCERTAIN)
+            ?: return Outcome.UNCERTAIN
+        if (infoHashV1 !in observed) return Outcome.UNCERTAIN
+
+        val actual = try { target.observedStoppedPlace(infoHashV1)?.canonicalPath }
+            catch (_: Exception) { null }
+        val expected = try { chosenPlace.canonicalPath } catch (_: Exception) { null }
+        if (actual == null || actual != expected) return Outcome.UNCERTAIN
+        if (entry.phase != SnapshotRestoreJournalV1.Phase.VERIFIED) {
+            try { journal.reconcileWithCompleteTarget(observed, true, listOf(infoHashV1)) }
+            catch (_: Exception) { return Outcome.UNCERTAIN }
+        }
+        return if (journal.entries().singleOrNull { it.infoHashV1 == infoHashV1 }?.phase ==
+            SnapshotRestoreJournalV1.Phase.VERIFIED) Outcome.VERIFIED_PRESENT_STOPPED
+        else Outcome.UNCERTAIN
+    }
+
+    /**
      * At most ONE native Add can occur from a given REVIEW/READY journal state.
      * Call only after the user explicitly confirms both the original torrent
      * identity and the independently selected destination Place.
