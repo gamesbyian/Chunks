@@ -135,7 +135,11 @@ internal object SnapshotRestoreOnceV1 {
         if (verifiedPlace == null || verifiedPlace != expectedPlace)
             return Outcome.UNCERTAIN
         // Presence does not establish downloaded payload or completed files.
-        try { journal.reconcileWithCompleteTarget(after, true) }
+        // This proof is supplied only AFTER separately checking the exact
+        // hash, stopped native state and canonical reviewed Place above.
+        // A concurrent same-hash registration or hash-only inventory is not
+        // enough to mark a journal entry verified.
+        try { journal.reconcileWithCompleteTarget(after, true, listOf(hash)) }
         catch (_: Exception) { return Outcome.UNCERTAIN }
         return if (journal.entries().singleOrNull { it.infoHashV1 == hash }?.phase ==
             SnapshotRestoreJournalV1.Phase.VERIFIED) Outcome.VERIFIED_PRESENT_STOPPED
