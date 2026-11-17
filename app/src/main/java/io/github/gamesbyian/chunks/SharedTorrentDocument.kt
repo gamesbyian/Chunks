@@ -10,8 +10,11 @@ import java.io.IOException
 
 /**
  * External Android .torrent entry point, separate from magnet URL handling.
- * Only a single temporarily granted content:// Uri with a supported torrent
- * MIME type is admitted. No network or native engine action is performed.
+ * A single temporarily granted content:// Uri with a torrent or generic-binary
+ * MIME type can enter Add review. Providers often use opaque document IDs,
+ * so a filename-shaped URI is not required. The bytes, not MIME/filename,
+ * must pass the bounded strict metainfo parser before any Add/Start. No engine
+ * mutation or network request is performed by intent admission.
  */
 internal object SharedTorrentDocument {
     private val acceptedTypes = setOf(
@@ -54,13 +57,14 @@ internal object SharedTorrentDocument {
         } ?: return null
         // No file:// or HTTP(S) source, even when a caller lies about its type.
         if (uri.scheme != ContentResolver.SCHEME_CONTENT) return null
-        val mime = intent.type?.trim()?.lowercase()
-        val namedTorrentBinary = intent.action == Intent.ACTION_VIEW &&
-            mime == "application/octet-stream" &&
-            uri.lastPathSegment?.endsWith(".torrent", ignoreCase = true) == true
-        if (mime !in acceptedTypes && !namedTorrentBinary) return null
-        // The displayed filename is NEVER proof of valid metainfo. The Add
-        // draft still requires the same size-bounded, strict v1 bencode parse.
+        val mime = intent.type?.trim()?.lowercase(java.util.Locale.ROOT)
+        // A provider's content URI may end in an opaque row ID. The Android
+        // chooser cannot inspect DISPLAY_NAME, and synchronous provider queries
+        // here could block Activity startup. Generic-binary MIME therefore
+        // only provisionally admits a source. The review's strict 2 MiB parser
+        // still rejects arbitrary files before any authorized Add/Start.
+        if (mime !in acceptedTypes && mime != "application/octet-stream") return null
+        // Neither a filename, declared type nor URI is proof of metainfo.
         return uri
     }
 

@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.viewModels
+import androidx.lifecycle.viewModelScope
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
 import androidx.compose.foundation.background
@@ -133,6 +134,10 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val readingSharedDocument = mutableStateOf<Uri?>(null)
     val artworkChoices = AddArtworkDraftChoices()
     val remoteSessions = RemoteAddSessions()
+    // The one-shot remote Add and exact readback outlive both the Add route and
+    // Activity recreation, but are cancelled when this app-owned ViewModel is
+    // finally cleared. No source, account or private tracker enters SavedState.
+    val remoteAttemptScope get() = viewModelScope
 }
 
 class MainActivity : ComponentActivity() {
@@ -168,9 +173,9 @@ class MainActivity : ComponentActivity() {
 
     /**
      * #1786 diagnostics: `adb logcat -s ChunksIntake` separates a refused handoff from a
-     * crash or lost task. Fixed action/MIME/scheme categories and the outcome only,
-     * never untrusted raw MIME strings, URI schemes, full URI, display name,
-     * magnet, tracker or file content.
+     * crash or lost task. Fixed action/MIME/scheme categories and outcome only,
+     * never untrusted raw MIME or URI scheme, full URI, display name, magnet,
+     * tracker or file content.
      */
     private fun logIntake(intent: Intent?, candidate: ExternalAddSource?) {
         val action = intent?.action ?: return
@@ -2327,9 +2332,11 @@ internal fun ChunksApp(
                     VerifiedAddScreen(
                         remote = connectedRemote, magnet = magnet, destination = addSession.destination,
                         session = addSession,
-                        // App-root coroutine, not the disposable Add composable:
-                        // switching to Transfers cannot cancel its one-shot RPC.
-                        attemptScope = scope,
+                        // Configuration-retained owner, never a disposable
+                        // Composable/Activity scope: rotating the device or
+                        // returning to Transfers cannot cancel a sent Add.
+                        // Process death remains uncertain and never auto-retries.
+                        attemptScope = retainedAddOwner?.remoteAttemptScope ?: scope,
                         observedPlaces = observedPlaces,
                         initialTorrent = serverHandoffTorrent,
                         initialTorrentDocument = serverHandoffDocument,

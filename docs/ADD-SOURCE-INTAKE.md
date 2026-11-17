@@ -21,6 +21,14 @@ The single existing **Add torrent** sheet accepts: (1) a user-selected local `.t
 
 **Source precedence:** explicit current user edit > inbound Android Share/Open With item > restored draft > eligible clipboard suggestion > empty field. Accept a newer explicit share into an occupied draft only with a visible non-destructive choice to replace/keep draft. Never silently switch selected local/remote profile because a URL or magnet arrived.
 
+## Android Open With for opaque generic-binary documents
+
+Android document providers frequently assign opaque content IDs even when Files displays a filename ending in `.torrent`. An intent-filter matching `application/octet-stream` **cannot** inspect the provider's display name before the Android chooser is shown. To make Chunks selectable for these files, its VIEW and SEND filters accept generic-binary sources. This intentionally makes Chunks appear as a choice for some unrelated binary documents; choosing it never invokes a torrent engine.
+
+Admission requires **one** `content://` document with an explicitly supported torrent MIME or generic `application/octet-stream` type. Keep rejecting `file://`, HTTP(S), mismatched or multiple SEND URIs, explicit unrelated MIME types, and malformed Parcelable extras without falling through to incidental magnet text. Neither generic MIME nor a `.torrent` name is proof: an asynchronous, capped 2 MiB read and strict bencode/metainfo parser must succeed before Add review can authorize an engine write. Invalid binaries produce a recoverable intake error and no Add/Start. Do not query external providers on Activity startup to guess display names.
+
+Automated acceptance must include manifest resolver matching for opaque generic content URIs, actual MainActivity cold Open With review, generic SEND, malformed/ambiguous source refusal, valid metainfo and bogus binary rejection. Android Files, Downloads and Drive on the **owner Pixel**, real URI permission delivery, app-task continuity, and large-font/TalkBack behavior remain distinct physical-device proof.
+
 ## Retrieval, security and errors
 
 For an HTTP(S) source, perform a bounded fetch **only after explicit user intent to Add/resolve**. Follow a limited number of redirects with consistent transport and trust checks. Permit ordinary tracker query strings, including signed tokens/passkeys, but redact them from diagnostics, display summaries, crash reports, analytics and screenshots; never send them to an enrichment service. Use sensible connect/read timeouts, response and decoded-body size caps (align with existing 2 MiB metainfo cap unless the actual import contract intentionally changes), and validate bencode/metainfo and supported torrent versions before invoking the existing typed Add pipeline. Do not rely on MIME, URL suffix or Content-Disposition alone. Never execute received content.
