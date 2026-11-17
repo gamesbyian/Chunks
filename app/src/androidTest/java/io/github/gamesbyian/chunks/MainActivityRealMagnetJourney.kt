@@ -550,7 +550,13 @@ internal class MainActivityRealMagnetJourney(
                 }.getOrDefault(false)
             }
             scrollOutcome()
-            val awaitingNativeMetadata = !visible("Verified: added and started on rTorrent.")
+            // The shared Local/rTorrent receipt can authoritatively verify the
+            // reviewed Place and requested Start even when the old rTorrent-only
+            // outcome sentence is absent. Do not misclassify that verified
+            // presentation as "native Place still waiting for metadata".
+            val awaitingNativeMetadata =
+                !visible("Verified: added and started on rTorrent.") &&
+                !visible("requested Start state are verified.")
             if (awaitingNativeMetadata) {
                 // The old absolute-folder fixture could certify the reviewed parent
                 // before BEP9. An unknown native default cannot certify a metadata
