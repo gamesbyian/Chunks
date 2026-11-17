@@ -103,6 +103,23 @@ class OpenWithActivityIntakeTest {
         }
     }
 
+    @Test fun queuedDocumentHandoffReachesAddAfterActivityRecreation() {
+        // MainActivity receives an external Intent before Compose has necessarily
+        // consumed the source. Inject that queued, one-shot handoff directly in
+        // the same retained owner used by accept(), then recreate the Activity.
+        // No second VIEW is sent, and nothing may be automatically added.
+        val uri = document("queued-rotation.torrent", "queued-rotation.mkv")
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            scenario.onActivity { activity ->
+                androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+                    .incomingTorrent.value = uri
+            }
+            scenario.recreate()
+            waitForText("queued-rotation.mkv")
+            scenario.onActivity { assertFalse("Review remains in Chunks", it.isFinishing) }
+        }
+    }
+
     @Test fun recreationKeepsTheOpenedTorrentReview() {
         ActivityScenario.launch<MainActivity>(view(document("recreate.torrent", "recreated-open-with.mkv"),
             "application/x-bittorrent")).use { scenario ->

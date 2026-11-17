@@ -134,6 +134,13 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val readingSharedDocument = mutableStateOf<Uri?>(null)
     val artworkChoices = AddArtworkDraftChoices()
     val remoteSessions = RemoteAddSessions()
+    // External Share/Open With arrives before Compose necessarily consumes it.
+    // Keep these unconsumed, one-shot handoffs in the Activity-retained owner,
+    // not the ephemeral Activity. Recreation must resume review without
+    // replaying the launch Intent or persisting URIs, magnets or tracker tokens.
+    val incomingMagnet = mutableStateOf<String?>(null)
+    val incomingTorrent = mutableStateOf<Uri?>(null)
+    val incomingCreate = mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
     // The one-shot remote Add and exact readback outlive both the Add route and
     // Activity recreation, but are cancelled when this app-owned ViewModel is
     // finally cleared. No source, account or private tracker enters SavedState.
@@ -143,9 +150,18 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
 class MainActivity : ComponentActivity() {
     // Retained across Activity recreation, never persisted on process death.
     private val localAddAttemptOwner: LocalAddAttemptOwner by viewModels()
-    private var incomingMagnet by mutableStateOf<String?>(null)
-    private var incomingTorrent by mutableStateOf<Uri?>(null)
-    private var incomingCreate by mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
+    // Access after super.onCreate/onNewIntent, when the lifecycle ViewModelStore
+    // is available. A property delegate initialized during Activity construction
+    // would resolve the ViewModel too early.
+    private var incomingMagnet: String?
+        get() = localAddAttemptOwner.incomingMagnet.value
+        set(value) { localAddAttemptOwner.incomingMagnet.value = value }
+    private var incomingTorrent: Uri?
+        get() = localAddAttemptOwner.incomingTorrent.value
+        set(value) { localAddAttemptOwner.incomingTorrent.value = value }
+    private var incomingCreate: io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?
+        get() = localAddAttemptOwner.incomingCreate.value
+        set(value) { localAddAttemptOwner.incomingCreate.value = value }
 
     private fun accept(intent: Intent?) {
         // A separately addressed Create-torrent Share stays out of Add.
