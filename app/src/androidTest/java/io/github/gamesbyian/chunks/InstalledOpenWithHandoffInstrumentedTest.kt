@@ -120,11 +120,30 @@ class InstalledOpenWithHandoffInstrumentedTest {
         )
     }
 
+    /** An enum-sized diagnostic when the failure precedes the UI timeout.
+     * No external exception text or URI is included in the recorded message.
+     * The underlying test still fails and retains all original assertions. */
+    private fun stagedFailure(stage: String, failure: Throwable): Nothing {
+        val kind = when (failure) {
+            is androidx.compose.ui.test.ComposeTimeoutException -> "timeout"
+            is AssertionError -> "assertion"
+            is SecurityException -> "security"
+            is IllegalStateException -> "state"
+            else -> "other"
+        }
+        throw AssertionError("openwith staged failure: stage=$stage kind=$kind")
+    }
+
     @Test fun installedSecondOpenWithReentersSameTaskAndQueuesSourceWithoutSubmitting() {
+        var stage = "fixture"
+        try {
         val originalName = "task-reentry-original.mkv"
         val original = document(originalName)
+        stage = "launch"
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
+            stage = "initial-review"
             waitForReview(originalName, scenario, original)
+            stage = "owner"
             scenario.onActivity { activity ->
                 assertNotNull("The original selected .torrent must be retained before a second Open With",
                     androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
@@ -133,12 +152,15 @@ class InstalledOpenWithHandoffInstrumentedTest {
             // The second document is created only after the first review is
             // visible. That models a real second external Open With and does
             // not conflate provider fixture setup with task reentry.
+            stage = "second-source"
             val second = document("task-reentry-second.mkv")
+            stage = "second-intent"
             context.startActivity(openWith(second))
             // Distinct from the visual replacement-choice contract below:
             // Android must deliver the second VIEW to the already-running
             // Activity, then Chunks must hold it as an unsubmitted choice.
             // A separate test identity identifies routing versus rendering.
+            stage = "delivery"
             try {
                 compose.waitUntil(30_000) {
                     var acceptedIntoExistingTask = false
@@ -154,18 +176,30 @@ class InstalledOpenWithHandoffInstrumentedTest {
             } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
                 throw secondSourceTimeout(scenario, second)
             }
+            stage = "final"
             scenario.onActivity {
                 assertFalse("Queued source must not finish the current task", it.isFinishing)
             }
         }
+        } catch (failure: Throwable) {
+            // Preserve the existing explicitly whitelisted timeout fingerprint.
+            if (failure is AssertionError &&
+                failure.message?.startsWith("openwith second-source timeout:") == true) throw failure
+            stagedFailure(stage, failure)
+        }
     }
 
     @Test fun installedSecondOpenWithReturnsToExistingChunksAndOffersAnExplicitSourceChoice() {
+        var stage = "fixture"
+        try {
         val originalName = "installed-original-source.mkv"
         val newName = "installed-second-source.mkv"
         val original = document(originalName)
+        stage = "launch"
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
+            stage = "initial-review"
             waitForReview(originalName, scenario, original)
+            stage = "owner"
             scenario.onActivity { activity ->
                 assertNotNull("A visible original review must be retained in its Activity owner",
                     androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
@@ -174,12 +208,15 @@ class InstalledOpenWithHandoffInstrumentedTest {
             // A genuine ActivityTaskManager startActivity into the existing
             // singleTask Activity. Never clear the task or invoke the internal
             // source parser directly; this is the previously failing handoff.
+            stage = "second-source"
             val second = document(newName)
+            stage = "second-intent"
             context.startActivity(openWith(second))
             // Android singleTask reentry is a separate contract from the
             // Compose source-choice affordance. Probe the *existing* scenario's
             // Activity intent (set by MainActivity.onNewIntent) before diagnosing
             // an absent replacement choice as a presentation error.
+            stage = "delivery"
             try {
                 compose.waitUntil(30_000) {
                     var deliveredToExistingTask = false
@@ -193,6 +230,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
             }
             // The previous review must remain available while Chunks offers
             // the new source as an explicit, non-mutating choice.
+            stage = "choice"
             waitForReview(originalName, scenario, original)
             try {
                 compose.waitUntil(60_000) {
@@ -204,9 +242,16 @@ class InstalledOpenWithHandoffInstrumentedTest {
             }
             // A second provider source cannot silently replace the current
             // unsubmitted draft or cause the user to leave Chunks.
+            stage = "final"
             scenario.onActivity {
                 assertFalse("Second Open With must not finish the Chunks task", it.isFinishing)
             }
+        }
+        } catch (failure: Throwable) {
+            // Preserve the existing explicitly whitelisted timeout fingerprint.
+            if (failure is AssertionError &&
+                failure.message?.startsWith("openwith second-source timeout:") == true) throw failure
+            stagedFailure(stage, failure)
         }
     }
 
