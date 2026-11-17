@@ -18,8 +18,23 @@ class LocalSeedingPort(private val engine: LocalTorrentEngine) : SeedingControll
 /** Device-private per-transfer policy snapshots for the local device. Never holds tracker URLs. */
 class PreferencesAssignmentStore(context: Context) : SeedingController.AssignmentStore {
     private val prefs = context.applicationContext.getSharedPreferences("chunks_seeding_assignments", Context.MODE_PRIVATE)
-    override fun epoch(): Long? = prefs.getLong("epoch", -1L).takeIf { it >= 0 }
-    override fun setEpoch(ms: Long) = try { prefs.edit().putLong("epoch", ms).commit() } catch (_: RuntimeException) { false }
+    /**
+     * A corrupt/wrong-type epoch must never crash the service poll or be
+     * treated as a new activation: doing so could apply rules to old jobs.
+     * An unreadable existing key is preserved so setEpoch refuses to reset
+     * the eligibility boundary without a separate explicit recovery action.
+     */
+    override fun epoch(): Long? = try {
+        prefs.getLong("epoch", -1L).takeIf { it >= 0 }
+    } catch (_: RuntimeException) { null }
+
+    override fun setEpoch(ms: Long): Boolean {
+        if (ms < 0L) return false
+        return try {
+            if (prefs.contains("epoch")) false
+            else prefs.edit().putLong("epoch", ms).commit()
+        } catch (_: RuntimeException) { false }
+    }
 
     override fun get(infoHash: String): SeedingController.Assignment? {
         val key = "a:" + infoHash.lowercase(java.util.Locale.ROOT)

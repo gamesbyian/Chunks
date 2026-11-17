@@ -74,6 +74,19 @@ Show a compact group name and effective stop/rate summary in transfer details wi
 
 UI distinguishes rule **selected**, **applied to Chunks**, **acknowledged by engine**, **verified active** and **unsupported/offline/uncertain**. Never claim a stopped transfer is still actively seeding, or that a rule is enforced merely because it was saved.
 
+## Local activation epoch integrity
+
+The Local controller's first-enabled timestamp is an immutable eligibility
+boundary: transfers predating activation are not retroactively managed. If
+the persisted epoch is unreadable, has a wrong storage type or is otherwise
+invalid, automatic rule enforcement **must fail closed before enumerating
+transfers or sending an engine command**. Preserve the original stored value
+for explicit recovery; do not invent a fresh activation timestamp and risk
+changing policy for existing transfers. An absent epoch may be committed only
+once, before the first eligible controller poll. A failed commit never grants
+authority to enforce rules. This boundary is independent of the per-transfer
+automatic Stop write-ahead journal.
+
 ## At-most-once automatic stop and recovery
 
 The Android Local controller persists a stop-attempt marker **before** issuing any automatic Pause. A successful engine confirmation is recorded separately as `stoppedByRule`; an attempted-but-unconfirmed Pause remains explicitly uncertain, not a verified stopped state. On foreground-service restart, Activity recreation or a lost engine acknowledgment, a retained marker blocks a second automatic Pause for that exact local transfer. An intentional manual resume is not overridden by another rule tick. An automatically retryable stop after uncertainty would be dangerous because the first Pause may already have occurred.
