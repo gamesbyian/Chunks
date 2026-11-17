@@ -92,6 +92,20 @@ class InstalledOpenWithHandoffInstrumentedTest {
             // singleTask Activity. Never clear the task or invoke the internal
             // source parser directly; this is the previously failing handoff.
             context.startActivity(openWith(second))
+            // Android singleTask reentry is a separate contract from the
+            // Compose source-choice affordance. Probe the *existing* scenario's
+            // Activity intent (set by MainActivity.onNewIntent) before diagnosing
+            // an absent replacement choice as a presentation error.
+            compose.waitUntil(30_000) {
+                var deliveredToExistingTask = false
+                scenario.onActivity { activity ->
+                    deliveredToExistingTask = activity.intent?.data == second
+                }
+                deliveredToExistingTask
+            }
+            // The previous review must remain available while Chunks offers
+            // the new source as an explicit, non-mutating choice.
+            waitForReview(originalName)
             compose.waitUntil(60_000) {
                 compose.onAllNodes(hasText("Use new source", substring = true))
                     .fetchSemanticsNodes().isNotEmpty()
