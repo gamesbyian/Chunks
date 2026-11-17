@@ -47,6 +47,34 @@ class RemoteAddViewModelLifetimeTest {
         }
     }
 
+    @Test fun unconsumedExternalHandoffsSurviveRecreationButCanBeConsumedOnce() {
+        val store = ViewModelStore()
+        try {
+            val provider = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())
+            val first = provider[LocalAddAttemptOwner::class.java]
+            val sharedUri = android.net.Uri.parse("content://chunks.test.documents/queued-torrent")
+            // This state is recorded synchronously by MainActivity.accept() before
+            // the Compose Add surface has necessarily observed the external intent.
+            first.incomingTorrent.value = sharedUri
+            val restored = provider[LocalAddAttemptOwner::class.java]
+            assertSame(sharedUri, restored.incomingTorrent.value)
+            restored.incomingTorrent.value = null
+            assertTrue("Consuming the one-shot URI must also clear the Activity's source",
+                first.incomingTorrent.value == null)
+
+            val magnet = "magnet:?xt=urn:btih:" + "a".repeat(40)
+            first.incomingMagnet.value = magnet
+            assertSame(first, restored)
+            assertTrue(restored.incomingMagnet.value == magnet)
+            restored.incomingMagnet.value = null
+            assertTrue(first.incomingMagnet.value == null)
+            assertFalse("Retaining an incoming source never authorizes an Add ticket",
+                restored.remoteSessions.forAccount("test-server\\u0000account").alreadyAttempted)
+        } finally {
+            store.clear()
+        }
+    }
+
     @Test fun clearingTheOwnerCancelsItsRemoteSubmissionScope() {
         val store = ViewModelStore()
         val owner = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[
