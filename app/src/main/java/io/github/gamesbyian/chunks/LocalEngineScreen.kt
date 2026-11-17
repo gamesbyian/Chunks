@@ -2954,7 +2954,11 @@ internal fun LocalEngineScreen(
                             pending = null
                             message = "Review the new local destination and explicitly confirm " +
                                 "the stopped restore. No torrent has been added."
-                            scrollState.animateScrollTo(0)
+                            // Restore review lives on the Add pane while the
+                            // snapshot comparison lives in Options. Bring the
+                            // review into view instead of leaving it invisible.
+                            if (onOpenAdd != null) onOpenAdd.invoke()
+                            else scrollState.animateScrollTo(0)
                         } else {
                             noteProblem("The comparison changed before restore review. Reopen the snapshot.")
                         }
@@ -2996,7 +3000,11 @@ internal fun LocalEngineScreen(
                             pending = null
                             message = "Choose the original local destination to check the " +
                                 "previous restore journal. This review never repeats Add."
-                            scrollState.animateScrollTo(0)
+                            // Restore review lives on the Add pane while the
+                            // snapshot comparison lives in Options. Bring the
+                            // review into view instead of leaving it invisible.
+                            if (onOpenAdd != null) onOpenAdd.invoke()
+                            else scrollState.animateScrollTo(0)
                         } else {
                             noteProblem("The comparison changed before restore review. Reopen the snapshot.")
                         }
