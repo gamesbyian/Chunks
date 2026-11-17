@@ -36,4 +36,16 @@ class SeedingEnforcementTest {
         assertTrue(SeedingEnforcement.decide(all, seen(10, 0, 86_400)) is Decision.CannotJudge)
         assertTrue(SeedingEnforcement.decide(any, seen(10, 0, 86_400)) is Decision.Stop)
     }
+    @Test fun fineGrainedRatioGoalUsesExactCountersNotFourDecimalDisplayTruncation() {
+        val precise = SeedingPolicy(ratioGoal = BigDecimal("1.000001"))
+        assertEquals(Decision.KeepSeeding,
+            SeedingEnforcement.decide(precise, seen(1_000_000, 1_000_000)))
+        val reached = SeedingEnforcement.decide(precise, seen(1_000_001, 1_000_000))
+        assertTrue("the exact threshold is reached", reached is Decision.Stop)
+        assertTrue((reached as Decision.Stop).reason.contains("1.000001"))
+        val notQuite = precise.copy(ratioGoal = BigDecimal("1.0000011"))
+        assertEquals(Decision.KeepSeeding,
+            SeedingEnforcement.decide(notQuite, seen(1_000_001, 1_000_000)))
+    }
+
 }
