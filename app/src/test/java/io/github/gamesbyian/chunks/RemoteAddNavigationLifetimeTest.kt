@@ -116,7 +116,11 @@ class RemoteAddNavigationLifetimeTest {
                     true
                 }.getOrDefault(false)
             }
-            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
+            // The surrounding LazyColumn item can be taller than the viewport.
+            // Bringing the item into composition is insufficient for a touch:
+            // scroll the actual enabled button into view before clicking once.
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT)
+                .performScrollTo().assertIsEnabled().performClick()
             // Robolectric Compose runs its coroutine scheduler on the test-controlled UI loop.
             // Blocking on a Java latch here prevents the launched Add from starting.
             rule.waitUntil(15_000) { entered.count == 0L }
