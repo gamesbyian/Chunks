@@ -107,6 +107,9 @@ import io.github.gamesbyian.chunks.model.UnifiedSortDirection
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestorePreviewPanel
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreDraft
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotStoppedRestoreReview
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchStoppedRestoreDraft
+import io.github.gamesbyian.chunks.snapshots.LocalSnapshotBatchStoppedRestoreReview
+import io.github.gamesbyian.chunks.snapshots.SnapshotLocalBatchRestoreV1
 import io.github.gamesbyian.chunks.snapshots.LocalSnapshotRestoreFingerprint
 import io.github.gamesbyian.chunks.snapshots.SnapshotManifestV1
 import io.github.gamesbyian.chunks.snapshots.SnapshotVerifiedTorrentDocumentV1
@@ -478,6 +481,7 @@ internal fun LocalEngineScreen(
     val localReviewHolder = pendingAddState ?: remember { mutableStateOf<PendingLocalAdd?>(null) }
     var pending by localReviewHolder
     var snapshotRestoreDraft by remember { mutableStateOf<LocalSnapshotStoppedRestoreDraft?>(null) }
+    var snapshotBatchDraft by remember { mutableStateOf<LocalSnapshotBatchStoppedRestoreDraft?>(null) }
     var snapshotPreparationRevision by remember { mutableIntStateOf(0) }
     var repairSelectionHash by remember { mutableStateOf<String?>(null) }
     var repairSelectionBusy by remember { mutableStateOf(false) }
@@ -2927,6 +2931,59 @@ internal fun LocalEngineScreen(
                 } catch (_: Exception) {
                     noteProblem("Snapshot definition could not populate Add review." +
                         if (pending != null) " Your previous .torrent remains selected." else "")
+                }
+            },
+            onReviewBatchRestore = { verified, entries, frozen, generation ->
+                check(!busy && sourceReadJob == null) { "Another source review is in progress" }
+                initialTorrentUri?.let(onTorrentConsumed)
+                val request = ++snapshotPreparationRevision
+                scope.launch {
+                    val read = beginSourceRead()
+                    try {
+                        androidx.compose.runtime.snapshotFlow { busy }.first { !it }
+                        val draft = withContext(Dispatchers.IO) {
+                            // Keep a bounded verified snapshot from exhausting
+                            // the device before any local native Add. Every
+                            // definition is prepared before the batch review.
+                            require(entries.size in 2..512)
+                            require(entries.sumOf {
+                                verified.metainfoByHash[it.infoHashV1]?.size?.toLong() ?: 0L
+                            } <= SnapshotLocalBatchRestoreV1.MAX_TOTAL_METAINFO_BYTES)
+                            val originals = entries.map { entry ->
+                                SnapshotVerifiedTorrentDocumentV1.prepare(
+                                    verified, entry.infoHashV1)
+                            }.sortedBy { it.infoHashV1 }
+                            require(originals.map { it.infoHashV1 }.toSet().size == originals.size)
+                            val exactArchive = SnapshotManifestV1.encode(
+                                verified.manifest, verified.metainfoByHash)
+                            LocalSnapshotBatchStoppedRestoreDraft(
+                                originals, LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                frozen.toList(), generation)
+                        }
+                        if (sourceReadJob !== read) return@launch
+                        if (request == snapshotPreparationRevision &&
+                            LocalScreenReader.revision.snapshot() == generation &&
+                            !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotRestoreDraft = null
+                            snapshotBatchDraft = draft
+                            pending = null
+                            message = "Review the shared destination and confirm each stopped " +
+                                "restore as one batch. No transfer has been added."
+                            val showReview = onShowLocalSnapshotReview ?: onOpenAdd
+                            if (showReview != null) showReview.invoke()
+                            else scrollState.animateScrollTo(0)
+                        } else {
+                            noteProblem("The local inventory changed before batch review. Reopen the snapshot.")
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        if (sourceReadJob === read)
+                            noteProblem("The batch source could not be prepared. Check its " +
+                                "torrent definitions and the 24 MiB batch size limit.")
+                    } finally {
+                        if (sourceReadJob === read) sourceReadJob = null
+                    }
                 }
             },
             onReviewOneRestore = { verified, entry, frozen, generation ->
