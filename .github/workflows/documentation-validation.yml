@@ -18,6 +18,9 @@ on:
       - '.github/workflows/seedhost-byte-window-readonly.yml'
       - '.github/workflows/seedhost-named-stall-readonly.yml'
       - '.github/workflows/seedhost-reconcile-readonly-once.yml'
+      - '.github/workflows/seedhost-readonly-probe.yml'
+      - 'tools/seedhost_seeding_readonly_matrix.py'
+      - 'tools/test_seedhost_seeding_readonly_matrix.py'
       - 'tools/check_compose_capture_contract.py'
       - 'tests/test_compose_capture_contract.py'
       - 'tests/test_ci_event_routing_policy.py'
@@ -139,6 +142,9 @@ on:
       - '.github/workflows/seedhost-byte-window-readonly.yml'
       - '.github/workflows/seedhost-named-stall-readonly.yml'
       - '.github/workflows/seedhost-reconcile-readonly-once.yml'
+      - '.github/workflows/seedhost-readonly-probe.yml'
+      - 'tools/seedhost_seeding_readonly_matrix.py'
+      - 'tools/test_seedhost_seeding_readonly_matrix.py'
       - 'tools/check_compose_capture_contract.py'
       - 'tests/test_compose_capture_contract.py'
       - 'tests/test_ci_event_routing_policy.py'
@@ -307,6 +313,8 @@ jobs:
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_installed_magnet_add_receipt.py
       - name: Verify protected Seedhost dispatch gates offline
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_seedhost_manual_gate.py
+      - name: Validate read-only seeding capability matrix boundaries offline
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_seedhost_seeding_readonly_matrix.py
       - name: Test complete native Add sharding and CI evidence contracts offline
         run: |
           PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_ci_failure_digest.py
