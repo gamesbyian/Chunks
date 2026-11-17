@@ -4,8 +4,13 @@ import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** Wire-level fixtures. Live authentication and shared UI are separate acceptance tiers. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class QBittorrentReadOnlyRpcTest {
     private val root = "https://seedbox.example/clients/secondary/"
     private val hash = "a".repeat(40)
