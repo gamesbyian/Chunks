@@ -117,7 +117,7 @@ _OPENWITH_FINGERPRINT = re.compile(
 _OPENWITH_STAGE_FINGERPRINT = re.compile(
     r"^java\.lang\.AssertionError: openwith staged failure: "
     r"stage=(fixture|launch|initial-review|owner|second-source|second-intent|"
-    r"delivery|choice|final|cleanup) "
+    r"delivery|choice|final|explicit-finish|cleanup) "
     r"kind=(timeout|assertion|security|state|other)$"
 )
 
