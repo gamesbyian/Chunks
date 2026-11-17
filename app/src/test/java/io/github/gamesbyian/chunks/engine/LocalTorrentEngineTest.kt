@@ -927,17 +927,31 @@ class LocalTorrentEngineTest {
      */
     @Test fun startAfterPayloadTruncatedWhileStoppedRehashesAndRefetchesMissingPieces() {
         val fixture = fixture()
+        // A full-suite failure can occur at several distinct 60-second
+        // libtorrent waits. Identify the exact step without changing timeouts
+        // or adding retries; all fixture paths and peer details stay private.
+        fun awaitStage(stage: String, condition: () -> Boolean) {
+            try { waitFor(condition = condition) }
+            catch (timeout: AssertionError) {
+                throw AssertionError("Truncated-payload fixture timed out at $stage", timeout)
+            }
+        }
         val seeder = engine()
         val seed = added(seeder.addStopped(fixture.torrent, fixture.root.parentFile))
         seeder.resume(seed.infoHash)
-        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+        awaitStage("initial-seeder-ready") {
+            seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING
+        }
 
         val destination = temp.newFolder("truncated while running")
         val local = engine()
         val leech = added(local.addStoppedChecked(fixture.torrent, destination)).infoHash
         assertEquals(LocalCommandOutcome.VERIFIED, local.resume(leech).outcome)
         assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))
-        requireFlushed(local, leech)
+        try { requireFlushed(local, leech) }
+        catch (timeout: AssertionError) {
+            throw AssertionError("Truncated-payload fixture timed out at first-download-flush", timeout)
+        }
         assertEquals(LocalCommandOutcome.VERIFIED, local.pause(leech).outcome)
         // Keep the already-connected, very fast loopback seeder stopped until
         // the damaged download has completed its forced recheck. Otherwise the
@@ -974,9 +988,14 @@ class LocalTorrentEngineTest {
         // Only now supply the missing pieces. Retain the original independent
         // exact-byte flush/readback and bounded downloaded-byte assertions.
         assertEquals(LocalCommandOutcome.VERIFIED, seeder.resume(seed.infoHash).outcome)
-        waitFor { seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING }
+        awaitStage("resumed-seeder-ready") {
+            seeder.status(seed.infoHash)?.state == LocalTransferState.SEEDING
+        }
         assertTrue(local.connectPeer(leech, InetSocketAddress("127.0.0.1", seeder.listenPort())))
-        requireFlushed(local, leech)
+        try { requireFlushed(local, leech) }
+        catch (timeout: AssertionError) {
+            throw AssertionError("Truncated-payload fixture timed out at repaired-download-flush", timeout)
+        }
         for ((name, bytes) in fixture.files)
             assertArrayEquals(bytes, File(destination, "Chunks public fixture/$name").readBytes())
         // All-time counters lag the stats tick; a later sample can only grow.
