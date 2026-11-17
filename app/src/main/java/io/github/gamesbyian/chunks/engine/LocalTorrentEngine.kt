@@ -1703,11 +1703,17 @@ class LocalTorrentEngine(private val config: LocalEngineConfig = LocalEngineConf
      * memory for matching only; callers must never store or log them.
      */
     internal fun seedingFacts(): List<io.github.gamesbyian.chunks.seeding.SeedingController.Facts> = try {
+        // This is a synchronizedMap: its ITERATOR requires the map's own
+        // monitor, not the enclosing engine's monitor. Copy immutable pairs
+        // before native reads so asynchronous Add/Remove cannot invalidate
+        // a live Map.Entry or silently discard all healthy seeding facts.
+        val snapshot = synchronized(handles) {
+            handles.entries.map { entry -> entry.key to entry.value }
+        }
         synchronized(this) {
-            // First take a stable map snapshot, then isolate individual JNI
-            // read faults. One invalid handle must not turn a healthy local
-            // inventory into an apparently empty policy-observation pass.
-            seedingFactsBestEffort(handles.entries.toList()) { (key, handle) ->
+            // Keep JNI access under the same engine lock as before. The map
+            // monitor has already been released, avoiding nested lock order.
+            seedingFactsBestEffort(snapshot) { (key, handle) ->
                 if (!handle.isValid) null else {
                     val status = handle.status()
                     val info = handle.torrentFile()?.takeIf { it.isValid && status.hasMetadata() }
