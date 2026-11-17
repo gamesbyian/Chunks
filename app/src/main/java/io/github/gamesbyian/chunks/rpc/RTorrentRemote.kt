@@ -212,6 +212,19 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         return RemoteProbe(serverVersion, methods)
     }
 
+    /**
+     * Optional full-fidelity snapshot source. Only a previously authenticated
+     * read on this exact connected account permits a second, independently
+     * challenged read-only ruTorrent Source request. Unsupported hosts stay
+     * inventory-only, and the resulting bytes are hash-validated again by
+     * the snapshot manifest before they may be shared.
+     */
+    suspend fun originalMetainfoForSnapshot(infoHashV1: String): ByteArray? {
+        if (readAuthenticationEvidence() != RemoteReadAuthEvidence.READ_CHALLENGE_ACCEPTED)
+            return null
+        return RuTorrentSourceMetainfo.read(endpoint, auth, infoHashV1)
+    }
+
     /** What rTorrent reported for `directory.default`, kept distinct for honest Add guidance. */
     sealed class DefaultDirectoryReport {
         /** A literal absolute path Chunks can send nothing for and verify exactly after Add. */

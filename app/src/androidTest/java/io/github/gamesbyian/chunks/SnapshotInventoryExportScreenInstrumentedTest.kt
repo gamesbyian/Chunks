@@ -1,11 +1,13 @@
 package io.github.gamesbyian.chunks
 
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.snapshots.SnapshotInventoryExportScreen
@@ -34,7 +36,7 @@ class SnapshotInventoryExportScreenInstrumentedTest {
                 )
             }
         }
-        compose.onNodeWithText("Save transfer inventory").assertIsDisplayed()
+        compose.onNodeWithText("Save transfer snapshot").assertIsDisplayed()
         compose.onNodeWithText(
             "Share inventory snapshot"
         ).assertIsEnabled()
@@ -42,8 +44,30 @@ class SnapshotInventoryExportScreenInstrumentedTest {
             "Include old server directories (may reveal private paths)"
         ).assertExists()
         compose.onNodeWithText(
-            "Observed: 1 transfers in 'main'. Recorded: 1. Omitted: 0. Verified restorable: 0."
+            "Observed: 1 transfers in 'main'. Recorded: 1. Omitted: 0. Recoverable before optional Source reads: 0."
         ).assertExists()
+    }
+
+    @Test fun trackerBearingOriginalsRequireFreshConsentForEachConnectedSession() {
+        val session = mutableStateOf("first-account")
+        compose.setContent {
+            MaterialTheme {
+                SnapshotInventoryExportScreen(
+                    transfers = inventory, view = "main",
+                    snapshotRevision = 3, stale = false, loading = false,
+                    readOriginalMetainfo = { null },
+                    sourceSessionIdentity = session.value,
+                    onBack = {}
+                )
+            }
+        }
+        compose.onNodeWithText("Share inventory snapshot").assertIsEnabled()
+        compose.onNodeWithText(
+            "Include verified original .torrent definitions when available"
+        ).performClick()
+        compose.onNodeWithText("Share snapshot with verified originals").assertIsEnabled()
+        compose.runOnIdle { session.value = "second-account" }
+        compose.onNodeWithText("Share inventory snapshot").assertIsEnabled()
     }
 
     @Test fun staleQueueCannotBeSavedAsFreshInventory() {

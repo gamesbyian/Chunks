@@ -2283,11 +2283,21 @@ internal fun ChunksApp(
                     }
                 )
                 }
-                Section.SNAPSHOT -> SnapshotInventoryExportScreen(
+                Section.SNAPSHOT -> {
+                val snapshotAccount = server
+                // Give the nested callback an explicit suspend function type:
+                // let{} alone infers an ordinary Function1, not SuspendFunction1.
+                val originalReader: suspend (String) -> ByteArray? = { hash ->
+                    snapshotAccount?.originalMetainfoForSnapshot(hash)
+                }
+                SnapshotInventoryExportScreen(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
                     stale = stale, loading = loading,
                     onBack = { section = Section.TRANSFERS },
+                    readOriginalMetainfo = if (snapshotAccount == null) null else originalReader,
+                    sourceSessionIdentity = snapshotAccount,
+                    accountStillCurrent = { server === snapshotAccount },
                     restorePanel = {
                         // Only the complete "main" view is a whole-server
                         // inventory; filtered views cannot prove absence.
@@ -2309,6 +2319,7 @@ internal fun ChunksApp(
                         )
                     }
                 )
+                }
                 Section.SNAPSHOT_INSPECT -> LocalTransferPrivacyGate(
                     scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                     onBack = { section = Section.TRANSFERS }

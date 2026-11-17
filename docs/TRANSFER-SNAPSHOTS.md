@@ -21,6 +21,40 @@ The older checkpoint paragraphs below preserve dated evidence from the early lib
 
 **User-facing remote inventory export status (#302):** A connected remote queue now offers **Save inventory-only snapshot**, explicitly scoped to the loaded rTorrent view and disabled on stale/loading inventory. It counts omissions, states zero restorable items, optionally includes historical server paths only after explicit toggle (off by default), and uses Android's standard CreateDocument provider then reopens and SHA-256-verifies the exact saved Uri with bounded readback. An unsuccessful write/readback is labelled **unverified**, and no torrent or server operation is mutated. Exact tested head `9de6043091d31c3ae5db5c3491a3779d41305c18` passed Android/JVM [40598453276](https://github.com/gamesbyian/Chunks/actions/runs/40598453276), native visual baseline [40598453406](https://github.com/gamesbyian/Chunks/actions/runs/40598453406), and installed API35 instrumentation with a disposable debug DocumentsProvider [40598453290](https://github.com/gamesbyian/Chunks/actions/runs/40598453290); merged as `44225802bf479dd2ca2d230c6baacce0e2b28f18`. **Not yet delivered:** local screen export, obtaining raw recoverable torrent definitions, opening/previewing user snapshots, restorable counts, restore operations, private tracker fidelity, real external providers and physical handset acceptance. Do not describe the exported inventory-only archive as a transferable torrent set.
 
+## Proposed 2026-11-17 remote original Source-plugin export slice
+
+A user can opt into collecting **original v1 .torrent definitions** when the exact
+authenticated ruTorrent account supports its standard read-only Source plugin.
+The default export still records **inventory only**. This is an additional
+capability, never a replacement for the existing inventory and manual restore
+paths. A missing/disabled plugin or a record whose name, version or infohash
+cannot be independently verified stays inventory-only. A renamed rTorrent
+display name may therefore prevent an otherwise valid original from qualifying;
+the system must not mislabel that entry as restorable.
+
+The plugin endpoint is derived solely from the authenticated, numbered
+`/plugins/httprpc/action.php` mount; there is no fallback to a sibling
+account, `execute.*`, payload filesystem read, remote mutation or direct
+HTTP credential-in-URL. It is queried only after a successfully challenged
+RPC read on the same connected transport and through its own constrained
+Basic/Digest read challenge. Every response is independently bounded to 2 MiB
+and checked by the existing strict v1 metainfo reader. The resulting archive
+is validated using the unchanged v1 schema/ZIP/SHA-256 pipeline. The owner
+explicitly opts into potentially sensitive private-tracker announce URLs
+before any Source reads, and that opt-in resets whenever the connected
+server session changes. The connected account, loaded view, and frozen exact hash/name/Place
+inventory are fenced throughout collection and before sharing. A routine
+remote refresh that changes only speeds or counters must not abort a long
+Source collection; a changed identity, name or Place must. A failed
+Source read **does not retry a write** and does not erase other recoverable
+entries. Never imply a share chooser saved the file.
+
+This slice requires actual Source-plugin availability and accepted
+authentication on an authorized real rTorrent instance, plus installed
+Android and owner's Pixel document-provider acceptance, before claiming
+that a particular host's torrents are recoverable. It does **not** implement
+bulk restore, profile Place remap, payload copy or historical priorities.
+
 ## Outcome and scope
 
 From a local Chunks engine or a selected rTorrent profile, **Export transfer snapshot** creates one portable, user-owned `.chunksnap` file. Importing it into a selected local engine or different rTorrent profile reconstructs the chosen torrent **definitions** and supported per-transfer settings, **not downloaded payload bytes**. Intended example: preserve a seedbox's 250-torrent inventory before shutdown, connect a replacement seedbox, preview the snapshot, remap download destinations, and selectively restore without requiring the old server to remain online.
