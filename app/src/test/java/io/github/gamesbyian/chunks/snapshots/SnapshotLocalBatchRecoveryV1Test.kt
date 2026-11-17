@@ -78,7 +78,8 @@ class SnapshotLocalBatchRecoveryV1Test {
         assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
             journal(store, one).entries().single().phase)
         assertEquals(0, target.submissions)
-        assertTrue(target.inventoryReads >= 3)
+        assertEquals("One initial and one final complete inventory for the group",
+            2, target.inventoryReads)
     }
 
     @Test fun groupedReviewDistinguishesVerifiedPendingUnsentAndMissingJournals() {
@@ -175,9 +176,11 @@ class SnapshotLocalBatchRecoveryV1Test {
         target.jobs[one] = folder
         assertEquals(SnapshotLocalBatchRecoveryV1.Blocker.TARGET_CHANGED,
             recovery(listOf(one), folder, store, target, frozen = emptyList()).blocker)
+        target.inventoryReads = 0 // Stage the changed list for FINAL readback.
         target.replaceOnRead = 2 to listOf(one, two)
         assertEquals(SnapshotLocalBatchRecoveryV1.Blocker.TARGET_CHANGED,
             recovery(listOf(one), folder, store, target).blocker)
+        assertEquals(2, target.inventoryReads)
         assertEquals(0, target.submissions)
     }
 
