@@ -126,10 +126,10 @@ internal fun CreateTorrentScreen(
         }
     }
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) scan { CreateTorrentSource.fromDocument(sourceContext, uri) }
+        if (uri != null) scan(block = { CreateTorrentSource.fromDocument(sourceContext, uri) })
     }
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) scan { CreateTorrentSource.fromTree(sourceContext, uri) { cancel.get() } }
+        if (uri != null) scan(block = { CreateTorrentSource.fromTree(sourceContext, uri) { cancel.get() } })
     }
     LaunchedEffect(shared) {
         when (shared) {
