@@ -1040,8 +1040,7 @@ internal fun VerifiedAddScreen(
                                     (selectedTorrent?.fileCount ?: 0) >= 2 && skippedAtClick.isEmpty()
                             }
                             val prioritiesFirst = orderScope != null || skippedAtClick.isNotEmpty()
-                            var mutationGateAcquired = false
-                            val ticket = runCatching {
+                            val admission = runCatching {
                                 val reviewedSource = if (bytes != null)
                                     UniversalAddSource.metainfo(bytes, requireNotNull(selectedTorrent).infoHashV1)
                                 else UniversalAddSource.magnet(plan.source, plan.expectedInfoHash)
@@ -1052,17 +1051,17 @@ internal fun VerifiedAddScreen(
                                 else UniversalAddPlace.ServerCustom(plan.destination)
                                 val intent = UniversalAddIntent(
                                     reviewedSource, target, reviewedPlace, requestedStart, allowArtwork)
-                                val review = draft.coordinator.review(
-                                    intent, EnvironmentCapabilities.unprobed(target.environment),
-                                    EnvironmentAvailability.LIVE)
-                                if (!review.accepted || !draft.coordinator.authorizeByUser()) null
-                                else {
-                                    mutationGateAcquired = onMutationStarted()
-                                    if (mutationGateAcquired)
-                                        draft.coordinator.beginSubmission(System.currentTimeMillis())
-                                    else null
-                                }
+                                io.github.gamesbyian.chunks.model.UniversalAddAdmission.authorize(
+                                    coordinator = draft.coordinator,
+                                    intent = intent,
+                                    capabilities = EnvironmentCapabilities.unprobed(target.environment),
+                                    availability = EnvironmentAvailability.LIVE,
+                                    acquireMutationGate = onMutationStarted,
+                                    submittedAtEpochMillis = System.currentTimeMillis()
+                                )
                             }.getOrNull()
+                            val ticket = admission?.ticket
+                            val mutationGateAcquired = admission?.mutationGateAcquired == true
                             if (ticket != null) {
                             awaitingConfirmation = false
                             submitting = true
