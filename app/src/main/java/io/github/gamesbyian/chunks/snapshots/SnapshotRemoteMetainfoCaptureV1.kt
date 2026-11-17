@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks.snapshots
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.ensureActive
 
 /**
@@ -52,8 +54,9 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
                 null
             }
             check(stillCurrent()) { "The server inventory or account changed during export" }
-            val preview = if (candidate == null) null else
+            val preview = if (candidate == null) null else withContext(Dispatchers.Default) {
                 runCatching { TorrentMetainfoReader.preview(candidate) }.getOrNull()
+            }
             val verified = candidate != null && preview != null &&
                 preview.infoHashV1 == item.infoHashV1 &&
                 preview.name == item.originalName
@@ -74,7 +77,12 @@ internal object SnapshotRemoteMetainfoCaptureV1 {
         }
         check(stillCurrent()) { "The server inventory or account changed during export" }
         val complete = capture.manifest.copy(items = items)
-        val archive = SnapshotManifestV1.encode(complete, definitions)
+        // ZIP encoding and SHA-256/metadata verification can be sizable.
+        // Never block Compose's main thread while assembling the archive.
+        val archive = withContext(Dispatchers.Default) {
+            SnapshotManifestV1.encode(complete, definitions)
+        }
+        check(stillCurrent()) { "The server inventory or account changed during export" }
         return Result(archive, definitions.size, unavailable, tooLarge, total)
     }
 }
