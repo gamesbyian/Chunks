@@ -2127,10 +2127,14 @@ internal fun LocalEngineScreen(
                                         "An earlier pending Add may need read-only recovery. "
                                     else -> "The blocked item was not submitted by this batch. "
                                 }
+                                val blocked = result.stoppedAtInfoHash?.take(12)?.let {
+                                    " Affected infohash: " + it + "."
+                                }.orEmpty()
                                 "Batch stopped: ${result.verified} of ${result.total} " +
                                     "verified stopped. Chunks halted because " + why +
-                                    ". " + consequence + "No later Add was attempted. " +
-                                    "Refresh and review before taking another action."
+                                    "." + blocked + " " + consequence +
+                                    "No later Add was attempted. Refresh and review " +
+                                    "before taking another action."
                             }
                         }
                     }
