@@ -18,6 +18,9 @@ import java.util.Locale
  */
 internal object SnapshotLocalBatchRestoreV1 {
     private const val MAX_ITEMS = 512
+    // Bounded frozen buffers alongside the already-decoded .chunksnap must
+    // not exhaust an older Android device before the first native Add.
+    const val MAX_TOTAL_METAINFO_BYTES = 24 * 1024 * 1024
     private val v1 = Regex("[0-9a-f]{40}")
     private val targetIdentity = Regex("[0-9a-f]{40}([0-9a-f]{24})?")
 
@@ -47,6 +50,7 @@ internal object SnapshotLocalBatchRestoreV1 {
         fun fail(reason: SnapshotRestoreOnceV1.Outcome, hash: String? = null) =
             Result(total, 0, hash, reason)
         if (!userApproved || total !in 1..MAX_ITEMS ||
+            reviewed.sumOf { it.bytes.size.toLong() } > MAX_TOTAL_METAINFO_BYTES ||
             !chosenPlace.isAbsolute || !chosenPlace.isDirectory ||
             java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
             return fail(SnapshotRestoreOnceV1.Outcome.REFUSED)
