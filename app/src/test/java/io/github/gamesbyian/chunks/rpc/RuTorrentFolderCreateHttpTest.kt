@@ -136,6 +136,23 @@ class RuTorrentFolderCreateHttpTest {
         override fun close() = server.stop(0)
     }
 
+    @Test fun malformedTypedInventoryNeverQualifiesAsCompleteFolderEvidence() {
+        fun list(vararg names: Any) = JSONObject().put("listing",
+            JSONArray(names.map { JSONObject().put("name", it) })).toString()
+        assertEquals(setOf("TV/", "notes.txt"), RuTorrentFileManager.directoryNames(
+            list("TV/", "notes.txt")))
+        assertNull("duplicate typed folder is ambiguous", RuTorrentFileManager.directoryNames(
+            list("TV/", "TV/")))
+        assertNull("a file/directory duplicate is ambiguous", RuTorrentFileManager.directoryNames(
+            list("TV/", "notes.txt", "notes.txt")))
+        assertNull("numeric JSON name is not a verified filename", RuTorrentFileManager.directoryNames(
+            list(42)))
+        assertNull("boolean JSON name is not a verified filename", RuTorrentFileManager.directoryNames(
+            list(true)))
+        assertNull("control and DEL are unsafe", RuTorrentFileManager.directoryNames(
+            list("TV/\\u007f")))
+    }
+
     @Test fun verifiedRootAllowsOnlyOneChildAndIndependentlyWitnessesCreation() = runBlocking {
         Fixture().use { fx ->
             val remote = fx.remote()
