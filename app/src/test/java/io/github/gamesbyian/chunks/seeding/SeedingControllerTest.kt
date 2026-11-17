@@ -16,6 +16,7 @@ class SeedingControllerTest {
         val throwOnPause = HashSet<String>()
         val throwOnCap = HashSet<String>()
         val throwOnCapRead = HashSet<String>()
+        val unknownCapRead = HashSet<String>()
         val throwOnObservation = HashSet<String>()
         val log = ArrayList<String>()
         override fun transfers() = facts.values.toList()
@@ -27,6 +28,7 @@ class SeedingControllerTest {
         override fun uploadLimit(infoHash: String): Int? {
             if (infoHash in throwOnCapRead)
                 throw IllegalStateException("native upload limit read failed")
+            if (infoHash in unknownCapRead) return null
             return limits[infoHash] ?: 0
         }
         override fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean {
@@ -297,5 +299,26 @@ class SeedingControllerTest {
         assertEquals(warning, store.map["uncertain"]?.note)
         assertEquals("Reached ratio 1.00.", store.map["uncertain"]?.stopAttemptedReason)
         assertTrue("No cap setter or replayed Pause after a failed read", engine.log.isEmpty())
+    }
+
+    @Test fun nullNativeLimitReadAlsoCannotAuthorizeCapWrite() {
+        // LocalTorrentEngine.uploadLimit returns null after catching native
+        // getter errors, so exception-only protection is insufficient.
+        val engine = FakeEngine().apply { unknownCapRead.add("unreadable") }
+        val store = MemStore().apply { epochMs = 0 }
+        val policy = SeedingPolicy(uploadLimit = RateLimit.parse("24 KiB/s").getOrThrow())
+        for (hash in listOf("unreadable", "healthy")) {
+            engine.facts[hash] = Facts(hash, 10, emptyList(), false)
+            store.map[hash] = Assignment(policy, SeedingResolution.Source.DEFAULT, null)
+        }
+        val controller = SeedingController(engine, store)
+        controller.tick("local", emptyList(), SeedingPolicy(), 100)
+        assertEquals("An unknown limit is not a zero limit",
+            listOf("cap healthy=24576"), engine.log)
+        assertTrue(store.map["unreadable"]?.note.orEmpty().contains("could not check"))
+        engine.unknownCapRead.clear()
+        controller.tick("local", emptyList(), SeedingPolicy(), 200)
+        assertEquals(listOf("cap healthy=24576", "cap unreadable=24576"), engine.log)
+        assertNull(store.map["unreadable"]?.note)
     }
 }

@@ -91,17 +91,20 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                 // A native read may fail for one disappearing/invalid handle.
                 // Failure grants no authority to write a cap and must not
                 // prevent other transfers from being evaluated this tick.
-                val currentLimit = runCatching { engine.uploadLimit(hash) }
+                // LocalTorrentEngine already maps some libtorrent read
+                // exceptions to null; a thrown error and a null response are
+                // equally unknown, never permission to send a cap setter.
+                val currentLimit = runCatching { engine.uploadLimit(hash) }.getOrNull()
                 val readFailureNote =
                     "The client could not check this transfer's upload limit; it was left unchanged."
-                if (currentLimit.isFailure) {
+                if (currentLimit == null) {
                     // Existing notes can record a lost-ACK Pause or
                     // unconfirmed cap write. A read fault must never erase
                     // that more important safety warning.
                     if (assignment.note == null) store.put(hash,
                         assignment.copy(note = readFailureNote))
                 } else {
-                    if (currentLimit.getOrNull() != bytes.toInt()) {
+                    if (currentLimit != bytes.toInt()) {
                         // The setter itself requires verified engine readback.
                         val confirmed = runCatching {
                             engine.setUploadLimit(hash, bytes)
