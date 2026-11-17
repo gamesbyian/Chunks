@@ -84,25 +84,11 @@ class InstalledOpenWithHandoffInstrumentedTest {
                 compose.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty()
             }
         } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
-            // A fixed, privacy-safe fingerprint distinguishes lost Android
-            // Intent delivery, pending source read, and missing Compose review.
-            // Never include filenames, URIs or exception text in CI.
-            var delivered = false
-            var reviewed = false
-            var reading = false
-            var finishing = true
-            scenario.onActivity { activity ->
-                val owner = androidx.lifecycle.ViewModelProvider(activity)[
-                    LocalAddAttemptOwner::class.java]
-                delivered = activity.intent?.data == expected
-                reviewed = owner.reviewedTorrent.value != null
-                reading = owner.readingSharedDocument.value != null
-                finishing = activity.isFinishing
-            }
-            throw AssertionError(
-                "openwith review timeout: intent=$delivered reviewed=$reviewed " +
-                    "reading=$reading finishing=$finishing"
-            )
+            // The already-whitelisted fixed boolean fingerprint also applies
+            // to an INITIAL source review timeout. Using the same sanitizer
+            // avoids leaking a source URI, document name, or raw exception
+            // into public CI logs; the test method identifies the stage.
+            throw secondSourceTimeout(scenario, expected)
         }
     }
 
