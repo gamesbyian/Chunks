@@ -172,7 +172,12 @@ class MainActivity : ComponentActivity() {
         // choice during that gap. The UI will still offer Use/Keep explicitly.
         // This has no Add/Start authority and never reads the document.
         if (candidate is ExternalAddSource.TorrentDocument &&
-            localAddAttemptOwner.reviewedTorrent.value != null) {
+            (localAddAttemptOwner.reviewedTorrent.value != null ||
+                localAddAttemptOwner.readingSharedDocument.value != null)) {
+            // A first provider document may still be under validation and not
+            // yet visible as a reviewed draft. Queue the second URI in the
+            // Activity-retained owner synchronously, before Compose can be
+            // disposed by a rotation or task transition.
             localAddAttemptOwner.pendingSharedDocument.value = candidate.uri
         }
         val pending = PendingExternalAddSource(incomingMagnet, incomingTorrent)
