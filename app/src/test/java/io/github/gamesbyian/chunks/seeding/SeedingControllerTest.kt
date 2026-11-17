@@ -15,10 +15,20 @@ class SeedingControllerTest {
         var pauseConfirms = true
         val throwOnPause = HashSet<String>()
         val throwOnCap = HashSet<String>()
+        val throwOnCapRead = HashSet<String>()
+        val throwOnObservation = HashSet<String>()
         val log = ArrayList<String>()
         override fun transfers() = facts.values.toList()
-        override fun observe(infoHash: String) = observed[infoHash]
-        override fun uploadLimit(infoHash: String) = limits[infoHash] ?: 0
+        override fun observe(infoHash: String): SeedingObservation? {
+            if (infoHash in throwOnObservation)
+                throw IllegalStateException("native seeding counter is unavailable")
+            return observed[infoHash]
+        }
+        override fun uploadLimit(infoHash: String): Int? {
+            if (infoHash in throwOnCapRead)
+                throw IllegalStateException("native upload limit read failed")
+            return limits[infoHash] ?: 0
+        }
         override fun setUploadLimit(infoHash: String, bytesPerSecond: Long?): Boolean {
             if (infoHash in throwOnCap) throw IllegalArgumentException("engine cannot apply this cap")
             log += "cap $infoHash=${bytesPerSecond ?: 0}"
@@ -227,4 +237,48 @@ class SeedingControllerTest {
         assertEquals(listOf("cap working=24576"), engine.log)
     }
 
+
+    @Test fun failedLimitReadSkipsThatSetterAndDoesNotAbortOtherTransfers() {
+        val engine = FakeEngine().apply { throwOnCapRead.add("unreadable") }
+        val store = MemStore().apply { epochMs = 0 }
+        val policy = SeedingPolicy(uploadLimit = RateLimit.parse("24 KiB/s").getOrThrow())
+        for (hash in listOf("unreadable", "healthy")) {
+            engine.facts[hash] = Facts(hash, 10, emptyList(), false)
+            store.map[hash] = Assignment(policy, SeedingResolution.Source.DEFAULT, null)
+        }
+        val controller = SeedingController(engine, store)
+        controller.tick("local", emptyList(), SeedingPolicy(), 100)
+        assertEquals(listOf("cap healthy=24576"), engine.log)
+        assertTrue(store.map["unreadable"]?.note.orEmpty().contains("could not check"))
+        assertEquals(0, engine.limits["unreadable"] ?: 0)
+        // A later confirmed read may apply this cap; the failed first read
+        // must not have already changed it or produced a false success.
+        engine.throwOnCapRead.clear()
+        controller.tick("local", emptyList(), SeedingPolicy(), 200)
+        assertEquals(listOf("cap healthy=24576", "cap unreadable=24576"), engine.log)
+        assertNull("A recovered read clears only its own transient note",
+            store.map["unreadable"]?.note)
+    }
+
+    @Test fun failedObservationNeverStopsThatTransferOrBlocksOtherStops() {
+        val engine = FakeEngine().apply { throwOnObservation.add("unreadable") }
+        val store = MemStore().apply { epochMs = 0 }
+        val policy = SeedingPolicy(ratioGoal = BigDecimal("1.00"))
+        for (hash in listOf("unreadable", "healthy")) {
+            engine.facts[hash] = Facts(hash, 10, emptyList(), false)
+            engine.observed[hash] = SeedingObservation(5_000, 1_000, 60, true)
+            store.map[hash] = Assignment(policy, SeedingResolution.Source.DEFAULT, null)
+        }
+        val controller = SeedingController(engine, store)
+        controller.tick("local", emptyList(), SeedingPolicy(), 100)
+        assertEquals(listOf("pause healthy"), engine.log)
+        assertNull(store.map["unreadable"]?.stopAttemptedReason)
+        assertNotNull(store.map["healthy"]?.stoppedByRule)
+        // Recovery of just this observation can now authorize its first
+        // write-ahead-journaled Pause; healthy is never paused twice.
+        engine.throwOnObservation.clear()
+        controller.tick("local", emptyList(), SeedingPolicy(), 200)
+        assertEquals(listOf("pause healthy", "pause unreadable"), engine.log)
+        assertNotNull(store.map["unreadable"]?.stopAttemptedReason)
+    }
 }
