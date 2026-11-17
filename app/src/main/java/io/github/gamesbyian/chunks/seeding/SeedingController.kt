@@ -85,7 +85,10 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
         // and could throw from the foreground service's periodic tick.
         policy.uploadLimit?.bytesPerSecond?.let { bytes ->
             if (bytes !in 1L..Int.MAX_VALUE.toLong()) {
-                store.put(hash, assignment.copy(
+                // A persisted uncertain Pause is the stronger operational
+                // warning. Never erase it while reporting a separate cap
+                // fault. The policy remains unchanged and no cap is written.
+                if (assignment.note == null) store.put(hash, assignment.copy(
                     note = "This upload limit is outside the client's supported range; it was not applied."))
             } else {
                 // A native read may fail for one disappearing/invalid handle.
@@ -109,9 +112,14 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                         val confirmed = runCatching {
                             engine.setUploadLimit(hash, bytes)
                         }.getOrDefault(false)
-                        if (!confirmed) store.put(hash, assignment.copy(
-                            note = "The client did not confirm the upload limit."))
-                        else if (assignment.note == readFailureNote) store.put(hash,
+                        if (!confirmed) {
+                            // Preserve an earlier uncertain Pause or other
+                            // safety warning. A cap setter failure is secondary,
+                            // and cannot erase the durable no-retry explanation.
+                            if (assignment.note == null || assignment.note == readFailureNote)
+                                store.put(hash, assignment.copy(
+                                    note = "The client did not confirm the upload limit."))
+                        } else if (assignment.note == readFailureNote) store.put(hash,
                             assignment.copy(note = null))
                     } else if (assignment.note == readFailureNote) store.put(hash,
                         assignment.copy(note = null))

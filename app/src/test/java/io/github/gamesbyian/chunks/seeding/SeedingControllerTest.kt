@@ -301,6 +301,47 @@ class SeedingControllerTest {
         assertTrue("No cap setter or replayed Pause after a failed read", engine.log.isEmpty())
     }
 
+    @Test fun failedCapWriteCannotEraseUncertainPauseWarningOrReplayPause() {
+        val engine = FakeEngine().apply { throwOnCap.add("uncertain") }
+        val store = MemStore().apply { epochMs = 0 }
+        val warning = "The engine did not confirm the pause. It may have happened; Chunks will not retry automatically."
+        engine.facts["uncertain"] = Facts("uncertain", 10, emptyList(), false)
+        store.map["uncertain"] = Assignment(
+            capped, SeedingResolution.Source.DEFAULT, null,
+            stopAttemptedReason = "Reached ratio 1.00.", note = warning)
+        val controller = SeedingController(engine, store)
+        controller.tick("local", emptyList(), SeedingPolicy(), 100)
+        controller.tick("local", emptyList(), SeedingPolicy(), 200)
+        assertEquals(warning, store.map["uncertain"]?.note)
+        assertEquals("Reached ratio 1.00.", store.map["uncertain"]?.stopAttemptedReason)
+        assertTrue("A cap failure never authorizes a second Pause", engine.log.isEmpty())
+    }
+
+    @Test fun unsupportedCapCannotEraseUncertainPauseWarning() {
+        val engine = FakeEngine()
+        val store = MemStore().apply { epochMs = 0 }
+        val policy = SeedingPolicy(
+            ratioGoal = BigDecimal("1.00"),
+            uploadLimit = RateLimit(Int.MAX_VALUE.toLong() + 1, RateLimit.Unit.BYTES))
+        val warning = "Pause may have happened; no automatic retry."
+        engine.facts["uncertain"] = Facts("uncertain", 10, emptyList(), false)
+        store.map["uncertain"] = Assignment(
+            policy, SeedingResolution.Source.DEFAULT, null,
+            stopAttemptedReason = "Reached ratio 1.00.", note = warning)
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 100)
+        assertEquals(warning, store.map["uncertain"]?.note)
+        assertTrue(engine.log.isEmpty())
+    }
+
+    @Test fun failedCapSetterStillReportsFailureWhenNoPriorSafetyWarning() {
+        val engine = FakeEngine().apply { throwOnCap.add("new") }
+        val store = MemStore().apply { epochMs = 0 }
+        engine.facts["new"] = Facts("new", 10, emptyList(), false)
+        store.map["new"] = Assignment(capped, SeedingResolution.Source.DEFAULT, null)
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 100)
+        assertTrue(store.map["new"]?.note.orEmpty().contains("did not confirm"))
+    }
+
     @Test fun nullNativeLimitReadAlsoCannotAuthorizeCapWrite() {
         // LocalTorrentEngine.uploadLimit returns null after catching native
         // getter errors, so exception-only protection is insufficient.
