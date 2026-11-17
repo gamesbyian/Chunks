@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -124,17 +125,18 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             // missing screen: scroll to the lazy item BEFORE asserting it
             // is present. Do not change the production search layout or
             // weaken the authenticated server-scoped route requirement.
-            val searchLabel = "Search names, aliases, folders or hashes"
+            val searchField = hasTestTag(ChunksSemantics.TRANSFERS_SEARCH)
             waitFor("canonical server-scoped Transfers", 60_000) {
                 runCatching {
-                    scrollTo(searchLabel)
-                    visible(searchLabel)
+                    rule.onNode(hasScrollToIndexAction()).performScrollToNode(searchField)
+                    rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SEARCH)
+                        .fetchSemanticsNode()
+                    true
                 }.getOrDefault(false)
             }
             stage("connected")
-            rule.onNode(hasScrollToIndexAction())
-                .performScrollToNode(hasText(searchLabel))
-            rule.onNodeWithText("Search names, aliases, folders or hashes").performTextReplacement(hash)
+            rule.onNode(hasScrollToIndexAction()).performScrollToNode(searchField)
+            rule.onNodeWithTag(ChunksSemantics.TRANSFERS_SEARCH).performTextReplacement(hash)
             val selected = before.single { it.hash.equals(hash, ignoreCase = true) }
             val exactRow = hasContentDescription("Details for ${selected.name} on", substring = true)
             waitFor("exact remote compact row in canonical Transfers", 60_000) {

@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -85,7 +86,8 @@ internal fun ClearableTransferSearchField(
                         }
                     }
                 } else null,
-                modifier = Modifier.fillMaxWidth().focusRequester(fieldFocus)
+                modifier = Modifier.fillMaxWidth().testTag(ChunksSemantics.TRANSFERS_SEARCH)
+                    .focusRequester(fieldFocus)
             )
         }
     }
