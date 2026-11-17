@@ -2283,11 +2283,17 @@ internal fun ChunksApp(
                     }
                 )
                 }
-                Section.SNAPSHOT -> SnapshotInventoryExportScreen(
+                Section.SNAPSHOT -> {
+                val snapshotAccount = server
+                SnapshotInventoryExportScreen(
                     transfers = transfers, view = currentView,
                     snapshotRevision = snapshotRevision,
                     stale = stale, loading = loading,
                     onBack = { section = Section.TRANSFERS },
+                    readOriginalMetainfo = snapshotAccount?.let { original ->
+                        { hash: String -> original.originalMetainfoForSnapshot(hash) }
+                    },
+                    accountStillCurrent = { server === snapshotAccount },
                     restorePanel = {
                         // Only the complete "main" view is a whole-server
                         // inventory; filtered views cannot prove absence.
@@ -2309,6 +2315,7 @@ internal fun ChunksApp(
                         )
                     }
                 )
+                }
                 Section.SNAPSHOT_INSPECT -> LocalTransferPrivacyGate(
                     scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
                     onBack = { section = Section.TRANSFERS }
