@@ -41,7 +41,7 @@ class UniversalAddDisplayProjectorTest {
             UniversalAddCoordinator.Phase.READBACK_REQUIRED, "Wood"))
         assertEquals(UniversalAddDisplayStage.UNCONFIRMED, uncertain.stage)
         assertFalse(uncertain.verifiedJobObserved)
-        assertTrue(uncertain.explanation.contains("never retry"))
+        assertTrue(uncertain.explanation.contains("won't retry automatically"))
         val nativeReceipt = requireNotNull(UniversalAddDisplayProjector.from(
             UniversalAddCoordinator.Phase.READBACK_REQUIRED, "Local",
             registrationFromThisSubmission = true))
@@ -56,7 +56,7 @@ class UniversalAddDisplayProjectorTest {
         assertFalse(confirmed.title.startsWith("Added"))
         assertTrue(confirmed.verifiedJobObserved)
         assertTrue("The exact client is known; only registration provenance is uncertain",
-            confirmed.explanation.contains("Chunks can't tell whether this Add created it"))
+            confirmed.explanation.contains("Chunks couldn't tell whether this attempt added it"))
         assertFalse(confirmed.explanation.contains("which client"))
     }
 
@@ -64,7 +64,7 @@ class UniversalAddDisplayProjectorTest {
         val state = requireNotNull(UniversalAddDisplayProjector.from(
             UniversalAddCoordinator.Phase.JOB_CONFIRMED_START_UNVERIFIED, "Local"))
         assertEquals(UniversalAddDisplayStage.START_UNVERIFIED, state.stage)
-        assertTrue(state.explanation.contains("Start remains unverified"))
+        assertTrue(state.explanation.contains("couldn't confirm whether it started"))
         assertFalse(state.title.startsWith("Added"))
     }
 
