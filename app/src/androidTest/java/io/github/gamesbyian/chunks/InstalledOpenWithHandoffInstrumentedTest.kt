@@ -76,9 +76,33 @@ class InstalledOpenWithHandoffInstrumentedTest {
     private fun freshFixtureLaunch(uri: Uri): Intent =
         openWith(uri).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
 
-    private fun waitForReview(name: String) {
-        compose.waitUntil(60_000) {
-            compose.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty()
+    private fun waitForReview(
+        name: String, scenario: ActivityScenario<MainActivity>, expected: Uri
+    ) {
+        try {
+            compose.waitUntil(60_000) {
+                compose.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty()
+            }
+        } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+            // A fixed, privacy-safe fingerprint distinguishes lost Android
+            // Intent delivery, pending source read, and missing Compose review.
+            // Never include filenames, URIs or exception text in CI.
+            var delivered = false
+            var reviewed = false
+            var reading = false
+            var finishing = true
+            scenario.onActivity { activity ->
+                val owner = androidx.lifecycle.ViewModelProvider(activity)[
+                    LocalAddAttemptOwner::class.java]
+                delivered = activity.intent?.data == expected
+                reviewed = owner.reviewedTorrent.value != null
+                reading = owner.readingSharedDocument.value != null
+                finishing = activity.isFinishing
+            }
+            throw AssertionError(
+                "openwith review timeout: intent=$delivered reviewed=$reviewed " +
+                    "reading=$reading finishing=$finishing"
+            )
         }
     }
 
@@ -115,7 +139,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val original = document(originalName)
         val second = document("task-reentry-second.mkv")
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
-            waitForReview(originalName)
+            waitForReview(originalName, scenario, original)
             scenario.onActivity { activity ->
                 assertNotNull("The original selected .torrent must be retained before a second Open With",
                     androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
@@ -153,7 +177,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val original = document(originalName)
         val second = document(newName)
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
-            waitForReview(originalName)
+            waitForReview(originalName, scenario, original)
             scenario.onActivity { activity ->
                 assertNotNull("A visible original review must be retained in its Activity owner",
                     androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
@@ -180,7 +204,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
             }
             // The previous review must remain available while Chunks offers
             // the new source as an explicit, non-mutating choice.
-            waitForReview(originalName)
+            waitForReview(originalName, scenario, original)
             try {
                 compose.waitUntil(60_000) {
                     compose.onAllNodes(hasText("Use new source", substring = true))
@@ -202,7 +226,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val uri = document(name)
         assertTrue(uri.scheme == "content")
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(uri)).use { scenario ->
-            waitForReview(name)
+            waitForReview(name, scenario, uri)
             scenario.onActivity {
                 assertFalse("Open With must not close Chunks after accepting the document", it.isFinishing)
             }
@@ -210,11 +234,11 @@ class InstalledOpenWithHandoffInstrumentedTest {
             // source app regains focus. Its unsubmitted document must survive.
             scenario.moveToState(Lifecycle.State.CREATED)
             scenario.moveToState(Lifecycle.State.RESUMED)
-            waitForReview(name)
+            waitForReview(name, scenario, uri)
             // An actual Android Activity recreation is distinct from a
             // disposable Compose route and must keep the Add draft in memory.
             scenario.recreate()
-            waitForReview(name)
+            waitForReview(name, scenario, uri)
             scenario.onActivity {
                 assertFalse("Recreated Chunks must still own its Add review", it.isFinishing)
             }
