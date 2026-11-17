@@ -182,7 +182,8 @@ class MainActivity : ComponentActivity() {
         }
         runCatching {
             android.util.Log.i("ChunksIntake", "action=" + action.substringAfterLast('.') +
-                " type=" + (intent.type ?: "none") + " scheme=" + (intent.data?.scheme ?: "none") +
+                " type=" + IntakeDiagnosticLabels.mime(intent.type) +
+                " scheme=" + IntakeDiagnosticLabels.scheme(intent.data?.scheme) +
                 " outcome=" + outcome + " task=" + taskId)
         }
     }
