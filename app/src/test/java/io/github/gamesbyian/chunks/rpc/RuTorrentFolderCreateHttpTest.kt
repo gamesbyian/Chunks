@@ -150,7 +150,7 @@ class RuTorrentFolderCreateHttpTest {
         assertNull("boolean JSON name is not a verified filename", RuTorrentFileManager.directoryNames(
             list(true)))
         assertNull("control and DEL are unsafe", RuTorrentFileManager.directoryNames(
-            list("TV/\\u007f")))
+            list("TV/" + 127.toChar())))
     }
 
     @Test fun verifiedRootAllowsOnlyOneChildAndIndependentlyWitnessesCreation() = runBlocking {
