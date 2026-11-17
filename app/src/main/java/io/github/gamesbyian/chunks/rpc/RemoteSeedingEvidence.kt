@@ -10,6 +10,9 @@ package io.github.gamesbyian.chunks.rpc
  * None of these fields grants automatic Stop, throttle creation or Start.
  */
 data class RemoteSeedingEvidence(
+    /** Exact authenticated endpoint + opaque principal; never a display alias.
+     * Hash alone does not identify which remote client owns these counters. */
+    val accountScope: String,
     val infoHashV1: String,
     val uploadedBytes: Long?,
     val downloadedBytes: Long?,
