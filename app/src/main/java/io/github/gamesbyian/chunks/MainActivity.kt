@@ -186,6 +186,15 @@ class MainActivity : ComponentActivity() {
         logIntake(intent, candidate)
         if (candidate == null) return
         incomingCreate = null
+        // A second Android Open With may arrive while the Add UI is unmounted
+        // or a first provider read has not yet produced a visible review.
+        // Retain the new document in this Activity-scoped owner *before*
+        // Compose can be disposed. Selection still requires Use/Keep review.
+        if (candidate is ExternalAddSource.TorrentDocument &&
+            (localAddAttemptOwner.reviewedTorrent.value != null ||
+                localAddAttemptOwner.readingSharedDocument.value != null)) {
+            localAddAttemptOwner.pendingSharedDocument.value = candidate.uri
+        }
         val pending = PendingExternalAddSource(incomingMagnet, incomingTorrent)
             .withIncoming(candidate)
         incomingTorrent = pending.torrentDocument
@@ -754,7 +763,10 @@ internal fun ChunksApp(
     fun addSourceOccupied(): Boolean {
         val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
             ?.let { remoteAddSessions.forAccount(it) }
-        return magnet.isNotBlank() || localReviewedTorrent.value != null ||
+        // A first Android document being read is an occupied draft even
+        // before the new .torrent metainfo is visible on the Add form.
+        return sharedTorrentReading || incomingDocumentRead != null ||
+            magnet.isNotBlank() || localReviewedTorrent.value != null ||
             serverHandoffTorrent != null ||
             (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
             activeLocalAddAttempt.attemptedTicket != null ||
