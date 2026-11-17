@@ -95,7 +95,10 @@ class SeedingController(private val engine: EnginePort, private val store: Assig
                 val readFailureNote =
                     "The client could not check this transfer's upload limit; it was left unchanged."
                 if (currentLimit.isFailure) {
-                    if (assignment.note != readFailureNote) store.put(hash,
+                    // Existing notes can record a lost-ACK Pause or
+                    // unconfirmed cap write. A read fault must never erase
+                    // that more important safety warning.
+                    if (assignment.note == null) store.put(hash,
                         assignment.copy(note = readFailureNote))
                 } else {
                     if (currentLimit.getOrNull() != bytes.toInt()) {

@@ -281,4 +281,21 @@ class SeedingControllerTest {
         assertEquals(listOf("pause healthy", "pause unreadable"), engine.log)
         assertNotNull(store.map["unreadable"]?.stopAttemptedReason)
     }
+
+    @Test fun failedLimitReadPreservesAnEarlierUncertainPauseWarning() {
+        val engine = FakeEngine().apply { throwOnCapRead.add("uncertain") }
+        val store = MemStore().apply { epochMs = 0 }
+        val policy = SeedingPolicy(
+            ratioGoal = BigDecimal("1.00"),
+            uploadLimit = RateLimit.parse("24 KiB/s").getOrThrow())
+        val warning = "Pause may have succeeded; never automatically retry."
+        engine.facts["uncertain"] = Facts("uncertain", 10, emptyList(), false)
+        store.map["uncertain"] = Assignment(
+            policy, SeedingResolution.Source.DEFAULT, null,
+            stopAttemptedReason = "Reached ratio 1.00.", note = warning)
+        SeedingController(engine, store).tick("local", emptyList(), SeedingPolicy(), 100)
+        assertEquals(warning, store.map["uncertain"]?.note)
+        assertEquals("Reached ratio 1.00.", store.map["uncertain"]?.stopAttemptedReason)
+        assertTrue("No cap setter or replayed Pause after a failed read", engine.log.isEmpty())
+    }
 }
