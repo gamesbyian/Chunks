@@ -861,6 +861,20 @@ internal fun ChunksApp(
     }
     var createRequest by (retainedAddOwner?.createReviewRequest
         ?: remember { mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null) })
+    // On Android Activity recreation SectionRestoreSaver intentionally restores
+    // transient CREATE to the safe Transfers shell. An Activity-retained owner
+    // can still hold the reviewed source/request: restore only that existing
+    // read-only journey, without replaying the ACTION_SEND or creating a job.
+    // This effect runs once per new composition, so later deliberate navigation
+    // away from Create is not overridden by retained source memory.
+    LaunchedEffect(retainedAddOwner) {
+        if (NavigationRestorePolicy.resumeRetainedCreateReview(
+                restoredSection = section.name,
+                incomingCreateAlreadyDispatched = incomingCreate != null,
+                retainedRequest = createRequest != null,
+                retainedSource = retainedAddOwner?.createSource?.value != null
+            )) section = Section.CREATE
+    }
     LaunchedEffect(incomingCreate) {
         if (incomingCreate != null) {
             createRequest = incomingCreate
