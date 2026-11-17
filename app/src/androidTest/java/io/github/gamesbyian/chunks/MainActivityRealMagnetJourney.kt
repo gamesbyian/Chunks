@@ -559,8 +559,16 @@ internal class MainActivityRealMagnetJourney(
             // vocabulary; no torrent title, server name or endpoint is read.
             fun receiptHasState(state: String) =
                 hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS) &&
-                    rule.onAllNodes(hasStateDescription(state))
-                        .fetchSemanticsNodes().isNotEmpty()
+                    // Card and Material3 semantics may leave this fixed
+                    // state on an inner unmerged node while the testTag is on
+                    // an outer wrapper. Inspect both trees; still require an
+                    // exact permitted state, never infer success from prose.
+                    (
+                        rule.onAllNodes(hasStateDescription(state))
+                            .fetchSemanticsNodes().isNotEmpty() ||
+                        rule.onAllNodes(hasStateDescription(state), useUnmergedTree = true)
+                            .fetchSemanticsNodes().isNotEmpty()
+                    )
             val safeReceiptState = listOf(
                 "Verified", "Add unverified", "Start unverified",
                 "Added, checking", "Present, origin unverified", "Adding", "Not added"
