@@ -113,14 +113,21 @@ internal class QBittorrentReadOnlyRpc(
         if (response.status != 200 || response.body.trim() != "Ok.") {
             throw IOException("qBittorrent authentication refused")
         }
-        val sidCookies = response.header("Set-Cookie").mapNotNull { header ->
-            header.substringBefore(';').trim().takeIf { it.startsWith("SID=") }
-                ?.removePrefix("SID=")
+        // Modern qBittorrent names the cookie QBT_SID_<WebUIPort> to
+        // distinguish parallel WebUI daemons on one origin; older versions
+        // use SID. The internal port may differ from an HTTPS proxy's port.
+        // Take exactly one supported cookie from this exact login response,
+        // never copy other Set-Cookie values or a browser's cookie jar.
+        val sessionCookies = response.header("Set-Cookie").mapNotNull { header ->
+            val pair = header.substringBefore(';').trim()
+            val name = pair.substringBefore('=', "")
+            val value = pair.substringAfter('=', "")
+            if (name == "SID" || PORT_COOKIE.matches(name)) name to value else null
         }
-        if (sidCookies.size != 1 || !SID.matches(sidCookies.single())) {
+        if (sessionCookies.size != 1 || !SID.matches(sessionCookies.single().second)) {
             throw IOException("qBittorrent session cookie missing or invalid")
         }
-        return "SID=" + sidCookies.single()
+        return sessionCookies.single().let { (name, value) -> "$" + "{name}=$" + "{value}" }
     }
 
     private suspend fun read(method: String, sessionCookie: String): String {
@@ -170,6 +177,7 @@ internal class QBittorrentReadOnlyRpc(
         const val MAX_BODY = 4_194_304
         val HASH = Regex("(?:[0-9a-f]{40}|[0-9a-f]{64})")
         val SID = Regex("[A-Za-z0-9._~-]{8,256}")
+        val PORT_COOKIE = Regex("QBT_SID_(?:[1-9][0-9]{0,4})")
         val ESCAPED_SEPARATOR = Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
         val DOT_SEGMENT = Regex("(?i)(?:^|/)(?:\\.|%(?:25)*2e){1,2}(?:/|$)")
 
