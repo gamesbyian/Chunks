@@ -130,6 +130,27 @@ class SnapshotLocalBatchRestoreV1Test {
         assertEquals(2, target.entries.size)
     }
 
+    @Test fun oldPendingJournalOnLaterItemBlocksWholeBatchBeforeAnyAdd() {
+        val folder = temp.newFolder("old-pending")
+        val store = Store()
+        val target = FakeTarget(folder)
+        val originals = listOf(original("one"), original("two"))
+            .sortedBy { it.infoHashV1 }
+        val later = originals.last()
+        val journal = SnapshotRestoreJournalV1.open(
+            store, SnapshotRestoreOnceV1.itemArchiveFingerprint(archive, later.infoHashV1),
+            targetId, listOf(later.infoHashV1))
+        journal.prepare(later.infoHashV1, placeId)
+        journal.beforeAdd(later.infoHashV1, placeId)
+
+        val result = execute(originals, folder, store, target)
+        assertEquals(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED, result.stop)
+        assertEquals(later.infoHashV1, result.stoppedAtInfoHash)
+        assertEquals(0, result.verified)
+        assertEquals("A pending later item must not partially restore earlier items",
+            0, target.calls)
+    }
+
     @Test fun consentOrStaleInventoryRefusesBeforeFirstWrite() {
         val folder = temp.newFolder("unapproved")
         val store = Store()
