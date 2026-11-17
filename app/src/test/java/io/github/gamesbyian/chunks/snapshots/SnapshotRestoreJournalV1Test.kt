@@ -28,6 +28,24 @@ class SnapshotRestoreJournalV1Test {
     private fun open(store: MemoryStore, names: List<String> = listOf(one, two)) =
         SnapshotRestoreJournalV1.open(store, archive, target, names)
 
+    @Test fun readOnlyRecoveryDoesNotCreateAnAbsentJournal() {
+        val store = MemoryStore()
+        reject {
+            SnapshotRestoreJournalV1.openExisting(store, archive, target, listOf(one))
+        }
+        assertTrue("A read-only check must not initialize a journal", store.content.isEmpty())
+        val started = open(store, listOf(one))
+        started.prepare(one, place)
+        started.beforeAdd(one, place)
+        val recovered = SnapshotRestoreJournalV1.openExisting(
+            store, archive, target, listOf(one))
+        assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
+            recovered.entries().single().phase)
+        reject {
+            SnapshotRestoreJournalV1.openExisting(store, archive, target, listOf(two))
+        }
+    }
+
     @Test fun journalSurvivesProcessDeathWithoutRetryingUnacknowledgedAdds() {
         val store = MemoryStore()
         var journal = open(store)
