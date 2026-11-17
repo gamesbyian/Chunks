@@ -74,6 +74,14 @@ Show a compact group name and effective stop/rate summary in transfer details wi
 
 UI distinguishes rule **selected**, **applied to Chunks**, **acknowledged by engine**, **verified active** and **unsupported/offline/uncertain**. Never claim a stopped transfer is still actively seeding, or that a rule is enforced merely because it was saved.
 
+## At-most-once automatic stop and recovery
+
+The Android Local controller persists a stop-attempt marker **before** issuing any automatic Pause. A successful engine confirmation is recorded separately as `stoppedByRule`; an attempted-but-unconfirmed Pause remains explicitly uncertain, not a verified stopped state. On foreground-service restart, Activity recreation or a lost engine acknowledgment, a retained marker blocks a second automatic Pause for that exact local transfer. An intentional manual resume is not overridden by another rule tick. An automatically retryable stop after uncertainty would be dangerous because the first Pause may already have occurred.
+
+If the write-ahead preference commit fails, Chunks must not send Pause. If the engine call fails, throws, loses its response or the confirmed result cannot be persisted, Chunks preserves the attempted marker and does not retry in the background. The user may inspect the transfer and use ordinary explicit Stop/Start operations; no automatically re-armed controller is authorized by a later inventory observation. Old assignments without the new field preserve their prior confirmed-stop semantics. An occupied but unreadable assignment is quarantined from automatic enforcement, not mistaken for a new job. No tracker URLs, private passkeys or credentials enter the stop journal.
+
+This protection is **Local-only until a separately accepted rTorrent adapter exists**. It does not grant remote stop capabilities, promise background enforcement after Android terminates the service, or prove that every engine has matching stopped-state semantics.
+
 ## Runtime and capabilities
 
 - Local libtorrent4j and remote rTorrent must share a policy/rule domain model, UI, serialization and matching semantics; adapters independently negotiate supported per-torrent speed, ratio/scheduler behavior, persistence and readback.
