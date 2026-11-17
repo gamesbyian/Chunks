@@ -54,12 +54,22 @@ data class RateLimit(val bytesPerSecond: Long, val unit: Unit) {
             val unit = units.getValue(key)!!
             val bytes = BigDecimal(match.groupValues[1]).multiply(unit.bytes)
             if (bytes.signum() <= 0) return Result.failure(IllegalArgumentException("The limit must be above zero"))
-            val whole = try { bytes.toBigIntegerExact().toLong() } catch (_: ArithmeticException) {
+            val whole = try { bytes.longValueExact() } catch (_: ArithmeticException) {
                 return Result.failure(IllegalArgumentException("That limit is not a whole number of bytes per second; choose another value or unit"))
             }
             return Result.success(RateLimit(whole, unit))
         }
     }
+}
+
+/** Checked conversion for rule-editor duration input, avoiding Long overflow
+ * turning a huge positive day/hour value into a negative policy duration. */
+object SeedingDurationInput {
+    fun maxDaysInSeconds(days: Long?): Long? =
+        days?.takeIf { it > 0L && it <= Long.MAX_VALUE / 86_400L }?.times(86_400L)
+
+    fun minimumHoursInSeconds(hours: Long?): Long? =
+        hours?.takeIf { it >= 0L && it <= Long.MAX_VALUE / 3_600L }?.times(3_600L)
 }
 
 /** Ratio, duration and upload cap are independent; a cap never means "stop". */
