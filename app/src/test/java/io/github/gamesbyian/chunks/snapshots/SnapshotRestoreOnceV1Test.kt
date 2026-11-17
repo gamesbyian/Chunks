@@ -289,4 +289,56 @@ class SnapshotRestoreOnceV1Test {
         assertEquals(SnapshotRestoreJournalV1.Phase.ACK_UNVERIFIED,
             journal.entries().single().phase)
     }
+
+    @Test fun restoreSubmitsTheVeryBytesValidatedBeforeMutableReviewSourceChanges() {
+        val source = original()
+        val authorizedBytes = source.bytes.copyOf()
+        val folder = temp.newFolder("frozen-source-review")
+        val journal = SnapshotRestoreJournalV1.open(
+            Store(), archive, targetId, listOf(source.infoHashV1))
+        var submitted: ByteArray? = null
+        val target = object : SnapshotRestoreOnceV1.LocalTarget {
+            var hashes = emptyList<String>()
+
+            override fun completeHashes(): List<String> {
+                // Simulate another holder changing the reviewed document's
+                // backing array after metainfo validation but before Add.
+                source.bytes.fill(0)
+                return hashes.toList()
+            }
+
+            override fun observedStoppedPlace(infoHashV1: String): File? = folder
+
+            override fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean {
+                submitted = originalTorrent.copyOf()
+                hashes = listOf(TorrentMetainfoReader.preview(originalTorrent).infoHashV1)
+                return true
+            }
+        }
+
+        assertEquals(SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED,
+            SnapshotRestoreOnceV1.execute(journal, source, folder, place,
+                emptyList(), userApproved = true, target = target))
+        assertTrue("Regression setup changed the shared review source",
+            source.bytes.all { it == 0.toByte() })
+        assertArrayEquals("The submitted torrent must be the verified snapshot",
+            authorizedBytes, submitted)
+        assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
+            journal.entries().single().phase)
+    }
+
+    @Test fun changedSourceBeforeRestoreAuthorizationIsRefusedWithoutMutation() {
+        val source = original()
+        source.bytes.fill(0)
+        val journal = SnapshotRestoreJournalV1.open(
+            Store(), archive, targetId, listOf(source.infoHashV1))
+        val fake = FakeTarget()
+
+        assertEquals(SnapshotRestoreOnceV1.Outcome.REFUSED,
+            SnapshotRestoreOnceV1.execute(journal, source, temp.newFolder(),
+                place, emptyList(), userApproved = true, target = fake))
+        assertEquals(0, fake.writes)
+        assertEquals(SnapshotRestoreJournalV1.Phase.REVIEW,
+            journal.entries().single().phase)
+    }
 }

@@ -130,7 +130,12 @@ internal object SnapshotRestoreOnceV1 {
             java.nio.file.Files.isSymbolicLink(chosenPlace.toPath()))
             return Outcome.REFUSED
         val hash = reviewed.infoHashV1
-        val preview = try { TorrentMetainfoReader.preview(reviewed.bytes) }
+        // Prepared.bytes is a mutable ByteArray shared with a document review.
+        // Freeze the exact source once, before validating it. A provider,
+        // navigation callback or another holder can otherwise change the
+        // original array between preview and the journaled native submission.
+        val frozenSource = reviewed.bytes.copyOf()
+        val preview = try { TorrentMetainfoReader.preview(frozenSource) }
             catch (_: Exception) { return Outcome.REFUSED }
         if (preview.infoHashV1 != hash || preview.name != reviewed.originalName)
             return Outcome.REFUSED
@@ -162,7 +167,7 @@ internal object SnapshotRestoreOnceV1 {
         }
 
         val acknowledged = try {
-            target.submitStopped(reviewed.bytes.copyOf(), chosenPlace)
+            target.submitStopped(frozenSource.copyOf(), chosenPlace)
         } catch (_: Exception) { false }
         if (acknowledged) {
             // A successful command return is still not an independently
