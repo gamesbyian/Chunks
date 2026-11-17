@@ -2117,11 +2117,17 @@ internal fun LocalEngineScreen(
                                         "the last Add could not be independently confirmed"
                                     else -> "the next restore could not be verified"
                                 }
+                                val consequence = when (result.stop) {
+                                    SnapshotRestoreOnceV1.Outcome.UNCERTAIN ->
+                                        "The last Add may have reached the engine but is not confirmed. "
+                                    SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED ->
+                                        "An earlier pending Add may need read-only recovery. "
+                                    else -> "The blocked item was not submitted by this batch. "
+                                }
                                 "Batch stopped: ${result.verified} of ${result.total} " +
                                     "verified stopped. Chunks halted because " + why +
-                                    ". The uncertain item may have reached the engine; " +
-                                    "no later Add was attempted. Refresh and review " +
-                                    "before taking any further action."
+                                    ". " + consequence + "No later Add was attempted. " +
+                                    "Refresh and review before taking another action."
                             }
                         }
                     }
