@@ -37,13 +37,19 @@ class SnapshotRestoreJournalInstrumentedTest {
             assertFalse(serialized.contains("https://"))
             assertFalse(serialized.contains("/downloads"))
             assertFalse(serialized.contains("passkey"))
-            // An absent result cannot silently change IN_FLIGHT to READY.
-            afterProcessReopen.reconcileWithCompleteTarget(emptyList(), true)
+            // Neither absence nor hash-only presence can turn an uncertain
+            // stopped restore into success without independent Place proof.
+            afterProcessReopen.reconcileWithCompleteTarget(emptyList(), true, emptyList())
             assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
                 SnapshotRestoreJournalV1.open(
                     AndroidSnapshotRestoreJournalStore(context), archive, target,
                     listOf(hash)).entries().single().phase)
-            afterProcessReopen.reconcileWithCompleteTarget(listOf(hash), true)
+            afterProcessReopen.reconcileWithCompleteTarget(listOf(hash), true, emptyList())
+            assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
+                afterProcessReopen.entries().single().phase)
+            // A caller that has independently verified the exact stopped
+            // transfer at the reviewed Place may acknowledge this hash.
+            afterProcessReopen.reconcileWithCompleteTarget(listOf(hash), true, listOf(hash))
             assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
                 SnapshotRestoreJournalV1.open(
                     AndroidSnapshotRestoreJournalStore(context), archive, target,
