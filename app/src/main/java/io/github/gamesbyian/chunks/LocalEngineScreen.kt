@@ -3141,6 +3141,62 @@ internal fun LocalEngineScreen(
                         if (pending != null) " Your previous .torrent remains selected." else "")
                 }
             },
+            onReviewBatchRecovery = { verified, entries, frozen, generation ->
+                check(!busy && sourceReadJob == null) {
+                    "Another source review is in progress"
+                }
+                initialTorrentUri?.let(onTorrentConsumed)
+                val request = ++snapshotPreparationRevision
+                scope.launch {
+                    val read = beginSourceRead()
+                    try {
+                        androidx.compose.runtime.snapshotFlow { busy }.first { !it }
+                        val draft = withContext(Dispatchers.IO) {
+                            require(entries.size in 2..512)
+                            val originalHashes = entries.map { it.infoHashV1 }.sorted()
+                            require(originalHashes.size == originalHashes.toSet().size)
+                            require(originalHashes.all { hash ->
+                                verified.manifest.items.any {
+                                    it.infoHashV1 == hash &&
+                                        it.recovery == SnapshotManifestV1.Recovery.METAINFO
+                                }
+                            })
+                            val exactArchive = SnapshotManifestV1.encode(
+                                verified.manifest, verified.metainfoByHash)
+                            LocalSnapshotBatchRecoveryDraft(
+                                originalHashes,
+                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                frozen.toList(), generation)
+                        }
+                        if (sourceReadJob !== read) return@launch
+                        if (request == snapshotPreparationRevision &&
+                            LocalScreenReader.revision.snapshot() == generation &&
+                            !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotRestoreDraft = null
+                            snapshotBatchDraft = null
+                            snapshotBatchRecoveryDraft = draft
+                            pending = null
+                            message = "Choose the original Local folder to check prior " +
+                                "stopped restores. Existing journals are read; " +
+                                "no transfer will be added."
+                            val showReview = onShowLocalSnapshotReview ?: onOpenAdd
+                            if (showReview != null) showReview.invoke()
+                            else scrollState.animateScrollTo(0)
+                        } else {
+                            noteProblem("The Local inventory changed before the previous " +
+                                "group check. Reopen the snapshot.")
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        if (sourceReadJob === read)
+                            noteProblem("Cannot prepare the previous batch check. " +
+                                "Refresh the verified snapshot comparison.")
+                    } finally {
+                        if (sourceReadJob === read) sourceReadJob = null
+                    }
+                }
+            },
             onReviewBatchRestore = { verified, entries, frozen, generation ->
                 check(!busy && sourceReadJob == null) { "Another source review is in progress" }
                 initialTorrentUri?.let(onTorrentConsumed)
