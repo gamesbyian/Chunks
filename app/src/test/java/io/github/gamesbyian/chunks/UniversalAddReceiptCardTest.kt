@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.hasStateDescription
+import androidx.compose.ui.test.onNode
 import androidx.compose.ui.test.onNodeWithText
 import io.github.gamesbyian.chunks.model.UniversalAddCoordinator
 import io.github.gamesbyian.chunks.model.UniversalAddDisplayProjector
@@ -35,6 +37,7 @@ class UniversalAddReceiptCardTest {
             }
         }
         rule.onNodeWithText("Added to Local").assertExists()
+        rule.onNode(hasStateDescription("Verified")).assertExists()
         rule.onNodeWithText("This submission's exact transfer, destination and requested Start state are verified. Peer activity and payload bytes are separate.").assertExists()
         rule.onNodeWithText("Read-only details").assertExists()
         rule.runOnIdle { client.value = "Wood" }
@@ -55,6 +58,7 @@ class UniversalAddReceiptCardTest {
             }
         }
         rule.onNodeWithText("Couldn't confirm Add on Wood").assertExists()
+        rule.onNode(hasStateDescription("Add unverified")).assertExists()
         rule.onNodeWithText("Added to Wood").assertDoesNotExist()
         rule.onNodeWithText(
             "The Add may have happened. Check this exact client's transfer state; never retry an uncertain write automatically."
