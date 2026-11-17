@@ -97,6 +97,47 @@ def safe_stopped_magnet_failure(text: str) -> str | None:
     return None
 
 
+# Only app-owned installed Open With fixtures may emit this fixed Boolean
+# fingerprint. No arbitrary exception, URI, filename or tracker value passes.
+_SAFE_OPENWITH_TESTS = {
+    ("io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest",
+     "installedSecondOpenWithReentersSameTaskAndQueuesSourceWithoutSubmitting"),
+    ("io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest",
+     "installedSecondOpenWithReturnsToExistingChunksAndOffersAnExplicitSourceChoice"),
+    ("io.github.gamesbyian.chunks.InstalledOpenWithHandoffInstrumentedTest",
+     "installedGenericBinaryOpenWithKeepsUnsubmittedReviewAcrossBackgroundAndRecreation"),
+}
+_OPENWITH_FINGERPRINT = re.compile(
+    r"^java\.lang\.AssertionError: openwith second-source timeout: "
+    r"intent=(true|false) queued=(true|false) reviewed=(true|false) "
+    r"choice=(true|false) finishing=(true|false)$"
+)
+
+def safe_openwith_failure(text: str) -> str | None:
+    fields: dict[str, str] = {}
+    stack: str | None = None
+    for line in text.splitlines():
+        if line.startswith(STATUS):
+            value = line[len(STATUS):]
+            if value.startswith("class="):
+                fields["class"] = value[len("class="):]
+            elif value.startswith("test="):
+                fields["test"] = value[len("test="):]
+            elif value.startswith("stack="):
+                stack = value[len("stack="):]
+        elif line.startswith(STATUS_CODE):
+            if (line[len(STATUS_CODE):].strip() == "-2" and
+                    (fields.get("class"), fields.get("test")) in _SAFE_OPENWITH_TESTS and
+                    stack is not None):
+                match = _OPENWITH_FINGERPRINT.fullmatch(stack)
+                if match:
+                    keys = ("intent", "queued", "reviewed", "choice", "finishing")
+                    return " ".join(f"{key}={value}" for key, value in zip(keys, match.groups()))
+            fields = {}
+            stack = None
+    return None
+
+
 @dataclass(frozen=True)
 class TestResult:
     classname: str
@@ -200,6 +241,9 @@ def main() -> None:
         safe_recheck = safe_stopped_magnet_failure(raw)
         if safe_recheck is not None:
             print("CHUNKS_PREBUILT_SAFE_STOPPED_MAGNET: " + safe_recheck)
+        safe_openwith = safe_openwith_failure(raw)
+        if safe_openwith is not None:
+            print("CHUNKS_PREBUILT_SAFE_OPENWITH: " + safe_openwith)
         raise SystemExit("Android instrumentation has failed or no executed tests")
 
 
