@@ -652,12 +652,16 @@ internal fun VerifiedAddScreen(
         // The same position owns the target and subsequent operation status.
         // A result replaces the intro rather than creating a second status card.
         if (outcome == null) item {
-            if (submitting) Card(colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Text("Adding to " + (draft.submittedDisplayName ?: environmentLabel ?: "rTorrent"),
-                        fontWeight = FontWeight.Bold)
-                    Text("Submitting and checking the exact transfer. Do not submit again.")
+            if (submitting) {
+                val receipt = UniversalAddDisplayProjector.from(
+                    phase = draft.coordinator.phase,
+                    clientLabel = draft.submittedDisplayName ?: environmentLabel ?: "rTorrent",
+                    submitting = true
+                )
+                if (receipt != null) UniversalAddReceiptCard(
+                    receipt = receipt,
+                    modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)
+                ) {
                     if (attemptScope != null)
                         Text("You can return to Transfers while this client's result is checked.")
                 }
@@ -677,26 +681,26 @@ internal fun VerifiedAddScreen(
                     observedProgress?.registered == true && observedProgress?.started == true &&
                     observedProgress?.traffic?.active == true &&
                     observedProgress?.metadataPending != null && !progressReading && !progressReadFailed
-                Card(modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS),
-                    colors = CardDefaults.cardColors(containerColor =
-                        if (uncertain && !nativePlaceAwaitingConfirmation) MaterialTheme.colorScheme.errorContainer
-                        else MaterialTheme.colorScheme.secondaryContainer)) {
-                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                        val targetName = draft.submittedDisplayName ?: environmentLabel?.takeIf(String::isNotBlank) ?: "rTorrent"
-                        // One shared status projection for Local, rTorrent and
-                        // future clients. The engine-specific outcome below may
-                        // add diagnostics but cannot redefine the receipt stage.
-                        val display = UniversalAddDisplayProjector.from(
-                            phase = draft.coordinator.phase,
-                            clientLabel = targetName,
-                            submitting = submitting,
-                            knownNoWrite = !draft.alreadyAttempted
-                        )
-                        Text(
-                            if (nativePlaceAwaitingConfirmation) "Checking $targetName"
-                            else display?.title ?: "Add result on $targetName",
-                            fontWeight = FontWeight.Bold
-                        )
+                val targetName = draft.submittedDisplayName
+                    ?: environmentLabel?.takeIf(String::isNotBlank) ?: "rTorrent"
+                // All clients use one projected receipt. A synthetic fallback
+                // is deliberately uncertain and grants no positive Add evidence.
+                val receipt = UniversalAddDisplayProjector.from(
+                    phase = draft.coordinator.phase,
+                    clientLabel = targetName,
+                    submitting = submitting,
+                    knownNoWrite = !draft.alreadyAttempted
+                ) ?: io.github.gamesbyian.chunks.model.UniversalAddDisplay(
+                    stage = io.github.gamesbyian.chunks.model.UniversalAddDisplayStage.UNCONFIRMED,
+                    title = "Add result on $targetName",
+                    explanation = "Check this client's exact transfer state before another action.",
+                    verifiedJobObserved = false
+                )
+                UniversalAddReceiptCard(
+                    receipt = receipt,
+                    modifier = Modifier.testTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS),
+                    needsAttention = uncertain && !nativePlaceAwaitingConfirmation
+                ) {
                         Text(if (nativePlaceAwaitingConfirmation) {
                             if (observedProgress?.metadataPending == true)
                                 "Waiting for magnet metadata. rTorrent reports this exact transfer active; its payload folder and final Add result are not yet verified. No Add or Start will be repeated."
@@ -723,7 +727,6 @@ internal fun VerifiedAddScreen(
                                 modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)
                             ) { Text("View transfer") }
                         }
-                    }
                 }
             }
         }

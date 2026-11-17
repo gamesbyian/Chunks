@@ -145,7 +145,7 @@ internal class MainActivityRealMagnetJourney(
         rule.waitForIdle()
     }
     private fun report(key: String, value: String) {
-        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[02345]?|negative)|traffic_magnet[02345]?_(initial|resumed)|diagnostic_magnet[02345]?|negative|negative_stage|app_stage)")))
+        require(key.matches(Regex("chunks_real_add_(stage|hash_(magnet[02345]?|negative)|traffic_magnet[02345]?_(initial|resumed)|diagnostic_magnet[02345]?|negative|negative_stage|app_stage|receipt_state)")))
         require(value.length <= 160 && value.matches(Regex("[a-z0-9,=-]+")))
         InstrumentationRegistry.getInstrumentation().sendStatus(2, Bundle().apply { putString(key, value) })
     }
@@ -418,15 +418,25 @@ internal class MainActivityRealMagnetJourney(
                 // waitUntil polling: repeated clicks could collapse it during a
                 // slow LazyColumn recomposition, hiding the exact opt-out.
                 val heading = rule.onNode(disclosureAction)
-                val expanded = runCatching {
+                val artworkToggle = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+                val expandedByDescription = runCatching {
                     heading.fetchSemanticsNode().config[
                         androidx.compose.ui.semantics.SemanticsProperties.StateDescription]
                 }.getOrNull() == "Expanded"
-                // Semantic action, not a touch: a touch can miss while the lazy Add
-                // form re-lays out, leaving the disclosure collapsed and the choice
-                // absent (installed run 43783877250 timed out waiting for it).
-                if (!expanded) heading.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
-                val artworkToggle = hasTestTag(ChunksSemantics.ADD_ARTWORK_CHOICE)
+                // After the first disposable Add, rememberSaveable may retain
+                // this disclosure as open. The Material3 Text/click wrapper
+                // sometimes lacks the parent's StateDescription even while
+                // its already-expanded child checkbox is present. Never click
+                // to "expand" when the actual tagged choice already exists:
+                // that would collapse the disclosure on the second Add.
+                val expandedByChild = rule.onAllNodes(
+                    artworkToggle, useUnmergedTree = true
+                ).fetchSemanticsNodes().isNotEmpty()
+                // Semantic action, not a touch: a touch can miss while the lazy
+                // form moves. Invoke it at most once, only if neither the
+                // announced state nor the actual child reports expansion.
+                if (!expandedByDescription && !expandedByChild)
+                    heading.performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
                 var choice: androidx.compose.ui.state.ToggleableState? = null
                 var lastChoiceFailure = "none"
                 fun readReadyChoice(): Boolean = runCatching {
@@ -550,7 +560,33 @@ internal class MainActivityRealMagnetJourney(
                 }.getOrDefault(false)
             }
             scrollOutcome()
-            val awaitingNativeMetadata = !visible("Verified: added and started on rTorrent.")
+            // One accessibility result state, shared with Local. Avoid
+            // inferring an unverified Add merely because older explanatory
+            // text isn't currently composed or its wording changed.
+            // Compose may put testTag and stateDescription on adjacent
+            // semantics wrappers of the same card. The status tag must be
+            // present, but a state is queried separately by its unique fixed
+            // vocabulary; no torrent title, server name or endpoint is read.
+            fun receiptHasState(state: String) =
+                hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS) &&
+                    // Card and Material3 semantics may leave this fixed
+                    // state on an inner unmerged node while the testTag is on
+                    // an outer wrapper. Inspect both trees; still require an
+                    // exact permitted state, never infer success from prose.
+                    (
+                        rule.onAllNodes(hasStateDescription(state))
+                            .fetchSemanticsNodes().isNotEmpty() ||
+                        rule.onAllNodes(hasStateDescription(state), useUnmergedTree = true)
+                            .fetchSemanticsNodes().isNotEmpty()
+                    )
+            val safeReceiptState = listOf(
+                "Verified", "Add unverified", "Start unverified",
+                "Added, checking", "Present, origin unverified", "Adding", "Not added"
+            ).firstOrNull(::receiptHasState) ?: "absent"
+            report("chunks_real_add_receipt_state", safeReceiptState.lowercase()
+                // The diagnostic reporter accepts only alphanumeric safe codes.
+                .replace(Regex("[^a-z0-9]"), ""))
+            val awaitingNativeMetadata = !receiptHasState("Verified")
             if (awaitingNativeMetadata) {
                 // The old absolute-folder fixture could certify the reviewed parent
                 // before BEP9. An unknown native default cannot certify a metadata
@@ -559,9 +595,16 @@ internal class MainActivityRealMagnetJourney(
                 // the app's read-only Place/Start confirmation. Never resend Add.
                 assertTrue("Only the disposable unknown native Place may await metadata",
                     disposable && default == null)
-                assertTrue("A pending native Place must remain explicitly unverified",
-                    visible("Start after Add was not verified.") ||
-                        visible("its payload folder and final Add result are not yet verified."))
+                // A pending or uncertain result has a stable accessible
+                // state even when a provider's explanatory text changes.
+                // A falsely claimed Verified stage is forbidden here.
+                assertTrue(
+                    "Pending native Place must be communicated as unverified",
+                    listOf(
+                        "Add unverified", "Start unverified",
+                        "Added, checking", "Present, origin unverified"
+                    ).any(::receiptHasState)
+                )
                 val metadata = readOnly { remote.call("d.is_meta", listOf(hash)) }
                 if (!publicDiscovery) assertEquals(1L, metadata)
                 else assertTrue("Public metadata may resolve during the initial status read", metadata in setOf(0L, 1L))
