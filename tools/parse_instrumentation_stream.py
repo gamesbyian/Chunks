@@ -108,7 +108,7 @@ _SAFE_OPENWITH_TESTS = {
      "installedSecondOpenWithReturnsToExistingChunksAndOffersAnExplicitSourceChoice"),
 }
 _OPENWITH_FINGERPRINT = re.compile(
-    r"^java\\.lang\\.AssertionError: openwith second-source timeout: "
+    r"^java\.lang\.AssertionError: openwith second-source timeout: "
     r"intent=(true|false) queued=(true|false) reviewed=(true|false) "
     r"choice=(true|false) finishing=(true|false)$"
 )
