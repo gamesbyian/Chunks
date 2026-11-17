@@ -63,12 +63,25 @@ class QBittorrentReadOnlyRpcTest {
         assertNull(script.calls.last().url.rawQuery)
     }
 
+    @Test fun modernPortQualifiedCookieIsRetainedAtExactClientWithoutFallback() = runBlocking {
+        val login = QBittorrentReadOnlyRpc.Response(200, "Ok.",
+            mapOf("Set-Cookie" to listOf("QBT_SID_8080=" + sid + "; Path=/; HttpOnly")))
+        val script = Scripted(login, ok("v5.3.0"), ok("2.14"), ok("[" + row(hash) + "]"))
+        val inventory = client(script).inspect()
+        assertEquals(1, inventory.torrents.size)
+        assertEquals(listOf("QBT_SID_8080=" + sid, "QBT_SID_8080=" + sid, "QBT_SID_8080=" + sid),
+            script.calls.drop(1).map { it.cookie })
+        assertTrue(script.calls.drop(1).all { it.url.host == "seedbox.example" })
+    }
+
     @Test fun http200CanBeFailedLoginAndNeverAuthorizeRead() = runBlocking {
         val failed = listOf(
             QBittorrentReadOnlyRpc.Response(200, "Fails."),
             QBittorrentReadOnlyRpc.Response(403, ""),
             QBittorrentReadOnlyRpc.Response(200, "Ok."),
             QBittorrentReadOnlyRpc.Response(200, "Ok.", mapOf("Set-Cookie" to listOf("SID=short"))),
+            QBittorrentReadOnlyRpc.Response(200, "Ok.", mapOf("Set-Cookie" to listOf("QBT_SID_bad=" + sid))),
+            QBittorrentReadOnlyRpc.Response(200, "Ok.", mapOf("Set-Cookie" to listOf("QBT_SID_8080=" + sid, "SID=" + sid))),
             QBittorrentReadOnlyRpc.Response(200, "Ok.", mapOf("Set-Cookie" to listOf(
                 "SID=$sid; path=/", "SID=secondSession01234567890; path=/")))
         )
