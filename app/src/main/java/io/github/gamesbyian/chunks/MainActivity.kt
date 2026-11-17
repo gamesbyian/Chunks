@@ -149,7 +149,10 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     // The one-shot remote Add and exact readback outlive both the Add route and
     // Activity recreation, but are cancelled when this app-owned ViewModel is
     // finally cleared. No source, account or private tracker enters SavedState.
-    val remoteAttemptScope get() = viewModelScope
+    // One app-owned Add lifetime spans Local native writes and rTorrent RPC.
+    // This never persists an attempted command across process death.
+    val addAttemptScope get() = viewModelScope
+    val remoteAttemptScope get() = addAttemptScope
 }
 
 class MainActivity : ComponentActivity() {
@@ -1454,6 +1457,7 @@ internal fun ChunksApp(
                     externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                     pendingAddState = localReviewedTorrent,
                     localAddAttemptSession = activeLocalAddAttempt,
+                    addAttemptScope = retainedAddOwner?.addAttemptScope,
                     onBack = { leaveLocal() },
                     onSeedingRules = { openTool(Section.SEEDING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
@@ -1975,6 +1979,7 @@ internal fun ChunksApp(
                     externalSourceReading = sharedTorrentReading || incomingDocumentRead != null,
                         pendingAddState = localReviewedTorrent,
                         localAddAttemptSession = activeLocalAddAttempt,
+                        addAttemptScope = retainedAddOwner?.addAttemptScope,
                         onBack = { leaveLocal() },
                         onSeedingRules = { openTool(Section.SEEDING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
