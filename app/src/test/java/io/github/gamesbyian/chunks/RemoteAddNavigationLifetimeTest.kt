@@ -117,7 +117,9 @@ class RemoteAddNavigationLifetimeTest {
                 }.getOrDefault(false)
             }
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
-            // Robolectric Compose runs its coroutine scheduler on the test-controlled UI loop.\n            // Blocking on a Java latch here prevents the launched Add from starting.\n            rule.waitUntil(15_000) { entered.count == 0L }
+            // Robolectric Compose runs its coroutine scheduler on the test-controlled UI loop.
+            // Blocking on a Java latch here prevents the launched Add from starting.
+            rule.waitUntil(15_000) { entered.count == 0L }
             rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Back to transfers"))
             rule.onNodeWithText("Back to transfers").assertIsEnabled().performClick()
             rule.waitForIdle()
