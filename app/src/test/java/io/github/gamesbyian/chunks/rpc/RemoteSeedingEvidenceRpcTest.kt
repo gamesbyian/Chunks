@@ -144,7 +144,7 @@ class RemoteSeedingEvidenceRpcTest {
     @Test fun malformedActivityAndThrottleDoNotBecomeTrustedEvidence() {
         for ((badMethod, badBody) in listOf(
             "d.is_active" to number(2),
-            "d.throttle_name" to string("bad\u0007throttle")
+            "d.throttle_name" to string("x".repeat(129))
         )) {
             Gateway { method -> 200 to when (method) {
                 "d.hash" -> string(hash)
