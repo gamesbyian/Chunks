@@ -36,6 +36,20 @@ class OpenWithFailureFingerprintTest(unittest.TestCase):
         self.assertIsNone(safe_openwith_failure(self.status(
             stack="java.lang.AssertionError: token=private")))
 
+    def test_pre_timeout_phase_is_allowlisted_but_never_forwards_causes(self):
+        self.assertEqual(
+            "stage=initial-review kind=state",
+            safe_openwith_failure(self.status(stack=(
+                "java.lang.AssertionError: openwith staged failure: "
+                "stage=initial-review kind=state"))),
+        )
+        self.assertIsNone(safe_openwith_failure(self.status(stack=(
+            "java.lang.AssertionError: openwith staged failure: "
+            "stage=private-uri kind=state"))))
+        self.assertIsNone(safe_openwith_failure(self.status(stack=(
+            "java.lang.AssertionError: openwith staged failure: "
+            "stage=launch kind=other uri=content://secrets"))))
+
     def test_only_failed_instrumentation_is_reported(self):
         self.assertIsNone(safe_openwith_failure(self.status(code="0")))
         self.assertIsNone(safe_openwith_failure(self.status(code="-1")))
