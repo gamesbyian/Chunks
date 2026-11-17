@@ -2148,6 +2148,113 @@ internal fun LocalEngineScreen(
             )
         }
 
+        snapshotBatchRecoveryDraft?.let { draft ->
+            val eligible = hasConfirmedLocalInventory && !inventoryStale && !busy &&
+                !sourceReading && pending == null && place != null &&
+                draft.frozenHashes == transfers.map { it.infoHash } &&
+                LocalScreenReader.revision.snapshot() == draft.frozenGeneration
+            LocalSnapshotBatchRecoveryReview(
+                draft = draft,
+                selectedPlace = place?.title ?: "No previously reviewed local destination",
+                eligible = eligible,
+                onCancel = {
+                    if (snapshotBatchRecoveryDraft === draft)
+                        snapshotBatchRecoveryDraft = null
+                },
+                onConfirm = {
+                    val selected = place
+                    if (!eligible || selected == null ||
+                        sourceReadJob != null || snapshotBatchRecoveryDraft !== draft) {
+                        noteProblem("The Local inventory or selected destination changed. " +
+                            "Refresh the snapshot comparison before checking again.")
+                    } else {
+                        snapshotBatchRecoveryDraft = null
+                        scope.launch {
+                            val read = beginSourceRead()
+                            try {
+                                val report = withContext(Dispatchers.IO) {
+                                    val folder = selected.root.takeIf {
+                                        it.isDirectory &&
+                                            !java.nio.file.Files.isSymbolicLink(it.toPath())
+                                    }
+                                    if (folder == null) {
+                                        SnapshotLocalBatchRecoveryV1.Report(
+                                            emptyList(),
+                                            SnapshotLocalBatchRecoveryV1.Blocker.DESTINATION_UNAVAILABLE)
+                                    } else {
+                                        try {
+                                            val targetIdentity = LocalSnapshotRestoreFingerprint.of(
+                                                "chunks-local-v1:" + context.filesDir.canonicalPath)
+                                            val placeIdentity = LocalSnapshotRestoreFingerprint.of(
+                                                "chunks-place-v1:" + folder.canonicalPath)
+                                            SnapshotLocalBatchRecoveryV1.inspect(
+                                                hashes = draft.hashes,
+                                                archiveFingerprint = draft.archiveFingerprint,
+                                                targetFingerprint = targetIdentity,
+                                                chosenPlace = folder,
+                                                verifiedPlaceFingerprint = placeIdentity,
+                                                frozenTargetHashes = draft.frozenHashes,
+                                                store = AndroidSnapshotRestoreJournalStore(context),
+                                                target = SnapshotRestoreOnceV1.localEngine(
+                                                    LocalEngineHolder.get(context)),
+                                                mayContinue = { read.isActive }
+                                            )
+                                        } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                            throw cancel
+                                        } catch (_: Exception) {
+                                            SnapshotLocalBatchRecoveryV1.Report(
+                                                emptyList(),
+                                                SnapshotLocalBatchRecoveryV1.Blocker.INVALID_REVIEW)
+                                        }
+                                    }
+                                }
+                                if (sourceReadJob !== read) return@launch
+                                message = if (!report.completed) {
+                                    val explanation = when (report.blocker) {
+                                        SnapshotLocalBatchRecoveryV1.Blocker.DESTINATION_UNAVAILABLE ->
+                                            "the original local folder is unavailable"
+                                        SnapshotLocalBatchRecoveryV1.Blocker.TARGET_CHANGED ->
+                                            "the Local inventory changed during the check"
+                                        SnapshotLocalBatchRecoveryV1.Blocker.CANCELLED ->
+                                            "the check was interrupted"
+                                        else -> "the saved archive or review identity did not match"
+                                    }
+                                    "Previous restores could not be confirmed because " +
+                                        explanation + ". Nothing was added or retried. " +
+                                        "Refresh the snapshot comparison and check again."
+                                } else {
+                                    val unresolvedHash = report.items.firstOrNull {
+                                        it.state in setOf(
+                                            SnapshotLocalBatchRecoveryV1.State.UNRESOLVED,
+                                            SnapshotLocalBatchRecoveryV1.State.JOURNAL_UNAVAILABLE,
+                                            SnapshotLocalBatchRecoveryV1.State.DIFFERENT_REVIEWED_PLACE)
+                                    }?.infoHashV1?.take(12)
+                                    "Previous stopped restore check: " +
+                                        "${report.verifiedCount} confirmed at this folder; " +
+                                        "${report.unresolvedCount} unresolved or unavailable journals; " +
+                                        "${report.reviewOnlyCount} review-only records." +
+                                        (unresolvedHash?.let {
+                                            " First unresolved infohash: " + it + "."
+                                        } ?: "") +
+                                        " No torrent Add, Start or Stop was sent. " +
+                                        "Unresolved attempts require separate review; " +
+                                        "none was retried."
+                                }
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                throw cancel
+                            } catch (_: Exception) {
+                                if (sourceReadJob === read)
+                                    noteProblem("The previous batch check could not complete. " +
+                                        "Nothing was added or retried.")
+                            } finally {
+                                if (sourceReadJob === read) sourceReadJob = null
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
         } // Add presentation
         if (pane == LocalPane.TRANSFERS) {
         moveServer?.let { server ->
