@@ -7,6 +7,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.DocumentsContract
 import android.util.Base64
+import androidx.lifecycle.Lifecycle
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -211,18 +212,18 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
                 }
                 stage("original-removed")
             }
-            // Teardown is test infrastructure, not the journey under test. Four runs
-            // passed every stage above, then ActivityScenario.close() found its
-            // MainActivity PAUSED under some other activity. Record what is on top,
-            // attempt the close, and report its outcome as a separate stage.
-            val top = runCatching {
-                instrumentation.uiAutomation.executeShellCommand("dumpsys activity activities").use { fd ->
-                    android.os.ParcelFileDescriptor.AutoCloseInputStream(fd).bufferedReader().readLines()
-                }.filter { it.contains("topResumedActivity") || it.contains("ResumedActivity:") }
-                    .joinToString(" | ") { it.trim() }.take(400)
-            }.getOrDefault("unavailable")
-            stage("teardown-top=" + top)
-            stage("teardown-close=" + runCatching { scenario.close() }.fold({ "destroyed" }, { it.javaClass.simpleName }))
+            // The final content/engine assertions below do not depend on
+            // further UI. Close the fixture Activity itself on its UI thread.
+            // ActivityScenario.close() has previously ended the attached
+            // instrumentation process on singleTask task reentry even after
+            // the remote mutation/file assertions passed. Do not use that
+            // redundant harness task-close operation; prove DESTROYED instead.
+            stage("fixture-finish-requested")
+            scenario.onActivity { activity -> activity.finish() }
+            waitFor("fixture destroyed after verified journey", 20_000) {
+                scenario.state == Lifecycle.State.DESTROYED
+            }
+            stage("fixture-destroyed")
             assertTrue("The confirmed original is gone", !stillReadable(document))
             assertTrue("Unrelated documents are untouched", stillReadable(sibling))
             assertEquals("The archived copy stays", 1, archived().size)
