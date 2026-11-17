@@ -120,12 +120,12 @@ class RemoteDeleteDataInstalledInstrumentedTest {
             }
             rule.onNodeWithTag(ChunksSemantics.CONNECTION_VIEW_TRANSFERS).performScrollTo().performClick()
             waitFor("canonical server-scoped Transfers", 60_000) {
-                visible("Search names or hashes")
+                visible("Search names, aliases, folders or hashes")
             }
             stage("connected")
             rule.onNode(hasScrollToIndexAction())
-                .performScrollToNode(hasText("Search names or hashes"))
-            rule.onNodeWithText("Search names or hashes").performTextReplacement(hash)
+                .performScrollToNode(hasText("Search names, aliases, folders or hashes"))
+            rule.onNodeWithText("Search names, aliases, folders or hashes").performTextReplacement(hash)
             val selected = before.single { it.hash.equals(hash, ignoreCase = true) }
             val exactRow = hasContentDescription("Details for ${selected.name} on", substring = true)
             waitFor("exact remote compact row in canonical Transfers", 60_000) {
