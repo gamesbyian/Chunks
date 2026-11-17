@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -39,7 +40,8 @@ internal fun ClearableTransferSearchField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    semanticTag: String? = null
 ) {
     val fieldFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
@@ -85,7 +87,9 @@ internal fun ClearableTransferSearchField(
                         }
                     }
                 } else null,
-                modifier = Modifier.fillMaxWidth().focusRequester(fieldFocus)
+                modifier = Modifier.fillMaxWidth()
+                    .then(semanticTag?.let { Modifier.testTag(it) } ?: Modifier)
+                    .focusRequester(fieldFocus)
             )
         }
     }

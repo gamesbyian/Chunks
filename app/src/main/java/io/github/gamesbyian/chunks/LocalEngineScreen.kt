@@ -300,6 +300,9 @@ internal fun LocalEngineScreen(
     onRemoteSnapshot: (() -> Unit)? = null,
     /** Opens the existing device Add review, without submitting or choosing Place. */
     onOpenAdd: (() -> Unit)? = null,
+    /** Snapshot recovery only: open local review without rebinding a remote
+     * .torrent choice or replacing the frozen snapshot restore draft. */
+    onShowLocalSnapshotReview: (() -> Unit)? = null,
     /** Opens the app-wide Options destination without changing an Add draft. */
     onOpenOptions: (() -> Unit)? = null,
     initialMagnet: String? = null,
@@ -1961,26 +1964,43 @@ internal fun LocalEngineScreen(
                         performLocalMutation {
                             val result = withContext(Dispatchers.IO) {
                                 try {
-                                    val folder = LocalDownloadPlaces.materialize(selected)
+                                    // Checking an interrupted restore must not
+                                    // lazily create directories or write-probe
+                                    // the destination. Only the explicit Add
+                                    // journey may materialize a Place.
+                                    val folder = (if (draft.recoveryOnly) {
+                                        selected.root.takeIf { it.isDirectory &&
+                                            !java.nio.file.Files.isSymbolicLink(it.toPath()) }
+                                    } else LocalDownloadPlaces.materialize(selected))
                                         ?: return@withContext SnapshotRestoreOnceV1.Outcome.REFUSED
                                     val targetIdentity = LocalSnapshotRestoreFingerprint.of(
                                         "chunks-local-v1:" + context.filesDir.canonicalPath)
                                     val placeIdentity = LocalSnapshotRestoreFingerprint.of(
                                         "chunks-place-v1:" + folder.canonicalPath)
-                                    val journal = SnapshotRestoreJournalV1.open(
-                                        AndroidSnapshotRestoreJournalStore(context),
-                                        SnapshotRestoreOnceV1.itemArchiveFingerprint(
-                                            draft.archiveFingerprint, draft.original.infoHashV1),
-                                        targetIdentity, listOf(draft.original.infoHashV1))
-                                    SnapshotRestoreOnceV1.execute(
+                                    val store = AndroidSnapshotRestoreJournalStore(context)
+                                    val itemArchive = SnapshotRestoreOnceV1.itemArchiveFingerprint(
+                                        draft.archiveFingerprint, draft.original.infoHashV1)
+                                    val hashes = listOf(draft.original.infoHashV1)
+                                    // A recovery check must NEVER create a
+                                    // missing new REVIEW journal or re-enter Add.
+                                    val journal = if (draft.recoveryOnly)
+                                        SnapshotRestoreJournalV1.openExisting(
+                                            store, itemArchive, targetIdentity, hashes)
+                                    else SnapshotRestoreJournalV1.open(
+                                        store, itemArchive, targetIdentity, hashes)
+                                    val target = SnapshotRestoreOnceV1.localEngine(
+                                        LocalEngineHolder.get(context))
+                                    if (draft.recoveryOnly) SnapshotRestoreOnceV1.reconcilePending(
+                                        journal, draft.original.infoHashV1, folder,
+                                        placeIdentity, target)
+                                    else SnapshotRestoreOnceV1.execute(
                                         journal = journal,
                                         reviewed = draft.original,
                                         chosenPlace = folder,
                                         verifiedPlaceFingerprint = placeIdentity,
                                         frozenHashes = draft.frozenHashes,
                                         userApproved = true,
-                                        target = SnapshotRestoreOnceV1.localEngine(
-                                            LocalEngineHolder.get(context))
+                                        target = target
                                     )
                                 } catch (cancel: kotlinx.coroutines.CancellationException) {
                                     throw cancel
@@ -1988,7 +2008,21 @@ internal fun LocalEngineScreen(
                                     SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED
                                 }
                             }
-                            message = when (result) {
+                            message = if (draft.recoveryOnly) when (result) {
+                                SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED ->
+                                    "The previous stopped restore is confirmed at the selected " +
+                                    "local destination. No Add, Start or payload transfer occurred."
+                                SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED ->
+                                    "No matching pending restore journal was found for this " +
+                                    "snapshot and local destination. No transfer was changed."
+                                SnapshotRestoreOnceV1.Outcome.REFUSED ->
+                                    "That local folder is unavailable. Choose the previously " +
+                                    "reviewed destination before checking again."
+                                else ->
+                                    "The previous restore remains unconfirmed. The transfer " +
+                                    "must be present, stopped and at the reviewed destination. " +
+                                    "No Add or Start was repeated."
+                            } else when (result) {
                                 SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED ->
                                     "Snapshot definition restored on this device, confirmed stopped. " +
                                     "No downloaded data was moved. Press Start separately."
@@ -2923,7 +2957,59 @@ internal fun LocalEngineScreen(
                             pending = null
                             message = "Review the new local destination and explicitly confirm " +
                                 "the stopped restore. No torrent has been added."
-                            scrollState.animateScrollTo(0)
+                            // Restore review lives on the Add pane while the
+                            // snapshot comparison lives in Options. Bring the
+                            // review into view instead of leaving it invisible.
+                            val showReview = onShowLocalSnapshotReview ?: onOpenAdd
+                            if (showReview != null) showReview.invoke()
+                            else scrollState.animateScrollTo(0)
+                        } else {
+                            noteProblem("The comparison changed before restore review. Reopen the snapshot.")
+                        }
+                    } catch (cancel: kotlinx.coroutines.CancellationException) {
+                        throw cancel
+                    } catch (_: Exception) {
+                        if (sourceReadJob === read)
+                            noteProblem("The verified original snapshot definition could not be prepared.")
+                    } finally {
+                        if (sourceReadJob === read) sourceReadJob = null
+                    }
+                }
+            },
+            onReviewPreviousRestore = { verified, entry, frozen, generation ->
+                check(!busy && sourceReadJob == null) { "Another source review is in progress" }
+                initialTorrentUri?.let(onTorrentConsumed)
+                // Assemble a canonical source fingerprint off the Compose lane.
+                // No journal mutation or engine Add happens at this stage.
+                val request = ++snapshotPreparationRevision
+                scope.launch {
+                    val read = beginSourceRead()
+                    try {
+                        androidx.compose.runtime.snapshotFlow { busy }.first { !it }
+                        val draft = withContext(Dispatchers.IO) {
+                            val original = SnapshotVerifiedTorrentDocumentV1.prepare(
+                                verified, entry.infoHashV1)
+                            val exactArchive = SnapshotManifestV1.encode(
+                                verified.manifest, verified.metainfoByHash)
+                            LocalSnapshotStoppedRestoreDraft(
+                                original,
+                                LocalSnapshotRestoreFingerprint.of(exactArchive),
+                                frozen.toList(), generation, recoveryOnly = true)
+                        }
+                        if (sourceReadJob !== read) return@launch
+                        if (request == snapshotPreparationRevision &&
+                            LocalScreenReader.revision.snapshot() == generation &&
+                            !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotRestoreDraft = draft
+                            pending = null
+                            message = "Choose the original local destination to check the " +
+                                "previous restore journal. This review never repeats Add."
+                            // Restore review lives on the Add pane while the
+                            // snapshot comparison lives in Options. Bring the
+                            // review into view instead of leaving it invisible.
+                            val showReview = onShowLocalSnapshotReview ?: onOpenAdd
+                            if (showReview != null) showReview.invoke()
+                            else scrollState.animateScrollTo(0)
                         } else {
                             noteProblem("The comparison changed before restore review. Reopen the snapshot.")
                         }

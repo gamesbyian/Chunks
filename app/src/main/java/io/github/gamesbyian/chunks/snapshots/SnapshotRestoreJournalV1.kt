@@ -189,6 +189,28 @@ internal class SnapshotRestoreJournalV1 private constructor(
             archiveFingerprint: String,
             targetFingerprint: String,
             proposedMissingHashes: Collection<String>
+        ): SnapshotRestoreJournalV1 =
+            openInternal(store, archiveFingerprint, targetFingerprint, proposedMissingHashes, false)
+
+        /**
+         * For read-only recovery only. A missing or corrupt journal is an
+         * unverified earlier attempt, NOT permission to initialize a new
+         * journal or to submit any torrent Add.
+         */
+        fun openExisting(
+            store: Store,
+            archiveFingerprint: String,
+            targetFingerprint: String,
+            proposedMissingHashes: Collection<String>
+        ): SnapshotRestoreJournalV1 =
+            openInternal(store, archiveFingerprint, targetFingerprint, proposedMissingHashes, true)
+
+        private fun openInternal(
+            store: Store,
+            archiveFingerprint: String,
+            targetFingerprint: String,
+            proposedMissingHashes: Collection<String>,
+            requireExisting: Boolean
         ): SnapshotRestoreJournalV1 {
             checkFingerprint(archiveFingerprint)
             checkFingerprint(targetFingerprint)
@@ -203,6 +225,8 @@ internal class SnapshotRestoreJournalV1 private constructor(
                     .toByteArray(StandardCharsets.US_ASCII)
             )
             val previous = store.read(key)
+            if (requireExisting && previous == null)
+                throw IOException("No earlier restore journal exists for this exact source and target")
             val state = if (previous == null) {
                 State(archiveFingerprint, targetFingerprint,
                     hashes.map { Entry(it, Phase.REVIEW) })

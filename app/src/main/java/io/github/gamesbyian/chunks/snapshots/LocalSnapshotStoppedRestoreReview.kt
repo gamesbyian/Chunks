@@ -23,7 +23,9 @@ internal class LocalSnapshotStoppedRestoreDraft(
     val original: SnapshotVerifiedTorrentDocumentV1.Prepared,
     val archiveFingerprint: String,
     val frozenHashes: List<String>,
-    val frozenGeneration: Long
+    val frozenGeneration: Long,
+    /** Existing target hash: check a prior journal, never submit another Add. */
+    val recoveryOnly: Boolean = false
 )
 
 /** Hash only. No raw historical or new Place paths in journal persistence. */
@@ -46,24 +48,37 @@ internal fun LocalSnapshotStoppedRestoreReview(
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Confirm one stopped snapshot restore",
+            Text(if (draft.recoveryOnly) "Check previous stopped restore"
+                else "Confirm one stopped snapshot restore",
                 style = MaterialTheme.typography.titleMedium)
             Text("Original: " + preview.name)
             Text("Exact infohash: " + preview.infoHashV1,
                 style = MaterialTheme.typography.bodySmall)
             Text("New local destination: " + selectedPlace)
-            Text("This adds this original torrent definition to the local device engine " +
-                "stopped, without transferring any downloaded files from the old " +
-                "device or server. No historical paths are reused. Existing " +
-                "transfers are never overwritten or removed. The original tracker " +
-                "addresses may contain private passkeys; Chunks will not start " +
-                "contacting peers or trackers until you press Start separately.",
-                style = MaterialTheme.typography.bodySmall)
-            Text("A durable journal records an attempted Add before submission. " +
-                "If confirmation or the app is interrupted, Chunks will require " +
-                "a fresh inventory and explicit recovery review, never an " +
-                "automatic second Add.",
-                style = MaterialTheme.typography.bodySmall)
+            if (draft.recoveryOnly) {
+                Text("Checks the previous restore journal against this local device's " +
+                    "current transfer list, stopped state and selected folder. " +
+                    "This action never adds, starts, stops, removes or retries a transfer.",
+                    style = MaterialTheme.typography.bodySmall)
+                Text("Choose the same local destination that was reviewed for the " +
+                    "original attempt. A matching torrent hash alone cannot " +
+                    "confirm the restore. If the journal or folder differs, " +
+                    "the attempt remains unresolved.",
+                    style = MaterialTheme.typography.bodySmall)
+            } else {
+                Text("This adds this original torrent definition to the local device engine " +
+                    "stopped, without transferring any downloaded files from the old " +
+                    "device or server. No historical paths are reused. Existing " +
+                    "transfers are never overwritten or removed. The original tracker " +
+                    "addresses may contain private passkeys; Chunks will not start " +
+                    "contacting peers or trackers until you press Start separately.",
+                    style = MaterialTheme.typography.bodySmall)
+                Text("A durable journal records an attempted Add before submission. " +
+                    "If confirmation or the app is interrupted, Chunks will require " +
+                    "a fresh inventory and explicit recovery review, never an " +
+                    "automatic second Add.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
             if (!eligible) {
                 Text("The local inventory or selected destination is unavailable " +
                     "or has changed. Refresh and recompare before proceeding.",
@@ -71,7 +86,8 @@ internal fun LocalSnapshotStoppedRestoreReview(
             }
             Button(onClick = onConfirm, enabled = eligible,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-                Text("Confirm restore stopped")
+                Text(if (draft.recoveryOnly) "Check previous restore (read-only)"
+                    else "Confirm restore stopped")
             }
             OutlinedButton(onClick = onCancel,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

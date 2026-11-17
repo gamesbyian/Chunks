@@ -181,6 +181,69 @@ class SnapshotRestoreOnceV1Test {
         assertEquals(1, fake.additions)
     }
 
+    @Test fun interruptedRestoreCanBeConfirmedReadOnlyAfterRestartWithoutSecondAdd() {
+        val source = original()
+        val folder = temp.newFolder("confirmed-original-place")
+        val store = Store()
+        val journal = SnapshotRestoreJournalV1.open(store, archive, targetId,
+            listOf(source.infoHashV1))
+        val fake = FakeTarget().apply { throwOnWrite = true }
+        assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
+            SnapshotRestoreOnceV1.execute(journal, source, folder, place,
+                emptyList(), true, fake))
+        assertEquals(1, fake.writes)
+        // A real native Add could have registered the job before its caller
+        // lost the return. Reopening the journal cannot replay it.
+        fake.hashes = listOf(source.infoHashV1)
+        fake.observedPlace = folder
+        val reopened = SnapshotRestoreJournalV1.open(store, archive, targetId,
+            listOf(source.infoHashV1))
+        assertEquals(SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED,
+            SnapshotRestoreOnceV1.reconcilePending(reopened, source.infoHashV1,
+                folder, place, fake))
+        assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
+            reopened.entries().single().phase)
+        assertEquals(SnapshotRestoreOnceV1.Outcome.VERIFIED_PRESENT_STOPPED,
+            SnapshotRestoreOnceV1.reconcilePending(reopened, source.infoHashV1,
+                folder, place, fake))
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun recoveryRefusesWrongPlaceAndHashOnlyEvidenceWithoutSendingAdd() {
+        val source = original()
+        val folder = temp.newFolder("reviewed-place")
+        val wrongFolder = temp.newFolder("different-place")
+        val store = Store()
+        val journal = SnapshotRestoreJournalV1.open(store, archive, targetId,
+            listOf(source.infoHashV1))
+        val fake = FakeTarget().apply { throwOnWrite = true }
+        assertEquals(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED,
+            SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
+                folder, place, fake))
+        assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
+            SnapshotRestoreOnceV1.execute(journal, source, folder, place,
+                emptyList(), true, fake))
+        assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
+            SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
+                folder, place, fake))
+        fake.hashes = listOf(source.infoHashV1)
+        fake.observedPlace = wrongFolder
+        assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
+            SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
+                folder, place, fake))
+        assertEquals(SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED,
+            SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
+                wrongFolder, "d".repeat(64), fake))
+        fake.observedPlace = folder
+        fake.nowStopped = false
+        assertEquals(SnapshotRestoreOnceV1.Outcome.UNCERTAIN,
+            SnapshotRestoreOnceV1.reconcilePending(journal, source.infoHashV1,
+                folder, place, fake))
+        assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
+            journal.entries().single().phase)
+        assertEquals(1, fake.writes)
+    }
+
     @Test fun twoMissingItemsFromSameArchiveDoNotCollideInDurableJournal() {
         val original = original()
         val secondHash = "d".repeat(40)
