@@ -1,3 +1,5 @@
+> **Current owner priority (2026-11-16):** [Backend-first functional completion mandate](BACKEND-FIRST-COMPLETION.md) and [living technical capability ledger](TECHNICAL-COMPLETENESS-LEDGER.md). For broad autonomous dispatches, technical implementation/integration/real-world verification precede elective UI reorganization and polish, while safety, usability necessary to test and owner-reproduced bugs remain immediate. Preserve all approved screen designs for final coordination.
+
 > **Universal Add client parity · 2026-11-16:** [One shared Add UX, architecture, status model and acceptance plan](design/UNIVERSAL-ADD-CLIENT-PARITY.md). Initial status-projection work does not yet establish the required app-owned navigation continuity, shared form or installed real-client parity.
 
 > **Next Claude handoff (2026-11-15):** [Preserved UI implementation, settings-registry integration, CI failures, and urgent intake work](CLAUDE-NEXT-HANDOFF-2026-11-15.md). #1785 remains draft and unaccepted; #1788 registry foundation is merged. Use WORK-QUEUE for priority and current live checks for status.
