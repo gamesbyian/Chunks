@@ -17,6 +17,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -39,11 +41,10 @@ import kotlinx.coroutines.withContext
 
 /**
  * First user-facing, non-destructive snapshot slice. Covers precisely the
- * currently loaded rTorrent view, never unseen views, and explicitly exports
- * *inventory-only* hashes/names, not recoverable torrent definitions.
- *
- * Future versions must acquire proven raw metainfo before advertising actual
- * restore capability. No RPC, Add, torrent data or server filesystem mutations.
+ * current rTorrent view only. The default remains inventory-only; separate
+ * explicit consent permits independently verified original v1 .torrent
+ * definitions from a scoped read-only ruTorrent Source plugin. Never
+ * modifies a server session or copies payload bytes.
  */
 @Composable
 internal fun SnapshotInventoryExportScreen(
@@ -53,12 +54,23 @@ internal fun SnapshotInventoryExportScreen(
     stale: Boolean,
     loading: Boolean,
     onBack: () -> Unit,
+    /** Optional exact-account, read-only Source-plugin lookup. */
+    readOriginalMetainfo: (suspend (String) -> ByteArray?)? = null,
+    /** Invalidates an in-flight export if its connected remote account changes. */
+    accountStillCurrent: () -> Boolean = { true },
     /** Optional read-only comparison/restore-review panel for this server. */
     restorePanel: (@Composable () -> Unit)? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var includeHistoricalDirectories by remember { mutableStateOf(false) }
+    var includeOriginalDefinitions by remember { mutableStateOf(false) }
+    var recoveredProgress by remember { mutableIntStateOf(0) }
+    var recoveredTotal by remember { mutableIntStateOf(0) }
+    val currentRevision by rememberUpdatedState(snapshotRevision)
+    val currentView by rememberUpdatedState(view)
+    val currentReady by rememberUpdatedState(!stale && !loading)
+    val currentAccount by rememberUpdatedState(accountStillCurrent)
     var busy by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
     var resultIsVerified by remember { mutableStateOf(false) }
@@ -81,12 +93,12 @@ internal fun SnapshotInventoryExportScreen(
         OutlinedButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) {
             Text("Back to transfers")
         }
-        Text("Save transfer inventory", style = MaterialTheme.typography.headlineMedium)
+        Text("Save transfer snapshot", style = MaterialTheme.typography.headlineMedium)
         Text(
-            "This first backup format captures transfer names and exact infohashes " +
-                "from the currently loaded '$view' server view. It does NOT include " +
-                "downloaded files, .torrent definitions or working magnets, so " +
-                "it cannot yet restore these transfers on a new server.",
+            "This snapshot records transfer names and exact infohashes from the " +
+                "currently loaded '$view' server view. You can explicitly request " +
+                "verified original .torrent definitions if the server supports them. " +
+                "Downloaded files, payload bytes and old server settings are never included.",
             style = MaterialTheme.typography.bodyLarge
         )
         if (stale || loading || snapshotRevision <= 0) {
@@ -101,7 +113,7 @@ internal fun SnapshotInventoryExportScreen(
                 "Observed: ${captured.sourceCount} transfers in '$view'. " +
                     "Recorded: ${captured.inventoriedCount}. " +
                     "Omitted: ${captured.omitted.size}. " +
-                    "Verified restorable: 0.",
+                    "Recoverable before optional Source reads: 0.",
                 style = MaterialTheme.typography.titleMedium
             )
             Text(
@@ -136,6 +148,35 @@ internal fun SnapshotInventoryExportScreen(
                     "automatically sent to another server.",
                 style = MaterialTheme.typography.bodySmall
             )
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(
+                    value = includeOriginalDefinitions,
+                    enabled = !busy && readOriginalMetainfo != null,
+                    role = Role.Checkbox,
+                    onValueChange = { includeOriginalDefinitions = it }
+                ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = includeOriginalDefinitions,
+                    enabled = readOriginalMetainfo != null,
+                    onCheckedChange = null
+                )
+                Text("Include verified original .torrent definitions when available",
+                    modifier = Modifier.padding(start = 8.dp))
+            }
+            Text(
+                "Original torrent definitions can contain private tracker passkeys " +
+                    "and sensitive announce URLs. Enabling this explicitly requests " +
+                    "them from this server without altering its transfers. " +
+                    "Unsupported or missing originals remain inventory-only. " +
+                    "Keep the shared snapshot private.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            if (readOriginalMetainfo == null) {
+                Text("Original-source retrieval is unavailable for this server.",
+                    style = MaterialTheme.typography.bodySmall)
+            }
         } else {
             Text(
                 "Cannot capture this inventory: " +
@@ -151,49 +192,79 @@ internal fun SnapshotInventoryExportScreen(
         )
         Button(
             enabled = !busy && !loading && !stale && snapshotRevision > 0 &&
-                captured != null && captured.inventoriedCount > 0,
+                captured != null && captured.inventoriedCount > 0 &&
+                (!includeOriginalDefinitions || readOriginalMetainfo != null),
             onClick = {
-                val archive = runCatching { captured?.toArchive() }
-                val bytes = archive.getOrNull()
-                if (bytes == null) {
-                    resultIsVerified = false
-                    result = "Could not encode this inventory: " +
-                        (archive.exceptionOrNull()?.message ?: "Unknown error")
-                } else {
-                    busy = true
-                    result = null
-                    resultIsVerified = false
-                    val revision = snapshotRevision
-                    val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
-                        .withZone(ZoneOffset.UTC).format(Instant.now())
-                    scope.launch {
-                        try {
-                            val uri = withContext(Dispatchers.IO) {
-                                OwnedDiagnosticExportProvider.publish(context,
-                                    "chunks-inventory-${stamp}.chunksnap", bytes)
-                            }
-                            OwnedDiagnosticShare.openChooser(context, uri,
-                                "application/octet-stream", "inventory snapshot")
-                            result = "A byte-verified, read-only snapshot is ready to share for queue revision " +
-                                revision + ". Nothing has been saved by the receiving app yet. " +
-                                "This inventory does not contain restorable torrent definitions or payload bytes."
-                            resultIsVerified = true
-                        } catch (cancel: CancellationException) {
-                            result = "Snapshot handoff was interrupted; no external document was modified by Chunks."
-                            throw cancel
-                        } catch (failure: Exception) {
-                            result = "Could not prepare or share the snapshot: " +
-                                (failure.message ?: "Private export unavailable") +
-                                ". Chunks did not write a picker-returned document."
-                        } finally {
-                            busy = false
+                val capture = captured ?: return@Button
+                val reader = readOriginalMetainfo
+                val originals = includeOriginalDefinitions
+                val revision = snapshotRevision
+                val observedView = view
+                val stillCurrent = {
+                    currentReady && currentRevision == revision &&
+                        currentView == observedView && currentAccount()
+                }
+                busy = true
+                recoveredProgress = 0
+                recoveredTotal = if (originals) capture.manifest.items.size else 0
+                result = null
+                resultIsVerified = false
+                val stamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")
+                    .withZone(ZoneOffset.UTC).format(Instant.now())
+                scope.launch {
+                    try {
+                        check(stillCurrent()) { "The connected server inventory changed." }
+                        val enriched = if (originals && reader != null)
+                            SnapshotRemoteMetainfoCaptureV1.collect(
+                                capture, reader, stillCurrent,
+                                onProgress = { done, total ->
+                                    recoveredProgress = done
+                                    recoveredTotal = total
+                                })
+                            else null
+                        val bytes = enriched?.archive ?: capture.toArchive()
+                        check(stillCurrent()) { "The connected server inventory changed." }
+                        val uri = withContext(Dispatchers.IO) {
+                            OwnedDiagnosticExportProvider.publish(context,
+                                "chunks-snapshot-${stamp}.chunksnap", bytes)
                         }
+                        check(stillCurrent()) { "The connected server inventory changed." }
+                        OwnedDiagnosticShare.openChooser(context, uri,
+                            "application/octet-stream", "transfer snapshot")
+                        result = if (enriched != null)
+                            "A verified, read-only snapshot is ready to share for queue revision " +
+                                revision + ". Verified original definitions: " + enriched.recovered +
+                                "; inventory-only after Source lookup: " +
+                                (enriched.unavailable + enriched.sizeLimited) +
+                                " (unavailable: " + enriched.unavailable +
+                                "; size-limited: " + enriched.sizeLimited +
+                                "). The receiving app has not saved it yet. " +
+                                "Original tracker data may be sensitive. No payload bytes are included."
+                            else
+                            "A byte-verified, read-only inventory snapshot is ready to share for " +
+                                "queue revision " + revision +
+                                ". Nothing has been saved by the receiving app yet. " +
+                                "This inventory contains no restorable definitions or payload bytes."
+                        resultIsVerified = true
+                    } catch (cancel: CancellationException) {
+                        result = "Snapshot handoff was interrupted; no external document was modified by Chunks."
+                        throw cancel
+                    } catch (_: Exception) {
+                        result = "Could not verify and share this snapshot. Refresh the exact " +
+                            "server inventory and review the request again. No server transfer was changed."
+                    } finally {
+                        busy = false
                     }
                 }
             },
             modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
         ) {
-            Text(if (busy) "Preparing snapshot…" else "Share inventory snapshot")
+            Text(if (busy) "Preparing snapshot…" else
+                if (includeOriginalDefinitions) "Share snapshot with verified originals"
+                else "Share inventory snapshot")
+        }
+        if (busy && recoveredTotal > 0) {
+            Text("Checking original definitions: ${recoveredProgress} of ${recoveredTotal}.")
         }
 
         if (result != null) {
