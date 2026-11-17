@@ -64,16 +64,15 @@
                 <data android:scheme="content" android:mimeType="application/x-torrent" />
                 <data android:scheme="content" android:mimeType="application/vnd.bittorrent" />
             </intent-filter>
-            <!-- Some Files providers publish a real .torrent as generic
-                 binary. Never claim every octet-stream: restrict VIEW to a
-                 content URI with a .torrent path. Android 12+ supports the
-                 exact suffix; pathPattern also covers supported older APIs. -->
+            <!-- Android cannot inspect provider DISPLAY_NAME while resolving VIEW.
+                 Opaque content:// document IDs rarely contain ".torrent".
+                 Offer Chunks for generic-binary content URIs; Add review still
+                 rejects non-torrent bytes before any engine or server write.
+                 This broad MIME target is an intentional chooser tradeoff. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
-                <data android:scheme="content" android:host="*"
-                    android:mimeType="application/octet-stream"
-                    android:pathPattern=".*\\.torrent" android:pathSuffix=".torrent" />
+                <data android:scheme="content" android:mimeType="application/octet-stream" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -81,6 +80,9 @@
                 <data android:mimeType="application/x-bittorrent" />
                 <data android:mimeType="application/x-torrent" />
                 <data android:mimeType="application/vnd.bittorrent" />
+                <!-- Generic-binary SEND still requires exactly one content URI,
+                     validated by the bounded metainfo parser at Add review. -->
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
         <!-- Share any single file to "Create torrent". A separate target so
