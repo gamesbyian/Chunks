@@ -77,13 +77,17 @@ internal class SnapshotRestoreJournalV1 private constructor(
     }
 
     /**
-     * Only a complete, fresh inventory of the SAME target can verify exact
-     * presence. Missing results leave in-flight entries uncertain indefinitely.
-     * Neither this call nor opening the journal issues a retry.
+     * A complete inventory proves only identity presence, not a successful
+     * stopped restore at the user's reviewed Place. Callers MUST supply exact
+     * hashes for which they independently observed both the stopped state and
+     * the original reviewed Place in this same target. A hash-only list can
+     * never upgrade an in-flight Add to VERIFIED, even after process death.
+     * Neither this readback nor opening the journal issues a retry.
      */
     fun reconcileWithCompleteTarget(
         targetObservedHashes: Collection<String>,
-        targetInventoryComplete: Boolean
+        targetInventoryComplete: Boolean,
+        stoppedAtReviewedPlaceHashes: Collection<String>
     ) {
         require(targetInventoryComplete) { "Cannot reconcile against partial inventory" }
         require(targetObservedHashes.size <= 20_000) { "Target inventory is unbounded" }
@@ -93,8 +97,20 @@ internal class SnapshotRestoreJournalV1 private constructor(
             "Invalid or duplicated target v1 identities"
         }
         val observed = normalized.toSet()
+        require(stoppedAtReviewedPlaceHashes.size <= 20_000) {
+            "Stopped-place evidence is unbounded"
+        }
+        val stoppedAtReviewedPlace = stoppedAtReviewedPlaceHashes.map {
+            it.lowercase(Locale.ROOT)
+        }
+        require(stoppedAtReviewedPlace.all { TARGET_HASH.matches(it) } &&
+            stoppedAtReviewedPlace.size == stoppedAtReviewedPlace.toSet().size &&
+            observed.containsAll(stoppedAtReviewedPlace)) {
+            "Stopped-place proof must belong to this complete target inventory"
+        }
+        val proven = stoppedAtReviewedPlace.toSet()
         val changed = state.entries.map {
-            if (it.infoHashV1 in observed &&
+            if (it.infoHashV1 in observed && it.infoHashV1 in proven &&
                 it.phase in setOf(Phase.IN_FLIGHT, Phase.ACK_UNVERIFIED)) {
                 it.copy(phase = Phase.VERIFIED)
             } else it

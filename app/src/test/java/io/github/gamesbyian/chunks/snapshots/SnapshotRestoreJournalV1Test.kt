@@ -39,7 +39,7 @@ class SnapshotRestoreJournalV1Test {
         journal = open(store)
         assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT, journal.entries()[0].phase)
         reject { journal.beforeAdd(one, place) }
-        journal.reconcileWithCompleteTarget(emptyList(), true)
+        journal.reconcileWithCompleteTarget(emptyList(), true, emptyList())
         assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT, open(store).entries()[0].phase)
         reject { journal.explicitlyRetryAfterAbsence(one, emptyList(), true, false) }
         reject { journal.explicitlyRetryAfterAbsence(one, listOf(one), true, true) }
@@ -49,7 +49,7 @@ class SnapshotRestoreJournalV1Test {
         reject { journal.beforeAdd(one, alternatePlace) }
         journal.beforeAdd(one, place)
         journal.acknowledged(one)
-        journal.reconcileWithCompleteTarget(listOf(one), true)
+        journal.reconcileWithCompleteTarget(listOf(one), true, listOf(one))
         assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED, open(store).entries()[0].phase)
         reject { journal.beforeAdd(one, place) }
         reject { journal.explicitlyRetryAfterAbsence(one, emptyList(), true, true) }
@@ -96,17 +96,37 @@ class SnapshotRestoreJournalV1Test {
         val journal = open(store)
         journal.prepare(one, place)
         journal.beforeAdd(one, place)
-        reject { journal.reconcileWithCompleteTarget(listOf(one), false) }
-        reject { journal.reconcileWithCompleteTarget(listOf("bad"), true) }
-        reject { journal.reconcileWithCompleteTarget(listOf(one, one.uppercase()), true) }
+        reject { journal.reconcileWithCompleteTarget(listOf(one), false, emptyList()) }
+        reject { journal.reconcileWithCompleteTarget(listOf("bad"), true, emptyList()) }
+        reject { journal.reconcileWithCompleteTarget(listOf(one, one.uppercase()), true, emptyList()) }
         assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
             journal.entries()[0].phase)
-        journal.reconcileWithCompleteTarget(listOf(two), true)
+        journal.reconcileWithCompleteTarget(listOf(two), true, emptyList())
         assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT,
             journal.entries()[0].phase)
-        journal.reconcileWithCompleteTarget(listOf(one.uppercase()), true)
+        // A matching hash from another Add is NOT evidence of a stopped
+        // restore to the selected destination. Preserve the uncertain ticket.
+        journal.reconcileWithCompleteTarget(listOf(one.uppercase()), true, emptyList())
+        assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT, journal.entries()[0].phase)
+        reject { journal.reconcileWithCompleteTarget(listOf(two), true, listOf(one)) }
+        reject { journal.reconcileWithCompleteTarget(listOf(one), true, listOf("bad")) }
+        journal.reconcileWithCompleteTarget(listOf(one.uppercase()), true, listOf(one.uppercase()))
         assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
             journal.entries()[0].phase)
+    }
+
+    @Test fun stoppedPlaceProofIsSpecificToEachOutstandingJournalEntry() {
+        val store = MemoryStore()
+        val journal = open(store)
+        journal.prepare(one, place)
+        journal.prepare(two, alternatePlace)
+        journal.beforeAdd(one, place)
+        journal.beforeAdd(two, alternatePlace)
+        journal.reconcileWithCompleteTarget(listOf(one, two), true, listOf(one))
+        assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED, journal.entries()[0].phase)
+        assertEquals(SnapshotRestoreJournalV1.Phase.IN_FLIGHT, journal.entries()[1].phase)
+        journal.reconcileWithCompleteTarget(listOf(one, two), true, listOf(two))
+        assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED, journal.entries()[1].phase)
     }
 
     @Test fun aStaleScreenCannotRollBackAnotherScreensJournal() {
