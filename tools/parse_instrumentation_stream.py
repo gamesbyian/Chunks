@@ -113,6 +113,15 @@ _OPENWITH_FINGERPRINT = re.compile(
     r"choice=(true|false) finishing=(true|false)$"
 )
 
+
+_OPENWITH_STAGE_FINGERPRINT = re.compile(
+    r"^java\.lang\.AssertionError: openwith staged failure: "
+    r"stage=(fixture|launch|initial-review|owner|second-source|second-intent|"
+    r"delivery|choice|final) "
+    r"kind=(timeout|assertion|security|state|other)$"
+)
+
+
 def safe_openwith_failure(text: str) -> str | None:
     fields: dict[str, str] = {}
     stack: str | None = None
@@ -133,6 +142,9 @@ def safe_openwith_failure(text: str) -> str | None:
                 if match:
                     keys = ("intent", "queued", "reviewed", "choice", "finishing")
                     return " ".join(f"{key}={value}" for key, value in zip(keys, match.groups()))
+                stage = _OPENWITH_STAGE_FINGERPRINT.fullmatch(stack)
+                if stage:
+                    return "stage=" + stage[1] + " kind=" + stage[2]
             fields = {}
             stack = None
     return None
