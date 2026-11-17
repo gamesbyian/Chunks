@@ -81,6 +81,34 @@ class InstalledOpenWithHandoffInstrumentedTest {
         }
     }
 
+    @Test fun installedSecondOpenWithReentersSameTaskAndQueuesSourceWithoutSubmitting() {
+        val originalName = "task-reentry-original.mkv"
+        val original = document(originalName)
+        val second = document("task-reentry-second.mkv")
+        ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
+            waitForReview(originalName)
+            context.startActivity(openWith(second))
+            // Distinct from the visual replacement-choice contract below:
+            // Android must deliver the second VIEW to the already-running
+            // Activity, then Chunks must hold it as an unsubmitted choice.
+            // A separate test identity identifies routing versus rendering.
+            compose.waitUntil(30_000) {
+                var acceptedIntoExistingTask = false
+                scenario.onActivity { activity ->
+                    val owner = androidx.lifecycle.ViewModelProvider(activity)[
+                        LocalAddAttemptOwner::class.java]
+                    acceptedIntoExistingTask = activity.intent?.data == second &&
+                        owner.pendingSharedDocument.value == second &&
+                        owner.session.attemptedTicket == null
+                }
+                acceptedIntoExistingTask
+            }
+            scenario.onActivity {
+                assertFalse("Queued source must not finish the current task", it.isFinishing)
+            }
+        }
+    }
+
     @Test fun installedSecondOpenWithReturnsToExistingChunksAndOffersAnExplicitSourceChoice() {
         val originalName = "installed-original-source.mkv"
         val newName = "installed-second-source.mkv"
