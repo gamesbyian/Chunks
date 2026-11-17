@@ -2050,6 +2050,85 @@ internal fun LocalEngineScreen(
             )
         }
 
+        snapshotBatchDraft?.let { draft ->
+            val eligible = hasConfirmedLocalInventory && !inventoryStale && !busy &&
+                !sourceReading && sourceReadJob == null && pending == null &&
+                place != null && draft.frozenHashes == transfers.map { it.infoHash } &&
+                LocalScreenReader.revision.snapshot() == draft.frozenGeneration
+            LocalSnapshotBatchStoppedRestoreReview(
+                draft = draft,
+                selectedPlace = place?.title ?: "No verified local download location",
+                eligible = eligible,
+                onCancel = {
+                    if (snapshotBatchDraft === draft) snapshotBatchDraft = null
+                },
+                onConfirm = {
+                    val selected = place
+                    if (selected == null || !eligible ||
+                        snapshotBatchDraft !== draft || sourceReadJob != null) {
+                        noteProblem("The local destination or transfer list changed. " +
+                            "Reopen the snapshot and review the batch again.")
+                    } else {
+                        snapshotBatchDraft = null
+                        performLocalMutation {
+                            val result = withContext(Dispatchers.IO) {
+                                try {
+                                    val folder = LocalDownloadPlaces.materialize(selected)
+                                        ?: return@withContext SnapshotLocalBatchRestoreV1.Result(
+                                            draft.originals.size, 0, null,
+                                            SnapshotRestoreOnceV1.Outcome.REFUSED)
+                                    val targetIdentity = LocalSnapshotRestoreFingerprint.of(
+                                        "chunks-local-v1:" + context.filesDir.canonicalPath)
+                                    val placeIdentity = LocalSnapshotRestoreFingerprint.of(
+                                        "chunks-place-v1:" + folder.canonicalPath)
+                                    SnapshotLocalBatchRestoreV1.execute(
+                                        reviewed = draft.originals,
+                                        archiveFingerprint = draft.archiveFingerprint,
+                                        targetFingerprint = targetIdentity,
+                                        chosenPlace = folder,
+                                        verifiedPlaceFingerprint = placeIdentity,
+                                        frozenHashes = draft.frozenHashes,
+                                        userApproved = true,
+                                        store = AndroidSnapshotRestoreJournalStore(context),
+                                        target = SnapshotRestoreOnceV1.localEngine(
+                                            LocalEngineHolder.get(context))
+                                    )
+                                } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                    throw cancel
+                                } catch (_: Exception) {
+                                    SnapshotLocalBatchRestoreV1.Result(
+                                        draft.originals.size, 0, null,
+                                        SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED)
+                                }
+                            }
+                            message = if (result.complete) {
+                                "All ${result.verified} snapshot definitions were verified " +
+                                    "on this device at the selected folder, stopped. No " +
+                                    "payload was moved. Press Start separately."
+                            } else {
+                                val why = when (result.stop) {
+                                    SnapshotRestoreOnceV1.Outcome.REFUSED ->
+                                        "the selected folder or source was refused"
+                                    SnapshotRestoreOnceV1.Outcome.STALE_TARGET ->
+                                        "the Local inventory changed"
+                                    SnapshotRestoreOnceV1.Outcome.JOURNAL_BLOCKED ->
+                                        "the durable restore journal blocked another Add"
+                                    SnapshotRestoreOnceV1.Outcome.UNCERTAIN ->
+                                        "the last Add could not be independently confirmed"
+                                    else -> "the next restore could not be verified"
+                                }
+                                "Batch stopped: ${result.verified} of ${result.total} " +
+                                    "verified stopped. Chunks halted because " + why +
+                                    ". The uncertain item may have reached the engine; " +
+                                    "no later Add was attempted. Refresh and review " +
+                                    "before taking any further action."
+                            }
+                        }
+                    }
+                }
+            )
+        }
+
         } // Add presentation
         if (pane == LocalPane.TRANSFERS) {
         moveServer?.let { server ->
