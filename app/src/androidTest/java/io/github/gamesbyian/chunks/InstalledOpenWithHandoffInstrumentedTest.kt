@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider
 import org.junit.After
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -87,6 +88,11 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val second = document("task-reentry-second.mkv")
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
             waitForReview(originalName)
+            scenario.onActivity { activity ->
+                assertNotNull("The original selected .torrent must be retained before a second Open With",
+                    androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+                        .reviewedTorrent.value)
+            }
             context.startActivity(openWith(second))
             // Distinct from the visual replacement-choice contract below:
             // Android must deliver the second VIEW to the already-running
@@ -116,6 +122,11 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val second = document(newName)
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
             waitForReview(originalName)
+            scenario.onActivity { activity ->
+                assertNotNull("A visible original review must be retained in its Activity owner",
+                    androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+                        .reviewedTorrent.value)
+            }
             // A genuine ActivityTaskManager startActivity into the existing
             // singleTask Activity. Never clear the task or invoke the internal
             // source parser directly; this is the previously failing handoff.
