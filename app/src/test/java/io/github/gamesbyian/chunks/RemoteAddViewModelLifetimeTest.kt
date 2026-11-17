@@ -75,6 +75,32 @@ class RemoteAddViewModelLifetimeTest {
         }
     }
 
+    @Test fun unfinishedCreateShareAndReviewedCreateSourceSurviveOwnerReuseWithoutStartingTransfer() {
+        val store = ViewModelStore()
+        try {
+            val first = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[
+                LocalAddAttemptOwner::class.java]
+            val shared = io.github.gamesbyian.chunks.create.SharedCreateDocument.Request.File(
+                android.net.Uri.parse("content://chunks.test.documents/create-source"))
+            // The Create screen owns a read-only scan. Its external request
+            // must remain until the scan completes, even if Activity recreates.
+            first.createReviewRequest.value = shared
+            val restored = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[
+                LocalAddAttemptOwner::class.java]
+            assertSame(shared, restored.createReviewRequest.value)
+            val reviewed = io.github.gamesbyian.chunks.create.CreateTorrentSource("Shared file", emptyList())
+            restored.createSource.value = reviewed
+            restored.createReviewRequest.value = null
+            assertSame(reviewed, first.createSource.value)
+            assertTrue(first.createReviewRequest.value == null)
+            assertFalse("A retained Create source never authorizes the Add executor",
+                first.remoteSessions.forAccount("fixture-server\\u0000account").alreadyAttempted)
+            assertTrue(first.session.attemptedTicket == null)
+        } finally {
+            store.clear()
+        }
+    }
+
     @Test fun clearingTheOwnerCancelsItsRemoteSubmissionScope() {
         val store = ViewModelStore()
         val owner = ViewModelProvider(store, ViewModelProvider.NewInstanceFactory())[

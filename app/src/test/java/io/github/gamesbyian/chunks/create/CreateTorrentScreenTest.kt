@@ -68,6 +68,27 @@ class CreateTorrentScreenTest {
         rule.onRoot().captureRoboImage("build/chunks-visual/create-result.png")
     }
 
+    @Test fun createReviewKeepsItsSourceWhenCompositionIsRecreated() {
+        val owner = androidx.compose.runtime.mutableStateOf<CreateTorrentSource?>(source("Retained season"))
+        val generation = androidx.compose.runtime.mutableIntStateOf(0)
+        rule.setContent {
+            // Destroy/recreate the real Create subtree as Activity rotation
+            // would, while retaining only its owner-held source in RAM.
+            androidx.compose.runtime.key(generation.intValue) {
+                ChunksTheme {
+                    Surface(color = ChunksColors.Background) {
+                        CreateTorrentScreen(onBack = {}, retainedSourceState = owner)
+                    }
+                }
+            }
+        }
+        rule.onNodeWithText("7 files", substring = true).assertExists()
+        rule.onNodeWithText("Torrent created", substring = true).assertDoesNotExist()
+        rule.runOnIdle { generation.intValue += 1 }
+        rule.onNodeWithText("7 files", substring = true).assertExists()
+        rule.onNodeWithText("Torrent created", substring = true).assertDoesNotExist()
+    }
+
     @Test fun privateTorrentHasNoMagnetActions() {
         screen(source("Private"))
         rule.onNodeWithText("Private torrent", substring = true).performScrollTo().performClick()
