@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks.snapshots
 
 import io.github.gamesbyian.chunks.engine.DesktopLibtorrent
+import io.github.gamesbyian.chunks.engine.LocalEngineConfig
+import io.github.gamesbyian.chunks.engine.LocalTorrentEngine
 import io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader
 import java.io.File
 import org.junit.Assert.*
@@ -69,6 +71,35 @@ class SnapshotStoppedBatchV1Test {
         approved: Boolean = true
     ) = SnapshotStoppedBatchV1.execute(
         archive, targetId, items, frozen, approved, store, target)
+
+    @Test fun twoRealLibtorrentRestoresStayStoppedAtIndependentlyReviewedPlaces() {
+        val first = candidate("real-one")
+        val second = candidate("real-two")
+        val engine = LocalTorrentEngine(LocalEngineConfig(
+            listenInterfaces = "127.0.0.1:0",
+            allowMultipleConnectionsPerIp = true,
+            stateDirectory = temp.newFolder("batch-native-session")
+        ))
+        engine.start()
+        try {
+            val result = SnapshotStoppedBatchV1.execute(
+                archive, targetId, listOf(first, second), emptyList(),
+                userApproved = true, store = MemoryStore(),
+                target = SnapshotRestoreOnceV1.localEngine(engine)
+            )
+            assertEquals(SnapshotStoppedBatchV1.Halt.NONE, result.halt)
+            assertTrue(result.items.all {
+                it.state == SnapshotStoppedBatchV1.State.VERIFIED_STOPPED
+            })
+            for (candidate in listOf(first, second)) {
+                val status = requireNotNull(engine.status(candidate.reviewed.infoHashV1))
+                assertTrue(status.stopped)
+                assertEquals(0L, status.payloadDownloadedBytes)
+                assertEquals(candidate.chosenPlace.canonicalPath,
+                    File(status.savePath).canonicalPath)
+            }
+        } finally { engine.close() }
+    }
 
     @Test fun twoReviewedItemsRestoreStoppedWithIndependentDurableJournals() {
         val first = candidate("one")
