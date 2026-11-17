@@ -38,8 +38,15 @@ class SnapshotLocalBatchRestoreV1Test {
         var calls = 0
         var acceptWrites = true
         var addConcurrentIdentity: String? = null
+        var onFirstInventory: (() -> Unit)? = null
 
-        override fun completeHashes(): List<String> = entries.keys.toList()
+        override fun completeHashes(): List<String> {
+            onFirstInventory?.let { action ->
+                onFirstInventory = null
+                action()
+            }
+            return entries.keys.toList()
+        }
         override fun observedStoppedPlace(infoHashV1: String): File? = entries[infoHashV1]
         override fun submitStopped(originalTorrent: ByteArray, chosenPlace: File): Boolean {
             calls++
@@ -86,6 +93,23 @@ class SnapshotLocalBatchRestoreV1Test {
             assertEquals(SnapshotRestoreJournalV1.Phase.VERIFIED,
                 journal.entries().single().phase)
         }
+    }
+
+    @Test fun reviewBuffersChangingAfterBatchFreezeCannotAlterSubmittedDefinitions() {
+        val folder = temp.newFolder("frozen")
+        val store = Store()
+        val target = FakeTarget(folder)
+        val originals = listOf(original("first"), original("second"))
+        val second = originals.last()
+        target.onFirstInventory = { second.bytes.fill(0) }
+
+        val result = execute(originals, folder, store, target)
+        assertTrue(result.complete)
+        assertEquals(2, target.calls)
+        assertTrue("Regression must mutate the caller's source after preflight",
+            second.bytes.all { it == 0.toByte() })
+        // FakeTarget independently parses every submitted original; successful
+        // verified stopped Adds prove the coordinator used frozen copies.
     }
 
     @Test fun corruptLaterOriginalRefusesEntireGroupBeforeFirstNativeMutation() {
