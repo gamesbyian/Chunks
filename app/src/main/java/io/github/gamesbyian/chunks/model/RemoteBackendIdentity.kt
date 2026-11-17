@@ -44,7 +44,7 @@ internal object RemoteBackendIdentity {
             "Remote profile requires HTTPS except loopback"
         }
         require(!uri.host.isNullOrBlank() && uri.userInfo == null &&
-            uri.rawQuery == null && uri.rawFragment == null && uri.rawPath.startsWith("/")) {
+            uri.rawQuery == null && uri.rawFragment == null && uri.rawPath.orEmpty().startsWith("/")) {
             "Invalid remote profile endpoint identity"
         }
         require(endpoint.none { it.isISOControl() }) { "Invalid remote profile endpoint" }
