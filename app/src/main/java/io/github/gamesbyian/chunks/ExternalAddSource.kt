@@ -12,10 +12,19 @@ import android.net.Uri
  * these only in process memory and routes to an explicit Add review.
  */
 internal sealed interface ExternalAddSource {
-    data class Magnet(val value: String) : ExternalAddSource
+    // Data-class default toString() prints the entire private tracker/passkey
+    // or provider document URI. Keep equality/copy for exact source comparison,
+    // but never accidentally leak that payload in diagnostics or test failures.
+    data class Magnet(val value: String) : ExternalAddSource {
+        override fun toString(): String = "ExternalAddSource.Magnet(private)"
+    }
     /** A source link only. Existing Add must explicitly fetch, validate and confirm its metainfo. */
-    data class TorrentLink(val value: String) : ExternalAddSource
-    data class TorrentDocument(val uri: Uri) : ExternalAddSource
+    data class TorrentLink(val value: String) : ExternalAddSource {
+        override fun toString(): String = "ExternalAddSource.TorrentLink(private)"
+    }
+    data class TorrentDocument(val uri: Uri) : ExternalAddSource {
+        override fun toString(): String = "ExternalAddSource.TorrentDocument(private)"
+    }
 
     companion object {
         fun fromIntent(intent: Intent?): ExternalAddSource? {
