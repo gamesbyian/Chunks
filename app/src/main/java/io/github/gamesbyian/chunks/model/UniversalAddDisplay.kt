@@ -36,8 +36,11 @@ internal object UniversalAddDisplayProjector {
         knownNoWrite: Boolean = false
     ): UniversalAddDisplay? {
         val client = clientLabel.trim().ifEmpty { "this client" }
+        // Coordinator evidence always outranks a presentation-only busy flag.
+        // In particular, Local's busy flag can describe another mutation after
+        // Add was verified. Never regress that receipt to "Adding" or manufacture
+        // a submitted command before beginSubmission actually issued a ticket.
         val stage = when {
-            submitting -> UniversalAddDisplayStage.SUBMITTING
             phase == UniversalAddCoordinator.Phase.VERIFIED ->
                 UniversalAddDisplayStage.VERIFIED
             phase == UniversalAddCoordinator.Phase.SESSION_CONFIRMED ->
@@ -46,6 +49,11 @@ internal object UniversalAddDisplayProjector {
                 UniversalAddDisplayStage.START_UNVERIFIED
             knownNoWrite && phase == UniversalAddCoordinator.Phase.REVIEWED ->
                 UniversalAddDisplayStage.NO_NEW_ADD
+            submitting && phase in setOf(
+                UniversalAddCoordinator.Phase.WRITE_ATTEMPTED,
+                UniversalAddCoordinator.Phase.READBACK_REQUIRED,
+                UniversalAddCoordinator.Phase.OBSERVED_UNCERTAIN
+            ) -> UniversalAddDisplayStage.SUBMITTING
             registrationFromThisSubmission &&
                 phase in setOf(
                     UniversalAddCoordinator.Phase.WRITE_ATTEMPTED,
