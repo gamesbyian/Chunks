@@ -3002,6 +3002,8 @@ internal fun LocalEngineScreen(
                 try {
                     val bytes = originalBytes.copyOf()
                     pending = PendingLocalAdd(TorrentMetainfoReader.preview(bytes), bytes)
+                    snapshotRestoreDraft = null
+                    snapshotBatchDraft = null
                     addStorage = null
                     message = "Original snapshot .torrent is ready for manual local Add review. " +
                         "Check the destination and Start choice before confirming; no Add occurred."
@@ -3089,6 +3091,7 @@ internal fun LocalEngineScreen(
                         if (request == snapshotPreparationRevision &&
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotBatchDraft = null
                             snapshotRestoreDraft = draft
                             pending = null
                             message = "Review the new local destination and explicitly confirm " +
@@ -3136,6 +3139,7 @@ internal fun LocalEngineScreen(
                         if (request == snapshotPreparationRevision &&
                             LocalScreenReader.revision.snapshot() == generation &&
                             !LocalScreenReader.revision.blocksMutations()) {
+                            snapshotBatchDraft = null
                             snapshotRestoreDraft = draft
                             pending = null
                             message = "Choose the original local destination to check the " +
