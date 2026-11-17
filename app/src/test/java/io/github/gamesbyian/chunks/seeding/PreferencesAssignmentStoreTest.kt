@@ -21,6 +21,28 @@ class PreferencesAssignmentStoreTest {
         assertTrue(prefs.edit().clear().commit())
     }
 
+    @Test fun corruptEpochIsPreservedAndNeverReinitializedByAutomaticEnforcement() {
+        // The same old preference file can be present with an unexpected
+        // type after corruption or a mismatched prior app version. A new
+        // epoch at startup could retroactively manage old transfers.
+        assertTrue(prefs.edit().putString("epoch", "damaged").commit())
+        val first = PreferencesAssignmentStore(context)
+        assertNull(first.epoch())
+        assertFalse("Corrupt epoch must not be overwritten", first.setEpoch(20_000L))
+        assertEquals("damaged", prefs.getString("epoch", null))
+        assertNull(PreferencesAssignmentStore(context).epoch())
+    }
+
+    @Test fun absentEpochIsSavedOnceButCannotBeSilentlyRebased() {
+        val store = PreferencesAssignmentStore(context)
+        assertNull(store.epoch())
+        assertTrue(store.setEpoch(1000L))
+        assertEquals(1000L, store.epoch())
+        assertFalse("Existing epoch is immutable", store.setEpoch(2000L))
+        assertEquals(1000L, PreferencesAssignmentStore(context).epoch())
+        assertFalse(store.setEpoch(-1L))
+    }
+
     @Test fun pendingAttemptSurvivesStoreRecreationAndPreservesStopUncertainty() {
         val original = Assignment(
             SeedingPolicy(ratioGoal = BigDecimal("1.00")),
