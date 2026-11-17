@@ -4,8 +4,13 @@ import java.io.IOException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 /** JSON-RPC fixtures only; no fixture can claim live daemon credentials or torrent mutations. */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class DelugeReadOnlyRpcTest {
     private val endpoint = "https://seedbox.example/account/deluge/json"
     private val daemon = "host-01"
