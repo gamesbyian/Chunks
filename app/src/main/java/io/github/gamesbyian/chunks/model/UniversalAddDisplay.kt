@@ -63,26 +63,26 @@ internal object UniversalAddDisplayProjector {
             UniversalAddDisplayStage.SUBMITTING -> "Adding to $client"
             UniversalAddDisplayStage.REGISTERED_CHECKING -> "Added to $client"
             UniversalAddDisplayStage.VERIFIED -> "Added to $client"
-            UniversalAddDisplayStage.SESSION_CONFIRMED -> "Confirmed on $client"
-            UniversalAddDisplayStage.START_UNVERIFIED -> "Transfer registered on $client"
+            UniversalAddDisplayStage.SESSION_CONFIRMED -> "Found on $client"
+            UniversalAddDisplayStage.START_UNVERIFIED -> "Start not confirmed on $client"
             UniversalAddDisplayStage.UNCONFIRMED -> "Couldn't confirm Add on $client"
-            UniversalAddDisplayStage.NO_NEW_ADD -> "No new Add on $client"
+            UniversalAddDisplayStage.NO_NEW_ADD -> "Nothing added to $client"
         }
         val explanation = when (stage) {
             UniversalAddDisplayStage.SUBMITTING ->
-                "Submitting the reviewed transfer. Do not submit it again."
+                "Sending the transfer and checking the result. Don't tap Add again."
             UniversalAddDisplayStage.REGISTERED_CHECKING ->
-                "This submission registered a transfer. Checking its exact location and requested Start state."
+                "The transfer is on this client. Checking its folder and Start setting."
             UniversalAddDisplayStage.VERIFIED ->
-                "This submission's exact transfer, destination and requested Start state are verified. Peer activity and payload bytes are separate."
+                "The transfer is in the chosen folder, with your Start setting confirmed. Downloading depends on available peers."
             UniversalAddDisplayStage.SESSION_CONFIRMED ->
-                "This exact transfer and requested state are present. Chunks can't tell whether this Add created it. No repeat Add was sent."
+                "This transfer and its settings are present. Chunks couldn't tell whether this attempt added it, so it wasn't sent again."
             UniversalAddDisplayStage.START_UNVERIFIED ->
-                "The exact transfer and location exist, but requested Start remains unverified. No Add or Start was resent."
+                "The transfer is in the chosen folder, but Chunks couldn't confirm whether it started. Add and Start weren't repeated."
             UniversalAddDisplayStage.UNCONFIRMED ->
-                "The Add may have happened. Check this exact client's transfer state; never retry an uncertain write automatically."
+                "Chunks couldn't tell whether the transfer was added. Check this client's transfers before trying again. Chunks won't retry automatically."
             UniversalAddDisplayStage.NO_NEW_ADD ->
-                "No new transfer was submitted by this attempt. Review the reason before choosing another Add."
+                "Chunks didn't send a new transfer. Check the message below before trying again."
         }
         return UniversalAddDisplay(
             stage = stage,
