@@ -2100,6 +2100,68 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         )
     }
 
+    /**
+     * Source-exact, read-only rTorrent counters for future seeding-policy
+     * capability negotiation. No policy is applied here. Uploaded/downloaded
+     * totals can have different provenance after imports or server resets,
+     * and a completion timestamp is NOT accumulated active seeding time.
+     *
+     * Bracket reads with d.hash so an invalidated or wrong-target snapshot
+     * cannot be mistaken for evidence authorizing a later Stop. Unsupported
+     * optional getters remain unknown; auth, transport and operational faults
+     * propagate without silently switching to unlimited/default behavior.
+     */
+    suspend fun readSeedingEvidence(hash: String): RemoteSeedingEvidence {
+        require(Regex("[0-9a-fA-F]{40}").matches(hash)) { "Invalid v1 torrent hash" }
+        suspend fun guardIdentity() {
+            val returned = call("d.hash", listOf(hash)) as? String
+            check(returned?.equals(hash, ignoreCase = true) == true) {
+                "rTorrent transfer identity not confirmed"
+            }
+        }
+        suspend fun optionalCounter(method: String): Long? = try {
+            number(call(method, listOf(hash))).also { value ->
+                require(value >= 0L) { "Invalid remote seeding counter" }
+            }
+        } catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            null
+        }
+        suspend fun optionalThrottleName(): String? = try {
+            val value = call("d.throttle_name", listOf(hash)) as? String
+                ?: throw IllegalArgumentException("Invalid rTorrent throttle name")
+            require(value.length <= 128 && value.none { it.isISOControl() }) {
+                "Unsafe remote throttle name"
+            }
+            value.takeIf { it.isNotBlank() }
+        } catch (fault: RpcFault) {
+            if (!fault.isUnsupportedOptionalGetter()) throw fault
+            null
+        }
+
+        guardIdentity()
+        val uploaded = optionalCounter("d.up.total")
+        val downloaded = optionalCounter("d.down.total")
+        val complete = optionalCounter("d.complete")?.let {
+            require(it in 0L..1L) { "Invalid remote completion flag" }
+            it == 1L
+        }
+        val active = optionalCounter("d.is_active")?.let {
+            require(it in 0L..1L) { "Invalid remote activity flag" }
+            it == 1L
+        }
+        val finishedAt = optionalCounter("d.timestamp.finished")?.takeIf { it > 0 }
+        val throttle = optionalThrottleName()
+        guardIdentity()
+        return RemoteSeedingEvidence(
+            infoHashV1 = hash.lowercase(java.util.Locale.ROOT),
+            uploadedBytes = uploaded, downloadedBytes = downloaded,
+            complete = complete, active = active,
+            finishedAtEpochSeconds = finishedAt,
+            throttleName = throttle
+        )
+    }
+
     /** Tracker addresses of a public transfer, or [Private] (never read). */
     sealed class PublicTrackers {
         object Private : PublicTrackers()
@@ -2419,7 +2481,8 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
             "d.completed_bytes", "d.state", "d.directory", "d.down.rate",
             "d.up.rate", "d.ratio", "d.is_multi_file", "d.size_chunks",
             "d.bitfield", "d.is_private", "d.is_active", "d.is_open",
-            "d.peers_connected", "d.down.total", "d.tracker_size",
+            "d.peers_connected", "d.down.total", "d.up.total", "d.complete",
+            "d.timestamp.finished", "d.throttle_name", "d.tracker_size",
             // Explicit rTorrent read-only diagnostic getters. Never classify
             // methods by name prefix; .set variants remain write-only.
             "d.custom5", "d.message", "d.hashing", "d.hashing_failed", "d.is_hash_checking", "d.is_meta"
