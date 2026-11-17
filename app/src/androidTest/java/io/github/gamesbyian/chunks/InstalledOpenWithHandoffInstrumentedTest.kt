@@ -63,13 +63,37 @@ class InstalledOpenWithHandoffInstrumentedTest {
     private fun openWith(uri: Uri): Intent = Intent(Intent.ACTION_VIEW).apply {
         setClass(context, MainActivity::class.java)
         setDataAndType(uri, "application/octet-stream")
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK or
-            Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        // A normal external Open With does not clear Chunks' existing task.
+        // singleTask must deliver subsequent sources to the same Activity.
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
     private fun waitForReview(name: String) {
         compose.waitUntil(60_000) {
             compose.onAllNodes(hasText(name, substring = true)).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
+    @Test fun installedSecondOpenWithReturnsToExistingChunksAndOffersAnExplicitSourceChoice() {
+        val originalName = "installed-original-source.mkv"
+        val newName = "installed-second-source.mkv"
+        val original = document(originalName)
+        val second = document(newName)
+        ActivityScenario.launch<MainActivity>(openWith(original)).use { scenario ->
+            waitForReview(originalName)
+            // A genuine ActivityTaskManager startActivity into the existing
+            // singleTask Activity. Never clear the task or invoke the internal
+            // source parser directly; this is the previously failing handoff.
+            context.startActivity(openWith(second))
+            compose.waitUntil(60_000) {
+                compose.onAllNodes(hasText("Use new source", substring = true))
+                    .fetchSemanticsNodes().isNotEmpty()
+            }
+            // A second provider source cannot silently replace the current
+            // unsubmitted draft or cause the user to leave Chunks.
+            scenario.onActivity {
+                assertFalse("Second Open With must not finish the Chunks task", it.isFinishing)
+            }
         }
     }
 
