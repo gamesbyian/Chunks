@@ -32,6 +32,7 @@ import io.github.gamesbyian.chunks.rpc.RemoteTransfer
 import io.github.gamesbyian.chunks.exports.OwnedDiagnosticExportProvider
 import io.github.gamesbyian.chunks.exports.OwnedDiagnosticShare
 import java.time.Instant
+import java.util.Locale
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.CancellationException
@@ -67,9 +68,17 @@ internal fun SnapshotInventoryExportScreen(
     var includeOriginalDefinitions by remember { mutableStateOf(false) }
     var recoveredProgress by remember { mutableIntStateOf(0) }
     var recoveredTotal by remember { mutableIntStateOf(0) }
-    val currentRevision by rememberUpdatedState(snapshotRevision)
+    // Snapshot revision advances on every ordinary remote poll, including
+    // speed-only updates. A long Source export must be invalidated by a
+    // different job/name/Place or target, not by irrelevant traffic counters.
+    val observedRows = transfers.map {
+        Triple(it.hash.lowercase(Locale.ROOT), it.name, it.directory)
+    }.sortedBy { it.first }
+    val currentRows by rememberUpdatedState(observedRows)
     val currentView by rememberUpdatedState(view)
-    val currentReady by rememberUpdatedState(!stale && !loading)
+    // A poll in flight need not revoke an otherwise fresh proven inventory.
+    // A stale view, new row/Place or switched account does.
+    val currentReady by rememberUpdatedState(!stale)
     val currentAccount by rememberUpdatedState(accountStillCurrent)
     var busy by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf<String?>(null) }
@@ -200,8 +209,9 @@ internal fun SnapshotInventoryExportScreen(
                 val originals = includeOriginalDefinitions
                 val revision = snapshotRevision
                 val observedView = view
+                val frozenRows = observedRows.toList()
                 val stillCurrent = {
-                    currentReady && currentRevision == revision &&
+                    currentReady && currentRows == frozenRows &&
                         currentView == observedView && currentAccount()
                 }
                 busy = true
