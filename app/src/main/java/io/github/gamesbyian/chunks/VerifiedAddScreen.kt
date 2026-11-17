@@ -154,7 +154,7 @@ internal fun VerifiedAddScreen(
     // when production supplies its ViewModel scope. Clearing that owner (or
     // process death) cancels the task without authorizing a duplicate write.
     // A standalone screen still uses the composition-local fallback.
-    val submitScope = attemptScope ?: scope
+    val submitScope = UniversalAddExecutionScope.select(attemptScope, scope)
     val draft = session ?: remember(remote, finishInOrderScope) { RemoteAddSession(finishInOrderScope) }
     require(draft.accountScope == finishInOrderScope) { "Add review belongs to another server account" }
     var selectedTorrent by draft::selectedTorrent
