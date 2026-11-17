@@ -141,6 +141,11 @@ internal class LocalAddAttemptOwner : androidx.lifecycle.ViewModel() {
     val incomingMagnet = mutableStateOf<String?>(null)
     val incomingTorrent = mutableStateOf<Uri?>(null)
     val incomingCreate = mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
+    // Create's read-only shared document scan is cancellable on rotation.
+    // Retain both the unacknowledged request and an adopted source in RAM,
+    // so recreation neither loses a half-read share nor replays a finished one.
+    val createReviewRequest = mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null)
+    val createSource = mutableStateOf<io.github.gamesbyian.chunks.create.CreateTorrentSource?>(null)
     // The one-shot remote Add and exact readback outlive both the Add route and
     // Activity recreation, but are cancelled when this app-owned ViewModel is
     // finally cleared. No source, account or private tracker enters SavedState.
@@ -854,7 +859,8 @@ internal fun ChunksApp(
                 add(SeedingEnvironment.server(aliasScope.substringBefore('\u0000'), aliasScope.substringAfter('\u0000', "")))
         }.distinctBy { it.id }
     }
-    var createRequest by remember { mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null) }
+    var createRequest by (retainedAddOwner?.createReviewRequest
+        ?: remember { mutableStateOf<io.github.gamesbyian.chunks.create.SharedCreateDocument.Request?>(null) })
     LaunchedEffect(incomingCreate) {
         if (incomingCreate != null) {
             createRequest = incomingCreate
@@ -1378,8 +1384,15 @@ internal fun ChunksApp(
         } else if (presentationSection == Section.MEDIA) {
             MediaSettingsScreen(onBack = { leaveTool() })
         } else if (presentationSection == Section.CREATE && server == null) {
-            io.github.gamesbyian.chunks.create.CreateTorrentScreen(onBack = { leaveTool() },
-                shared = createRequest, onSharedConsumed = { createRequest = null })
+            io.github.gamesbyian.chunks.create.CreateTorrentScreen(
+                onBack = {
+                    createRequest = null
+                    retainedAddOwner?.createSource?.value = null
+                    leaveTool()
+                },
+                shared = createRequest, onSharedConsumed = { createRequest = null },
+                retainedSourceState = retainedAddOwner?.createSource
+            )
         } else if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS) && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
