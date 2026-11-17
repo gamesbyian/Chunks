@@ -82,6 +82,34 @@ class InstalledOpenWithHandoffInstrumentedTest {
         }
     }
 
+    /**
+     * Bounded failure fingerprint only. Never include a source URI, file name,
+     * intent extras, torrent contents, or account identity in installed CI.
+     * The CI parser deliberately rejects arbitrary exception messages.
+     */
+    private fun secondSourceTimeout(
+        scenario: ActivityScenario<MainActivity>, second: Uri
+    ): AssertionError {
+        var delivered = false
+        var queued = false
+        var reviewed = false
+        var finishing = true
+        scenario.onActivity { activity ->
+            val owner = androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
+            delivered = activity.intent?.data == second
+            queued = owner.pendingSharedDocument.value == second
+            reviewed = owner.reviewedTorrent.value != null
+            finishing = activity.isFinishing
+        }
+        val choice = compose.onAllNodes(hasText("Use new source", substring = true))
+            .fetchSemanticsNodes().isNotEmpty()
+        return AssertionError(
+            "openwith second-source timeout: " +
+                "intent=$delivered queued=$queued reviewed=$reviewed " +
+                "choice=$choice finishing=$finishing"
+        )
+    }
+
     @Test fun installedSecondOpenWithReentersSameTaskAndQueuesSourceWithoutSubmitting() {
         val originalName = "task-reentry-original.mkv"
         val original = document(originalName)
@@ -98,16 +126,20 @@ class InstalledOpenWithHandoffInstrumentedTest {
             // Android must deliver the second VIEW to the already-running
             // Activity, then Chunks must hold it as an unsubmitted choice.
             // A separate test identity identifies routing versus rendering.
-            compose.waitUntil(30_000) {
-                var acceptedIntoExistingTask = false
-                scenario.onActivity { activity ->
-                    val owner = androidx.lifecycle.ViewModelProvider(activity)[
-                        LocalAddAttemptOwner::class.java]
-                    acceptedIntoExistingTask = activity.intent?.data == second &&
-                        owner.pendingSharedDocument.value == second &&
-                        owner.session.attemptedTicket == null
+            try {
+                compose.waitUntil(30_000) {
+                    var acceptedIntoExistingTask = false
+                    scenario.onActivity { activity ->
+                        val owner = androidx.lifecycle.ViewModelProvider(activity)[
+                            LocalAddAttemptOwner::class.java]
+                        acceptedIntoExistingTask = activity.intent?.data == second &&
+                            owner.pendingSharedDocument.value == second &&
+                            owner.session.attemptedTicket == null
+                    }
+                    acceptedIntoExistingTask
                 }
-                acceptedIntoExistingTask
+            } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+                throw secondSourceTimeout(scenario, second)
             }
             scenario.onActivity {
                 assertFalse("Queued source must not finish the current task", it.isFinishing)
@@ -135,19 +167,27 @@ class InstalledOpenWithHandoffInstrumentedTest {
             // Compose source-choice affordance. Probe the *existing* scenario's
             // Activity intent (set by MainActivity.onNewIntent) before diagnosing
             // an absent replacement choice as a presentation error.
-            compose.waitUntil(30_000) {
-                var deliveredToExistingTask = false
-                scenario.onActivity { activity ->
-                    deliveredToExistingTask = activity.intent?.data == second
+            try {
+                compose.waitUntil(30_000) {
+                    var deliveredToExistingTask = false
+                    scenario.onActivity { activity ->
+                        deliveredToExistingTask = activity.intent?.data == second
+                    }
+                    deliveredToExistingTask
                 }
-                deliveredToExistingTask
+            } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+                throw secondSourceTimeout(scenario, second)
             }
             // The previous review must remain available while Chunks offers
             // the new source as an explicit, non-mutating choice.
             waitForReview(originalName)
-            compose.waitUntil(60_000) {
-                compose.onAllNodes(hasText("Use new source", substring = true))
-                    .fetchSemanticsNodes().isNotEmpty()
+            try {
+                compose.waitUntil(60_000) {
+                    compose.onAllNodes(hasText("Use new source", substring = true))
+                        .fetchSemanticsNodes().isNotEmpty()
+                }
+            } catch (_: androidx.compose.ui.test.ComposeTimeoutException) {
+                throw secondSourceTimeout(scenario, second)
             }
             // A second provider source cannot silently replace the current
             // unsubmitted draft or cause the user to leave Chunks.
