@@ -15,6 +15,8 @@ import androidx.compose.ui.test.junit4.v2.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -126,8 +128,21 @@ class RemoteOriginalTorrentHandlingInstalledInstrumentedTest {
             waitFor("connection form") { visible("Seedbox hostname, ruTorrent URL or RPC address") }
                 scrollTo("Seedbox hostname, ruTorrent URL or RPC address")
                 rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").performTextReplacement(url)
-                scrollTo("Connect to rTorrent")
-                rule.onNodeWithText("Connect to rTorrent").performClick()
+                // Async address validation and keyboard dismissal may replace
+                // this LazyColumn item after a text-based scroll. Require the
+                // exact stable action to be composed and enabled before the
+                // one permitted connection attempt, without retrying Connect.
+                val connect = hasTestTag(ChunksSemantics.CONNECTION_CONNECT)
+                waitFor("ready Connect action", 30_000) {
+                    runCatching {
+                        rule.onNode(hasScrollToIndexAction()).performScrollToNode(connect)
+                        rule.onNode(connect, useUnmergedTree = true).assertIsEnabled()
+                        true
+                    }.getOrDefault(false)
+                }
+                rule.onNode(connect, useUnmergedTree = true)
+                    .assertIsEnabled().performSemanticsAction(
+                        androidx.compose.ui.semantics.SemanticsActions.OnClick)
                 waitFor("verified connection acknowledgment", 90_000) { visible("Continue to Connections") }
                 rule.onNodeWithText("Continue to Connections").performClick()
                 waitFor("connected server in Connections") { visible("View transfers") }
