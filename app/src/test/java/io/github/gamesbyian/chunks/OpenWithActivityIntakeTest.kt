@@ -103,6 +103,28 @@ class OpenWithActivityIntakeTest {
         }
     }
 
+    @Test fun secondOpenWithDuringFirstReadIsQueuedImmediatelyInRetainedOwner() {
+        val first = document("reading-first.torrent", "reading-first.mkv")
+        val second = document("reading-second.torrent", "reading-second.mkv")
+        val controller = org.robolectric.Robolectric.buildActivity(MainActivity::class.java,
+            view(first, "application/x-bittorrent")).setup()
+        try {
+            val owner = androidx.lifecycle.ViewModelProvider(controller.get())[
+                LocalAddAttemptOwner::class.java]
+            // A provider read can be selected before metainfo is reviewed.
+            owner.reviewedTorrent.value = null
+            owner.readingSharedDocument.value = first
+            controller.newIntent(view(second, "application/x-bittorrent"))
+            assertEquals("New source queued before Compose callback",
+                second, owner.pendingSharedDocument.value)
+            assertEquals("First source not silently replaced",
+                first, owner.readingSharedDocument.value)
+            assertEquals(null, owner.session.attemptedTicket)
+        } finally {
+            controller.pause().stop().destroy()
+        }
+    }
+
     @Test fun recreationKeepsTheOpenedTorrentReview() {
         ActivityScenario.launch<MainActivity>(view(document("recreate.torrent", "recreated-open-with.mkv"),
             "application/x-bittorrent")).use { scenario ->
