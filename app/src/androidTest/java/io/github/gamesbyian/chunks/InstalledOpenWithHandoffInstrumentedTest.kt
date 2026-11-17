@@ -123,7 +123,6 @@ class InstalledOpenWithHandoffInstrumentedTest {
     @Test fun installedSecondOpenWithReentersSameTaskAndQueuesSourceWithoutSubmitting() {
         val originalName = "task-reentry-original.mkv"
         val original = document(originalName)
-        val second = document("task-reentry-second.mkv")
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
             waitForReview(originalName, scenario, original)
             scenario.onActivity { activity ->
@@ -131,6 +130,10 @@ class InstalledOpenWithHandoffInstrumentedTest {
                     androidx.lifecycle.ViewModelProvider(activity)[LocalAddAttemptOwner::class.java]
                         .reviewedTorrent.value)
             }
+            // The second document is created only after the first review is
+            // visible. That models a real second external Open With and does
+            // not conflate provider fixture setup with task reentry.
+            val second = document("task-reentry-second.mkv")
             context.startActivity(openWith(second))
             // Distinct from the visual replacement-choice contract below:
             // Android must deliver the second VIEW to the already-running
@@ -161,7 +164,6 @@ class InstalledOpenWithHandoffInstrumentedTest {
         val originalName = "installed-original-source.mkv"
         val newName = "installed-second-source.mkv"
         val original = document(originalName)
-        val second = document(newName)
         ActivityScenario.launch<MainActivity>(freshFixtureLaunch(original)).use { scenario ->
             waitForReview(originalName, scenario, original)
             scenario.onActivity { activity ->
@@ -172,6 +174,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
             // A genuine ActivityTaskManager startActivity into the existing
             // singleTask Activity. Never clear the task or invoke the internal
             // source parser directly; this is the previously failing handoff.
+            val second = document(newName)
             context.startActivity(openWith(second))
             // Android singleTask reentry is a separate contract from the
             // Compose source-choice affordance. Probe the *existing* scenario's
