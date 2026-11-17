@@ -95,6 +95,8 @@ If the write-ahead preference commit fails, Chunks must not send Pause. If the e
 
 This protection is **Local-only until a separately accepted rTorrent adapter exists**. It does not grant remote stop capabilities, promise background enforcement after Android terminates the service, or prove that every engine has matching stopped-state semantics.
 
+**Local read-fault isolation, merged #1828 (2026-11-17):** A failed per-torrent upload-limit read (including `null` from the native adapter) never authorizes a cap write; a bad counter read never triggers an unverified automatic Pause; either failure is confined to that exact transfer so healthy jobs continue. A transient read-failure note must not overwrite an earlier uncertain Pause warning. For native inventory, snapshot handle pairs under the synchronized map lock and then read each handle independently under the engine lock; one invalid handle must not make the whole fact inventory appear empty. This is JVM fault-injection plus source-exact Android/lifecycle/real-engine compatibility evidence, **not** a claim of an induced invalid-handle fault on the owner's Pixel.
+
 ## rTorrent read-only seeding evidence (engineering prerequisite, 2026-11-17)
 
 `RTorrentRemote.readSeedingEvidence(hash)` acquires the exact v1 hash before
