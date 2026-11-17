@@ -45,4 +45,19 @@ class NavigationRestorePolicyTest {
         assertEquals("COMBINED", NavigationRestorePolicy.restorableSection("TRANSFERS"))
     }
 
+    @Test fun retainedCreateReviewResumesOnlyFromSafeRestoredShell() {
+        assertEquals(true, NavigationRestorePolicy.resumeRetainedCreateReview(
+            "COMBINED", false, retainedRequest = true, retainedSource = false))
+        assertEquals(true, NavigationRestorePolicy.resumeRetainedCreateReview(
+            "COMBINED", false, retainedRequest = false, retainedSource = true))
+        assertEquals(false, NavigationRestorePolicy.resumeRetainedCreateReview(
+            "COMBINED", false, retainedRequest = false, retainedSource = false))
+        assertEquals(false, NavigationRestorePolicy.resumeRetainedCreateReview(
+            "COMBINED", true, retainedRequest = true, retainedSource = true))
+        assertEquals(false, NavigationRestorePolicy.resumeRetainedCreateReview(
+            "OPTIONS", false, retainedRequest = true, retainedSource = true))
+        // Process death still never restores CREATE from saved navigation alone.
+        assertEquals("COMBINED", NavigationRestorePolicy.restorableSection("CREATE"))
+    }
+
 }
