@@ -743,7 +743,12 @@ internal fun ChunksApp(
     fun addSourceOccupied(): Boolean {
         val remoteDraft = aliasScope.takeIf { it.isNotBlank() }
             ?.let { remoteAddSessions.forAccount(it) }
-        return magnet.isNotBlank() || localReviewedTorrent.value != null ||
+        // A document under a bounded content-provider read is already a
+        // selected source even before its metainfo review becomes visible.
+        // Hold a second Android Open With for an explicit choice; never
+        // cancel/replace the in-flight first source behind the user's back.
+        return sharedTorrentReading || incomingDocumentRead != null ||
+            magnet.isNotBlank() || localReviewedTorrent.value != null ||
             serverHandoffTorrent != null ||
             (remoteDraft?.useFile == true && remoteDraft.selectedBytes != null) ||
             activeLocalAddAttempt.attemptedTicket != null ||
