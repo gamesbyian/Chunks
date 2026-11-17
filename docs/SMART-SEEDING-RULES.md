@@ -123,6 +123,39 @@ uncertainty handling, and consent before starting or stopping a remote job.
 Until then remote rules are saved/previewed only, never represented as
 active server enforcement.
 
+### Protected Seedhost getter compatibility probe (candidate, 2026-11-17)
+
+The manual main-only `seedhost-readonly-probe.yml` workflow now has an
+optional **Inspect seeding capabilities** control, separately from its
+existing inventory-fixture export. The two modes are mutually exclusive so
+the redacted probe cannot inadvertently produce an inventory artifact.
+
+The capability probe is restricted to the exact primary authorized
+`/rutorrent/plugins/httprpc/action.php` account and requires an HTTP
+Basic/Digest challenge, HTTPS without redirects and a positive authenticated
+read. Only a bounded, current `main` view of v1 hashes is sampled; an
+exact hash is checked again before and after six strictly allowlisted
+read-only getter calls: cumulative upload/download, complete/active, finished
+timestamp, and throttle name. Values are validated in memory and **never
+printed, persisted or uploaded**. The run log contains only
+`supported`/`unsupported` capability classifications, with no infohash,
+transfer name, host filesystem path, tracker/passkey, throttle name, counter
+value or credentials. An empty view supplies no evidence; unexpected
+faults, changed hashes, authentication failure, invalid values and unexpected
+XML/redirect responses fail closed. A method-not-found result is an
+**unsupported** getter, not proof of unlimited or zero.
+
+The PR's offline tests exercise the serializer, read-only method allowlist,
+XML parser, false capability classification, identity drift and redacted
+output before this opt-in can be promoted to `main`. Once merged, a human
+must dispatch the protected workflow with the capability checkbox checked
+to obtain **actual primary-account getter evidence**. Successful offline
+tests and an available workflow do not establish that the live account
+supports any getter; an actual authenticated run is a separate tier. The
+probe carries **no Stop, Start, throttle setter or automatic policy
+enforcement authority**. It does not prove per-transfer upload limits,
+independent seeding duration or the behavior of numbered ruTorrent profiles.
+
 ## Runtime and capabilities
 
 - Local libtorrent4j and remote rTorrent must share a policy/rule domain model, UI, serialization and matching semantics; adapters independently negotiate supported per-torrent speed, ratio/scheduler behavior, persistence and readback.
