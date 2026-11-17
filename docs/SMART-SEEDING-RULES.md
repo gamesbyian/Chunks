@@ -82,6 +82,27 @@ If the write-ahead preference commit fails, Chunks must not send Pause. If the e
 
 This protection is **Local-only until a separately accepted rTorrent adapter exists**. It does not grant remote stop capabilities, promise background enforcement after Android terminates the service, or prove that every engine has matching stopped-state semantics.
 
+## rTorrent read-only seeding evidence (engineering prerequisite, 2026-11-17)
+
+`RTorrentRemote.readSeedingEvidence(hash)` acquires the exact v1 hash before
+and after reading the server's cumulative uploaded/downloaded byte counters,
+completed/active flags, optional completion timestamp and named throttle.
+Unsupported optional getters remain unknown; authentication, transport, and
+operational faults abort instead of silently substituting zero. No server
+mutation, background polling, assigned rule, or automatic Stop occurs as a
+consequence of this read.
+
+This is **not remote Smart Seeding enforcement**. Cumulative counters may
+have imported/reset history; a zero denominator does not establish ratio.
+`d.timestamp.finished` records completion, not accumulated active seeding
+duration. A named rTorrent throttle may be shared by several torrents and
+cannot be described as a verified per-transfer cap. A future adapter must
+prove exact authenticated account, verified semantics of the ratio and
+rate-limit controls, capability-specific postconditions, persistent
+uncertainty handling, and consent before starting or stopping a remote job.
+Until then remote rules are saved/previewed only, never represented as
+active server enforcement.
+
 ## Runtime and capabilities
 
 - Local libtorrent4j and remote rTorrent must share a policy/rule domain model, UI, serialization and matching semantics; adapters independently negotiate supported per-torrent speed, ratio/scheduler behavior, persistence and readback.
