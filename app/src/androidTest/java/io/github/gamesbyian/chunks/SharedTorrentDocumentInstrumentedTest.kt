@@ -95,6 +95,57 @@ class SharedTorrentDocumentInstrumentedTest {
             Intent(Intent.ACTION_SEND_MULTIPLE).apply { type = "application/x-bittorrent" }))
     }
 
+    @Test fun genericBinaryOpaqueContentUriIsOnlyAnUnsubmittedSource() {
+        // A provider's document ID need not contain its display name.
+        val opaque = Uri.parse("content://example.documents/document/734829")
+        assertFalse(opaque.lastPathSegment.orEmpty().endsWith(".torrent"))
+        val view = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(opaque, "application/octet-stream")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        assertEquals(opaque, SharedTorrentDocument.fromIntent(view))
+        assertEquals(ExternalAddSource.TorrentDocument(opaque),
+            ExternalAddSource.fromIntent(view))
+        assertEquals(opaque, SharedTorrentDocument.fromIntent(Intent(Intent.ACTION_SEND).apply {
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_STREAM, opaque)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }))
+        // Generic MIME cannot authorize raw paths or an unrelated explicit type.
+        assertNull(SharedTorrentDocument.fromIntent(Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(opaque, "image/png")
+        }))
+        assertNull(SharedTorrentDocument.fromIntent(Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(Uri.parse("file:///sdcard/fake.torrent"), "application/octet-stream")
+        }))
+        assertNull(SharedTorrentDocument.fromIntent(Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(opaque, "text/plain")
+        }))
+        // Valid content still passes the exact bounded metainfo parser; a
+        // generic binary's declared type never authorizes an Add.
+        val valid = document(goodBytes)
+        assertArrayEquals(goodBytes,
+            SharedTorrentDocument.read(context.contentResolver, valid).bytes)
+        val invalid = document("not bencoded metainfo".toByteArray())
+        try {
+            SharedTorrentDocument.read(context.contentResolver, invalid)
+            fail("Generic content must not pass the strict torrent parser")
+        } catch (_: RuntimeException) { }
+    }
+
+    @Test fun genericBinaryOpaqueViewIsRegisteredInAndroidChooser() {
+        val opaque = Uri.parse("content://opaque.example.documents/document/842720")
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(opaque, "application/octet-stream")
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        val matches = context.packageManager.queryIntentActivities(
+            intent, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        assertTrue("Chunks must be an Open with target even for opaque content IDs",
+            matches.any { it.activityInfo.packageName == context.packageName &&
+                it.activityInfo.name.endsWith(".MainActivity") })
+    }
+
     @Test fun malformedStreamExtraCannotCrashOrSubstituteAClipDocumentOrMagnet() {
         val valid = document(goodBytes)
         val magnet = "magnet:?xt=urn:btih:" + "b".repeat(40)
