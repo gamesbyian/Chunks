@@ -7,6 +7,11 @@ on:
         required: false
         default: false
         type: boolean
+      inspect_seeding_capabilities:
+        description: 'Read only: classify exact-account getter support without printing transfer data'
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
 concurrency:
@@ -20,6 +25,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 4
     steps:
+      - name: Refuse combining private inventory export with redacted capability sampling
+        if: ${{ inputs.inspect_inventory && inputs.inspect_seeding_capabilities }}
+        run: |
+          echo 'Choose exactly one optional Seedhost inspection mode. No request made.'
+          exit 1
       - name: Safely test HTTP-RPC version only
         env:
           RUTORRENT_URL: "https://ianseeds.wood.seedhost.eu/rutorrent/"
@@ -128,7 +138,17 @@ jobs:
               raise SystemExit(1)
           PY
       - uses: actions/checkout@v4
-        if: ${{ inputs.inspect_inventory && success() }}
+        if: ${{ (inputs.inspect_inventory || inputs.inspect_seeding_capabilities) && success() }}
+      - name: Test the strict read-only seeding getter probe before using protected credentials
+        if: ${{ inputs.inspect_seeding_capabilities && success() }}
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p test_seedhost_seeding_readonly_matrix.py
+      - name: Inspect primary Seedhost seeding getters (no identifiers, values or mutations)
+        if: ${{ inputs.inspect_seeding_capabilities && success() }}
+        env:
+          RT_USER: ${{ secrets.rtorrent_user }}
+          RT_PASS: ${{ secrets.rtorrent_pass }}
+          CHUNKS_APPROVED_SEEDING_READONLY: 'true'
+        run: PYTHONDONTWRITEBYTECODE=1 python3 tools/seedhost_seeding_readonly_matrix.py
       - name: Build QA coverage catalogue from captured actual rTorrent transfers
         if: ${{ inputs.inspect_inventory && success() }}
         run: |
