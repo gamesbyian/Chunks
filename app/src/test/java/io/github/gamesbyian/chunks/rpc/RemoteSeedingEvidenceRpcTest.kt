@@ -70,7 +70,9 @@ class RemoteSeedingEvidenceRpcTest {
             "d.throttle_name" -> string("ipt-preset")
             else -> error("Never send mutation or unknown RPC $method")
         }}.use { gateway ->
-            val report = gateway.client().readSeedingEvidence(hash)
+            val client = gateway.client()
+            val report = client.readSeedingEvidence(hash)
+            assertEquals(client.addAccountScope(), report.accountScope)
             assertEquals(hash, report.infoHashV1)
             assertEquals(2_048L, report.uploadedBytes)
             assertEquals(1_024L, report.downloadedBytes)
@@ -85,6 +87,30 @@ class RemoteSeedingEvidenceRpcTest {
                 "d.hash", "d.up.total", "d.down.total", "d.complete",
                 "d.is_active", "d.timestamp.finished", "d.throttle_name", "d.hash"
             ), gateway.methods)
+        }
+    }
+
+    @Test fun matchingHashOnDifferentPrincipalsNeverSharesEvidenceScope() = runBlocking {
+        Gateway { method -> 200 to when (method) {
+            "d.hash" -> string(hash)
+            "d.up.total" -> number(2_048)
+            "d.down.total" -> number(1_024)
+            "d.complete", "d.is_active" -> number(1)
+            "d.timestamp.finished" -> number(0)
+            "d.throttle_name" -> string("")
+            else -> error("Only read-only exact-hash calls are allowed")
+        }}.use { gateway ->
+            val alice = RTorrentRemote(RemoteCredentials(gateway.endpoint, "alice", ""))
+            val bob = RTorrentRemote(RemoteCredentials(gateway.endpoint, "bob", ""))
+            val a = alice.readSeedingEvidence(hash)
+            val b = bob.readSeedingEvidence(hash)
+            assertEquals(a.infoHashV1, b.infoHashV1)
+            assertEquals(a.uploadedBytes, b.uploadedBytes)
+            assertEquals(alice.addAccountScope(), a.accountScope)
+            assertEquals(bob.addAccountScope(), b.accountScope)
+            assertNotEquals("Same hash cannot identify a remote account", a.accountScope, b.accountScope)
+            assertFalse(a.toString().contains("alice"))
+            assertFalse(b.toString().contains("bob"))
         }
     }
 
