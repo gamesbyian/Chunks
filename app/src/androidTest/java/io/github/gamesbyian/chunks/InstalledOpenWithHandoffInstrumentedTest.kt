@@ -180,6 +180,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
             scenario.onActivity {
                 assertFalse("Queued source must not finish the current task", it.isFinishing)
             }
+            stage = "cleanup"
         }
         } catch (failure: Throwable) {
             // Preserve the existing explicitly whitelisted timeout fingerprint.
@@ -246,6 +247,7 @@ class InstalledOpenWithHandoffInstrumentedTest {
             scenario.onActivity {
                 assertFalse("Second Open With must not finish the Chunks task", it.isFinishing)
             }
+            stage = "cleanup"
         }
         } catch (failure: Throwable) {
             // Preserve the existing explicitly whitelisted timeout fingerprint.
