@@ -76,6 +76,17 @@ class RemoteMagnetDraftCheckTest {
                 }
             }
             reveal("Add transfer")
+            // The remote default Place is read asynchronously. The first
+            // composition can display Add before the reviewed plan becomes
+            // eligible to submit. Wait for that *read-only* precondition,
+            // then make exactly one authorized click; never retry a mutation.
+            rule.waitUntil(15_000) {
+                runCatching {
+                    rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
+                    true
+                }.getOrDefault(false)
+            }
+            rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
             // One explicit Add transfer click is the sole submission action.
             rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).performClick()
             rule.waitUntil(15_000) { settled == 1 }

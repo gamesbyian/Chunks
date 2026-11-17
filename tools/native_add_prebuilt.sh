@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Experimental build-once native Add runner. Proven Gradle instrumentation is unchanged.
 set -euo pipefail
+# Validate privacy gate before any emulator work; never print arbitrary stacks.
+python3 -m unittest -q tools.test_parse_instrumentation_openwith
 : "$RUNNER_TEMP" "$GITHUB_SHA" "$CHUNKS_NATIVE_ADD_SHARD_COUNT" "$CHUNKS_NATIVE_ADD_SHARD_INDEX"
 dir="$RUNNER_TEMP/chunks-prebuilt"
 count="$CHUNKS_NATIVE_ADD_SHARD_COUNT"
