@@ -2967,7 +2967,7 @@ internal fun LocalEngineScreen(
                         if (sourceReadJob === read) sourceReadJob = null
                     }
                 }
-,
+            },
             onReviewPreviousRestore = { verified, entry, frozen, generation ->
                 check(!busy && sourceReadJob == null) { "Another source review is in progress" }
                 initialTorrentUri?.let(onTorrentConsumed)
