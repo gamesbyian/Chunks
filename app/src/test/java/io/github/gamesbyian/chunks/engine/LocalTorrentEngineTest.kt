@@ -511,6 +511,11 @@ class LocalTorrentEngineTest {
         assertFalse("not a second concurrent verification", receiver.beginStoppedVerification(checked.infoHash))
         waitFor { receiver.status(checked.infoHash)?.let { it.stopped && !it.stopsAfterCheck &&
             it.state != LocalTransferState.CHECKING } == true }
+        // Native STOP_WHEN_READY may already have cleared by the time another
+        // Compose frame or worker asks. A completed automatic check is still
+        // the same one-shot request, not permission to recheck again.
+        assertFalse("a completed implicit verification must not be rearmed",
+            receiver.beginStoppedVerification(checked.infoHash))
         val status = requireNotNull(receiver.status(checked.infoHash))
         assertTrue(status.toString(), status.stopped)
         assertFalse(status.toString(), status.stopsAfterCheck)
