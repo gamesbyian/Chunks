@@ -2154,6 +2154,7 @@ class RTorrentRemote(private val auth: RemoteCredentials) {
         val throttle = optionalThrottleName()
         guardIdentity()
         return RemoteSeedingEvidence(
+            accountScope = addAccountScope(),
             infoHashV1 = hash.lowercase(java.util.Locale.ROOT),
             uploadedBytes = uploaded, downloadedBytes = downloaded,
             complete = complete, active = active,
