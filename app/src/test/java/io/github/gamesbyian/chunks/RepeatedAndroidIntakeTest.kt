@@ -117,6 +117,43 @@ class RepeatedAndroidIntakeTest {
         rule.onNodeWithTag(ChunksSemantics.ADD_SUBMIT).assertIsEnabled()
     }
 
+    @Test fun secondOpenWithDuringFirstProviderReadDoesNotSilentlyReplaceIt() {
+        val firstUri = Uri.parse("content://chunks.test.documents/inflight-first.torrent")
+        val secondUri = Uri.parse("content://chunks.test.documents/inflight-second.torrent")
+        val started = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val firstBytes = torrent("inflight-first.mkv")
+        val firstStream = object : java.io.FilterInputStream(firstBytes.inputStream()) {
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                started.countDown()
+                check(release.await(20, java.util.concurrent.TimeUnit.SECONDS)) {
+                    "The first document's test reader was never released"
+                }
+                return super.read(buffer, offset, length)
+            }
+        }
+        shadowOf(context.contentResolver).registerInputStream(firstUri, firstStream)
+        shadowOf(context.contentResolver).registerInputStream(secondUri,
+            torrent("inflight-second.mkv").inputStream())
+        try {
+            rule.runOnIdle { incoming.value = firstUri }
+            rule.waitUntil(15_000) { started.count == 0L }
+            // The previous source is selected, but its parsed review cannot
+            // yet be shown. The second handoff must be held for a choice.
+            rule.runOnIdle { incoming.value = secondUri }
+            waitForText("Use new source")
+            release.countDown()
+            waitForText("inflight-first.mkv")
+            // Local Add is a vertical ScrollState, not the remote LazyColumn.
+            // Inspect the actual, still-visible replacement control without
+            // inventing a list-index action or authorizing an Add mutation.
+            rule.onNodeWithText("Use new source").performScrollTo().performClick()
+            waitForText("inflight-second.mkv")
+        } finally {
+            release.countDown()
+        }
+    }
+
     @Test fun secondOpenWithAfterAVerifiedAddGetsAUsableAddForTheNewTorrent() {
         connect()
         rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
