@@ -59,7 +59,7 @@ object SeedingEnforcement {
             policy.ratioGoal?.let { "ratio" to ratioMet },
             policy.maxSeedSeconds?.let { "time" to timeMet })
         val reasonFor = { met: List<String> -> met.joinToString(" and ") { if (it == "ratio")
-            "ratio ${ratioNow!!.setScale(2, RoundingMode.DOWN).toPlainString()} reached the goal of $goalText"
+            "ratio ${ratioNow!!.setScale(maxOf(2, policy.ratioGoal?.scale() ?: 2), RoundingMode.DOWN).toPlainString()} reached the goal of $goalText"
             else "seeded for the maximum time" } }
 
         return when (policy.combine) {
