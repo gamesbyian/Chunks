@@ -2,13 +2,13 @@
 
 ## Current implementation checkpoint (2026-11-17)
 
-Chunks now supports more than the original inventory-only 2026 prototype, but this remains a **partial** snapshot feature. The current local engine can opt-in to export actual verified v1 torrent metainfo into bounded, checksummed `.chunksnap` archives. A user can select an archive in the read-only comparison flow, see already-present/missing identities, prepare a missing original torrent for manual Add, and explicitly submit **one stopped Local restore** to a newly reviewed local destination. The restoration journal records an Add intent before submission; an unverified native reply is not permission to issue another Add. **No payload files are transferred.**
+Chunks now supports more than the original inventory-only 2026 prototype, but this remains a **partial** snapshot feature. The current local engine can opt-in to export actual verified v1 torrent metainfo into bounded, checksummed `.chunksnap` archives. A user can select an archive in the read-only comparison flow, see already-present/missing identities, prepare a missing original torrent for manual Add, explicitly restore one stopped Local definition, or confirm a bounded group of verified missing originals as stopped at one newly reviewed Local destination (merged #1840). The restoration journal records an Add intent before submission; an unverified native reply is not permission to issue another Add. **No payload files are transferred.**
 
 [PR #1830](https://github.com/gamesbyian/Chunks/pull/1830) tightened journal verification: the target's complete exact-hash list is insufficient by itself; independent observation that the exact transfer is stopped and saved at the original reviewed Place is mandatory. [PR #1831](https://github.com/gamesbyian/Chunks/pull/1831) **merged** a distinct user-initiated **read-only recovery** route for interrupted Local restores, with existing-only journals, exact stopped-state/Place readback and a separate destination confirmation. Its final head `eee60355` passed nine source-exact workflows, including installed real-peer magnet, two-server rTorrent, native Add verifier, API29, R8 and documentation. This integration proof does not reproduce a killed process on the owner's Pixel. Neither capability silently retries an Add after a failed acknowledgement.
 
-The following gaps are **not complete**: general multi-item/bulk resume, authenticated remote metainfo recovery and remote restore, moving downloaded payloads, migration of historical state or path mappings, verified physical Android document-provider/process-kill recovery, and the full settings/priority round trip. True private-tracker definitions may contain credentials in announce URLs and must be handled as sensitive archive content.
+The following gaps are **not complete**: unattended interrupted-batch resume, proven real-host authenticated remote metainfo availability and remote restore, moving downloaded payloads, migration of historical state or path mappings, verified physical Android document-provider/process-kill recovery, and the full settings/priority round trip. True private-tracker definitions may contain credentials in announce URLs and must be handled as sensitive archive content.
 
-### Proposed 2026-11-17 Local stopped batch-restore slice
+### Merged #1840 Local stopped batch restore and next recovery slice
 
 The Local snapshot comparison now offers a separate **review all missing complete
 originals** action when at least two verified v1 `.torrent` definitions are
@@ -37,6 +37,36 @@ after process death, there is no remote stopped bulk-import adapter or
 historical file-priority restore, and no physical Pixel kill/provider acceptance
 is claimed until exercised on actual hardware. An unsupported or missing
 metainfo entry remains outside the batch, not guessed from an infohash.
+
+### Candidate read-only previous-batch recovery (2026-11-17)
+
+After a stopped Local batch is interrupted, the user can re-open a verified
+`.chunksnap`, compare against one **fresh complete** Local inventory, and
+choose **Check previous restores (read-only)**. This review includes both
+already-present and missing original metainfo identities; already-present
+jobs must never be submitted again. Select the **same original Local Place**
+for independently verified status, even if the archive's historical folder
+suggestion says something else.
+
+The recovery probe uses only the existing exact
+source-archive/item/target journals via `openExisting`; it **never creates a
+missing journal** or calls an engine mutation. A journal in REVIEW/READY/
+REFUSED is classified as not submitted **from that exact journal**, but an
+absent/corrupt journal is **unavailable**, never proof that the engine did
+not receive an earlier Add. IN_FLIGHT/ACK_UNVERIFIED/VERIFIED entries are
+rechecked against the current complete inventory plus the current STOPPED
+state at the reviewed canonical Place. The existing journal may be advanced
+to VERIFIED only after this independent evidence. A different Place, absent
+job, active job, stale inventory, cancellation or corrupt journal remains
+unresolved or blocks a coherent result; no Add, Start, Stop, retry, Remove,
+payload write or historical directory remap occurs. The receipt gives
+verified, unresolved/unavailable and review-only counts.
+
+This is explicit user-initiated **read-only reconciliation**, not automatic
+resume after process death. Any future retry requires a separate reviewed
+absence protocol; the new group check does not grant mutation authority.
+Physical Pixel process-death and external SAF/provider acceptance remain
+separate proof gates even after source-exact Android/JVM/native CI passes.
 
 ### 2026-10-27 historical milestones
 
