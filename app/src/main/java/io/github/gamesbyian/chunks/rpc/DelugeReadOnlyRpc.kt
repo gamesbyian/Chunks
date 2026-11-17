@@ -89,13 +89,12 @@ internal class DelugeReadOnlyRpc(
         // verified daemon for this private web session. No torrent changes.
         val supported = rpc("web.connect", JSONArray().put(daemonHostId), 4, cookie) as? JSONArray
             ?: throw IOException("Selected Deluge daemon refused connection")
-        if (supported.length() > 5000 || ! (0 until supported.length()).any { i ->
-            supported.opt(i) == "web.update_ui" || supported.opt(i) == "core.get_torrents_status"
-        }) {
-            // Some daemon method lists expose only core.* methods, and
-            // web.update_ui is a WebUI method. Require a meaningful core
-            // inventory capability rather than mistaking [] for success.
-            if (supported.length() == 0) throw IOException("Selected Deluge daemon lacks methods")
+        // web.connect returns *daemon* methods; web.update_ui itself is a
+        // WebUI-side aggregator and never proves the selected daemon supports
+        // full-inventory reads. No arbitrary nonempty method list is enough.
+        if (supported.length() > 5000 ||
+            !(0 until supported.length()).any { supported.opt(it) == "core.get_torrents_status" }) {
+            throw IOException("Selected Deluge daemon lacks inventory capability")
         }
         if (rpc("web.connected", JSONArray(), 5, cookie) != true) {
             throw IOException("Deluge Web UI is not connected to the selected daemon")
