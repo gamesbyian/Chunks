@@ -235,6 +235,9 @@ internal fun VerifiedAddScreen(
     var startAfterAdd by startHolder
     val artworkHolder = addArtworkState ?: rememberSaveable { mutableStateOf(true) }
     var automaticArtwork by artworkHolder
+    // This state must outlive LazyColumn eviction on a second Add. The
+    // checkbox's actual visibility is still gated by loaded global settings.
+    val artworkOffered = rememberAddArtworkChoiceOffered()
     val mediaController = io.github.gamesbyian.chunks.media.LocalTransferMediaController.current
     // Publish the exact client's confirmed new job while Add is visible OR
     // after navigating away. Only the coordinator's VERIFIED provenance can
@@ -968,7 +971,8 @@ internal fun VerifiedAddScreen(
             key = "remote-add-artwork-choice",
             contentType = "add-artwork-choice"
         ) {
-            AddArtworkChoice(automaticArtwork, enabled = !submitting && !choosing) {
+            AddArtworkChoice(automaticArtwork, enabled = !submitting && !choosing,
+                offeredByParent = artworkOffered) {
                 automaticArtwork = it
                 awaitingConfirmation = false
             }
