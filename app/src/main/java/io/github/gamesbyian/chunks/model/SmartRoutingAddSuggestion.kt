@@ -94,24 +94,6 @@ internal object SmartRoutingAddSuggestion {
             placeKnown = session?.defaultDownloadDirectory != null)
     }
 
-    /**
-     * Whether Universal Add should pre-select [suggestion]'s client now. Only
-     * with the explicit opt-in, at most once per reviewed source identity,
-     * never while an Add is in flight, and never over a target the person
-     * picked themselves for this source. Selection is a draft edit, not an Add.
-     */
-    fun shouldPreselect(
-        policy: SmartRoutingPolicyStore.Policy?,
-        suggestion: Suggestion?,
-        sourceKey: String?,
-        alreadyAppliedFor: String?,
-        personChoseTargetFor: String?,
-        alreadySelected: Boolean,
-        addInFlight: Boolean
-    ): Boolean = policy?.enabled == true && policy.autoSelect && suggestion != null &&
-        sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&
-        !alreadySelected && !addInFlight
-
     fun kindLabel(kind: SmartRoutingPreview.Kind): String = when (kind) {
         SmartRoutingPreview.Kind.MOVIE -> "Movie"
         SmartRoutingPreview.Kind.TV -> "TV episode"
