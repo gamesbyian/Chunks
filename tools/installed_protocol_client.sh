@@ -14,7 +14,9 @@ run_one() {
   # This disposable emulator has a known primary user; clear exactly user 0.
   adb shell pm clear --user 0 io.github.gamesbyian.chunks >/dev/null
   set +e
-  adb shell am instrument -w -r \
+  # Give instrumentation an explicit primary user; CURRENT (-2) is not resolved
+  # reliably after repeated app/test process launches in this disposable AVD.
+  adb shell am instrument --user 0 -w -r \
     -e class io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest \
     -e chunks_protocol_disposable authorized \
     -e chunks_protocol_kind_b64 "$(b64 "$kind")" \
