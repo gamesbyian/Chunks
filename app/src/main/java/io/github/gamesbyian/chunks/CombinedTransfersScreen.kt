@@ -436,7 +436,9 @@ internal fun CombinedTransfersScreen(
     enableFirstRunWelcome: Boolean = false,
     /** True for an existing verified vault login not yet represented by a roster. */
     hasRememberedRemoteLogin: Boolean = false,
-    onWelcomeAdd: (() -> Unit)? = null
+    onWelcomeAdd: (() -> Unit)? = null,
+    /** Authenticated read-only profiles for additional remote protocols. */
+    protocolProfiles: List<CombinedReadOnlyProtocolProfile> = emptyList()
 ) {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
@@ -491,7 +493,7 @@ internal fun CombinedTransfersScreen(
     var explicitSavedRead by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(scopeFocusRequest) {
         val id = scopeFocusRequest ?: return@LaunchedEffect
-        val eligible = savedProfiles.map { it.id }.toSet() +
+        val eligible = (savedProfiles.map { it.id } + protocolProfiles.map { it.id }).toSet() +
             listOfNotNull(server?.aliasScope?.let(
                 EnvironmentSnapshots::serverIdOfAliasScope)?.value)
         val requested = savedProfileViewScope(id, eligible)
@@ -555,6 +557,12 @@ internal fun CombinedTransfersScreen(
     // Profile identity is verified before admission: neither a renamed
     // account nor a different ruTorrent instance may borrow a prior policy.
     val savedScopeIdentities = savedProfiles.map { it.id to it.aliasScope }
+    val protocolIdentityScopes = protocolProfiles.map { it.id to it.backend }
+    val protocolPrivacyScopes = remember(protocolIdentityScopes) {
+        protocolProfiles.associate { profile ->
+            profile.environment to CombinedReadOnlyProtocolAdmission.privacyScope(profile)
+        }
+    }
     val savedPrivacyScopes = remember(savedScopeIdentities) {
         savedProfiles.associate { profile ->
             EnvironmentId(profile.id) to profile.aliasScope
@@ -567,6 +575,7 @@ internal fun CombinedTransfersScreen(
             add(localPrivacyScope)
             serverPrivacyScope?.let { add(it) }
             savedPrivacyScopes.values.filterNotNull().forEach { add(it) }
+            protocolPrivacyScopes.values.filterNotNull().forEach { add(it) }
         }
     }
     var loadedPrivacy by remember { mutableStateOf<CombinedPrivacyEvidence?>(null) }
@@ -649,6 +658,11 @@ internal fun CombinedTransfersScreen(
     val savedPrivacy = savedPrivacyScopes.mapValues { (_, scope) ->
         privacyEvidence?.decision(scope, privacySession, deviceSecure) ?: CombinedPrivacyEvidence.LOCKED
     }
+    val protocolAllowed = protocolPrivacyScopes.filter { (_, privacyScope) ->
+        privacyScope != null &&
+            privacyEvidence?.decision(privacyScope, privacySession, deviceSecure)?.mayShow == true
+    }.keys
+    val protocolSources = rememberCombinedProtocolSources(protocolProfiles, protocolAllowed, now)
     val serverId = server?.let {
         EnvironmentSnapshots.serverIdOfAliasScope(it.aliasScope)
     }
@@ -784,11 +798,13 @@ internal fun CombinedTransfersScreen(
         signedInServer = serverId,
         authenticatedScope = server?.aliasScope,
         authenticatedSession = server?.authenticatedSession,
-        savedScopes = savedProfiles.map { it.id to it.aliasScope }.sortedBy { it.first },
+        savedScopes = (savedProfiles.map { it.id to it.aliasScope } +
+            protocolProfiles.map { it.id to it.identityWitness }).sortedBy { it.first },
         privacyEpoch = privacyRevision.toString(),
         localVisible = localPrivacy.mayShow,
         serverVisible = serverPrivacy?.mayShow,
-        savedVisibility = savedPrivacy.map { (id, decision) -> id.value to decision.mayShow }
+        savedVisibility = (savedPrivacy.map { (id, decision) -> id.value to decision.mayShow } +
+            protocolProfiles.map { it.id to (it.environment in protocolAllowed) })
             .sortedBy { it.first }
     )
     val latestBatchIdentity = rememberUpdatedState(batchIdentity)
@@ -808,6 +824,10 @@ internal fun CombinedTransfersScreen(
         if (server != null && serverId != null)
             put(serverId, connectedServerFriendlyLabel(server.aliasScope, serverId, savedProfiles))
         savedProfiles.forEach { profile -> putIfAbsent(EnvironmentId(profile.id), "Server · " + profile.label) }
+        protocolProfiles.forEach { profile ->
+            putIfAbsent(profile.environment,
+                profile.backend.name.lowercase().replaceFirstChar { it.uppercase() } + " · " + profile.label)
+        }
     }
     val rowLabels = remember(labels, savedProfiles, server?.aliasScope) {
         compactEnvironmentLabels(labels, buildMap {
@@ -815,6 +835,7 @@ internal fun CombinedTransfersScreen(
         savedProfiles.forEach { profile ->
             profile.shortLabel?.let { put(EnvironmentId(profile.id), "Server · $it") }
         }
+        protocolProfiles.forEach { profile -> put(profile.environment, profile.label) }
         if (server != null && serverId != null && serverId !in this)
             put(serverId, compactServerLabel(server.aliasScope))
         })
@@ -858,7 +879,8 @@ internal fun CombinedTransfersScreen(
     // Keyed on data only: MainActivity rebuilds the server source (and its lifecycle lambdas) each frame.
     val rawSources = remember(localFrame, localConfirmed, localRunning, localObservedAt, localPrivacy,
         server?.aliasScope, server?.transfers, server?.stale, server?.fullView, server?.observedAtEpochMillis,
-        serverPrivacy, savedPrivacy, activeSavedScopes, listings, now, batchRunning, quickRunning,
+        serverPrivacy, savedPrivacy, activeSavedScopes, listings,
+        protocolSources.sources, now, batchRunning, quickRunning,
         LocalMutationFence.revision.blocksMutations()) { buildList {
         // A quick row command is fenced exactly like a batch run: its pre-command rows are stale.
         val commandInFlight = batchRunning || quickRunning != null
@@ -892,6 +914,7 @@ internal fun CombinedTransfersScreen(
                 locked = locked, fullView = true, observedAtEpochMillis = observed, nowEpochMillis = snapshotNow)
             )
         }
+        addAll(protocolSources.sources)
     }
     }
     // Resolve labels only from explicitly authorized owner scopes. An account
@@ -1023,7 +1046,8 @@ internal fun CombinedTransfersScreen(
         nativeStale = localFrame.stale || LocalMutationFence.revision.blocksMutations(),
         nativeCount = localFrame.entries.size,
         hasRemoteProfile = configuredRemoteForWelcome(
-            server != null, savedProfiles.isNotEmpty(), hasRememberedRemoteLogin),
+            server != null, savedProfiles.isNotEmpty() || protocolProfiles.isNotEmpty(),
+            hasRememberedRemoteLogin),
         restrictedView = CombinedViewPreferences.narrowingActive(query),
         privacyAllowed = localPrivacy.mayShow,
         pendingExternalSource = pendingSharedMagnet || pendingSharedLink ||
@@ -1421,7 +1445,8 @@ internal fun CombinedTransfersScreen(
         if (showNavigationFooter || pendingSharedMagnet || pendingSharedTorrent) item(key = COMBINED_ADD_ITEM_KEY) {
             CombinedAddActions(
                 serverLabel = serverId?.let { labels[it] },
-                hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId },
+                hasOtherSavedServers = savedProfiles.any { EnvironmentId(it.id) != serverId } ||
+                    protocolProfiles.isNotEmpty(),
                 onOpenLocal = onAddToLocal ?: onOpenLocal,
                 onAddToServer = onAddToServer,
                 pendingSharedMagnet = pendingSharedMagnet,
@@ -1668,7 +1693,8 @@ internal fun CombinedTransfersScreen(
         // when saved jobs await explicit restoration. Never call that state
         // "zero transfers". Offer the existing source review without starting
         // an engine, choosing a Place or authorizing an Add.
-        if (server == null && savedProfiles.isEmpty() && onAddToLocal != null &&
+        if (server == null && savedProfiles.isEmpty() && protocolProfiles.isEmpty() &&
+            onAddToLocal != null &&
             result.transfers.isEmpty() && !CombinedViewPreferences.narrowingActive(query)) {
             item(key = "combined-first-local-intake") {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
