@@ -168,6 +168,10 @@ internal class RemoteClientOperations(
         null
     } catch (e: CancellationException) {
         throw e
+    } catch (e: ClientPostWritePendingException) {
+        // The client acknowledged a consequential write. A successful session
+        // read cannot prove asynchronous filesystem cleanup; never replay it.
+        ClientOperationOutcome.Pending(hash, null, e.message ?: "Effect still pending")
     } catch (e: ClientRefusedException) {
         ClientOperationOutcome.Refused(hash, e.message ?: "Refused by the client")
     } catch (e: Exception) {
