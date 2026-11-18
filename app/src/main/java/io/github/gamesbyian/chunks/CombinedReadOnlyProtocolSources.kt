@@ -208,7 +208,7 @@ internal fun rememberCombinedProtocolSources(
             last == null -> EnvironmentTransferSnapshot(id, EnvironmentAvailability.OFFLINE,
                 inventoryComplete = false, observedAtEpochMillis = null, transfers = emptyList())
             else -> EnvironmentTransferSnapshot(id,
-                if (listing.loading || listing.failed ||
+                if (listing?.loading == true || listing?.failed == true ||
                     EnvironmentSnapshots.serverInventoryIsOutOfDate(last.observedAtEpochMillis, nowMillis))
                     EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
                 inventoryComplete = last.inventoryComplete,
