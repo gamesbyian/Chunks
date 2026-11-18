@@ -292,7 +292,24 @@ class ProtocolClientInstalledJourneyTest {
             waitFor("source retired", 60_000) { runBlocking { client.torrent(second.infoHashV1) } == null }
             stage("move-source-retired-independently")
             assertTrue("Local copy kept after retiring the source", local.status(second.infoHashV1) != null)
-            local.removeKeepingData(second.infoHashV1)
+
+            // And back: the Local job's own Details move-only panel → the same remote client.
+            rule.onNodeWithTag(ChunksSemantics.FOOTER_TRANSFERS).performClick()
+            waitFor("local job row", 90_000) {
+                runCatching { scrollToNode(secondDetails); true }.getOrDefault(false)
+            }
+            rule.onAllNodes(secondDetails).onFirst().performClick()
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE, "Copy or move (from this device)", 60_000)
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE + "." + profileId, "Copy job back to the remote client")
+            stage("move-from-device-dispatched-once")
+            waitFor("job copied back to the remote client", 90_000) { visible("Job copied to") && !visible("Job copied to This device") }
+            assertTrue("Independent remote readback: job registered again",
+                runBlocking { client.torrent(second.infoHashV1) } != null)
+            stage("move-back-copy-verified-on-remote")
+            clickOnce(ChunksSemantics.PROTOCOL_MOVE_RETIRE, "Finish move from this device")
+            waitFor("local job retired", 60_000) { local.status(second.infoHashV1) == null }
+            stage("move-back-local-retired-independently")
+            runBlocking { witness.remove(second.infoHashV1, deleteData = false) }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
         assertEquals("The verified login was saved once", 1,
