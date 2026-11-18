@@ -296,7 +296,8 @@ class RealClientInteropTest {
             }
             assertTrue("$tag: source never verified its payload", seeding)
 
-            val transfer = ClientJobTransfer(srcOps, src, dstOps, dst)
+            val transfer = ClientJobTransfer(srcOps, src, dstOps, dst,
+                sourceClientId = "interop-$tag-source", targetClientId = "interop-$tag-target")
             val copied = transfer.copy(hash, dstDir.absolutePath, startOnTarget = true)
             assertTrue("$tag copy: $copied", copied is ClientJobTransfer.CopyResult.Copied)
             println("CHUNKS_INTEROP: MOVE $tag job_copied=verified via=" +
@@ -320,7 +321,7 @@ class RealClientInteropTest {
             assertTrue("$tag: target bytes differ", File(dstDir, name).readBytes().contentEquals(payload))
             println("CHUNKS_INTEROP: MOVE $tag target_downloaded_from_source=true pieces=${built.pieceCount} bytes_identical=true")
 
-            assertVerified("$tag retire_source_session_only", transfer.retireSource(hash))
+            assertVerified("$tag retire_source_session_only", transfer.retireSource(hash, copied as ClientJobTransfer.CopyResult.Copied))
             assertTrue("$tag: source payload must remain", File(srcDir, name).isFile)
             println("CHUNKS_INTEROP: MOVE $tag source_files_kept=independently_observed")
 
