@@ -1,0 +1,107 @@
+name: Protected other-protocol Seedhost mutation journey
+
+# Owner-authorized (2026-11-17/18) disposable development clients only.
+# Manual, trusted main, first attempt only, explicit apply=true. Creates two
+# unique random-payload fixture jobs, exercises Add/files/priorities/Start/
+# Stop/Remove and Remove + data on ONLY those exact hashes, and requires the
+# unrelated inventory identity set to be unchanged. Never logs endpoints,
+# credentials, paths, names, trackers, cookies or bodies.
+on:
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: "Dedicated development-only remote client"
+        type: choice
+        required: true
+        options:
+          - TRANSMISSION
+          - QBITTORRENT
+          - DELUGE
+      apply:
+        description: "Type true to authorize fixture-only writes"
+        type: string
+        required: true
+        default: "false"
+      endpoint:
+        description: "Optional credential-free HTTPS endpoint override"
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-protocol-live-mutation-${{ inputs.backend }}
+  cancel-in-progress: false
+
+jobs:
+  exact-fixture-journey:
+    if: ${{ github.ref == 'refs/heads/main' && inputs.apply == 'true' && github.run_attempt == 1 }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install Android API 37 compile SDK
+        run: |
+          printf "y\n" | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ -d "$ANDROID_HOME/platforms/android-37.0" ] && [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Run one exact-client fixture journey
+        env:
+          BACKEND: ${{ inputs.backend }}
+          INPUT_URL: ${{ inputs.endpoint }}
+          SECRET_URL: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_url || secrets.TRANSMISSION_URL) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_url || secrets.QBITTORRENT_URL) || (secrets.deluge_url || secrets.DELUGE_URL) }}
+          LIVE_USER: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_user || secrets.TRANSMISSION_USER || secrets.rtorrent_user) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_user || secrets.QBITTORRENT_USER || secrets.rtorrent_user) || (secrets.deluge_user || secrets.DELUGE_USER || secrets.rtorrent_user) }}
+          LIVE_PASS: ${{ inputs.backend == 'TRANSMISSION' && (secrets.transmission_pass || secrets.TRANSMISSION_PASS || secrets.transmission_password) || inputs.backend == 'QBITTORRENT' && (secrets.qbittorrent_pass || secrets.QBITTORRENT_PASS || secrets.qbittorrent_password) || (secrets.deluge_pass || secrets.DELUGE_PASS || secrets.deluge_password) }}
+          LIVE_DAEMON: ${{ inputs.backend == 'DELUGE' && (secrets.deluge_daemon_id || secrets.DELUGE_DAEMON_ID || vars.DELUGE_DAEMON_ID) || '' }}
+        run: |
+          case "$BACKEND" in
+            TRANSMISSION) default_url="https://wood.seedhost.eu/ianseeds/transmission/rpc" ;;
+            QBITTORRENT) default_url="https://wood.seedhost.eu/ianseeds/qbittorrent/" ;;
+            DELUGE) default_url="https://wood.seedhost.eu/ianseeds/deluge/json" ;;
+          esac
+          url="${INPUT_URL:-${SECRET_URL:-$default_url}}"
+          case "$url" in
+            https://*.seedhost.eu/*|https://seedhost.eu/*) ;;
+            *) echo "::error::Endpoint must be a credential-free HTTPS Seedhost URL; no request sent."; exit 1 ;;
+          esac
+          if [ -z "$LIVE_PASS" ]; then
+            echo "::error::No password secret for this client; no request sent."; exit 1
+          fi
+          export "CHUNKS_INTEROP_${BACKEND}_URL=$url" "CHUNKS_INTEROP_${BACKEND}_USER=$LIVE_USER" \
+                 "CHUNKS_INTEROP_${BACKEND}_PASS=$LIVE_PASS" "CHUNKS_INTEROP_${BACKEND}_DAEMON_ID=$LIVE_DAEMON"
+          set +e
+          gradle --no-daemon --no-configuration-cache --console=plain -q :app:testDebugUnitTest \
+            --tests io.github.gamesbyian.chunks.rpc.RealClientInteropTest > "$RUNNER_TEMP/gradle.log" 2>&1
+          status=$?
+          set -e
+          python3 - "$status" <<'PY'
+          import pathlib, sys, xml.etree.ElementTree as ET
+          path = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.RealClientInteropTest.xml")
+          if not path.is_file():
+              print("CHUNKS_INTEROP: no executed receipt"); sys.exit(1)
+          root = ET.parse(path).getroot()
+          tests, skipped = int(root.get("tests", 0)), int(root.get("skipped", 0))
+          failed = int(root.get("failures", 0)) + int(root.get("errors", 0))
+          print(f"CHUNKS_INTEROP: tests={tests} executed={tests - skipped} failed={failed} skipped={skipped}")
+          for case in root.iter("testcase"):
+              for bad in list(case.findall("failure")) + list(case.findall("error")):
+                  kind = (bad.get("type") or "").rsplit(".", 1)[-1]
+                  msg = (bad.get("message") or "").splitlines()[0][:160] if bad.get("message") else ""
+                  if "://" in msg or "@" in msg or "/" in msg:
+                      msg = "<withheld>"
+                  print(f"CHUNKS_INTEROP: failure type={kind} message={msg}")
+          for line in (root.findtext("system-out") or "").splitlines():
+              if line.startswith("CHUNKS_INTEROP:"):
+                  print(line[:240])
+          sys.exit(0 if int(sys.argv[1]) == 0 and tests - skipped == 1 and failed == 0 else 1)
+          PY

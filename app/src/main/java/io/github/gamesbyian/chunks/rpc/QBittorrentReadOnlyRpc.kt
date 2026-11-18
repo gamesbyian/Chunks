@@ -29,7 +29,8 @@ internal class QBittorrentReadOnlyRpc(
 
     internal class Request(
         val url: URI, val method: String, val body: ByteArray?,
-        val origin: String, val cookie: String?
+        val origin: String, val cookie: String?,
+        val contentType: String = "application/x-www-form-urlencoded"
     ) {
         override fun toString(): String = "qBittorrent request (<redacted>)"
     }
@@ -173,10 +174,10 @@ internal class QBittorrentReadOnlyRpc(
             ?: throw IOException("Invalid qBittorrent inventory counter")
     }
 
-    private companion object {
+    internal companion object {
         const val MAX_BODY = 4_194_304
         val HASH = Regex("(?:[0-9a-f]{40}|[0-9a-f]{64})")
-        val SID = Regex("[A-Za-z0-9._~-]{8,256}")
+        val SID = Regex("[A-Za-z0-9._~+/=-]{8,256}")
         val PORT_COOKIE = Regex("QBT_SID_(?:[1-9][0-9]{0,4})")
         val ESCAPED_SEPARATOR = Regex("(?i)%(?:25)*(?:2f|5c|0[0-9a-f]|1[0-9a-f]|7f)")
         val DOT_SEGMENT = Regex("(?i)(?:^|/)(?:\\.|%(?:25)*2e){1,2}(?:/|$)")
@@ -203,7 +204,7 @@ internal class QBittorrentReadOnlyRpc(
     }
 
     /** Only an explicit root is used; redirects never carry an SID or password. */
-    private object HttpWire : Wire {
+    internal object HttpWire : Wire {
         override suspend fun exchange(request: Request): Response {
             val connection = request.url.toURL().openConnection() as HttpURLConnection
             connection.connectTimeout = 8_000
@@ -215,7 +216,7 @@ internal class QBittorrentReadOnlyRpc(
             request.cookie?.let { connection.setRequestProperty("Cookie", it) }
             request.body?.let { body ->
                 connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
+                connection.setRequestProperty("Content-Type", request.contentType)
                 connection.setFixedLengthStreamingMode(body.size)
             }
             try {

@@ -215,7 +215,7 @@ internal class DelugeReadOnlyRpc(
             ?: throw IOException("Invalid Deluge inventory counter")
     }
 
-    private companion object {
+    internal companion object {
         const val MAX_BODY = 4_194_304
         val HASH = Regex("(?:[0-9a-f]{40}|[0-9a-f]{64})")
         val DAEMON_ID = Regex("[A-Za-z0-9._:-]{1,128}")
@@ -244,7 +244,7 @@ internal class DelugeReadOnlyRpc(
     }
 
     /** No redirect, auth cookie only to the exact supplied endpoint. */
-    private object HttpWire : Wire {
+    internal object HttpWire : Wire {
         override suspend fun exchange(request: Request): Response {
             val connection = request.endpoint.toURL().openConnection() as HttpURLConnection
             connection.connectTimeout = 8_000
