@@ -32,14 +32,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install and start disposable real Transmission
         run: |
-          bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web
+          bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web rtorrent nginx
           sudo systemctl stop transmission-daemon deluged deluge-web qbittorrent-nox 2>/dev/null || true
           sudo pkill -x transmission-da 2>/dev/null || true
           sudo pkill -f /usr/bin/deluged 2>/dev/null || true
           if [ -f /etc/apparmor.d/transmission ]; then
             sudo apparmor_parser -R /etc/apparmor.d/transmission 2>/dev/null || true
           fi
-          tools/interop/start_local_clients.sh "$RUNNER_TEMP/interop"
+          SUDO=sudo tools/interop/start_local_clients.sh "$RUNNER_TEMP/interop"
       - uses: actions/setup-java@v4
         with:
           distribution: temurin

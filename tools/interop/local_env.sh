@@ -11,3 +11,8 @@ if [ -f "$_root/de/hostlist.conf" ]; then
   export CHUNKS_INTEROP_DELUGE_PASS=deluge
   export CHUNKS_INTEROP_DELUGE_PAYLOAD_DIR="$_root/dl/de"
 fi
+if [ -f "$_root/rt/rtorrent.rc" ]; then
+  export CHUNKS_INTEROP_RTORRENT_URL=http://127.0.0.1:18090/RPC2
+  export CHUNKS_INTEROP_RTORRENT_USER=chunks CHUNKS_INTEROP_RTORRENT_PASS=chunkspass
+  export CHUNKS_INTEROP_RTORRENT_PAYLOAD_DIR="$_root/dl/rt"
+fi

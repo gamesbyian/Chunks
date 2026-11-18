@@ -54,7 +54,7 @@ class RealClientInteropTest {
                 }
                 DelugeClient(credentials, daemon)
             }
-            RemoteBackendKind.RTORRENT -> error("rTorrent uses its established adapter")
+            RemoteBackendKind.RTORRENT -> RTorrentClientAdapter(RTorrentRemote(credentials))
         }
     }
 
@@ -73,6 +73,9 @@ class RealClientInteropTest {
             entries = files.map { (file, bytes) ->
                 TorrentMetainfoBuilder.Entry(listOf(file), bytes.size.toLong()) { bytes.inputStream() }
             },
+            // A dead loopback tracker: rTorrent with DHT off silently drops a
+            // trackerless .torrent (load.raw_verbose still answers 0).
+            trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")),
             pieceLength = 16 * 1024
         ))
         return Fixture(result, name, files)
@@ -86,6 +89,7 @@ class RealClientInteropTest {
     @Test fun transmission() = journey(RemoteBackendKind.TRANSMISSION)
     @Test fun qbittorrent() = journey(RemoteBackendKind.QBITTORRENT)
     @Test fun deluge() = journey(RemoteBackendKind.DELUGE)
+    @Test fun rtorrent() = journey(RemoteBackendKind.RTORRENT)
 
     private fun journey(backend: RemoteBackendKind) = runBlocking {
         kind = backend
@@ -122,12 +126,14 @@ class RealClientInteropTest {
 
         // 1b. The app's own Connect path (browser-style URL normalization,
         //     single-daemon adoption, authenticated complete read) sees it.
-        val connected = io.github.gamesbyian.chunks.RemoteProtocolConnect.connect(
-            kind, env("URL"), env("USER"), env("PASS"), env("DAEMON_ID"))
-        assertEquals(kind, connected.read.backend)
-        assertTrue(connected.read.snapshot.canClaimCompleteLiveInventory)
-        assertTrue(connected.read.snapshot.transfers.any { it.key.infoHash == hash })
-        stage("app_connect=verified_inventory_contains_fixture")
+        if (kind != RemoteBackendKind.RTORRENT) {
+            val connected = io.github.gamesbyian.chunks.RemoteProtocolConnect.connect(
+                kind, env("URL"), env("USER"), env("PASS"), env("DAEMON_ID"))
+            assertEquals(kind, connected.read.backend)
+            assertTrue(connected.read.snapshot.canClaimCompleteLiveInventory)
+            assertTrue(connected.read.snapshot.transfers.any { it.key.infoHash == hash })
+            stage("app_connect=verified_inventory_contains_fixture")
+        }
 
         // 2. Duplicate Add is refused without a second registration.
         val dup = ops.add(ClientAddRequest(ClientAddSource.TorrentFile(fx.result.torrent), directory, false))
@@ -188,7 +194,18 @@ class RealClientInteropTest {
             ops.add(ClientAddRequest(ClientAddSource.Magnet(magnet), directory, startNow = false)))
         assertVerified("remove_magnet_session_only", ops.remove(magnetFx.result.infoHashV1, deleteData = false))
 
-        // 9. Remove + data for the exact disposable fixture only.
+        // 9. Remove + data for the exact disposable fixture only; where the
+        //    client cannot delete data, session Remove must leave files intact.
+        if (ClientCapability.REMOVE_WITH_DATA !in session.capabilities) {
+            val refused = ops.remove(hash, deleteData = true)
+            assertTrue("unsupported Remove + data: $refused", refused is ClientOperationOutcome.Refused)
+            assertVerified("remove_session_only", ops.remove(hash, deleteData = false))
+            if (payloadRoot != null) {
+                assertTrue("Session Remove must keep payload files",
+                    fx.files.keys.all { File(finalDir, fx.name + "/" + it).isFile })
+                stage("payload_kept=independently_observed")
+            }
+        } else {
         assertVerified("remove_with_data", ops.remove(hash, deleteData = true))
         if (payloadRoot != null) {
             var gone = false
@@ -198,6 +215,7 @@ class RealClientInteropTest {
             }
             assertTrue("Payload still present after Remove + data", gone)
             stage("payload_deleted=independently_observed")
+        }
         }
 
         // 10. Negative controls: absent target and wrong password write nothing.
