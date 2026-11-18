@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferCatalog
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
+import io.github.gamesbyian.chunks.model.RemoteProtocolReadOnlyClient
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.CollectionMembershipFilter
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
@@ -356,11 +357,29 @@ internal fun ChunksApp(
     val context = LocalContext.current
     val vault = remember(context) { RememberedRemoteLogin(context) }
     val profileRoster = remember(context) { RememberedRemoteProfileRoster(context) }
+    val protocolProfileRoster = remember(context) { RememberedRemoteProtocolProfiles(context) }
     val remembered = remember(vault, profileRoster) {
         vault.load() ?: profileRoster.list().firstOrNull()?.credentials
     }
     var savedProfiles by remember(profileRoster) {
         mutableStateOf(if (vault.rememberingEnabled()) profileRoster.list() else emptyList())
+    }
+    var savedProtocolProfiles by remember(protocolProfileRoster) {
+        mutableStateOf(if (vault.rememberingEnabled()) protocolProfileRoster.list() else emptyList())
+    }
+    // The optional backend choice persists as nonsecret UI state; a password,
+    // accepted read, client transport or authentication ticket never does.
+    var chosenBackend by rememberSaveable { mutableStateOf(RemoteBackendKind.RTORRENT) }
+    var delugeDaemonHostId by remember { mutableStateOf("") }
+    var readOnlyBackendError by remember { mutableStateOf<String?>(null) }
+    var verifiedReadOnlyProfileId by remember { mutableStateOf<String?>(null) }
+    var transientReadOnlyProfile by remember { mutableStateOf<CombinedReadOnlyProtocolProfile?>(null) }
+    var readOnlyConnectJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val combinedProtocolProfiles = remember(savedProtocolProfiles, transientReadOnlyProfile) {
+        RemoteProtocolCombinedProfiles.saved(savedProtocolProfiles) +
+            listOfNotNull(transientReadOnlyProfile?.takeUnless { candidate ->
+                savedProtocolProfiles.any { it.id == candidate.id }
+            })
     }
     var endpoint by rememberSaveable { mutableStateOf(remembered?.endpoint.orEmpty()) }
     // Advanced manual endpoint path; joined with a hostname-only address.
@@ -388,7 +407,8 @@ internal fun ChunksApp(
     var returnFromStartupConnectToCanonical by remember { mutableStateOf(false) }
     var verifiedConnectionNotice by remember { mutableStateOf<VerifiedConnectionNotice?>(null) }
     var savedLoginPresent by remember {
-        mutableStateOf(remembered != null || savedProfiles.isNotEmpty())
+        mutableStateOf(remembered != null || savedProfiles.isNotEmpty() ||
+            savedProtocolProfiles.isNotEmpty())
     }
     var credentialNotice by remember { mutableStateOf<String?>(null) }
     var server by remember { mutableStateOf<RTorrentRemote?>(null) }
@@ -642,7 +662,8 @@ internal fun ChunksApp(
     // Purely derive the configured identities during composition. SharedPreferences
     // writes must happen after composition, off the main thread, and only when
     // the identity set changes. A malformed legacy profile cannot block local.
-    val paletteIdentities = remember(savedProfiles, aliasScope) {
+    val paletteIdentities = remember(savedProfiles, savedProtocolProfiles,
+        transientReadOnlyProfile, aliasScope) {
         buildList {
             add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL)
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots
@@ -650,6 +671,9 @@ internal fun ChunksApp(
             savedProfiles.forEach { profile ->
                 runCatching { io.github.gamesbyian.chunks.model.EnvironmentId(profile.id) }
                     .getOrNull()?.let { add(it) }
+            }
+            combinedProtocolProfiles.forEach { profile ->
+                add(profile.environment)
             }
         }.distinct()
     }
@@ -1240,7 +1264,7 @@ internal fun ChunksApp(
                 // A legacy saved vault login may precede roster migration. Its
                 // existence alone forbids a misleading fresh-install Welcome.
                 // Do not hand credentials to the catalog or trigger a new RPC.
-                hasRememberedRemoteLogin = remembered != null,
+                hasRememberedRemoteLogin = remembered != null || savedProtocolProfiles.isNotEmpty(),
                 // The existing Add destination remains the sole admission
                 // coordinator until source-first Universal Add is integrated.
                 onWelcomeAdd = { section = Section.ADD_CHOOSE },
@@ -1286,6 +1310,7 @@ internal fun ChunksApp(
                         listOnly = { verifiedSavedProfileMainInventory(profile.credentials) },
                         shortLabel = profile.label)
                 },
+                protocolProfiles = combinedProtocolProfiles,
                 onOpenLocal = { localFromCombined = true; section = Section.LOCAL },
                 // Opening the local device inventory is non-mutating. Only the explicit
                 // Add action hands off the pending magnet to its review.
