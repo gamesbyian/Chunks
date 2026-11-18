@@ -1168,6 +1168,26 @@ internal fun CombinedTransfersScreen(
         val canShowExactRemoval = exactRemoteRow != null &&
             serverPrivacy?.mayShow == true && verifiedOwner != null
         val renameScope = aliasScopes[focusedKey.environment]
+        // Every connected client is a job-only Copy/Move target through the one
+        // shared port, the device's own engine included. A target is offered
+        // only while its own inventory is live and visible.
+        val localClientOperations: () -> io.github.gamesbyian.chunks.rpc.ClientOperations = remember(context) {
+            { io.github.gamesbyian.chunks.rpc.ClientOperations(LocalTorrentClient.forApp(context)) }
+        }
+        val localMoveTarget = if (localRunning && localPrivacy?.mayShow != false && !localFrame.stale)
+            ProtocolMoveTarget(EnvironmentSnapshots.LOCAL.value, "This device", localClientOperations) else null
+        val rtorrentMoveTarget = (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
+            serverId != null && serverPrivacy?.mayShow == true && server.stale == false
+        }?.let { remote ->
+            ProtocolMoveTarget(requireNotNull(serverId).value,
+                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent") {
+                io.github.gamesbyian.chunks.rpc.ClientOperations(
+                    io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
+            }
+        }
+        val protocolMoveTargets = protocolProfiles.filter {
+            it.operations != null && it.environment in protocolAllowed
+        }.distinctBy { it.id }.map { ProtocolMoveTarget(it.id, it.label, requireNotNull(it.operations)) }
         // Transmission / qBittorrent / Deluge: the exact typed profile's own
         // write-capable session, through the ONE shared operation workflow.
         val focusedProtocol = protocolProfiles.firstOrNull { it.environment == focusedKey.environment }
@@ -1188,22 +1208,8 @@ internal fun CombinedTransfersScreen(
                     inventoryWitness = focusedProtocolListing?.snapshot?.observedAtEpochMillis,
                     createOperations = requireNotNull(profile.operations),
                     onChanged = { protocolSources.reload(profile.environment) },
-                    moveTargets = buildList {
-                        protocolProfiles.filter { it.id != profile.id && it.operations != null &&
-                            it.environment in protocolAllowed }.forEach { other ->
-                            add(ProtocolMoveTarget(other.id, other.label, requireNotNull(other.operations)))
-                        }
-                        // The authenticated rTorrent session, through the shared port.
-                        (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
-                            serverId != null && serverPrivacy?.mayShow == true && server.stale == false
-                        }?.let { remote ->
-                            add(ProtocolMoveTarget(requireNotNull(serverId).value,
-                                labels[serverId]?.removePrefix("Server · ") ?: "rTorrent") {
-                                io.github.gamesbyian.chunks.rpc.ClientOperations(
-                                    io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(remote))
-                            })
-                        }
-                    }
+                    moveTargets = protocolMoveTargets.filter { it.id != profile.id } +
+                        listOfNotNull(rtorrentMoveTarget, localMoveTarget)
                 )
             }
         }
@@ -1247,6 +1253,23 @@ internal fun CombinedTransfersScreen(
                     }
                     // Full Details parity with server jobs: files & priorities and Remove.
                     LocalDetailsOperations(focusedKey.infoHash, current = current, stale = localFrame.stale)
+                    // Job-only Copy/Move to another connected client through the same
+                    // shared receipt; Local lifecycle/files/Remove above stay authoritative.
+                    val outbound = protocolMoveTargets + listOfNotNull(rtorrentMoveTarget)
+                    if (current && outbound.isNotEmpty() && !localFrame.stale) {
+                        ProtocolClientOperationsPanel(
+                            hash = focusedKey.infoHash,
+                            clientLabel = "this device",
+                            sourceClientId = EnvironmentSnapshots.LOCAL.value,
+                            observedStarted = details.observation?.started,
+                            current = focusedKey.infoHash.matches(V1_TRANSFER_HASH),
+                            inventoryWitness = localObservedAt,
+                            createOperations = localClientOperations,
+                            onChanged = {},
+                            moveTargets = outbound,
+                            moveOnly = true
+                        )
+                    }
                 }
             }) else null,
             exactServerOperations = if (canShowExactRemoval) ({
@@ -1292,12 +1315,8 @@ internal fun CombinedTransfersScreen(
                     // Use the exact same Copy/Move receipt controller as the
                     // other protocols. Existing rTorrent lifecycle/Remove/Files
                     // controls remain authoritative and are never duplicated.
-                    val connectedTargets = protocolProfiles.filter { profile ->
-                        profile.operations != null && profile.environment in protocolAllowed &&
-                            profile.id != requireNotNull(serverId).value
-                    }.distinctBy { it.id }.map { profile ->
-                        ProtocolMoveTarget(profile.id, profile.label, requireNotNull(profile.operations))
-                    }
+                    val connectedTargets = protocolMoveTargets.filter { it.id != requireNotNull(serverId).value } +
+                        listOfNotNull(localMoveTarget)
                     if (connectedTargets.isNotEmpty() && !operationsStale) {
                         ProtocolClientOperationsPanel(
                             hash = focusedKey.infoHash,

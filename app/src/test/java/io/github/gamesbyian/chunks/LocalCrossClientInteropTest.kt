@@ -104,7 +104,8 @@ class LocalCrossClientInteropTest {
             override fun resolve(directory: String?) =
                 if (directory == null) place else LocalClientPlaces.within(listOf(place), directory)
         }, fence = fence)
-        return Device(engine, place, fence, client, ClientOperations(client, 40, 250))
+        // A magnet Start-on-Add is verified only after metadata arrives and payload starts.
+        return Device(engine, place, fence, client, ClientOperations(client, 120, 500))
     }
 
     private suspend fun waitFor(what: String, timeoutMs: Long = 180_000, condition: suspend () -> Boolean) {
@@ -181,8 +182,11 @@ class LocalCrossClientInteropTest {
             assertTrue("$back", back is ClientJobTransfer.CopyResult.Copied)
             remoteHasJob = true
             assertTrue("Local exports its own metainfo", (back as ClientJobTransfer.CopyResult.Copied).viaMetainfo)
+            var probes = 0
             waitFor("remote downloaded every piece from Local") {
                 val row = remote.torrent(hash)
+                if (probes++ % 40 == 0) stage(kind, "probe remote=${row?.runState}/${row?.completedBytes}/${row?.totalBytes} " +
+                    "local=${local.engine.status(hash)?.let { "${it.state} peers=${it.peers} up=${it.payloadUploadedBytes}" }}")
                 row != null && row.totalBytes != null && row.completedBytes == row.totalBytes
             }
             waitFor("remote payload flushed", 60_000) {

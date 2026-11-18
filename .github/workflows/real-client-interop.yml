@@ -69,7 +69,7 @@ jobs:
           set +e
           gradle --no-daemon --no-configuration-cache --console=plain :app:testDebugUnitTest \
             --tests io.github.gamesbyian.chunks.rpc.RealClientInteropTest \
-            --tests io.github.gamesbyian.chunks.rpc.RemoteClientOperationsTest \
+            --tests io.github.gamesbyian.chunks.rpc.ClientOperationsTest \
             --tests 'io.github.gamesbyian.chunks.rpc.*ReadOnlyRpcTest'
           status=$?
           set -e
