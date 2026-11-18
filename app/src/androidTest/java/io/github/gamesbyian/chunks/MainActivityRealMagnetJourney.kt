@@ -559,7 +559,11 @@ internal class MainActivityRealMagnetJourney(
             }
             rule.onNode(submit).performScrollTo()
             rule.waitForIdle()
-            rule.onNode(submit).performClick()
+            // Exactly one activation through the control's own click action (as an
+            // accessibility service activates it). A coordinate touch on a lazy row
+            // can miss after the IME or layout shifts: run 44409816661 showed no
+            // refusal, no receipt and the control still enabled after the tap.
+            rule.onNode(submit).performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
             try {
                 rule.waitUntil(60_000) {
                     runCatching { scrollOutcome() }.isSuccess &&
