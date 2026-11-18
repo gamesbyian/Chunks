@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.assertDoesNotExist
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ApplicationProvider
@@ -62,6 +64,18 @@ class SmartRoutingSettingsScreenTest {
         assertEquals(initial.minimumConfidence, persisted.minimumConfidence)
         assertEquals(SmartRoutingPreview.Kind.AUDIOBOOK, persisted.kind)
         assertEquals(wood, persisted.targetEnvironmentId)
-        compose.onNodeWithText("1. Audiobook → Wood").performScrollTo()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("1. Audiobook → Wood").fetchSemanticsNodes().isNotEmpty()
+        }
+        // Removing a rule while editing it must not leave a stale Save action.
+        compose.onNodeWithText("Edit").performScrollTo().performClick()
+        compose.onNodeWithText("Remove").performScrollTo().performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("New rule").fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithText("Save changes").assertDoesNotExist()
+        compose.onNodeWithText("New rule").assertExists()
+        assertTrue((SmartRoutingPolicyStore(context).read() as SmartRoutingPolicyStore.Read.Ready)
+            .policy.rules.isEmpty())
     }
 }
