@@ -1644,6 +1644,106 @@ internal fun ChunksApp(
                 },
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
                 savedProfiles = savedProfiles, credentialNotice = credentialNotice,
+                enableAdditionalProtocols = true,
+                chosenBackend = chosenBackend,
+                onChosenBackend = { kind ->
+                    if (!loading && kind != chosenBackend) {
+                        // Switching type abandons any in-flight check and its
+                        // right to save; a typed password never crosses types.
+                        readOnlyConnectJob?.cancel()
+                        RemoteCredentialLock.invalidate()
+                        chosenBackend = kind
+                        password = ""
+                        delugeDaemonHostId = ""
+                        readOnlyBackendError = null
+                    }
+                },
+                delugeDaemonHostId = delugeDaemonHostId,
+                onDelugeDaemonHostId = { delugeDaemonHostId = it; readOnlyBackendError = null },
+                readOnlyBackendError = readOnlyBackendError,
+                onConnectReadOnlyBackend = {
+                    if (!loading && server == null && chosenBackend != RemoteBackendKind.RTORRENT) {
+                        // Freeze the exact type, address, account, secret, daemon,
+                        // label and remember choice before any suspension.
+                        val kind = chosenBackend
+                        val draftEndpoint = endpoint
+                        val draftUser = username
+                        val draftPassword = password
+                        val draftDaemon = delugeDaemonHostId
+                        val saveThisLogin = rememberLogin
+                        val label = connectionName.trim()
+                            .takeIf { RememberedRemoteProtocolProfiles.validLabel(it) }
+                        loading = true
+                        readOnlyBackendError = null
+                        credentialNotice = null
+                        RemoteCredentialLock.invalidate()
+                        readOnlyConnectJob?.cancel()
+                        var job: kotlinx.coroutines.Job? = null
+                        job = scope.launch {
+                            try {
+                                credentialChanges.awaitSettled()
+                                val uiRevision = credentialChanges.snapshotRevision()
+                                val credentialTicket = RemoteCredentialLock.beginConnection()
+                                val verified = withContext(Dispatchers.IO) {
+                                    kotlinx.coroutines.withTimeout(60_000) {
+                                        RemoteProtocolConnect.connect(kind, draftEndpoint, draftUser,
+                                            draftPassword, draftDaemon)
+                                    }
+                                }
+                                if (readOnlyConnectJob !== job || !credentialChanges.isLatest(uiRevision)) return@launch
+                                val config = verified.configuration
+                                val saved = saveThisLogin && withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        protocolProfileRoster.saveVerified(kind, config.credentials,
+                                            config.delugeDaemonHostId, verified.read.snapshot,
+                                            verified.read.capabilities, credentialTicket, label)
+                                    }.getOrDefault(false)
+                                }
+                                val roster = if (saved) withContext(Dispatchers.IO) { protocolProfileRoster.list() } else null
+                                // A Forget/remember change or newer Connect during IO
+                                // owns the UI; a late result cannot resurrect anything.
+                                if (readOnlyConnectJob !== job || !credentialChanges.isLatest(uiRevision)) return@launch
+                                val id = verified.read.environment.value
+                                if (roster != null && roster.any { it.id == id }) {
+                                    savedProtocolProfiles = roster
+                                    transientReadOnlyProfile = null
+                                } else {
+                                    transientReadOnlyProfile = RemoteProtocolCombinedProfiles.transient(
+                                        config, verified.read,
+                                        label ?: (RemoteProtocolLabels.kind(kind) + " @ " +
+                                            (runCatching { java.net.URI(config.credentials.endpoint).host }
+                                                .getOrNull() ?: "remote client")).take(100))
+                                }
+                                verifiedReadOnlyProfileId = id
+                                endpoint = config.credentials.endpoint
+                                password = ""
+                                delugeDaemonHostId = config.delugeDaemonHostId.orEmpty()
+                                savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty() ||
+                                    savedProtocolProfiles.isNotEmpty()
+                                credentialNotice = when {
+                                    saved -> null
+                                    saveThisLogin -> "Connected, but this login could not be saved. " +
+                                        "It stays available until you close Chunks."
+                                    else -> "Connected without remembering credentials."
+                                }
+                                consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
+                                savedProfileCatalogFocus = id
+                                combinedFromConnections = true
+                                section = Section.COMBINED
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                if (cancel is kotlinx.coroutines.TimeoutCancellationException &&
+                                    readOnlyConnectJob === job) {
+                                    readOnlyBackendError = "The client did not answer in time. Nothing was changed."
+                                } else throw cancel
+                            } catch (failure: Exception) {
+                                if (readOnlyConnectJob === job) readOnlyBackendError = RemoteProtocolConnect.explain(failure)
+                            } finally {
+                                if (readOnlyConnectJob === job) loading = false
+                            }
+                        }
+                        readOnlyConnectJob = job
+                    }
+                },
                 readOnlySavedProfiles = savedProtocolProfiles,
                 readOnlyConnectedProfileId = verifiedReadOnlyProfileId,
                 onViewReadOnlyProfile = { profile ->
@@ -2722,7 +2822,9 @@ internal fun ConnectionScreen(
         RememberedRemoteProfileRoster.validFriendlyName(connectionName)
     val isRTorrentForm = !enableAdditionalProtocols || chosenBackend == RemoteBackendKind.RTORRENT
     val needsDaemonId = !isRTorrentForm && chosenBackend == RemoteBackendKind.DELUGE
-    val canSubmitConnection = endpoint.isNotBlank() && (!needsDaemonId || delugeDaemonHostId.isNotBlank())
+    // A blank Deluge daemon ID is allowed: Connect adopts the Web UI's daemon
+    // only when exactly one is registered, and otherwise asks for the ID.
+    val canSubmitConnection = endpoint.isNotBlank() && (isRTorrentForm || password.isNotEmpty())
     val submitConnect: () -> Unit = {
         connectKeyboard?.hide()
         connectFocus.clearFocus()
@@ -2853,8 +2955,8 @@ internal fun ConnectionScreen(
                             else -> "Remote client"
                         }
                         Text(kindName + " · " +
-                            if (readOnlyConnectedProfileId == profile.id) "Recently verified · viewing only"
-                            else "Saved connection · viewing only",
+                            if (readOnlyConnectedProfileId == profile.id) "Recently verified"
+                            else "Saved connection",
                             style = MaterialTheme.typography.bodySmall)
                         ResponsiveActionGroup(maxColumns = 2) { cell ->
                             OutlinedButton(onClick = { onViewReadOnlyProfile(profile) },
@@ -3074,7 +3176,7 @@ internal fun ConnectionScreen(
                 key = { "manage-readonly-profile-" + it.id }) { profile ->
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(profile.label, style = MaterialTheme.typography.titleMedium)
-                    Text("This connection can show transfers. Changing torrents isn't available yet.",
+                    Text("Open a transfer's Details to start, stop, recheck, set file priorities or remove it on this client.",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = { onViewReadOnlyProfile(profile) },
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -3255,8 +3357,8 @@ internal fun ConnectionScreen(
         if (needsDaemonId) item {
             OutlinedTextField(
                 value = delugeDaemonHostId, onValueChange = onDelugeDaemonHostId,
-                label = { Text("Deluge daemon ID") },
-                supportingText = { Text("Select the exact registered daemon, not just the Deluge WebUI.") },
+                label = { Text("Deluge daemon ID (optional)") },
+                supportingText = { Text("Leave empty to use the Web UI's only daemon. Needed only when it has several.") },
                 singleLine = true, enabled = !loading,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -3302,7 +3404,7 @@ internal fun ConnectionScreen(
                     RemoteBackendKind.QBITTORRENT -> "qBittorrent"
                     RemoteBackendKind.DELUGE -> "Deluge"
                     else -> "rTorrent"
-                } + " (read only)"
+                }
             }) }
         }
         if (connectedSessionName == null) {

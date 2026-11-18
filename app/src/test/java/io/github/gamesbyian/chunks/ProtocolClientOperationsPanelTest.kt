@@ -1,0 +1,112 @@
+package io.github.gamesbyian.chunks
+
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import io.github.gamesbyian.chunks.model.RemoteBackendKind
+import io.github.gamesbyian.chunks.rpc.ClientAddRequest
+import io.github.gamesbyian.chunks.rpc.ClientCapability
+import io.github.gamesbyian.chunks.rpc.ClientFile
+import io.github.gamesbyian.chunks.rpc.ClientFilePriority
+import io.github.gamesbyian.chunks.rpc.ClientRunState
+import io.github.gamesbyian.chunks.rpc.ClientSessionInfo
+import io.github.gamesbyian.chunks.rpc.ClientTorrent
+import io.github.gamesbyian.chunks.rpc.ClientWriteUncertainException
+import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
+import io.github.gamesbyian.chunks.rpc.RemoteTorrentClient
+import org.junit.Assert.assertEquals
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
+
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
+class ProtocolClientOperationsPanelTest {
+    @get:Rule val rule = createComposeRule()
+    private val hash = "ab".repeat(20)
+
+    private inner class Fake : RemoteTorrentClient {
+        override val kind = RemoteBackendKind.QBITTORRENT
+        var state = ClientRunState.STOPPED
+        var present = true
+        var writes = 0
+        var lose = false
+        override suspend fun session() = ClientSessionInfo(kind, "5", "/d", ClientCapability.entries.toSet())
+        override suspend fun torrents() = listOfNotNull(torrent(hash))
+        override suspend fun torrent(hash: String) =
+            if (present && hash == this@ProtocolClientOperationsPanelTest.hash)
+                ClientTorrent(hash, "n", state, 1, 0, 0, 0, "/d") else null
+        override suspend fun files(hash: String) = listOf(ClientFile(0, "a", 1, 0, ClientFilePriority.NORMAL))
+        private fun write(apply: () -> Unit) {
+            writes++
+            if (lose) throw ClientWriteUncertainException("lost")
+            apply()
+        }
+        override suspend fun add(request: ClientAddRequest) = write {}
+        override suspend fun setStarted(hash: String, started: Boolean) =
+            write { state = if (started) ClientRunState.DOWNLOADING else ClientRunState.STOPPED }
+        override suspend fun remove(hash: String, deleteData: Boolean) = write { present = false }
+        override suspend fun setFilePriorities(hash: String, priorities: Map<Int, ClientFilePriority>) = write {}
+        override suspend fun setLocation(hash: String, directory: String, moveData: Boolean) = write {}
+        override suspend fun recheck(hash: String) = write {}
+    }
+
+    private fun render(fake: Fake, current: Boolean = true) {
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "Seedbox qB", observedStarted = false,
+                    current = current, inventoryWitness = 1L,
+                    createOperations = { RemoteClientOperations(fake, 3, 1) },
+                    onChanged = {}
+                )
+            }
+        }
+        rule.waitForIdle()
+    }
+
+    @Test fun startIsConfirmedOnlyAfterExactReadback() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).performClick()
+        rule.waitUntil(5_000) { fake.state == ClientRunState.DOWNLOADING }
+        rule.waitForIdle()
+        rule.onNodeWithText("Start: confirmed on Seedbox qB.").assertExists()
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun lostReplyIsUnknownAndLocksFurtherCommands() {
+        val fake = Fake().apply { lose = true }
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Commands are paused until the list refreshes.").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun removeKeepsFilesUnlessExplicitlyChosen() {
+        val fake = Fake()
+        render(fake)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).performClick()
+        rule.onNodeWithText("Remove, keep files").assertExists()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE_CONFIRM).performClick()
+        rule.waitUntil(5_000) { !fake.present }
+        rule.waitForIdle()
+        rule.onNodeWithText("Remove: confirmed on Seedbox qB.").assertExists()
+    }
+
+    @Test fun staleListOffersNoCommands() {
+        val fake = Fake()
+        render(fake, current = false)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertIsNotEnabled()
+        assertEquals(0, fake.writes)
+    }
+}

@@ -29,6 +29,11 @@ internal object ChunksSemantics {
     const val CONNECTION_VIEW_TRANSFERS = "chunks.connection.view_transfers"
     /** Submit a reviewed connection; stable across keyboard and roster layout. */
     const val CONNECTION_CONNECT = "chunks.connection.connect"
+    const val PROTOCOL_OPERATIONS = "chunks.protocol.operations"
+    const val PROTOCOL_START_STOP = "chunks.protocol.start_stop"
+    const val PROTOCOL_REMOVE = "chunks.protocol.remove"
+    const val PROTOCOL_REMOVE_CONFIRM = "chunks.protocol.remove.confirm"
+    const val PROTOCOL_OPERATION_STATUS = "chunks.protocol.operation_status"
     const val CONNECTION_NAME = "chunks.connection.name"
 
     // Universal Add: one source, one submission action, one Start preference.

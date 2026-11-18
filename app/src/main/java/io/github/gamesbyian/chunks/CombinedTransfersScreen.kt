@@ -1168,6 +1168,28 @@ internal fun CombinedTransfersScreen(
         val canShowExactRemoval = exactRemoteRow != null &&
             serverPrivacy?.mayShow == true && verifiedOwner != null
         val renameScope = aliasScopes[focusedKey.environment]
+        // Transmission / qBittorrent / Deluge: the exact typed profile's own
+        // write-capable session, through the ONE shared operation workflow.
+        val focusedProtocol = protocolProfiles.firstOrNull { it.environment == focusedKey.environment }
+            ?.takeIf { it.operations != null && it.environment in protocolAllowed }
+        val focusedProtocolListing = focusedProtocol?.let { profile ->
+            protocolSources.listings[profile.environment]?.takeIf { it.witness == profile.identityWitness }
+        }
+        val protocolOperations: (@Composable () -> Unit)? = focusedProtocol?.let { profile ->
+            {
+                ProtocolClientOperationsPanel(
+                    hash = focusedKey.infoHash,
+                    clientLabel = profile.label,
+                    observedStarted = details.observation?.started,
+                    current = details.readState == TransferDetailReadState.CURRENT &&
+                        focusedProtocolListing?.snapshot?.canClaimCompleteLiveInventory == true &&
+                        focusedKey.infoHash.matches(V1_TRANSFER_HASH),
+                    inventoryWitness = focusedProtocolListing?.snapshot?.observedAtEpochMillis,
+                    createOperations = requireNotNull(profile.operations),
+                    onChanged = { protocolSources.reload(profile.environment) }
+                )
+            }
+        }
         Column(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f)) {
         UnifiedTransferDetailPanel(
@@ -1251,7 +1273,7 @@ internal fun CombinedTransfersScreen(
                             details.readState == TransferDetailReadState.STALE
                     )
                 }
-            }) else null,
+            }) else protocolOperations,
             onOpenOwningList = openFor(focusedKey),
             onReviewStartStop = if (canReviewLifecycle) ({
                 // Selection is always the one exact key just examined, not

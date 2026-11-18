@@ -33,6 +33,11 @@ internal data class CombinedReadOnlyProtocolProfile(
     val label: String,
     /** Changes whenever exact credentials are replaced and reauthenticated. */
     val verifiedAtMillis: Long,
+    /**
+     * A fresh write-capable session bound to the SAME exact credentials and
+     * identity. Details uses it only through the shared operation workflow.
+     */
+    val operations: (() -> io.github.gamesbyian.chunks.rpc.RemoteClientOperations)? = null,
     /** Must perform fresh exact-client, challenged/cookie-authenticated read. */
     val inspect: suspend () -> CombinedReadOnlyProtocolReceipt
 ) {

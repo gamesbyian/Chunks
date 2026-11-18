@@ -3,6 +3,8 @@ package io.github.gamesbyian.chunks
 import io.github.gamesbyian.chunks.model.RemoteBackendIdentity
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
 import io.github.gamesbyian.chunks.model.RemoteProtocolReadOnlyClient
+import io.github.gamesbyian.chunks.rpc.RemoteClientOperations
+import io.github.gamesbyian.chunks.rpc.RemoteTorrentClients
 import java.io.IOException
 
 /**
@@ -36,6 +38,10 @@ internal object RemoteProtocolCombinedProfiles {
                 CombinedReadOnlyProtocolReceipt(
                     result.backend, result.snapshot, result.capabilities
                 )
+            },
+            operations = {
+                RemoteClientOperations(RemoteTorrentClients.create(
+                    profile.backend, profile.credentials, profile.delugeDaemonHostId))
             }
         )
     }
@@ -65,6 +71,10 @@ internal object RemoteProtocolCombinedProfiles {
                 CombinedReadOnlyProtocolReceipt(
                     fresh.backend, fresh.snapshot, fresh.capabilities
                 )
+            },
+            operations = {
+                RemoteClientOperations(RemoteTorrentClients.create(
+                    config.backend, config.credentials, config.delugeDaemonHostId))
             }
         )
     }

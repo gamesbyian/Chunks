@@ -120,6 +120,15 @@ class RealClientInteropTest {
         assertVerified("add_torrent_stopped", add)
         assertEquals(ClientRunState.STOPPED, (add as ClientOperationOutcome.Verified).observed!!.runState)
 
+        // 1b. The app's own Connect path (browser-style URL normalization,
+        //     single-daemon adoption, authenticated complete read) sees it.
+        val connected = io.github.gamesbyian.chunks.RemoteProtocolConnect.connect(
+            kind, env("URL"), env("USER"), env("PASS"), env("DAEMON_ID"))
+        assertEquals(kind, connected.read.backend)
+        assertTrue(connected.read.snapshot.canClaimCompleteLiveInventory)
+        assertTrue(connected.read.snapshot.transfers.any { it.key.infoHash == hash })
+        stage("app_connect=verified_inventory_contains_fixture")
+
         // 2. Duplicate Add is refused without a second registration.
         val dup = ops.add(ClientAddRequest(ClientAddSource.TorrentFile(fx.result.torrent), directory, false))
         assertTrue("duplicate: $dup", dup is ClientOperationOutcome.Refused)
