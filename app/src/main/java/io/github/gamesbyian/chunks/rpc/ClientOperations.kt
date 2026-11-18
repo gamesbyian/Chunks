@@ -30,7 +30,13 @@ internal class ClientOperations(
     /** The exact client this workflow drives (shared with Move). */
     val client: TorrentClient,
     private val readbackAttempts: Int = 12,
-    private val readbackDelayMillis: Long = 750
+    private val readbackDelayMillis: Long = 750,
+    /**
+     * Extra exact reads a stopped Add must STAY stopped for. Some clients
+     * (qBittorrent with a magnet) first report paused, then start fetching
+     * metadata: a fleeting paused observation cannot prove a stopped Add.
+     */
+    private val stoppedSettleReads: Int = 4
 ) {
     private var cachedSession: ClientSessionInfo? = null
 
@@ -117,7 +123,7 @@ internal class ClientOperations(
             Read.Absent -> Unit
         }
         write(hash) { client.add(request) }?.let { return it }
-        return readback(hash) { observed ->
+        val outcome = readback(hash) { observed ->
             when {
                 observed == null -> "Not yet registered"
                 request.directory != null &&
@@ -135,6 +141,18 @@ internal class ClientOperations(
                 else -> null
             }
         }
+        if (request.startNow || outcome !is ClientOperationOutcome.Verified) return outcome
+        repeat(stoppedSettleReads) {
+            delay(readbackDelayMillis)
+            when (val read = exactRead(hash)) {
+                is Read.Present -> if (read.torrent.runState != ClientRunState.STOPPED)
+                    return ClientOperationOutcome.Pending(hash, read.torrent,
+                        "Registered stopped, then the client changed it to ${read.torrent.runState.name.lowercase()}")
+                Read.Absent -> return ClientOperationOutcome.Pending(hash, null, "Registered, then no longer listed")
+                is Read.Failed -> Unit
+            }
+        }
+        return outcome
     }
 
     suspend fun setStarted(hash: String, started: Boolean): ClientOperationOutcome =

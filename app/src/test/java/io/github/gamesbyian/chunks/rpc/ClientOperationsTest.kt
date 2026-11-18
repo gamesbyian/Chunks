@@ -25,7 +25,11 @@ class ClientOperationsTest {
 
         override suspend fun session() = ClientSessionInfo(kind, "1", "/d", caps, levels)
         override suspend fun torrents() = listOfNotNull(present)
+        var reads = 0
+        var onRead: (Fake) -> Unit = {}
         override suspend fun torrent(hash: String): ClientTorrent? {
+            reads++
+            onRead(this)
             if (failReads) throw IOException("read failed")
             return present?.takeIf { it.hash == hash }
         }
@@ -288,5 +292,26 @@ class ClientOperationsTest {
         val applied = ops(fake).add(ClientAddRequest(source, null, startNow = false, skippedFiles = mapOf(1 to "b")))
         assertTrue("$applied", applied is ClientOperationOutcome.Verified)
         assertEquals(2, fake.writes)
+    }
+
+    @Test fun aStoppedAddThatTheClientThenStartsIsNeverVerified() = runBlocking {
+        // qBittorrent magnet seen in installed CI: paused at first, then metaDL.
+        val magnet = ClientAddSource.Magnet("magnet:?xt=urn:btih:$hash")
+        val fake = Fake(null)
+        var registeredAt = -1
+        fake.applyWrite = { f -> f.present = torrent(ClientRunState.STOPPED); registeredAt = f.reads }
+        fake.onRead = { f ->
+            if (registeredAt >= 0 && f.reads > registeredAt + 2) f.present = torrent(ClientRunState.METADATA)
+        }
+        val outcome = ops(fake).add(ClientAddRequest(magnet, null, startNow = false))
+        assertTrue("$outcome", outcome is ClientOperationOutcome.Pending)
+        assertEquals(ClientRunState.METADATA, (outcome as ClientOperationOutcome.Pending).observed?.runState)
+        assertEquals("one Add, never replayed or auto-stopped", 1, fake.writes)
+    }
+
+    @Test fun aStableStoppedAddIsVerified() = runBlocking {
+        val magnet = ClientAddSource.Magnet("magnet:?xt=urn:btih:$hash")
+        val fake = Fake(null).apply { applyWrite = { f -> f.present = torrent(ClientRunState.STOPPED) } }
+        assertTrue(ops(fake).add(ClientAddRequest(magnet, null, startNow = false)) is ClientOperationOutcome.Verified)
     }
 }
