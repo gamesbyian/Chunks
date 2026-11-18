@@ -76,7 +76,13 @@ internal enum class ClientCapability {
     START_STOP, FILE_PRIORITIES,
     REMOVE, REMOVE_WITH_DATA, SET_LOCATION, RECHECK,
     /** [TorrentClient.transferSource] can re-create a job elsewhere. */
-    EXPORT_JOB
+    EXPORT_JOB,
+    /**
+     * [TorrentClient.add] itself applies [ClientAddRequest.skippedFiles] to the
+     * still-stopped job and starts only after the skips are confirmed (one
+     * client-side write sequence, e.g. Local's single fenced native Add).
+     */
+    ADD_WITH_FILE_CHOICES
 }
 
 internal data class ClientSessionInfo(
@@ -149,10 +155,20 @@ internal data class ClientAddRequest(
     val source: ClientAddSource,
     /** null = the client's own default; otherwise an exact absolute directory. */
     val directory: String?,
-    val startNow: Boolean
+    val startNow: Boolean,
+    /**
+     * Files the person unticked in the reviewed .torrent layout: metainfo
+     * index → reviewed relative path. Applied by the shared workflow while
+     * the job is still stopped, before any requested Start.
+     */
+    val skippedFiles: Map<Int, String> = emptyMap()
 ) {
     init {
         directory?.let { ClientHashes.requireDirectory(it) }
+        require(skippedFiles.isEmpty() || source is ClientAddSource.TorrentFile) {
+            "File choices need a reviewed .torrent layout"
+        }
+        require(skippedFiles.keys.all { it >= 0 } && skippedFiles.values.all { it.isNotBlank() })
     }
 }
 

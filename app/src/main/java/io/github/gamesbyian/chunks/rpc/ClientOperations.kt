@@ -30,7 +30,13 @@ internal class ClientOperations(
     /** The exact client this workflow drives (shared with Move). */
     val client: TorrentClient,
     private val readbackAttempts: Int = 12,
-    private val readbackDelayMillis: Long = 750
+    private val readbackDelayMillis: Long = 750,
+    /**
+     * Extra exact reads a stopped Add must STAY stopped for. Some clients
+     * (qBittorrent with a magnet) first report paused, then start fetching
+     * metadata: a fleeting paused observation cannot prove a stopped Add.
+     */
+    private val stoppedSettleReads: Int = 4
 ) {
     private var cachedSession: ClientSessionInfo? = null
 
@@ -40,7 +46,65 @@ internal class ClientOperations(
     /** Explicit read of one exact transfer's files (no mutation). */
     suspend fun files(hash: String): List<ClientFile> = client.files(ClientHashes.requireHash(hash))
 
-    suspend fun add(request: ClientAddRequest): ClientOperationOutcome {
+    suspend fun add(request: ClientAddRequest): ClientOperationOutcome =
+        if (request.skippedFiles.isEmpty()) addOnce(request) else addWithFileChoices(request)
+
+    /**
+     * Reviewed file skips for every engine, one gated step at a time:
+     * stopped Add (verified) → the registered job's own layout must match the
+     * reviewed index AND path → skips (verified) → the requested Start. A
+     * failure after registration leaves the job stopped and is reported, never
+     * replayed; Start is never sent unless the skips were verified.
+     */
+    private suspend fun addWithFileChoices(request: ClientAddRequest): ClientOperationOutcome {
+        val hash = request.source.infoHash
+        val caps = try { session().capabilities } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { return ClientOperationOutcome.Refused(hash, "Client session unavailable") }
+        listOf(ClientCapability.ADD_STOPPED, ClientCapability.FILE_PRIORITIES).firstOrNull { it !in caps }?.let {
+            return ClientOperationOutcome.Refused(hash, "Client does not support ${it.name} (needed for file choices)")
+        }
+        if (ClientCapability.ADD_WITH_FILE_CHOICES in caps) {
+            // The client applies the skips inside its own Add; verify them here.
+            val added = addOnce(request)
+            if (added is ClientOperationOutcome.Refused || added is ClientOperationOutcome.Uncertain) return added
+            return if (skipsObserved(hash, request.skippedFiles)) added
+            else ClientOperationOutcome.Pending(hash, (added as? ClientOperationOutcome.Verified)?.observed,
+                "Added; the skipped files were not confirmed")
+        }
+        val added = addOnce(request.copy(startNow = false, skippedFiles = emptyMap()))
+        if (added !is ClientOperationOutcome.Verified) return added
+        val files = try { client.files(hash) } catch (e: CancellationException) { throw e }
+            catch (_: Exception) { null }
+        val matched = files?.let { ClientFileLayout.match(it, request.skippedFiles) }
+            ?: return ClientOperationOutcome.Pending(hash, added.observed,
+                "Added stopped; its file list did not match the review, so no files were skipped and it was not started")
+        val skipped = setFilePriorities(hash, matched.associateWith { ClientFilePriority.SKIP })
+        if (skipped !is ClientOperationOutcome.Verified) return when (skipped) {
+            is ClientOperationOutcome.Uncertain -> skipped
+            else -> ClientOperationOutcome.Pending(hash, added.observed,
+                "Added stopped; the skipped files were not confirmed, so it was not started")
+        }
+        if (!request.startNow) return ClientOperationOutcome.Verified(hash, added.observed)
+        return when (val started = setStarted(hash, true)) {
+            is ClientOperationOutcome.Refused ->
+                ClientOperationOutcome.Pending(hash, added.observed, "Added stopped with file choices; Start was refused")
+            else -> started
+        }
+    }
+
+    private suspend fun skipsObserved(hash: String, reviewed: Map<Int, String>): Boolean {
+        repeat(readbackAttempts) { attempt ->
+            if (attempt > 0) delay(readbackDelayMillis)
+            val files = try { client.files(hash) } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { null } ?: return@repeat
+            val matched = ClientFileLayout.match(files, reviewed) ?: return false
+            val byIndex = files.associateBy { it.index }
+            if (matched.all { byIndex[it]?.priority == ClientFilePriority.SKIP }) return true
+        }
+        return false
+    }
+
+    private suspend fun addOnce(request: ClientAddRequest): ClientOperationOutcome {
         val hash = request.source.infoHash
         val caps = try { session().capabilities } catch (e: CancellationException) { throw e }
             catch (_: Exception) { return ClientOperationOutcome.Refused(hash, "Client session unavailable") }
@@ -59,7 +123,7 @@ internal class ClientOperations(
             Read.Absent -> Unit
         }
         write(hash) { client.add(request) }?.let { return it }
-        return readback(hash) { observed ->
+        val outcome = readback(hash) { observed ->
             when {
                 observed == null -> "Not yet registered"
                 request.directory != null &&
@@ -77,6 +141,18 @@ internal class ClientOperations(
                 else -> null
             }
         }
+        if (request.startNow || outcome !is ClientOperationOutcome.Verified) return outcome
+        repeat(stoppedSettleReads) {
+            delay(readbackDelayMillis)
+            when (val read = exactRead(hash)) {
+                is Read.Present -> if (read.torrent.runState != ClientRunState.STOPPED)
+                    return ClientOperationOutcome.Pending(hash, read.torrent,
+                        "Registered stopped, then the client changed it to ${read.torrent.runState.name.lowercase()}")
+                Read.Absent -> return ClientOperationOutcome.Pending(hash, null, "Registered, then no longer listed")
+                is Read.Failed -> Unit
+            }
+        }
+        return outcome
     }
 
     suspend fun setStarted(hash: String, started: Boolean): ClientOperationOutcome =
@@ -224,5 +300,21 @@ internal class ClientOperations(
         throw e
     } catch (e: Exception) {
         Read.Failed(e)
+    }
+}
+
+/**
+ * Matches reviewed metainfo paths to a client's own file list. Clients differ
+ * only in whether they prefix the torrent's top-level folder; the index must
+ * agree AND the paths must be equal after that prefix. Null = no faithful match.
+ */
+internal object ClientFileLayout {
+    fun match(clientFiles: List<ClientFile>, reviewed: Map<Int, String>): List<Int>? {
+        val byIndex = clientFiles.associateBy { it.index }
+        return reviewed.map { (index, path) ->
+            val actual = byIndex[index]?.path?.trim('/') ?: return null
+            val wanted = path.trim('/')
+            if (actual == wanted || actual.endsWith("/$wanted") || wanted.endsWith("/$actual")) index else return null
+        }
     }
 }
