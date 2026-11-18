@@ -328,11 +328,15 @@ internal class LocalTorrentClient(
             downloadDirectory = status.savePath.takeIf { it.startsWith("/") }
         )
 
-        /** Production wiring: the app's engine holder and verified Places. */
-        fun forApp(context: Context): LocalTorrentClient {
+        /**
+         * Production wiring: the app's engine holder and verified Places.
+         * [startForExplicitUse] is for an explicit person-initiated target such
+         * as "Copy job to This device": like Add, it may start the engine.
+         */
+        fun forApp(context: Context, startForExplicitUse: Boolean = false): LocalTorrentClient {
             val app = context.applicationContext
             return LocalTorrentClient(
-                engine = { LocalEngineHolder.current() },
+                engine = { if (startForExplicitUse) LocalEngineHolder.get(app) else LocalEngineHolder.current() },
                 engineForAdd = { LocalEngineHolder.get(app) },
                 places = LocalClientPlaces.forApp(app),
                 onPayloadStarted = { LocalEngineService.start(app) }

@@ -1174,8 +1174,14 @@ internal fun CombinedTransfersScreen(
         val localClientOperations: () -> io.github.gamesbyian.chunks.rpc.ClientOperations = remember(context) {
             { io.github.gamesbyian.chunks.rpc.ClientOperations(LocalTorrentClient.forApp(context)) }
         }
-        val localMoveTarget = if (localRunning && localPrivacy?.mayShow != false && !localFrame.stale)
-            ProtocolMoveTarget(EnvironmentSnapshots.LOCAL.value, "This device", localClientOperations) else null
+        // As a Move TARGET the device may start its engine: tapping "Copy job to
+        // This device" is as explicit as Add. A running engine's list must be live.
+        val localTargetOperations: () -> io.github.gamesbyian.chunks.rpc.ClientOperations = remember(context) {
+            { io.github.gamesbyian.chunks.rpc.ClientOperations(
+                LocalTorrentClient.forApp(context, startForExplicitUse = true)) }
+        }
+        val localMoveTarget = if (localPrivacy?.mayShow != false && !(localRunning && localFrame.stale))
+            ProtocolMoveTarget(EnvironmentSnapshots.LOCAL.value, "This device", localTargetOperations) else null
         val rtorrentMoveTarget = (server?.authenticatedSession as? RTorrentRemote)?.takeIf {
             serverId != null && serverPrivacy?.mayShow == true && server.stale == false
         }?.let { remote ->

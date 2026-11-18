@@ -9,7 +9,8 @@
 - **Findings fixed while testing:** under Robolectric the engine's Android-only read probe applies (SDK_INT=35), so engine-backed tests must run as plain JVM; real `org.json` added test-only. Un-skipping a Local file needs "wanted" restored before a priority. Start immediately after a stopped Add over existing data must wait for the engine's existing-data check.
 - **Render inspection:** `ProtocolSurfacesRenderTest` (Roborazzi, native graphics) for Details controls + Move and protocol Add at 412dp/100% and 320dp/200%: all clickables ≥ 48dp, no horizontal overflow; at 320dp/200% the shared "Remove…" label wraps its ellipsis (deferred cosmetic).
 - **Full local JVM suite:** 2830 tests; only the 3 pre-existing JDK-21-local failures in untouched code.
-- **Not yet evidence:** protected live Seedhost cross-client Move (`seedhost-cross-client-move.yml`, needs merge); installed-app Local Move; physical device.
+- **Protected live Seedhost cross-client job Move** (`seedhost-cross-client-move.yml`, manual, trusted main `24035eb`, first attempt, apply=true; recorded by #1874): Transmission → qBittorrent [44255664714](https://github.com/gamesbyian/Chunks/actions/runs/44255664714), Deluge → Transmission [44255681574](https://github.com/gamesbyian/Chunks/actions/runs/44255681574) and qBittorrent → Deluge [44256796083](https://github.com/gamesbyian/Chunks/actions/runs/44256796083) all passed — each: one unique fixture job added stopped, copied job-only with verified stopped registration on the target, source retired session-only, fixture removed from the target, both unrelated inventories unchanged. Live tier is registration-level (no payload bytes on the server); peer-byte Move proof is the real-daemon ring.
+- **Not yet evidence:** installed-app Local → remote Move; physical device. (Installed remote → This device Move is added to `ProtocolClientInstalledJourneyTest`.)
 
 ## 2026-11-18 UTC: shared write-capable client port, real daemons, live Seedhost
 
