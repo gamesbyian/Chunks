@@ -112,9 +112,9 @@ class ProtocolClientOperationsPanelTest {
                 ProtocolClientOperationsPanel(
                     hash = hash, clientLabel = "rTorrent", sourceClientId = "rtorrent-account",
                     observedStarted = false, current = true, inventoryWitness = 1L,
-                    createOperations = { RemoteClientOperations(source, 3, 1) }, onChanged = {},
+                    createOperations = { ClientOperations(source, 3, 1) }, onChanged = {},
                     moveTargets = listOf(ProtocolMoveTarget("other-deluge", "Deluge") {
-                        RemoteClientOperations(destination, 3, 1)
+                        ClientOperations(destination, 3, 1)
                     }), moveOnly = true
                 )
             }

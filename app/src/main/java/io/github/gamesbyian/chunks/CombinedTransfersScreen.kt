@@ -1308,7 +1308,7 @@ internal fun CombinedTransfersScreen(
                                 !operationsStale && focusedKey.infoHash.matches(V1_TRANSFER_HASH),
                             inventoryWitness = owner.snapshotRevision,
                             createOperations = {
-                                io.github.gamesbyian.chunks.rpc.RemoteClientOperations(
+                                io.github.gamesbyian.chunks.rpc.ClientOperations(
                                     io.github.gamesbyian.chunks.rpc.RTorrentClientAdapter(boundRemote))
                             },
                             onChanged = mutation.settled,
