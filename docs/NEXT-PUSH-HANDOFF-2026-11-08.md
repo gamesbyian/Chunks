@@ -4,17 +4,17 @@
 
 ## 0. Inspect and preserve current source
 
-1. Read [AGENTS](../AGENTS.md), [BACKEND-FIRST-COMPLETION](BACKEND-FIRST-COMPLETION.md), [REMOTE-BACKEND-ADAPTERS](REMOTE-BACKEND-ADAPTERS.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [Universal Add parity](design/UNIVERSAL-ADD-CLIENT-PARITY.md), [CI-POLICY](CI-POLICY.md), then inspect live main, exact open PR heads, tests and concurrent edits. Main at this checkpoint: `124387164000da23736a297c57df847900f0593e`.
-2. Preserve **[draft #1859](https://github.com/gamesbyian/Chunks/pull/1859)**, branch `feat/multiclient-connections-end-to-end-20261117`, reconciled head `5214df604b4f60ad3119e6e5beb64544c891fe67`. Five original implementation commits are retained, plus a fast-forward merge of accepted main. **Do not merge as-is.** It is untested app integration, not a working multi-client connection. Inspect full diff and finish its vertical journey, without recreating the same screen on another branch.
+1. Read [AGENTS](../AGENTS.md), [BACKEND-FIRST-COMPLETION](BACKEND-FIRST-COMPLETION.md), [REMOTE-BACKEND-ADAPTERS](REMOTE-BACKEND-ADAPTERS.md), [UNIFIED-ENVIRONMENTS](UNIFIED-ENVIRONMENTS.md), [Universal Add parity](design/UNIVERSAL-ADD-CLIENT-PARITY.md), [CI-POLICY](CI-POLICY.md), then inspect live main, exact open PR heads, tests and concurrent edits. Current `main` and CI must always be re-fetched; do not trust the checkpoint SHA below.
+2. **[Draft #1859](https://github.com/gamesbyian/Chunks/pull/1859) was closed as superseded** after the complete vertical implementation merged in #1863. The historical branch remains intact for audit, but its old snapshot **must not be merged**. Inspect active [#1866](https://github.com/gamesbyian/Chunks/pull/1866) and exact CI state before starting overlapping protocol work.
 3. Already **merged and source-exact checked**: #1849–#1851 exact-endpoint read-only Transmission/qBittorrent/Deluge RPC adapters; #1852 protocol identity + denied-write capabilities; #1853 normalized observations; #1854 typed authenticated read-only inspection; #1855 separately encrypted typed profile vault, legacy rTorrent preservation and global remember opt-out; #1856 privacy-fenced feed into canonical Combined Transfers; #1857 optional picker in the existing Connections form; #1858 manual trusted-main, read-only development Seedhost compatibility harness. **None proves three new clients can yet be added via the installed app or that real Seedhost tests have run.**
 
 ## 1. Current state (2026-11-18) and immediate next steps
 
-Merged: #1861 `7441ab5`, #1862 `0219ae7`, #1863 `0ac42f3` (supersedes draft #1859, which can be closed). Live Seedhost read-only + mutation journeys passed for Transmission and qBittorrent; see QUALITY-LEDGER.
+Merged: #1861 `7441ab5`, #1862 `0219ae7`, #1863 `0ac42f3`; #1859 closed as superseded. The next protocol integration is in draft #1866 (rTorrent shared port, multi-engine installed tests and cross-client job-only Move). Review current head and checks before integrating. Live Seedhost read-only + mutation journeys passed for Transmission and qBittorrent; see QUALITY-LEDGER.
 
 1. **All three clients have live Seedhost read-only and mutation receipts** (Deluge runs 44228490265 / 44228494342 after the owner updated the secret). Re-run the protected workflows after any adapter change.
 2. Local interop: `tools/interop/start_local_clients.sh build/interop && source tools/interop/local_env.sh build/interop`, then `gradle --no-configuration-cache :app:testDebugUnitTest --rerun --tests '*RealClientInteropTest'` (configuration cache otherwise freezes the test environment).
-3. Installed emulator journey for one protocol client against a loopback daemon (Connect → Transfers → Details Start/Stop → Add stopped → Remove).
+3. Expand installed emulator journeys across all three new engines (Connect → Transfers → Details Start/Stop → Add stopped → Remove) and repair any exact-head failures. Do not call mock/JVM or real-daemon protocol tests installed-app acceptance.
 4. Bridge rTorrent (`RTorrentRemote`) and Local onto `RemoteTorrentClient` behind behavior-preserving tests; then cross-client job-only Move and automatic Smart Routing policy beyond suggestions.
 
 ## 2. Continue real-engine proof and mutation support, then Smart Routing
