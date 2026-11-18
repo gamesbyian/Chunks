@@ -16,7 +16,9 @@ object DesktopLibtorrent {
         if (loaded) return
         val loader = requireNotNull(DesktopLibtorrent::class.java.classLoader)
         val candidates = loader.getResources("lib/x86_64/libtorrent4j.so").toList()
-        val desktop = candidates.singleOrNull { it.toString().contains("libtorrent4j-linux") }
+        // Robolectric's sandbox loader can list the same jar entry twice.
+        val desktop = candidates.filter { it.toString().contains("libtorrent4j-linux") }
+            .distinctBy { it.toString() }.singleOrNull()
             ?: throw IllegalStateException("Desktop libtorrent4j-linux binary is not on the test classpath: $candidates")
         val file = File.createTempFile("libtorrent4j-linux-", ".so").apply { deleteOnExit() }
         desktop.openStream().use { input -> file.outputStream().use { input.copyTo(it) } }
