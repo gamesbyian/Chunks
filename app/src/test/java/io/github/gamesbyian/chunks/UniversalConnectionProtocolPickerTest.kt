@@ -77,12 +77,19 @@ class UniversalConnectionProtocolPickerTest {
         rule.onNodeWithText("qBittorrent WebUI root URL").assertExists()
         rule.onNodeWithText("Seedbox hostname, ruTorrent URL or RPC address").assertDoesNotExist()
         rule.onNodeWithText("Advanced connection settings").assertDoesNotExist()
-        rule.onNodeWithText("Deluge daemon ID").assertDoesNotExist()
+        rule.onNodeWithText("Deluge daemon ID (optional)").assertDoesNotExist()
         assertEquals(0, remoteAttempts)
         assertEquals(0, rTorrentAttempts)
     }
 
-    @Test fun delugeRequiresExplicitDaemonFieldAndNeverUsesRPCEndpointDiscovery() {
+    /**
+     * Requirement re-expressed (2026-11-18): Deluge offers an optional daemon
+     * ID. Blank adopts the Web UI's daemon only when exactly one is
+     * registered (RemoteProtocolConnect.resolveDelugeDaemon); several require
+     * the explicit ID. Connect still needs the password and never uses rTorrent
+     * endpoint discovery.
+     */
+    @Test fun delugeOffersOptionalDaemonFieldAndNeverUsesRPCEndpointDiscovery() {
         render()
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
         rule.onNodeWithTag("connection-backend-deluge").performClick()
@@ -90,8 +97,8 @@ class UniversalConnectionProtocolPickerTest {
         assertEquals(RemoteBackendKind.DELUGE, selectedKind)
         rule.onNodeWithText("Deluge Web JSON URL").assertExists()
         rule.onNodeWithText("Advanced connection settings").assertDoesNotExist()
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Deluge daemon ID"))
-        rule.onNodeWithText("Deluge daemon ID").assertExists()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Deluge daemon ID (optional)"))
+        rule.onNodeWithText("Deluge daemon ID (optional)").assertExists()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasTestTag(ChunksSemantics.CONNECTION_CONNECT))
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_CONNECT).assertIsNotEnabled()

@@ -93,6 +93,9 @@ class EnduringCapabilityAccessibilityTest {
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD)
             .assertHasClickAction().assertNamedAndTouchSized()
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_ADD).performClick()
+        // The client-type picker precedes the name field in the lazy form, so
+        // scroll the list to it (same requirement: reachable, named, 48dp).
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasTestTag(ChunksSemantics.CONNECTION_NAME))
         rule.onNodeWithTag(ChunksSemantics.CONNECTION_NAME).performScrollTo()
             .assertIsDisplayed().assertNamedAndTouchSized()
     }

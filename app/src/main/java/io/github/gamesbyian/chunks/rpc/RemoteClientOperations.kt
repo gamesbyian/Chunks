@@ -36,6 +36,9 @@ internal class RemoteClientOperations(
     suspend fun session(refresh: Boolean = false): ClientSessionInfo =
         cachedSession?.takeUnless { refresh } ?: client.session().also { cachedSession = it }
 
+    /** Explicit read of one exact transfer's files (no mutation). */
+    suspend fun files(hash: String): List<ClientFile> = client.files(ClientHashes.requireHash(hash))
+
     suspend fun add(request: ClientAddRequest): ClientOperationOutcome {
         val hash = request.source.infoHash
         val caps = try { session().capabilities } catch (e: CancellationException) { throw e }

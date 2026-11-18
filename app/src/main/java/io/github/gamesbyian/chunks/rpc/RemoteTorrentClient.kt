@@ -188,3 +188,19 @@ internal object ClientHashes {
         return requireHash(out.toString())
     }
 }
+
+/** The single place a typed profile becomes a write-capable client. */
+internal object RemoteTorrentClients {
+    fun create(
+        kind: RemoteBackendKind,
+        credentials: RemoteCredentials,
+        delugeDaemonHostId: String?
+    ): RemoteTorrentClient = when (kind) {
+        RemoteBackendKind.TRANSMISSION -> TransmissionClient(credentials)
+        RemoteBackendKind.QBITTORRENT -> QBittorrentClient(credentials)
+        RemoteBackendKind.DELUGE -> DelugeClient(credentials, requireNotNull(delugeDaemonHostId) {
+            "Explicit Deluge daemon ID required"
+        })
+        RemoteBackendKind.RTORRENT -> throw IllegalArgumentException("rTorrent uses its established adapter")
+    }
+}

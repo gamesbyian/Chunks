@@ -212,7 +212,7 @@ internal class QBittorrentClient(
                 throw IOException("qBittorrent connection or response failed")
             }
             when (response.status) {
-                200 -> return@withContext response.body
+                200, 204 -> return@withContext response.body
                 403 -> {
                     // Unauthenticated: rejected before the handler ran.
                     cookie = null
@@ -242,7 +242,11 @@ internal class QBittorrentClient(
         } catch (e: CancellationException) { throw e } catch (_: Exception) {
             throw IOException("qBittorrent connection failed")
         }
-        if (response.status != 200 || response.body.trim() != "Ok.") {
+        // qBittorrent <= 5.0 answers 200 "Ok."; newer releases answer 204 No
+        // Content. Either still needs exactly one valid SID cookie below.
+        val accepted = (response.status == 200 && response.body.trim() == "Ok.") ||
+            (response.status == 204 && response.body.isBlank())
+        if (!accepted) {
             throw ClientRefusedException("qBittorrent authentication refused (" + when {
                 response.status == 200 -> "credentials rejected"
                 response.status == 401 -> "401 unauthorized"

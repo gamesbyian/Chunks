@@ -33,6 +33,11 @@ internal data class CombinedReadOnlyProtocolProfile(
     val label: String,
     /** Changes whenever exact credentials are replaced and reauthenticated. */
     val verifiedAtMillis: Long,
+    /**
+     * A fresh write-capable session bound to the SAME exact credentials and
+     * identity. Details uses it only through the shared operation workflow.
+     */
+    val operations: (() -> io.github.gamesbyian.chunks.rpc.RemoteClientOperations)? = null,
     /** Must perform fresh exact-client, challenged/cookie-authenticated read. */
     val inspect: suspend () -> CombinedReadOnlyProtocolReceipt
 ) {
@@ -209,8 +214,12 @@ internal fun rememberCombinedProtocolSources(
             last == null -> EnvironmentTransferSnapshot(id, EnvironmentAvailability.OFFLINE,
                 inventoryComplete = false, observedAtEpochMillis = null, transfers = emptyList())
             else -> EnvironmentTransferSnapshot(id,
+                // The caller's clock ticks every few seconds; a read accepted
+                // since the last tick must not look "from the future" (STALE),
+                // which disabled Details controls after every refresh.
                 if (listing?.loading == true || listing?.failed == true ||
-                    EnvironmentSnapshots.serverInventoryIsOutOfDate(last.observedAtEpochMillis, nowMillis))
+                    EnvironmentSnapshots.serverInventoryIsOutOfDate(last.observedAtEpochMillis,
+                        maxOf(nowMillis, System.currentTimeMillis())))
                     EnvironmentAvailability.STALE else EnvironmentAvailability.LIVE,
                 inventoryComplete = last.inventoryComplete,
                 observedAtEpochMillis = last.observedAtEpochMillis,

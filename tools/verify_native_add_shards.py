@@ -65,6 +65,11 @@ DEDICATED_WORKFLOW_OPT_IN_IDS = frozenset(
     hashlib.sha256((
         "io.github.gamesbyian.chunks.InstalledRemotePublicMediaInstrumentedTest" +
         "\\0" + "remoteInventoryGetsAutomaticArtworkWithoutIdentify").encode()).hexdigest(),
+    # Needs the runner's disposable Transmission daemon; executes only in
+    # installed-protocol-client.yml.
+    hashlib.sha256((
+        "io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest" +
+        "\\0" + "transmissionConnectTransfersDetailsStartAndRemove").encode()).hexdigest(),
     # Owner-authorized protected Seedhost Stop/Start of an existing transfer;
     # executes only in the manual seedhost-existing-stop-start-once.yml workflow.
     hashlib.sha256((

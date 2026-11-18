@@ -245,6 +245,10 @@ class ShardedNativeAddTests(unittest.TestCase):
         expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
             "SeedhostInventoryMediaReadOnlyInstrumentedTest" + "\\0" +
             "realInventoryGetsAutomaticArtworkWithoutIdentifyOrMutation").encode()).hexdigest())
+        # Disposable runner Transmission; installed-protocol-client.yml only.
+        expected.add(hashlib.sha256(("io.github.gamesbyian.chunks."
+            "ProtocolClientInstalledJourneyTest" + "\\0" +
+            "transmissionConnectTransfersDetailsStartAndRemove").encode()).hexdigest())
         self.assertEqual(expected, DEDICATED_WORKFLOW_OPT_IN_IDS)
         ids = sorted(DEDICATED_WORKFLOW_OPT_IN_IDS)
 

@@ -16,6 +16,7 @@ on:
       # change (or other instrumented test) that requires this native Add gate.
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/CombinedTwoRealServersInstrumentedTest.kt"
       - "!app/src/androidTest/java/io/github/gamesbyian/chunks/HttpsLocalAddJourneyInstrumentedTest.kt"
+      - "!app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
       # Helper-only edits run in the dedicated real-peer installed lifecycle
       # through SeedhostAndroidAddUiInstrumentedTest. There is no @Test in this
       # helper to execute in the native Add shards. Concurrent production or

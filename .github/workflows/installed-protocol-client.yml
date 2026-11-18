@@ -1,0 +1,81 @@
+name: Installed protocol client (real Transmission)
+
+# Disposable loopback Transmission daemon on the runner only; no secrets.
+on:
+  pull_request:
+    paths:
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolConnect.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolClientOperationsPanel.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/ProtocolAddScreen.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/RemoteProtocolCombinedProfiles.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/CombinedReadOnlyProtocolSources.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/TransmissionClient.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/TransmissionReadOnlyRpc.kt"
+      - "app/src/main/java/io/github/gamesbyian/chunks/rpc/RemoteClientOperations.kt"
+      - "app/src/androidTest/java/io/github/gamesbyian/chunks/ProtocolClientInstalledJourneyTest.kt"
+      - "tools/installed_protocol_client.sh"
+      - "tools/interop/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chunks-installed-protocol-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  installed-protocol-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and start disposable real Transmission
+        run: |
+          bash tools/apt_install_retry.sh transmission-daemon qbittorrent-nox deluged deluge-web
+          sudo systemctl stop transmission-daemon deluged deluge-web qbittorrent-nox 2>/dev/null || true
+          sudo pkill -x transmission-da 2>/dev/null || true
+          sudo pkill -f /usr/bin/deluged 2>/dev/null || true
+          if [ -f /etc/apparmor.d/transmission ]; then
+            sudo apparmor_parser -R /etc/apparmor.d/transmission 2>/dev/null || true
+          fi
+          tools/interop/start_local_clients.sh "$RUNNER_TEMP/interop"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
+      - name: Install pinned compile SDK
+        run: |
+          printf 'y\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --channel=3 "platforms;android-37.0" "build-tools;36.0.0"
+          if [ ! -e "$ANDROID_HOME/platforms/android-37" ]; then
+            ln -s "$ANDROID_HOME/platforms/android-37.0" "$ANDROID_HOME/platforms/android-37"
+          fi
+      - name: Build app and instrumentation APKs
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Prepare emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/share/powershell
+          test -c /dev/kvm
+          sudo chmod 0666 /dev/kvm
+      - name: Installed Connect -> Transfers -> Details Start -> Remove
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disk-size: 2048M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash tools/installed_protocol_client.sh
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chunks-installed-protocol-client
+          path: ${{ runner.temp }}/interop/evidence/
+          retention-days: 14
+          if-no-files-found: warn

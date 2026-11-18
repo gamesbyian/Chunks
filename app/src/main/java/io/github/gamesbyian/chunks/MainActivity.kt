@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.gamesbyian.chunks.model.TransferCatalog
 import io.github.gamesbyian.chunks.model.RemoteBackendKind
+import io.github.gamesbyian.chunks.model.RemoteProtocolReadOnlyClient
 import io.github.gamesbyian.chunks.model.TorrentIdentityHandoff
 import io.github.gamesbyian.chunks.model.CollectionMembershipFilter
 import io.github.gamesbyian.chunks.model.CollectionNameRegistryRules
@@ -307,7 +308,7 @@ internal fun shouldConsumeReviewedSourceOnExit(
 ): Boolean = isCurrentDocument && !lifecycleCancelled
 
 private enum class Section(val label: String) {
-    TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
+    TRANSFERS("Transfers"), COMBINED("All clients"), PLACES("Places"), ORGANIZE("Organize"), SERVER("Connections"), ARCHIVES("ZIP review"), CREATE("Create"), SEEDING("Seeding rules"), MEDIA("Artwork & info"), LOCAL("Transfers on this device"), LOCAL_ADD("Add on this device"), OPTIONS("Options"), ADD_CHOOSE("Add"), ADD("Add"), ROUTING("Smart Routing"), NAMES("Names"), SNAPSHOT("Inventory backup"), SNAPSHOT_INSPECT("Inspect backup")
 }
 
 /** "12 shown", or "3 of 12 shown" when a search or filter narrows the list (as on the local device). */
@@ -356,11 +357,29 @@ internal fun ChunksApp(
     val context = LocalContext.current
     val vault = remember(context) { RememberedRemoteLogin(context) }
     val profileRoster = remember(context) { RememberedRemoteProfileRoster(context) }
+    val protocolProfileRoster = remember(context) { RememberedRemoteProtocolProfiles(context) }
     val remembered = remember(vault, profileRoster) {
         vault.load() ?: profileRoster.list().firstOrNull()?.credentials
     }
     var savedProfiles by remember(profileRoster) {
         mutableStateOf(if (vault.rememberingEnabled()) profileRoster.list() else emptyList())
+    }
+    var savedProtocolProfiles by remember(protocolProfileRoster) {
+        mutableStateOf(if (vault.rememberingEnabled()) protocolProfileRoster.list() else emptyList())
+    }
+    // The optional backend choice persists as nonsecret UI state; a password,
+    // accepted read, client transport or authentication ticket never does.
+    var chosenBackend by rememberSaveable { mutableStateOf(RemoteBackendKind.RTORRENT) }
+    var delugeDaemonHostId by remember { mutableStateOf("") }
+    var readOnlyBackendError by remember { mutableStateOf<String?>(null) }
+    var verifiedReadOnlyProfileId by remember { mutableStateOf<String?>(null) }
+    var transientReadOnlyProfile by remember { mutableStateOf<CombinedReadOnlyProtocolProfile?>(null) }
+    var readOnlyConnectJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    val combinedProtocolProfiles = remember(savedProtocolProfiles, transientReadOnlyProfile) {
+        RemoteProtocolCombinedProfiles.saved(savedProtocolProfiles) +
+            listOfNotNull(transientReadOnlyProfile?.takeUnless { candidate ->
+                savedProtocolProfiles.any { it.id == candidate.id }
+            })
     }
     var endpoint by rememberSaveable { mutableStateOf(remembered?.endpoint.orEmpty()) }
     // Advanced manual endpoint path; joined with a hostname-only address.
@@ -388,7 +407,8 @@ internal fun ChunksApp(
     var returnFromStartupConnectToCanonical by remember { mutableStateOf(false) }
     var verifiedConnectionNotice by remember { mutableStateOf<VerifiedConnectionNotice?>(null) }
     var savedLoginPresent by remember {
-        mutableStateOf(remembered != null || savedProfiles.isNotEmpty())
+        mutableStateOf(remembered != null || savedProfiles.isNotEmpty() ||
+            savedProtocolProfiles.isNotEmpty())
     }
     var credentialNotice by remember { mutableStateOf<String?>(null) }
     var server by remember { mutableStateOf<RTorrentRemote?>(null) }
@@ -440,6 +460,10 @@ internal fun ChunksApp(
     // This chooses the visible Universal Add target in the *same* Add route.
     // Never restore account authority, a private source, or an attempted write.
     var addUsingAuthenticatedRemote by remember { mutableStateOf(false) }
+    // Exact typed profile id (non-secret) of a Transmission/qBittorrent/Deluge
+    // Add target. Selecting Local or the rTorrent session clears it.
+    var addProtocolTargetId by rememberSaveable { mutableStateOf<String?>(null) }
+    val protocolAddAttempt = remember { ProtocolAddAttempt() }
     var combinedFromLocal by rememberSaveable { mutableStateOf(false) }
     var combinedFromConnections by rememberSaveable { mutableStateOf(false) }
     var returnToCatalogRevision by remember { mutableLongStateOf(0L) }
@@ -597,6 +621,7 @@ internal fun ChunksApp(
             remoteReview.textAtFileSelection = ""
         }
         addUsingAuthenticatedRemote = false
+        addProtocolTargetId = null
         section = Section.ADD_CHOOSE
     }
     fun selectAuthenticatedAddTarget() {
@@ -622,6 +647,7 @@ internal fun ChunksApp(
             remoteReview.preferMagnet()
         }
         addUsingAuthenticatedRemote = true
+        addProtocolTargetId = null
         section = Section.ADD_CHOOSE
     }
     fun prepareRemoteMagnet(source: String) {
@@ -642,7 +668,8 @@ internal fun ChunksApp(
     // Purely derive the configured identities during composition. SharedPreferences
     // writes must happen after composition, off the main thread, and only when
     // the identity set changes. A malformed legacy profile cannot block local.
-    val paletteIdentities = remember(savedProfiles, aliasScope) {
+    val paletteIdentities = remember(savedProfiles, savedProtocolProfiles,
+        transientReadOnlyProfile, aliasScope) {
         buildList {
             add(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL)
             io.github.gamesbyian.chunks.model.EnvironmentSnapshots
@@ -650,6 +677,9 @@ internal fun ChunksApp(
             savedProfiles.forEach { profile ->
                 runCatching { io.github.gamesbyian.chunks.model.EnvironmentId(profile.id) }
                     .getOrNull()?.let { add(it) }
+            }
+            combinedProtocolProfiles.forEach { profile ->
+                add(profile.environment)
             }
         }.distinct()
     }
@@ -1081,6 +1111,38 @@ internal fun ChunksApp(
     // remote attempt's status. An alias never authorizes a server operation.
     val activeAddDisplayName = compactUniversalAddTargetLabels(
         activeAddRemoteName, otherSavedAddTargets).first
+    // Smart Routing: read the persisted policy off the composition thread
+    // whenever Add is shown; suggest from the reviewed source's own names.
+    var routingPolicy by remember { mutableStateOf<io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Policy?>(null) }
+    LaunchedEffect(section == Section.ADD_CHOOSE || section == Section.LOCAL_ADD || section == Section.ADD) {
+        routingPolicy = withContext(Dispatchers.IO) {
+            (runCatching { io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore(context).read() }.getOrNull()
+                as? io.github.gamesbyian.chunks.model.SmartRoutingPolicyStore.Read.Ready)?.policy
+        }
+    }
+    val connectedRTorrentId = io.github.gamesbyian.chunks.model.EnvironmentSnapshots
+        .serverIdOfAliasScope(aliasScope)?.value?.takeIf { server != null && verifiedAddRemoteScope != null }
+    val routingSource = localReviewedTorrent.value?.preview
+    val routingMagnetName = remember(magnet, addSourceDraft.value) {
+        (MagnetDraftCheck.inspect(magnet.ifBlank { addSourceDraft.value }) as? MagnetDraftCheck.Valid)?.displayName
+    }
+    val routingResult = remember(routingPolicy, routingSource, routingMagnetName, connectedRTorrentId,
+        combinedProtocolProfiles, activeAddRemoteName) {
+        val candidates = buildList {
+            add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
+                io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value, "Local", true, true, true))
+            connectedRTorrentId?.let { add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(
+                it, activeAddRemoteName ?: "rTorrent", true, true, true)) }
+            combinedProtocolProfiles.filter { it.operations != null }.forEach {
+                add(io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Candidate(it.id, it.label, true, true, true))
+            }
+        }
+        io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.evaluate(routingPolicy,
+            routingSource?.name ?: routingMagnetName,
+            routingSource?.files?.map { it.path }.orEmpty(), candidates)
+    }
+    val routingSuggestion = (routingResult as?
+        io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.Result.Suggested)?.suggestion
     val addDestinationPicker: @Composable () -> Unit = {
         UniversalAddDestinationPicker(
             addingRemotely = addTargetIsAuthenticated,
@@ -1121,6 +1183,38 @@ internal fun ChunksApp(
             },
             onLocal = { selectLocalAddTarget() },
             onAuthenticatedRemote = { selectAuthenticatedAddTarget() },
+            protocolDestinations = combinedProtocolProfiles.filter { it.operations != null }
+                .map { UniversalAddSavedDestination(it.id, it.label) },
+            routingSuggestion = routingSuggestion?.let { it.label to
+                (io.github.gamesbyian.chunks.model.SmartRoutingAddSuggestion.kindLabel(it.kind).lowercase() + " rule") },
+            routingSuggestionSelected = routingSuggestion?.environmentId?.let { id ->
+                id == addProtocolTargetId ||
+                    (addProtocolTargetId == null && addTargetIsAuthenticated && id == connectedRTorrentId) ||
+                    (addProtocolTargetId == null && !addTargetIsAuthenticated &&
+                        id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value)
+            } == true,
+            onUseRoutingSuggestion = {
+                val id = routingSuggestion?.environmentId
+                when {
+                    id == null -> Unit
+                    id == io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value -> selectLocalAddTarget()
+                    id == connectedRTorrentId -> selectAuthenticatedAddTarget()
+                    combinedProtocolProfiles.any { it.id == id && it.operations != null } &&
+                        (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) -> {
+                        addUsingAuthenticatedRemote = false
+                        addProtocolTargetId = id
+                        section = Section.ADD_CHOOSE
+                    }
+                }
+            },
+            selectedProtocolId = addProtocolTargetId,
+            onProtocol = { id ->
+                if (!protocolAddAttempt.busy || protocolAddAttempt.profileId == id) {
+                    addUsingAuthenticatedRemote = false
+                    addProtocolTargetId = id
+                    section = Section.ADD_CHOOSE
+                }
+            },
             onConnectSaved = { requested ->
                 val profile = savedProfiles.firstOrNull { it.id == requested }
                 if (profile != null && !loading) {
@@ -1152,6 +1246,35 @@ internal fun ChunksApp(
                         section = Section.SERVER
                     }
                 }
+            }
+        )
+    }
+    val smartRoutingTargets = remember(savedProfiles, combinedProtocolProfiles) {
+        buildList {
+            add(SmartRoutingTargetChoice(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL.value, "Local"))
+            savedProfiles.forEach { add(SmartRoutingTargetChoice(it.id, it.label)) }
+            combinedProtocolProfiles.forEach { add(SmartRoutingTargetChoice(it.id, it.label)) }
+        }.distinctBy { it.environmentId }
+    }
+    val protocolAddProfile = addProtocolTargetId?.let { id ->
+        combinedProtocolProfiles.firstOrNull { it.id == id && it.operations != null }
+    }
+    val protocolAddContent: @Composable (CombinedReadOnlyProtocolProfile) -> Unit = { profile ->
+        ProtocolAddScreen(
+            profileId = profile.id,
+            clientLabel = profile.label,
+            createOperations = requireNotNull(profile.operations),
+            destinationPicker = addDestinationPicker,
+            sourceDraft = addSourceDraft,
+            reviewedTorrent = localReviewedTorrent,
+            startState = localAddStart,
+            attempt = protocolAddAttempt,
+            attemptScope = retainedAddOwner?.addAttemptScope ?: scope,
+            onViewTransfer = { hash ->
+                consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
+                savedProfileCatalogFocus = profile.id
+                combinedFromConnections = true
+                section = Section.COMBINED
             }
         )
     }
@@ -1240,7 +1363,7 @@ internal fun ChunksApp(
                 // A legacy saved vault login may precede roster migration. Its
                 // existence alone forbids a misleading fresh-install Welcome.
                 // Do not hand credentials to the catalog or trigger a new RPC.
-                hasRememberedRemoteLogin = remembered != null,
+                hasRememberedRemoteLogin = remembered != null || savedProtocolProfiles.isNotEmpty(),
                 // The existing Add destination remains the sole admission
                 // coordinator until source-first Universal Add is integrated.
                 onWelcomeAdd = { section = Section.ADD_CHOOSE },
@@ -1286,6 +1409,7 @@ internal fun ChunksApp(
                         listOnly = { verifiedSavedProfileMainInventory(profile.credentials) },
                         shortLabel = profile.label)
                 },
+                protocolProfiles = combinedProtocolProfiles,
                 onOpenLocal = { localFromCombined = true; section = Section.LOCAL },
                 // Opening the local device inventory is non-mutating. Only the explicit
                 // Add action hands off the pending magnet to its review.
@@ -1413,6 +1537,8 @@ internal fun ChunksApp(
             SeedingRulesScreen(seedingEnvironments, onBack = { leaveTool() })
         } else if (presentationSection == Section.MEDIA) {
             MediaSettingsScreen(onBack = { leaveTool() })
+        } else if (presentationSection == Section.ROUTING) {
+            SmartRoutingSettingsScreen(smartRoutingTargets, onBack = { leaveTool() })
         } else if (presentationSection == Section.CREATE && server == null) {
             val shownCreateRequest = createRequest
             io.github.gamesbyian.chunks.create.CreateTorrentScreen(
@@ -1429,6 +1555,8 @@ internal fun ChunksApp(
                 },
                 retainedSourceState = retainedAddOwner?.createSource
             )
+        } else if (presentationSection == Section.LOCAL_ADD && protocolAddProfile != null) {
+            protocolAddContent(protocolAddProfile)
         } else if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS) && server == null) {
             LocalTransferPrivacyGate(
                 scope = TransferCollectionStore.LOCAL_ENGINE_SCOPE,
@@ -1463,6 +1591,8 @@ internal fun ChunksApp(
                     onSeedingRules = { openTool(Section.SEEDING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                     onMediaSettings = { openTool(Section.MEDIA,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                    onSmartRouting = { openTool(Section.ROUTING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                     onCreateTorrent = { openTool(Section.CREATE,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
@@ -1572,6 +1702,13 @@ internal fun ChunksApp(
                     connectionDraftEdited = true
                     credentialNotice = null
                     connectDiagnostics = ConnectionDiagnostics()
+                    readOnlyConnectJob?.cancel()
+                    readOnlyConnectJob = null
+                    readOnlyBackendError = null
+                    delugeDaemonHostId = ""
+                    chosenBackend = RemoteBackendKind.RTORRENT
+                    verifiedReadOnlyProfileId = null
+                    transientReadOnlyProfile = null
                 },
                 startupReconnectEligible = RemoteStartupReconnectPolicy.shouldAttempt(
                     rememberingEnabled = rememberLogin,
@@ -1601,21 +1738,167 @@ internal fun ChunksApp(
                     savedAddReconnect.abandon()
                     // Discovery is read-only, so abandoning it changes nothing.
                     connectJob?.cancel()
+                    readOnlyConnectJob?.cancel()
                     remoteFence.invalidate()
                     RemoteCredentialLock.invalidate()
                     returnFromStartupConnectToCanonical = false
                     loading = false
                     connectDiagnostics = ConnectionDiagnostics()
                     error = "Connection check cancelled. Nothing was changed on the server."
+                    readOnlyBackendError = "Connection check cancelled. Nothing was changed."
                 },
                 rememberLogin = rememberLogin, savedLoginPresent = savedLoginPresent,
                 savedProfiles = savedProfiles, credentialNotice = credentialNotice,
+                enableAdditionalProtocols = true,
+                chosenBackend = chosenBackend,
+                onChosenBackend = { kind ->
+                    if (!loading && kind != chosenBackend) {
+                        // Switching type abandons any in-flight check and its
+                        // right to save; a typed password never crosses types.
+                        readOnlyConnectJob?.cancel()
+                        RemoteCredentialLock.invalidate()
+                        chosenBackend = kind
+                        password = ""
+                        delugeDaemonHostId = ""
+                        readOnlyBackendError = null
+                    }
+                },
+                delugeDaemonHostId = delugeDaemonHostId,
+                onDelugeDaemonHostId = { delugeDaemonHostId = it; readOnlyBackendError = null },
+                readOnlyBackendError = readOnlyBackendError,
+                onConnectReadOnlyBackend = {
+                    if (!loading && server == null && chosenBackend != RemoteBackendKind.RTORRENT) {
+                        // Freeze the exact type, address, account, secret, daemon,
+                        // label and remember choice before any suspension.
+                        val kind = chosenBackend
+                        val draftEndpoint = endpoint
+                        val draftUser = username
+                        val draftPassword = password
+                        val draftDaemon = delugeDaemonHostId
+                        val saveThisLogin = rememberLogin
+                        val label = connectionName.trim()
+                            .takeIf { RememberedRemoteProtocolProfiles.validLabel(it) }
+                        loading = true
+                        readOnlyBackendError = null
+                        credentialNotice = null
+                        RemoteCredentialLock.invalidate()
+                        readOnlyConnectJob?.cancel()
+                        var job: kotlinx.coroutines.Job? = null
+                        job = scope.launch {
+                            try {
+                                credentialChanges.awaitSettled()
+                                val uiRevision = credentialChanges.snapshotRevision()
+                                val credentialTicket = RemoteCredentialLock.beginConnection()
+                                val verified = withContext(Dispatchers.IO) {
+                                    kotlinx.coroutines.withTimeout(60_000) {
+                                        RemoteProtocolConnect.connect(kind, draftEndpoint, draftUser,
+                                            draftPassword, draftDaemon)
+                                    }
+                                }
+                                if (readOnlyConnectJob !== job || !credentialChanges.isLatest(uiRevision)) return@launch
+                                val config = verified.configuration
+                                val saved = saveThisLogin && withContext(Dispatchers.IO) {
+                                    runCatching {
+                                        protocolProfileRoster.saveVerified(kind, config.credentials,
+                                            config.delugeDaemonHostId, verified.read.snapshot,
+                                            verified.read.capabilities, credentialTicket, label)
+                                    }.getOrDefault(false)
+                                }
+                                val roster = if (saved) withContext(Dispatchers.IO) { protocolProfileRoster.list() } else null
+                                // A Forget/remember change or newer Connect during IO
+                                // owns the UI; a late result cannot resurrect anything.
+                                if (readOnlyConnectJob !== job || !credentialChanges.isLatest(uiRevision)) return@launch
+                                val id = verified.read.environment.value
+                                if (roster != null && roster.any { it.id == id }) {
+                                    savedProtocolProfiles = roster
+                                    transientReadOnlyProfile = null
+                                } else {
+                                    transientReadOnlyProfile = RemoteProtocolCombinedProfiles.transient(
+                                        config, verified.read,
+                                        label ?: (RemoteProtocolLabels.kind(kind) + " @ " +
+                                            (runCatching { java.net.URI(config.credentials.endpoint).host }
+                                                .getOrNull() ?: "remote client")).take(100))
+                                }
+                                verifiedReadOnlyProfileId = id
+                                endpoint = config.credentials.endpoint
+                                password = ""
+                                delugeDaemonHostId = config.delugeDaemonHostId.orEmpty()
+                                savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty() ||
+                                    savedProtocolProfiles.isNotEmpty()
+                                credentialNotice = when {
+                                    saved -> null
+                                    saveThisLogin -> "Connected, but this login could not be saved. " +
+                                        "It stays available until you close Chunks."
+                                    else -> "Connected without remembering credentials."
+                                }
+                                consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
+                                savedProfileCatalogFocus = id
+                                combinedFromConnections = true
+                                section = Section.COMBINED
+                            } catch (cancel: kotlinx.coroutines.CancellationException) {
+                                if (cancel is kotlinx.coroutines.TimeoutCancellationException &&
+                                    readOnlyConnectJob === job) {
+                                    readOnlyBackendError = "The client did not answer in time. Nothing was changed."
+                                } else throw cancel
+                            } catch (failure: Exception) {
+                                if (readOnlyConnectJob === job) readOnlyBackendError = RemoteProtocolConnect.explain(failure)
+                            } finally {
+                                if (readOnlyConnectJob === job) loading = false
+                            }
+                        }
+                        readOnlyConnectJob = job
+                    }
+                },
+                readOnlySavedProfiles = savedProtocolProfiles,
+                readOnlyConnectedProfileId = verifiedReadOnlyProfileId,
+                onViewReadOnlyProfile = { profile ->
+                    // The immutable typed client ID selects only a read-only
+                    // Combined view. No auth secret, Add or command is handed off.
+                    consumedShowAllEnvironmentsRevision = showAllEnvironmentsRevision
+                    savedProfileCatalogFocus = profile.id
+                    combinedFromConnections = true
+                    section = Section.COMBINED
+                },
+                onRenameReadOnlyProfile = { profile, newLabel ->
+                    val saved = withContext(Dispatchers.IO) {
+                        runCatching { protocolProfileRoster.rename(profile.id, newLabel) }.getOrDefault(false)
+                    }
+                    if (saved) {
+                        savedProtocolProfiles = withContext(Dispatchers.IO) { protocolProfileRoster.list() }
+                    }
+                    saved
+                },
+                onForgetReadOnlyProfile = { profile ->
+                    RemoteCredentialLock.invalidate()
+                    // Hide immediately. A late background inventory may not
+                    // resurrect a just-forgotten account during its IO write.
+                    savedProtocolProfiles = savedProtocolProfiles.filterNot { it.id == profile.id }
+                    if (transientReadOnlyProfile?.id == profile.id) transientReadOnlyProfile = null
+                    if (verifiedReadOnlyProfileId == profile.id) verifiedReadOnlyProfileId = null
+                    credentialChanges.submit(scope) { revision ->
+                        val deleted = withContext(Dispatchers.IO) {
+                            runCatching { protocolProfileRoster.forget(profile.id) }.getOrDefault(false)
+                        }
+                        val remaining = withContext(Dispatchers.IO) { protocolProfileRoster.list() }
+                        if (credentialChanges.isLatest(revision)) {
+                            savedProtocolProfiles = remaining
+                            savedLoginPresent = vault.hasSavedLogin() || savedProfiles.isNotEmpty() ||
+                                remaining.isNotEmpty()
+                            credentialNotice = if (deleted) "Saved connection forgotten on this device."
+                                else "Could not confirm credential removal. Review saved connections."
+                        }
+                    }
+                },
                 onSelectProfile = { profile ->
                     // Explicitly choosing another saved account abandons an
                     // older Add-return promise. Re-selecting the same account
                     // while editing its login leaves that draft intact.
                     savedAddReconnect.abandonIfDifferent(
                         RemoteVerifiedUiIdentity.aliasScopeOf(profile.credentials))
+                    chosenBackend = RemoteBackendKind.RTORRENT
+                    delugeDaemonHostId = ""
+                    readOnlyBackendError = null
+                    verifiedReadOnlyProfileId = null
                     endpoint = profile.credentials.endpoint
                     rpcPath = ""
                     username = profile.credentials.username
@@ -1949,7 +2232,9 @@ internal fun ChunksApp(
             val remotePrivacyScope = remember(aliasScope) {
                 RemoteTransferPrivacyScope.fromAuthenticatedAliasScope(aliasScope)
             }
-            if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS)) {
+            if (presentationSection == Section.LOCAL_ADD && protocolAddProfile != null) {
+                protocolAddContent(protocolAddProfile)
+            } else if (presentationSection in setOf(Section.LOCAL, Section.LOCAL_ADD, Section.OPTIONS)) {
                 // Local and rTorrent privacy are independent. A locked remote
                 // profile can still navigate to the separately gated local.
                 LocalTransferPrivacyGate(
@@ -1985,6 +2270,8 @@ internal fun ChunksApp(
                         onSeedingRules = { openTool(Section.SEEDING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                         onMediaSettings = { openTool(Section.MEDIA,
+                        if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
+                        onSmartRouting = { openTool(Section.ROUTING,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
                         onCreateTorrent = { openTool(Section.CREATE,
                         if (section == Section.OPTIONS) Section.OPTIONS else Section.LOCAL) },
@@ -2629,7 +2916,12 @@ internal fun ConnectionScreen(
     delugeDaemonHostId: String = "",
     onDelugeDaemonHostId: (String) -> Unit = {},
     onConnectReadOnlyBackend: () -> Unit = {},
-    readOnlyBackendError: String? = null
+    readOnlyBackendError: String? = null,
+    readOnlySavedProfiles: List<RememberedRemoteProtocolProfiles.Profile> = emptyList(),
+    readOnlyConnectedProfileId: String? = null,
+    onViewReadOnlyProfile: (RememberedRemoteProtocolProfiles.Profile) -> Unit = {},
+    onRenameReadOnlyProfile: suspend (RememberedRemoteProtocolProfiles.Profile, String) -> Boolean = { _, _ -> false },
+    onForgetReadOnlyProfile: (RememberedRemoteProtocolProfiles.Profile) -> Unit = {}
 ) {
     // Submitting the form closes the keyboard, as forms conventionally do,
     // so the next screen's persistent footer is not waiting on an IME hide.
@@ -2639,7 +2931,9 @@ internal fun ConnectionScreen(
         RememberedRemoteProfileRoster.validFriendlyName(connectionName)
     val isRTorrentForm = !enableAdditionalProtocols || chosenBackend == RemoteBackendKind.RTORRENT
     val needsDaemonId = !isRTorrentForm && chosenBackend == RemoteBackendKind.DELUGE
-    val canSubmitConnection = endpoint.isNotBlank() && (!needsDaemonId || delugeDaemonHostId.isNotBlank())
+    // A blank Deluge daemon ID is allowed: Connect adopts the Web UI's daemon
+    // only when exactly one is registered, and otherwise asks for the ID.
+    val canSubmitConnection = endpoint.isNotBlank() && (isRTorrentForm || password.isNotEmpty())
     val submitConnect: () -> Unit = {
         connectKeyboard?.hide()
         connectFocus.clearFocus()
@@ -2689,8 +2983,10 @@ internal fun ConnectionScreen(
         showNewConnectionForm = false
         pendingForget = null
     }
-    LaunchedEffect(connectedSessionName) {
-        if (connectedSessionName != null) showNewConnectionForm = false
+    LaunchedEffect(connectedSessionName, readOnlyConnectedProfileId) {
+        if (connectedSessionName != null || readOnlyConnectedProfileId != null) {
+            showNewConnectionForm = false
+        }
     }
     LaunchedEffect(showNewConnectionForm, managedProfileId) { connectionList.scrollToItem(0) }
     // Reuse the exact existing verified Connect operation. No saved password or
@@ -2719,7 +3015,8 @@ internal fun ConnectionScreen(
             }
         }
         if (rosterVisible) {
-            if (savedProfiles.isEmpty() && connectedSessionName == null) item {
+            if (savedProfiles.isEmpty() && readOnlySavedProfiles.isEmpty() &&
+                readOnlyConnectedProfileId == null && connectedSessionName == null) item {
                     Card(colors = CardDefaults.cardColors(containerColor = Lilac)) {
                         Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text("Connect to a remote client", modifier = Modifier.semantics { heading() },
@@ -2754,6 +3051,36 @@ internal fun ConnectionScreen(
                         }
                     },
                     onManage = { managedProfileId = entry.id })
+            }
+            items(readOnlySavedProfiles, key = { "readonly-profile-" + it.id }) { profile ->
+                Card(colors = CardDefaults.cardColors(containerColor = ChunksColors.SurfaceRaised)) {
+                    Column(Modifier.fillMaxWidth().padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(profile.label, style = MaterialTheme.typography.titleMedium)
+                        val kindName = when (profile.backend) {
+                            RemoteBackendKind.TRANSMISSION -> "Transmission"
+                            RemoteBackendKind.QBITTORRENT -> "qBittorrent"
+                            RemoteBackendKind.DELUGE -> "Deluge"
+                            else -> "Remote client"
+                        }
+                        Text(kindName + " · " +
+                            if (readOnlyConnectedProfileId == profile.id) "Recently verified"
+                            else "Saved connection",
+                            style = MaterialTheme.typography.bodySmall)
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            OutlinedButton(onClick = { onViewReadOnlyProfile(profile) },
+                                enabled = !loading, modifier = cell.heightIn(min = 48.dp)
+                                    .testTag("protocol-profile-view-" + profile.id)) {
+                                Text("View transfers")
+                            }
+                            OutlinedButton(onClick = { managedProfileId = profile.id },
+                                modifier = cell.heightIn(min = 48.dp)
+                                    .testTag("protocol-profile-manage-" + profile.id)) {
+                                Text("Manage")
+                            }
+                        }
+                    }
+                }
             }
             if (error != null) item { Notice("Connection needs attention", error) }
         }
@@ -2839,7 +3166,8 @@ internal fun ConnectionScreen(
                 }
             }
         }
-        if (managedProfileId != null && savedProfiles.isNotEmpty()) {
+        if (managedProfileId != null &&
+            (savedProfiles.isNotEmpty() || readOnlySavedProfiles.isNotEmpty())) {
             /* Secondary profile settings, available independently of remembered-login preference. */
             item {
                 Text("Profile settings", style = MaterialTheme.typography.titleMedium)
@@ -2952,6 +3280,79 @@ internal fun ConnectionScreen(
                 }
             }
         }
+        if (managedProfileId != null) {
+            items(readOnlySavedProfiles.filter { it.id == managedProfileId },
+                key = { "manage-readonly-profile-" + it.id }) { profile ->
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(profile.label, style = MaterialTheme.typography.titleMedium)
+                    Text("Open a transfer's Details to start, stop, recheck, set file priorities or remove it on this client.",
+                        style = MaterialTheme.typography.bodySmall)
+                    OutlinedButton(onClick = { onViewReadOnlyProfile(profile) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                        Text("View transfers")
+                    }
+                    if (pendingForget == profile.id) {
+                        Text("Forget this connection's saved login? Torrents are unchanged.",
+                            style = MaterialTheme.typography.bodySmall)
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            OutlinedButton(onClick = {
+                                pendingForget = null
+                                managedProfileId = null
+                                onForgetReadOnlyProfile(profile)
+                            }, enabled = !loading, modifier = cell.heightIn(min = 48.dp)) {
+                                Text("Forget connection")
+                            }
+                            OutlinedButton(onClick = { pendingForget = null },
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Cancel") }
+                        }
+                    } else {
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            OutlinedButton(onClick = {
+                                renameProfileId = profile.id
+                                renameDraft = profile.label
+                                renameNotice = null
+                            }, enabled = !loading && !renameBusy,
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Rename") }
+                            OutlinedButton(onClick = { pendingForget = profile.id },
+                                enabled = !loading && !renameBusy,
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Forget") }
+                        }
+                    }
+                    if (renameProfileId == profile.id) {
+                        OutlinedTextField(value = renameDraft, onValueChange = { renameDraft = it },
+                            label = { Text("Connection name") }, singleLine = true,
+                            modifier = Modifier.fillMaxWidth())
+                        ResponsiveActionGroup(maxColumns = 2) { cell ->
+                            OutlinedButton(onClick = {
+                                if (!renameBusy) {
+                                    renameBusy = true
+                                    val name = renameDraft
+                                    renameScope.launch {
+                                        val saved = try { onRenameReadOnlyProfile(profile, name) }
+                                            catch (_: Exception) { false }
+                                        if (saved) renameProfileId = null
+                                        renameNotice = if (saved) "Name saved." else "Could not save the name."
+                                        renameBusy = false
+                                    }
+                                }
+                            }, enabled = !loading && !renameBusy &&
+                                RememberedRemoteProtocolProfiles.validLabel(renameDraft.trim()),
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Save") }
+                            OutlinedButton(onClick = { renameProfileId = null },
+                                enabled = !renameBusy,
+                                modifier = cell.heightIn(min = 48.dp)) { Text("Cancel") }
+                        }
+                    }
+                    EnvironmentColourPreference(
+                        id = io.github.gamesbyian.chunks.model.EnvironmentId(profile.id),
+                        label = profile.label,
+                        configuredIds = listOf(io.github.gamesbyian.chunks.model.EnvironmentSnapshots.LOCAL) +
+                            (savedProfiles.map { io.github.gamesbyian.chunks.model.EnvironmentId(it.id) } +
+                                readOnlySavedProfiles.map { io.github.gamesbyian.chunks.model.EnvironmentId(it.id) }),
+                        accessibilityLabel = profile.label + " connection")
+                }
+            }
+        }
         if (renameNotice != null) item {
             Text(renameNotice.orEmpty(), style = MaterialTheme.typography.bodySmall)
         }
@@ -2977,7 +3378,7 @@ internal fun ConnectionScreen(
                     )
                 }
             }
-            Text("All clients use this same Connections screen. New protocols currently support read-only connection checks.",
+            Text("All clients use this same Connections screen. Connecting only checks the login and reads the transfer list.",
                 style = MaterialTheme.typography.bodySmall)
         }
         item {
@@ -3065,8 +3466,8 @@ internal fun ConnectionScreen(
         if (needsDaemonId) item {
             OutlinedTextField(
                 value = delugeDaemonHostId, onValueChange = onDelugeDaemonHostId,
-                label = { Text("Deluge daemon ID") },
-                supportingText = { Text("Select the exact registered daemon, not just the Deluge WebUI.") },
+                label = { Text("Deluge daemon ID (optional)") },
+                supportingText = { Text("Leave empty to use the Web UI's only daemon. Needed only when it has several.") },
                 singleLine = true, enabled = !loading,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -3112,7 +3513,7 @@ internal fun ConnectionScreen(
                     RemoteBackendKind.QBITTORRENT -> "qBittorrent"
                     RemoteBackendKind.DELUGE -> "Deluge"
                     else -> "rTorrent"
-                } + " (read only)"
+                }
             }) }
         }
         if (connectedSessionName == null) {
