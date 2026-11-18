@@ -96,6 +96,8 @@ class AndroidCiTriggerContract(unittest.TestCase):
              ".github/workflows/installed-combined-two-servers.yml"),
             ("HttpsLocalAddJourneyInstrumentedTest.kt",
              ".github/workflows/installed-rtorrent-magnets.yml"),
+            ("ProtocolClientInstalledJourneyTest.kt",
+             ".github/workflows/installed-protocol-client.yml"),
             ("MainActivityRealMagnetJourney.kt",
              ".github/workflows/installed-rtorrent-magnets.yml"),
         )
