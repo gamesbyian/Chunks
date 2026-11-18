@@ -103,6 +103,35 @@ class ProtocolClientOperationsPanelTest {
         assertEquals(1, target.adds)
     }
 
+    @Test fun rtorrentSourceUsesSameMoveReceiptWithoutDuplicateLifecycleControls() {
+        val source = Fake()
+        val destination = Target()
+        rule.setContent {
+            ChunksTheme {
+                ProtocolClientOperationsPanel(
+                    hash = hash, clientLabel = "rTorrent", sourceClientId = "rtorrent-account",
+                    observedStarted = false, current = true, inventoryWitness = 1L,
+                    createOperations = { RemoteClientOperations(source, 3, 1) }, onChanged = {},
+                    moveTargets = listOf(ProtocolMoveTarget("other-deluge", "Deluge") {
+                        RemoteClientOperations(destination, 3, 1)
+                    }), moveOnly = true
+                )
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_START_STOP).assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_REMOVE).assertDoesNotExist()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE).performClick()
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE + ".other-deluge").performClick()
+        rule.waitUntil(5_000) { destination.present }
+        rule.waitForIdle()
+        assertEquals("Only an explicit second tap retires the source job", true, source.present)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE).performClick()
+        rule.waitUntil(5_000) { !source.present }
+        assertEquals(1, destination.adds)
+        rule.onNodeWithTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE).assertDoesNotExist()
+    }
+
     private fun render(fake: Fake, current: Boolean = true) {
         rule.setContent {
             ChunksTheme {
