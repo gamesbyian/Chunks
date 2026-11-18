@@ -1,6 +1,8 @@
 package io.github.gamesbyian.chunks.rpc
 
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * Job-only Copy / Move of one exact torrent JOB between two remote clients
@@ -10,17 +12,27 @@ import kotlinx.coroutines.CancellationException
  * Copy = exact source read → faithful re-creation source (exported metainfo,
  * else the job's own magnet) → ONE verified target Add (shared workflow).
  * Move = a verified Copy followed by a SEPARATE, caller-confirmed source
- * retirement that is session-only (files kept) and refused unless the target
- * still holds the exact job at that moment.
+ * retirement that is session-only (files kept). Retirement requires the
+ * original one-use successful Copy receipt for this exact client pair.
+ *
+ * IDs must be authenticated canonical *client* identities, not display names,
+ * currently selected UI filters or mutable connection slots.
  */
 internal class ClientJobTransfer(
     private val source: RemoteClientOperations,
     private val sourceClient: RemoteTorrentClient,
     private val target: RemoteClientOperations,
-    private val targetClient: RemoteTorrentClient
+    private val targetClient: RemoteTorrentClient,
+    sourceClientId: String,
+    targetClientId: String
 ) {
     init {
+        require(source.client === sourceClient && target.client === targetClient) {
+            "Operation owners must match their exact client adapters"
+        }
         require(source !== target && sourceClient !== targetClient) { "Choose two different clients" }
+        require(sourceClientId.isNotBlank() && targetClientId.isNotBlank() &&
+            sourceClientId != targetClientId) { "Choose two distinct authenticated clients" }
     }
 
     sealed interface CopyResult {
@@ -30,31 +42,60 @@ internal class ClientJobTransfer(
         data class Refused(override val hash: String, val reason: String) : CopyResult
     }
 
-    suspend fun copy(hash: String, targetDirectory: String?, startOnTarget: Boolean): CopyResult {
-        val exact = ClientHashes.requireHash(hash)
-        val caps = try { source.session().capabilities } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { return CopyResult.Refused(exact, "Source client unavailable") }
-        if (ClientCapability.EXPORT_JOB !in caps) return CopyResult.Refused(exact, "Source cannot export this job")
-        val present = try { sourceClient.torrent(exact) } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { return CopyResult.Refused(exact, "Could not read the source first") }
-            ?: return CopyResult.Refused(exact, "Transfer is not in the source client")
-        val recreate = try { sourceClient.transferSource(present.hash) } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { null }
-            ?: return CopyResult.Refused(exact, "This job cannot be re-created faithfully (private or no metainfo)")
-        if (recreate.infoHash != exact) return CopyResult.Refused(exact, "Source exported a different identity")
-        val outcome = target.add(ClientAddRequest(recreate, targetDirectory, startOnTarget))
-        return if (outcome is ClientOperationOutcome.Verified)
-            CopyResult.Copied(exact, recreate is ClientAddSource.TorrentFile)
-        else CopyResult.NotCopied(exact, outcome)
-    }
+    private val attemptLock = Mutex()
+    /** The exact *object* returned by the last verified Copy; not a forgeable data-class value. */
+    private var pendingRetirement: CopyResult.Copied? = null
 
-    /** Second, separately confirmed step of Move. Never deletes payload data. */
-    suspend fun retireSource(hash: String): ClientOperationOutcome {
-        val exact = ClientHashes.requireHash(hash)
-        val stillOnTarget = try { targetClient.torrent(exact) } catch (e: CancellationException) { throw e }
-            catch (_: Exception) { null }
-        if (stillOnTarget == null)
-            return ClientOperationOutcome.Refused(exact, "The target no longer shows this job; source kept")
-        return source.remove(exact, deleteData = false)
-    }
+    suspend fun copy(hash: String, targetDirectory: String?, startOnTarget: Boolean): CopyResult =
+        attemptLock.withLock {
+            // A newer attempt supersedes any earlier authority, even if refused or uncertain.
+            pendingRetirement = null
+            val exact = ClientHashes.requireHash(hash)
+            val caps = try { source.session().capabilities }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { return@withLock CopyResult.Refused(exact, "Source client unavailable") }
+            if (ClientCapability.EXPORT_JOB !in caps)
+                return@withLock CopyResult.Refused(exact, "Source cannot export this job")
+            val present = try { sourceClient.torrent(exact) }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { return@withLock CopyResult.Refused(exact, "Could not read the source first") }
+                ?: return@withLock CopyResult.Refused(exact, "Transfer is not in the source client")
+            val recreate = try { sourceClient.transferSource(present.hash) }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { null }
+                ?: return@withLock CopyResult.Refused(exact,
+                    "This job cannot be re-created faithfully (private or no metainfo)")
+            if (recreate.infoHash != exact)
+                return@withLock CopyResult.Refused(exact, "Source exported a different identity")
+            val outcome = target.add(ClientAddRequest(recreate, targetDirectory, startOnTarget))
+            if (outcome !is ClientOperationOutcome.Verified)
+                return@withLock CopyResult.NotCopied(exact, outcome)
+
+            CopyResult.Copied(exact, recreate is ClientAddSource.TorrentFile).also {
+                pendingRetirement = it
+            }
+        }
+
+    /**
+     * Second, separately user-confirmed step of Move. Must present the *same*
+     * successful Copy result object returned by this transfer instance.
+     * A duplicate target, stale receipt, forged equal value or failed Copy
+     * never authorizes source removal. Consume before any source write so
+     * Pending/Uncertain outcomes cannot be replayed blindly.
+     */
+    suspend fun retireSource(hash: String, confirmedCopy: CopyResult.Copied): ClientOperationOutcome =
+        attemptLock.withLock {
+            val exact = ClientHashes.requireHash(hash)
+            if (pendingRetirement !== confirmedCopy || confirmedCopy.hash != exact)
+                return@withLock ClientOperationOutcome.Refused(exact,
+                    "No verified Copy for this exact client and transfer; source kept")
+            pendingRetirement = null
+            val stillOnTarget = try { targetClient.torrent(exact) }
+                catch (e: CancellationException) { throw e }
+                catch (_: Exception) { null }
+            if (stillOnTarget == null)
+                return@withLock ClientOperationOutcome.Refused(exact,
+                    "The target no longer shows this job; source kept")
+            source.remove(exact, deleteData = false)
+        }
 }
