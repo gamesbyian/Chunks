@@ -14,6 +14,7 @@ on:
       - "tools/interop/**"
       - ".github/workflows/real-client-interop.yml"
       - "app/src/test/java/io/github/gamesbyian/chunks/rpc/LocalClientInteropTest.kt"
+      - "app/src/test/java/io/github/gamesbyian/chunks/rpc/SharedAddFileChoicesInteropTest.kt"
       - "app/src/main/java/io/github/gamesbyian/chunks/engine/LocalTorrentEngine.kt"
   push:
     branches: [main]
@@ -72,6 +73,7 @@ jobs:
           gradle --no-daemon --no-configuration-cache --console=plain :app:testDebugUnitTest \
             --tests io.github.gamesbyian.chunks.rpc.RealClientInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.LocalClientInteropTest \
+            --tests io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest \
             --tests io.github.gamesbyian.chunks.rpc.ClientOperationsTest \
             --tests 'io.github.gamesbyian.chunks.rpc.*ReadOnlyRpcTest'
           status=$?
@@ -98,6 +100,15 @@ jobs:
               if line.startswith("CHUNKS_INTEROP:"):
                   print(line[:240])
           if lfail or int(lroot.get("skipped", 0)) or int(lroot.get("tests", 0)) != 2:
+              sys.exit(1)
+          choices = pathlib.Path("app/build/test-results/testDebugUnitTest/TEST-io.github.gamesbyian.chunks.rpc.SharedAddFileChoicesInteropTest.xml")
+          if not choices.is_file():
+              print("CHUNKS_INTEROP: no file-choice receipt"); sys.exit(1)
+          croot = ET.parse(choices).getroot()
+          cfail = int(croot.get("failures", 0)) + int(croot.get("errors", 0))
+          print(f"CHUNKS_INTEROP: file choices tests={croot.get('tests')} skipped={croot.get('skipped')} failed={cfail}")
+          # Add-time file skips must execute on all four real daemons.
+          if cfail or int(croot.get("skipped", 0)) or int(croot.get("tests", 0)) != 4:
               sys.exit(1)
           # All four real daemons and the cross-engine Move ring must actually execute; a skip is not a pass.
           # Only the protected manual Seedhost Move case may skip here.
