@@ -67,6 +67,8 @@ internal object ProtocolOperationText {
 internal fun ProtocolClientOperationsPanel(
     hash: String,
     clientLabel: String,
+    /** Stable authenticated client identity, never a display label. */
+    sourceClientId: String,
     observedStarted: Boolean?,
     /** The list row is current, complete and privacy-visible. */
     current: Boolean,
@@ -90,8 +92,11 @@ internal fun ProtocolClientOperationsPanel(
     var deleteData by remember(hash) { mutableStateOf(false) }
     var files by remember(hash) { mutableStateOf<List<ClientFile>?>(null) }
     var showMove by remember(hash) { mutableStateOf(false) }
-    var copiedTo by remember(hash) { mutableStateOf<ProtocolMoveTarget?>(null) }
-    var copiedTransfer by remember(hash) { mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer?>(null) }
+    var copiedTo by remember(hash, sourceClientId) { mutableStateOf<ProtocolMoveTarget?>(null) }
+    var copiedTransfer by remember(hash, sourceClientId) { mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer?>(null) }
+    var copiedReceipt by remember(hash, sourceClientId) {
+        mutableStateOf<io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Copied?>(null)
+    }
     var draft by remember(hash) { mutableStateOf<Map<Int, ClientFilePriority>>(emptyMap()) }
 
     LaunchedEffect(operations) {
@@ -180,18 +185,22 @@ internal fun ProtocolClientOperationsPanel(
                 OutlinedButton(onClick = {
                     if (busy || latched) return@OutlinedButton
                     busy = true
+                    copiedTo = null; copiedTransfer = null; copiedReceipt = null
                     notice = "Copying job to ${target.label}…"
                     scope.launch {
                         val transfer = try {
                             val dst = target.createOperations()
-                            io.github.gamesbyian.chunks.rpc.ClientJobTransfer(operations, operations.client, dst, dst.client)
+                            io.github.gamesbyian.chunks.rpc.ClientJobTransfer(
+                                operations, operations.client, dst, dst.client,
+                                sourceClientId = sourceClientId, targetClientId = target.id
+                            )
                         } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
                         val result = try {
                             transfer?.copy(hash, targetDirectory = null, startOnTarget = observedStarted == true)
                         } catch (cancel: CancellationException) { throw cancel } catch (_: Exception) { null }
                         when (result) {
                             is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.Copied -> {
-                                copiedTo = target; copiedTransfer = transfer
+                                copiedTo = target; copiedTransfer = transfer; copiedReceipt = result
                                 notice = "Job copied to ${target.label} (confirmed). Its files download there separately."
                             }
                             is io.github.gamesbyian.chunks.rpc.ClientJobTransfer.CopyResult.NotCopied -> {
@@ -212,9 +221,12 @@ internal fun ProtocolClientOperationsPanel(
             }
             val done = copiedTo
             val transfer = copiedTransfer
-            if (done != null && transfer != null) Button(onClick = {
-                run("Remove from $clientLabel after moving to ${done.label}") { transfer.retireSource(hash) }
-                copiedTo = null; copiedTransfer = null
+            val receipt = copiedReceipt
+            if (done != null && transfer != null && receipt != null) Button(onClick = {
+                run("Remove from $clientLabel after moving to ${done.label}") {
+                    transfer.retireSource(hash, receipt)
+                }
+                copiedTo = null; copiedTransfer = null; copiedReceipt = null
             }, enabled = enabled, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 .testTag(ChunksSemantics.PROTOCOL_MOVE_RETIRE)) {
                 Text("Finish move: remove from $clientLabel (keep files)")
