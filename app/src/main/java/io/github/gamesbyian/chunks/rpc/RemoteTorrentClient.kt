@@ -146,6 +146,9 @@ internal class ClientRefusedException(message: String) : IOException(message)
 /** A write may have been delivered; reconcile read-only, never replay. */
 internal class ClientWriteUncertainException(message: String) : IOException(message)
 
+/** The client accepted a write, but its consequential effect remains unverified. */
+internal class ClientPostWritePendingException(message: String) : IOException(message)
+
 internal object ClientMagnets {
     /** magnet:?xt=urn:btih:<hash>&dn=<name>&tr=... (exact hash; trackers as given). */
     fun build(hash: String, name: String?, trackers: List<String>): ClientAddSource.Magnet {
