@@ -10,7 +10,9 @@ for port in 19091 18080 18112; do adb reverse tcp:$port tcp:$port >/dev/null; do
 b64() { printf '%s' "$1" | base64 -w 0; }
 run_one() {
   local kind=$1 url=$2 user=$3 pass=$4
-  adb shell pm clear io.github.gamesbyian.chunks >/dev/null
+  # Android shell sometimes resolves 'current' to USER_CURRENT (-2) after prior instrumentation.
+  # This disposable emulator has a known primary user; clear exactly user 0.
+  adb shell pm clear --user 0 io.github.gamesbyian.chunks >/dev/null
   set +e
   adb shell am instrument -w -r \
     -e class io.github.gamesbyian.chunks.ProtocolClientInstalledJourneyTest \
