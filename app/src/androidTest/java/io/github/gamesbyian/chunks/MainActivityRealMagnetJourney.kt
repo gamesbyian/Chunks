@@ -560,9 +560,22 @@ internal class MainActivityRealMagnetJourney(
             rule.onNode(submit).performScrollTo()
             rule.waitForIdle()
             rule.onNode(submit).performClick()
-            rule.waitUntil(60_000) {
-                runCatching { scrollOutcome() }.isSuccess &&
-                    hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)
+            try {
+                rule.waitUntil(60_000) {
+                    runCatching { scrollOutcome() }.isSuccess &&
+                        hasTag(ChunksSemantics.ADD_REMOTE_OPERATION_STATUS)
+                }
+            } catch (timeout: androidx.compose.ui.test.ComposeTimeoutException) {
+                // 1/0 flags only, each for one fixed app refusal or state phrase (no
+                // server/source text): which silent admission exit, if any, fired.
+                val flags = listOf(
+                    "could not be authorized", "Another client operation must settle",
+                    "Resolve or finish the previous exact Add", "The Add review has changed",
+                    "one-time submission ticket", "Checking server", "Add transfer"
+                ).joinToString("") { if (visible(it)) "1" else "0" }
+                val enabledNow = runCatching { rule.onNode(submit).assertIsEnabled(); true }.getOrDefault(false)
+                report("chunks_real_add_app_stage", "click-after-submit-$flags-" + (if (enabledNow) "1" else "0"))
+                throw timeout
             }
             // The app-root attempt scope deliberately leaves Back enabled
             // during an in-flight Add: navigating away must not cancel or

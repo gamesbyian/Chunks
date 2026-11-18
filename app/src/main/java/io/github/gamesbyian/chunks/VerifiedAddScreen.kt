@@ -1231,7 +1231,10 @@ internal fun VerifiedAddScreen(
                             } else {
                                 if (mutationGateAcquired) onMutationSettled()
                                 awaitingConfirmation = false
-                                outcome = "Add could not be authorized for this exact server. Refresh the connection and review again; nothing was submitted."
+                                // The admission reasons are fixed app vocabulary
+                                // (never server or source text); name the exact one.
+                                val why = admission?.explanation?.takeIf { it.isNotBlank() }?.let { " $it" }.orEmpty()
+                                outcome = "Add could not be authorized for this exact server.$why Refresh the connection and review again; nothing was submitted."
                             }
                         },
                         enabled = plan != null && !submitting && !choosing && !externalSourceReading &&
