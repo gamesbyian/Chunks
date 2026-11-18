@@ -27,7 +27,8 @@ internal sealed interface ClientOperationOutcome {
  * [ClientCapability] set; this object never branches on backend kind.
  */
 internal class RemoteClientOperations(
-    private val client: RemoteTorrentClient,
+    /** The exact client this workflow drives (shared with Move). */
+    val client: RemoteTorrentClient,
     private val readbackAttempts: Int = 12,
     private val readbackDelayMillis: Long = 750
 ) {
