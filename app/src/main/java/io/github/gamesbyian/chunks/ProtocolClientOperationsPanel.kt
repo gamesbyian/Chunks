@@ -79,9 +79,7 @@ internal fun ProtocolClientOperationsPanel(
     /** Other connected clients this job may be copied/moved to (job only). */
     moveTargets: List<ProtocolMoveTarget> = emptyList(),
     /** The rTorrent Details surface already owns its verified lifecycle/file controls. */
-    moveOnly: Boolean = false,
-    /** Smart Routing's advisory Move suggestion (target id to "why"); never acts by itself. */
-    suggestedTarget: Pair<String, String>? = null
+    moveOnly: Boolean = false
 ) {
     val scope = rememberCoroutineScope()
     val operations = remember(hash, createOperations) { createOperations() }
@@ -210,14 +208,7 @@ internal fun ProtocolClientOperationsPanel(
             Text("Copies only the torrent job. The other client downloads its files itself; " +
                 "nothing on $clientLabel is changed unless you then remove it here.",
                 style = MaterialTheme.typography.bodySmall)
-            suggestedTarget?.let { (id, why) ->
-                moveTargets.firstOrNull { it.id == id }?.let { target ->
-                    Text("Smart Routing suggests ${target.label} ($why). Nothing moves until you copy and finish.",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.testTag(ChunksSemantics.PROTOCOL_MOVE_SUGGESTION))
-                }
-            }
-            moveTargets.sortedByDescending { it.id == suggestedTarget?.first }.forEach { target ->
+            moveTargets.forEach { target ->
                 OutlinedButton(onClick = {
                     if (busy || latched) return@OutlinedButton
                     busy = true

@@ -112,27 +112,6 @@ internal object SmartRoutingAddSuggestion {
         sourceKey != null && alreadyAppliedFor != sourceKey && personChoseTargetFor != sourceKey &&
         !alreadySelected && !addInFlight
 
-    /**
-     * Metadata-late Ask: once a job's real name is known (never while its
-     * metadata is pending), a confident rule pointing at ANOTHER connected
-     * client than the one holding the job becomes a Move suggestion in
-     * Details. Advisory only: the person still taps Copy and Finish move.
-     * A rule pointing at the current client means "stay": no suggestion.
-     */
-    fun moveSuggestion(
-        policy: SmartRoutingPolicyStore.Policy?,
-        originalName: String?,
-        metadataPending: Boolean?,
-        currentEnvironmentId: String,
-        targets: List<Candidate>
-    ): Suggestion? {
-        if (metadataPending == true || originalName.isNullOrBlank()) return null
-        val here = Candidate(currentEnvironmentId, "current", live = true, acceptsAdd = true, placeKnown = true)
-        val result = evaluate(policy, originalName, emptyList(), targets.filter { it.environmentId != currentEnvironmentId } + here)
-        val suggestion = (result as? Result.Suggested)?.suggestion ?: return null
-        return suggestion.takeIf { it.environmentId != currentEnvironmentId }
-    }
-
     fun kindLabel(kind: SmartRoutingPreview.Kind): String = when (kind) {
         SmartRoutingPreview.Kind.MOVIE -> "Movie"
         SmartRoutingPreview.Kind.TV -> "TV episode"
