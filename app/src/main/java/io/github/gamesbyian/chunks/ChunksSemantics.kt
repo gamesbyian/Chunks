@@ -36,6 +36,7 @@ internal object ChunksSemantics {
     const val PROTOCOL_OPERATION_STATUS = "chunks.protocol.operation_status"
     const val PROTOCOL_MOVE = "chunks.protocol.move"
     const val PROTOCOL_MOVE_RETIRE = "chunks.protocol.move.retire"
+    const val PROTOCOL_MOVE_SUGGESTION = "chunks.protocol.move.suggestion"
     const val PROTOCOL_SET_LOCATION = "chunks.protocol.set_location"
     const val PROTOCOL_SET_LOCATION_FOLDER = "chunks.protocol.set_location.folder"
     const val PROTOCOL_SET_LOCATION_MOVE_FILES = "chunks.protocol.set_location.move_files"

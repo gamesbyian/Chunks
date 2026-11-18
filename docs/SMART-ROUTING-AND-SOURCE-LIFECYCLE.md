@@ -67,6 +67,10 @@ The pure, read-only `SmartRoutingPreview` classifies supported file types offlin
 
 `SmartRoutingPolicyStore.Policy.autoSelect` (separate switch under "Suggest a client in Add"; **default off**; absent in older saved policies = off; a present non-Boolean value fails closed). When on, a confident proposal for a live, capable exact client (`candidateFor`) is pre-selected in Universal Add through the same handler as tapping the suggestion chip, **once per reviewed source identity**, never while an Add is in flight and never over a target the person chose for that source (`SmartRoutingAddSuggestion.shouldPreselect`). It is a draft edit: no Add, Start or Move is issued; the person's Add tap and the shared workflow's exact-client re-check remain the authority. Unattended Add and metadata-late automatic Move remain unimplemented.
 
+### Metadata-late Move suggestion in Details (2026-11-18)
+
+Once a job's real name is known (never while `metadataPending`), Details evaluates the saved rules (`SmartRoutingAddSuggestion.moveSuggestion`). If a confident rule points at a **different** connected client among the job-only Move targets, the Copy/Move panel shows "Smart Routing suggests <client> (<kind> rule)" and lists that target first. A rule pointing at the job's current client means stay (no suggestion). It is advisory: no Copy, Move or retirement happens without the person's two explicit taps, and the policy store is only read. Files are not yet part of this evaluation (name-only); automatic Move remains unimplemented.
+
 ### Delivery dependencies
 
 1. **Shared classifier and pure rule evaluator** with precedence, confidence, preview, no side effects, privacy isolation and deterministic fixture tests. Can be specified/implemented without enabling mutations.
