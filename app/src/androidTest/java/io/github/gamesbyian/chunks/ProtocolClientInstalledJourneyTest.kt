@@ -169,6 +169,18 @@ class ProtocolClientInstalledJourneyTest {
                 listOf(TorrentMetainfoBuilder.Entry(listOf(name), bytes.size.toLong()) { bytes.inputStream() }),
                 trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024))
         }
+        /** Two unique files in one folder; returns the metainfo and the shared file-name suffix. */
+        fun multiFileFixture(): Pair<TorrentMetainfoBuilder.Result, String> {
+            val random = SecureRandom()
+            val suffix = java.lang.Long.toString(System.nanoTime() and Long.MAX_VALUE, 36) + ".bin"
+            val folder = "chunks-installed-choices-" + suffix.removeSuffix(".bin")
+            val a = ByteArray(48 * 1024).also(random::nextBytes)
+            val b = ByteArray(48 * 1024).also(random::nextBytes)
+            return TorrentMetainfoBuilder.build(TorrentMetainfoBuilder.Request(folder, listOf(
+                TorrentMetainfoBuilder.Entry(listOf("keep-$suffix"), a.size.toLong()) { a.inputStream() },
+                TorrentMetainfoBuilder.Entry(listOf("skip-$suffix"), b.size.toLong()) { b.inputStream() }),
+                trackerTiers = listOf(listOf("http://127.0.0.1:1/announce")), pieceLength = 16 * 1024)) to suffix
+        }
         val preload = fixture("details")
         val name = io.github.gamesbyian.chunks.rpc.TorrentMetainfoReader.preview(preload.torrent).name
         val hash = preload.infoHashV1
@@ -314,6 +326,80 @@ class ProtocolClientInstalledJourneyTest {
             waitFor("local job retired", 60_000) { local.status(second.infoHashV1) == null }
             stage("move-back-local-retired-independently")
             runBlocking { witness.remove(second.infoHashV1, deleteData = false) }
+
+            // Universal Add of a reviewed multi-file .torrent (Open With, as a person
+            // would) to this exact client with ONE file unticked, stopped. The real
+            // daemon must show that file skipped and the other one wanted.
+            val choices = multiFileFixture()
+            val kept = "keep-" + choices.second
+            val skipped = "skip-" + choices.second
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val tree = io.github.gamesbyian.chunks.debug.FixtureDocumentsProvider.treeUri(context)
+            val root = android.provider.DocumentsContract.buildDocumentUriUsingTree(
+                tree, android.provider.DocumentsContract.getTreeDocumentId(tree))
+            val document = requireNotNull(android.provider.DocumentsContract.createDocument(
+                context.contentResolver, root, "application/x-bittorrent", "chunks-choices.torrent"))
+            requireNotNull(context.contentResolver.openOutputStream(document, "wt")).use {
+                out -> out.write(choices.first.torrent)
+            }
+            it.onActivity { activity ->
+                activity.startActivity(android.content.Intent(activity, MainActivity::class.java).apply {
+                    action = android.content.Intent.ACTION_VIEW
+                    setDataAndType(document, "application/x-bittorrent")
+                    addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                        android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                })
+            }
+            stage("choices-torrent-opened")
+            val targetChip = hasTestTag("chunks.add.target.protocol.$profileId")
+            waitFor("Add after Open With", 30_000) {
+                rule.onAllNodes(targetChip).fetchSemanticsNodes().isNotEmpty() ||
+                    rule.onAllNodes(hasTestTag(ChunksSemantics.FOOTER_ADD)).fetchSemanticsNodes().isNotEmpty()
+            }
+            if (rule.onAllNodes(targetChip).fetchSemanticsNodes().isEmpty())
+                rule.onNodeWithTag(ChunksSemantics.FOOTER_ADD).performClick()
+            clickOnce("chunks.add.target.protocol.$profileId", "Add target chip (file choices)", 30_000)
+            // A blank source field keeps the reviewed .torrent (only text replaces it).
+            waitFor("protocol Add source") {
+                runCatching { scrollToNode(hasTestTag(ChunksSemantics.ADD_SOURCE_FIELD)); true }.getOrDefault(false)
+            }
+            rule.onNodeWithTag(ChunksSemantics.ADD_SOURCE_FIELD).performTextReplacement("")
+            clickOnce(ChunksSemantics.ADD_FILE_CHOICE, "Files to download", 30_000)
+            waitFor("both reviewed files listed") {
+                runCatching { scrollToNode(hasText(skipped)); true }.getOrDefault(false) && visible(kept)
+            }
+            rule.onNodeWithText(skipped).performClick()
+            waitFor("one of two files chosen") { visible("Files to download (1 of 2") }
+            stage("choices-one-file-unticked")
+            scrollToNode(hasText("Start when added"))
+            val startOn = rule.onNode(hasText("Start when added")).fetchSemanticsNode().config
+                .getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ToggleableState) { null } ==
+                androidx.compose.ui.state.ToggleableState.On
+            if (startOn) rule.onNodeWithText("Start when added").performClick()
+            clickOnce(ChunksSemantics.ADD_SUBMIT, "Add with file choices", 30_000)
+            stage("choices-add-dispatched-once")
+            val choicesHash = choices.first.infoHashV1
+            // Independent readback is the authority: the job exists, stays stopped,
+            // and the daemon's own file priorities match the review exactly.
+            waitFor("file choices applied on the real client", 90_000) {
+                val files = runCatching {
+                    runBlocking {
+                        io.github.gamesbyian.chunks.rpc.RemoteTorrentClients.create(kind, credentials, daemon)
+                            .files(choicesHash)
+                    }
+                }.getOrNull().orEmpty()
+                files.size == 2 &&
+                    files.single { f -> f.path.endsWith(skipped) }.priority ==
+                        io.github.gamesbyian.chunks.rpc.ClientFilePriority.SKIP &&
+                    files.single { f -> f.path.endsWith(kept) }.priority !=
+                        io.github.gamesbyian.chunks.rpc.ClientFilePriority.SKIP
+            }
+            waitFor("Add receipt", 60_000) { visible("Add: confirmed") }
+            assertEquals("Add with file choices stayed stopped", ClientRunState.STOPPED,
+                runBlocking { independentRead(choicesHash) }?.runState)
+            stage("choices-skip-verified-independently")
+            runBlocking { witness.remove(choicesHash, deleteData = false) }
         }
         val profiles = RememberedRemoteProtocolProfiles(InstrumentationRegistry.getInstrumentation().targetContext).list()
         assertEquals("The verified login was saved once", 1,
