@@ -26,8 +26,9 @@ class SmartRoutingRuleEditTest {
     }
 
     @Test fun editingMissingRuleCannotAccidentallyAppendOrOverwriteAnother() {
+        val existing = listOf(original, sibling)
         assertNull(SmartRoutingRuleEdit.replace(
-            listOf(original, sibling), "removed-rule", SmartRoutingPreview.Kind.GAME, "local"))
-        assertEquals(listOf(original, sibling), listOf(original, sibling))
+            existing, "removed-rule", SmartRoutingPreview.Kind.GAME, "local"))
+        assertEquals(listOf(original, sibling), existing)
     }
 }
